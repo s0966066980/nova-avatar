@@ -153,13 +153,6 @@
 
             <!-- 對話模式：對話訊息瀑布流 -->
             <div v-if="activeMode === 'chat'" class="chat-flow-container" id="chatFlowBox" ref="messagesRef">
-              <div v-if="chatMessages.length === 0" class="bubble-row ai">
-                <div class="bubble-avatar"><i class="bi bi-robot"></i></div>
-                <div class="bubble-card">
-                  你好！我是 Linly 數位人。神經語言模型與語音合成引擎皆已準備就緒，您可以點選下方麥克風或輸入文字開始對話。
-                </div>
-              </div>
-
               <div
                 v-for="(msg, index) in chatMessages"
                 :key="index"
@@ -726,13 +719,7 @@ const appSettings = ref({
   videoSize: 100
 })
 
-const chatMessages = ref([
-  {
-    type: 'ai',
-    text: '',
-    time: getCurrentTime()
-  }
-])
+const chatMessages = ref([])
 
 // 每個語音 turn 保留最後接受的 LLM delta 序號；晚到或重複事件不得污染文字預覽。
 const assistantStreamState = new Map()
@@ -1449,13 +1436,7 @@ onUnmounted(() => {
 
 // 清空對話歷史
 const resetChatMessages = () => {
-  chatMessages.value = [
-    {
-      type: 'ai',
-      text: t('chat.welcomeMessage'),
-      time: getCurrentTime()
-    }
-  ]
+  chatMessages.value = []
 }
 
 const clearChatHistory = async () => {
@@ -1500,11 +1481,6 @@ onMounted(async () => {
   
   // 載入語言設定
   loadLocale()
-  
-  // 設定歡迎訊息
-  if (chatMessages.value.length > 0 && !chatMessages.value[0].text) {
-    chatMessages.value[0].text = t('chat.welcomeMessage')
-  }
   
   // 應用初始主題
   const savedSample = localStorage.getItem('linly_design_sample') || 'obsidian'

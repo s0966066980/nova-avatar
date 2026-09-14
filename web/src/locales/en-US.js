@@ -28,9 +28,8 @@ export default {
     ttsInputPlaceholder: 'Enter text for the digital human to read aloud...',
     ttsButton: 'Start Reading',
     ttsTitle: 'Input Text to Read',
-    welcomeMessage: 'Hello! I\'m Linly, a digital human. Nice to meet you. Click "Start Connection" on the right to begin our conversation!',
     you: 'You',
-    ai: 'Linly',
+    ai: 'Assistant',
     clearHistory: 'Clear history'
   },
   voiceStates: {

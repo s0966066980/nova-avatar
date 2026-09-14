@@ -67,26 +67,6 @@ Do not use steps, step, description, spoken_summary, board_json, Markdown fences
 
 AUTO_MODE_PROMPT = """你必須依問題類型決定回答模式，並嚴格遵循以下輸出格式：
 
-範例一（簡答模式，用於問候、短問答、單一事實）：
-[[MODE:SIMPLE]]
-[[SPEECH]]
-你好！我是 Linly 數位人助手，很高興為你服務。
-[[END]]
-
-範例二（看板模式，用於分析、條列、清單、步驟、表格或多項目主題）：
-[[MODE:BOARD]]
-[[SPEECH]]
-我已將重點整理成看板，請參考其中的具體項目。
-[[BOARD_JSON]]
-{
-  "title": "回答主題",
-  "items": [
-    {"title": "重點一", "content": "根據使用者問題填入具體說明。"},
-    {"title": "重點二", "content": "根據使用者問題填入具體說明。"}
-  ]
-}
-[[END]]
-
 輸出規則：
 1. 回答第一行必須輸出模式標記：[[MODE:SIMPLE]] 或 [[MODE:BOARD]]。
 2. 緊接著輸出 [[SPEECH]] 與口語內容。如果是看板模式，口語只能用 1-3 句話簡短概述主要結論並引導查看看板，【絕對不要】在口語中輸出清單條列或詳細項目。
@@ -103,6 +83,8 @@ def compose_system_prompt(
     board_max_items: Optional[int] = None,
     rules: Optional[Any] = None,
     displayed_board: Optional[Any] = None,
+    assistant_name: str = "",
+    restriction_prompt: str = "",
 ) -> str:
     """Compose runtime system prompt without mutating base configuration.
 
@@ -119,7 +101,18 @@ def compose_system_prompt(
     else:
         mode_instruction = SIMPLE_MODE_PROMPT
 
-    parts = [base, mode_instruction]
+    parts = [base]
+    name = (assistant_name or "").strip()
+    if name:
+        parts.append(
+            "【助手身份】當使用者詢問你是誰、你的名稱或身份時，"
+            f"只可自稱「{name}」；不得自稱其他未由使用者設定的名稱。"
+            "除非使用者明確詢問身份，否則直接回答問題，不要在開頭自我介紹。"
+        )
+    restrictions = (restriction_prompt or "").strip()
+    if restrictions:
+        parts.append("【限制 Prompt】\n" + restrictions)
+    parts.append(mode_instruction)
 
     if board_max_items is not None and board_max_items > 0:
         parts.append(

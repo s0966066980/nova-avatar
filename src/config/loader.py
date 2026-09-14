@@ -9,7 +9,7 @@ from .schema import (
     Config, AppConfig, ModelConfig, TTSConfig, ASRConfig, VADConfig, LLMConfig,
     AudioConfig, VideoConfig, CustomVideoConfig, ERNeRfConfig, TalkingGaussianConfig,
     MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
-    ResponseRouterConfig, BoardConfig, ReplyRulesConfig,
+    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig,
 )
 
 
@@ -126,6 +126,18 @@ def dict_to_config(config_dict: Dict) -> Config:
         allowed_rules = {item.name for item in fields(ReplyRulesConfig)}
         llm_dict['reply_rules'] = ReplyRulesConfig(
             **{k: v for k, v in rules_val.items() if k in allowed_rules}
+        )
+    profile_val = llm_dict.get('assistant_profile')
+    if isinstance(profile_val, dict):
+        allowed_profile = {item.name for item in fields(AssistantProfileConfig)}
+        llm_dict['assistant_profile'] = AssistantProfileConfig(
+            **{k: v for k, v in profile_val.items() if k in allowed_profile}
+        )
+    elif str(llm_dict.get('system_prompt', '') or '').strip():
+        # One-way Phase-1 migration for existing runtime_overrides.yaml files.
+        # The next console save persists this value under assistant_profile.
+        llm_dict['assistant_profile'] = AssistantProfileConfig(
+            system_prompt=str(llm_dict['system_prompt']).strip()
         )
     llm_config = LLMConfig(**llm_dict)
     audio_config = AudioConfig(**config_dict.get('audio', {}))

@@ -187,6 +187,7 @@ def switch_llm_endpoint(
     max_tokens: int = None,
     response_max_chars: int = None,
     system_prompt: str = None,
+    reset_history: bool = False,
 ):
     """更新已有會話的模型與介面，base_url 變化時重建客戶端。"""
     for sessionid, llm in _session_llm_instances.items():
@@ -205,6 +206,11 @@ def switch_llm_endpoint(
             llm.response_max_chars = int(response_max_chars)
         if system_prompt is not None:
             llm.system_prompt = system_prompt
+        if reset_history:
+            llm.clear_history()
+            set_board = getattr(llm, "set_last_board", None)
+            if callable(set_board):
+                set_board(None)
         logger.info(
             f"Updated LLM for session {sessionid}: model={llm.model}, base_url={llm.base_url}"
         )

@@ -969,6 +969,7 @@
     }
 
     /* 公整控制元件 (100% 空間自適應) */
+    .std-input,
     .std-select {
       background: var(--bg-input);
       border: 1px solid var(--border-default);
@@ -978,6 +979,7 @@
       font-size: 13px;
       width: 100%;
     }
+    .std-input:focus,
     .std-select:focus {
       outline: none;
       border-color: var(--brand);

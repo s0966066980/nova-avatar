@@ -234,11 +234,27 @@
               </div>
             </div>
 
-            <!-- 預設角色 Prompt -->
+            <!-- 助手 Profile：角色設定由此處集中管理。 -->
+            <div class="setting-form-row">
+              <div class="field-label-group"><label for="assistant-name" class="field-main-label">助手名稱</label><span id="assistant-name-hint" class="field-sub-hint">明確自稱時使用的名稱。預設為空白，請填入此部署實際使用的角色名稱。</span></div>
+              <div class="field-control-area"><input id="assistant-name" class="std-input" v-model.trim="selectedAssistantName" maxlength="200" placeholder="例如：服務助手" aria-describedby="assistant-name-hint"></div>
+            </div>
+            <div class="setting-form-row">
+              <div class="field-label-group"><label for="assistant-output-locale" class="field-main-label">輸出語系</label><span id="assistant-output-locale-hint" class="field-sub-hint">決定可見回覆的文字正規化目標；預設為繁體中文（臺灣）。</span></div>
+              <div class="field-control-area"><select id="assistant-output-locale" class="std-select" v-model="selectedOutputLocale" aria-describedby="assistant-output-locale-hint"><option value="zh-TW">繁體中文（臺灣）</option><option value="en-US">English (US)</option></select></div>
+            </div>
+            <div class="setting-form-row">
+              <div class="field-label-group"><span class="field-main-label">強制語系正規化</span><span class="field-sub-hint">預設開啟。協定解析後統一轉換 Speech、看板、字幕與 History 的可見文字。</span></div>
+              <div class="field-control-area"><label class="std-switch"><input type="checkbox" v-model="selectedEnforceOutputLocale"><span class="std-slider-track"></span></label></div>
+            </div>
+            <div class="setting-form-row align-start">
+              <div class="field-label-group"><label for="assistant-forbidden-names" class="field-main-label">禁止自稱名稱</label><span id="assistant-forbidden-names-hint" class="field-sub-hint">預設為空白。每行一個舊稱呼；只防護「我是／我叫」等明確自稱，不會改寫專案名稱。</span></div>
+              <div class="field-control-area"><textarea id="assistant-forbidden-names" class="std-textarea" rows="3" v-model="selectedForbiddenSelfNames" placeholder="每行一個舊稱呼" aria-describedby="assistant-forbidden-names-hint"></textarea></div>
+            </div>
             <div class="setting-form-row align-start">
               <div class="field-label-group">
-                <label for="llm-system-prompt" class="field-main-label">{{ t('settings.llm.defaultPrompt') }}</label>
-                <span id="llm-system-prompt-hint" class="field-sub-hint">{{ t('settings.llm.defaultPromptDesc') }}</span>
+                <label for="llm-system-prompt" class="field-main-label">System Prompt</label>
+                <span id="llm-system-prompt-hint" class="field-sub-hint">每輪送給 LLM 的完整角色、能力範圍、語氣與回答原則。未設定時只會使用中性技術 fallback；請在此填入正式設定。</span>
               </div>
               <div class="field-control-area flex-col">
                 <textarea
@@ -250,12 +266,21 @@
                   @pointerup="rememberEditorHeight"
                   maxlength="8000"
                   v-model="selectedSystemPrompt"
-                  :placeholder="t('settings.llm.defaultPromptPlaceholder')"
+                  placeholder="描述助手身份、可協助的範圍、回答風格、語言與不確定時的處理方式。"
                   aria-describedby="llm-system-prompt-hint llm-system-prompt-count"
                 ></textarea>
                 <div id="llm-system-prompt-count" class="field-meta" style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px; text-align: right;">
                   {{ selectedSystemPrompt.length }} / 8000
                 </div>
+              </div>
+            </div>
+            <div class="setting-form-row align-start">
+              <div class="field-label-group">
+                <label for="assistant-restriction-prompt" class="field-main-label">限制 Prompt（不得說什麼）</label>
+                <span id="assistant-restriction-prompt-hint" class="field-sub-hint">明確列出禁止的主題、承諾、身份宣稱或敏感資訊。此規則每輪都會送給 LLM；預設為空白。</span>
+              </div>
+              <div class="field-control-area flex-col">
+                <textarea id="assistant-restriction-prompt" class="std-textarea" rows="5" maxlength="8000" v-model="selectedRestrictionPrompt" placeholder="例如：不得宣稱具備未設定的功能；不得提供醫療、法律或投資結論；不知道時必須直接說明。" aria-describedby="assistant-restriction-prompt-hint"></textarea>
               </div>
             </div>
 
@@ -267,7 +292,7 @@
             >
               <div class="field-label-group">
                 <label :for="`rule-${rule.key}`" class="field-main-label">{{ rule.label }}</label>
-                <span class="field-sub-hint">{{ rule.description }}</span>
+                <span class="field-sub-hint">{{ rule.description }} 可按「還原預設」回復系統提供的通用規則。</span>
               </div>
               <div class="field-control-area flex-col">
                 <textarea
@@ -1353,6 +1378,11 @@ const {
   selectedAvatarId,
   selectedLlm,
   selectedSystemPrompt,
+  selectedRestrictionPrompt,
+  selectedAssistantName,
+  selectedOutputLocale,
+  selectedEnforceOutputLocale,
+  selectedForbiddenSelfNames,
   selectedResponseMaxChars,
   selectedBoardMaxItems,
   selectedReplyMode,

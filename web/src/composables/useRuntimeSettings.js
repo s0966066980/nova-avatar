@@ -6,6 +6,7 @@ const runtime = reactive({
     base_url: '',
     provider: 'ollama',
     system_prompt: '',
+    assistant_profile: { assistant_name: '', system_prompt: '', restriction_prompt: '', output_locale: 'zh-TW', enforce_output_locale: true, forbidden_self_names: [] },
     response_max_chars: 120,
     board_max_items: 8,
     reply_mode: 'legacy',
@@ -189,6 +190,11 @@ const selectedEngine = ref('')
 const selectedAvatarId = ref('')
 const selectedLlm = ref('')
 const selectedSystemPrompt = ref('')
+const selectedRestrictionPrompt = ref('')
+const selectedAssistantName = ref('')
+const selectedOutputLocale = ref('zh-TW')
+const selectedEnforceOutputLocale = ref(true)
+const selectedForbiddenSelfNames = ref('')
 const selectedResponseMaxChars = ref(120)
 const selectedBoardMaxItems = ref(8)
 const selectedReplyMode = ref('legacy')
@@ -265,6 +271,11 @@ const llmDirty = computed(() => {
     selectedProvider.value !== runtime.llm.provider ||
     selectedLlm.value !== runtime.llm.model ||
     selectedSystemPrompt.value !== (runtime.llm.system_prompt || '') ||
+    selectedRestrictionPrompt.value !== (runtime.llm.assistant_profile?.restriction_prompt || '') ||
+    selectedAssistantName.value !== (runtime.llm.assistant_profile?.assistant_name || '') ||
+    selectedOutputLocale.value !== (runtime.llm.assistant_profile?.output_locale || 'zh-TW') ||
+    Boolean(selectedEnforceOutputLocale.value) !== Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true) ||
+    selectedForbiddenSelfNames.value !== (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n') ||
     Number(selectedResponseMaxChars.value) !== Number(runtime.llm.response_max_chars || 120) ||
     Number(selectedBoardMaxItems.value) !== Number(runtime.llm.board_max_items || 8) ||
     selectedReplyMode.value !== (runtime.llm.reply_mode || 'legacy')
@@ -722,6 +733,11 @@ function applySnapshot(data) {
     selectedLlm.value = data.llm?.model || ''
   }
   selectedSystemPrompt.value = data.llm?.system_prompt || ''
+  selectedRestrictionPrompt.value = data.llm?.assistant_profile?.restriction_prompt || ''
+  selectedAssistantName.value = data.llm?.assistant_profile?.assistant_name || ''
+  selectedOutputLocale.value = data.llm?.assistant_profile?.output_locale || 'zh-TW'
+  selectedEnforceOutputLocale.value = Boolean(data.llm?.assistant_profile?.enforce_output_locale ?? true)
+  selectedForbiddenSelfNames.value = (data.llm?.assistant_profile?.forbidden_self_names || []).join('\n')
   selectedResponseMaxChars.value = Number(data.llm?.response_max_chars || 120)
   selectedBoardMaxItems.value = Number(data.llm?.board_max_items || 8)
   selectedReplyMode.value = data.llm?.reply_mode || 'legacy'
@@ -883,13 +899,22 @@ async function applyLlmModel(
         system_prompt: systemPrompt,
         response_max_chars: Number(responseMaxChars),
         reply_mode: replyMode,
-        board_max_items: Number(boardMaxItems)
+        board_max_items: Number(boardMaxItems),
+        assistant_profile: {
+          assistant_name: selectedAssistantName.value,
+          system_prompt: systemPrompt,
+          restriction_prompt: selectedRestrictionPrompt.value,
+          output_locale: selectedOutputLocale.value,
+          enforce_output_locale: Boolean(selectedEnforceOutputLocale.value),
+          forbidden_self_names: selectedForbiddenSelfNames.value.split('\n').map((value) => value.trim()).filter(Boolean)
+        }
       })
     }))
     runtime.llm.model = data.model
     runtime.llm.provider = data.provider || provider
     runtime.llm.base_url = data.base_url || runtime.llm.base_url
     runtime.llm.system_prompt = data.system_prompt || systemPrompt
+    runtime.llm.assistant_profile = data.assistant_profile || runtime.llm.assistant_profile
     runtime.llm.response_max_chars = Number(data.response_max_chars || responseMaxChars)
     runtime.llm.board_max_items = Number(data.board_max_items || boardMaxItems)
     runtime.llm.reply_mode = data.reply_mode || replyMode
@@ -897,6 +922,11 @@ async function applyLlmModel(
     selectedLlm.value = data.model
     selectedProvider.value = data.provider || provider
     selectedSystemPrompt.value = runtime.llm.system_prompt
+    selectedRestrictionPrompt.value = runtime.llm.assistant_profile?.restriction_prompt || ''
+    selectedAssistantName.value = runtime.llm.assistant_profile?.assistant_name || ''
+    selectedOutputLocale.value = runtime.llm.assistant_profile?.output_locale || 'zh-TW'
+    selectedEnforceOutputLocale.value = Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true)
+    selectedForbiddenSelfNames.value = (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n')
     selectedResponseMaxChars.value = runtime.llm.response_max_chars
     selectedBoardMaxItems.value = runtime.llm.board_max_items
     selectedReplyMode.value = runtime.llm.reply_mode
@@ -1122,7 +1152,12 @@ export function useRuntimeSettings() {
     selectedEngine,
     selectedAvatarId,
     selectedLlm,
-    selectedSystemPrompt,
+  selectedSystemPrompt,
+  selectedRestrictionPrompt,
+  selectedAssistantName,
+  selectedOutputLocale,
+  selectedEnforceOutputLocale,
+  selectedForbiddenSelfNames,
     selectedResponseMaxChars,
     selectedBoardMaxItems,
     selectedReplyMode,

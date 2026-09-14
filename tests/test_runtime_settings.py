@@ -187,7 +187,7 @@ class OverridePersistTests(unittest.TestCase):
             self.assertEqual(data["llm"]["model"], "qwen3.5:4b")
             self.assertEqual(data["llm"]["max_tokens"], 360)
             self.assertEqual(data["llm"]["response_max_chars"], 240)
-            self.assertEqual(data["llm"]["system_prompt"], "請用繁體中文簡短回答。")
+            self.assertEqual(data["llm"]["assistant_profile"]["system_prompt"], "")
             self.assertEqual(data["llm"]["board"]["max_items"], 8)
             self.assertEqual(data["model"]["type"], "musetalk")
             self.assertEqual(data["model"]["avatar_id"], "musetalk_avatar1")
@@ -266,7 +266,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         ), patch("src.server.runtime_settings.list_engines", return_value=[]):
             snapshot = current_snapshot(config)
 
-        self.assertIn("繁體中文", snapshot["llm"]["system_prompt"])
+        self.assertEqual(snapshot["llm"]["system_prompt"], "You are a helpful assistant.")
 
     def test_apply_llm_persists_and_updates_prompt(self):
         config = Config()
@@ -279,7 +279,8 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         ) as switch:
             result = apply_llm_model(config, "qwen3.5:4b", "ollama", prompt)
 
-        self.assertEqual(config.llm.system_prompt, prompt)
+        self.assertEqual(config.llm.assistant_profile.system_prompt, prompt)
+        self.assertEqual(config.llm.system_prompt, "")
         self.assertEqual(result["system_prompt"], prompt)
         persist.assert_called_once_with(config)
         self.assertEqual(switch.call_args.kwargs["system_prompt"], prompt)

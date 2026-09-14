@@ -80,6 +80,48 @@ MIN_BOARD_MAX_ITEMS = 1
 MAX_BOARD_MAX_ITEMS = 12
 
 
+def assistant_profile_snapshot(config) -> Dict[str, Any]:
+    """Return the profile currently effective for this process, including migration."""
+    profile = getattr(config.llm, "assistant_profile", None)
+    return {
+        "assistant_name": str(getattr(profile, "assistant_name", "") or ""),
+        "system_prompt": load_system_prompt(config),
+        "restriction_prompt": str(getattr(profile, "restriction_prompt", "") or ""),
+        "output_locale": str(getattr(profile, "output_locale", "zh-TW") or "zh-TW"),
+        "enforce_output_locale": bool(getattr(profile, "enforce_output_locale", True)),
+        "forbidden_self_names": list(getattr(profile, "forbidden_self_names", []) or []),
+    }
+
+
+def validate_assistant_profile(values: Any) -> Dict[str, Any]:
+    if not isinstance(values, dict):
+        raise SettingsError("助手設定必須是物件")
+    name = str(values.get("assistant_name", "") or "").strip()
+    prompt = str(values.get("system_prompt", "") or "").strip()
+    restrictions = str(values.get("restriction_prompt", "") or "").strip()
+    locale = str(values.get("output_locale", "zh-TW") or "zh-TW").strip()
+    enabled = values.get("enforce_output_locale", True)
+    forbidden = values.get("forbidden_self_names", [])
+    if not prompt:
+        raise SettingsError("System Prompt 不可為空")
+    if len(name) > 200 or len(prompt) > 8000 or len(restrictions) > 8000:
+        raise SettingsError("助手名稱、System Prompt 或限制 Prompt 超過長度限制")
+    if locale not in {"zh-TW", "en-US"}:
+        raise SettingsError("輸出語系目前只支援 zh-TW 或 en-US")
+    if not isinstance(enabled, bool):
+        raise SettingsError("強制語系正規化必須是布林值")
+    if not isinstance(forbidden, list) or not all(isinstance(item, str) for item in forbidden):
+        raise SettingsError("禁止自稱名稱必須是字串陣列")
+    return {
+        "assistant_name": name,
+        "system_prompt": prompt,
+        "restriction_prompt": restrictions,
+        "output_locale": locale,
+        "enforce_output_locale": enabled,
+        "forbidden_self_names": [item.strip() for item in forbidden if item.strip()][:100],
+    }
+
+
 class SettingsError(Exception):
     def __init__(self, message: str, status: int = 400, extra: Optional[Dict[str, Any]] = None):
         super().__init__(message)
@@ -144,6 +186,7 @@ def current_snapshot(config) -> Dict[str, Any]:
             "base_url": llm.base_url,
             "provider": resolve_provider(config),
             "system_prompt": load_system_prompt(config),
+            "assistant_profile": assistant_profile_snapshot(config),
             "response_max_chars": int(
                 getattr(llm, "response_max_chars", DEFAULT_RESPONSE_MAX_CHARS)
             ),
@@ -580,6 +623,7 @@ def apply_llm_model(
     response_max_chars: Optional[int] = None,
     reply_mode: Optional[str] = None,
     board_max_items: Optional[int] = None,
+    assistant_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     model = (model or "").strip()
     if not model:
@@ -587,9 +631,14 @@ def apply_llm_model(
     provider = (provider or resolve_provider(config)).strip().lower()
     if provider not in {"ollama", "llamacpp"}:
         raise SettingsError("不支援的對話後端，請選擇 Ollama 或 llama.cpp")
-    next_system_prompt = (
-        load_system_prompt(config) if system_prompt is None else system_prompt.strip()
-    )
+    previous_profile = assistant_profile_snapshot(config)
+    profile_values = assistant_profile
+    if profile_values is None:
+        profile_values = {**previous_profile}
+        if system_prompt is not None:
+            profile_values["system_prompt"] = system_prompt
+    next_profile = validate_assistant_profile(profile_values)
+    next_system_prompt = next_profile["system_prompt"]
     if not next_system_prompt:
         raise SettingsError("預設 Prompt 不可為空")
     try:
@@ -662,7 +711,13 @@ def apply_llm_model(
     config.llm.max_tokens = next_max_tokens
     config.llm.response_max_chars = next_response_max_chars
     config.llm.board.max_items = next_board_max_items
-    config.llm.system_prompt = next_system_prompt
+    from src.config.schema import AssistantProfileConfig
+    if getattr(config.llm, "assistant_profile", None) is None:
+        config.llm.assistant_profile = AssistantProfileConfig()
+    for key, value in next_profile.items():
+        setattr(config.llm.assistant_profile, key, value)
+    # Do not write the deprecated field; it remains readable only for migration.
+    profile_changed = previous_profile != next_profile
     config.llm.extra_body = extra_body
     config.reply_streaming.enabled = next_reply_mode == "streaming"
     switch_llm_endpoint(
@@ -673,6 +728,7 @@ def apply_llm_model(
         max_tokens=next_max_tokens,
         response_max_chars=next_response_max_chars,
         system_prompt=next_system_prompt,
+        reset_history=profile_changed,
     )
     persist_runtime_overrides(config)
     logger.info(f"LLM 已切換: {previous} -> {provider}/{model} @ {base_url}")
@@ -681,6 +737,8 @@ def apply_llm_model(
         "provider": provider,
         "base_url": base_url,
         "system_prompt": next_system_prompt,
+        "assistant_profile": next_profile,
+        "history_reset": profile_changed,
         "response_max_chars": next_response_max_chars,
         "board_max_items": next_board_max_items,
         "reply_mode": next_reply_mode,

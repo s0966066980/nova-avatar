@@ -28,9 +28,8 @@ export default {
     ttsInputPlaceholder: '在這裡輸入想讓數位人朗讀的文字內容...',
     ttsButton: '開始朗讀',
     ttsTitle: '輸入朗讀文字',
-    welcomeMessage: '你好！我是 Linly 數位人，很高興見到你。點右側「啟動連線」開始我們的對話吧！',
     you: '你',
-    ai: 'Linly',
+    ai: '助手',
     clearHistory: '清空歷史'
   },
   voiceStates: {

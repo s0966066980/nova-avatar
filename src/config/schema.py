@@ -268,6 +268,17 @@ class ReplyRulesConfig:
 
 
 @dataclass
+class AssistantProfileConfig:
+    """使用者從控制台管理的助手身分與輸出偏好。"""
+    assistant_name: str = ""
+    system_prompt: str = ""
+    restriction_prompt: str = ""
+    output_locale: str = "zh-TW"
+    enforce_output_locale: bool = True
+    forbidden_self_names: List[str] = field(default_factory=list)
+
+
+@dataclass
 class LLMConfig:
     """LLM 配置"""
     api_key: str = ""
@@ -282,6 +293,7 @@ class LLMConfig:
     llamacpp_threads: int = 0  # 0 = 自動用滿 CPU
     max_tokens: int = 128  # 語音對話宜短，顯著降低尾端延遲
     response_max_chars: int = 120  # 每次回答的約略字數上限
+    # Legacy compatibility only. New writes use assistant_profile.system_prompt.
     system_prompt: str = ""
     # 透傳給 OpenAI 相容介面的額外請求體引數
     # 例如 Ollama 關閉思考鏈：{"reasoning_effort": "none"}
@@ -289,6 +301,7 @@ class LLMConfig:
     response_router: ResponseRouterConfig = field(default_factory=ResponseRouterConfig)
     board: BoardConfig = field(default_factory=BoardConfig)
     reply_rules: ReplyRulesConfig = field(default_factory=ReplyRulesConfig)
+    assistant_profile: AssistantProfileConfig = field(default_factory=AssistantProfileConfig)
 
 
 @dataclass

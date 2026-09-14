@@ -35,7 +35,14 @@ def persist_runtime_overrides(config) -> None:
             "api_key": getattr(config.llm, "api_key", ""),
             "max_tokens": getattr(config.llm, "max_tokens", 128),
             "response_max_chars": getattr(config.llm, "response_max_chars", 120),
-            "system_prompt": getattr(config.llm, "system_prompt", ""),
+            "assistant_profile": {
+                "assistant_name": str(getattr(getattr(config.llm, "assistant_profile", None), "assistant_name", "") or ""),
+                "system_prompt": str(getattr(getattr(config.llm, "assistant_profile", None), "system_prompt", "") or ""),
+                "restriction_prompt": str(getattr(getattr(config.llm, "assistant_profile", None), "restriction_prompt", "") or ""),
+                "output_locale": str(getattr(getattr(config.llm, "assistant_profile", None), "output_locale", "zh-TW") or "zh-TW"),
+                "enforce_output_locale": bool(getattr(getattr(config.llm, "assistant_profile", None), "enforce_output_locale", True)),
+                "forbidden_self_names": list(getattr(getattr(config.llm, "assistant_profile", None), "forbidden_self_names", []) or []),
+            },
             "extra_body": getattr(config.llm, "extra_body", {}) or {},
             "board": {
                 "max_items": int(

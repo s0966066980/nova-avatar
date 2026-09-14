@@ -18,6 +18,11 @@ from src.llm.response_protocol import (
 )
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
+from src.llm.text_normalizer import (
+    normalize_assistant_identity,
+    normalize_output_text,
+    strip_unsolicited_self_introduction,
+)
 from src.server.reply_streaming.fragmenter import SemanticFragmenter
 from src.utils.logging import logger
 
@@ -70,22 +75,18 @@ def with_response_length_instruction(system_prompt: str, max_chars: int) -> str:
 
 
 def load_system_prompt(config=None) -> str:
-    """取得設定中的預設 Prompt，未設定時沿用 config/prompt.txt。"""
+    """取得控制台 profile 的 Prompt；只保留中性的技術 fallback。"""
     llm_config = getattr(config, "llm", None) if config is not None else None
-    configured_prompt = getattr(llm_config, "system_prompt", "") or ""
+    profile = getattr(llm_config, "assistant_profile", None)
+    configured_prompt = getattr(profile, "system_prompt", "") or ""
     if configured_prompt.strip():
         return configured_prompt.strip()
-
-    from pathlib import Path
-
-    prompt_file = Path(__file__).parent.parent.parent / "config" / "prompt.txt"
-    try:
-        prompt = prompt_file.read_text(encoding="utf-8").strip()
-        return prompt or DEFAULT_SYSTEM_PROMPT
-    except FileNotFoundError:
-        logger.warning(f"Prompt file not found: {prompt_file}, using default")
-    except Exception as exc:
-        logger.error(f"Error loading prompt: {exc}, using default")
+    # Phase-1 migration: read an existing config value once, but never persist it.
+    legacy_prompt = getattr(llm_config, "system_prompt", "") or ""
+    if legacy_prompt.strip():
+        logger.warning("Using legacy llm.system_prompt; save Assistant Profile to migrate it")
+        return legacy_prompt.strip()
+    logger.warning("Assistant System Prompt is unset; using neutral technical fallback")
     return DEFAULT_SYSTEM_PROMPT
 
 
@@ -225,6 +226,7 @@ class BaseLLM(ABC):
                 max_items = int(board_cfg.max_items)
 
         resp_chars = getattr(self, "response_max_chars", None)
+        profile = getattr(llm_cfg, "assistant_profile", None)
         rules_snapshot = (datainfo or {}).get("rules_snapshot")
         if rules_snapshot is None:
             rules_snapshot = snapshot_from_config(self.config)
@@ -235,6 +237,8 @@ class BaseLLM(ABC):
             board_max_items=max_items,
             rules=rules_snapshot,
             displayed_board=self.get_last_board(),
+            assistant_name=str(getattr(profile, "assistant_name", "") or ""),
+            restriction_prompt=str(getattr(profile, "restriction_prompt", "") or ""),
         )
 
         semantic_stream = bool(
@@ -312,8 +316,8 @@ class BaseLLM(ABC):
             on_board({
                 "kind": "item",
                 "index": index,
-                "title": item.title,
-                "body": item.content,
+                "title": normalize_visible_text(item.title),
+                "body": normalize_visible_text(item.content),
                 "turn_id": turn_id,
             })
 
@@ -353,10 +357,41 @@ class BaseLLM(ABC):
                 target_avatar.put_msg_txt(text, fragment_info)
                 fragment_sequence += 1
 
+        output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
+        enforce_locale = bool(getattr(profile, "enforce_output_locale", True))
+        assistant_name = str(getattr(profile, "assistant_name", "") or "")
+        forbidden_names = list(getattr(profile, "forbidden_self_names", []) or [])
+
+        def normalize_visible_text(text: str) -> str:
+            normalized = normalize_assistant_identity(
+                normalize_output_text(text, locale=output_locale, enabled=enforce_locale),
+                assistant_name=assistant_name,
+                forbidden_names=forbidden_names,
+            )
+            return strip_unsolicited_self_introduction(
+                normalized, user_message=message, assistant_name=assistant_name
+            )
+
+        def normalize_board(payload: BoardPayload) -> BoardPayload:
+            return BoardPayload(
+                title=normalize_visible_text(payload.title),
+                summary=normalize_visible_text(payload.summary or "") or None,
+                items=[
+                    BoardItem(
+                        title=normalize_visible_text(item.title),
+                        content=normalize_visible_text(item.content),
+                        subtitle=normalize_visible_text(item.subtitle or "") or None,
+                        badge=normalize_visible_text(item.badge or "") or None,
+                    )
+                    for item in payload.items
+                ],
+            )
+
         def emit_board(payload) -> None:
             if payload is None or not callable(on_board) or fenced:
                 return
             if isinstance(payload, BoardPayload):
+                payload = normalize_board(payload)
                 board_dict = payload.to_dict()
                 board_dict["turn_id"] = turn_id
                 if incremental_started:
@@ -410,6 +445,7 @@ class BaseLLM(ABC):
                     deltas = parser.feed(chunk)
 
                 for spoken in deltas:
+                    spoken = normalize_visible_text(spoken)
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
                         if callable(notify_chunk):
@@ -439,6 +475,7 @@ class BaseLLM(ABC):
                 for delta in flush_deltas:
                     if not delta:
                         continue
+                    delta = normalize_visible_text(delta)
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
                         if callable(notify_chunk):
@@ -469,7 +506,9 @@ class BaseLLM(ABC):
             total_time = time.perf_counter()
             logger.info(f"Total LLM response time: {total_time - start_time:.3f}s")
 
-            clean_spoken = (spoken_response.strip() or parser.speech_text.strip())
+            clean_spoken = normalize_visible_text(
+                spoken_response.strip() or parser.speech_text.strip()
+            )
             clean_full = full_response.strip()
 
             if history_transaction is not None and not defer_history_commit:
