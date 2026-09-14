@@ -148,6 +148,7 @@ class MuseTalkQualityConfig:
     mouth_continuity: bool = True
     # Align the final generated mouth to the moving idle-frame ROI during close.
     mouth_continuity_idle_alignment: bool = True
+    opening_frames: int = 2
     settling_enabled: bool = True
     avatar_transition: bool = True
     settling_frames: int = 5

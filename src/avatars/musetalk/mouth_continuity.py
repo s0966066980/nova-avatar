@@ -116,7 +116,17 @@ class MouthContinuityController:
 
         if self._previous_is_speech:
             self._gap_remaining = self._gap_grace_frames
-            total_frames = self._closing_frames if transition_frames is None else max(1, int(transition_frames))
+            if transition_frames is None:
+                # Legacy callers define only the interpolation duration; keep
+                # their existing grace + closing behavior unchanged.
+                total_frames = self._closing_frames
+            else:
+                # AvatarTransition defines the complete speech-to-idle window,
+                # including any grace frames that have already been planned.
+                total_frames = max(
+                    1,
+                    int(transition_frames) - self._gap_grace_frames,
+                )
             self._start_transition(
                 self._neutral_target(index, target),
                 total_frames,

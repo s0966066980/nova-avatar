@@ -96,7 +96,11 @@ class AvatarTransitionController:
                 self._previous_output, self._previous_is_speech = output.copy(), True
                 return output
             if self._previous_is_speech:
-                planned, candidate, score = self._plan_idle_return(self._last_speech_frame, index)
+                planned, candidate, score = self._plan_idle_return(
+                    self._last_speech_frame,
+                    self._last_speech_index,
+                    index,
+                )
                 self._settling_total, self._settling_step = planned, 0
                 self._planned_idle_index, self._planned_idle_offset, self._planned_match_score = candidate, planned, score
                 self.state = TransitionState.SETTLING
@@ -160,12 +164,13 @@ class AvatarTransitionController:
             index, direction = self._next_pingpong_index(index, direction, len(self._source_frames))
         return index
 
-    def _plan_idle_return(self, speech_frame, first_idle_index):
+    def _plan_idle_return(self, speech_frame, speech_index, first_idle_index):
         fallback = self.settling_min_frames
         if speech_frame is None or not self.phase_matching_enabled:
             return fallback, self._future_index(first_idle_index, fallback - 1), float("inf")
         self.state = TransitionState.PHASE_MATCHING
-        descriptor = self._descriptor(speech_frame, first_idle_index)
+        reference_index = first_idle_index if speech_index is None else speech_index
+        descriptor = self._descriptor(speech_frame, reference_index)
         best = (float("inf"), fallback, self._future_index(first_idle_index, fallback - 1))
         for total in range(self.settling_min_frames, self.settling_max_frames + 1):
             candidate = self._future_index(first_idle_index, total - 1)

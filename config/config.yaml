@@ -34,6 +34,7 @@ model:
     mask_blur_ratio: 0.05
     mouth_continuity: true
     mouth_continuity_idle_alignment: true
+    opening_frames: 2
     avatar_transition: true
     settling_enabled: true
     settling_frames: 5

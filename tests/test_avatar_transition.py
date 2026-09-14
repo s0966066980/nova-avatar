@@ -38,14 +38,27 @@ class AvatarTransitionTests(unittest.TestCase):
 
     def test_phase_match_selects_best_candidate_within_planned_window(self):
         controller, source = self.make_controller()
-        descriptor = np.zeros((64, 64), np.float32)
         controller._source_pose_descriptors = tuple(
             np.full((64, 64), value, np.float32)
             for value in (0.0, 0.0, 0.0, 0.0, 0.5, 0.1, 0.4, 0.0)
         )
-        planned, index, _ = controller._plan_idle_return(source[0], 1)
+        planned, index, _ = controller._plan_idle_return(source[0], 0, 1)
         self.assertEqual(planned, 5)
         self.assertEqual(index, 5)
+
+    def test_phase_match_uses_last_speech_index_for_reference_roi(self):
+        controller, source = self.make_controller()
+        calls = []
+        descriptor = controller._descriptor
+
+        def record_descriptor(frame, index):
+            calls.append(index)
+            return descriptor(frame, index)
+
+        controller._descriptor = record_descriptor
+        controller._plan_idle_return(source[0], 0, 1)
+
+        self.assertEqual(calls, [0])
 
     def test_compose_never_changes_input_cursor(self):
         controller, source = self.make_controller()
@@ -77,6 +90,52 @@ class AvatarTransitionTests(unittest.TestCase):
         )
         self.assertEqual(values, sorted(values, reverse=True))
         self.assertEqual(values[-1], int(source[planned][8:14, 7:13].mean()))
+
+    def test_grace_is_included_in_fixed_five_frame_settling_window(self):
+        source = [np.zeros((20, 20, 3), np.uint8) for _ in range(7)]
+        masks = [np.zeros((20, 20), np.uint8) for _ in source]
+        for mask in masks:
+            mask[8:14, 7:13] = 255
+        mouth = MouthContinuityController(
+            source,
+            masks,
+            gap_grace_frames=1,
+            settling_frames=5,
+        )
+        controller = AvatarTransitionController(
+            source,
+            masks,
+            None,
+            [(4, 3, 16, 14)] * len(source),
+            mouth_controller=mouth,
+            settling_min_frames=5,
+            settling_max_frames=5,
+            micro_crossfade_frames=0,
+        )
+        speech = source[0].copy()
+        speech[8:14, 7:13] = 200
+        self.compose(controller, speech, 0, True)
+
+        idle = [
+            self.compose(controller, source[index], index, False)
+            for index in range(1, 6)
+        ]
+        values = [int(frame[8:14, 7:13].mean()) for frame in idle]
+
+        self.assertEqual(values[0], 200)
+        self.assertEqual(values[-1], 0)
+        self.assertEqual(controller.state, TransitionState.IDLE)
+
+    def test_musetalk_config_loads_all_transition_fields(self):
+        from src.config.loader import load_config
+
+        musetalk = load_config("config/config_musetalk.yaml").model.musetalk
+
+        self.assertEqual(musetalk.opening_frames, 2)
+        self.assertTrue(musetalk.avatar_transition)
+        self.assertEqual(musetalk.settling_min_frames, 4)
+        self.assertEqual(musetalk.settling_max_frames, 6)
+        self.assertEqual(musetalk.micro_crossfade_frames, 2)
 
     def test_speech_cancels_settling(self):
         controller, source = self.make_controller()
