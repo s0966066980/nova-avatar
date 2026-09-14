@@ -195,6 +195,7 @@ class ModelConfig:
 class TTSConfig:
     """TTS 配置"""
     type: str = "edgetts"  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | indextts2 | xtts
+    mode: str = "auto"  # auto | zero_shot | cross_lingual | instruct
     ref_file: str = "zh-TW-HsiaoChenNeural"
     ref_text: Optional[str] = None
     tts_server: str = "http://127.0.0.1:9880"

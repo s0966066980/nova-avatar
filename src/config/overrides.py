@@ -139,6 +139,7 @@ def persist_runtime_overrides(config) -> None:
     if tts is not None:
         payload["tts"] = {
             "type": tts.type,
+            "mode": getattr(tts, "mode", "auto"),
             "ref_file": tts.ref_file,
             "ref_text": tts.ref_text,
             "tts_server": tts.tts_server,

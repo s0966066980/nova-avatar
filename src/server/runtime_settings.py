@@ -1098,6 +1098,7 @@ def speech_snapshot(config) -> Dict[str, Any]:
         },
         "tts": {
             "type": tts.type,
+            "mode": getattr(tts, "mode", "auto"),
             "ref_file": tts.ref_file,
             "ref_text": tts.ref_text or "",
             "tts_server": tts.tts_server,
@@ -1215,6 +1216,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     ref_text = str(params.get("ref_text", config.tts.ref_text) or "").strip()
     tts_server = str(params.get("tts_server", config.tts.tts_server) or "").strip()
     model = str(params.get("model", config.tts.model) or "").strip()
+    mode = str(params.get("mode", getattr(config.tts, "mode", "auto")) or "auto").strip().lower()
     language = str(params.get("language", config.tts.language) or "Auto").strip()
     speaker = str(params.get("speaker", config.tts.speaker) or "").strip()
     instruct = str(params.get("instruct", config.tts.instruct) or "").strip()
@@ -1239,6 +1241,11 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         if ref_file in EDGE_TTS_ZH_TW_VOICE_IDS:
             ref_file = ""
 
+        if mode == "zero_shot" and ref_file and not ref_text:
+            raise SettingsError(
+                "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
+            )
+
         if ref_file:
             try:
                 source = resolve_prompt_source(ref_file)
@@ -1262,6 +1269,10 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
             ref_file = str(DEFAULT_PROMPT_WAV)
             if not ref_text:
                 ref_text = DEFAULT_PROMPT_TEXT
+        if mode == "zero_shot" and not ref_text:
+            raise SettingsError(
+                "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
+            )
         host, port = parse_server_url(tts_server)
         try:
             tts_server = ensure_server(
@@ -1282,6 +1293,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         ref_text=ref_text,
         tts_server=tts_server,
         model=model,
+        mode=mode,
         language=language,
         speaker=speaker,
         instruct=instruct,
@@ -1293,6 +1305,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     config.tts.ref_text = ref_text or None
     config.tts.tts_server = tts_server
     config.tts.model = model
+    config.tts.mode = mode
     config.tts.language = language
     config.tts.speaker = speaker
     config.tts.instruct = instruct
@@ -1311,6 +1324,7 @@ def _preview_tts(
     ref_text: str,
     tts_server: str,
     model: str,
+    mode: str,
     language: str,
     speaker: str,
     instruct: str,
@@ -1333,6 +1347,7 @@ def _preview_tts(
     pending.tts.ref_text = ref_text or None
     pending.tts.tts_server = tts_server
     pending.tts.model = model
+    pending.tts.mode = mode
     pending.tts.language = language
     pending.tts.speaker = speaker
     pending.tts.instruct = instruct

@@ -942,9 +942,9 @@
                 <label for="stt-model-size" class="field-main-label">辨識模型</label>
               </div>
               <div class="field-control-area">
-                <select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
+                <div class="input-group"><select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
                   <option v-for="model in sttModelOptions" :key="model" :value="model">{{ model }}</option>
-                </select>
+                </select><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('stt', 'directory')">選擇資料夾</button></div>
               </div>
             </div>
 
@@ -1015,6 +1015,10 @@
             <!-- CosyVoice 專屬設定 -->
             <template v-if="isCosyVoiceFamily">
               <div class="setting-form-row">
+                <div class="field-label-group"><label for="tts-cosyvoice-mode" class="field-main-label">推理模式</label></div>
+                <div class="field-control-area"><select id="tts-cosyvoice-mode" class="std-select" v-model="ttsDraft.mode"><option value="auto">Auto</option><option value="zero_shot">Zero-shot（依參考語音）</option><option value="cross_lingual">Cross-lingual</option><option value="instruct">Instruct</option></select></div>
+              </div>
+              <div class="setting-form-row">
                 <div class="field-label-group">
                   <label for="tts-cosyvoice-language" class="field-main-label">{{ t('settings.speech.cosyvoiceLanguage') }}</label>
                 </div>
@@ -1036,10 +1040,20 @@
 
               <div class="setting-form-row">
                 <div class="field-label-group">
+                  <label for="tts-cosyvoice-ref-text" class="field-main-label">參考語音逐字稿<span v-if="ttsDraft.mode === 'zero_shot'" aria-hidden="true"> *</span></label>
+                  <span class="field-sub-hint">Zero-shot 必填；請逐字填入選取音檔中實際說的內容，才能保留原本的語氣與韻律。</span>
+                </div>
+                <div class="field-control-area">
+                  <textarea id="tts-cosyvoice-ref-text" class="chat-text-entry" v-model.trim="ttsDraft.ref_text" :required="ttsDraft.mode === 'zero_shot'" rows="2" placeholder="例如：您好，歡迎使用 Linly Talker。"></textarea>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
                   <label for="tts-cosyvoice-prompt-wav" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
                 </div>
                 <div class="field-control-area">
-                  <input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model">
+                  <div class="input-group"><input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model"><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'directory')">選擇資料夾</button></div>
                 </div>
               </div>
             </template>
@@ -1051,13 +1065,13 @@
                 <span class="field-sub-hint">{{ t('settings.speech.referencePathDesc') }}</span>
               </div>
               <div class="field-control-area">
-                <input
+                <div class="input-group"><input
                   id="tts-voice-audio-path"
                   class="chat-text-entry"
                   type="text"
                   v-model.trim="ttsDraft.ref_file"
                   :placeholder="t('settings.speech.referencePathPlaceholder')"
-                >
+                ><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'file')">選擇音檔</button></div>
               </div>
             </div>
           </section>
@@ -1418,6 +1432,18 @@ const {
 const isCosyVoiceFamily = computed(() => (
   ttsDraft.type === 'cosyvoice' || ttsDraft.type === 'fun-cosyvoice3'
 ))
+
+async function chooseSpeechPath(target, kind) {
+  try {
+    const response = await fetch('/api/speech/path-picker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind }) })
+    const result = await response.json()
+    if (!response.ok || result.code !== 0) throw new Error(result.msg || '選擇路徑失敗')
+    if (!result.data?.path) return
+    if (target === 'tts' && kind === 'directory') ttsDraft.model = result.data.path
+    if (target === 'tts' && kind === 'file') ttsDraft.ref_file = result.data.path
+    if (target === 'stt') sttDraft.model_size = result.data.path
+  } catch (error) { speechError.value = error.message }
+}
 
 const COSYVOICE_LANGUAGE_FALLBACK = [
   { id: 'zh', label: '中文' },

@@ -570,6 +570,23 @@ class SpeechSettingsTests(unittest.TestCase):
         with self.assertRaises(SettingsError):
             apply_tts_settings(Config(), {"type": "azuretts"}, session_count=0)
 
+    def test_zero_shot_requires_reference_transcript_before_starting_server(self):
+        with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
+            "src.tts.cosyvoice_runtime.ensure_server"
+        ) as ensure:
+            with self.assertRaisesRegex(SettingsError, "參考語音逐字稿"):
+                apply_tts_settings(
+                    Config(),
+                    {
+                        "type": "fun-cosyvoice3",
+                        "mode": "zero_shot",
+                        "ref_file": "/tmp/reference.wav",
+                        "ref_text": "",
+                    },
+                    session_count=0,
+                )
+        ensure.assert_not_called()
+
     def test_speech_engine_change_requires_disconnect(self):
         with self.assertRaises(SettingsError) as ctx:
             apply_stt_settings(Config(), {"type": "whisper"}, session_count=1)

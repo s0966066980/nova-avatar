@@ -73,6 +73,7 @@ model:
 # TTS 配置資訊，可以改對應的模型，建議edgetts
 tts:
   type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | indextts2 | xtts
+  mode: auto  # CosyVoice: auto | zero_shot | cross_lingual | instruct
   ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；cosyvoice / fun-cosyvoice3 請改成本機 WAV 路徑
   tts_server: http://127.0.0.1:9880  # gpt-sovits 等；cosyvoice 系列套用時會改用 50000 並自動啟動
   model: ''

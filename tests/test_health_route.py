@@ -7,6 +7,8 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from src.server.routes.health import health_check
+from src.server import routes
+from src.server.server import create_app
 from src.server.state import state
 
 
@@ -43,3 +45,17 @@ class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await client.close()
             state.server_ready, state.model_ready, state.config = previous
+
+
+class ServerRouteRegistrationTests(unittest.TestCase):
+    def test_speech_path_picker_is_exported_and_registered(self):
+        """Creating the app must not fail when registering the path picker."""
+        self.assertTrue(callable(routes.pick_speech_path))
+
+        app = create_app()
+        registered = {
+            (route.method, route.resource.canonical)
+            for route in app.router.routes()
+        }
+
+        self.assertIn(("POST", "/api/speech/path-picker"), registered)

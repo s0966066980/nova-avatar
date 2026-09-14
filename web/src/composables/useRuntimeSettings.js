@@ -155,6 +155,7 @@ const sttDraft = reactive({
 })
 const ttsDraft = reactive({
   type: 'edgetts',
+  mode: 'auto',
   ref_file: 'zh-TW-HsiaoChenNeural',
   ref_text: '',
   tts_server: '',
@@ -344,6 +345,7 @@ const sttDirty = computed(() => (
 
 const ttsDirty = computed(() => (
   ttsDraft.type !== speech.tts.type ||
+  ttsDraft.mode !== speech.tts.mode ||
   ttsDraft.ref_file !== speech.tts.ref_file ||
   ttsDraft.ref_text !== speech.tts.ref_text ||
   ttsDraft.tts_server !== speech.tts.tts_server ||
@@ -514,6 +516,7 @@ function applySpeechSnapshot(data) {
     Object.assign(speech.tts, data.tts)
     Object.assign(ttsDraft, {
       type: data.tts.type,
+      mode: data.tts.mode || 'auto',
       ref_file: data.tts.ref_file || '',
       ref_text: data.tts.ref_text || '',
       tts_server: data.tts.tts_server || '',
@@ -558,6 +561,15 @@ async function applySttSettings() {
 }
 
 async function applyTtsSettings() {
+  if (
+    ['cosyvoice', 'fun-cosyvoice3'].includes(ttsDraft.type) &&
+    ttsDraft.mode === 'zero_shot' &&
+    !ttsDraft.ref_text.trim()
+  ) {
+    const error = new Error('Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。')
+    speechError.value = error.message
+    throw error
+  }
   applyingTts.value = true
   speechError.value = ''
   try {

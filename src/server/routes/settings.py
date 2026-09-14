@@ -203,6 +203,24 @@ async def set_tts_settings(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
+async def pick_speech_path(request):
+    """Open a native local chooser; browser file inputs cannot reveal paths."""
+    try:
+        kind = (await request.json()).get("kind", "file")
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        path = filedialog.askdirectory() if kind == "directory" else filedialog.askopenfilename(
+            filetypes=[("Audio files", "*.wav *.mp3 *.flac *.m4a *.ogg"), ("All files", "*")]
+        )
+        root.destroy()
+        return _json({"code": 0, "msg": "ok", "data": {"path": path}})
+    except Exception as exc:
+        return _json({"code": -1, "msg": f"無法開啟本機檔案選擇器：{exc}"}, status=500)
+
+
 async def set_avatar(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)

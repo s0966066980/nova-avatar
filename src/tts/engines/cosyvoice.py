@@ -77,25 +77,42 @@ class CosyVoiceTTS(BaseTTS):
 
     def _tts_request(self, text: str, prompt_text: str = "") -> tuple[str, dict]:
         family = self._family()
-        instruct = build_instruct(
-            getattr(self.config.tts, "language", "zh"),
-            getattr(self.config.tts, "instruct", "") or "",
-            family=family,
-        )
-        if instruct:
-            return "inference_instruct2", {
-                "tts_text": text,
-                "instruct_text": instruct,
-            }
+        mode = str(getattr(self.config.tts, "mode", "auto") or "auto").strip().lower()
+        if mode not in {"auto", "zero_shot", "cross_lingual", "instruct"}:
+            raise ValueError(f"Unsupported CosyVoice mode: {mode}")
         cleaned = (prompt_text or "").strip()
-        if cleaned:
-            if family == "cosyvoice3" and "<|endofprompt|>" not in cleaned:
-                cleaned = f"You are a helpful assistant.<|endofprompt|>{cleaned}"
-            return "inference_zero_shot", {
-                "tts_text": text,
-                "prompt_text": cleaned,
-            }
-        return "inference_cross_lingual", {"tts_text": text}
+        explicit_instruct = str(getattr(self.config.tts, "instruct", "") or "").strip()
+        if mode == "zero_shot":
+            if not cleaned:
+                raise ValueError("Fun-CosyVoice3 zero_shot mode requires tts.ref_text matching the reference audio transcript.")
+            endpoint, payload = self._zero_shot_request(text, cleaned, family)
+        elif mode == "cross_lingual":
+            endpoint, payload = self._cross_lingual_request(text, family)
+        elif mode == "instruct" or (mode == "auto" and not cleaned and explicit_instruct):
+            instruct = build_instruct(getattr(self.config.tts, "language", "auto"), explicit_instruct, family=family)
+            if not instruct:
+                raise ValueError("CosyVoice instruct mode requires language or tts.instruct.")
+            endpoint, payload = "inference_instruct2", {"tts_text": text, "instruct_text": instruct}
+        elif cleaned:
+            endpoint, payload = self._zero_shot_request(text, cleaned, family)
+        else:
+            endpoint, payload = self._cross_lingual_request(text, family)
+        logger.info("CosyVoice request family=%s mode=%s endpoint=%s has_ref_text=%s has_instruct=%s", family, mode, endpoint, bool(cleaned), bool(explicit_instruct))
+        return endpoint, payload
+
+    @staticmethod
+    def _zero_shot_request(text: str, prompt_text: str, family: str) -> tuple[str, dict]:
+        cleaned = prompt_text.strip()
+        if family == "cosyvoice3" and "<|endofprompt|>" not in cleaned:
+            cleaned = f"You are a helpful assistant.<|endofprompt|>{cleaned}"
+        return "inference_zero_shot", {"tts_text": text, "prompt_text": cleaned}
+
+    @staticmethod
+    def _cross_lingual_request(text: str, family: str) -> tuple[str, dict]:
+        cleaned = text.strip()
+        if family == "cosyvoice3" and "<|endofprompt|>" not in cleaned:
+            cleaned = f"You are a helpful assistant.<|endofprompt|>{cleaned}"
+        return "inference_cross_lingual", {"tts_text": cleaned}
 
     def cosy_voice(
         self,

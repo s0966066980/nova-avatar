@@ -75,6 +75,12 @@ test('CosyVoice 設定提供合成語言與額外指令', () => {
   assert.match(settings, /type === 'fun-cosyvoice3'/)
 })
 
+test('Zero-shot 顯示並檢核參考語音逐字稿', () => {
+  assert.match(panel, /參考語音逐字稿/)
+  assert.match(panel, /ttsDraft\.ref_text/)
+  assert.match(settings, /Zero-shot 需要填寫「參考語音逐字稿」/)
+})
+
 test('從 Edge 切到本機 TTS 時會清掉聲線名稱並要求音訊路徑', () => {
   assert.match(settings, /EDGE_VOICE_ID/)
   assert.match(settings, /previous === 'edgetts'/)

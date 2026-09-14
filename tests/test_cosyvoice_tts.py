@@ -25,6 +25,7 @@ def _write_wav(path: str, duration_s: float = 1.0, sr: int = 16000) -> None:
 
 def _tts(
     *,
+    mode: str = "auto",
     language: str = "zh",
     instruct: str = "",
     ref_file: str = "",
@@ -33,6 +34,7 @@ def _tts(
     engine = CosyVoiceTTS.__new__(CosyVoiceTTS)
     engine.config = SimpleNamespace(
         tts=SimpleNamespace(
+            mode=mode,
             language=language,
             instruct=instruct,
             ref_file=ref_file,
@@ -137,28 +139,32 @@ class CosyVoiceTTSClientTests(unittest.TestCase):
         self.assertEqual(payload["prompt_text"], DEFAULT_PROMPT_TEXT)
         self.assertNotIn("instruct_text", payload)
 
-    def test_language_zh_uses_instruct2(self) -> None:
+    def test_auto_language_only_uses_cross_lingual(self) -> None:
         tts = _tts(language="zh", ref_text="")
         endpoint, payload = tts._tts_request("你好，今天天氣很好。", "")
-        self.assertEqual(endpoint, "inference_instruct2")
-        self.assertEqual(payload["instruct_text"], "用中文说这句话<|endofprompt|>")
+        self.assertEqual(endpoint, "inference_cross_lingual")
         self.assertNotIn("prompt_text", payload)
 
-    def test_config_chinese_alias_uses_instruct2(self) -> None:
+    def test_config_chinese_alias_with_reference_uses_zero_shot(self) -> None:
         tts = _tts(language="Chinese")
         endpoint, payload = tts._tts_request("你好。", DEFAULT_PROMPT_TEXT)
-        self.assertEqual(endpoint, "inference_instruct2")
-        self.assertIn("用中文说这句话", payload["instruct_text"])
+        self.assertEqual(endpoint, "inference_zero_shot")
 
-    def test_fun_cosyvoice3_language_zh_uses_v3_instruct2(self) -> None:
+    def test_zero_shot_ignores_language(self) -> None:
         tts = _tts(language="zh", ref_text="")
-        tts.config.tts.type = "fun-cosyvoice3"
-        endpoint, payload = tts._tts_request("你好。", "")
-        self.assertEqual(endpoint, "inference_instruct2")
-        self.assertEqual(
-            payload["instruct_text"],
-            "You are a helpful assistant. 请用中文说这句话。<|endofprompt|>",
-        )
+        for language in ("Chinese", "zh", "auto"):
+            tts = _tts(mode="zero_shot", language=language, ref_text="你好")
+            tts.config.tts.type = "fun-cosyvoice3"
+            endpoint, _ = tts._tts_request("你好。", "你好")
+            self.assertEqual(endpoint, "inference_zero_shot")
+
+    def test_zero_shot_requires_reference_text(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires tts.ref_text"):
+            _tts(mode="zero_shot")._tts_request("你好。", "")
+
+    def test_explicit_modes_select_expected_endpoints(self) -> None:
+        self.assertEqual(_tts(mode="cross_lingual", language="zh", ref_text="x")._tts_request("x", "x")[0], "inference_cross_lingual")
+        self.assertEqual(_tts(mode="instruct", language="Chinese", instruct="溫柔", ref_text="x")._tts_request("x", "x")[0], "inference_instruct2")
 
     def test_fun_cosyvoice3_zero_shot_wraps_prompt_text(self) -> None:
         tts = _tts(language="auto", ref_text=DEFAULT_PROMPT_TEXT)
@@ -169,8 +175,22 @@ class CosyVoiceTTSClientTests(unittest.TestCase):
             payload["prompt_text"].startswith("You are a helpful assistant.<|endofprompt|>")
         )
 
+    def test_fun_cosyvoice3_cross_lingual_wraps_tts_text(self) -> None:
+        tts = _tts(mode="cross_lingual", language="zh")
+        tts.config.tts.type = "fun-cosyvoice3"
+
+        endpoint, payload = tts._tts_request("你好。", "")
+
+        self.assertEqual(endpoint, "inference_cross_lingual")
+        self.assertEqual(
+            payload["tts_text"],
+            "You are a helpful assistant.<|endofprompt|>你好。",
+        )
+        self.assertNotIn("prompt_text", payload)
+        self.assertNotIn("instruct_text", payload)
+
     def test_custom_instruct_appends_after_language(self) -> None:
-        tts = _tts(language="ja", instruct="用開心的語氣說")
+        tts = _tts(mode="instruct", language="ja", instruct="用開心的語氣說")
         endpoint, payload = tts._tts_request("你好。", DEFAULT_PROMPT_TEXT)
         self.assertEqual(endpoint, "inference_instruct2")
         self.assertEqual(
