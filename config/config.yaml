@@ -34,9 +34,17 @@ model:
     mask_blur_ratio: 0.05
     mouth_continuity: true
     mouth_continuity_idle_alignment: true
+    avatar_transition: true
     settling_enabled: true
-    settling_frames: 12
-    gap_grace_frames: 2
+    settling_frames: 5
+    settling_min_frames: 4
+    settling_max_frames: 6
+    phase_matching_enabled: true
+    phase_temporal_penalty: 0.015
+    micro_crossfade_enabled: true
+    micro_crossfade_frames: 2
+    micro_crossfade_fullframe_max_diff: 18.0
+    gap_grace_frames: 1
   wav2lip:
     pad_top: 0
     pad_bottom: 10

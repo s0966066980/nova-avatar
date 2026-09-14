@@ -16,6 +16,21 @@ model:
   type: musetalk  # 開發環境使用更快的 wav2lip 模型
   avatar_id: musetalk_avatar1
   batch_size: 16  
+  musetalk:
+    mouth_continuity: true
+    mouth_continuity_idle_alignment: true
+    avatar_transition: true
+    gap_grace_frames: 1
+    opening_frames: 2
+    settling_enabled: true
+    settling_frames: 5
+    settling_min_frames: 4
+    settling_max_frames: 6
+    phase_matching_enabled: true
+    phase_temporal_penalty: 0.015
+    micro_crossfade_enabled: true
+    micro_crossfade_frames: 2
+    micro_crossfade_fullframe_max_diff: 18.0
 
 
 tts:

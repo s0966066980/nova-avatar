@@ -149,9 +149,17 @@ class MuseTalkQualityConfig:
     # Align the final generated mouth to the moving idle-frame ROI during close.
     mouth_continuity_idle_alignment: bool = True
     settling_enabled: bool = True
-    settling_frames: int = 12
+    avatar_transition: bool = True
+    settling_frames: int = 5
+    settling_min_frames: int = 4
+    settling_max_frames: int = 6
+    phase_matching_enabled: bool = True
+    phase_temporal_penalty: float = 0.015
+    micro_crossfade_enabled: bool = True
+    micro_crossfade_frames: int = 2
+    micro_crossfade_fullframe_max_diff: float = 18.0
     max_tts_audio_wait_seconds: float = 0.35
-    gap_grace_frames: int = 2
+    gap_grace_frames: int = 1
     closing_frames: int = 4
 
 

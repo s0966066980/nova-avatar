@@ -74,6 +74,7 @@ class MouthContinuityController:
         index: int,
         is_speech: bool,
         eventpoint: dict | None,
+        transition_frames: int | None = None,
     ) -> np.ndarray:
         """Return a frame with a bounded, mask-only temporal transition."""
         target = np.asarray(target_frame)
@@ -115,9 +116,10 @@ class MouthContinuityController:
 
         if self._previous_is_speech:
             self._gap_remaining = self._gap_grace_frames
+            total_frames = self._closing_frames if transition_frames is None else max(1, int(transition_frames))
             self._start_transition(
                 self._neutral_target(index, target),
-                self._closing_frames,
+                total_frames,
                 follows_target=self._settling_enabled,
                 easing="smoothstep" if self._settling_enabled else "linear",
             )

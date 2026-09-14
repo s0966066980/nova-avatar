@@ -414,6 +414,7 @@ class MuseTalkAvatar(BaseAvatar):
         self.vae, self.unet, self.pe, self.timesteps, self.audio_processor = model
         self.frame_list_cycle,self.mask_list_cycle,self.coord_list_cycle,self.mask_coords_list_cycle, self.input_latent_list_cycle = avatar
         from .mouth_continuity import MouthContinuityController
+        from .avatar_transition import AvatarTransitionController
 
         musetalk_cfg = getattr(config.model, "musetalk", None)
         self.max_tts_audio_wait_seconds = float(
@@ -426,7 +427,7 @@ class MuseTalkAvatar(BaseAvatar):
                 True,
             )
         )
-        gap_grace = int(getattr(musetalk_cfg, "gap_grace_frames", 2) or 2)
+        gap_grace = int(getattr(musetalk_cfg, "gap_grace_frames", 1) or 1)
         opening = int(getattr(musetalk_cfg, "opening_frames", 2) or 2)
         closing = int(getattr(musetalk_cfg, "closing_frames", 4) or 4)
         align_idle_return = bool(
@@ -437,7 +438,7 @@ class MuseTalkAvatar(BaseAvatar):
         )
         settling_frames = max(
             1,
-            int(getattr(musetalk_cfg, "settling_frames", 12) or 12),
+            int(getattr(musetalk_cfg, "settling_frames", 5) or 5),
         )
         self._mouth_continuity = (
             MouthContinuityController(
@@ -453,6 +454,21 @@ class MuseTalkAvatar(BaseAvatar):
             if mouth_continuity_enabled
             else None
         )
+        if bool(getattr(musetalk_cfg, "avatar_transition", True)):
+            min_frames = int(getattr(musetalk_cfg, "settling_min_frames", settling_frames) or settling_frames)
+            max_frames = int(getattr(musetalk_cfg, "settling_max_frames", settling_frames) or settling_frames)
+            self._avatar_transition = AvatarTransitionController(
+                self.frame_list_cycle, self.mask_list_cycle, self.mask_coords_list_cycle,
+                self.coord_list_cycle, mouth_controller=self._mouth_continuity,
+                fps=getattr(config.video, "fps", 25), settling_min_frames=min_frames,
+                settling_max_frames=max_frames,
+                phase_matching_enabled=bool(getattr(musetalk_cfg, "phase_matching_enabled", True)),
+                phase_temporal_penalty=float(getattr(musetalk_cfg, "phase_temporal_penalty", 0.015)),
+                micro_crossfade_enabled=bool(getattr(musetalk_cfg, "micro_crossfade_enabled", True)),
+                micro_crossfade_frames=int(getattr(musetalk_cfg, "micro_crossfade_frames", 2)),
+                micro_crossfade_fullframe_max_diff=float(getattr(musetalk_cfg, "micro_crossfade_fullframe_max_diff", 18.0)),
+                opening_frames=opening,
+            )
         #self.__loadavatar()
 
         self.audio_stream = MuseAudioStreamHandler(config, self, self.audio_processor)

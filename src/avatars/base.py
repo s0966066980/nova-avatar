@@ -141,6 +141,7 @@ class BaseAvatar:
         self._media_sequences = {}
         # Optional visual-only seam installed by model-specific avatars.
         self._mouth_continuity = None
+        self._avatar_transition = None
         self.__loadcustom()
 
     def put_msg_txt(self,msg,datainfo:dict={}):
@@ -346,6 +347,9 @@ class BaseAvatar:
         mouth_continuity = getattr(self, "_mouth_continuity", None)
         if mouth_continuity is not None:
             mouth_continuity.reset()
+        transition = getattr(self, "_avatar_transition", None)
+        if transition is not None:
+            transition.reset()
 
     def _compose_mouth_continuity(
         self,
@@ -371,6 +375,18 @@ class BaseAvatar:
             logger.warning("mouth continuity fallback: %s", exc)
             self._mouth_continuity = None
             return frame
+
+    def _compose_avatar_transition(self, frame, *, index: int, is_speech: bool,
+                                   frame_type: int, eventpoint: dict | None):
+        controller = getattr(self, "_avatar_transition", None)
+        if controller is None:
+            return self._compose_mouth_continuity(frame, index=index, is_speech=is_speech, eventpoint=eventpoint)
+        try:
+            return controller.compose(frame, index=index, is_speech=is_speech, frame_type=frame_type, eventpoint=eventpoint)
+        except Exception as exc:
+            logger.warning("avatar transition fallback: %s", exc)
+            self._avatar_transition = None
+            return self._compose_mouth_continuity(frame, index=index, is_speech=is_speech, eventpoint=eventpoint)
 
     def is_speaking(self)->bool:
         return self.speaking
@@ -443,16 +459,6 @@ class BaseAvatar:
 
     def process_frames(self,quit_event,loop=None,audio_track=None,video_track=None):
         logger.info(f'[幀處理] process_frames 執行緒啟動, sessionid={self.config.sessionid}')
-        # 過渡效果用於降低靜音/說話切換時的突變
-        enable_transition = False
-        
-        if enable_transition:
-            _last_speaking = False
-            _transition_start = time.time()
-            _transition_duration = 0.1  # 過渡時間
-            _last_silent_frame = None  # 靜音幀快取
-            _last_speaking_frame = None  # 說話幀快取
-        
         while not quit_event.is_set():
             try:
                 res_frame,idx,audio_frames = self.res_frame_queue.get(block=True, timeout=1)
@@ -523,14 +529,6 @@ class BaseAvatar:
                 if audio_enqueue_failed:
                     break
             
-            if enable_transition:
-                # 檢測狀態變化
-                current_speaking = not (audio_frames[0][1]!=0 and audio_frames[1][1]!=0)
-                if current_speaking != _last_speaking:
-                    logger.info(f"狀態切換：{'說話' if _last_speaking else '靜音'} → {'說話' if current_speaking else '靜音'}")
-                    _transition_start = time.time()
-                _last_speaking = current_speaking
-
             if audio_frames[0][1]!=0 and audio_frames[1][1]!=0:  # 靜音時使用靜態幀或自定義影片
                 self.speaking = False
                 audiotype = audio_frames[0][1]
@@ -541,17 +539,7 @@ class BaseAvatar:
                 else:
                     target_frame = self.frame_list_cycle[idx]
                 
-                if enable_transition:
-                    # 說話→靜音過渡
-                    if time.time() - _transition_start < _transition_duration and _last_speaking_frame is not None:
-                        alpha = min(1.0, (time.time() - _transition_start) / _transition_duration)
-                        combine_frame = cv2.addWeighted(_last_speaking_frame, 1-alpha, target_frame, alpha, 0)
-                    else:
-                        combine_frame = target_frame
-                    # 快取靜音幀
-                    _last_silent_frame = combine_frame.copy()
-                else:
-                    combine_frame = target_frame
+                combine_frame = target_frame
             else:
                 self.speaking = True
                 try:
@@ -560,35 +548,25 @@ class BaseAvatar:
                 except Exception as e:
                     logger.warning(f"paste_back_frame error: {e}")
                     continue
-                if enable_transition:
-                    # 靜音→說話過渡
-                    if time.time() - _transition_start < _transition_duration and _last_silent_frame is not None:
-                        alpha = min(1.0, (time.time() - _transition_start) / _transition_duration)
-                        combine_frame = cv2.addWeighted(_last_silent_frame, 1-alpha, current_frame, alpha, 0)
-                    else:
-                        combine_frame = current_frame
-                    # 快取說話幀
-                    _last_speaking_frame = combine_frame.copy()
-                else:
-                    combine_frame = current_frame
+                combine_frame = current_frame
 
-            combine_frame = self._compose_mouth_continuity(
+            # Do not advance visual transition state for a frame that cannot
+            # be queued behind direct-audio playback yet.
+            if self.direct_audio_enabled:
+                audio_queue = getattr(audio_track, "_queue", None)
+                if audio_queue is not None and audio_queue.qsize() == 0:
+                    continue
+            combine_frame = self._compose_avatar_transition(
                 combine_frame,
                 index=idx,
                 is_speech=self.speaking,
+                frame_type=0 if self.speaking else audiotype,
                 eventpoint=video_eventpoint,
             )
             cv2.putText(combine_frame, "Linly-Talker-Stream", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
            
             image = combine_frame
             new_frame = VideoFrame.from_ndarray(image, format="bgr24")
-            if self.direct_audio_enabled:
-                audio_queue = getattr(audio_track, "_queue", None)
-                if audio_queue is not None and audio_queue.qsize() == 0:
-                    # Do not let the video clock run ahead while direct PCM
-                    # fan-out is briefly starved; the next result will retry
-                    # with a fresh mouth frame once audio has runway.
-                    continue
             # 子執行緒推送到 WebRTC 佇列
             if not enqueue_media_frame(
                 video_track, new_frame, video_eventpoint, loop, quit_event
