@@ -20,6 +20,10 @@ STT，將 LLM chunk 切成可播回覆片段，再依序交給 TTS 與 Avatar。
 查看架構圖；已交付能力、驗證證據與執行邊界記錄於
 [`docs/project-status.md`](docs/project-status.md)。
 
+目前工作項目與過往實驗的清理流程請見
+[`docs/current-project-workflow.md`](docs/current-project-workflow.md)；可選引擎、
+外部 runtime 與商業審查邊界請見 [`docs/software-stack.md`](docs/software-stack.md)。
+
 ## Features
 
 - 全雙工 WebRTC 音訊與影像傳輸，支援免按對話、按住說話與按鍵插話。
@@ -166,12 +170,23 @@ Web Console 提供即時演播、文字對話、TTS 朗讀、路由測試與完�
 ## Testing & Validation
 
 ```bash
+uv sync --group dev
 uv run python scripts/check-integration.py
 uv run pytest
 cd web
 npm test
 npm run build
 ```
+
+`check-integration.py` 預設只做離線的設定、品牌、授權與 release 文件檢查。
+在目前 YAML 指向的 LLM 與 Edge TTS 已經可用時，才執行實際服務 smoke check：
+
+```bash
+uv run python scripts/check-integration.py --smoke
+```
+
+該命令不會寫入音檔；需要保留 Edge TTS 輸出時才加上
+`--output logs/tts_check.mp3`。
 
 需要驗證 Edge TTS＋MuseTalk 的真實 WebRTC 流程時：
 
@@ -192,6 +207,12 @@ bundle 或啟用本 repository 內的 Wav2Lip 程式與其上游權重。** Talk
 及其他選用引擎也必須逐項完成授權審查，不能只依賴根目錄 Apache-2.0 LICENSE。
 
 本節是專案維護資訊，不構成法律意見。
+
+[`config/config_commercial.yaml`](config/config_commercial.yaml) 提供以 MuseTalk、
+faster-whisper、Silero、本機 OpenAI-compatible LLM 與 Edge TTS 為起點的商業審查
+設定檔。它不會自動驗證或授予模型、權重、聲音、資料集或外部服務的商業權利；
+部署前仍須依 [`docs/software-stack.md`](docs/software-stack.md) 與
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 逐項核對。
 
 ## Third-Party Components
 

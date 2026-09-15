@@ -52,6 +52,11 @@ vad = [
 [project.urls]
 Repository = "https://github.com/s0966066980/nova-avatar"
 
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cu124" },

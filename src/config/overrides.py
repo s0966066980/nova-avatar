@@ -10,10 +10,8 @@ from typing import Any, Dict
 
 import yaml
 
-from src.avatars.mouth_quality import quality_from_model
 from src.utils.logging import logger
 from src.utils.paths import get_config_dir
-from src.llm.rules import rules_from_config
 
 RUNTIME_OVERRIDES_FILE = get_config_dir() / "runtime_overrides.yaml"
 
@@ -30,6 +28,12 @@ def load_runtime_overrides() -> Dict[str, Any]:
 
 
 def persist_runtime_overrides(config) -> None:
+    # Loading a YAML configuration is also used by offline release checks. Keep
+    # OpenCV-dependent avatar quality code on the write path, where it is
+    # actually needed, rather than making every configuration read import it.
+    from src.avatars.mouth_quality import quality_from_model
+    from src.llm.rules import rules_from_config
+
     payload = {
         "llm": {
             "model": config.llm.model,

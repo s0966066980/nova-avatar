@@ -83,6 +83,22 @@ class BrandingComplianceTests(unittest.TestCase):
         self.assertIn("nova-avatar-wav2lip-research", wav2lip_package)
         self.assertNotIn('license = "Apache-2.0"', wav2lip_package)
 
+    def test_commercial_review_profile_and_audits_are_present(self):
+        profile = (ROOT / "config/config_commercial.yaml").read_text(encoding="utf-8")
+        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        attribution_audit = (ROOT / "docs/source-attribution-audit.md").read_text(
+            encoding="utf-8"
+        )
+        workflow = (ROOT / "docs/current-project-workflow.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("type: musetalk", profile)
+        self.assertIn("Wav2Lip", stack)
+        self.assertIn("Research / Non-commercial", stack)
+        self.assertIn("src/avatars/musetalk/", attribution_audit)
+        self.assertIn("清除過往工作項目", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()

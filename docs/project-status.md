@@ -1,8 +1,11 @@
-# v1 Base 狀態
+# 目前專案基線
 
-更新日期：2026-09-11
+更新日期：2026-09-15
 
-目前工作樹定義為 Nova Avatar 第一版基線。此文件只記錄已交付能力、已通過驗證與執行邊界；後續需求重新立項時再建立新的規格與計畫。
+此文件記錄 Nova Avatar 目前已交付能力、可重現的驗證結果與執行邊界。
+新的工作項目、舊實驗的清理與 release handoff 流程請依
+[`current-project-workflow.md`](current-project-workflow.md)；可選引擎與商業審查
+邊界請依 [`software-stack.md`](software-stack.md)。
 
 ## 已完成範圍
 
@@ -36,19 +39,26 @@
 
 回答收尾的 720×1280 嘴部 ROI settling 實測平均 1.596 ms、最大 3.966 ms，不加入 GPU 推理或音訊等待。
 
-## v1 自動驗證
+## 目前驗證狀態
 
-- Python：355 tests，352 passed，3 skipped（依環境條件跳過）。
-- Web：67 tests passed。
+- 離線專案檢查：passed。它驗證目前設定、品牌／授權必備檔案、核心 Python
+  整合依賴與 MuseTalk commercial review profile，且不寫入音訊。
+- 本輪 focused Python tests：8 passed、12 subtests passed。
+- Web：70 tests passed。
 - Vite production build：passed。
+- 完整 Python suite 在此工作環境收集 394 項，375 passed、3 skipped、16 failed。
+  失敗皆來自未安裝的 optional-engine runtime dependencies：FunASR 的 `funasr`，
+  以及 MuseTalk 測試路徑的 `ffmpeg-python` 與 `einops`；這不是本輪功能回歸。
+  安裝選定 Avatar／ASR engine 的完整依賴後，必須重新執行完整 suite，才可宣稱
+  全綠 release gate。
 - 嘴型連續、待機對齊、settling、字幕生命週期、看板提交與可編輯規則均有專用回歸測試。
-- 測試稽核未發現可安全整檔移除的測試；現有測試各自覆蓋仍受支援的引擎、路由、協定或 UI 行為。
 
 ## 正式執行設定
 
 - `reply_streaming.enabled: false`：v1 保留舊有與串流兩種回覆模式，串流由設定頁或 YAML 明確啟用。
 - `reply_streaming.decoupled_audio_clock: false`：正式路徑維持單一 renderer-owned 音訊 producer。
-- `model.musetalk.mouth_continuity: true`、`idle_alignment: true`、`settling_enabled: true`、`settling_frames: 12`。
+- `model.musetalk.mouth_continuity: true`、`idle_alignment: true`、`settling_enabled: true`；
+  checked-in default 的 `settling_frames: 5`，並以最小 4、最大 6 影格限制。
 - 音訊是媒體主時鐘；視訊不得讓音訊等待，也不得以 catch-up burst 追趕。
 
 ## v1 執行邊界
@@ -57,3 +67,5 @@
 - 其他 TTS／Avatar adapter 可用，但不宣稱具有與主力組合相同的實機延遲基準。
 - direct PCM／decoupled audio clock 是預設關閉的實驗路徑，不屬於 v1 正式保證。
 - SIGKILL、斷電或核心崩潰無法觸發程序清理；外部管理的 llama-server 不由本程式終止。
+- `config/config_commercial.yaml` 是商業審查的部署起點，不是對任何模型、聲音、
+  權重、資料集或服務的商業授權保證。

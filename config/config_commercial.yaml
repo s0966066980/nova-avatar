@@ -1,0 +1,71 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+#
+# Commercial review profile. This selects the recommended runtime path but does
+# not grant rights to models, voices, weights, datasets, or external services.
+# Review docs/software-stack.md and THIRD_PARTY_NOTICES.md before distribution.
+
+app:
+  listenport: 8010
+  max_session: 1
+  ssl: true
+  ssl_cert: ssl_certs/localhost.crt
+  ssl_key: ssl_certs/localhost.key
+  web:
+    port: 3000
+    host: 0.0.0.0
+
+model:
+  # MuseTalk is the recommended Avatar integration path. Wav2Lip is excluded
+  # because its bundled upstream integration is Research / Non-commercial.
+  type: musetalk
+  avatar_id: musetalk_avatar1
+  batch_size: 8
+  model_path: ./models
+  mouth_sharpen: 0.5
+  paste_interpolation: lanczos
+  musetalk:
+    mouth_continuity: true
+    mouth_continuity_idle_alignment: true
+    avatar_transition: true
+    settling_enabled: true
+    settling_frames: 5
+    settling_min_frames: 4
+    settling_max_frames: 6
+
+tts:
+  # Edge TTS is the checked integration path. Its service and voice terms still
+  # require review for the intended distribution.
+  type: edgetts
+  ref_file: zh-TW-HsiaoChenNeural
+  edge_persistent_worker: true
+  edge_prefetch: true
+
+asr:
+  mode: server
+  type: whisper
+  model_size: base
+  language: zh
+  output_script: traditional-tw
+  device: auto
+
+vad:
+  enabled: true
+  type: silero
+  device: cpu
+
+llm:
+  # Select either an appropriately licensed Ollama model or a llama.cpp GGUF
+  # model for the deployment. This example retains the local Ollama endpoint.
+  provider: ollama
+  api_key: ollama
+  base_url: http://localhost:11434/v1
+  model: qwen3.5:4b
+  max_tokens: 128
+  response_max_chars: 120
+
+reply_streaming:
+  enabled: false
+
+stage:
+  caption_max_chars: 120
