@@ -41,6 +41,42 @@ EventSink = Callable[[str], None]
 OUTPUT_STALL_FRAMES = 50  # one second at the 20 ms audio commit clock
 
 
+def speech_input_rejection_reason(
+    audio: np.ndarray,
+    sample_rate: int,
+    speech_ms: int,
+    transcription: Optional[dict],
+    settings,
+) -> Optional[str]:
+    """Return a privacy-safe reason when speech input must not reach the LLM."""
+    min_speech_ms = max(0, int(getattr(settings, "min_speech_ms", 0) or 0))
+    if min_speech_ms and speech_ms and speech_ms < min_speech_ms:
+        return "speech_too_short"
+
+    min_audio_rms = max(0.0, float(getattr(settings, "min_audio_rms", 0.0) or 0.0))
+    if min_audio_rms:
+        samples = np.asarray(audio, dtype=np.float32)
+        rms = float(np.sqrt(np.mean(np.square(samples / 32768.0)))) if samples.size else 0.0
+        if rms < min_audio_rms:
+            return "audio_too_quiet"
+
+    if not transcription:
+        return None
+    text = str(transcription.get("text", "")).strip()
+    if not text:
+        return "empty_transcript"
+
+    confidence = transcription.get("confidence", transcription.get("avg_confidence"))
+    min_confidence = float(getattr(settings, "min_confidence", 0.0) or 0.0)
+    if confidence is not None and min_confidence:
+        try:
+            if float(confidence) < min_confidence:
+                return "transcript_low_confidence"
+        except (TypeError, ValueError):
+            return "transcript_invalid_confidence"
+    return None
+
+
 class VoiceTurnSession:
     """Own the complete lifetime of hands-free turns for one peer connection."""
 
@@ -295,7 +331,13 @@ class VoiceTurnSession:
         self._metrics.mark_speech_end()
         generation = self._generation
         self._turn_task = asyncio.create_task(
-            self._process_turn(segment.audio, segment.sample_rate, self._turn_id, generation)
+            self._process_turn(
+                segment.audio,
+                segment.sample_rate,
+                self._turn_id,
+                generation,
+                speech_ms=int(getattr(segment, "speech_ms", 0) or 0),
+            )
         )
 
     async def start_text_turn(self, text: str, *, interrupt: bool = True) -> dict:
@@ -359,6 +401,7 @@ class VoiceTurnSession:
                     segment.sample_rate,
                     self._turn_id,
                     generation,
+                    speech_ms=int(getattr(segment, "speech_ms", 0) or 0),
                 )
             )
         except asyncio.CancelledError:
@@ -373,10 +416,24 @@ class VoiceTurnSession:
                 self._refresh_gate()
 
     async def _process_turn(
-        self, audio: np.ndarray, sample_rate: int, turn_id: str, generation: int
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        turn_id: str,
+        generation: int,
+        *,
+        speech_ms: int = 0,
     ) -> None:
         loop = asyncio.get_running_loop()
         try:
+            rejection = speech_input_rejection_reason(
+                audio, sample_rate, speech_ms, None, self.config.asr
+            )
+            if rejection:
+                logger.info("Dropped speech turn before ASR reason=%s", rejection)
+                self._turn_id = None
+                self._refresh_gate()
+                return
             self._emit("state", state="stt", turn_id=turn_id)
             wav = BytesIO()
             sf.write(wav, audio, sample_rate, format="WAV", subtype="PCM_16")
@@ -385,11 +442,15 @@ class VoiceTurnSession:
             self.mark_stage_end("asr")
             if not self._is_current(turn_id, generation):
                 return
-            text = str(result.get("text", "")).strip()
-            if not text:
+            rejection = speech_input_rejection_reason(
+                audio, sample_rate, speech_ms, result, self.config.asr
+            )
+            if rejection:
+                logger.info("Dropped speech turn after ASR reason=%s", rejection)
                 self._turn_id = None
                 self._refresh_gate()
                 return
+            text = str(result.get("text", "")).strip()
             self._emit("user_transcript", text=text, turn_id=turn_id)
             await self._generate_turn(
                 text,

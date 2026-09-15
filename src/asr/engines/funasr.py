@@ -130,14 +130,21 @@ class FunASR(BaseASR):
         result = self.model.generate(input=audio_path)
         
         if result and len(result) > 0:
+            raw_result = result[0]
             text = convert_funasr_text(
-                result[0].get("text", ""),
+                raw_result.get("text", ""),
                 self.output_script,
             )
-            return {
+            response = {
                 "text": text.strip(),
                 "language": "zh"
             }
+            # FunASR versions expose either `confidence` or `score`; preserve
+            # it when present so the session can reject uncertain transcripts.
+            confidence = raw_result.get("confidence", raw_result.get("score"))
+            if confidence is not None:
+                response["confidence"] = confidence
+            return response
         
         return {
             "text": "",

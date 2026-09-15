@@ -92,6 +92,10 @@ asr:
   language: zh  # zh | en | auto
   output_script: traditional-tw  # FunASR: traditional-tw | simplified
   device: auto  # auto | cpu | cuda
+  # 輸入品質閘門：無效音訊或低可信轉寫不得觸發新的對話輪次。
+  min_speech_ms: 450
+  min_audio_rms: 0.003
+  min_confidence: 0.35
 
 # LLM：Ollama 或 llama.cpp，也可在網頁設定裡切換
 llm:

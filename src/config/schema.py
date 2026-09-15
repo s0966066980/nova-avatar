@@ -221,6 +221,9 @@ class ASRConfig:
     language: str = "zh"  # zh | en | auto
     output_script: str = "traditional-tw"  # FunASR: traditional-tw | simplified
     device: str = "auto"  # auto | cpu | cuda
+    min_speech_ms: int = 450  # 短促咳嗽、敲擊等不送入 ASR／LLM
+    min_audio_rms: float = 0.003  # int16 正規化後的最低音量
+    min_confidence: float = 0.35  # 引擎提供信心分數時的最低接受值
 
 
 @dataclass

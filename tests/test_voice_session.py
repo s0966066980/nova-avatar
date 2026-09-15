@@ -8,7 +8,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 
-from src.server.voice_session import OUTPUT_STALL_FRAMES, VoiceTurnSession
+from src.server.voice_session import (
+    OUTPUT_STALL_FRAMES,
+    VoiceTurnSession,
+    speech_input_rejection_reason,
+)
 
 
 class FakeAvatar:
@@ -67,6 +71,56 @@ class FakeASR:
 
 
 class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
+    def test_speech_input_quality_rejects_short_audio_and_low_confidence_text(self):
+        settings = SimpleNamespace(
+            min_speech_ms=450,
+            min_audio_rms=0.003,
+            min_confidence=0.35,
+        )
+        audio = np.ones(16000, dtype=np.int16) * 600
+
+        self.assertEqual(
+            speech_input_rejection_reason(
+                audio, 16000, 200, {"text": "上一輪內容"}, settings
+            ),
+            "speech_too_short",
+        )
+        self.assertEqual(
+            speech_input_rejection_reason(
+                audio, 16000, 700, {"text": "上一輪內容", "confidence": 0.1}, settings
+            ),
+            "transcript_low_confidence",
+        )
+        self.assertIsNone(
+            speech_input_rejection_reason(
+                audio, 16000, 700, {"text": "有效問題", "confidence": 0.9}, settings
+            )
+        )
+
+    async def test_low_confidence_speech_transcript_never_reaches_llm(self):
+        segment = SimpleNamespace(
+            audio=np.ones(16000, dtype=np.int16) * 600,
+            sample_rate=16000,
+            speech_ms=700,
+        )
+        session, _, events = self.make_session(segment)
+        session.config.asr = SimpleNamespace(
+            min_speech_ms=450,
+            min_audio_rms=0.003,
+            min_confidence=0.35,
+        )
+        session._asr = SimpleNamespace(
+            transcribe=Mock(return_value={"text": "上一輪內容", "confidence": 0.1})
+        )
+
+        with patch("src.server.voice_session.llm_response") as llm:
+            await session.feed_pcm(np.ones(512, dtype=np.int16))
+            await session._turn_task
+
+        llm.assert_not_called()
+        self.assertNotIn("user_transcript", [event["type"] for event in events])
+        await session.close()
+
     def make_session(self, segment=None, *, clock=time.monotonic, streaming=True):
         config = SimpleNamespace(
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),

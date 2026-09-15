@@ -4,6 +4,8 @@
 
 """faster-whisper ASR adapter used by the server-side voice pipeline."""
 
+import math
+
 from typing import Dict, Any
 
 from src.utils.logging import logger
@@ -80,7 +82,7 @@ class WhisperASR(BaseASR):
             beam_size=5,
         )
         segment_list = list(segments)
-        return {
+        response = {
             "text": "".join(segment.text for segment in segment_list).strip(),
             "language": getattr(info, "language", self.language),
             "segments": [
@@ -88,6 +90,15 @@ class WhisperASR(BaseASR):
                 for segment in segment_list
             ],
         }
+        logprobs = [
+            float(segment.avg_logprob)
+            for segment in segment_list
+            if getattr(segment, "avg_logprob", None) is not None
+        ]
+        if logprobs:
+            # Convert average token log-probability to a bounded confidence.
+            response["confidence"] = math.exp(min(0.0, sum(logprobs) / len(logprobs)))
+        return response
     
     def get_info(self) -> Dict[str, Any]:
         """獲取引擎資訊"""
