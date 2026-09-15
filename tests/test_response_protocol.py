@@ -6,6 +6,7 @@ from src.llm.base import BaseLLM
 from src.llm.response_protocol import (
     BoardItem,
     BoardPayload,
+    FORMAT_RECOVERY_MESSAGE,
     ResponseProtocolParser,
     ThinkFilter,
 )
@@ -67,6 +68,17 @@ class ResponseProtocolParserTests(unittest.TestCase):
             out.extend(parser.feed(c))
         out.extend(parser.flush()[0])
         self.assertEqual("".join(out), "簡單回答")
+
+    def test_simple_mode_suppresses_split_raw_json_and_returns_recovery(self):
+        parser = ResponseProtocolParser(mode=ReplyMode.SIMPLE)
+        speech = []
+        for chunk in ('{"tit', 'le":"建議","items":[]}'):
+            speech.extend(parser.feed(chunk))
+        tail, board = parser.flush()
+
+        self.assertEqual("".join(speech + tail), FORMAT_RECOVERY_MESSAGE)
+        self.assertIsNone(board)
+        self.assertTrue(parser.structured_payload_suppressed)
 
     def test_board_mode_full_chunk(self):
         parser = ResponseProtocolParser(mode=ReplyMode.BOARD)
@@ -198,6 +210,22 @@ class ResponseProtocolParserTests(unittest.TestCase):
 
 
 class EndToEndProtocolStreamingTests(unittest.TestCase):
+    def test_generate_response_never_falls_back_to_suppressed_raw_json(self):
+        class RawJsonLLM(BaseLLM):
+            def chat_stream(self, message, system_prompt=None, **kwargs):
+                del message, system_prompt, kwargs
+                yield '{"tit'
+                yield 'le":"建議","items":[]}'
+
+        result = RawJsonLLM(Config()).generate_response(
+            "請給我建議",
+            stream_to_avatar=False,
+            reply_mode=ReplyMode.SIMPLE,
+        )
+
+        self.assertEqual(result, FORMAT_RECOVERY_MESSAGE)
+        self.assertNotIn('"title"', result)
+
     def test_board_mode_speech_streamed_to_avatar_board_sent_to_callback(self):
         class MockStreamingLLM(BaseLLM):
             def chat_stream(self, message, system_prompt=None, **kwargs):
@@ -276,7 +304,7 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
         self.assertIsNotNone(last_board)
         self.assertEqual(last_board.title, "建議架構")
 
-    def test_direct_json_transition_without_board_tag(self):
+    def test_direct_json_without_board_tag_is_suppressed(self):
         parser = ResponseProtocolParser(mode=ReplyMode.BOARD)
         raw = (
             "[[SPEECH]]\n"
@@ -288,12 +316,10 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
         flush_speech, board = parser.flush()
         all_speech = "".join(speech + flush_speech).strip()
         self.assertEqual(all_speech, "台灣歷史經歷了多個重要階段。")
-        self.assertIsNotNone(board)
-        self.assertEqual(board.title, "台灣歷史")
-        self.assertEqual(len(board.items), 1)
-        self.assertEqual(board.items[0].title, "原住民時期")
+        self.assertIsNone(board)
+        self.assertTrue(parser.structured_payload_suppressed)
 
-    def test_tool_call_board_format(self):
+    def test_tool_call_board_format_is_not_a_board_without_explicit_marker(self):
         parser = ResponseProtocolParser(mode=ReplyMode.AUTO)
         raw = (
             "<|tool_call_start|>[BOARD(MODE='BOARD', SPEECH='部署步驟如下：', "
@@ -302,12 +328,8 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
         speech = parser.feed(raw)
         flush_speech, board = parser.flush()
         all_speech = "".join(speech + flush_speech).strip()
-        self.assertIn("部署步驟如下：", all_speech)
-        self.assertNotIn("<|tool_call_start|>", all_speech)
-        self.assertIsNotNone(board)
-        self.assertEqual(board.title, "部署步驟")
-        self.assertEqual(len(board.items), 1)
-        self.assertEqual(board.items[0].title, "檢查網路")
+        self.assertEqual(all_speech, "")
+        self.assertIsNone(board)
 
     def test_json_double_bracket_repair(self):
         parser = ResponseProtocolParser(mode=ReplyMode.BOARD)
@@ -324,7 +346,7 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
         self.assertEqual(board.title, "測試修復")
         self.assertEqual(len(board.items), 1)
 
-    def test_markdown_bullet_fallback(self):
+    def test_markdown_bullets_are_not_promoted_to_a_board(self):
         parser = ResponseProtocolParser(mode=ReplyMode.BOARD)
         raw = (
             "[[SPEECH]]\n"
@@ -336,7 +358,4 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
         flush_speech, board = parser.flush()
         all_speech = "".join(speech + flush_speech).strip()
         self.assertEqual(all_speech, "台灣歷史的整體結論。")
-        self.assertIsNotNone(board)
-        self.assertEqual(len(board.items), 2)
-        self.assertEqual(board.items[0].title, "原住民時期")
-        self.assertIn("多元文化", board.items[0].content)
+        self.assertIsNone(board)

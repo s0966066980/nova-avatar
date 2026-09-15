@@ -513,7 +513,9 @@ class BaseLLM(ABC):
             clean_spoken = normalize_visible_text(
                 spoken_response.strip() or parser.speech_text.strip()
             )
-            clean_full = full_response.strip()
+            # The parser is the sole authority for visible content. Never fall
+            # back to raw model output after structured data was suppressed.
+            clean_full = "" if parser.structured_payload_suppressed else full_response.strip()
 
             if history_transaction is not None and not defer_history_commit:
                 self.commit_history_turn(

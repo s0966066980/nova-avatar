@@ -30,6 +30,7 @@ TAG_MODE_SIMPLE_ZH = "模式：簡答"
 TAG_MODE_BOARD_ZH = "模式：看板"
 TAG_SPEECH_ZH = "口語："
 TAG_BOARD_ZH = "資料："
+FORMAT_RECOVERY_MESSAGE = "抱歉，剛剛的回覆格式異常，請再說一次。"
 THINK_OPEN = "<think>"
 THINK_CLOSE = "</think>"
 THINK_TAG_PAIRS = (
@@ -125,11 +126,6 @@ def clean_speech_text(text: str, is_board_mode: bool = False) -> str:
 
     # Strip end markers
     text = re.sub(r"\[{1,2}\s*/?\s*END\s*\]{1,2}", "", text, flags=re.IGNORECASE)
-
-    # Cut off before raw JSON or markdown JSON fence in ANY mode (speech must never contain JSON)
-    json_match = re.search(r'(?:```(?:json)?\s*)?[\r\n]+\s*\{(?:\s*"title"|\s*"items"|\s*"summary")', text, flags=re.IGNORECASE)
-    if json_match:
-        text = text[:json_match.start()]
 
     # If had [speech: ... and text ends with ], strip the matching ]
     if had_bracket_speech:
@@ -287,6 +283,8 @@ class ResponseProtocolParser:
         self._chinese_protocol = False
         self._partial_item_indices: set[int] = set()
         self._collected_items: list[BoardItem] = []
+        self._raw_payload_buffer = ""
+        self._structured_payload_suppressed = False
 
     @property
     def speech_text(self) -> str:
@@ -295,6 +293,45 @@ class ResponseProtocolParser:
     @property
     def board_payload(self) -> Optional[BoardPayload]:
         return self._board_payload
+
+    @property
+    def structured_payload_suppressed(self) -> bool:
+        """Whether unmarked structured output was kept out of visible channels."""
+        return self._structured_payload_suppressed
+
+    def _append_speech(self, text: str, *, is_board_mode: bool) -> list[str]:
+        """Emit visible speech while withholding raw JSON across stream chunks."""
+        text = clean_speech_text(text, is_board_mode=is_board_mode)
+        if not text or self._structured_payload_suppressed:
+            return []
+        combined = self._raw_payload_buffer + text
+        self._raw_payload_buffer = ""
+        raw_start = re.search(
+            r"(?:^|(?<=[\s。！？!?]))(?:```(?:json)?\s*)?(?:\{|\[(?!\[))",
+            combined,
+            flags=re.IGNORECASE,
+        )
+        if raw_start:
+            visible = combined[: raw_start.start()].rstrip()
+            self._raw_payload_buffer = combined[raw_start.start() :]
+            self._structured_payload_suppressed = True
+            logger.warning("Suppressed unmarked structured payload from visible reply")
+        else:
+            visible = combined
+        if not visible:
+            return []
+        self._speech_accumulator += visible
+        if self.on_speech:
+            self.on_speech(visible)
+        return [visible]
+
+    def _recovery_if_needed(self) -> list[str]:
+        if self._structured_payload_suppressed and not self._speech_accumulator:
+            self._speech_accumulator = FORMAT_RECOVERY_MESSAGE
+            if self.on_speech:
+                self.on_speech(FORMAT_RECOVERY_MESSAGE)
+            return [FORMAT_RECOVERY_MESSAGE]
+        return []
 
     def feed(self, chunk: str) -> list[str]:
         """Feed a raw LLM chunk. Returns a list of speech chunks to output."""
@@ -311,12 +348,7 @@ class ResponseProtocolParser:
                 if self._protocol_wrapped:
                     speech_outputs.extend(self._process_simple_wrapped_chunk(clean_text))
                 else:
-                    clean_text = clean_speech_text(clean_text, is_board_mode=False)
-                    if clean_text:
-                        self._speech_accumulator += clean_text
-                        speech_outputs.append(clean_text)
-                        if self.on_speech:
-                            self.on_speech(clean_text)
+                    speech_outputs.extend(self._append_speech(clean_text, is_board_mode=False))
             else:
                 outputs = self._process_board_mode_chunk(clean_text)
                 speech_outputs.extend(outputs)
@@ -341,11 +373,7 @@ class ResponseProtocolParser:
             (TAG_MODE_BOARD_ZH, ReplyMode.BOARD),
             ("模式:看板", ReplyMode.BOARD),
             ("模式:簡答", ReplyMode.SIMPLE),
-            ("<|tool_call_start|>[BOARD", ReplyMode.BOARD),
-            ("[BOARD(", ReplyMode.BOARD),
-            ("BOARD(JSON=", ReplyMode.BOARD),
-            ("BOARD(items=", ReplyMode.BOARD),
-            ("BOARD(MODE=", ReplyMode.BOARD),
+            (TAG_BOARD, ReplyMode.BOARD),
         )
         found = [(self._buffer.find(tag), tag, mode) for tag, mode in candidates if self._buffer.find(tag) >= 0]
         if found:
@@ -355,10 +383,6 @@ class ResponseProtocolParser:
             self._protocol_wrapped = True
             self._chinese_protocol = tag in (TAG_MODE_SIMPLE_ZH, TAG_MODE_BOARD_ZH, "模式:看板", "模式:簡答")
             self._notify_mode()
-            if tag in ("<|tool_call_start|>[BOARD", "[BOARD(", "BOARD(JSON=", "BOARD(items=", "BOARD(MODE="):
-                text = self._buffer
-                self._buffer = ""
-                return self._process_board_mode_chunk(text)
             self._buffer = self._buffer[self._buffer.find(tag) + len(tag):].lstrip("\r\n ")
             if not self._buffer:
                 return []
@@ -366,6 +390,8 @@ class ResponseProtocolParser:
                 text = self._buffer
                 self._buffer = ""
                 return self._process_simple_wrapped_chunk(text)
+            if tag == TAG_BOARD:
+                self._state = ParserState.IN_BOARD
             text = self._buffer
             self._buffer = ""
             return self._process_board_mode_chunk(text)
@@ -428,13 +454,7 @@ class ResponseProtocolParser:
                 text, self._buffer = self._buffer, ""
         if not text:
             return []
-        clean_text = clean_speech_text(text, is_board_mode=False)
-        if not clean_text:
-            return []
-        self._speech_accumulator += clean_text
-        if self.on_speech:
-            self.on_speech(clean_text)
-        return [clean_text]
+        return self._append_speech(text, is_board_mode=False)
 
     def _process_board_mode_chunk(self, chunk: str) -> list[str]:
         self._buffer += chunk
@@ -444,33 +464,11 @@ class ResponseProtocolParser:
 
         while self._buffer:
             if self._state == ParserState.WAIT_SPEECH:
-                # Check for tool-call SPEECH attribute
-                speech_m = re.search(r"SPEECH\s*=\s*(['\"])(.*?)\1", self._buffer, flags=re.DOTALL)
-                if speech_m:
-                    speech_text = clean_speech_text(speech_m.group(2), is_board_mode=True)
-                    if speech_text:
-                        self._speech_accumulator += speech_text
-                        speech_outputs.append(speech_text)
-                        if self.on_speech:
-                            self.on_speech(speech_text)
-                    self._buffer = self._buffer[speech_m.end():]
-                    self._state = ParserState.IN_BOARD
-                    continue
-
-                if self._buffer.lstrip().startswith(("{", "```", "[BOARD", "<|tool_call_start|>")):
-                    self._state = ParserState.IN_BOARD
-                    continue
-
                 pos = self._buffer.find(speech_tag)
                 if pos != -1:
                     pre = self._buffer[:pos]
                     if pre.strip():
-                        clean_pre = clean_speech_text(pre, is_board_mode=True)
-                        if clean_pre:
-                            self._speech_accumulator += clean_pre
-                            speech_outputs.append(clean_pre)
-                            if self.on_speech:
-                                self.on_speech(clean_pre)
+                        speech_outputs.extend(self._append_speech(pre, is_board_mode=True))
                     self._buffer = self._buffer[pos + len(speech_tag):].lstrip("\r\n ")
                     self._state = ParserState.IN_SPEECH
                     continue
@@ -483,12 +481,7 @@ class ResponseProtocolParser:
                 if tag_m:
                     pre = self._buffer[:tag_m.start()]
                     if pre.strip():
-                        clean_pre = clean_speech_text(pre, is_board_mode=True)
-                        if clean_pre:
-                            self._speech_accumulator += clean_pre
-                            speech_outputs.append(clean_pre)
-                            if self.on_speech:
-                                self.on_speech(clean_pre)
+                        speech_outputs.extend(self._append_speech(pre, is_board_mode=True))
                     self._buffer = self._buffer[tag_m.end():].lstrip("\r\n ")
                     self._state = ParserState.IN_SPEECH
                     continue
@@ -507,12 +500,7 @@ class ResponseProtocolParser:
                     pre = self._buffer[:-overlap]
                     if pre.strip():
                         self._state = ParserState.IN_SPEECH
-                        clean_pre = clean_speech_text(pre, is_board_mode=True)
-                        if clean_pre:
-                            self._speech_accumulator += clean_pre
-                            speech_outputs.append(clean_pre)
-                            if self.on_speech:
-                                self.on_speech(clean_pre)
+                        speech_outputs.extend(self._append_speech(pre, is_board_mode=True))
                         self._buffer = self._buffer[-overlap:]
                     break
                 else:
@@ -520,12 +508,7 @@ class ResponseProtocolParser:
                         self._state = ParserState.IN_SPEECH
                         text = self._buffer
                         self._buffer = ""
-                        clean_text = clean_speech_text(text, is_board_mode=True)
-                        if clean_text:
-                            self._speech_accumulator += clean_text
-                            speech_outputs.append(clean_text)
-                            if self.on_speech:
-                                self.on_speech(clean_text)
+                        speech_outputs.extend(self._append_speech(text, is_board_mode=True))
                     else:
                         break
 
@@ -533,10 +516,7 @@ class ResponseProtocolParser:
                 pos = self._buffer.find(board_tag)
                 board_match_len = len(board_tag)
                 if pos == -1:
-                    alt_pattern = re.compile(
-                        r"(\[{1,2}\s*BOARD(?:_JSON)?(?::\s*)?\]{1,2}|看板(?:資料)?\s*[:：]|(?:^|[\r\n]+)\s*資料\s*[:：])|(```(?:json)?\s*\{|[\r\n]*\s*\{\s*\"(?:title|items)\"|<\|tool_call_start\|>\[BOARD|\[BOARD\(|[\r\n]+\s*(?:[-*]|\d+\.)\s+)",
-                        re.IGNORECASE,
-                    )
+                    alt_pattern = re.compile(r"\[{1,2}\s*BOARD(?:_JSON)?(?::\s*)?\]{1,2}", re.IGNORECASE)
                     m = alt_pattern.search(self._buffer)
                     if m:
                         pos = m.start()
@@ -544,12 +524,7 @@ class ResponseProtocolParser:
 
                 if pos != -1:
                     speech_part = self._buffer[:pos]
-                    clean_speech = clean_speech_text(speech_part, is_board_mode=True)
-                    if clean_speech:
-                        self._speech_accumulator += clean_speech
-                        speech_outputs.append(clean_speech)
-                        if self.on_speech:
-                            self.on_speech(clean_speech)
+                    speech_outputs.extend(self._append_speech(speech_part, is_board_mode=True))
                     self._buffer = self._buffer[pos + board_match_len:].lstrip("\r\n ")
                     self._state = ParserState.IN_BOARD
                     continue
@@ -569,23 +544,13 @@ class ResponseProtocolParser:
                     emit_len = len(self._buffer) - overlap
                     if emit_len > 0:
                         part = self._buffer[:emit_len]
-                        clean_part = clean_speech_text(part, is_board_mode=True)
-                        if clean_part:
-                            self._speech_accumulator += clean_part
-                            speech_outputs.append(clean_part)
-                            if self.on_speech:
-                                self.on_speech(clean_part)
+                        speech_outputs.extend(self._append_speech(part, is_board_mode=True))
                         self._buffer = self._buffer[emit_len:]
                     break
                 else:
                     part = self._buffer
                     self._buffer = ""
-                    clean_part = clean_speech_text(part, is_board_mode=True)
-                    if clean_part:
-                        self._speech_accumulator += clean_part
-                        speech_outputs.append(clean_part)
-                        if self.on_speech:
-                            self.on_speech(clean_part)
+                    speech_outputs.extend(self._append_speech(part, is_board_mode=True))
                     break
 
             elif self._state == ParserState.IN_BOARD:
@@ -642,92 +607,29 @@ class ResponseProtocolParser:
 
         if self.mode == ReplyMode.AUTO:
             self._buffer += "".join(clean_chunks)
-            raw_board = re.search(
-                r'(?:```(?:json)?\s*)?\{\s*"(?:title|items|summary)"',
-                self._buffer,
-                flags=re.IGNORECASE,
-            )
-            if raw_board:
-                self.mode = ReplyMode.BOARD
-                self._state = ParserState.IN_SPEECH
-                self._protocol_wrapped = True
-                self._notify_mode()
-                speech_outputs.extend(self._process_board_mode_chunk(""))
-            else:
-                self.mode = ReplyMode.SIMPLE
-                self._state = ParserState.IN_SPEECH
-                self._notify_mode()
-                if self._buffer:
-                    text, self._buffer = self._buffer, ""
-                    clean_text = clean_speech_text(text, is_board_mode=False)
-                    if clean_text:
-                        self._speech_accumulator += clean_text
-                        speech_outputs.append(clean_text)
-                        if self.on_speech:
-                            self.on_speech(clean_text)
-                return speech_outputs, self._board_payload
+            self.mode = ReplyMode.SIMPLE
+            self._state = ParserState.IN_SPEECH
+            self._notify_mode()
+            if self._buffer:
+                text, self._buffer = self._buffer, ""
+                speech_outputs.extend(self._append_speech(text, is_board_mode=False))
+            speech_outputs.extend(self._recovery_if_needed())
+            return speech_outputs, self._board_payload
 
         for clean_text in clean_chunks:
             if self.mode == ReplyMode.SIMPLE:
                 if self._protocol_wrapped:
                     speech_outputs.extend(self._process_simple_wrapped_chunk(clean_text))
                     continue
-                clean_simple = clean_speech_text(clean_text, is_board_mode=False)
-                if clean_simple:
-                    self._speech_accumulator += clean_simple
-                    speech_outputs.append(clean_simple)
-                    if self.on_speech:
-                        self.on_speech(clean_simple)
+                speech_outputs.extend(self._append_speech(clean_text, is_board_mode=False))
             else:
                 outputs = self._process_board_mode_chunk(clean_text)
                 speech_outputs.extend(outputs)
 
         if self.mode == ReplyMode.BOARD:
             if self._state == ParserState.IN_SPEECH and self._buffer:
-                alt_pattern = re.compile(
-                    r"(?:```(?:json)?\s*\{|[\r\n]+\s*\{\s*\"(?:title|items)\"|<\|tool_call_start\|>\[BOARD|\[BOARD\()",
-                    re.IGNORECASE,
-                )
-                m = alt_pattern.search(self._buffer)
-                if m:
-                    speech_part = self._buffer[: m.start()]
-                    clean_speech = clean_speech_text(speech_part, is_board_mode=True)
-                    if clean_speech:
-                        self._speech_accumulator += clean_speech
-                        speech_outputs.append(clean_speech)
-                        if self.on_speech:
-                            self.on_speech(clean_speech)
-                    self._board_buffer += self._buffer[m.start() :]
-                    self._buffer = ""
-                    self._state = ParserState.DONE
-                    self._emit_partial_items()
-                    self._parse_and_emit_board()
-                else:
-                    markdown_items = self._extract_markdown_board_items(self._buffer)
-                    if markdown_items:
-                        list_m = re.search(r"[\r\n]+\s*(?:[-*]|\d+\.)\s+", self._buffer)
-                        speech_part = self._buffer[: list_m.start()] if list_m else ""
-                        clean_speech = clean_speech_text(speech_part, is_board_mode=True)
-                        if clean_speech:
-                            self._speech_accumulator += clean_speech
-                            speech_outputs.append(clean_speech)
-                            if self.on_speech:
-                                self.on_speech(clean_speech)
-                        self._board_payload = BoardPayload(
-                            title="看板回覆",
-                            summary=None,
-                            items=markdown_items[: self.max_items],
-                        )
-                        if self.on_board:
-                            self.on_board(self._board_payload)
-                    else:
-                        leftover = clean_speech_text(self._buffer, is_board_mode=True)
-                        self._buffer = ""
-                        if leftover:
-                            self._speech_accumulator += leftover
-                            speech_outputs.append(leftover)
-                            if self.on_speech:
-                                self.on_speech(leftover)
+                leftover, self._buffer = self._buffer, ""
+                speech_outputs.extend(self._append_speech(leftover, is_board_mode=True))
             elif self._state == ParserState.IN_BOARD:
                 if self._buffer:
                     self._board_buffer += self._buffer
@@ -736,6 +638,7 @@ class ResponseProtocolParser:
                 self._state = ParserState.DONE
                 self._parse_and_emit_board()
 
+        speech_outputs.extend(self._recovery_if_needed())
         return speech_outputs, self._board_payload
 
     def _parse_and_emit_board(self) -> None:

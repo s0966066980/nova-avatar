@@ -145,8 +145,7 @@ class AutoResponseProtocolTests(unittest.TestCase):
         spoken.extend(tail)
 
         self.assertEqual("".join(spoken), "一般摘要。")
-        self.assertIsNotNone(board)
-        self.assertEqual(board.title, "T")
+        self.assertIsNone(board)
 
     def test_auto_unmarked_text_falls_back_to_simple_when_flushed(self):
         parser = ResponseProtocolParser(mode=ReplyMode.AUTO)
