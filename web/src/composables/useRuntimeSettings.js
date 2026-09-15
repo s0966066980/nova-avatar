@@ -13,6 +13,7 @@ const runtime = reactive({
     response_max_chars: 120,
     board_max_items: 8,
     reply_mode: 'legacy',
+    semantic_wait_seconds: 5,
     reply_rules: { revision: 1, activation: '', speech: '', board: '' }
   },
   stage: {
@@ -201,6 +202,7 @@ const selectedForbiddenSelfNames = ref('')
 const selectedResponseMaxChars = ref(120)
 const selectedBoardMaxItems = ref(8)
 const selectedReplyMode = ref('legacy')
+const selectedSemanticWaitSeconds = ref(5)
 const rulesDraft = reactive({ activation: '', speech: '', board: '' })
 const rulesApplied = reactive({ revision: 1, activation: '', speech: '', board: '' })
 const rulesDefaults = reactive({ revision: 1, activation: '', speech: '', board: '' })
@@ -281,7 +283,8 @@ const llmDirty = computed(() => {
     selectedForbiddenSelfNames.value !== (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n') ||
     Number(selectedResponseMaxChars.value) !== Number(runtime.llm.response_max_chars || 120) ||
     Number(selectedBoardMaxItems.value) !== Number(runtime.llm.board_max_items || 8) ||
-    selectedReplyMode.value !== (runtime.llm.reply_mode || 'legacy')
+    selectedReplyMode.value !== (runtime.llm.reply_mode || 'legacy') ||
+    Number(selectedSemanticWaitSeconds.value) !== Number(runtime.llm.semantic_wait_seconds || 5)
   )
 })
 
@@ -744,6 +747,7 @@ function applySnapshot(data) {
   selectedResponseMaxChars.value = Number(data.llm?.response_max_chars || 120)
   selectedBoardMaxItems.value = Number(data.llm?.board_max_items || 8)
   selectedReplyMode.value = data.llm?.reply_mode || 'legacy'
+  selectedSemanticWaitSeconds.value = Number(data.llm?.semantic_wait_seconds || 5)
   selectedStageCaptionMaxChars.value = runtime.stage.caption_max_chars
   selectedCaptionX.value = runtime.stage.caption_x
   selectedCaptionY.value = runtime.stage.caption_y
@@ -903,6 +907,7 @@ async function applyLlmModel(
         response_max_chars: Number(responseMaxChars),
         reply_mode: replyMode,
         board_max_items: Number(boardMaxItems),
+        semantic_wait_seconds: Number(selectedSemanticWaitSeconds.value),
         assistant_profile: {
           assistant_name: selectedAssistantName.value,
           system_prompt: systemPrompt,
@@ -921,6 +926,7 @@ async function applyLlmModel(
     runtime.llm.response_max_chars = Number(data.response_max_chars || responseMaxChars)
     runtime.llm.board_max_items = Number(data.board_max_items || boardMaxItems)
     runtime.llm.reply_mode = data.reply_mode || replyMode
+    runtime.llm.semantic_wait_seconds = Number(data.semantic_wait_seconds || selectedSemanticWaitSeconds.value)
     ollama.current = data.model
     selectedLlm.value = data.model
     selectedProvider.value = data.provider || provider
@@ -933,6 +939,7 @@ async function applyLlmModel(
     selectedResponseMaxChars.value = runtime.llm.response_max_chars
     selectedBoardMaxItems.value = runtime.llm.board_max_items
     selectedReplyMode.value = runtime.llm.reply_mode
+    selectedSemanticWaitSeconds.value = runtime.llm.semantic_wait_seconds
     return data
   } finally {
     applyingLlm.value = false
@@ -1164,6 +1171,7 @@ export function useRuntimeSettings() {
     selectedResponseMaxChars,
     selectedBoardMaxItems,
     selectedReplyMode,
+    selectedSemanticWaitSeconds,
     rulesDraft,
     rulesApplied,
     rulesDefaults,

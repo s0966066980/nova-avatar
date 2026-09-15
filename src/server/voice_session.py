@@ -155,6 +155,7 @@ class VoiceTurnSession:
                 on_fragment_queued=self.register_fragment,
                 on_fragment_failed=self.on_fragment_synthesis_failed,
                 fragment_playback_committed=self.fragment_playback_committed,
+                fragment_playback_ended=self.fragment_playback_ended,
                 on_tts_onset_preroll_ms=self.observe_tts_onset_preroll_ms,
                 on_tts_retry=self.observe_tts_retry,
                 on_stage_end=self.mark_stage_end,
@@ -769,6 +770,16 @@ class VoiceTurnSession:
             return False
         with self._fragment_lock:
             return sequence in self._played_fragment_sequences
+
+    def fragment_playback_ended(self, eventpoint: dict) -> bool:
+        if not self.accepts_media(eventpoint, "fragment_playback_end"):
+            return True
+        try:
+            sequence = int(eventpoint["fragment_sequence"])
+        except (KeyError, TypeError, ValueError):
+            return True
+        with self._fragment_lock:
+            return sequence in self._ended_fragment_sequences
 
     def on_output_audio_frame(self, eventpoint: dict, active: bool) -> None:
         """Commit subtitle/text only after a current non-silent audio frame."""

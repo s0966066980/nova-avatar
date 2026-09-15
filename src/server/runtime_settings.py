@@ -201,6 +201,9 @@ def current_snapshot(config) -> Dict[str, Any]:
                 if bool(getattr(config.reply_streaming, "enabled", False))
                 else "legacy"
             ),
+            "semantic_wait_seconds": float(
+                getattr(config.reply_streaming, "semantic_wait_seconds", 5.0) or 5.0
+            ),
             "reply_rules": rules_from_config(config),
         },
         "avatar": {
@@ -627,6 +630,7 @@ def apply_llm_model(
     reply_mode: Optional[str] = None,
     board_max_items: Optional[int] = None,
     assistant_profile: Optional[Dict[str, Any]] = None,
+    semantic_wait_seconds: Optional[float] = None,
 ) -> Dict[str, Any]:
     model = (model or "").strip()
     if not model:
@@ -666,6 +670,13 @@ def apply_llm_model(
     ) if reply_mode is None else str(reply_mode).strip().lower()
     if next_reply_mode not in {"legacy", "streaming"}:
         raise SettingsError("回覆模式必須是 legacy 或 streaming")
+    next_semantic_wait = float(
+        getattr(config.reply_streaming, "semantic_wait_seconds", 5.0)
+        if semantic_wait_seconds is None
+        else semantic_wait_seconds
+    )
+    if not 0.5 <= next_semantic_wait <= 30.0:
+        raise SettingsError("語意等待上限必須介於 0.5 至 30 秒")
 
     previous = f"{resolve_provider(config)}/{config.llm.model}"
     if provider == "llamacpp":
@@ -723,6 +734,7 @@ def apply_llm_model(
     profile_changed = previous_profile != next_profile
     config.llm.extra_body = extra_body
     config.reply_streaming.enabled = next_reply_mode == "streaming"
+    config.reply_streaming.semantic_wait_seconds = next_semantic_wait
     switch_llm_endpoint(
         model=model,
         base_url=base_url,
@@ -745,6 +757,7 @@ def apply_llm_model(
         "response_max_chars": next_response_max_chars,
         "board_max_items": next_board_max_items,
         "reply_mode": next_reply_mode,
+        "semantic_wait_seconds": next_semantic_wait,
     }
 
 

@@ -283,12 +283,21 @@ class BaseLLM(ABC):
             )
             or 1
         )
+        semantic_wait_seconds = float(
+            getattr(
+                getattr(self.config, "reply_streaming", None),
+                "semantic_wait_seconds",
+                5.0,
+            )
+            or 5.0
+        )
         text_processor = (
             SemanticFragmenter(
                 weak_min_chars=weak_min,
                 soft_limit_chars=soft_limit,
                 hard_limit_chars=hard_limit,
                 strong_min_chars=strong_min,
+                semantic_wait_seconds=semantic_wait_seconds,
             )
             if semantic_stream
             else TextStreamProcessor()

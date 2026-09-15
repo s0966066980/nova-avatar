@@ -68,7 +68,10 @@ class ReplyStreamingConfigTests(unittest.TestCase):
         config_path = Path(__file__).resolve().parents[1] / "config" / "config.yaml"
         config_dict = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(config_dict["reply_streaming"], {"enabled": False})
+        self.assertEqual(
+            config_dict["reply_streaming"],
+            {"enabled": False, "semantic_wait_seconds": 5.0},
+        )
 
     def test_process_scoped_environment_can_enable_soak_without_changing_yaml(self):
         from src.config.loader import load_config
@@ -684,19 +687,26 @@ class SemanticFragmenterTests(unittest.TestCase):
             ["請查看 https://example.com/path。"],
         )
 
-    def test_unpunctuated_text_splits_at_safe_boundaries_without_breaking_words(self):
+    def test_unpunctuated_text_waits_for_stream_end_without_hard_cutting(self):
         chinese = "一二三四五六七八九十" * 13
         fragmenter = SemanticFragmenter()
 
-        self.assertEqual(fragmenter.feed(chinese), [chinese[:120]])
-        self.assertEqual(fragmenter.flush(), [chinese[120:]])
+        self.assertEqual(fragmenter.feed(chinese), [])
+        self.assertEqual(fragmenter.flush(), [chinese])
 
-        fragmenter = SemanticFragmenter(soft_limit_chars=24, hard_limit_chars=32)
-        self.assertEqual(
-            fragmenter.feed("alpha bravo charlie delta echo foxtrot golf"),
-            ["alpha bravo charlie delta echo foxtrot"],
+    def test_wait_expiry_releases_only_at_a_clause_boundary(self):
+        now = [0.0]
+        fragmenter = SemanticFragmenter(
+            weak_min_chars=1,
+            semantic_wait_seconds=5.0,
+            clock=lambda: now[0],
         )
-        self.assertEqual(fragmenter.flush(), ["golf"])
+        self.assertEqual(fragmenter.feed("這段話尚未結束，"), [])
+        now[0] = 5.0
+        self.assertEqual(
+            fragmenter.feed("接著這一段可以獨立朗讀，"),
+            ["這段話尚未結束，接著這一段可以獨立朗讀，"],
+        )
 
     def test_number_sequences_and_decimal_points_stay_intact(self):
         fragmenter = SemanticFragmenter(soft_limit_chars=24, hard_limit_chars=32)
@@ -704,8 +714,8 @@ class SemanticFragmenterTests(unittest.TestCase):
 
         fragments = fragmenter.feed(f"版本號碼 {number} 還有後續")
 
-        self.assertEqual(fragments, [f"版本號碼 {number}"])
-        self.assertEqual(fragmenter.flush(), ["還有後續"])
+        self.assertEqual(fragments, [])
+        self.assertEqual(fragmenter.flush(), [f"版本號碼 {number} 還有後續"])
         self.assertEqual(SemanticFragmenter().feed("價格是 3.14 元。"), ["價格是 3.14 元。"])
 
     def test_fragmentation_is_independent_of_llm_token_boundaries(self):

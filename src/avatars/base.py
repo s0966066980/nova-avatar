@@ -135,6 +135,7 @@ class BaseAvatar:
         self._on_fragment_queued = None
         self._on_fragment_failed = None
         self._fragment_playback_committed = None
+        self._fragment_playback_ended = None
         self._on_tts_onset_preroll_ms = None
         self._on_tts_retry = None
         self._on_stage_end = None
@@ -167,6 +168,7 @@ class BaseAvatar:
         on_fragment_queued=None,
         on_fragment_failed=None,
         fragment_playback_committed=None,
+        fragment_playback_ended=None,
         on_tts_onset_preroll_ms=None,
         on_tts_retry=None,
         on_stage_end=None,
@@ -178,6 +180,7 @@ class BaseAvatar:
         self._on_fragment_queued = on_fragment_queued
         self._on_fragment_failed = on_fragment_failed
         self._fragment_playback_committed = fragment_playback_committed
+        self._fragment_playback_ended = fragment_playback_ended
         self._on_tts_onset_preroll_ms = on_tts_onset_preroll_ms
         self._on_tts_retry = on_tts_retry
         self._on_stage_end = on_stage_end
@@ -253,6 +256,10 @@ class BaseAvatar:
         if not callable(checker):
             return False
         return bool(checker(eventpoint))
+
+    def fragment_playback_ended(self, eventpoint: dict) -> bool:
+        checker = self._fragment_playback_ended
+        return bool(checker(eventpoint)) if callable(checker) else True
 
     def notify_fragment_synthesis_failed(
         self,

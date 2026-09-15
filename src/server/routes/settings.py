@@ -106,6 +106,7 @@ async def set_llm_model(request):
                 params.get("reply_mode"),
                 params.get("board_max_items"),
                 params.get("assistant_profile"),
+                params.get("semantic_wait_seconds"),
             ),
         )
         return _json({"code": 0, "msg": "ok", "data": result})

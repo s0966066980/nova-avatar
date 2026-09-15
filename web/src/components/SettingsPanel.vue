@@ -76,6 +76,19 @@
               </button>
             </div>
 
+            <div class="setting-form-row">
+              <div class="field-label-group">
+                <label for="semantic-wait" class="field-main-label">語意等待上限</label>
+                <span class="field-sub-hint">模型尚未形成完整句子時，最多等待多久才尋找下一個可朗讀子句。</span>
+              </div>
+              <div class="field-control-area">
+                <div class="std-slider-combo">
+                  <input id="semantic-wait" type="range" class="std-range" min="0.5" max="30" step="0.5" v-model.number="selectedSemanticWaitSeconds">
+                  <span class="std-val-pill">{{ selectedSemanticWaitSeconds }} 秒</span>
+                </div>
+              </div>
+            </div>
+
             <div class="grid-options-row" role="listbox" :aria-label="t('settings.llm.provider')">
               <div
                 class="option-card-btn"
@@ -1393,6 +1406,7 @@ const {
   selectedResponseMaxChars,
   selectedBoardMaxItems,
   selectedReplyMode,
+  selectedSemanticWaitSeconds,
   rulesDraft,
   rulesApplied,
   rulesLimits,

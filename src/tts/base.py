@@ -11,6 +11,7 @@ TTS 基類模組
 from __future__ import annotations
 
 import queue
+import time
 import re
 from enum import Enum
 from queue import Queue
@@ -94,6 +95,15 @@ class BaseTTS:
         """Return whether text is queued or an engine is currently synthesizing it."""
         return self._synthesis_active.is_set() or not self.msgqueue.empty()
 
+    def _wait_for_fragment_playback_end(self, eventpoint: dict) -> None:
+        if not eventpoint.get("turn_id"):
+            return
+        ended = getattr(self.parent, "fragment_playback_ended", None)
+        if not callable(ended):
+            return
+        while self.state == State.RUNNING and not ended(eventpoint):
+            time.sleep(0.01)
+
     def notify_fragment_synthesis_failed(
         self,
         eventpoint: dict,
@@ -122,6 +132,7 @@ class BaseTTS:
             self._synthesis_active.set()
             try:
                 self.txt_to_audio(msg)
+                self._wait_for_fragment_playback_end(msg[1])
             except Exception:
                 logger.exception("TTS synthesis failed")
             finally:

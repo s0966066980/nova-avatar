@@ -625,6 +625,13 @@ class EdgeTTS(BaseTTS):
             )
         return True
 
+    def _playback_ended(self, job: dict) -> bool:
+        eventpoint = job["msg"][1]
+        if not eventpoint.get("turn_id"):
+            return True
+        ended = getattr(self.parent, "fragment_playback_ended", None)
+        return bool(ended(eventpoint)) if callable(ended) else True
+
     def _cancel_job(self, job: Optional[dict]) -> None:
         if job is None:
             return
@@ -686,6 +693,10 @@ class EdgeTTS(BaseTTS):
                 continue
 
             if not self._finish_job(current):
+                continue
+            if not self._playback_ended(current):
+                self._launch_queued_prefetches()
+                time.sleep(0.01)
                 continue
             current = None
             if not self._prefetch_jobs and self.msgqueue.empty():

@@ -126,6 +126,7 @@ llm:
 # 回覆語音串流已通過 Edge TTS＋MuseTalk 單會話 SLO；跨引擎驗證完成前預設保留舊有路徑。
 reply_streaming:
   enabled: false
+  semantic_wait_seconds: 5.0  # 控制台可調：等待完整語意邊界的最長時間
 
 # 數字人舞台字幕顯示窗口；只影響舞台顯示，不限制模型生成長度
 stage:
