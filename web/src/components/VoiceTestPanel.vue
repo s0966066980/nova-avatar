@@ -329,11 +329,13 @@ function statusIcon(status) {
 }
 
 function checkIcon(check) {
+  if (check.operator === 'info') return 'bi-info-circle'
   if (!check.applicable) return 'bi-dash-circle'
   return check.passed ? 'bi-check-circle-fill check-pass' : 'bi-x-circle-fill check-fail'
 }
 
 function checkSummary(check) {
+  if (check.operator === 'info') return `觀測值：${check.value ?? '—'}（不計入 Gate）`
   if (!check.applicable) return `不適用（Gate ${check.operator} ${check.threshold}${check.unit || ''}）`
   const value = typeof check.value === 'number'
     ? `${Number(check.value).toFixed(3)}${check.unit || ''}`

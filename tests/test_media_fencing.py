@@ -568,7 +568,7 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
                 return None
 
             @staticmethod
-            def notify_media_timing(_kind, _seconds):
+            def notify_media_timing(_kind, _seconds, _eventpoint=None):
                 return None
 
         frame = SimpleNamespace(pts=None, time_base=None)
@@ -861,7 +861,7 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
                 return None
 
             @staticmethod
-            def notify_media_timing(_kind, _seconds):
+            def notify_media_timing(_kind, _seconds, _eventpoint=None):
                 return None
 
             @staticmethod
@@ -915,7 +915,9 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
             _start = staticmethod(lambda _track: None)
             _stop = staticmethod(lambda _track: None)
             notify = staticmethod(lambda _eventpoint: None)
-            notify_media_timing = staticmethod(lambda _kind, _seconds: None)
+            notify_media_timing = staticmethod(
+                lambda _kind, _seconds, _eventpoint=None: None
+            )
             notify_audio_activity = staticmethod(lambda _active: None)
             notify_audio_frame = staticmethod(
                 lambda eventpoint, _active: callbacks.append(eventpoint["generation"])

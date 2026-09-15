@@ -329,7 +329,7 @@ class PlayerStreamTrack(MediaStreamTrack):
             self._player.notify(eventpoint)
         if self._player is not None:
             rate = VIDEO_CLOCK_RATE if self.kind == "video" else SAMPLE_RATE
-            self._player.notify_media_timing(self.kind, pts / rate)
+            self._player.notify_media_timing(self.kind, pts / rate, eventpoint)
         if self.kind == 'audio' and self._player is not None:
             try:
                 samples = frame.to_ndarray().astype(np.float32, copy=False)
@@ -412,6 +412,7 @@ class HumanPlayer:
         self.__on_audio_pacing = on_audio_pacing
         self.__media_positions = {}
         self.__media_update_times = {}
+        self.__media_event_keys = {}
 
     def notify_audio_pacing(
         self,
@@ -438,10 +439,25 @@ class HumanPlayer:
         if self.__on_audio_frame is not None:
             self.__on_audio_frame(eventpoint, active)
 
-    def notify_media_timing(self, kind: str, media_seconds: float) -> None:
-        """Report scalar queue/A-V timing without exposing frame contents."""
+    @staticmethod
+    def _media_event_key(eventpoint) -> Optional[tuple[str, int, int]]:
+        """Return the paired media identity, never the event payload itself."""
+        if not isinstance(eventpoint, dict) or not eventpoint.get("turn_id"):
+            return None
+        try:
+            return (
+                str(eventpoint["turn_id"]),
+                int(eventpoint["generation"]),
+                int(eventpoint["media_sequence"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def notify_media_timing(self, kind: str, media_seconds: float, eventpoint=None) -> None:
+        """Report queue debt and A/V offset only for one paired media unit."""
         self.__media_positions[kind] = media_seconds
         self.__media_update_times[kind] = time.monotonic()
+        self.__media_event_keys[kind] = self._media_event_key(eventpoint)
         if self.__on_media_timing is None:
             return
         audio_seconds = self.__media_positions.get("audio")
@@ -455,6 +471,9 @@ class HumanPlayer:
                 - self.__media_update_times["video"]
             )
             <= 0.05
+            and self.__media_event_keys.get("audio") is not None
+            and self.__media_event_keys.get("audio")
+            == self.__media_event_keys.get("video")
         )
         if updates_are_coincident:
             av_offset = round(video_seconds - audio_seconds, 6)

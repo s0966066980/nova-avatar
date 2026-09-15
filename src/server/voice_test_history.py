@@ -14,7 +14,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_HISTORY_LIMIT = 200
 DEFAULT_HISTORY_PATH = (
     Path(__file__).resolve().parents[2] / "logs" / "voice-test-history.json"
@@ -31,9 +31,13 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _stale_drop_total(metrics: dict[str, Any]) -> int:
+def _drop_total(metrics: dict[str, Any], *, reason: str | None = None) -> int:
     drops = metrics.get("stale_drops") or {}
-    return sum(int(value or 0) for value in drops.values())
+    return sum(
+        int(value or 0)
+        for key, value in drops.items()
+        if (key == "webrtc_video:late_video") == (reason == "late_video")
+    )
 
 
 def evaluate_voice_test(
@@ -45,7 +49,12 @@ def evaluate_voice_test(
     first_audio = metrics.get("first_audio_seconds")
     av_offset = metrics.get("max_abs_av_offset_seconds")
     media_debt = metrics.get("max_media_debt_seconds")
-    stale_total = _stale_drop_total(metrics)
+    # `late_video` is deliberate video backpressure: the oldest unplayed
+    # video frame is replaced to keep audio as the timing master. It is a
+    # quality signal, but not an old generation escaping the cancellation
+    # fence, so it must not fail the stale-output safety gate.
+    stale_total = _drop_total(metrics)
+    late_video_total = _drop_total(metrics, reason="late_video")
     checks = {
         "terminal_completed": {
             "label": "輪次完整完成",
@@ -102,6 +111,14 @@ def evaluate_voice_test(
             "threshold": VOICE_TEST_THRESHOLDS["stale_drops_total"],
             "applicable": True,
             "passed": stale_total == VOICE_TEST_THRESHOLDS["stale_drops_total"],
+        },
+        "late_video_drops_total": {
+            "label": "視訊背壓丟幀",
+            "value": late_video_total,
+            "operator": "info",
+            "threshold": "0 preferred",
+            "applicable": False,
+            "passed": None,
         },
         "interrupt_stop_seconds": {
             "label": "插話停止",
@@ -170,6 +187,17 @@ class VoiceTestHistory:
                 record["terminal_reason"] = "server_restarted"
                 record["completed_at"] = _utc_now()
                 changed = True
+            elif record.get("status") in {"passed", "failed"}:
+                checks, passed = evaluate_voice_test(
+                    str(record.get("terminal_reason") or "unknown"),
+                    dict(record.get("metrics") or {}),
+                    str(record.get("assistant_response") or ""),
+                )
+                if record.get("checks") != checks or record.get("passed") != passed:
+                    record["checks"] = checks
+                    record["passed"] = passed
+                    record["status"] = "passed" if passed else "failed"
+                    changed = True
         if changed:
             self._write_locked()
 

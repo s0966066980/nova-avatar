@@ -49,6 +49,17 @@ class VoiceTestEvaluationTests(unittest.TestCase):
         self.assertFalse(checks["first_audio_seconds"]["passed"])
         self.assertFalse(checks["stale_drops_total"]["passed"])
 
+    def test_late_video_backpressure_is_not_classified_as_stale_output(self):
+        metrics = passing_metrics()
+        metrics["stale_drops"] = {"webrtc_video:late_video": 5}
+
+        checks, passed = evaluate_voice_test("completed", metrics, "回答")
+
+        self.assertTrue(passed)
+        self.assertTrue(checks["stale_drops_total"]["passed"])
+        self.assertEqual(checks["late_video_drops_total"]["value"], 5)
+        self.assertFalse(checks["late_video_drops_total"]["applicable"])
+
 
 class VoiceTestHistoryTests(unittest.TestCase):
     def setUp(self):
@@ -122,6 +133,35 @@ class VoiceTestHistoryTests(unittest.TestCase):
         self.assertEqual(record["status"], "interrupted")
         self.assertEqual(record["terminal_reason"], "server_restarted")
         self.assertFalse(record["passed"])
+
+    def test_completed_history_is_reclassified_when_metric_schema_changes(self):
+        metrics = passing_metrics()
+        metrics["stale_drops"] = {"webrtc_video:late_video": 2}
+        self.path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "results": [
+                        {
+                            "id": "record-1",
+                            "turn_id": "turn-1",
+                            "status": "failed",
+                            "passed": False,
+                            "terminal_reason": "completed",
+                            "assistant_response": "回答",
+                            "metrics": metrics,
+                            "checks": {},
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        record = VoiceTestHistory(self.path).list()[0]
+
+        self.assertEqual(record["status"], "passed")
+        self.assertTrue(record["checks"]["stale_drops_total"]["passed"])
 
     def test_clear_returns_removed_count(self):
         history = VoiceTestHistory(self.path)

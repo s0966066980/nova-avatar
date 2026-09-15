@@ -37,8 +37,9 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         await player.audio.enqueue(object())
         await player.video.enqueue(object())
 
-        player.notify_media_timing("audio", 0.10)
-        player.notify_media_timing("video", 0.14)
+        eventpoint = {"turn_id": "turn-1", "generation": 0, "media_sequence": 0}
+        player.notify_media_timing("audio", 0.10, eventpoint)
+        player.notify_media_timing("video", 0.14, eventpoint)
 
         self.assertEqual(
             observations[-1],
@@ -47,6 +48,30 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
                 "av_offset_seconds": 0.04,
             },
         )
+        player.audio.stop()
+        player.video.stop()
+
+    async def test_player_ignores_unpaired_media_for_av_metric(self):
+        from src.utils.webrtc import HumanPlayer
+
+        observations = []
+        player = HumanPlayer(
+            None,
+            on_media_timing=lambda **values: observations.append(values),
+        )
+
+        player.notify_media_timing(
+            "audio",
+            0.10,
+            {"turn_id": "turn-1", "generation": 0, "media_sequence": 0},
+        )
+        player.notify_media_timing(
+            "video",
+            0.26,
+            {"turn_id": "turn-1", "generation": 0, "media_sequence": 3},
+        )
+
+        self.assertIsNone(observations[-1]["av_offset_seconds"])
         player.audio.stop()
         player.video.stop()
 
