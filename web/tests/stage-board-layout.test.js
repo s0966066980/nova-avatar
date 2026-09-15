@@ -77,3 +77,28 @@ test('控制台縮圖與參考舞台使用同一相對位置', () => {
   assert.ok(Math.abs(fullX - miniX) < 0.08)
   assert.ok(Math.abs(fullY - miniY) < 0.08)
 })
+
+test('不同大小的 9:16 舞台會維持相同看板比例與安全區', () => {
+  const reference = placeStageBoard({
+    stageW: STAGE_LAYOUT_REF_WIDTH,
+    stageH: STAGE_LAYOUT_REF_HEIGHT,
+    targetW: 252,
+    targetH: 300,
+    x: 70,
+    y: 35,
+    scale: 1
+  })
+  const enlarged = placeStageBoard({
+    stageW: STAGE_LAYOUT_REF_WIDTH * 2,
+    stageH: STAGE_LAYOUT_REF_HEIGHT * 2,
+    targetW: 252,
+    targetH: 300,
+    x: 70,
+    y: 35,
+    scale: previewScale(STAGE_LAYOUT_REF_WIDTH * 2, STAGE_LAYOUT_REF_HEIGHT * 2)
+  })
+
+  for (const key of ['left', 'top', 'width', 'height', 'captionH']) {
+    assert.equal(enlarged[key], reference[key] * 2)
+  }
+})

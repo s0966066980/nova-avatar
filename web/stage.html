@@ -386,6 +386,8 @@ import { shouldFadeStageReply } from '/src/stageReplyLifecycle.js';
 import {
   boardReopenPresentation,
   captionStyle,
+  previewScale,
+  STAGE_CAPTION_RATIO,
   STAGE_BOARD_PREVIEW_ITEMS,
   STAGE_BOARD_PREVIEW_TITLE,
   placeStageBoard
@@ -496,6 +498,7 @@ import {
       if(boardReopenLabel) boardReopenLabel.textContent=liveBoard.hidden ? '展開看板' : '收合看板';
     }
     if(!hasItems) return;
+    const scale=previewScale(stage.clientWidth, stage.clientHeight);
     const box=placeStageBoard({
       stageW:stage.clientWidth,
       stageH:stage.clientHeight,
@@ -503,8 +506,8 @@ import {
       targetH:boardLayout.height,
       x:boardLayout.x,
       y:boardLayout.y,
-      scale:1,
-      captionRatio: Math.max(0.18, (captions.offsetHeight+10)/Math.max(1,stage.clientHeight))
+      scale,
+      captionRatio: STAGE_CAPTION_RATIO
     });
     Object.assign(board.style,{
       width:`${box.width}px`, height:`${box.height}px`,

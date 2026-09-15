@@ -786,7 +786,7 @@
                 :alt="`${stagePreviewAvatarName} 數位人舞台預覽`"
               >
               <div v-else class="mini-avatar-shape"></div>
-              <div class="stage-preview-mode"><span class="stage-preview-mode-dot"></span><span>自動收音</span></div>
+              <div class="stage-preview-mode"><span class="stage-preview-mode-dot"></span><span>點擊開始收音</span></div>
               <!-- 即時同步的浮動看板 -->
               <div
                 class="mini-board-rect stage-preview-float-board"
@@ -831,7 +831,6 @@
                 <span class="stage-preview-mic-hint">直接說話</span>
               </div>
               <div
-                ref="stagePreviewCaptionsRef"
                 class="stage-preview-captions"
                 :style="stagePreviewCaptionStyle"
                 role="button"
@@ -1268,7 +1267,14 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
-import { boardReopenPresentation, captionStyle, micStyle, placeStageBoard } from '../stageBoardLayout.js'
+import {
+  boardReopenPresentation,
+  captionStyle,
+  micStyle,
+  placeStageBoard,
+  previewScale,
+  STAGE_CAPTION_RATIO
+} from '../stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
 
 const { t, setLocale } = useI18n()
@@ -1302,9 +1308,7 @@ const activeSettingsTab = ref(props.initialTab || 'ai')
 const settingsContentRef = ref(null)
 const confirmKind = ref('')
 const stagePreviewRef = ref(null)
-const stagePreviewCaptionsRef = ref(null)
 const stagePreviewSize = ref({ width: 405, height: 720 })
-const stagePreviewCaptionRatio = ref(0.2)
 let stagePreviewObserver = null
 const stageDirectEditTarget = ref('')
 const EDITOR_HEIGHT_STORAGE_KEY = STORAGE_KEYS.editorHeights
@@ -1560,6 +1564,7 @@ const stagePreviewAvatarName = computed(() => (
 const stagePreviewBoardStyle = computed(() => {
   const stageWidth = stagePreviewSize.value.width
   const stageHeight = stagePreviewSize.value.height
+  const scale = previewScale(stageWidth, stageHeight)
   const box = placeStageBoard({
     stageW: stageWidth,
     stageH: stageHeight,
@@ -1567,7 +1572,8 @@ const stagePreviewBoardStyle = computed(() => {
     targetH: Number(selectedBoardHeight.value),
     x: Number(selectedBoardX.value),
     y: Number(selectedBoardY.value),
-    captionRatio: stagePreviewCaptionRatio.value
+    scale,
+    captionRatio: STAGE_CAPTION_RATIO
   })
   return {
     top: `${box.top}px`,
@@ -1591,12 +1597,8 @@ const stagePreviewCaptionStyle = computed(() => captionStyle(
 
 const measureStagePreview = () => {
   const stageNode = stagePreviewRef.value
-  const captionsNode = stagePreviewCaptionsRef.value
   if (!stageNode?.clientWidth || !stageNode?.clientHeight) return
   stagePreviewSize.value = { width: stageNode.clientWidth, height: stageNode.clientHeight }
-  if (captionsNode) {
-    stagePreviewCaptionRatio.value = Math.max(0.18, (captionsNode.offsetHeight + 10) / stageNode.clientHeight)
-  }
 }
 
 const observeStagePreview = () => {
@@ -1604,7 +1606,6 @@ const observeStagePreview = () => {
   if (!window.ResizeObserver) return
   stagePreviewObserver = new ResizeObserver(measureStagePreview)
   if (stagePreviewRef.value) stagePreviewObserver.observe(stagePreviewRef.value)
-  if (stagePreviewCaptionsRef.value) stagePreviewObserver.observe(stagePreviewCaptionsRef.value)
   measureStagePreview()
 }
 
@@ -1641,6 +1642,7 @@ const moveStageDirectEdit = (event) => {
 
   const stageWidth = rect.width
   const stageHeight = rect.height
+  const scale = previewScale(stageWidth, stageHeight)
   const box = placeStageBoard({
     stageW: stageWidth,
     stageH: stageHeight,
@@ -1648,7 +1650,8 @@ const moveStageDirectEdit = (event) => {
     targetH: Number(selectedBoardHeight.value),
     x: Number(selectedBoardX.value),
     y: Number(selectedBoardY.value),
-    captionRatio: stagePreviewCaptionRatio.value
+    scale,
+    captionRatio: STAGE_CAPTION_RATIO
   })
   const stageX = ((event.clientX - rect.left) / rect.width) * stageWidth
   const stageY = ((event.clientY - rect.top) / rect.height) * stageHeight

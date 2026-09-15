@@ -167,12 +167,14 @@ test('所見即所得預覽以獨立 stage.html 的舞台結構呈現', () => {
   assert.match(panel, /class="stage-preview-mic-wrap"/)
   assert.match(panel, /class="stage-preview-captions"/)
   assert.match(panel, /class="mini-board-rect stage-preview-float-board"/)
-  assert.match(panel, /stagePreviewCaptionRatio/)
   assert.match(panel, /stagePreviewSize/)
+  assert.match(panel, /STAGE_CAPTION_RATIO/)
+  assert.match(panel, /previewScale\(stageWidth, stageHeight\)/)
   assert.match(panel, /width: `\$\{box\.width\}px`/)
   assert.match(standaloneStage, /class="stage" id="stage"/)
   assert.match(standaloneStage, /class="mic-wrap" id="micWrap"/)
   assert.match(standaloneStage, /class="float-board" id="board"/)
+  assert.match(standaloneStage, /previewScale\(stage\.clientWidth, stage\.clientHeight\)/)
 })
 
 test('獨立 stage.html 套用展開看板按鈕位置', () => {
