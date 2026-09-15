@@ -1,3 +1,6 @@
+// Copyright (c) 2026 HongXian0903
+// SPDX-License-Identifier: Apache-2.0
+
 export const DEFAULT_STAGE_CAPTION_MAX_CHARS = 120
 export const MIN_STAGE_CAPTION_MAX_CHARS = 20
 export const MAX_STAGE_CAPTION_MAX_CHARS = 2000

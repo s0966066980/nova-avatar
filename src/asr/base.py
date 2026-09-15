@@ -1,3 +1,7 @@
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Licensed under the Apache License, Version 2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 """
 ASR 引擎基類
 所有 ASR 引擎的統一抽象介面

@@ -1,4 +1,4 @@
-# Linly-Talker-Stream：控制台集中管理「助手定義與 Prompt」重構計劃
+# Nova Avatar：控制台集中管理「助手定義與 Prompt」重構計劃
 
 ## 1. 任務目的
 
@@ -443,7 +443,7 @@ ITRI 助手
 專案名稱：
 
 ```text
-Linly-Talker-Stream
+Nova Avatar
 ```
 
 README 中描述原專案名稱也可以保留。
@@ -732,7 +732,7 @@ def normalize_assistant_identity(
 因為使用者可能在詢問：
 
 ```text
-Linly-Talker-Stream 是什麼？
+Nova Avatar 是什麼？
 ```
 
 此時不可亂改專案名稱。
@@ -764,7 +764,7 @@ Identity Guard 只作最後保險。
 不要處理：
 
 ```text
-Linly-Talker-Stream
+Nova Avatar
 Linly 專案
 原始 Linly 架構
 ```
@@ -1405,7 +1405,7 @@ History 也必須是：
 輸入：
 
 ```text
-Linly-Talker-Stream 是一個數字人專案。
+Nova Avatar 是一個數位人專案。
 ```
 
 不得變成：

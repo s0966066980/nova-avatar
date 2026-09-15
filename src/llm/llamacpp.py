@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """掃描本機 GGUF，並按需拉起 llama-server（OpenAI 相容介面）。"""
 from __future__ import annotations
 

@@ -1,12 +1,10 @@
 [project]
-name = "linly-talker-stream-talkinggaussian"
+name = "nova-avatar-talkinggaussian-research"
 version = "0.1.0"
-description = "Linly-Talker-Stream with TalkingGaussian engine (3D)"
+description = "Research-oriented TalkingGaussian avatar integration for Nova Avatar"
 requires-python = ">=3.10, <3.12"
-license = "Apache-2.0"
-authors = [
-    { name = "Kedreamix", email = "kedreamix@gmail.com" }
-]
+license = { text = "Contains third-party and non-commercial research components; see ../../../THIRD_PARTY_NOTICES.md" }
+maintainers = [{ name = "HongXian0903" }]
 
 dependencies = [
     # 僅保留 avatar 及子模組實際 import 的庫

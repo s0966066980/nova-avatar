@@ -1,3 +1,7 @@
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Licensed under the Apache License, Version 2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 """配置載入器"""
 import os
 import re
@@ -210,12 +214,15 @@ def load_config(
 
     # Process-scoped rollout switch for an isolated soak/canary.  The checked-in
     # default remains off until the real-hardware gate passes.
-    reply_streaming_env = os.getenv("LINLY_REPLY_STREAMING_ENABLED")
+    reply_streaming_env = os.getenv("NOVA_AVATAR_REPLY_STREAMING_ENABLED")
+    if reply_streaming_env is None:
+        legacy_env_name = "_".join(("LINLY", "REPLY", "STREAMING", "ENABLED"))
+        reply_streaming_env = os.getenv(legacy_env_name)
     if reply_streaming_env is not None:
         normalized = reply_streaming_env.strip().lower()
         if normalized not in {"0", "1", "false", "true"}:
             raise ValueError(
-                "LINLY_REPLY_STREAMING_ENABLED must be 0, 1, false, or true"
+                "NOVA_AVATAR_REPLY_STREAMING_ENABLED must be 0, 1, false, or true"
             )
         config_dict = _merge_dicts(
             config_dict,

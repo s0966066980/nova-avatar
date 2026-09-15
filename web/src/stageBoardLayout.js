@@ -1,3 +1,6 @@
+// Copyright (c) 2026 HongXian0903
+// SPDX-License-Identifier: Apache-2.0
+
 /** 9:16 舞台上，看板與麥克風的共用定位。控制台對照與獨立舞台必須用同一套公式。 */
 
 export const STAGE_LAYOUT_REF_WIDTH = 405

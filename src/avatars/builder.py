@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """從閉嘴正面影片生成數字人角色素材。"""
 from __future__ import annotations
 
@@ -74,7 +77,7 @@ def extract_frames(video_path: Path, dest_dir: Path, max_frames: int = MAX_FRAME
                 break
             cv2.putText(
                 frame,
-                "Linly-Talker-Stream",
+                "Nova Avatar",
                 (10, 20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.3,

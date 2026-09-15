@@ -2,7 +2,7 @@
 
 更新日期：2026-09-11
 
-目前工作樹定義為 Linly-Talker-Stream 第一版基線。此文件只記錄已交付能力、已通過驗證與執行邊界；後續需求重新立項時再建立新的規格與計畫。
+目前工作樹定義為 Nova Avatar 第一版基線。此文件只記錄已交付能力、已通過驗證與執行邊界；後續需求重新立項時再建立新的規格與計畫。
 
 ## 已完成範圍
 
@@ -13,7 +13,7 @@
 | 回覆生成 | Ollama／llama.cpp、串流 token、交易式 history、柔性回覆長度、單一 LLM 可編輯回覆規則 |
 | 看板回答 | SIMPLE／BOARD 協定、口語摘要與看板項目分流、顯示確認、已顯示項目上下文與輪次隔離 |
 | 語音與字幕 | 多 TTS adapter、可靠語意切片、播放提交、字幕顯示窗口；字幕在播放結束或輪次提交後才淡出 |
-| 數字人 | Wav2Lip、MuseTalk、Ultralight、ER-NeRF、TalkingGaussian；MuseTalk 段落連續、待機對齊與 12 影格回答收尾 settling |
+| 數字人 | MuseTalk（Supported / Commercial）、Wav2Lip（Research / Non-commercial）、Ultralight、ER-NeRF、TalkingGaussian；MuseTalk 段落連續、待機對齊與 12 影格回答收尾 settling |
 | 設定與生命週期 | LLM、Avatar、VAD、STT、TTS、Prompt、Rule、回覆模式與舞台設定；owned llama-server 正常關閉清理 |
 | 安全與隱私 | generation fence、取消後拒絕 stale output、有界媒體背壓；未啟動錄製時不持久保存原始麥克風音訊 |
 

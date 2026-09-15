@@ -6,6 +6,9 @@
 # This software is free for non-commercial, research and evaluation use 
 # under the terms of the LICENSE.md file.
 #
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Third-party and non-commercial terms remain applicable; see THIRD_PARTY_NOTICES.md.
+#
 # For inquiries contact  george.drettakis@inria.fr
 #
 

@@ -1,3 +1,8 @@
+# Portions derived from MuseTalk and Whisper.
+# MuseTalk copyright (c) 2024 Tencent Music Entertainment Group; MIT License.
+# Whisper copyright (c) 2022 OpenAI; MIT License.
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
+
 import os
 from .whisper import load_model
 import soundfile as sf

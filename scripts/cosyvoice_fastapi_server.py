@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Owned CosyVoice FastAPI process. Run with the CosyVoice conda interpreter."""
 from __future__ import annotations
 

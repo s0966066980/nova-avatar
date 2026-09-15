@@ -1,3 +1,7 @@
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Licensed under the Apache License, Version 2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 """預設配置值"""
 from .schema import Config, AppConfig, ModelConfig, TTSConfig, LLMConfig, AudioConfig, VideoConfig, CustomVideoConfig
 

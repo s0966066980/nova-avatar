@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Content-free aggregation for the real reply-streaming soak."""
 from __future__ import annotations
 

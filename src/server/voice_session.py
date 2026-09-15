@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """One WebRTC microphone session and its server-owned conversation turns.
 
 The class deliberately exposes only audio/control input and an event sink.  VAD

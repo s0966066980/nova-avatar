@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Linly-Talker-Stream · 控制台與滿板設定中心 UI/UX 重構設計原型</title>
+  <title>Nova Avatar · 控制台與滿板設定中心 UI/UX 重構設計原型</title>
 
   <!-- 1. 嚴選字體引入：解決跨平台缺乏標準繁中字型造成的掉字、模糊與基準線破版問題 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1354,7 +1354,7 @@
         <i class="bi bi-robot"></i>
       </div>
       <div class="nav-brand-title">
-        <span>Linly-Talker-Stream</span>
+        <span>Nova Avatar</span>
         <span class="nav-version-pill">v2.0 滿板旗艦版</span>
       </div>
     </div>
@@ -1417,7 +1417,7 @@
           <!-- 快捷提問膠囊列 -->
           <div class="quick-chips-row">
             <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; white-space: nowrap;">⚡ 快捷指令:</span>
-            <button class="chip-item board-chip" onclick="quickSend('請整理 Linly-Talker-Stream 三大優勢並輸出看板')">
+            <button class="chip-item board-chip" onclick="quickSend('請整理 Nova Avatar 三大核心技術優勢並輸出看板')">
               📋 核心技術優勢 (BOARD)
             </button>
             <button class="chip-item board-chip" onclick="quickSend('請列出系統安裝部署四步驟')">
@@ -1436,14 +1436,14 @@
             <div class="bubble-row ai">
               <div class="bubble-avatar"><i class="bi bi-robot"></i></div>
               <div class="bubble-card">
-                你好！我是 Linly 數位人。神經語言模型與語音合成引擎皆已準備就緒，您可以點選下方麥克風或輸入文字開始對話。
+                你好！我是 Nova Avatar。神經語言模型與語音合成引擎皆已準備就緒，您可以點選下方麥克風或輸入文字開始對話。
               </div>
             </div>
 
             <div class="bubble-row user">
               <div class="bubble-avatar"><i class="bi bi-person-fill"></i></div>
               <div class="bubble-card">
-                請整理 Linly-Talker-Stream 三大優勢並輸出看板。
+                請整理 Nova Avatar 三大核心技術優勢並輸出看板。
               </div>
             </div>
 
@@ -1699,7 +1699,7 @@
                     <span class="field-sub-hint">每輪對話皆會套用的核心人設</span>
                   </div>
                   <div class="field-control-area flex-col">
-                    <textarea class="std-textarea" rows="4" oninput="markDirty()">你是由 Linly-Talker-Stream 驅動的繁體中文 AI 數位人助理，語氣親切專業、言簡意賅，重點條列分明。</textarea>
+                    <textarea class="std-textarea" rows="4" oninput="markDirty()">你是由 Nova Avatar 驅動的繁體中文 AI 數位人助理，語氣親切專業、言簡意賅，重點條列分明。</textarea>
                   </div>
                 </div>
 
@@ -1746,7 +1746,7 @@
                   </div>
                   <div class="option-card-btn" onclick="selectCardOption(this)">
                     <div class="opt-header-line">
-                      <span class="opt-title">Wav2Lip</span>
+                      <span class="opt-title">Wav2Lip (Research / Non-commercial)</span>
                       <span class="opt-badge" style="background: rgba(14,165,233,0.15); color: #38bdf8;">極速輕量</span>
                     </div>
                     <span class="opt-detail">傳統 GAN 架構，顯存消耗低，適合輕量邊緣設備。</span>
@@ -1823,7 +1823,7 @@
                       <span class="avatar-badge-active">使用中</span>
                     </div>
                     <div class="avatar-meta-row">
-                      <div class="avatar-name-txt">linly_girl</div>
+                      <div class="avatar-name-txt">nova_avatar</div>
                       <div class="avatar-specs-txt">1080x1920 · 25fps · MuseTalk</div>
                     </div>
                   </div>
@@ -1842,7 +1842,7 @@
                     </div>
                     <div class="avatar-meta-row">
                       <div class="avatar-name-txt">tech_support</div>
-                      <div class="avatar-specs-txt">720x1280 · 30fps · Wav2Lip</div>
+                      <div class="avatar-specs-txt">720x1280 · 30fps · Wav2Lip (Research / Non-commercial)</div>
                     </div>
                   </div>
                   <div class="avatar-item-card" onclick="selectAvatarCard(this)">
@@ -1869,7 +1869,7 @@
                     </div>
                     <div class="avatar-meta-row">
                       <div class="avatar-name-txt">finance_bot</div>
-                      <div class="avatar-specs-txt">720x1280 · 30fps · Wav2Lip</div>
+                      <div class="avatar-specs-txt">720x1280 · 30fps · Wav2Lip (Research / Non-commercial)</div>
                     </div>
                   </div>
                 </div>
@@ -2406,7 +2406,7 @@
         aiDiv.innerHTML = `
           <div class="bubble-avatar"><i class="bi bi-robot"></i></div>
           <div class="bubble-card">
-            ${isBoard ? '已為您整理好結構化重點，請查閱右側 9:16 舞台上的浮動看板。' : '好的，Linly 全雙工即時串流引擎已接收您的訊息並正常回應。'}
+            ${isBoard ? '已為您整理好結構化重點，請查閱右側 9:16 舞台上的浮動看板。' : '好的，Nova Avatar 全雙工即時串流引擎已接收您的訊息並正常回應。'}
           </div>
         `;
         flow.appendChild(aiDiv);

@@ -1,3 +1,8 @@
+# Portions derived from MuseTalk.
+# Copyright (c) 2024 Tencent Music Entertainment Group.
+# Licensed under the MIT License.
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
+
 import sys
 from face_detection import FaceAlignment,LandmarksType
 from os import listdir, path

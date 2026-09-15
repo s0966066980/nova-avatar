@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Transactional conversation history for streamed voice turns."""
 from __future__ import annotations
 

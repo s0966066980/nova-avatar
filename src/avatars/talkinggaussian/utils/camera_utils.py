@@ -1,4 +1,7 @@
 #
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Existing non-commercial research/evaluation terms below remain applicable.
+#
 # Copyright (C) 2023, Inria
 # GRAPHDECO research group, https://team.inria.fr/graphdeco
 # All rights reserved.

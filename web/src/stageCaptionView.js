@@ -1,3 +1,6 @@
+// Copyright (c) 2026 HongXian0903
+// SPDX-License-Identifier: Apache-2.0
+
 const DEFAULT_EXIT_DURATION_MS = 220
 
 export class StageCaptionView {

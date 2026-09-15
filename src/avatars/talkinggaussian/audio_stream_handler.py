@@ -1,4 +1,9 @@
-# Linly-Talker-Stream (https://github.com/Kedreamix/Linly-Talker-Stream). Copyright [Linly-talker-stream@kedreamix]. Apache-2.0.
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Copyright [Linly-talker-stream@kedreamix].
+# Licensed under the Apache License, Version 2.0.
+#
+# Modified by HongXian0903, 2026.
+# See LICENSE, NOTICE, and THIRD_PARTY_NOTICES.md.
 import time
 import numpy as np
 import torch

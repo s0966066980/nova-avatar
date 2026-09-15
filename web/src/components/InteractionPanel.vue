@@ -1,3 +1,5 @@
+<!-- Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+     Modified by HongXian0903, 2026. See LICENSE and NOTICE. -->
 <template>
   <div class="card interaction-card">
     <div class="card-header">
@@ -99,7 +101,7 @@ const activeTab = ref('chat')
 const chatInput = ref('')
 const ttsInput = ref('')
 const chatMessages = ref([
-  { type: 'system', text: '歡迎使用Linly-Talker-Stream，請點選"開始連線"按鈕開始對話。' }
+  { type: 'system', text: '歡迎使用 Nova Avatar，請點選「開始連線」按鈕開始對話。' }
 ])
 const chatMessagesRef = ref(null)
 

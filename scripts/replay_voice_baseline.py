@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
 """Run deterministic legacy voice-turn replays and emit content-free SLO JSON."""
 from __future__ import annotations
 

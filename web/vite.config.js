@@ -32,7 +32,7 @@ try {
     
     if (!quietConfig) {
       console.log('┌─────────────────────────────────────────────┐')
-      console.log('│  📡 Linly-Talker-Stream 配置載入成功        │')
+      console.log('│  📡 Nova Avatar 配置載入成功                │')
       console.log('├─────────────────────────────────────────────┤')
       console.log(`│  配置檔案:  ${configFile.padEnd(27)} │`)
       console.log(`│  SSL/HTTPS: ${useSSL ? '✅ 已啟用' : '❌ 未啟用'}                        │`)

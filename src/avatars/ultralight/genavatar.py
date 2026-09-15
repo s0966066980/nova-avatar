@@ -1,3 +1,6 @@
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Third-party terms remain applicable; see THIRD_PARTY_NOTICES.md.
+
 import argparse
 import os
 import cv2

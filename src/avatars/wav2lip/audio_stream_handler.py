@@ -1,4 +1,11 @@
-# Linly-Talker-Stream (https://github.com/Kedreamix/Linly-Talker-Stream). Copyright [Linly-talker-stream@kedreamix]. Apache-2.0.
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Copyright [Linly-talker-stream@kedreamix].
+# Licensed under the Apache License, Version 2.0.
+# Contains code derived from the Wav2Lip open-source project.
+# Upstream non-commercial usage restrictions apply.
+#
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
+# See THIRD_PARTY_NOTICES.md.
 # Based on LiveTalking (C) 2024 LiveTalking@lipku https://github.com/lipku/LiveTalking (Apache-2.0).
 
 """Wav2Lip 音訊流處理器 - 提取 Mel 頻譜特徵"""

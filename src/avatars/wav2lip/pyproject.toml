@@ -1,12 +1,10 @@
 [project]
-name = "linly-talker-stream-wav2lip"
+name = "nova-avatar-wav2lip-research"
 version = "0.1.0"
-description = "Linly-Talker-Stream with Wav2Lip engine (2D)"
+description = "Research-only Wav2Lip avatar integration for Nova Avatar"
 requires-python = ">=3.10, <3.12"
-license = "Apache-2.0"
-authors = [
-    { name = "Kedreamix", email = "kedreamix@gmail.com" }
-]
+license = { text = "Contains Wav2Lip-derived components subject to upstream non-commercial terms; see ../../../THIRD_PARTY_NOTICES.md" }
+maintainers = [{ name = "HongXian0903" }]
 
 dependencies = [
     # Wav2Lip 專用依賴

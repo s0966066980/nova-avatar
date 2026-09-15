@@ -1,3 +1,5 @@
+<!-- Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+     Modified by HongXian0903, 2026. See LICENSE and NOTICE. -->
 <template>
   <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">

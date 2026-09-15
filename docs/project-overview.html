@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Linly-Talker-Stream 的專案架構、資料流、模組責任、啟動方式與串流現況。">
-  <title>Linly-Talker-Stream｜專案架構與說明</title>
+  <meta name="description" content="Nova Avatar 的專案架構、資料流、模組責任、啟動方式與串流現況。">
+  <title>Nova Avatar｜專案架構與說明</title>
   <style>
     :root {
       color-scheme: light;
@@ -447,7 +447,7 @@
     <div class="topbar-inner">
       <a class="brand" href="#top" aria-label="回到頁首">
         <span class="brand-mark" aria-hidden="true">LT</span>
-        <span>Linly-Talker-Stream</span>
+        <span>Nova Avatar</span>
       </a>
       <nav class="nav" aria-label="頁面導覽">
         <a href="#flow">資料流</a>
@@ -598,7 +598,7 @@
               <tr><td>STT</td><td>faster-whisper、FunASR</td><td>Whisper Base</td><td>GPU FP16；資源不足時可降級 CPU INT8。</td></tr>
               <tr><td>LLM</td><td>Ollama、llama.cpp</td><td>Ollama</td><td>可在設定頁列出模型，支援 Prompt 與約略回覆字數。</td></tr>
               <tr><td>TTS</td><td>Edge、GPT-SoVITS、XTTS、CosyVoice、Fish、IndexTTS2</td><td>Edge TTS</td><td>套用前先試聽。</td></tr>
-              <tr><td>Avatar</td><td>Wav2Lip、MuseTalk、Ultralight、ER-NeRF、TalkingGaussian</td><td>Wav2Lip</td><td>各引擎的素材格式、權重與 GPU 成本不同。</td></tr>
+              <tr><td>Avatar</td><td>MuseTalk（Supported / Commercial）、Wav2Lip（Research / Non-commercial）、Ultralight、ER-NeRF、TalkingGaussian</td><td>MuseTalk</td><td>各引擎的素材格式、權重、GPU 與授權要求不同。</td></tr>
             </tbody>
           </table>
         </div>
@@ -629,7 +629,7 @@
           <p class="kicker">File map</p>
           <h2>不知道從哪裡找，就從這張目錄圖開始</h2>
         </div>
-        <pre class="tree" aria-label="專案目錄結構">Linly-Talker-Stream/
+        <pre class="tree" aria-label="專案目錄結構">nova-avatar/
 ├── config/                 服務與模型設定
 ├── docs/
 │   ├── adr/                已接受的架構決策
@@ -689,7 +689,7 @@ https://localhost:3000</code></pre>
 
   <footer>
     <div class="container footer-inner">
-      <p>Linly-Talker-Stream · 專案架構快覽</p>
+      <p>Nova Avatar · 專案架構快覽</p>
       <div class="footer-links">
         <a href="../README.md">README</a>
         <a href="project-status.md">目前完成度</a>
@@ -702,7 +702,12 @@ https://localhost:3000</code></pre>
     (() => {
       const root = document.documentElement;
       const button = document.getElementById('theme-toggle');
-      const saved = localStorage.getItem('linly-overview-theme');
+      const storageKey = 'nova-avatar-overview-theme';
+      const legacyStorageKey = ['linly', 'overview', 'theme'].join('-');
+      const currentValue = localStorage.getItem(storageKey);
+      const legacyValue = currentValue === null ? localStorage.getItem(legacyStorageKey) : null;
+      if (legacyValue !== null) localStorage.setItem(storageKey, legacyValue);
+      const saved = currentValue ?? legacyValue;
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const initial = saved || (prefersDark ? 'dark' : 'light');
 
@@ -716,7 +721,7 @@ https://localhost:3000</code></pre>
       applyTheme(initial);
       button.addEventListener('click', () => {
         const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('linly-overview-theme', next);
+        localStorage.setItem(storageKey, next);
         applyTheme(next);
       });
     })();

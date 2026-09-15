@@ -1,9 +1,11 @@
 [project]
-name = "linly-talker-musetalk"
+name = "nova-avatar-musetalk"
 version = "0.1.0"
-description = "MuseTalk avatar module for Linly-Talker-Stream"
+description = "MuseTalk avatar integration for Nova Avatar"
 readme = "README.md"
 requires-python = ">=3.10, <3.12"
+license = { text = "MuseTalk-derived code is MIT; Nova Avatar modifications are Apache-2.0; see ../../../THIRD_PARTY_NOTICES.md" }
+maintainers = [{ name = "HongXian0903" }]
 # Note: OpenMMLab packages (mmcv, mmdet, mmpose) should be installed via mim:
 #   pip install --no-cache-dir -U openmim
 #   mim install mmengine

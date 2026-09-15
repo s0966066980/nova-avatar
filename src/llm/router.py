@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Reply mode router: determines whether a user query requires SIMPLE or BOARD response mode.
 
 Uses a Rule-First -> LLM-Fallback design to guarantee sub-millisecond routing

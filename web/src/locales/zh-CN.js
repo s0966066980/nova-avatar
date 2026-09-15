@@ -1,7 +1,10 @@
+// Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+// Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 // 中文語言包
 export default {
   header: {
-    title: 'Linly-Talker-Stream',
+    title: 'Nova Avatar',
     subtitle: '全雙工即時互動數字人',
     status: {
       connected: '已連線',
@@ -221,7 +224,7 @@ export default {
       roleNameDesc: '可留空，系統會按檔名自動命名',
       start: '開始製作角色',
       working: '正在製作角色...',
-      unsupported: '當前引擎不能從影片生成。請改選 MuseTalk 或 Wav2Lip。',
+      unsupported: '當前引擎不能從影片生成。請改選 MuseTalk，或僅限研究／非商用的 Wav2Lip。',
       needDisconnect: '製作角色會佔用 GPU，請先斷開當前連線。'
     },
     

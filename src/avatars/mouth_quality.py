@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """嘴型貼回與角色製作的畫質參數。
 
 MuseTalk / Wav2Lip 的口型模型輸出固定 256 像素。貼回較大的臉框時，

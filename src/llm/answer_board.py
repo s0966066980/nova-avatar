@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """口語摘要與看板回覆分流：在 TTS 之前把朗讀文字與條列項目拆開。"""
 
 from __future__ import annotations

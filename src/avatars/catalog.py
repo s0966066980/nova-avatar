@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """掃描本地數字人素材，判斷引擎型別與預覽圖。"""
 from __future__ import annotations
 
@@ -11,12 +14,12 @@ AVATAR_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.-]*$"
 
 ENGINE_META: Dict[str, Dict[str, str]] = {
     "musetalk": {
-        "label": "MuseTalk",
-        "description": "高質量唇形同步，適合近景人像",
+        "label": "MuseTalk (Supported / Commercial)",
+        "description": "MIT code；高質量唇形同步，模型與依賴需另行核對授權",
     },
     "wav2lip": {
-        "label": "Wav2Lip",
-        "description": "輕量快速，適合低延遲場景",
+        "label": "Wav2Lip (Research / Non-commercial)",
+        "description": "上游公開版僅限研究、學術與個人用途，不可商用",
     },
     "ultralight": {
         "label": "UltraLight",

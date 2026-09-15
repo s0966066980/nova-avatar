@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 # ========================================
-# Linly-Talker-Stream - 全棧啟動指令碼
+# Nova Avatar - 全棧啟動指令碼
 # 與分開執行 start-backend.sh + start-frontend.sh 同一套服務
 # ========================================
 
@@ -20,7 +23,7 @@ BACKEND_PID=""
 BACKEND_PGID=""
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}🚀 Linly-Talker-Stream - 全棧服務啟動${NC}"
+echo -e "${BLUE}🚀 Nova Avatar - 全棧服務啟動${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 

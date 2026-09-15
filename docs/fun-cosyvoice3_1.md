@@ -2,7 +2,7 @@
 
 請修改目前專案：
 
-`https://github.com/s0966066980/Linly-Talker-Stream`
+`https://github.com/s0966066980/nova-avatar`
 
 目標是改善：
 

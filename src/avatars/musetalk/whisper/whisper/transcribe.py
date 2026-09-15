@@ -1,3 +1,7 @@
+# Portions derived from Whisper as bundled by MuseTalk.
+# Copyright (c) 2022 OpenAI. Licensed under the MIT License.
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
+
 import argparse
 import os
 import warnings

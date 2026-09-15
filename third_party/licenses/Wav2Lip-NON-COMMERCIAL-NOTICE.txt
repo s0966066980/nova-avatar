@@ -1,0 +1,15 @@
+Wav2Lip Open-Source Usage Notice
+================================
+
+The Wav2Lip open-source project states that results from its open-source code
+or demo may be used only for research, academic, and personal purposes, and
+that commercial use is prohibited because its models are trained on LRS2.
+
+This notice is a summary, not a replacement for the upstream terms. Review the
+current upstream project and the licenses for every code, model, weight, and
+dataset artifact before use or redistribution:
+
+https://github.com/Rudrabha/Wav2Lip
+
+Nova Avatar classifies its bundled Wav2Lip integration as Research /
+Non-commercial. It must not be used in or bundled with a commercial release.

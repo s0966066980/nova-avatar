@@ -1,12 +1,15 @@
 [project]
-name = "linly-talker-stream"
-version = "0.1.0"
-description = "Linly-Talker-Stream: 即時流式數字人對話系統 - 模組化多 Avatar 支援，基於 WebRTC 的全雙工互動"
+name = "nova-avatar"
+version = "1.0.0"
+description = "Real-time full-duplex conversational digital human framework"
 readme = "README.md"
 requires-python = ">=3.10, <3.12"
 license = { text = "Apache-2.0" }
 authors = [
-    { name = "Kedreamix", email = "kedreamix@gmail.com" }
+    { name = "HongXian0903" }
+]
+maintainers = [
+    { name = "HongXian0903" }
 ]
 
 dependencies = [
@@ -45,6 +48,10 @@ dependencies = [
 vad = [
     "silero-vad>=5.1",           # Silero VAD，pip 包自帶模型，可離線使用
 ]
+
+[project.urls]
+Repository = "https://github.com/s0966066980/nova-avatar"
+
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cu124" },

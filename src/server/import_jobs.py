@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """後臺製作數字人角色的任務佇列。"""
 from __future__ import annotations
 

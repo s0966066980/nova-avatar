@@ -13,7 +13,7 @@ app:
     host: 0.0.0.0  # 0.0.0.0 允許外部訪問，localhost 僅本地
 
 model:
-  type: musetalk  # 開發環境使用更快的 wav2lip 模型
+  type: musetalk  # 預設使用 MuseTalk；模型與依賴需另行核對授權
   avatar_id: musetalk_avatar1
   batch_size: 16  
   musetalk:

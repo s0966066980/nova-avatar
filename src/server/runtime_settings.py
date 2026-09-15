@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """執行時設定：Ollama 模型列表、LLM 切換、數字人切換與配置持久化。"""
 from __future__ import annotations
 

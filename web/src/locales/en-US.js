@@ -1,7 +1,10 @@
+// Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+// Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 // English language pack
 export default {
   header: {
-    title: 'Linly-Talker-Stream',
+    title: 'Nova Avatar',
     subtitle: 'Real-time Interactive Digital Human',
     status: {
       connected: 'Connected',
@@ -229,7 +232,7 @@ export default {
       roleNameDesc: 'Leave empty to name it from the file name',
       start: 'Create character',
       working: 'Creating character...',
-      unsupported: 'This engine cannot be created from a video. Choose MuseTalk or Wav2Lip.',
+      unsupported: 'This engine cannot be created from a video. Choose MuseTalk, or Wav2Lip for research/non-commercial use only.',
       needDisconnect: 'Creating a character uses the GPU. Disconnect the current session first.'
     },
     

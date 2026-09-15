@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
 """Run a content-free real WebRTC voice soak against a local backend.
 
 The fixture utterances and decoded audio live only in memory. The only durable

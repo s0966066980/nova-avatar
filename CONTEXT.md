@@ -1,4 +1,9 @@
-# Linly Talker Stream
+<!--
+Copyright (c) 2026 HongXian0903
+SPDX-License-Identifier: Apache-2.0
+-->
+
+# Nova Avatar
 
 即時數字人對話系統的共通語言，涵蓋使用者語音、數字人回覆與雙方輪替規則。
 
@@ -101,7 +106,7 @@ _Avoid_: 凍結最後影格、生成接續語音、全畫面轉場
 _Avoid_: 單指嘴型閃跳、一般待機動作、只靠主觀感受
 
 **Owned llama-server**：
-由本次 Linly-Talker-Stream backend 程序透過 `Popen` 啟動並持有 process handle 的 llama.cpp 服務；只有這類程序會在 backend 正常關閉時自動停止。
+由本次 Nova Avatar backend 程序透過 `Popen` 啟動並持有 process handle 的 llama.cpp 服務；只有這類程序會在 backend 正常關閉時自動停止。
 _Avoid_: 依 port 猜測所有權、關閉外部管理的 llama-server、把 SIGKILL 當成可清理關閉
 
 **看板回覆**：

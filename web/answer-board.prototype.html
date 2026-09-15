@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Linly · 舞台浮動看板原型</title>
+  <title>Nova Avatar · 舞台浮動看板原型</title>
   <!-- Throwaway prototype.
        Question: how should the answer board float on the 9:16 digital-human stage,
        with live width/height, background transparency, and position?
@@ -582,9 +582,13 @@
     };
 
     let sizes = structuredClone(defaults);
-    const storageKey = 'linly.answer-board.prototype.stage-float.v3';
+    const storageKey = 'nova-avatar.answer-board.prototype.stage-float.v3';
+    const legacyStorageKey = ['linly', 'answer-board', 'prototype', 'stage-float', 'v3'].join('.');
     try {
-      const saved = JSON.parse(localStorage.getItem(storageKey));
+      const currentValue = localStorage.getItem(storageKey);
+      const legacyValue = currentValue === null ? localStorage.getItem(legacyStorageKey) : null;
+      if (legacyValue !== null) localStorage.setItem(storageKey, legacyValue);
+      const saved = JSON.parse(currentValue ?? legacyValue);
       for (const key of ['width','height']) if (Number.isFinite(saved?.[key])) sizes[key] = saved[key];
       for (const key of ['transparency','x','y']) if (Number.isFinite(saved?.[key])) sizes[key] = Math.max(0, Math.min(100, saved[key]));
       if (saved?.preset === 'custom' || positions[saved?.preset]) sizes.preset = saved.preset;

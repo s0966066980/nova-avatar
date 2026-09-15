@@ -1,3 +1,6 @@
+# Bundled with the Wav2Lip integration; upstream non-commercial restrictions apply.
+# See THIRD_PARTY_NOTICES.md.
+
 import os
 import cv2
 from torch.utils.model_zoo import load_url

@@ -1,4 +1,9 @@
-# Linly-Talker-Stream (https://github.com/Kedreamix/Linly-Talker-Stream). Copyright [Linly-talker-stream@kedreamix]. Apache-2.0.
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Copyright [Linly-talker-stream@kedreamix].
+# Licensed under the Apache License, Version 2.0.
+#
+# Modified by HongXian0903, 2026.
+# See LICENSE, NOTICE, and THIRD_PARTY_NOTICES.md.
 # Based on LiveTalking (C) 2024 LiveTalking@lipku https://github.com/lipku/LiveTalking (Apache-2.0).
 
 """Ultralight 音訊流處理器 - 使用 Hubert 提取音訊特徵"""

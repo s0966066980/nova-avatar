@@ -1,3 +1,7 @@
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Licensed under the Apache License, Version 2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 import logging
 import os
 from datetime import datetime
@@ -13,7 +17,7 @@ os.makedirs(log_dir, exist_ok=True)
 
 # 日誌檔名加上時間
 date_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-log_filename = f'linly-talker-stream_{date_str}.log'
+log_filename = f'nova-avatar_{date_str}.log'
 log_path = os.path.join(log_dir, log_filename)
 
 fhandler = logging.FileHandler(log_path)

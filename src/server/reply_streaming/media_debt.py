@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Media-time accounting used to bound reply-streaming queues."""
 from __future__ import annotations
 

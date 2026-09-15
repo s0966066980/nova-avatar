@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Cooperative LLM-token producer for the bounded TTS fragment channel."""
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
 """接入自檢：驗證 config、Ollama LLM 與 EdgeTTS 是否可用。
 
 用法（需在專案根目錄）：
@@ -32,7 +34,9 @@ def check_llm(cfg):
     from openai import OpenAI
 
     client = OpenAI(api_key=cfg.llm.api_key, base_url=cfg.llm.base_url)
-    prompt = Path("config/prompt.txt").read_text(encoding="utf-8").strip()
+    prompt = str(cfg.llm.assistant_profile.system_prompt or "").strip()
+    if not prompt:
+        prompt = Path("config/prompt_en.txt").read_text(encoding="utf-8").strip()
 
     t0 = time.perf_counter()
     stream = client.chat.completions.create(

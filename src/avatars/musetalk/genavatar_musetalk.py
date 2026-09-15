@@ -1,3 +1,9 @@
+# Portions derived from MuseTalk.
+# Copyright (c) 2024 Tencent Music Entertainment Group.
+# Licensed under the MIT License.
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
+# See third_party/licenses/MuseTalk-LICENSE.txt.
+
 import argparse
 import glob
 import json
@@ -30,7 +36,7 @@ def video2imgs(vid_path, save_path, ext='.png', cut_frame=10000000):
             break
         ret, frame = cap.read()
         if ret:
-            cv2.putText(frame, "Linly-Talker-Stream", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
+            cv2.putText(frame, "Nova Avatar", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
             cv2.imwrite(f"{save_path}/{count:08d}.png", frame)
             count += 1
         else:

@@ -74,7 +74,7 @@ class ReplyStreamingConfigTests(unittest.TestCase):
         from src.config.loader import load_config
 
         config_path = Path(__file__).resolve().parents[1] / "config" / "config.yaml"
-        with patch.dict(os.environ, {"LINLY_REPLY_STREAMING_ENABLED": "1"}):
+        with patch.dict(os.environ, {"NOVA_AVATAR_REPLY_STREAMING_ENABLED": "1"}):
             config = load_config(str(config_path))
 
         self.assertTrue(config.reply_streaming.enabled)

@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 # ========================================
-# Linly-Talker-Stream - 前端啟動指令碼
+# Nova Avatar - 前端啟動指令碼
 # 即時流式數字人對話系統
 # ========================================
 
@@ -22,7 +25,7 @@ FRONTEND_DIR="$PROJECT_ROOT/web"
 CONFIG_FILE="${1:-config/config.yaml}"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}🚀 Linly-Talker-Stream - 前端服務啟動${NC}"
+echo -e "${BLUE}🚀 Nova Avatar - 前端服務啟動${NC}"
 echo -e "${BLUE}   即時流式數字人對話系統${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""

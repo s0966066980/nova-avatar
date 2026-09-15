@@ -1,3 +1,6 @@
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Third-party terms remain applicable; see THIRD_PARTY_NOTICES.md.
+
 import math
 import torch
 import numpy as np
@@ -195,5 +198,4 @@ class ERNeRFAvatar(BaseAvatar):
             if video_track._queue.qsize() >= 5:
                 time.sleep(0.04 * video_track._queue.qsize() * 0.8)
         logger.info('ERNeRFAvatar thread stop')
-            
-            
+

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """執行時設定 API：Ollama 模型、數字人引擎與角色。"""
 from __future__ import annotations
 

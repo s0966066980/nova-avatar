@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Existing third-party terms remain applicable; see THIRD_PARTY_NOTICES.md.
+
 
 import torch
 import torch.nn as nn

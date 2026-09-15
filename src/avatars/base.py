@@ -1,4 +1,9 @@
-# Linly-Talker-Stream (https://github.com/Kedreamix/Linly-Talker-Stream). Copyright [Linly-talker-stream@kedreamix]. Apache-2.0.
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Copyright [Linly-talker-stream@kedreamix].
+# Licensed under the Apache License, Version 2.0.
+#
+# Modified by HongXian0903, 2026.
+# See LICENSE and NOTICE for details.
 # Based on LiveTalking (C) 2024 LiveTalking@lipku https://github.com/lipku/LiveTalking (Apache-2.0).
 
 import math
@@ -563,7 +568,7 @@ class BaseAvatar:
                 frame_type=0 if self.speaking else audiotype,
                 eventpoint=video_eventpoint,
             )
-            cv2.putText(combine_frame, "Linly-Talker-Stream", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
+            cv2.putText(combine_frame, "Nova Avatar", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
            
             image = combine_frame
             new_frame = VideoFrame.from_ndarray(image, format="bgr24")

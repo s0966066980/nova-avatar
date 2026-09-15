@@ -15,7 +15,7 @@ app:
 
 model:
   # 啟動時若該角色素材齊全會預載；否則服務仍會啟動，到設定裡再選
-  type: musetalk  # wav2lip | musetalk | ultralight | ernerf | talkinggaussian
+  type: musetalk  # wav2lip 僅限研究非商用 | musetalk | ultralight | ernerf | talkinggaussian
   avatar_id: musetalk_avatar1
   # Low-latency conversation: 8 frames = 320ms at 25fps (was 640ms at 16).
   batch_size: 8

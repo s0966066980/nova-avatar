@@ -1,7 +1,11 @@
+// Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+// Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 // 語言管理 Composable
 import { ref, computed } from 'vue'
 import zhTW from '../locales/zh-TW.js'
 import enUS from '../locales/en-US.js'
+import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
 
 const languages = {
   'zh-TW': zhTW,
@@ -38,14 +42,18 @@ export function useI18n() {
   const setLocale = (locale) => {
     const next = normalizeLocale(locale)
     currentLocale.value = next
-    localStorage.setItem('linly-talker-stream-language', next)
+    localStorage.setItem(STORAGE_KEYS.language, next)
   }
   
   const loadLocale = () => {
-    const savedLocale = localStorage.getItem('linly-talker-stream-language')
+    const savedLocale = readMigratedStorage(
+      localStorage,
+      STORAGE_KEYS.language,
+      LEGACY_STORAGE_KEYS.language
+    )
     currentLocale.value = normalizeLocale(savedLocale)
     if (savedLocale && savedLocale !== currentLocale.value) {
-      localStorage.setItem('linly-talker-stream-language', currentLocale.value)
+      localStorage.setItem(STORAGE_KEYS.language, currentLocale.value)
     }
   }
   

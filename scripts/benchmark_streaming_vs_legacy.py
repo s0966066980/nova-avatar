@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
 """Benchmark Streaming Mode vs Legacy Mode for Voice Turns.
 
 Measures:

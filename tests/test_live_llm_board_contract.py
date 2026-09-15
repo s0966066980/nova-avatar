@@ -1,7 +1,7 @@
 """Opt-in contract probe for the configured real LLM board protocol.
 
 This is deliberately excluded from the default unit suite: it calls the local
-configured model.  Run it with LINLY_LIVE_LLM_CONTRACT=1 after starting the
+configured model.  Run it with NOVA_AVATAR_LIVE_LLM_CONTRACT=1 after starting the
 model endpoint.
 """
 
@@ -16,8 +16,8 @@ from src.llm.rules import RulesSnapshot, default_rules
 
 
 @unittest.skipUnless(
-    os.getenv("LINLY_LIVE_LLM_CONTRACT") == "1",
-    "set LINLY_LIVE_LLM_CONTRACT=1 to run the configured real-model contract",
+    os.getenv("NOVA_AVATAR_LIVE_LLM_CONTRACT") == "1",
+    "set NOVA_AVATAR_LIVE_LLM_CONTRACT=1 to run the configured real-model contract",
 )
 class LiveLLMBoardContractTests(unittest.TestCase):
     @classmethod

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Deterministic, post-protocol normalization for LLM output."""
 
 from __future__ import annotations

@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 # ========================================
-# Linly-Talker-Stream - 環境安裝指令碼
+# Nova Avatar - 環境安裝指令碼
 # 即時流式數字人對話系統
 # ========================================
 
@@ -19,10 +22,10 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Python 版本
 PYTHON_VERSION="3.10.19"
 # 預設 Avatar
-DEFAULT_AVATAR="${1:-wav2lip}"
+DEFAULT_AVATAR="${1:-musetalk}"
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}🚀 Linly-Talker-Stream - 環境安裝指令碼${NC}"
+echo -e "${BLUE}🚀 Nova Avatar - 環境安裝指令碼${NC}"
 echo -e "${BLUE}   即時流式數字人對話系統${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
@@ -33,13 +36,13 @@ show_usage() {
     echo -e "${YELLOW}  $0 [avatar_name]${NC}"
     echo ""
     echo -e "${YELLOW}支援的 Avatar:${NC}"
-    echo -e "${YELLOW}  wav2lip          # 2D Avatar（預設，推薦入門）${NC}"
-    echo -e "${YELLOW}  musetalk         # 2D Avatar（效果自然）${NC}"
+    echo -e "${YELLOW}  musetalk         # 2D Avatar（預設，MIT code）${NC}"
+    echo -e "${YELLOW}  wav2lip          # 2D Avatar（僅限研究／學術／個人用途，不可商用）${NC}"
     echo -e "${YELLOW}  ernerf           # 3D Avatar（神經輻射場）${NC}"
     echo -e "${YELLOW}  talkinggaussian  # 3D Avatar（高斯潑濺）${NC}"
     echo ""
     echo -e "${YELLOW}示例:${NC}"
-    echo -e "${YELLOW}  $0                # 安裝 wav2lip 環境${NC}"
+    echo -e "${YELLOW}  $0                # 安裝 musetalk 環境${NC}"
     echo -e "${YELLOW}  $0 musetalk       # 安裝 musetalk 環境${NC}"
     echo ""
 }

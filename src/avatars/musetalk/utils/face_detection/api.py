@@ -1,3 +1,8 @@
+# Portions derived from MuseTalk and bundled face-alignment code.
+# MuseTalk copyright (c) 2024 Tencent Music Entertainment Group; MIT License.
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Existing third-party author notices remain applicable.
+
 from __future__ import print_function
 import os
 import torch

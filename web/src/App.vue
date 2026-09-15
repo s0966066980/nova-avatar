@@ -1,4 +1,11 @@
-<!-- Linly-Talker-Stream (https://github.com/Kedreamix/Linly-Talker-Stream). Copyright [Linly-talker-stream@kedreamix]. Apache-2.0. -->
+<!--
+Derived from Kedreamix/Linly-Talker-Stream.
+Copyright [Linly-talker-stream@kedreamix].
+Licensed under the Apache License, Version 2.0.
+
+Substantially modified by HongXian0903, 2026.
+See LICENSE and NOTICE.
+-->
 <template>
   <div class="app-root-shell" :data-sample="currentTheme">
 
@@ -11,7 +18,7 @@
           <i class="bi bi-robot"></i>
         </div>
         <div class="nav-brand-title">
-          <span>Linly-Talker-Stream</span>
+          <span>Nova Avatar</span>
           <span class="nav-version-pill">v2.0</span>
         </div>
       </div>
@@ -111,7 +118,7 @@
             <!-- 快捷提問膠囊列 -->
             <div class="quick-chips-row">
               <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; white-space: nowrap;">⚡ 快捷指令:</span>
-              <button class="chip-item board-chip" @click="quickSend('請整理 Linly-Talker-Stream 三大優勢並輸出看板')">
+              <button class="chip-item board-chip" @click="quickSend('請整理 Nova Avatar 三大核心技術優勢並輸出看板')">
                 📋 核心技術優勢 (BOARD)
               </button>
               <button class="chip-item board-chip" @click="quickSend('請列出系統安裝部署四步驟')">
@@ -140,7 +147,7 @@
               <div style="display: flex; flex-direction: column; gap: 8px;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                   <span style="font-size: 11px; color: var(--text-tertiary);">BOARD:</span>
-                  <button class="chip-item board-chip" :disabled="!isConnected || isThinking" @click="runTestQuery('請條列出 Linly-Talker-Stream 目前支援的語音與影像推論引擎規格。')">規格條列展示</button>
+                  <button class="chip-item board-chip" :disabled="!isConnected || isThinking" @click="runTestQuery('請條列出 Nova Avatar 目前支援的語音與影像推論引擎規格。')">規格條列展示</button>
                   <button class="chip-item board-chip" :disabled="!isConnected || isThinking" @click="runTestQuery('請列出系統安裝部署四步驟')">部署步驟 (BOARD)</button>
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -437,6 +444,7 @@ import { useRuntimeSettings } from './composables/useRuntimeSettings'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
+import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from './storageKeys.js'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 
@@ -569,7 +577,7 @@ const setDesignSample = (sampleKey) => {
   currentTheme.value = resolvedKey
   document.body.setAttribute('data-sample', resolvedKey)
   document.documentElement.setAttribute('data-theme', isWhite ? 'light' : 'dark')
-  localStorage.setItem('linly_design_sample', resolvedKey)
+  localStorage.setItem(STORAGE_KEYS.designSample, resolvedKey)
   updateTheme(isWhite ? 'white' : 'dark')
   if (settingsPanelRef.value?.syncTheme) {
     settingsPanelRef.value.syncTheme(resolvedKey)
@@ -1108,7 +1116,7 @@ const toggleTheme = () => {
   appSettings.value.theme = next
   updateTheme(next)
   try {
-    localStorage.setItem('linly-talker-stream-theme', next)
+    localStorage.setItem(STORAGE_KEYS.theme, next)
   } catch (e) {
     // Ignore storage issues
   }
@@ -1483,7 +1491,11 @@ onMounted(async () => {
   loadLocale()
   
   // 應用初始主題
-  const savedSample = localStorage.getItem('linly_design_sample') || 'obsidian'
+  const savedSample = readMigratedStorage(
+    localStorage,
+    STORAGE_KEYS.designSample,
+    LEGACY_STORAGE_KEYS.designSample
+  ) || 'obsidian'
   setDesignSample(savedSample)
   
   const wrap = videoWrapperRef.value

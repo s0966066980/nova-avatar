@@ -1,4 +1,9 @@
-# Linly-Talker-Stream (https://github.com/Kedreamix/Linly-Talker-Stream). Copyright [Linly-talker-stream@kedreamix]. Apache-2.0.
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Copyright [Linly-talker-stream@kedreamix].
+# Licensed under the Apache License, Version 2.0.
+#
+# Modified by HongXian0903, 2026.
+# See LICENSE and NOTICE for details.
 # Based on LiveTalking (C) 2024 LiveTalking@lipku https://github.com/lipku/LiveTalking (Apache-2.0).
 
 """伺服器啟動和配置"""
@@ -90,7 +95,7 @@ def run_server(app, config):
     
     # 啟動資訊集中列印，便於排查配置問題
     logger.info('┌─────────────────────────────────────────────┐')
-    logger.info('│  🚀 Linly-Talker-Stream 後端服務啟動中...   │')
+    logger.info('│  🚀 Nova Avatar 後端服務啟動中...           │')
     logger.info('├─────────────────────────────────────────────┤')
     logger.info(f'│  協議: {protocol.upper():<37} │')
     logger.info(f'│  監聽地址: {listen_host:<30} │')

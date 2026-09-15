@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Silero VAD speech endpointing."""
 
 from .base import BaseVAD

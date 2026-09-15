@@ -1,3 +1,5 @@
+<!-- Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+     Modified by HongXian0903, 2026. See LICENSE and NOTICE. -->
 <template>
   <div class="settings-page-layout" id="settings-page-layout">
 
@@ -342,7 +344,7 @@
                 @click="selectEngine('musetalk')"
               >
                 <div class="opt-header-line">
-                  <span class="opt-title">MuseTalk</span>
+                  <span class="opt-title">MuseTalk (Supported / Commercial)</span>
                   <span class="opt-badge">推薦高畫質</span>
                 </div>
                 <span class="opt-detail">潛空間擴散模型，口型細緻自然，邊緣連續無抖動。</span>
@@ -353,7 +355,7 @@
                 @click="selectEngine('wav2lip')"
               >
                 <div class="opt-header-line">
-                  <span class="opt-title">Wav2Lip</span>
+                  <span class="opt-title">Wav2Lip (Research / Non-commercial)</span>
                   <span class="opt-badge" style="background: rgba(14,165,233,0.15); color: #38bdf8;">極速輕量</span>
                 </div>
                 <span class="opt-detail">傳統 GAN 架構，顯存消耗低，適合輕量邊緣設備。</span>
@@ -1069,7 +1071,7 @@
                   <span class="field-sub-hint">Zero-shot 必填；請逐字填入選取音檔中實際說的內容，才能保留原本的語氣與韻律。</span>
                 </div>
                 <div class="field-control-area">
-                  <textarea id="tts-cosyvoice-ref-text" class="chat-text-entry" v-model.trim="ttsDraft.ref_text" :required="ttsDraft.mode === 'zero_shot'" rows="2" placeholder="例如：您好，歡迎使用 Linly Talker。"></textarea>
+                  <textarea id="tts-cosyvoice-ref-text" class="chat-text-entry" v-model.trim="ttsDraft.ref_text" :required="ttsDraft.mode === 'zero_shot'" rows="2" placeholder="例如：您好，歡迎使用 Nova Avatar。"></textarea>
                 </div>
               </div>
 
@@ -1254,6 +1256,7 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { boardReopenPresentation, captionStyle, micStyle, placeStageBoard } from '../stageBoardLayout.js'
+import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
 
 const { t, setLocale } = useI18n()
 const props = defineProps({
@@ -1291,7 +1294,7 @@ const stagePreviewSize = ref({ width: 405, height: 720 })
 const stagePreviewCaptionRatio = ref(0.2)
 let stagePreviewObserver = null
 const stageDirectEditTarget = ref('')
-const EDITOR_HEIGHT_STORAGE_KEY = 'linly-talker-stream-editor-heights'
+const EDITOR_HEIGHT_STORAGE_KEY = STORAGE_KEYS.editorHeights
 const DEFAULT_EDITOR_HEIGHTS = Object.freeze({
   prompt: 176,
   activation: 96,
@@ -1301,7 +1304,11 @@ const DEFAULT_EDITOR_HEIGHTS = Object.freeze({
 
 const loadEditorHeights = () => {
   try {
-    const stored = JSON.parse(localStorage.getItem(EDITOR_HEIGHT_STORAGE_KEY) || '{}')
+    const stored = JSON.parse(readMigratedStorage(
+      localStorage,
+      EDITOR_HEIGHT_STORAGE_KEY,
+      LEGACY_STORAGE_KEYS.editorHeights
+    ) || '{}')
     return Object.fromEntries(Object.entries(DEFAULT_EDITOR_HEIGHTS).map(([key, fallback]) => {
       const value = Number(stored[key])
       return [key, Number.isFinite(value) && value >= 72 && value <= 1600 ? Math.round(value) : fallback]
@@ -1517,7 +1524,7 @@ const currentBoardStyleLabel = computed(() => {
 
 const settingsTabs = computed(() => [
   { id: 'ai', icon: 'bi bi-cpu-fill', label: 'AI 模型與規則', badge: selectedProvider.value === 'ollama' ? 'Ollama' : 'llama.cpp' },
-  { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip' },
+  { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
   { id: 'voice', icon: 'bi bi-soundwave', label: '語音活動與辨識', badge: 'Silero' },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
@@ -1871,13 +1878,13 @@ const saveAndApplyFullSettings = async () => {
 }
 
 const persistLocalSettings = () => {
-  localStorage.setItem('linly-talker-stream-settings', JSON.stringify(settings.value))
+  localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings.value))
   emit('settings-changed', settings.value)
 }
 
 const resetSettings = () => {
   settings.value = { ...defaultSettings }
-  localStorage.removeItem('linly-talker-stream-settings')
+  localStorage.removeItem(STORAGE_KEYS.settings)
   emit('settings-changed', settings.value)
   emit('notification', t('notifications.settingsReset'), 'success')
 }
@@ -1962,7 +1969,11 @@ const loadRuntimePanel = async () => {
 onMounted(() => {
   observeStagePreview()
   loadRuntimePanel()
-  const savedSettings = localStorage.getItem('linly-talker-stream-settings')
+  const savedSettings = readMigratedStorage(
+    localStorage,
+    STORAGE_KEYS.settings,
+    LEGACY_STORAGE_KEYS.settings
+  )
   if (savedSettings) {
     try {
       settings.value = { ...defaultSettings, ...JSON.parse(savedSettings) }

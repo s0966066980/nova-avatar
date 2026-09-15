@@ -1,4 +1,6 @@
-# 開發環境配置
+# Wav2Lip 研究環境配置（Research / Non-commercial）
+# 上游公開版僅限研究、學術與個人用途；不可用於商業發行。
+# 見 THIRD_PARTY_NOTICES.md。
 app:
   listenport: 8010
   max_session: 1

@@ -25,8 +25,8 @@ class TextNormalizerTests(unittest.TestCase):
             "我是 ITRI 助手。",
         )
         self.assertEqual(
-            normalize_assistant_identity("Linly-Talker-Stream 是一個數字人專案。", assistant_name="ITRI 助手", forbidden_names=["Linly"]),
-            "Linly-Talker-Stream 是一個數字人專案。",
+            normalize_assistant_identity("Nova Avatar 是一個數位人專案。", assistant_name="ITRI 助手", forbidden_names=["Nova Avatar"]),
+            "Nova Avatar 是一個數位人專案。",
         )
 
     def test_unsolicited_identity_is_removed_but_identity_answer_is_preserved(self):

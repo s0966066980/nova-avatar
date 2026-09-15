@@ -1,3 +1,6 @@
+// Copyright (c) 2026 HongXian0903
+// SPDX-License-Identifier: Apache-2.0
+
 const ERROR_REASONS = new Set([
   'tts_error_before_commit',
   'tts_error_after_commit',

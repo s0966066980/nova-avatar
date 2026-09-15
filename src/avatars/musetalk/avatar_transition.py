@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Visual-only, cursor-preserving MuseTalk speech-to-idle transitions."""
 from __future__ import annotations
 

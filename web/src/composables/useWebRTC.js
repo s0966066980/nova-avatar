@@ -1,3 +1,6 @@
+// Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+// Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 // One peer connection carries avatar A/V, the microphone uplink and voice events.
 export function useWebRTC(options = {}) {
   let pc = null

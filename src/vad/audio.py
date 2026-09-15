@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """
 VAD 用到的音訊解碼 / 重取樣工具
 

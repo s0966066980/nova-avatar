@@ -1,7 +1,9 @@
 {
-  "name": "linly-talker-stream-web",
+  "name": "nova-avatar-web",
   "version": "1.0.0",
-  "description": "Linly-Talker-Stream 即時流式數字人對話系統 - 前端介面",
+  "description": "Nova Avatar Web frontend",
+  "author": "HongXian0903",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Content-free, monotonic measurements for one voice turn."""
 from __future__ import annotations
 

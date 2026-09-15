@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """
 VAD 服務層：把「上傳的音訊位元組」變成「只含語音的音訊位元組」
 

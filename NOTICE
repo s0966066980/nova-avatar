@@ -1,14 +1,24 @@
 NOTICE
 ======
 
-Linly-Talker-Stream: https://github.com/Kedreamix/Linly-Talker-Stream
+Nova Avatar
+Copyright (c) 2026 HongXian0903
+
+This project is an independently maintained derivative work based in part on:
+
+Linly-Talker-Stream
 Copyright (c) Kedreamix
+Licensed under the Apache License, Version 2.0.
 
-This product includes software developed by:
+Portions of the real-time avatar and WebRTC architecture are based on or
+adapted from LiveTalking.
+Licensed under the Apache License, Version 2.0.
 
-- LiveTalking: https://github.com/lipku/LiveTalking
+This project also contains, integrates, adapts, or interfaces with third-party
+software and models including MuseTalk, Wav2Lip, Whisper, FunASR, ER-NeRF,
+TalkingGaussian and others. Those components and their models remain subject
+to their own terms. In particular, the bundled Wav2Lip integration is for
+research, academic, and personal use only and is not permitted for commercial
+use under the upstream open-source terms.
 
-This repository also references and/or integrates third-party projects and models
-such as Wav2Lip, MuseTalk, ER-NeRF, Whisper, FunASR, edge-tts, etc. Please review
-and comply with their respective licenses when using or redistributing.
-
+See THIRD_PARTY_NOTICES.md for additional license and attribution information.

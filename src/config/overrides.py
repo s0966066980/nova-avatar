@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """設定面板寫入的執行時覆蓋，啟動時疊在主配置之上。"""
 from __future__ import annotations
 

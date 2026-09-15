@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Low-cost temporal compositing for MuseTalk mouth transitions.
 
 The controller owns only visual state.  It never waits for audio, touches a

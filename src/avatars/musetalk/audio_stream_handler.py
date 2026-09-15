@@ -1,3 +1,9 @@
+# Portions derived from MuseTalk.
+# Copyright (c) 2024 Tencent Music Entertainment Group.
+# Licensed under the MIT License.
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
+# See third_party/licenses/MuseTalk-LICENSE.txt.
+
 """MuseTalk 音訊流處理器 - 使用 Whisper 提取音訊特徵"""
 import time
 import numpy as np

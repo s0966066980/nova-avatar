@@ -9,7 +9,7 @@ app:
   ssl_key: ssl_certs/localhost.key
 
 model:
-  type: ernerf  # wav2lip | musetalk | ultralight | ernerf
+  type: ernerf  # wav2lip 僅限研究非商用 | musetalk | ultralight | ernerf
   avatar_id: ernerf_obama
   # ERNeRF 專屬配置
   ernerf:

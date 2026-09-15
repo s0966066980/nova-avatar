@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """
 VAD 引擎基類
 所有 VAD（語音活動檢測）引擎的統一抽象介面

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """可編輯的單一 LLM 回覆規則。"""
 
 from __future__ import annotations

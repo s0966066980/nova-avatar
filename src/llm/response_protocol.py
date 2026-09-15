@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Streaming response protocol parser, thinking suppression, and board validation.
 
 Provides streaming separation of conversational speech and visual board JSON,
