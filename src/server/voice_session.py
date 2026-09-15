@@ -38,6 +38,7 @@ from src.vad.service import create_segmenter
 
 
 EventSink = Callable[[str], None]
+TestResultSink = Callable[[dict], object]
 OUTPUT_STALL_FRAMES = 50  # one second at the 20 ms audio commit clock
 
 
@@ -88,12 +89,14 @@ class VoiceTurnSession:
         *,
         clock: Callable[[], float] = time.monotonic,
         presenter: str = "console",
+        test_result_sink: Optional[TestResultSink] = None,
     ) -> None:
         self.sessionid = sessionid
         self.config = config
         self.avatar = avatar
         self._presenter = presenter if presenter in {"console", "stage"} else "console"
         self._event_sink: Optional[EventSink] = None
+        self._test_result_sink = test_result_sink
         self._sequence = 0
         self._turn_id: Optional[str] = None
         self._generation = 0
@@ -358,6 +361,7 @@ class VoiceTurnSession:
             raise RuntimeError("上一個對話輪次尚未結束")
         self._turn_id = uuid4().hex
         self._start_turn_context(self._turn_id)
+        self._metrics.mark_speech_end()
         generation = self._generation
         turn_id = self._turn_id
         self._turn_task = asyncio.create_task(
@@ -1033,12 +1037,25 @@ class VoiceTurnSession:
         if snapshot.get("turn_id") != target_turn:
             return
         self._metrics_emitted_turns.add(target_turn)
+        metric_payload = {
+            "turn_id": target_turn,
+            "terminal_reason": terminal_reason,
+            "pipeline_mode": self._pipeline_mode,
+            "metrics": snapshot,
+        }
+        if callable(self._test_result_sink):
+            try:
+                self._test_result_sink(
+                    {
+                        **metric_payload,
+                        "assistant_response": self.played_assistant_text,
+                    }
+                )
+            except Exception:
+                logger.exception("Persisting voice test result failed")
         self._emit(
             "turn_metrics",
-            turn_id=target_turn,
-            terminal_reason=terminal_reason,
-            pipeline_mode=self._pipeline_mode,
-            metrics=snapshot,
+            **metric_payload,
         )
 
     def observe_media_timing(

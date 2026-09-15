@@ -63,6 +63,9 @@ def create_app():
     app.router.add_get("/api/avatars/{avatar_id}/preview", routes.avatar_preview)
     app.router.add_post("/api/avatars/import", routes.import_avatar)
     app.router.add_get("/api/avatars/import/{job_id}", routes.import_avatar_status)
+    app.router.add_get("/api/voice-tests", routes.list_voice_tests)
+    app.router.add_post("/api/voice-tests/run", routes.run_voice_test)
+    app.router.add_delete("/api/voice-tests", routes.clear_voice_tests)
     # 前端靜態資源託管
     app.router.add_static('/', path='web')
     

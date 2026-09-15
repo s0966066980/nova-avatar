@@ -92,7 +92,7 @@ See LICENSE and NOTICE.
                   :class="{ active: showTestPanel }"
                   @click="showTestPanel = !showTestPanel"
                 >
-                  <i class="bi bi-speedometer2"></i> 路由測試
+                  <i class="bi bi-speedometer2"></i> 語音驗證
                 </button>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -132,31 +132,18 @@ See LICENSE and NOTICE.
               </button>
             </div>
 
-            <!-- 雙模式即時測試面板 (showTestPanel) -->
-            <div v-if="showTestPanel" class="router-test-panel" style="margin: 0 16px 12px 16px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px;">
-                  <i class="bi bi-speedometer2" style="color: var(--brand-light);"></i>
-                  <span>雙模式測試面板 (Rule Router & Board)</span>
-                  <span v-if="currentResponseMode" class="sample-tag" style="font-size: 10px; margin-left: 6px;">
-                    {{ currentResponseMode === 'board' ? '📋 看板模式 (BOARD)' : '💬 一般對話 (SIMPLE)' }}
-                  </span>
-                </div>
-                <button class="btn-board-x" @click="showTestPanel = false" title="收合面板">✕</button>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <span style="font-size: 11px; color: var(--text-tertiary);">BOARD:</span>
-                  <button class="chip-item board-chip" :disabled="!isConnected || isThinking" @click="runTestQuery('請條列出 Nova Avatar 目前支援的語音與影像推論引擎規格。')">規格條列展示</button>
-                  <button class="chip-item board-chip" :disabled="!isConnected || isThinking" @click="runTestQuery('請列出系統安裝部署四步驟')">部署步驟 (BOARD)</button>
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <span style="font-size: 11px; color: var(--text-tertiary);">SIMPLE:</span>
-                  <button class="chip-item" :disabled="!isConnected || isThinking" @click="runTestQuery('請用一句話介紹你自己與目前系統狀態。')">簡短問答 (無看板)</button>
-                  <button class="chip-item" :disabled="!isConnected || isThinking" @click="runTestQuery('請問現在時間幾點？目前虛擬人服務運行正常嗎？')">詢問時間與狀態</button>
-                </div>
-              </div>
-            </div>
+            <VoiceTestPanel
+              v-if="showTestPanel"
+              ref="voiceTestPanelRef"
+              :session-id="sessionId"
+              :connected="isConnected"
+              :busy="isThinking || ['avatar_speaking', 'tail_guard'].includes(voiceState)"
+              :voice-state="voiceState"
+              @close="showTestPanel = false"
+              @started="handleVoiceTestStarted"
+              @finished="handleVoiceTestFinished"
+              @notification="showNotification"
+            />
 
             <!-- 對話模式：對話訊息瀑布流 -->
             <div v-if="activeMode === 'chat'" class="chat-flow-container" id="chatFlowBox" ref="messagesRef">
@@ -438,6 +425,7 @@ See LICENSE and NOTICE.
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import DebugPanel from './components/DebugPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
+import VoiceTestPanel from './components/VoiceTestPanel.vue'
 import { useWebRTC } from './composables/useWebRTC'
 import { useI18n } from './composables/useI18n'
 import { useRuntimeSettings } from './composables/useRuntimeSettings'
@@ -661,19 +649,7 @@ const backendReady = ref(false)  // 後端是否就緒
 const modelReady = ref(false)    // 是否已套用數字人引擎
 const stageBoard = reactive(createConsoleBoardState())
 const showTestPanel = ref(false)
-const currentResponseMode = ref('')
-const testPresets = [
-  { mode: 'board', label: '分析台灣歷史', query: '請分析台灣的歷史。' },
-  { mode: 'board', label: '安裝部署步驟', query: '請列出系統安裝與部署的關鍵步驟' },
-  { mode: 'board', label: '方案優缺點比較', query: '比較方案 A 與方案 B 的優缺點' },
-  { mode: 'simple', label: '日常問候', query: '你好！很高興認識你。' },
-  { mode: 'simple', label: '今天是幾月幾號', query: '今天是幾月幾號？' },
-  { mode: 'simple', label: '簡短自我介紹', query: '請用一句話簡短介紹你自己。' }
-]
-const runTestQuery = (query) => {
-  chatInput.value = query
-  sendChatMessage()
-}
+const voiceTestPanelRef = ref(null)
 const videoWrapperRef = ref(null)
 const videoSizeBox = reactive({ w: 400, h: 400 })
 const visibleBoard = computed(() => {
@@ -828,6 +804,7 @@ const getNotificationIcon = (type) => {
 }
 
 const handleVoiceEvent = (event) => {
+  voiceTestPanelRef.value?.handleVoiceEvent(event)
   if (event.type === 'state') {
     voiceState.value = event.state
     isRecordingVoice.value = ['listening', 'speech_detected'].includes(event.state)
@@ -920,12 +897,8 @@ const handleVoiceEvent = (event) => {
     ) {
       lastMessage.time = getCurrentTime()
     }
-  } else if (event.type === 'assistant_response_mode') {
-    currentResponseMode.value = event.mode || ''
   } else if (applyConsoleBoardEvent(stageBoard, event)) {
-    if (event.type === 'board_clear') {
-      currentResponseMode.value = ''
-    } else if (event.type === 'assistant_board') {
+    if (event.type === 'assistant_board') {
       acknowledgeRenderedBoardItems(event, stageBoard.items.length)
     } else if (event.type === 'board_item') {
       acknowledgeRenderedBoardItems(event, 1, Number(event.index))
@@ -953,6 +926,18 @@ const handleVoiceEvent = (event) => {
   } else if (event.type === 'speaking_end') {
     voiceState.value = 'tail_guard'
   }
+}
+
+const handleVoiceTestStarted = ({ prompt, turnId }) => {
+  addMessage(prompt, 'user', { voiceTurnId: turnId, testRun: true })
+  isThinking.value = true
+}
+
+const handleVoiceTestFinished = (record) => {
+  showNotification(
+    record.passed ? '語音測試已通過並保存紀錄' : '語音測試完成，但有指標未通過',
+    record.passed ? 'success' : 'warning'
+  )
 }
 
 const {

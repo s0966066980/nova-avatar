@@ -86,6 +86,7 @@ async def offer(request):
         state.config,
         avatar_stream,
         presenter=client_role,
+        test_result_sink=state.voice_test_history.complete,
     )
     state.voice_sessions[sessionid] = voice_session
     # This is intentionally before "listening": Silero and STT failures degrade

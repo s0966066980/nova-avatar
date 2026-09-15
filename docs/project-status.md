@@ -19,6 +19,7 @@
 | 語音與字幕 | 多 TTS adapter、可靠語意切片、播放提交、字幕顯示窗口；字幕在播放結束或輪次提交後才淡出 |
 | 數字人 | MuseTalk（Supported / Commercial）、Wav2Lip（Research / Non-commercial）、Ultralight、ER-NeRF、TalkingGaussian；MuseTalk 段落連續、待機對齊與 12 影格回答收尾 settling |
 | 設定與生命週期 | LLM、Avatar、VAD、STT、TTS、Prompt、Rule、回覆模式與舞台設定；owned llama-server 正常關閉清理 |
+| 控制台驗證 | 自訂 Prompt 的一鍵真實語音鏈路測試、逐階段延遲與既有 SLO Gate、環境快照、實際播放回覆及本機持久歷史 |
 | 安全與隱私 | generation fence、取消後拒絕 stale output、有界媒體背壓；未啟動錄製時不持久保存原始麥克風音訊 |
 
 ## 正式實機基準
@@ -45,11 +46,13 @@
 - 離線專案檢查：passed。它驗證目前設定、品牌／授權必備檔案、核心 Python
   整合依賴與 MuseTalk commercial review profile，且不寫入音訊。
 - 本輪語音流程 focused Python tests：144 passed、12 subtests passed。
-- Web：70 tests passed。
+- Web：74 tests passed。
 - Vite production build：passed。
-- 使用 `uv sync --extra funasr --extra musetalk` 後，完整 Python suite 收集 402 項：
-  399 passed、3 skipped。FunASR 與 MuseTalk 的 import 與對應測試路徑均已驗證。
+- 使用 `uv sync --extra funasr --extra musetalk` 後，完整 Python suite 收集 411 項：
+  408 passed、3 skipped。FunASR、MuseTalk 與控制台語音驗證的對應測試路徑均已驗證。
 - 嘴型連續、待機對齊、settling、字幕生命週期、看板提交與可編輯規則均有專用回歸測試。
+- 控制台「語音驗證」使用目前 WebRTC 會話執行真實播放；一般對話不寫入測試歷史，
+  測試 Prompt、實際播放文字、環境與延遲紀錄保存在 `logs/voice-test-history.json`。
 
 ## 正式執行設定
 

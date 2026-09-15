@@ -22,6 +22,41 @@ LLM 語意切片、TTS、MuseTalk 播放提交與下一輪收音恢復。此次�
 5. 下一個語音片段必須等前一片最後一個音訊影格完成，避免句子疊音。
 6. 回答播放完成或無效音訊被丟棄後，伺服器釋放輪次並推送 `listening`，恢復收音。
 
+## 控制台一鍵語音驗證
+
+即時演播控制台的「語音驗證」面板可輸入自訂 Prompt，透過目前已連線的
+`VoiceTurnSession` 執行 LLM → TTS → Avatar → WebRTC 完整播放。它不是模擬器，
+也不會另外建立繞過正式流程的測試鏈路。開始測試時若正常對話尚未完成，伺服器
+會拒絕啟動，避免測試中斷或污染既有輪次。
+
+每筆測試會保存以下內容：
+
+- 自訂測試名稱、Prompt、實際完成播放的數字人回覆與 UTC 起訖時間。
+- LLM、TTS、ASR、數字人引擎、角色與回覆模式快照；不保存 API key。
+- 首音、各固定處理階段、A/V 偏差、媒體債務、音訊 pacing 與 stale drop 指標。
+- 各項 Gate 的量測值、門檻、適用性與最終通過／未通過判定。
+
+紀錄以 schema version 1 寫入 `logs/voice-test-history.json`，最多保留最近 200 筆；
+可用 `NOVA_AVATAR_VOICE_TEST_HISTORY` 指定其他位置。寫入採同目錄暫存檔與原子
+取代，伺服器重啟時未完成的紀錄會改標記為 `interrupted`。控制台可重新整理、
+檢視完整階段資料或清除歷史，但執行中的測試不可清除。
+
+Prompt 與實際播放文字是操作者明確要求保存的測試內容，可能包含敏感資料；原始
+麥克風音訊與音訊檔不會因這個功能而保存。一般對話的 `turn_metrics` 沒有登記成
+測試時不會寫入此歷史。
+
+### 單次判定與正式基準的差異
+
+單次 Prompt 測試採既有首音 P95 Gate（≤ 2.5 s）、A/V 偏差（≤ 0.08 s）、最大
+媒體債務（≤ 2 s）與 stale output（必須為 0），並要求輪次完整完成且存在實際播放
+回覆。首音起點是伺服器接受測試 Prompt 的時間；因此它涵蓋 LLM、語意切片、TTS、
+數字人與 WebRTC 首音提交，但不含 VAD／ASR。
+
+插話停止與恢復收音需要插話或多輪事件，對一般 Prompt 單次測試顯示「不適用」，
+不會假裝成通過。正式效能宣告仍須在相同硬體和引擎條件下至少執行 50 回合並計算
+P50／P95；控制台一鍵測試適合日常 smoke test、設定比較與逐次回歸紀錄，不能取代
+正式 soak report。
+
 ## 根因與修正
 
 ### 無效音訊後麥克風失效
@@ -72,8 +107,8 @@ LLM 語意切片、TTS、MuseTalk 播放提交與下一輪收音恢復。此次�
 | 驗證 | 結果 |
 | --- | --- |
 | 無效音訊恢復、語意等待、播放提交、回覆協定與音訊時序 focused tests | 144 passed，12 subtests passed |
-| Python 完整測試 | 399 passed，3 skipped |
-| Web 測試 | 70 passed |
+| Python 完整測試 | 408 passed，3 skipped（含一鍵語音驗證歷史與 API） |
+| Web 測試 | 74 passed（含語音驗證面板、事件關聯與缺值顯示） |
 | Vite production build | passed；僅保留既有大 chunk 警告 |
 | `scripts/check-integration.py` | passed；FunASR 與 MuseTalk 目前引擎依賴可匯入 |
 | `git diff --check` | passed |

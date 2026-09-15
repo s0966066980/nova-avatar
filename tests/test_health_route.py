@@ -59,3 +59,6 @@ class ServerRouteRegistrationTests(unittest.TestCase):
         }
 
         self.assertIn(("POST", "/api/speech/path-picker"), registered)
+        self.assertIn(("GET", "/api/voice-tests"), registered)
+        self.assertIn(("POST", "/api/voice-tests/run"), registered)
+        self.assertIn(("DELETE", "/api/voice-tests"), registered)

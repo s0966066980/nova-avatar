@@ -8,6 +8,7 @@ from .chat import human, interrupt_talk, is_speaking, clear_history
 from .audio import humanaudio, asr
 from .video import set_audiotype, record, download_record
 from .health import health_check
+from .voice_tests import list_voice_tests, run_voice_test, clear_voice_tests
 from .settings import (
     get_settings,
     get_vad_settings,
@@ -41,6 +42,9 @@ __all__ = [
     'record',
     'download_record',
     'health_check',
+    'list_voice_tests',
+    'run_voice_test',
+    'clear_voice_tests',
     'get_settings',
     'get_vad_settings',
     'set_vad_settings',

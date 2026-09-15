@@ -392,6 +392,37 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(committed["reason"], "completed")
         await session.close()
 
+    async def test_registered_voice_test_receives_played_text_before_metric_event(self):
+        persisted = []
+        session, avatar, events = self.make_session()
+        session._test_result_sink = persisted.append
+        metadata = {
+            "turn_id": "turn-1",
+            "generation": 0,
+            "fragment_sequence": 0,
+            "fragment_end": True,
+        }
+        avatar.on_fragment_queued("實際播出的測試回答", metadata)
+        session._llm_finished = True
+        session.on_output_audio_frame(metadata, True)
+        session.on_output_audio(True)
+
+        with (
+            patch("src.server.voice_session.commit_session_history"),
+            patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
+        ):
+            session.on_output_audio(False)
+            session.on_output_audio(False)
+            session.on_output_audio(False)
+            await session._tail_task
+
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0]["assistant_response"], "實際播出的測試回答")
+        self.assertEqual(persisted[0]["terminal_reason"], "completed")
+        metric_event = next(event for event in events if event["type"] == "turn_metrics")
+        self.assertNotIn("assistant_response", metric_event)
+        await session.close()
+
 
 class ReplyCircuitBreakerTests(unittest.TestCase):
     def test_third_error_opens_breaker_for_next_turn_only(self):

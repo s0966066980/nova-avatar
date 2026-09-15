@@ -6,6 +6,7 @@
 from typing import Any, Dict, Set
 from src.avatars.base import BaseAvatar
 from aiortc import RTCPeerConnection
+from src.server.voice_test_history import VoiceTestHistory
 
 
 class ServerState:
@@ -15,6 +16,7 @@ class ServerState:
         # 會話管理
         self.avatar_streams: Dict[int, BaseAvatar] = {}  # sessionid -> BaseAvatar
         self.voice_sessions: Dict[int, Any] = {}
+        self.voice_test_history = VoiceTestHistory()
         self.session_roles: Dict[int, str] = {}
         
         # WebRTC 連線管理
