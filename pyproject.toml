@@ -48,6 +48,12 @@ dependencies = [
 vad = [
     "silero-vad>=5.1",           # Silero VAD，pip 包自帶模型，可離線使用
 ]
+funasr = [
+    "funasr>=1.1",
+]
+musetalk = [
+    "nova-avatar-musetalk",
+]
 
 [project.urls]
 Repository = "https://github.com/s0966066980/nova-avatar"
@@ -58,6 +64,7 @@ dev = [
 ]
 
 [tool.uv.sources]
+nova-avatar-musetalk = { path = "src/avatars/musetalk", editable = true }
 torch = [
     { index = "pytorch-cu124" },
 ]

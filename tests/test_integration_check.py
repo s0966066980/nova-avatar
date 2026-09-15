@@ -32,6 +32,10 @@ class IntegrationCheckTests(unittest.TestCase):
         self.assertIn("docs/source-attribution-audit.md", integration_check.REQUIRED_FILES)
         self.assertIn("docs/software-stack.md", integration_check.REQUIRED_FILES)
 
+    def test_runtime_module_contract_covers_selected_optional_engines(self):
+        self.assertEqual(integration_check.RUNTIME_MODULES["funasr"], ("funasr",))
+        self.assertEqual(integration_check.RUNTIME_MODULES["musetalk"], ("einops", "ffmpeg"))
+
 
 if __name__ == "__main__":
     unittest.main()

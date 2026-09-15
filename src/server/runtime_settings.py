@@ -1049,7 +1049,7 @@ STT_ENGINE_META = {
     "funasr": {
         "label": "FunASR",
         "module": "funasr",
-        "install": 'uv pip install "funasr>=1.1"',
+        "install": "uv sync --extra funasr",
         "description": "paraformer-zh，中文優先",
     },
 }

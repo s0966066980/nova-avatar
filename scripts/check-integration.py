@@ -35,6 +35,10 @@ REQUIRED_FILES = {
     "docs/current-project-workflow.md": ("Current Project Workflow", "清除過往工作項目"),
 }
 REQUIRED_MODULES = ("openai", "edge_tts", "yaml")
+RUNTIME_MODULES = {
+    "funasr": ("funasr",),
+    "musetalk": ("einops", "ffmpeg"),
+}
 
 
 def _fail(message: str) -> None:
@@ -69,6 +73,25 @@ def check_project_contract() -> None:
         _fail(f"缺少已宣告的 Python 依賴: {', '.join(missing_modules)}")
     print(f"{OK} 品牌、授權與 release 文件契約正常")
     print(f"{OK} 核心 Python 整合依賴可匯入")
+
+
+def check_selected_runtime_dependencies(cfg) -> None:
+    """Ensure the engines selected by the effective config have their modules."""
+    required = set(RUNTIME_MODULES.get(cfg.asr.type, ()))
+    required.update(RUNTIME_MODULES.get(cfg.model.type, ()))
+    missing = sorted(name for name in required if importlib.util.find_spec(name) is None)
+    if missing:
+        extras = []
+        if cfg.asr.type == "funasr":
+            extras.append("uv sync --extra funasr")
+        if cfg.model.type == "musetalk":
+            extras.append("uv sync --extra musetalk")
+        _fail(
+            "目前設定所選引擎缺少依賴: "
+            f"{', '.join(missing)}。執行：{'；'.join(extras)}"
+        )
+    if required:
+        print(f"{OK} 目前 ASR／Avatar 引擎依賴可匯入")
 
 
 def check_commercial_profile() -> None:
@@ -151,6 +174,7 @@ def main(argv: list[str] | None = None) -> int:
     print("=" * 54)
     cfg = check_config(args.config)
     check_project_contract()
+    check_selected_runtime_dependencies(cfg)
     check_commercial_profile()
     if args.smoke:
         print("-" * 54)

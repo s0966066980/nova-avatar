@@ -188,6 +188,11 @@ uv run python scripts/check-integration.py --smoke
 該命令不會寫入音檔；需要保留 Edge TTS 輸出時才加上
 `--output logs/tts_check.mp3`。
 
+FunASR 與 MuseTalk 是可選 runtime。選用 FunASR 時執行
+`uv sync --extra funasr`；選用 MuseTalk 時先依 `scripts/setup-env.sh musetalk`
+完成 CUDA／OpenMMLab 安裝，之後日常同步使用 `uv sync --extra musetalk`，避免
+MuseTalk 的 editable package 與 `einops` 等依賴被移除。
+
 需要驗證 Edge TTS＋MuseTalk 的真實 WebRTC 流程時：
 
 ```bash

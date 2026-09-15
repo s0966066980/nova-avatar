@@ -206,7 +206,11 @@ install_core_deps() {
     cd "$PROJECT_ROOT"
     
     echo -e "${YELLOW}📦 正在安裝基礎依賴...${NC}"
-    uv sync --extra vad
+    if [ "$DEFAULT_AVATAR" = "musetalk" ]; then
+        uv sync --extra vad --extra musetalk
+    else
+        uv sync --extra vad
+    fi
     
     echo -e "${GREEN}✓${NC} 核心依賴安裝完成（含 Silero / WebRTC VAD）"
 }

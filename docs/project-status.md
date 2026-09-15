@@ -43,14 +43,11 @@
 
 - 離線專案檢查：passed。它驗證目前設定、品牌／授權必備檔案、核心 Python
   整合依賴與 MuseTalk commercial review profile，且不寫入音訊。
-- 本輪 focused Python tests：8 passed、12 subtests passed。
+- 本輪 focused Python tests：9 passed、12 subtests passed。
 - Web：70 tests passed。
 - Vite production build：passed。
-- 完整 Python suite 在此工作環境收集 394 項，375 passed、3 skipped、16 failed。
-  失敗皆來自未安裝的 optional-engine runtime dependencies：FunASR 的 `funasr`，
-  以及 MuseTalk 測試路徑的 `ffmpeg-python` 與 `einops`；這不是本輪功能回歸。
-  安裝選定 Avatar／ASR engine 的完整依賴後，必須重新執行完整 suite，才可宣稱
-  全綠 release gate。
+- 使用 `uv sync --extra funasr --extra musetalk` 後，完整 Python suite 收集 396 項：
+  393 passed、3 skipped。FunASR 與 MuseTalk 的 import 與對應測試路徑均已驗證。
 - 嘴型連續、待機對齊、settling、字幕生命週期、看板提交與可編輯規則均有專用回歸測試。
 
 ## 正式執行設定
