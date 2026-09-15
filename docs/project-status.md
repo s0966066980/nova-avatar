@@ -48,8 +48,8 @@
 - 本輪語音流程 focused Python tests：144 passed、12 subtests passed。
 - Web：74 tests passed。
 - Vite production build：passed。
-- 使用 `uv sync --extra funasr --extra musetalk` 後，完整 Python suite 收集 411 項：
-  408 passed、3 skipped。FunASR、MuseTalk 與控制台語音驗證的對應測試路徑均已驗證。
+- 使用 `uv sync --extra funasr --extra musetalk` 後，完整 Python suite 收集 412 項：
+  409 passed、3 skipped。FunASR、MuseTalk 與控制台語音驗證的對應測試路徑均已驗證。
 - 嘴型連續、待機對齊、settling、字幕生命週期、看板提交與可編輯規則均有專用回歸測試。
 - 控制台「語音驗證」使用目前 WebRTC 會話執行真實播放；一般對話不寫入測試歷史，
   測試 Prompt、實際播放文字、環境與延遲紀錄保存在 `logs/voice-test-history.json`。

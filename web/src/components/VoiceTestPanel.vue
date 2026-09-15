@@ -183,7 +183,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'started', 'finished', 'notification'])
 
 const presets = [
-  { label: '簡短自我介紹', prompt: '請用兩句話簡短介紹 Nova Avatar，並完整說完。' },
+  { label: '快速 Smoke Test', prompt: '請只回答「語音測試正常」。不要補充其他內容。' },
+  { label: '簡短自我介紹', prompt: '請用一句話簡短介紹 Nova Avatar，並完整說完。' },
   { label: '規格條列', prompt: '請簡短說明目前數字人的語音與影像推論流程。' },
   { label: '長句完整性', prompt: '請用三句完整的話說明即時語音數字人的延遲、同步與穩定性。' },
 ]

@@ -361,6 +361,10 @@ class VoiceTurnSession:
             raise RuntimeError("上一個對話輪次尚未結束")
         self._turn_id = uuid4().hex
         self._start_turn_context(self._turn_id)
+        # Text and console-test turns own the same single-turn session as
+        # microphone turns. Pause capture before yielding to the LLM task so
+        # VAD cannot replace this turn ID while it is waiting for first audio.
+        self._close_gate()
         self._metrics.mark_speech_end()
         generation = self._generation
         turn_id = self._turn_id

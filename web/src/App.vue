@@ -930,6 +930,8 @@ const handleVoiceEvent = (event) => {
 
 const handleVoiceTestStarted = ({ prompt, turnId }) => {
   addMessage(prompt, 'user', { voiceTurnId: turnId, testRun: true })
+  voiceState.value = 'paused'
+  isRecordingVoice.value = false
   isThinking.value = true
 }
 

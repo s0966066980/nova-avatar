@@ -520,6 +520,28 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([item["text"] for item in fragments], ["完整回覆"])
         await session.close()
 
+    async def test_text_turn_pauses_microphone_before_llm_or_avatar_output(self):
+        session, _avatar, events = self.make_session(streaming=False)
+        microphone_segment = SimpleNamespace(
+            audio=np.ones(1600, dtype=np.int16),
+            sample_rate=16000,
+            speech_ms=700,
+        )
+        session._segmenter.segment = microphone_segment
+        self.assertTrue(session._gate_open)
+
+        with patch("src.server.voice_session.llm_response", return_value="簡短回答"):
+            started = await session.start_text_turn("執行測試", interrupt=False)
+
+            self.assertFalse(session._gate_open)
+            await session.feed_pcm(np.ones(512, dtype=np.int16))
+            self.assertIs(session._segmenter.segment, microphone_segment)
+            self.assertEqual(session._turn_id, started["turn_id"])
+            self.assertNotIn("speech_detected", [event.get("state") for event in events])
+            await session._turn_task
+
+        await session.close()
+
     async def test_board_events_include_a_stable_board_id(self):
         session, _avatar, events = self.make_session(streaming=False)
 

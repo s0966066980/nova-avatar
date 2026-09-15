@@ -30,6 +30,8 @@ test('自訂 prompt、執行狀態、歷史與內容保存提示都可見', () =
   assert.match(panel, /測試紀錄/)
   assert.match(panel, /Prompt 與實際播放文字會保存在伺服器本機/)
   assert.match(panel, /window\.confirm/)
+  assert.match(panel, /請只回答「語音測試正常」。不要補充其他內容。/)
+  assert.match(app, /voiceState\.value = 'paused'[\s\S]*isRecordingVoice\.value = false/)
 })
 
 test('延遲與狀態格式不把缺值顯示成零', () => {
