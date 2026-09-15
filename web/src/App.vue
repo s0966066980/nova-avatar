@@ -1148,10 +1148,13 @@ const handleStartConnection = async () => {
   }
   
   connectionStatus.value = 'connecting'
+  // Establish A/V first. Even with Silero VAD enabled, the user must press
+  // the microphone before the console transmits any microphone audio.
+  handsFreePaused.value = true
   
   try {
     // 使用設定中的 STUN 配置
-    const newSessionId = await startPlay(null, handsFreeTalk.value)
+    const newSessionId = await startPlay(null, false)
     if (newSessionId) {
       sessionId.value = newSessionId
       showNotification(t('notifications.connectSuccess'), 'success')
@@ -1420,8 +1423,10 @@ const handleVoiceButtonClick = () => {
 }
 
 watch(handsFreeTalk, (enabled) => {
-  handsFreePaused.value = false
-  if (isConnected.value) setCaptureEnabled(enabled)
+  // Changing VAD mode changes endpointing only; it is not consent to begin
+  // capture. A microphone-button click remains required after every change.
+  handsFreePaused.value = true
+  if (isConnected.value) setCaptureEnabled(false)
 })
 
 onUnmounted(() => {

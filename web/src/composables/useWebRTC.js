@@ -8,7 +8,9 @@ export function useWebRTC(options = {}) {
   let microphoneStream = null
   let sessionIdValue = 0
   let lastEventSequence = 0
-  let captureRequested = true
+  // A connection must never begin transmitting microphone audio by default.
+  // The console's microphone control is the explicit user consent boundary.
+  let captureRequested = false
   let reconnectTimer = null
   let shouldReconnect = false
   let lastStunServer = null
@@ -73,9 +75,7 @@ export function useWebRTC(options = {}) {
   }
 
   const interruptVoice = () => {
-    microphoneStream?.getAudioTracks().forEach((track) => {
-      track.enabled = true
-    })
+    setCaptureEnabled(true)
     return sendControl({ type: 'interrupt' })
   }
 
@@ -96,7 +96,7 @@ export function useWebRTC(options = {}) {
     return sent
   }
 
-  const startPlayOnce = async (stunServer = null, initialCapture = true) => {
+  const startPlayOnce = async (stunServer = null, initialCapture = false) => {
     disposeConnection(false)
     shouldReconnect = true
     lastStunServer = stunServer
@@ -203,7 +203,7 @@ export function useWebRTC(options = {}) {
     }
   }
 
-  const startPlay = (stunServer = null, initialCapture = true) => {
+  const startPlay = (stunServer = null, initialCapture = false) => {
     if (startPromise) return startPromise
     const pending = startPlayOnce(stunServer, initialCapture)
     startPromise = pending

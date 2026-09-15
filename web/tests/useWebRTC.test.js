@@ -8,6 +8,10 @@ const source = readFileSync(
   new URL('../src/composables/useWebRTC.js', import.meta.url),
   'utf8'
 )
+const appSource = readFileSync(
+  new URL('../src/App.vue', import.meta.url),
+  'utf8'
+)
 
 test('WebRTC 同時承載麥克風上行與語音事件', () => {
   assert.match(source, /getUserMedia/)
@@ -25,6 +29,11 @@ test('資料通道失效時會關閉收音並進入重連狀態', () => {
   assert.match(source, /eventChannel\.onclose/)
   assert.match(source, /setCaptureEnabled\(false\)/)
   assert.match(source, /notifyConnection\('reconnecting'\)/)
+})
+
+test('控制台連線後維持收音關閉，需由麥克風按鈕手動開啟', () => {
+  assert.match(source, /startPlay = \(stunServer = null, initialCapture = false\)/)
+  assert.match(appSource, /startPlay\(null, false\)/)
 })
 
 test('連線準備期間的重複 startPlay 共用同一次 offer', async () => {
@@ -95,6 +104,7 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
     assert.equal(await first, 7)
     assert.equal(peerCount, 1)
     assert.equal(offerCount, 1)
+    assert.equal(microphoneTrack.enabled, false)
     stopPlay()
   } finally {
     for (const name of globalNames) {
