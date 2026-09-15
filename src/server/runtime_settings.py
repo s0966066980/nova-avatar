@@ -202,7 +202,7 @@ def current_snapshot(config) -> Dict[str, Any]:
                 else "legacy"
             ),
             "semantic_wait_seconds": float(
-                getattr(config.reply_streaming, "semantic_wait_seconds", 5.0) or 5.0
+                getattr(config.reply_streaming, "semantic_wait_seconds", 0.5) or 0.5
             ),
             "reply_rules": rules_from_config(config),
         },
@@ -671,7 +671,7 @@ def apply_llm_model(
     if next_reply_mode not in {"legacy", "streaming"}:
         raise SettingsError("回覆模式必須是 legacy 或 streaming")
     next_semantic_wait = float(
-        getattr(config.reply_streaming, "semantic_wait_seconds", 5.0)
+        getattr(config.reply_streaming, "semantic_wait_seconds", 0.5)
         if semantic_wait_seconds is None
         else semantic_wait_seconds
     )

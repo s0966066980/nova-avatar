@@ -70,7 +70,7 @@ class ReplyStreamingConfigTests(unittest.TestCase):
 
         self.assertEqual(
             config_dict["reply_streaming"],
-            {"enabled": False, "semantic_wait_seconds": 5.0},
+            {"enabled": False, "semantic_wait_seconds": 0.5},
         )
 
     def test_process_scoped_environment_can_enable_soak_without_changing_yaml(self):
@@ -694,18 +694,20 @@ class SemanticFragmenterTests(unittest.TestCase):
         self.assertEqual(fragmenter.feed(chinese), [])
         self.assertEqual(fragmenter.flush(), [chinese])
 
-    def test_wait_expiry_releases_only_at_a_clause_boundary(self):
+    def test_wait_expiry_releases_an_existing_clause_within_latency_budget(self):
         now = [0.0]
         fragmenter = SemanticFragmenter(
             weak_min_chars=1,
-            semantic_wait_seconds=5.0,
+            semantic_wait_seconds=0.5,
             clock=lambda: now[0],
         )
         self.assertEqual(fragmenter.feed("這段話尚未結束，"), [])
-        now[0] = 5.0
+        now[0] = 0.49
+        self.assertEqual(fragmenter.feed("接著"), [])
+        now[0] = 0.5
         self.assertEqual(
-            fragmenter.feed("接著這一段可以獨立朗讀，"),
-            ["這段話尚未結束，接著這一段可以獨立朗讀，"],
+            fragmenter.feed("補充"),
+            ["這段話尚未結束，"],
         )
 
     def test_number_sequences_and_decimal_points_stay_intact(self):

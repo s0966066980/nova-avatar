@@ -355,7 +355,7 @@ class ReplyStreamingConfig:
     # Strong punctuation only emits a fragment after this many content chars.
     # Raising it joins short sentences and reduces separate TTS requests.
     strong_min_chars: int = 1
-    semantic_wait_seconds: float = 5.0
+    semantic_wait_seconds: float = 0.5
 
 
 @dataclass

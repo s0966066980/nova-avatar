@@ -287,9 +287,9 @@ class BaseLLM(ABC):
             getattr(
                 getattr(self.config, "reply_streaming", None),
                 "semantic_wait_seconds",
-                5.0,
+                0.5,
             )
-            or 5.0
+            or 0.5
         )
         text_processor = (
             SemanticFragmenter(

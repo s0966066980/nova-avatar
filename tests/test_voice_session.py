@@ -103,7 +103,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             sample_rate=16000,
             speech_ms=700,
         )
-        session, _, events = self.make_session(segment)
+        session, _, events = self.make_session(segment, clock=lambda: 0.0)
         session.config.asr = SimpleNamespace(
             min_speech_ms=450,
             min_audio_rms=0.003,
@@ -113,12 +113,51 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             transcribe=Mock(return_value={"text": "上一輪內容", "confidence": 0.1})
         )
 
-        with patch("src.server.voice_session.llm_response") as llm:
+        with patch("src.server.voice_session.llm_response", return_value="") as llm:
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             await session._turn_task
 
-        llm.assert_not_called()
-        self.assertNotIn("user_transcript", [event["type"] for event in events])
+            llm.assert_not_called()
+            self.assertNotIn("user_transcript", [event["type"] for event in events])
+            self.assertIsNone(session._turn_task)
+            self.assertIsNone(session._turn_id)
+            self.assertTrue(session._gate_open)
+            self.assertEqual(events[-1]["state"], "listening")
+
+            session._segmenter.segment = segment
+            session._asr.transcribe = Mock(
+                return_value={"text": "下一輪有效問題", "confidence": 0.9}
+            )
+            await session.feed_pcm(np.ones(512, dtype=np.int16))
+            await session._turn_task
+
+        llm.assert_called_once()
+        self.assertIn("下一輪有效問題", str(llm.call_args))
+        self.assertTrue(session._gate_open)
+        await session.close()
+
+    async def test_short_non_speech_reopens_listening_without_running_asr(self):
+        segment = SimpleNamespace(
+            audio=np.ones(16000, dtype=np.int16) * 600,
+            sample_rate=16000,
+            speech_ms=200,
+        )
+        session, _, events = self.make_session(segment)
+        session.config.asr = SimpleNamespace(
+            min_speech_ms=450,
+            min_audio_rms=0.003,
+            min_confidence=0.35,
+        )
+        session._asr = SimpleNamespace(transcribe=Mock())
+
+        await session.feed_pcm(np.ones(512, dtype=np.int16))
+        await session._turn_task
+
+        session._asr.transcribe.assert_not_called()
+        self.assertIsNone(session._turn_task)
+        self.assertIsNone(session._turn_id)
+        self.assertTrue(session._gate_open)
+        self.assertEqual(events[-1]["state"], "listening")
         await session.close()
 
     def make_session(self, segment=None, *, clock=time.monotonic, streaming=True):

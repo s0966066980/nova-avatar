@@ -5,7 +5,8 @@
 此文件記錄 Nova Avatar 目前已交付能力、可重現的驗證結果與執行邊界。
 新的工作項目、舊實驗的清理與 release handoff 流程請依
 [`current-project-workflow.md`](current-project-workflow.md)；可選引擎與商業審查
-邊界請依 [`software-stack.md`](software-stack.md)。
+邊界請依 [`software-stack.md`](software-stack.md)。最新語音恢復與延遲驗證見
+[`voice-conversation-latency-and-recovery-test-record.md`](voice-conversation-latency-and-recovery-test-record.md)。
 
 ## 已完成範圍
 
@@ -43,16 +44,17 @@
 
 - 離線專案檢查：passed。它驗證目前設定、品牌／授權必備檔案、核心 Python
   整合依賴與 MuseTalk commercial review profile，且不寫入音訊。
-- 本輪 focused Python tests：9 passed、12 subtests passed。
+- 本輪語音流程 focused Python tests：144 passed、12 subtests passed。
 - Web：70 tests passed。
 - Vite production build：passed。
-- 使用 `uv sync --extra funasr --extra musetalk` 後，完整 Python suite 收集 396 項：
-  393 passed、3 skipped。FunASR 與 MuseTalk 的 import 與對應測試路徑均已驗證。
+- 使用 `uv sync --extra funasr --extra musetalk` 後，完整 Python suite 收集 402 項：
+  399 passed、3 skipped。FunASR 與 MuseTalk 的 import 與對應測試路徑均已驗證。
 - 嘴型連續、待機對齊、settling、字幕生命週期、看板提交與可編輯規則均有專用回歸測試。
 
 ## 正式執行設定
 
 - `reply_streaming.enabled: false`：v1 保留舊有與串流兩種回覆模式，串流由設定頁或 YAML 明確啟用。
+- `reply_streaming.semantic_wait_seconds: 0.5`：弱語意邊界預設等待上限，控制台仍可調整。
 - `reply_streaming.decoupled_audio_clock: false`：正式路徑維持單一 renderer-owned 音訊 producer。
 - `model.musetalk.mouth_continuity: true`、`idle_alignment: true`、`settling_enabled: true`；
   checked-in default 的 `settling_frames: 5`，並以最小 4、最大 6 影格限制。

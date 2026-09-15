@@ -13,7 +13,7 @@ const runtime = reactive({
     response_max_chars: 120,
     board_max_items: 8,
     reply_mode: 'legacy',
-    semantic_wait_seconds: 5,
+    semantic_wait_seconds: 0.5,
     reply_rules: { revision: 1, activation: '', speech: '', board: '' }
   },
   stage: {
@@ -202,7 +202,7 @@ const selectedForbiddenSelfNames = ref('')
 const selectedResponseMaxChars = ref(120)
 const selectedBoardMaxItems = ref(8)
 const selectedReplyMode = ref('legacy')
-const selectedSemanticWaitSeconds = ref(5)
+const selectedSemanticWaitSeconds = ref(0.5)
 const rulesDraft = reactive({ activation: '', speech: '', board: '' })
 const rulesApplied = reactive({ revision: 1, activation: '', speech: '', board: '' })
 const rulesDefaults = reactive({ revision: 1, activation: '', speech: '', board: '' })
@@ -284,7 +284,7 @@ const llmDirty = computed(() => {
     Number(selectedResponseMaxChars.value) !== Number(runtime.llm.response_max_chars || 120) ||
     Number(selectedBoardMaxItems.value) !== Number(runtime.llm.board_max_items || 8) ||
     selectedReplyMode.value !== (runtime.llm.reply_mode || 'legacy') ||
-    Number(selectedSemanticWaitSeconds.value) !== Number(runtime.llm.semantic_wait_seconds || 5)
+    Number(selectedSemanticWaitSeconds.value) !== Number(runtime.llm.semantic_wait_seconds || 0.5)
   )
 })
 
@@ -747,7 +747,7 @@ function applySnapshot(data) {
   selectedResponseMaxChars.value = Number(data.llm?.response_max_chars || 120)
   selectedBoardMaxItems.value = Number(data.llm?.board_max_items || 8)
   selectedReplyMode.value = data.llm?.reply_mode || 'legacy'
-  selectedSemanticWaitSeconds.value = Number(data.llm?.semantic_wait_seconds || 5)
+  selectedSemanticWaitSeconds.value = Number(data.llm?.semantic_wait_seconds || 0.5)
   selectedStageCaptionMaxChars.value = runtime.stage.caption_max_chars
   selectedCaptionX.value = runtime.stage.caption_x
   selectedCaptionY.value = runtime.stage.caption_y

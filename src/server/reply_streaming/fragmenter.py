@@ -76,7 +76,7 @@ class SemanticFragmenter:
         soft_limit_chars: int = 72,
         hard_limit_chars: int = 120,
         strong_min_chars: int = 1,
-        semantic_wait_seconds: float = 5.0,
+        semantic_wait_seconds: float = 0.5,
         clock=time.monotonic,
     ) -> None:
         if weak_min_chars < 1:
@@ -99,7 +99,6 @@ class SemanticFragmenter:
         self._semantic_wait_seconds = float(semantic_wait_seconds)
         self._clock = clock
         self._buffer_started_at: float | None = None
-        self._wait_boundary_offset: int | None = None
 
     @property
     def buffered_text(self) -> str:
@@ -107,8 +106,6 @@ class SemanticFragmenter:
 
     def feed(self, token: str) -> list[str]:
         if token:
-            if self._semantic_wait_expired() and self._wait_boundary_offset is None:
-                self._wait_boundary_offset = len(self._buffer)
             if not self._buffer:
                 self._buffer_started_at = self._clock()
             self._buffer += token
@@ -116,13 +113,12 @@ class SemanticFragmenter:
         while self._buffer:
             split_at = self._strong_boundary()
             if split_at is None and self._semantic_wait_expired():
-                split_at = self._weak_boundary(self._wait_boundary_offset)
+                split_at = self._weak_boundary()
             if split_at is None:
                 break
             fragment = self._buffer[:split_at].strip()
             self._buffer = self._buffer[split_at:]
             self._buffer_started_at = self._clock() if self._buffer else None
-            self._wait_boundary_offset = None
             if fragment:
                 fragments.append(fragment)
         return fragments
@@ -131,7 +127,6 @@ class SemanticFragmenter:
         fragment = self._buffer.strip()
         self._buffer = ""
         self._buffer_started_at = None
-        self._wait_boundary_offset = None
         return [fragment] if fragment else []
 
     def _semantic_wait_expired(self) -> bool:
@@ -159,19 +154,16 @@ class SemanticFragmenter:
             return boundary
         return None
 
-    def _weak_boundary(self, minimum_offset: int | None = None) -> int | None:
-        last = None
+    def _weak_boundary(self) -> int | None:
         for index, character in enumerate(self._buffer):
             if self._is_protected_punctuation(index) or character not in WEAK_PUNCTUATION:
                 continue
             boundary = index + 1
-            if minimum_offset is not None and boundary <= minimum_offset:
-                continue
             length = _content_length(self._buffer[:boundary])
             if length < self._weak_min_chars:
                 continue
             return boundary
-        return last
+        return None
 
     def _length_boundary(self) -> int | None:
         content_chars = 0
