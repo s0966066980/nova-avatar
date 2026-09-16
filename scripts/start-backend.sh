@@ -22,6 +22,13 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # 配置檔案
 CONFIG_FILE="${1:-config/config.yaml}"
 
+if [ -f "$PROJECT_ROOT/config/ragflow.env" ]; then
+    set -a
+    # Private, optional backend-only RAGFlow credentials.
+    . "$PROJECT_ROOT/config/ragflow.env"
+    set +a
+fi
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}🚀 Nova Avatar - 後端服務啟動${NC}"
 echo -e "${BLUE}   即時流式數字人對話系統${NC}"

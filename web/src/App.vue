@@ -159,6 +159,24 @@ See LICENSE and NOTICE.
                 <div class="bubble-card">
                   <div v-if="appSettings.showTimestamp && msg.time" style="font-size: 10.5px; opacity: 0.6; margin-bottom: 4px; font-family: var(--font-mono);">{{ msg.time }}</div>
                   <div v-html="renderMarkdown(msg.text)"></div>
+                  <div v-if="msg.type === 'ai' && msg.voiceTurnId && ragByTurn[msg.voiceTurnId]" class="rag-turn-status">
+                    <div v-if="ragByTurn[msg.voiceTurnId].status === 'unavailable'" class="rag-turn-warning" role="status">
+                      <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                      知識庫暫時無法連線，本輪沿用一般回答。
+                    </div>
+                    <div v-else-if="ragByTurn[msg.voiceTurnId].status === 'empty'" class="rag-turn-note" role="status">
+                      知識庫沒有找到相關資料；本輪是一般回答。
+                    </div>
+                    <details v-else-if="ragByTurn[msg.voiceTurnId].sources.length" class="rag-turn-references">
+                      <summary>檢索參考 · {{ ragByTurn[msg.voiceTurnId].sources.length }} 段</summary>
+                      <ol>
+                        <li v-for="(source, sourceIndex) in ragByTurn[msg.voiceTurnId].sources" :key="`${source.document_id}-${sourceIndex}`">
+                          <strong>{{ source.document_name || '未命名文件' }}</strong>
+                          <p>{{ source.content }}</p>
+                        </li>
+                      </ol>
+                    </details>
+                  </div>
                   <div v-if="msg.boardItems && msg.boardItems.length" class="inline-board-preview">
                     <div class="inline-board-title"><i class="bi bi-stars"></i> 看板同步資料：</div>
                     <ul class="inline-board-list">
@@ -704,6 +722,7 @@ const appSettings = ref({
 })
 
 const chatMessages = ref([])
+const ragByTurn = reactive({})
 
 // 每個語音 turn 保留最後接受的 LLM delta 序號；晚到或重複事件不得污染文字預覽。
 const assistantStreamState = new Map()
@@ -808,7 +827,7 @@ const handleVoiceEvent = (event) => {
   if (event.type === 'state') {
     voiceState.value = event.state
     isRecordingVoice.value = ['listening', 'speech_detected'].includes(event.state)
-    isThinking.value = ['stt', 'llm', 'tts_ready'].includes(event.state)
+    isThinking.value = ['stt', 'retrieving', 'llm', 'tts_ready'].includes(event.state)
     if (event.state === 'error' && event.error) {
       const errorKey = {
         tts_error_before_commit: 'notifications.ttsErrorBeforeCommit',
@@ -821,7 +840,14 @@ const handleVoiceEvent = (event) => {
     }
     return
   }
-  if (event.type === 'user_transcript' && event.text) {
+  if (event.type === 'rag_retrieval' && event.turn_id) {
+    ragByTurn[event.turn_id] = {
+      status: event.status,
+      sources: Array.isArray(event.sources) ? event.sources : []
+    }
+  } else if (event.type === 'turn_cancelled' && event.turn_id) {
+    delete ragByTurn[event.turn_id]
+  } else if (event.type === 'user_transcript' && event.text) {
     addMessage(event.text, 'user')
   } else if (event.type === 'assistant_response_start') {
     isThinking.value = true
@@ -1437,6 +1463,7 @@ onUnmounted(() => {
 // 清空對話歷史
 const resetChatMessages = () => {
   chatMessages.value = []
+  Object.keys(ragByTurn).forEach(key => delete ragByTurn[key])
 }
 
 const clearChatHistory = async () => {
@@ -1612,6 +1639,15 @@ onMounted(async () => {
 .notification.error i {
   color: var(--danger);
 }
+
+.rag-turn-status { margin-top: 12px; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px; }
+.rag-turn-warning { color: var(--warning); display: flex; align-items: center; gap: 6px; }
+.rag-turn-note { color: var(--text-secondary); }
+.rag-turn-references summary { cursor: pointer; color: var(--brand-light); font-weight: 700; }
+.rag-turn-references summary:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
+.rag-turn-references ol { padding-left: 20px; display: grid; gap: 8px; max-height: 240px; overflow: auto; }
+.rag-turn-references li { overflow-wrap: anywhere; }
+.rag-turn-references p { white-space: pre-wrap; color: var(--text-secondary); margin: 3px 0 0; line-height: 1.45; }
 
 @keyframes slideIn {
   from {

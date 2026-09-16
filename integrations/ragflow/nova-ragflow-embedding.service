@@ -1,0 +1,18 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Nova Avatar RAGFlow CPU-only embedding endpoint
+
+[Service]
+Type=simple
+WorkingDirectory=%h/nova-avatar
+ExecStart=/usr/bin/bash %h/nova-avatar/scripts/ragflow_embedding.sh
+Restart=always
+RestartSec=5
+MemoryMax=4G
+CPUQuota=200%
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

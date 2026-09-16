@@ -1,0 +1,31 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+# Overlay for upstream RAGFlow v0.27.2. Compose v2.40+ is required for !override.
+# Only RAGFlow's UI and retrieval API are reachable on the host, both loopback.
+services:
+  ragflow-cpu:
+    ports: !override
+      - "127.0.0.1:8088:80"
+      - "127.0.0.1:9380:9380"
+    cpus: 4.0
+    mem_limit: 6g
+
+  es01:
+    ports: !override []
+    cpus: 2.0
+
+  mysql:
+    ports: !override []
+    cpus: 1.0
+    mem_limit: 1g
+
+  minio:
+    ports: !override []
+    cpus: 1.0
+    mem_limit: 1g
+
+  redis:
+    ports: !override []
+    cpus: 0.5
+    mem_limit: 256m

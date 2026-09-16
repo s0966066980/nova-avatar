@@ -203,6 +203,8 @@ class BaseLLM(ABC):
         chunk_guard: Optional[Callable[[int], bool]] = None,
         defer_history_commit: bool = False,
         reply_mode: Optional[ReplyMode | str] = None,
+        rag_context: str = "",
+        spoken_prefix: str = "",
     ) -> str:
         """生成完整響應並推送到 avatar"""
         start_time = time.perf_counter()
@@ -244,6 +246,10 @@ class BaseLLM(ABC):
             assistant_name=str(getattr(profile, "assistant_name", "") or ""),
             restriction_prompt=str(getattr(profile, "restriction_prompt", "") or ""),
         )
+        if rag_context:
+            # Keep existing reply rules last; retrieved text is reference data,
+            # not an instruction channel with authority over those rules.
+            composed_system_prompt = rag_context + "\n\n" + composed_system_prompt
 
         semantic_stream = bool(
             stream_to_avatar
@@ -448,6 +454,13 @@ class BaseLLM(ABC):
                     first_chunk_time = time.perf_counter()
                     logger.info(f"Time to first chunk: {first_chunk_time - start_time:.3f}s")
                     first_chunk = False
+                    if spoken_prefix:
+                        prefix = normalize_visible_text(spoken_prefix).strip()
+                        if prefix:
+                            if target_avatar:
+                                send_to_avatar(prefix)
+                            else:
+                                spoken_response += prefix
                 
                 full_response += chunk
 

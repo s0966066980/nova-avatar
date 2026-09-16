@@ -1,176 +1,170 @@
 # Nova Avatar
 
-Real-time full-duplex conversational digital human framework.
+Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克風音訊，後端依序
+完成語音端點偵測、辨識、模型回答、語音合成與數位人渲染，再把影音和字幕送回
+瀏覽器。控制台用來對話與調整設定，`/stage.html` 是獨立的數位人舞台。
 
-Nova Avatar 以 WebRTC 串起語音辨識、LLM、語音合成與數位人渲染，提供免按
-對話、串流回覆、輪次隔離與可切換 Avatar 引擎的即時互動體驗。
+> 本專案由 Kedreamix/Linly-Talker-Stream 衍生，現由 HongXian0903 獨立維護。
+> 上游與第三方來源見 [NOTICE](NOTICE) 和
+> [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-> Nova Avatar 是獨立維護的衍生專案，最初源自
-> Kedreamix/Linly-Talker-Stream。上游與第三方 attribution 詳見
-> [`NOTICE`](NOTICE) 及 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+## 目前版本提供什麼
 
-## Overview
+- 服務端 Silero VAD、啟用麥克風後的免按對話、按住說話與插話；語音、字幕和畫面以對話輪次
+  隔離，取消或斷線後不再交付舊輪次內容。
+- faster-whisper／FunASR 辨識、Ollama／llama.cpp 回答，以及 Edge TTS 等可選
+  語音引擎。主要數位人引擎是 MuseTalk，其他引擎的支援與授權見下文。
+- 可選的語意片段串流回覆：完整回答尚未產生時即可開始合成語音。預設仍使用
+  一次交付完整回答的模式；Edge TTS＋MuseTalk 的串流組合已有實機驗證。
+- 獨立控制台和舞台、字幕、看板回答、Prompt／回覆規則、模型與角色設定，
+  以及控制台內的真實語音鏈路測試。
+- 新增 RAGFlow 文件檢索：管理者在 RAGFlow 匯入文件；控制台為目前數位人
+  選取知識庫、測試檢索並啟用。Nova 仍使用目前選定的 LLM 產生回答，
+  RAGFlow 只提供本輪的參考片段。
 
-系統由伺服器單獨擁有完整的「對話輪次」：Silero 判定使用者說完後，後端完成
-STT，將 LLM chunk 切成可播回覆片段，再依序交給 TTS 與 Avatar。文字、音訊與
-影格攜帶 `turn_id`、generation 與 sequence；插話或斷線後，舊輪次資料會在各
-輸出邊界被拒絕。
+架構與已驗證的執行邊界見 [專案概覽](docs/project-overview.html)、
+[目前專案基線](docs/project-status.md) 和
+[軟體組合](docs/software-stack.md)。
 
-可直接用瀏覽器開啟 [`docs/project-overview.html`](docs/project-overview.html)
-查看架構圖；已交付能力、驗證證據與執行邊界記錄於
-[`docs/project-status.md`](docs/project-status.md)。
+## 安裝 Nova Avatar
 
-目前工作項目與過往實驗的清理流程請見
-[`docs/current-project-workflow.md`](docs/current-project-workflow.md)；可選引擎、
-外部 runtime 與商業審查邊界請見 [`docs/software-stack.md`](docs/software-stack.md)。
-
-## Features
-
-- 全雙工 WebRTC 音訊與影像傳輸，支援免按對話、按住說話與按鍵插話。
-- 可靠回覆語音串流：LLM 尚未完成全文時，完整語意片段即可開始合成與播放。
-- 端到端輪次隔離、取消柵欄、播放提交、字幕同步與有界媒體背壓。
-- Silero 服務端串流 VAD；瀏覽器只傳輸音訊，不自行切段。
-- 可切換 Whisper／FunASR、Ollama／llama.cpp 與多種無金鑰 TTS 引擎。
-- MuseTalk 段落邊界與回答收尾的嘴型連續控制，不以延遲音訊換取平滑。
-- Web Console 可管理模型、角色、Prompt、回覆規則、字幕與看板版面。
-- 所有麥克風音訊預設只存在短生命週期的記憶體緩衝；除非使用者明確錄製，
-  系統不持久保存原始收音。
-
-## Architecture
-
-```mermaid
-flowchart LR
-    U[使用者麥克風] -->|WebRTC 上行音軌| V[Silero VAD]
-    V -->|完整發話| S[STT]
-    S -->|辨識文字| L[LLM]
-    L -->|LLM chunk| F[語意片段與輪次隔離]
-    F -->|可播回覆片段| T[TTS]
-    T -->|20 ms 音訊幀| A[數位人渲染]
-    A -->|WebRTC 音訊與影像| B[Vue Web Console]
-    B -->|插話、設定、文字訊息| R[aiohttp API]
-```
-
-```text
-nova-avatar/
-├── config/                 # 服務、模型、語音、VAD 與 Prompt 設定
-├── docs/                   # ADR、狀態、架構與授權說明
-├── scripts/                # 安裝、模型下載、憑證、驗證與啟動腳本
-├── src/
-│   ├── asr/                # STT 介面、工廠與引擎
-│   ├── avatars/            # Avatar 介面、素材與渲染引擎
-│   ├── config/             # YAML schema、載入與設定持久化
-│   ├── llm/                # 對話、歷史、Prompt、規則與回覆協定
-│   ├── server/             # aiohttp、WebRTC、API、輪次與串流管線
-│   ├── tts/                # TTS 介面、佇列與引擎
-│   ├── utils/              # 共用路徑、日誌與 WebRTC 工具
-│   └── vad/                # Silero 串流端點偵測
-├── tests/                  # Python 測試
-└── web/                    # Vue Web Console 與 Node 測試
-```
-
-## Supported Engines
-
-| 類型 | 引擎 | 發行定位 |
-| --- | --- | --- |
-| STT | faster-whisper、FunASR | 依實際版本與模型條款使用 |
-| LLM | Ollama、llama.cpp | 本機 OpenAI-compatible 服務 |
-| TTS | Edge TTS、GPT-SoVITS、XTTS、CosyVoice、Fish TTS、IndexTTS2 | 選用；逐一核對服務、聲音與模型條款 |
-| Avatar | MuseTalk | 支援；MIT code，可用於商業整合，但模型與依賴另行核對 |
-| Avatar | Wav2Lip | **選用；Research / Non-commercial** |
-| Avatar | UltraLight、ER-NeRF、TalkingGaussian | 選用；發行前核對各自程式、模型與資料集條款 |
-
-Wav2Lip 的 engine identifier 仍為 `wav2lip`，但這只是技術識別字，不代表 Nova
-Avatar 將其重新授權。上游公開版不可用於商業用途。
-
-## Quick Start
-
-### Requirements
-
-- Linux
-- Python 3.10 或 3.11；自動安裝腳本使用 Python 3.10.19
-- [`uv`](https://docs.astral.sh/uv/)
-- Node.js、npm、FFmpeg
-- NVIDIA GPU 與相容 CUDA 環境（建議）
-
-### Install
-
-預設以 MuseTalk 作為一般安裝範例：
+以下以 Linux、MuseTalk 和預設 `config/config.yaml` 為例。需要 Python
+3.10／3.11、[uv](https://docs.astral.sh/uv/)、Node.js／npm、FFmpeg，以及
+設定檔指定的 Ollama 或 llama.cpp 模型服務。MuseTalk 需要 NVIDIA GPU、相容
+的 CUDA 環境與權重；安裝腳本編譯 mmcv 時可能需要 CUDA Toolkit 12.4。
 
 ```bash
 git clone https://github.com/s0966066980/nova-avatar.git
 cd nova-avatar
 bash scripts/setup-env.sh musetalk
+source .venv/bin/activate
 bash scripts/download_musetalk_weights.sh
+bash scripts/create_ssl_certs.sh
 ```
 
-手動安裝核心依賴：
+`setup-env.sh` 會安裝 Python、Avatar 與前端依賴；若 `.venv` 已存在，會詢問
+是否重建。權重下載後請檢查腳本列出的模型檔是否齊全。預設 YAML 啟用 SSL，
+因此首次啟動前需建立憑證。若改用其他 Avatar，請先核對其依賴和授權。
+
+預設 LLM 設定使用本機 Ollama 的 `qwen3.5:4b`；請先啟動 Ollama 並備妥
+該模型，或在 `config/config.yaml` 改成可用的模型與服務位址。Avatar、
+STT、TTS、回覆模式也可在控制台設定。只安裝核心依賴時可改用：
 
 ```bash
 uv venv --python 3.10.19
 uv sync --extra vad
-cd web
-npm install
-cd ..
+cd web && npm install && cd ..
 ```
 
-遠端瀏覽器使用麥克風通常需要安全來源。開發環境可先產生本機憑證：
+選用 MuseTalk 時請依前述 `setup-env.sh musetalk` 完成其 CUDA／OpenMMLab
+依賴。之後同步依賴應保留 `--extra musetalk`，避免移除相關套件。
+
+## 安裝 RAGFlow 文件檢索（選用）
+
+RAGFlow 使用獨立的 Docker Compose 專案、資料卷，以及主機上的 CPU
+嵌入服務。需要 Docker、Compose 2.40 以上、使用者層級 systemd 和 Ollama。
+部署腳本固定取得 RAGFlow `v0.27.2`，管理頁與 API 只開放在本機。
+未完成此節時，Nova 的一般對話仍可使用。
+
+首次部署：
 
 ```bash
-bash scripts/create_ssl_certs.sh
+bash scripts/ragflow.sh install-docker   # 已有 Docker/Compose 可略過
+bash scripts/ragflow.sh prepare
+bash scripts/ragflow.sh validate
+bash scripts/ragflow.sh pull-model
+bash scripts/ragflow.sh up
 ```
 
-### Run
+在部署主機開啟 `http://127.0.0.1:8088`，依序完成：
+
+1. 建立管理帳號，並立即更改初始密碼。初始密碼在未納入版控的
+   `.local/ragflow/upstream/docker/.env` 的 `ADMIN_DEFAULT_PASSWORD`。
+2. 在模型供應者設定新增 Ollama 執行個體：服務位址
+   `http://host.docker.internal:11435`，嵌入模型 `bge-m3`。
+3. 建立知識庫，上傳文件並完成解析。文件上傳／解析只在 RAGFlow 介面管理。
+4. 建立 API 金鑰：點右上角頭像 → 設定 → **API** 頁，建立並複製金鑰。
+5. 把金鑰寫入本機後端環境檔，不要貼進控制台或瀏覽器：
+
+```bash
+cp config/ragflow.env.example config/ragflow.env
+chmod 600 config/ragflow.env
+```
+
+在 `config/ragflow.env` 填入 `NOVA_RAGFLOW_API_KEY`；預設
+`NOVA_RAGFLOW_URL=http://127.0.0.1:9380`。`start-all.sh` 與
+`start-backend.sh` 只把這份檔案載入後端；前端程序會清掉這兩個變數。
+`config/ragflow.env.example` 只可保留空白金鑰欄位，不得填入真實金鑰。
+
+6. 重啟 Nova 後端。在控制台「設定 → 知識庫檢索」確認顯示「RAGFlow 已連線」，
+   為目前數位人選知識庫、先「測試檢索」，再啟用。設定從下一輪生效。
+
+推送到 GitHub 前，確認金鑰與 RAGFlow 密碼仍只在本機。`.gitignore` 已忽略
+`config/ragflow.env`、`config/ragflow_settings.yaml` 與 `.local/ragflow/`。
+可提交的是空白範本 `config/ragflow.env.example`。推送前執行：
+
+```bash
+git status
+git check-ignore -v config/ragflow.env .local/ragflow
+git diff --cached
+```
+
+`config/ragflow.env` 必須顯示為 ignored；暫存區不得出現金鑰、管理密碼或
+`.local/ragflow/`。金鑰也不得寫進 README、issue、PR 或截圖。若金鑰曾進入
+版本庫，先在 RAGFlow 撤銷並重建，再從 Git 歷史移除。
+
+完整部署、資源限制與疑難排解見
+[RAGFlow 本機檢索整合](docs/ragflow.md)。
+
+## 啟動與使用
+
+在專案根目錄執行：
 
 ```bash
 bash scripts/start-all.sh config/config.yaml
 ```
 
-預設入口：
+此命令啟動後端與 Web 控制台。執行過 `ragflow.sh prepare` 的主機會一併
+啟動 RAGFlow；它尚未準備好時，啟動腳本會顯示提示並繼續啟動 Nova。
+若 RAGFlow 已由其他命令啟動，`start-all.sh` 會沿用該實例。按
+`Ctrl+C` 停止 Nova，以及這次由 `start-all.sh` 帶起的 RAGFlow 服務；
+既有 RAGFlow 實例會保持執行。暫時不啟動檢索服務可執行
+`NOVA_START_RAGFLOW=0 bash scripts/start-all.sh config/config.yaml`。
 
-- Web Console：`https://localhost:3000`
-- 後端健康檢查：`https://localhost:8010/health`
-- 後端日誌：`logs/start-all-backend.log`
-
-若 LLM provider 設為 `llamacpp`，後端會按需啟動 `llama-server`。正常停止時只
-清理由本程式啟動並持有的程序，不會終止外部管理的服務。
-
-## Configuration
-
-主要設定檔是 [`config/config.yaml`](config/config.yaml)，也可在 Web Console 的
-「設定」面板修改。Avatar、STT 或 TTS 切換前需先中斷目前 WebRTC 會話；設定
-API 會先驗證模型或引擎，成功後才更新執行中狀態並寫回 YAML。
-
-| 分類 | 可調整內容 | 套用注意事項 |
+| 入口 | 預設位址 | 用途 |
 | --- | --- | --- |
-| LLM | provider、模型、預設 Prompt、規則與回覆字數 | 影響後續對話輪次 |
-| Avatar | 引擎、角色與嘴型參數 | 有進行中會話時不可切換 |
-| 回覆模式 | 舊有／串流 | 下一輪生效 |
-| VAD／STT | 門檻、發話邊界、模型、語言、裝置 | 引擎切換前先中斷會話 |
-| TTS | 引擎、聲音、模型、語言、說話者與裝置 | 先實際試聽再保存 |
+| Web 控制台 | `https://localhost:3000` | 對話、設定、語音驗證 |
+| 數位人舞台 | `https://localhost:3000/stage.html` | 獨立演播畫面 |
+| 後端健康檢查 | `https://localhost:8010/health` | 確認 Nova 後端就緒 |
+| RAGFlow 管理頁 | `http://127.0.0.1:8088` | 建立知識庫、上傳與解析文件 |
 
-## Web Console
+上表依預設 YAML 的 `app.ssl: true` 顯示 HTTPS；若關閉 SSL，Nova
+控制台和後端網址改用 HTTP。RAGFlow 管理頁只綁定主機 loopback，從另一
+台電腦無法直接連線。後端日誌在 `logs/start-all-backend.log`。
 
-Web Console 提供即時演播、文字對話、TTS 朗讀、路由測試與完整設定中心。獨立
-舞台入口為 `/stage.html`，可呈現 Avatar、舞台字幕、浮動看板與麥克風控制。
+啟動後，在控制台選擇數位人與模型，使用文字訊息或啟用麥克風開始對話。
+需要文件檢索時，到「設定 → 知識庫檢索」檢查連線、勾選知識庫並儲存，
+先按「測試檢索」確認有相關片段，再開啟該數位人的檢索。設定從下一輪
+對話生效。無命中時會標明回答沒有文件依據；RAGFlow 故障或逾時時，
+Nova 繼續一般回答並在控制台顯示狀態。檢索片段只是參考預覽，
+不代表正式引文。檢索設定依數位人分開保存，初始為關閉。
 
-重新品牌化後的 localStorage keys 使用 `nova-avatar-*`。前端首次載入會讀取並
-遷移舊版 keys，以保留既有語言、介面與編輯器高度設定。
+如需分開啟動 Nova 前後端，可在不同終端執行
+`bash scripts/start-backend.sh config/config.yaml` 和
+`bash scripts/start-frontend.sh config/config.yaml`；RAGFlow 則以
+`bash scripts/ragflow.sh up`／`down` 獨立管理。
 
-## Streaming Reply Pipeline
+## 設定與檢查
 
-| 路徑 | LLM 輸出 | 交付時機 | 現況 |
-| --- | --- | --- | --- |
-| 串流模式 | 逐 chunk 接收並依語意邊界切片 | 可播回覆片段形成後立即排入有界管線 | Edge TTS＋MuseTalk 已通過正式 SLO；預設關閉 |
-| 舊有模式 | 等待完整 LLM 回覆 | 全文一次排入後續流程 | 保留跨引擎相容性 |
+`config/config.yaml` 設定服務埠、SSL、Avatar、VAD、STT、LLM、TTS、
+字幕與回覆模式；控制台可調整常用選項。切換 Avatar、STT 或 TTS 引擎前，
+先中斷目前 WebRTC 會話。RAGFlow 的非機密角色設定另存於
+`config/ragflow_settings.yaml`；API 金鑰留在 `config/ragflow.env`。
 
-兩種模式共用字幕、播放與錯誤恢復保證。串流契約包含 generation fence、取消後
-零 stale output、音訊主時鐘、首個非靜音音訊提交字幕／history，以及有限媒體
-債務。詳見 [ADR-0007](docs/adr/0007-stream-replies-with-turn-isolation-and-audio-clock.md)。
-
-## Testing & Validation
+開發與交付檢查：
 
 ```bash
-uv sync --group dev
+uv sync --group dev --extra vad --extra musetalk
 uv run python scripts/check-integration.py
 uv run pytest
 cd web
@@ -178,71 +172,16 @@ npm test
 npm run build
 ```
 
-`check-integration.py` 預設只做離線的設定、品牌、授權與 release 文件檢查。
-在目前 YAML 指向的 LLM 與 Edge TTS 已經可用時，才執行實際服務 smoke check：
+`check-integration.py` 預設執行離線檢查。已準備好設定檔指定的 LLM
+與 Edge TTS 後，可執行 `uv run python scripts/check-integration.py --smoke`
+檢查實際服務。真實 WebRTC 語音回合的驗證方式見
+[目前專案基線](docs/project-status.md)。
 
-```bash
-uv run python scripts/check-integration.py --smoke
-```
+## 授權與來源
 
-該命令不會寫入音檔；需要保留 Edge TTS 輸出時才加上
-`--output logs/tts_check.mp3`。
-
-FunASR 與 MuseTalk 是可選 runtime。選用 FunASR 時執行
-`uv sync --extra funasr`；選用 MuseTalk 時先依 `scripts/setup-env.sh musetalk`
-完成 CUDA／OpenMMLab 安裝，之後日常同步使用 `uv sync --extra musetalk`，避免
-MuseTalk 的 editable package 與 `einops` 等依賴被移除。
-
-需要驗證 Edge TTS＋MuseTalk 的真實 WebRTC 流程時：
-
-```bash
-uv run python scripts/run_voice_soak.py \
-  --base-url https://localhost:8010 \
-  --turns 50 \
-  --output .scratch/reply-voice-streaming/real-soak-report.json
-```
-
-## Commercial Usage
-
-Nova Avatar 自行撰寫的 Apache-2.0 程式與 MuseTalk 的 MIT 程式可用於商業整合，
-但這不會授予任何第三方模型、權重、資料集、聲音或服務的權利。
-
-**Wav2Lip 公開版為 Research / Non-commercial，禁止商業使用。商業發行版不得
-bundle 或啟用本 repository 內的 Wav2Lip 程式與其上游權重。** TalkingGaussian
-及其他選用引擎也必須逐項完成授權審查，不能只依賴根目錄 Apache-2.0 LICENSE。
-
-本節是專案維護資訊，不構成法律意見。
-
-[`config/config_commercial.yaml`](config/config_commercial.yaml) 提供以 MuseTalk、
-faster-whisper、Silero、本機 OpenAI-compatible LLM 與 Edge TTS 為起點的商業審查
-設定檔。它不會自動驗證或授予模型、權重、聲音、資料集或外部服務的商業權利；
-部署前仍須依 [`docs/software-stack.md`](docs/software-stack.md) 與
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) 逐項核對。
-
-## Third-Party Components
-
-第三方程式、模型、權重與資料集不會因整合進 Nova Avatar 而被重新授權。完整
-角色、來源、license 與限制清單請閱讀
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)，並保留隨附的第三方 license。
-
-## References and Attribution
-
-This project was originally derived from Kedreamix/Linly-Talker-Stream and has
-since been substantially redesigned and independently maintained.
-
-Relevant upstream and third-party projects include:
-
-- [Kedreamix/Linly-Talker-Stream](https://github.com/Kedreamix/Linly-Talker-Stream)
-- [LiveTalking](https://github.com/lipku/LiveTalking)
-- [MuseTalk](https://github.com/TMElyralab/MuseTalk)
-- [Wav2Lip](https://github.com/Rudrabha/Wav2Lip)
-- [Whisper](https://github.com/openai/whisper)
-- [FunASR](https://github.com/modelscope/FunASR)
-
-See [`NOTICE`](NOTICE) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)
-for licensing details.
-
-## License
-
-Nova Avatar 的專案程式採用 [Apache License 2.0](LICENSE)。適用的上游 copyright
-與 attribution 均保留；第三方元件仍受各自條款約束。
+Nova Avatar 自行撰寫的程式採 [Apache-2.0](LICENSE)。MuseTalk 程式採
+MIT 授權；模型、權重與依賴另有條款。內含 Wav2Lip 整合僅供
+**Research / Non-commercial** 使用，不得視為可商用。RAGFlow、BGE-M3、
+語音、資料集與外部服務也須各自核對條款；根目錄授權不會擴及它們。
+詳見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)、
+[NOTICE](NOTICE) 和 [軟體組合](docs/software-stack.md)。

@@ -52,6 +52,9 @@ models/
 data/
 logs/
 config/runtime_overrides.yaml
+config/ragflow_settings.yaml
+config/ragflow.env
+.local/ragflow/
 outputs/
 *.pt
 *.pth

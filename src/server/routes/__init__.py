@@ -9,6 +9,12 @@ from .audio import humanaudio, asr
 from .video import set_audiotype, record, download_record
 from .health import health_check
 from .voice_tests import list_voice_tests, run_voice_test, clear_voice_tests
+from .ragflow import (
+    get_ragflow_settings,
+    put_ragflow_settings,
+    list_ragflow_datasets,
+    test_ragflow_retrieval,
+)
 from .settings import (
     get_settings,
     get_vad_settings,
@@ -45,6 +51,10 @@ __all__ = [
     'list_voice_tests',
     'run_voice_test',
     'clear_voice_tests',
+    'get_ragflow_settings',
+    'put_ragflow_settings',
+    'list_ragflow_datasets',
+    'test_ragflow_retrieval',
     'get_settings',
     'get_vad_settings',
     'set_vad_settings',

@@ -22,7 +22,7 @@
           role="tab"
           :class="{ active: activeSettingsTab === tab.id }"
           :aria-selected="activeSettingsTab === tab.id"
-          :aria-controls="`settings-panel-${tab.id}`"
+          :aria-controls="`catPanel-${tab.id}`"
           :tabindex="activeSettingsTab === tab.id ? 0 : -1"
           @click="selectSettingsTab(tab.id)"
           @keydown="handleTabKeydown($event, index)"
@@ -1116,6 +1116,19 @@
           </section>
         </div>
 
+        <div
+          v-show="activeSettingsTab === 'rag'"
+          class="settings-category-panel"
+          id="catPanel-rag"
+          role="tabpanel"
+          aria-labelledby="railTab-rag"
+        >
+          <RagFlowSettings
+            :avatar-id="runtime.avatar.avatar_id"
+            :active="activeSettingsTab === 'rag'"
+          />
+        </div>
+
         <!-- ── 分類 5：系統偏好與自訂 ── -->
         <div
           v-show="activeSettingsTab === 'experience'"
@@ -1267,6 +1280,7 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
+import RagFlowSettings from './RagFlowSettings.vue'
 import {
   boardReopenPresentation,
   captionStyle,
@@ -1545,6 +1559,7 @@ const settingsTabs = computed(() => [
   { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
   { id: 'voice', icon: 'bi bi-soundwave', label: '語音活動與辨識', badge: 'Silero' },
+  { id: 'rag', icon: 'bi bi-journal-text', label: '知識庫檢索', badge: 'RAGFlow' },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
 ])
 

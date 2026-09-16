@@ -59,6 +59,22 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - Source: <https://github.com/modelscope/FunASR>
 - License: verify the exact FunASR release and model license before redistribution
 
+## RAGFlow and dedicated embedding service
+
+- RAGFlow role: optional, separately deployed document retrieval service
+- RAGFlow version: v0.27.2; code license: Apache-2.0
+- RAGFlow source: <https://github.com/infiniflow/ragflow>
+- Ollama role: existing host installation, with a separate CPU embedding process
+- Ollama source: <https://github.com/ollama/ollama>
+- BGE-M3 role: recommended multilingual embedding model
+- BGE-M3 source and model card: <https://huggingface.co/BAAI/bge-m3>
+
+RAGFlow and model images are fetched on the host, not bundled in the Nova
+repository. Check their exact image and model licenses before redistribution;
+the Nova Apache-2.0 license does not relicense them.
+The accompanying Elasticsearch, MySQL, MinIO-compatible, and Valkey images
+also retain their respective upstream license and distribution terms.
+
 ## ER-NeRF, TalkingGaussian, and UltraLight
 
 - Role: optional avatar engines and related rendering components

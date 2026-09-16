@@ -29,6 +29,8 @@ def llm_response(
     chunk_guard: Optional[Callable[[int], bool]] = None,
     defer_history_commit: bool = False,
     reply_mode: Optional[ReplyMode | str] = None,
+    rag_context: str = "",
+    spoken_prefix: str = "",
 ) -> str:
     """呼叫 LLM 並將響應流式推送到 avatar"""
     try:
@@ -77,6 +79,8 @@ def llm_response(
             chunk_guard=chunk_guard,
             defer_history_commit=defer_history_commit,
             reply_mode=reply_mode,
+            rag_context=rag_context,
+            spoken_prefix=spoken_prefix,
         )
         
     except Exception as e:

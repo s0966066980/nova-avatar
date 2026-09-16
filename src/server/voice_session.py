@@ -30,6 +30,8 @@ from src.llm.service import (
     llm_response,
 )
 from src.llm.rules import snapshot_from_config
+from src.ragflow.client import RagFlowClient, retrieval_prompt
+from src.ragflow.settings import avatar_settings
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
 from src.server.reply_streaming.metrics import TurnMetrics
 from src.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
@@ -116,6 +118,7 @@ class VoiceTurnSession:
         self._metrics: Optional[TurnMetrics] = None
         self._turn_context: Optional[TurnContext] = None
         self._rules_snapshot = None
+        self._rag_snapshot = {"enabled": False, "dataset_ids": []}
         self._circuit_breaker = ReplyCircuitBreaker(clock=clock)
         self._pipeline_mode = "legacy"
         self._fragment_lock = RLock()
@@ -506,6 +509,25 @@ class VoiceTurnSession:
         if not self._is_current(turn_id, generation):
             return
         self._emit("board_clear", turn_id=turn_id)
+        rag_result = None
+        rag_selection = self._rag_snapshot
+        if rag_selection["enabled"] and rag_selection["dataset_ids"]:
+            self._emit("state", state="retrieving", turn_id=turn_id)
+            try:
+                rag_result = await RagFlowClient().retrieve(
+                    text, rag_selection["dataset_ids"]
+                )
+            except Exception as exc:
+                rag_result = {"status": "unavailable", "sources": []}
+                logger.warning(f"RAGFlow retrieval unavailable: {type(exc).__name__}")
+            if not self._is_current(turn_id, generation):
+                return
+            self._emit(
+                "rag_retrieval",
+                turn_id=turn_id,
+                status=rag_result["status"],
+                sources=rag_result["sources"],
+            )
         self._emit("state", state="llm", turn_id=turn_id)
         if self._pipeline_mode == "streaming":
             self._emit("assistant_response_start", turn_id=turn_id, mode="streaming", input_source=input_source)
@@ -527,6 +549,10 @@ class VoiceTurnSession:
                 "on_board": self._on_board_event,
             },
         }
+        if rag_result and rag_result["status"] == "matched":
+            kwargs["rag_context"] = retrieval_prompt(rag_result["sources"])
+        elif rag_result and rag_result["status"] == "empty":
+            kwargs["spoken_prefix"] = "知識庫沒有找到相關資料，以下是一般回答。"
         # Keep the immutable snapshot on the session/avatar seam so legacy
         # test doubles and TTS metadata do not receive internal rule text.
         try:
@@ -1147,6 +1173,9 @@ class VoiceTurnSession:
             # Capture once at turn acceptance. A later control-panel save only
             # affects the next turn, even while this one is still generating.
             self._rules_snapshot = snapshot_from_config(self.config)
+            self._rag_snapshot = avatar_settings(
+                str(getattr(getattr(self.config, "model", None), "avatar_id", "") or "")
+            )
             enabled = bool(
                 getattr(getattr(self.config, "reply_streaming", None), "enabled", False)
             )
