@@ -75,6 +75,19 @@ torchaudio = [
     { index = "pytorch-cu124" },
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "avatar: MuseTalk transition and rendering behavior",
+    "conversation: reply protocol, streaming, media, playback, and voice-session behavior",
+    "governance: branding, licensing, packaging, and integration audit contracts",
+    "llm: model routing, profiles, normalization, and local model lifecycle",
+    "ragflow: optional RAGFlow integration behavior",
+    "runtime: server health, runtime settings, and optional dependency contracts",
+    "speech: ASR, VAD, TTS, and speech worker behavior",
+    "slow: deterministic tests that normally take at least one second",
+    "live: opt-in tests that use an explicitly configured external model",
+]
+
 [[tool.uv.index]]
 name = "pytorch-cu124"
 url = "https://download.pytorch.org/whl/cu124"
