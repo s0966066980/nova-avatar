@@ -113,8 +113,8 @@ git diff --cached
 `.local/ragflow/`。金鑰也不得寫進 README、issue、PR 或截圖。若金鑰曾進入
 版本庫，先在 RAGFlow 撤銷並重建，再從 Git 歷史移除。
 
-完整部署、資源限制與疑難排解見
-[RAGFlow 本機檢索整合](docs/ragflow.md)。
+先閱讀圖形化的 [基礎 RAG 圖解與建置指南](docs/ragflow.html)，更完整的行為、
+隔離與故障說明見 [RAGFlow 本機檢索整合](docs/ragflow.md)。
 
 ## 啟動與使用
 
