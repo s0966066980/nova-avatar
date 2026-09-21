@@ -18,11 +18,13 @@ test('RAG 設定是獨立頁籤並按數位人保存選擇', () => {
   assert.doesNotMatch(rag, /NOVA_RAGFLOW_API_KEY|Authorization.*Bearer/)
 })
 
-test('檢索結果只在控制台回覆顯示，並處理空結果、故障與取消', () => {
+test('檢索參考與故障可顯示，但空結果不混入對話', () => {
   assert.match(app, /event\.type === 'rag_retrieval'/)
   assert.match(app, /event\.type === 'turn_cancelled'[\s\S]*delete ragByTurn\[event\.turn_id\]/)
-  assert.match(app, /ragByTurn\[msg\.voiceTurnId\]\.status === 'empty'/)
   assert.match(app, /ragByTurn\[msg\.voiceTurnId\]\.status === 'unavailable'/)
   assert.match(app, /<details[^>]*class="rag-turn-references"/)
+  assert.match(app, /status === 'unavailable'[\s\S]*\|\| ragByTurn\[msg\.voiceTurnId\]\.sources\.length/)
+  assert.doesNotMatch(app, /ragByTurn\[msg\.voiceTurnId\]\.status === 'empty'/)
+  assert.doesNotMatch(app, /本輪是一般回答/)
   assert.doesNotMatch(app, /put_msg_txt\(source\.content/)
 })

@@ -551,8 +551,6 @@ class VoiceTurnSession:
         }
         if rag_result and rag_result["status"] == "matched":
             kwargs["rag_context"] = retrieval_prompt(rag_result["sources"])
-        elif rag_result and rag_result["status"] == "empty":
-            kwargs["spoken_prefix"] = "知識庫沒有找到相關資料，以下是一般回答。"
         # Keep the immutable snapshot on the session/avatar seam so legacy
         # test doubles and TTS metadata do not receive internal rule text.
         try:

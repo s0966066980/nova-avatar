@@ -204,7 +204,6 @@ class BaseLLM(ABC):
         defer_history_commit: bool = False,
         reply_mode: Optional[ReplyMode | str] = None,
         rag_context: str = "",
-        spoken_prefix: str = "",
     ) -> str:
         """生成完整響應並推送到 avatar"""
         start_time = time.perf_counter()
@@ -454,13 +453,6 @@ class BaseLLM(ABC):
                     first_chunk_time = time.perf_counter()
                     logger.info(f"Time to first chunk: {first_chunk_time - start_time:.3f}s")
                     first_chunk = False
-                    if spoken_prefix:
-                        prefix = normalize_visible_text(spoken_prefix).strip()
-                        if prefix:
-                            if target_avatar:
-                                send_to_avatar(prefix)
-                            else:
-                                spoken_response += prefix
                 
                 full_response += chunk
 

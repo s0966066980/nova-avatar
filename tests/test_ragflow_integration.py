@@ -71,7 +71,7 @@ class RagFlowSettingsTests(unittest.TestCase):
 
 
 class RagFlowPromptTests(unittest.TestCase):
-    def test_retrieval_context_is_transient_and_no_hit_prefix_is_spoken(self):
+    def test_retrieval_context_is_transient(self):
         class FakeLLM(BaseLLM):
             def __init__(self, config):
                 super().__init__(config)
@@ -91,14 +91,11 @@ class RagFlowPromptTests(unittest.TestCase):
         llm = FakeLLM(Config())
         context = retrieval_prompt([{"document_name": "手冊", "content": "只限本輪的資料"}])
         llm.generate_response("問題", stream_to_avatar=False, rag_context=context)
-        spoken = llm.generate_response(
-            "另一個問題", stream_to_avatar=False,
-            spoken_prefix="知識庫沒有找到相關資料，以下是一般回答。",
-        )
+        spoken = llm.generate_response("另一個問題", stream_to_avatar=False)
         self.assertIn("只限本輪的資料", llm.prompts[0])
         self.assertNotIn("只限本輪的資料", llm.prompts[1])
         self.assertNotIn("只限本輪的資料", " ".join(llm.committed))
-        self.assertTrue(spoken.startswith("知識庫沒有找到相關資料"))
+        self.assertEqual(spoken, "這是一般回答。")
         self.assertEqual(llm.committed[-1], spoken)
 
 
@@ -231,10 +228,19 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("spoken_prefix", call)
         self.assertEqual([e["status"] for e in self.events if e["type"] == "rag_retrieval"], ["matched"])
 
-    async def test_no_hit_marks_general_answer(self):
+    async def test_no_hit_keeps_retrieval_status_out_of_the_answer(self):
         call = await self._turn({"status": "empty", "sources": []})
-        self.assertIn("知識庫沒有找到相關資料", call["spoken_prefix"])
+        self.assertNotIn("spoken_prefix", call)
         self.assertNotIn("rag_context", call)
+        self.assertEqual(self.avatar.messages[0][0], "一般回答")
+        self.assertEqual(
+            [e["text"] for e in self.events if e["type"] == "assistant_response"],
+            ["一般回答"],
+        )
+        self.assertEqual(
+            [e["status"] for e in self.events if e["type"] == "rag_retrieval"],
+            ["empty"],
+        )
 
     async def test_failure_continues_existing_answer(self):
         call = await self._turn(failure=RagFlowError("off"))

@@ -159,13 +159,15 @@ See LICENSE and NOTICE.
                 <div class="bubble-card">
                   <div v-if="appSettings.showTimestamp && msg.time" style="font-size: 10.5px; opacity: 0.6; margin-bottom: 4px; font-family: var(--font-mono);">{{ msg.time }}</div>
                   <div v-html="renderMarkdown(msg.text)"></div>
-                  <div v-if="msg.type === 'ai' && msg.voiceTurnId && ragByTurn[msg.voiceTurnId]" class="rag-turn-status">
+                  <div
+                    v-if="msg.type === 'ai' && msg.voiceTurnId && ragByTurn[msg.voiceTurnId]
+                      && (ragByTurn[msg.voiceTurnId].status === 'unavailable'
+                        || ragByTurn[msg.voiceTurnId].sources.length)"
+                    class="rag-turn-status"
+                  >
                     <div v-if="ragByTurn[msg.voiceTurnId].status === 'unavailable'" class="rag-turn-warning" role="status">
                       <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
                       知識庫暫時無法連線，本輪沿用一般回答。
-                    </div>
-                    <div v-else-if="ragByTurn[msg.voiceTurnId].status === 'empty'" class="rag-turn-note" role="status">
-                      知識庫沒有找到相關資料；本輪是一般回答。
                     </div>
                     <details v-else-if="ragByTurn[msg.voiceTurnId].sources.length" class="rag-turn-references">
                       <summary>檢索參考 · {{ ragByTurn[msg.voiceTurnId].sources.length }} 段</summary>
@@ -1642,7 +1644,6 @@ onMounted(async () => {
 
 .rag-turn-status { margin-top: 12px; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px; }
 .rag-turn-warning { color: var(--warning); display: flex; align-items: center; gap: 6px; }
-.rag-turn-note { color: var(--text-secondary); }
 .rag-turn-references summary { cursor: pointer; color: var(--brand-light); font-weight: 700; }
 .rag-turn-references summary:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
 .rag-turn-references ol { padding-left: 20px; display: grid; gap: 8px; max-height: 240px; overflow: auto; }
