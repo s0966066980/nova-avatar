@@ -146,7 +146,7 @@ vad:
   # Silero 端點檢測引數
   speech_start_ms: 100  # 連續多久算開口
   min_speech_ms: 250  # 太短的片段當噪聲丟掉
-  min_silence_ms: 500  # 連續靜音多久算說完
+  min_silence_ms: 300  # 連續靜音多久算說完
   speech_pad_ms: 150  # 片段前後各留一點，避免吃字
   max_speech_ms: 15000  # 單段上限，0=不限制
 
