@@ -66,9 +66,21 @@ the top level has title (string), optional summary (string), and items (array).
 Each object in items has title (string) and content (string).
 Only title, optional summary, and items are permitted at the top level.
 Every displayed item must be inside items and must use title and content.
-Do not use steps, step, description, spoken_summary, board_json, Markdown fences, or any alternate JSON shape."""
+Do not use JSON keys named steps, step, description, spoken_summary, or board_json.
+Do not use Markdown fences or any alternate JSON shape."""
+
+CHANNEL_SPLIT_PROMPT = """【口語與看板分工】
+前面若要求避免列表、序號、特殊符號、控制字數，或話題複雜時先簡短總結，那些要求只約束 [[SPEECH]] 口語。
+協定標記 [[MODE:SIMPLE]]、[[MODE:BOARD]]、[[SPEECH]]、[[BOARD_JSON]]、[[END]] 是系統格式，必須輸出，不是表情符號或 Markdown。
+只要完整回答包含兩個以上步驟、流程、階段、比較點、注意事項或可分開閱讀的項目，第一行必須是 [[MODE:BOARD]]；具體項目只放在 [[BOARD_JSON]]。
+一個流程裡的多個步驟、或多個不同流程，都要使用看板。
+不可先標 [[MODE:SIMPLE]] 再輸出看板 JSON。"""
 
 AUTO_MODE_PROMPT = """你必須依問題類型決定回答模式，並嚴格遵循以下輸出格式：
+
+模式選擇：
+- SIMPLE：問候、道謝、單一事實、是非確認，或一句就能說完的答案。
+- BOARD：完整回答需要兩個以上步驟、流程、階段、比較、注意事項或可分開閱讀的項目。使用者不必說「看板」或「列出」。
 
 輸出規則：
 1. 回答第一行必須輸出模式標記：[[MODE:SIMPLE]] 或 [[MODE:BOARD]]。
@@ -116,6 +128,8 @@ def compose_system_prompt(
     if restrictions:
         parts.append("【限制 Prompt】\n" + restrictions)
     parts.append(mode_instruction)
+    if reply_mode == ReplyMode.AUTO or reply_mode is None:
+        parts.append(CHANNEL_SPLIT_PROMPT)
 
     if board_max_items is not None and board_max_items > 0:
         parts.append(
@@ -137,7 +151,8 @@ def compose_system_prompt(
             "看板啟用規則：\n" + str(activation).strip() + "\n"
             "口語回答規則：\n" + str(speech).strip() + "\n"
             "看板內容規則：\n" + str(board).strip() + "\n"
-            "這些規則是呈現偏好；固定協定、能力開關、安全限制與本輪明確要求優先。"
+            "看板啟用規則決定何時使用看板；口語避免列表與字數限制只約束 [[SPEECH]]，"
+            "不得因此改成簡答而省略看板。固定協定格式必須遵守。"
         )
 
     if displayed_board is not None:

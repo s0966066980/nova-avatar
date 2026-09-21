@@ -18,9 +18,11 @@ class AutoResponseProtocolTests(unittest.TestCase):
         self.assertIn("title (string)", prompt)
         self.assertIn("items (array)", prompt)
         self.assertIn("content (string)", prompt)
-        self.assertIn("Do not use steps, step, description", prompt)
+        self.assertIn("Do not use JSON keys named steps, step, description", prompt)
         self.assertIn("看板資料格式不是回答內容", prompt)
         self.assertIn("不是工具呼叫", prompt)
+        self.assertIn("【口語與看板分工】", prompt)
+        self.assertIn("一個流程裡的多個步驟", prompt)
         self.assertNotIn("台灣歷史", prompt)
 
     def test_auto_prompt_states_the_effective_board_item_limit(self):
@@ -31,6 +33,42 @@ class AutoResponseProtocolTests(unittest.TestCase):
         )
 
         self.assertIn("看板最多 6 項", prompt)
+
+    def test_auto_prompt_scopes_list_ban_to_speech(self):
+        prompt = compose_system_prompt(
+            "避免使用列表、序號等不適合語音播報的格式。不要展開太多細節。",
+            reply_mode=ReplyMode.AUTO,
+            rules={
+                "activation": "兩個重點用看板。",
+                "speech": "口語簡短。",
+                "board": "條列清楚。",
+            },
+        )
+
+        self.assertIn("那些要求只約束 [[SPEECH]] 口語", prompt)
+        self.assertIn("不得因此改成簡答而省略看板", prompt)
+        self.assertNotIn("這些規則是呈現偏好", prompt)
+
+    def test_auto_simple_then_board_json_is_recovered(self):
+        modes = []
+        parser = ResponseProtocolParser(mode=ReplyMode.AUTO, on_mode=modes.append)
+        spoken = []
+        for chunk in (
+            "[[MODE:SIMPLE]]\n[[SPEECH]]流程有幾個階段，請看下方看板。\n",
+            '[[BOARD_JSON]]{"title":"專案流程","items":['
+            '{"title":"開案","content":"確認需求。"},'
+            '{"title":"結案","content":"驗收交付。"}]}[[END]]',
+        ):
+            spoken.extend(parser.feed(chunk))
+        tail, board = parser.flush()
+        spoken.extend(tail)
+
+        self.assertEqual(modes[-1], ReplyMode.BOARD)
+        self.assertIn("流程有幾個階段", "".join(spoken))
+        self.assertNotIn("BOARD_JSON", "".join(spoken))
+        self.assertIsNotNone(board)
+        self.assertEqual(board.title, "專案流程")
+        self.assertEqual(len(board.items), 2)
 
     def test_auto_simple_mode_marker_is_confirmed_once(self):
         modes = []

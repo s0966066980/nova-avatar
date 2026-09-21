@@ -30,6 +30,11 @@ TAG_MODE_SIMPLE_ZH = "模式：簡答"
 TAG_MODE_BOARD_ZH = "模式：看板"
 TAG_SPEECH_ZH = "口語："
 TAG_BOARD_ZH = "資料："
+BOARD_TAG_RE = re.compile(
+    r"\[{1,2}\s*BOARD(?:_JSON)?(?::\s*)?\]{1,2}"
+    r"|(?:^|[\r\n]+)\s*(?:資料|看板(?:資料)?)\s*[:：]",
+    re.IGNORECASE,
+)
 FORMAT_RECOVERY_MESSAGE = "抱歉，剛剛的回覆格式異常，請再說一次。"
 THINK_OPEN = "<think>"
 THINK_CLOSE = "</think>"
@@ -401,6 +406,33 @@ class ResponseProtocolParser:
         # be committed to speech as plain text.
         return []
 
+    def _board_tag_prefix_overlap(self, text: str) -> int:
+        return max(
+            ThinkFilter._prefix_overlap(text, TAG_BOARD),
+            ThinkFilter._prefix_overlap(text, "[BOARD_JSON]"),
+            ThinkFilter._prefix_overlap(text, "[BOARD]"),
+            ThinkFilter._prefix_overlap(text, TAG_BOARD_ZH),
+            ThinkFilter._prefix_overlap(text, "資料:"),
+            ThinkFilter._prefix_overlap(text, "看板:"),
+        )
+
+    def _promote_simple_to_board(self, board_at: int) -> list[str]:
+        """Recover BOARD when the model marked SIMPLE but still emitted board JSON."""
+        speech_part = self._buffer[:board_at]
+        rest = self._buffer[board_at:]
+        speech_outputs: list[str] = []
+        if speech_part.strip():
+            speech_outputs.extend(self._append_speech(speech_part, is_board_mode=True))
+        self.mode = ReplyMode.BOARD
+        self._protocol_wrapped = True
+        self._state = ParserState.IN_SPEECH
+        self._structured_payload_suppressed = False
+        self._raw_payload_buffer = ""
+        self._notify_mode()
+        self._buffer = rest
+        speech_outputs.extend(self._process_board_mode_chunk(""))
+        return speech_outputs
+
     def _process_simple_wrapped_chunk(self, chunk: str) -> list[str]:
         """Parse the fixed speech/end framing for an AUTO SIMPLE answer."""
         self._buffer += chunk
@@ -430,6 +462,10 @@ class ResponseProtocolParser:
                     self._buffer = self._buffer[-speech_overlap:]
                     return []
                 self._state = ParserState.IN_SPEECH
+        board_m = BOARD_TAG_RE.search(self._buffer)
+        if board_m:
+            return self._promote_simple_to_board(board_m.start())
+        board_overlap = self._board_tag_prefix_overlap(self._buffer)
         if self._state == ParserState.DONE:
             self._buffer = ""
             return []
@@ -446,6 +482,7 @@ class ResponseProtocolParser:
             overlap = max(
                 ThinkFilter._prefix_overlap(self._buffer, TAG_END),
                 ThinkFilter._prefix_overlap(self._buffer, "[END]"),
+                board_overlap,
             )
             if overlap:
                 text = self._buffer[:-overlap]

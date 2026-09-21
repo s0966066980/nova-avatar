@@ -17,10 +17,11 @@ class EditableRuleTests(unittest.TestCase):
         self.assertEqual(snapshot.revision, 1)
         self.assertEqual(snapshot.activation, default_rules()["activation"])
 
-    def test_default_activation_uses_board_for_multiple_independent_points(self):
+    def test_default_activation_uses_board_for_steps_and_processes(self):
         activation = default_rules()["activation"]
-        self.assertIn("兩個或以上彼此獨立的重點", activation)
-        self.assertIn("存在多個獨立重點", activation)
+        self.assertIn("兩個或以上步驟、流程、階段", activation)
+        self.assertIn("一個流程裡的多個步驟", activation)
+        self.assertIn("或多個不同流程", activation)
 
     def test_validation_rejects_blank_and_overlong_content(self):
         defaults = default_rules()
