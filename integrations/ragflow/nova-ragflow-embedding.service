@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [Unit]
-Description=Nova Avatar RAGFlow CPU-only embedding endpoint
+Description=Nova Avatar RAGFlow GPU embedding endpoint
 
 [Service]
 Type=simple
