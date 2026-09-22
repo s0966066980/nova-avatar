@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+<!--
+Derived from Kedreamix/Linly-Talker-Stream.
+Copyright [Linly-talker-stream@kedreamix].
+Licensed under the Apache License, Version 2.0.
+
+Modified by HongXian0903, 2026.
+See LICENSE and NOTICE.
+-->
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -412,6 +420,7 @@ import {
   let autoMode=false;        // 後台 VAD 開啟 → 自動收音
   let autoPaused=false;      // 自動模式下使用者主動暫停收音
   let holding=false;         // 按鍵收音進行中
+  let interruptedPress=false;// 插話按下後，鬆開仍屬於同一次操作
   let speaking=false;        // 數字人正在說話
   let live=false;
   let replyTimer=null, saidTimer=null;
@@ -626,7 +635,9 @@ import {
     return send({type:'capture', enabled:Boolean(enabled), finalize});
   }
   function interrupt(){
-    micStream?.getAudioTracks().forEach(t => { t.enabled = true; });
+    autoPaused = false;
+    setCapture(true);
+    setMode();
     return send({type:'interrupt'});
   }
 
@@ -831,7 +842,7 @@ import {
   }
 
   function teardown(){
-    live = false; speaking = false; holding = false; lastSeq = 0;
+    live = false; speaking = false; holding = false; interruptedPress = false; lastSeq = 0;
     clearReply();
     if(chan){ chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){} }
     chan = null;
@@ -848,7 +859,8 @@ import {
   mic.addEventListener('pointerdown', (e) => {
     if(mic.disabled) return;
     e.preventDefault();
-    if(speaking){ interrupt(); return; }
+    interruptedPress = false;
+    if(speaking){ interruptedPress = true; interrupt(); return; }
     if(autoMode) return;                 // 自動模式在 pointerup 才切換
     holding = true;
     setCapture(true);
@@ -866,6 +878,7 @@ import {
   mic.addEventListener('pointerup', (e) => {
     if(mic.disabled) return;
     e.preventDefault();
+    if(interruptedPress){ interruptedPress = false; return; }
     if(autoMode && !speaking){
       autoPaused = !autoPaused;
       setCapture(!autoPaused);
