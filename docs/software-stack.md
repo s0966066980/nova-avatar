@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Nova Avatar Software Stack
 
-Updated: 2026-09-15
+Updated: 2026-09-25
 
 Nova Avatar is a real-time conversational digital-human application: browser
 microphone input travels over WebRTC to server-owned turn orchestration, then
@@ -35,6 +35,8 @@ the root Apache-2.0 grant.
 | Avatar | MuseTalk | Supported, recommended review-profile path | Code is MIT; models and dependencies retain separate terms. |
 | Avatar | Wav2Lip | **Research / Non-commercial** | Do not include its integration or upstream weights in a commercial Nova Avatar distribution. |
 | Avatar | ER-NeRF, TalkingGaussian, UltraLight | Optional, license review required | Do not infer commercial rights from the root license. |
+| Scene | Server-side green-screen compositor (`src/scene/`) | Supported for MuseTalk green-screen avatars | Background images, videos, GIFs, and source footage need their own rights review. |
+| Retrieval | RAGFlow `v0.27.2` with BGE-M3 via a dedicated Ollama process | Optional, disabled by default | Separate Docker Compose project; review RAGFlow, BGE-M3, and document rights. See [ragflow.md](ragflow.md). |
 
 ## External runtime requirements
 
@@ -46,6 +48,7 @@ the root Apache-2.0 grant.
 - NVIDIA driver/CUDA-compatible runtime where the selected Avatar or ML engine
   needs it. CUDA requirements differ by engine.
 - An Ollama or llama.cpp endpoint when the configured LLM uses one.
+- Docker with Compose only when the optional RAGFlow retrieval is enabled.
 
 ## Commercial review profile
 

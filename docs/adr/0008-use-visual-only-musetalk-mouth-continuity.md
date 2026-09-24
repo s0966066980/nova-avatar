@@ -34,3 +34,13 @@ MuseTalk 從最後說話影格回到移動中的原始待機影格時，不得�
 - settling 使用 smoothstep 權重，只在嘴部 ROI 執行；720×1280 實測平均 1.596 ms、最大 3.966 ms，不增加推理或音訊等待。
 - 自動驗收涵蓋移動遮罩、異常位移回退、generation reset、遮罩外像素不變與固定影格完成。
 - 正常運行只保留 transition、fallback、最大位移、最大縮放及 video repeat/drop 聚合計數；逐幀資料僅在診斷開關啟用時輸出。
+
+## 說話至待機轉場控制器補充 — 2026-09-14
+
+`model.musetalk.avatar_transition` 啟用時，由 `AvatarTransitionController` 接手回答結束後的視覺轉場：說話結束時以待機相位匹配規劃 settling 長度與目標影格，完成 settling 後再做短暫 micro crossfade；此設定取代上節的 12 影格 settling。
+
+- 控制器只規劃即將播放的影格，不移動 MuseTalk 的 frame cursor；相位匹配不得任意跳轉待機索引，只在 settling 長度範圍內沿 ping-pong 播放方向的前方影格，以姿態描述子加時間懲罰挑選目標。
+- settling 預設 5 影格，並限制在 4–6 影格；micro crossfade 預設 2 影格，全畫面差異超過 `micro_crossfade_fullframe_max_diff` 時改為只在 MuseTalk 遮罩內混合，避免身體與背景鬼影。說話開始的 opening 預設 2 影格。
+- 相位描述子淡化嘴部權重；speech 端描述子使用與目前輸出影格相同的 ROI 索引。
+- 嘴型連續控制器由轉場控制器統一呼叫，不得對同一影格重複合成；generation 變更、插話與 `flush_talk()` 必須立即重置狀態，也不得修改輸入影格。
+- 原任務規格已移除；參數定義見 `src/config/schema.py` 的 MuseTalk 設定，行為以 `tests/test_avatar_transition.py` 為準。

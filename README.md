@@ -22,9 +22,9 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
   選取知識庫、測試檢索並啟用。Nova 仍使用目前選定的 LLM 產生回答，
   RAGFlow 只提供本輪的參考片段。
 
-架構與已驗證的執行邊界見 [數位人與場景架構](docs/avatar-scene-architecture.html)、
-[目前專案基線](docs/project-status.md) 和
-[軟體組合](docs/software-stack.md)。
+架構與已驗證的執行邊界見 [目前專案基線](docs/project-status.md)、
+[軟體組合](docs/software-stack.md) 和 [架構決策紀錄](docs/adr/)；
+綠幕數位人與背景合成見 [ADR 0014](docs/adr/0014-compose-green-screen-avatars-on-server.md)。
 
 ## 安裝 Nova Avatar
 
@@ -113,8 +113,8 @@ git diff --cached
 `.local/ragflow/`。金鑰也不得寫進 README、issue、PR 或截圖。若金鑰曾進入
 版本庫，先在 RAGFlow 撤銷並重建，再從 Git 歷史移除。
 
-先閱讀圖形化的 [基礎 RAG 圖解與建置指南](docs/ragflow.html)，更完整的行為、
-隔離與故障說明見 [RAGFlow 本機檢索整合](docs/ragflow.md)。
+建置步驟、行為、隔離、故障說明與驗證清單見
+[RAGFlow 本機檢索整合](docs/ragflow.md)。
 
 ## 啟動與使用
 

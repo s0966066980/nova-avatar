@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Current Project Workflow
 
-Updated: 2026-09-15
+Updated: 2026-09-25
 
 This document replaces informal carry-over work with a repeatable Nova Avatar
 maintenance flow. The current baseline is documented in
@@ -14,7 +14,7 @@ belong in `.scratch/` under the repository's issue-tracker convention.
 
 ## Start a new work item
 
-1. Check `docs/project-status.md`, `CONTEXT.md`, relevant ADRs, and the
+1. Check `docs/project-status.md`, `CONTEXT.md`, relevant ADRs in `docs/adr/`, and the
    [source attribution audit](source-attribution-audit.md).
 2. Create `.scratch/<feature>/spec.md` and one issue file per implementation
    concern under `.scratch/<feature>/issues/`.
@@ -62,6 +62,12 @@ belong in `.scratch/` under the repository's issue-tracker convention.
    the current baseline.
 5. When a work item is superseded, add a short pointer to its replacement;
    do not erase its licensing, benchmark, or decision history.
+6. Keep `docs/` limited to maintained references: the project status, this
+   workflow, the software stack, the source attribution audit, component
+   guides such as `ragflow.md`, and ADRs. One-off implementation prompts and
+   task specifications belong in `.scratch/`; once delivered, record any
+   lasting decision as an ADR and remove the prompt instead of keeping a
+   stale copy in `docs/`.
 
 ## Release handoff
 
@@ -73,3 +79,30 @@ belong in `.scratch/` under the repository's issue-tracker convention.
    every changed source file before altering its attribution header.
 4. Link the final verification results from the active `.scratch/` work item
    and update the project status only after the gates pass.
+
+### Branding and third-party audit
+
+```bash
+git grep -n -I -E 'Linly-Talker-Stream|Linly_Talker_Stream|linly-talker|Kedreamix|kedreamix'
+git grep -n -I -E 'Wav2Lip|MuseTalk|LiveTalking|Whisper|FunASR|TalkingGaussian|ER-NeRF'
+```
+
+Upstream names are expected in `NOTICE`, `THIRD_PARTY_NOTICES.md`, README
+references, and inherited-source attribution. Only current UI titles, package
+metadata, product descriptions, and user-facing prompts must use Nova Avatar.
+Third-party engine names are not expected to reach zero matches.
+
+### Release checklist
+
+- Legal: `LICENSE` and `NOTICE` exist; Kedreamix, LiveTalking (where
+  applicable), and MuseTalk MIT attribution are retained; modified inherited
+  sources carry a change notice; Wav2Lip is marked
+  **Research / Non-commercial**; no third-party model is described as
+  Apache-2.0.
+- Branding: user-visible product name is Nova Avatar; package slugs are
+  `nova-avatar` and `nova-avatar-web`; the repository URL is correct; old
+  branding does not appear in the current UI.
+- Runtime: backend start, frontend build, WebRTC connection, microphone, VAD,
+  STT, LLM, TTS, MuseTalk, interruption, playback commit, caption lifecycle,
+  and runtime settings are exercised on the selected distribution
+  configuration.
