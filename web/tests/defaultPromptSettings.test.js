@@ -278,7 +278,7 @@ test('正式控制台不顯示原型展示列、假延遲，且可預覽目前�
   assert.doesNotMatch(app, /42ms/)
   assert.match(app, /const currentAvatar = computed/)
   assert.match(app, /class="stage-avatar-preview"/)
-  assert.match(app, /currentAvatar\.preview_url \|\| currentAvatar\.thumbnail/)
+  assert.match(app, /:src="consoleScenePreviewUrl"/)
   assert.match(panel, /char\.preview_url \|\| char\.thumbnail/)
 })
 

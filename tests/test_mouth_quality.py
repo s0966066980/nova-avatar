@@ -152,6 +152,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
             def fake_build(work_dir, avatar_id, video_path, report, options):
                 captured["options"] = options
                 captured["avatar_id"] = avatar_id
+                captured["video_path"] = video_path
                 report(80, "ok")
 
             with patch("src.avatars.builder.avatars_root", return_value=root / "avatars"), \
@@ -162,11 +163,15 @@ class BuildQualityForwardingTests(unittest.TestCase):
                     video,
                     "musetalk_sharp",
                     quality={"bbox_shift": 6, "extra_margin": 18},
+                    green_screen=True,
                 )
 
             self.assertEqual(result["avatar_id"], "musetalk_sharp")
             self.assertEqual(captured["options"]["musetalk"]["bbox_shift"], 6)
             self.assertEqual(captured["options"]["musetalk"]["extra_margin"], 18)
+            self.assertTrue(captured["options"]["green_screen"])
+            self.assertEqual(captured["video_path"], "source.mp4")
+            self.assertEqual((root / "avatars" / "musetalk_sharp" / "source.mp4").read_bytes(), video.read_bytes())
 
     def test_import_job_forwards_quality_into_builder(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -174,9 +179,10 @@ class BuildQualityForwardingTests(unittest.TestCase):
             video.write_bytes(b"clip")
             seen = {}
 
-            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None):
+            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None, green_screen=False):
                 seen["quality"] = quality
                 seen["avatar_id"] = avatar_id
+                seen["green_screen"] = green_screen
                 if progress:
                     progress(100, "done")
                 return {"type": engine, "avatar_id": avatar_id, "frames": 1}
@@ -203,6 +209,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
             self.assertEqual(job.status, "done", job.error)
             self.assertEqual(seen["avatar_id"], "musetalk_from_ui")
             self.assertEqual(seen["quality"]["bbox_shift"], 3)
+            self.assertFalse(seen["green_screen"])
 
 
 class QualityFromModelTests(unittest.TestCase):

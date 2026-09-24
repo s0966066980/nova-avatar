@@ -72,6 +72,13 @@ def main():
     state.config_path = args.config
     state.config = load_config(config_file=args.config)
     logger.info(f"已載入配置: {state.config}")
+    from src.scene.service import SceneError, scene_service
+
+    try:
+        scene_service.select(getattr(state.config.stage, "background_id", ""))
+    except SceneError as exc:
+        logger.warning("未能載入已選舞台背景：%s", exc)
+        state.config.stage.background_id = ""
     edge_tts_prewarm = _start_edge_tts_prewarm(state.config)
 
     # The llama.cpp child belongs to this backend when ensure_server starts it;

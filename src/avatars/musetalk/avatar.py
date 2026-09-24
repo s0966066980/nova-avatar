@@ -326,11 +326,13 @@ def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,aud
                     if on_stale_drop is not None:
                         on_stale_drop("musetalk_result", "stale_generation")
                     break
-                if not put_result_frame(
-                    res_frame_queue,
-                    (None,__mirror_index(length,index),paired_audio),
-                    quit_event,
-                ):
+                result = (None, __mirror_index(length, index), paired_audio)
+                if _is_unscoped_idle_result(result) and res_frame_queue.full():
+                    # Idle runs ahead of the 25 fps consumer. Drop the surplus
+                    # silent pair but keep this pose for the next one; advancing
+                    # past it skipped source frames and made idle motion stutter.
+                    continue
+                if not put_result_frame(res_frame_queue, result, quit_event):
                     break
                 mark_first_result(paired_audio)
                 index = index + 1

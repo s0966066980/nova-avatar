@@ -343,6 +343,7 @@ def stage_snapshot(config) -> Dict[str, Any]:
     stage = getattr(config, "stage", None)
     caption = getattr(stage, "caption_max_chars", DEFAULT_STAGE_CAPTION_MAX_CHARS)
     return {
+        "background_id": str(getattr(stage, "background_id", "") or ""),
         "caption_max_chars": validate_stage_caption_max_chars(caption),
         "caption_x": _validate_int_range(
             getattr(stage, "caption_x", DEFAULT_CAPTION_X),
@@ -536,6 +537,29 @@ def apply_stage_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
         raise SettingsError(str(exc)) from exc
     persist_runtime_overrides(config)
     return stage_snapshot(config)
+
+
+def apply_stage_background(config, background_id: str) -> Dict[str, Any]:
+    """Switch the shared scene without rebuilding an avatar or WebRTC session."""
+    from src.scene.service import SceneError, scene_service
+
+    stage = getattr(config, "stage", None)
+    if stage is None:
+        raise SettingsError("當前配置不支援舞台背景", status=400)
+    selected = str(background_id or "").strip()
+    previous = str(getattr(stage, "background_id", "") or "")
+    try:
+        result = scene_service.select(selected)
+    except SceneError as exc:
+        raise SettingsError(str(exc), status=400) from exc
+    stage.background_id = selected
+    try:
+        persist_runtime_overrides(config)
+    except Exception:
+        stage.background_id = previous
+        scene_service.select(previous)
+        raise
+    return result
 
 
 async def fetch_ollama_models(base_url: str) -> Dict[str, Any]:

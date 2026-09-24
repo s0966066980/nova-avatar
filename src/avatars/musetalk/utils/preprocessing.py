@@ -3,34 +3,53 @@
 # Licensed under the MIT License.
 # Modified by HongXian0903 for integration with Nova Avatar, 2026.
 
-import sys
-from face_detection import FaceAlignment,LandmarksType
-from os import listdir, path
-import subprocess
+from functools import lru_cache
+from pathlib import Path
+import logging
 import numpy as np
 import cv2
 import pickle
-import os
-import json
-from mmpose.apis import inference_topdown, init_model
-from mmpose.structures import merge_data_samples
 import torch
 from tqdm import tqdm
 
+from .face_detection.detection.sfd.sfd_detector import SFDDetector
+
+logger = logging.getLogger(__name__)
+
 # Get the project root directory
-current_file = os.path.abspath(__file__)
-musetalk_dir = os.path.dirname(os.path.dirname(current_file))  # src/avatars/musetalk
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(musetalk_dir)))  # project root
+musetalk_dir = Path(__file__).resolve().parents[1]
+project_root = musetalk_dir.parents[2]
 
-# initialize the mmpose model
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-config_file = os.path.join(musetalk_dir, 'utils/dwpose/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py')
-checkpoint_file = os.path.join(project_root, 'models/musetalk/dwpose/dw-ll_ucoco_384.pth')
-model = init_model(config_file, checkpoint_file, device=device)
 
-# initialize the face detection model
-device = "cuda" if torch.cuda.is_available() else "cpu"
-fa = FaceAlignment(LandmarksType._2D, flip_input=False,device=device)
+@lru_cache(maxsize=1)
+def _face_detector():
+    checkpoint = project_root / "models/musetalk/s3fd-619a316812/s3fd-619a316812.pth"
+    cached_checkpoint = Path(torch.hub.get_dir()) / "checkpoints/s3fd-619a316812.pth"
+    weights = next((candidate for candidate in (checkpoint, cached_checkpoint) if candidate.is_file()), None)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if weights is not None:
+        return SFDDetector(device=device, path_to_detector=str(weights))
+    return SFDDetector(device=device)
+
+
+@lru_cache(maxsize=1)
+def _pose_runtime():
+    """Use the original landmark crop when OpenMMLab is installed."""
+    try:
+        from mmpose.apis import inference_topdown, init_model
+        from mmpose.structures import merge_data_samples
+    except ImportError:
+        logger.info("mmpose is unavailable; using the bundled face detector for avatar crops")
+        return None
+
+    config = musetalk_dir / "utils/dwpose/rtmpose-l_8xb32-270e_coco-ubody-wholebody-384x288.py"
+    checkpoint = project_root / "models/musetalk/dwpose/dw-ll_ucoco_384.pth"
+    try:
+        model = init_model(str(config), str(checkpoint), device="cuda" if torch.cuda.is_available() else "cpu")
+    except Exception:
+        logger.exception("Could not initialize mmpose; using face detector crops")
+        return None
+    return model, inference_topdown, merge_data_samples
 
 # maker if the bbox is not sufficient 
 coord_placeholder = (0.0,0.0,0.0,0.0)
@@ -47,104 +66,85 @@ def read_imgs(img_list):
     print('reading images...')
     for img_path in tqdm(img_list):
         frame = cv2.imread(img_path)
+        if frame is None:
+            raise ValueError(f"Cannot read avatar frame: {img_path}")
         frames.append(frame)
     return frames
 
-def get_bbox_range(img_list,upperbondrange =0):
+def _landmark_bbox(frame, pose_runtime, upperbondrange):
+    if pose_runtime is None:
+        return None, None
+    model, inference_topdown, merge_data_samples = pose_runtime
+    try:
+        results = merge_data_samples(inference_topdown(model, frame))
+        landmarks = results.pred_instances.keypoints[0][23:91].astype(np.int32)
+        half_face = landmarks[29]
+        range_minus = int((landmarks[30] - landmarks[29])[1])
+        range_plus = int((landmarks[29] - landmarks[28])[1])
+        upper = max(0, 2 * int(half_face[1]) + upperbondrange - int(np.max(landmarks[:, 1])))
+        box = (
+            int(np.min(landmarks[:, 0])), upper,
+            int(np.max(landmarks[:, 0])), int(np.max(landmarks[:, 1])),
+        )
+        if box[0] >= 0 and box[2] > box[0] and box[3] > box[1]:
+            return box, (range_minus, range_plus)
+    except (IndexError, KeyError, ValueError, AttributeError):
+        logger.debug("No usable mmpose landmarks for frame; using face detector crop", exc_info=True)
+    return None, None
+
+
+def _detector_bbox(frame, detector, upperbondrange):
+    # SFD expects RGB; OpenCV loads avatar frames as BGR.
+    faces = detector.detect_from_image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    if len(faces) == 0:
+        return coord_placeholder
+    x1, y1, x2, y2 = max(faces, key=lambda face: face[4])[:4]
+    width, height = x2 - x1, y2 - y1
+    frame_height, frame_width = frame.shape[:2]
+    box = (
+        max(0, round(x1 - width * 0.02)),
+        max(0, round(y1 - height * 0.06 + upperbondrange)),
+        min(frame_width, round(x2 + width * 0.02)),
+        min(frame_height, round(y2 + height * 0.06)),
+    )
+    return box if box[2] > box[0] and box[3] > box[1] else coord_placeholder
+
+
+def _process_frames(img_list, upperbondrange):
     frames = read_imgs(img_list)
-    batch_size_fa = 1
-    batches = [frames[i:i + batch_size_fa] for i in range(0, len(frames), batch_size_fa)]
     coords_list = []
-    landmarks = []
-    if upperbondrange != 0:
-        print('get key_landmark and face bounding boxes with the bbox_shift:',upperbondrange)
-    else:
-        print('get key_landmark and face bounding boxes with the default value')
     average_range_minus = []
     average_range_plus = []
-    for fb in tqdm(batches):
-        results = inference_topdown(model, np.asarray(fb)[0])
-        results = merge_data_samples(results)
-        keypoints = results.pred_instances.keypoints
-        face_land_mark= keypoints[0][23:91]
-        face_land_mark = face_land_mark.astype(np.int32)
-        
-        # get bounding boxes by face detetion
-        bbox = fa.get_detections_for_batch(np.asarray(fb))
-        
-        # adjust the bounding box refer to landmark
-        # Add the bounding box to a tuple and append it to the coordinates list
-        for j, f in enumerate(bbox):
-            if f is None: # no face in the image
-                coords_list += [coord_placeholder]
-                continue
-            
-            half_face_coord =  face_land_mark[29]#np.mean([face_land_mark[28], face_land_mark[29]], axis=0)
-            range_minus = (face_land_mark[30]- face_land_mark[29])[1]
-            range_plus = (face_land_mark[29]- face_land_mark[28])[1]
-            average_range_minus.append(range_minus)
-            average_range_plus.append(range_plus)
-            if upperbondrange != 0:
-                half_face_coord[1] = upperbondrange+half_face_coord[1] #手動調整  + 向下（偏29）  - 向上（偏28）
+    detector = _face_detector()
+    pose_runtime = _pose_runtime()
+    for frame in tqdm(frames):
+        detected = _detector_bbox(frame, detector, upperbondrange)
+        if detected == coord_placeholder:
+            coords_list.append(coord_placeholder)
+            continue
+        landmark_box, ranges = _landmark_bbox(frame, pose_runtime, upperbondrange)
+        coords_list.append(landmark_box or detected)
+        if ranges is not None:
+            average_range_minus.append(ranges[0])
+            average_range_plus.append(ranges[1])
+    return coords_list, frames, average_range_minus, average_range_plus
 
-    text_range=f"Total frame:「{len(frames)}」 Manually adjust range : [ -{int(sum(average_range_minus) / len(average_range_minus))}~{int(sum(average_range_plus) / len(average_range_plus))} ] , the current value: {upperbondrange}"
-    return text_range
-    
 
-def get_landmark_and_bbox(img_list,upperbondrange =0):
-    frames = read_imgs(img_list)
-    batch_size_fa = 1
-    batches = [frames[i:i + batch_size_fa] for i in range(0, len(frames), batch_size_fa)]
-    coords_list = []
-    landmarks = []
-    if upperbondrange != 0:
-        print('get key_landmark and face bounding boxes with the bbox_shift:',upperbondrange)
-    else:
-        print('get key_landmark and face bounding boxes with the default value')
-    average_range_minus = []
-    average_range_plus = []
-    for fb in tqdm(batches):
-        results = inference_topdown(model, np.asarray(fb)[0])
-        results = merge_data_samples(results)
-        keypoints = results.pred_instances.keypoints
-        face_land_mark= keypoints[0][23:91]
-        face_land_mark = face_land_mark.astype(np.int32)
-        
-        # get bounding boxes by face detetion
-        bbox = fa.get_detections_for_batch(np.asarray(fb))
-        
-        # adjust the bounding box refer to landmark
-        # Add the bounding box to a tuple and append it to the coordinates list
-        for j, f in enumerate(bbox):
-            if f is None: # no face in the image
-                coords_list += [coord_placeholder]
-                continue
-            
-            half_face_coord =  face_land_mark[29]#np.mean([face_land_mark[28], face_land_mark[29]], axis=0)
-            range_minus = (face_land_mark[30]- face_land_mark[29])[1]
-            range_plus = (face_land_mark[29]- face_land_mark[28])[1]
-            average_range_minus.append(range_minus)
-            average_range_plus.append(range_plus)
-            if upperbondrange != 0:
-                half_face_coord[1] = upperbondrange+half_face_coord[1] #手動調整  + 向下（偏29）  - 向上（偏28）
-            half_face_dist = np.max(face_land_mark[:,1]) - half_face_coord[1]
-            min_upper_bond = 0
-            upper_bond = max(min_upper_bond, half_face_coord[1] - half_face_dist)
-            
-            f_landmark = (np.min(face_land_mark[:, 0]),int(upper_bond),np.max(face_land_mark[:, 0]),np.max(face_land_mark[:,1]))
-            x1, y1, x2, y2 = f_landmark
-            
-            if y2-y1<=0 or x2-x1<=0 or x1<0: # if the landmark bbox is not suitable, reuse the bbox
-                coords_list += [f]
-                w,h = f[2]-f[0], f[3]-f[1]
-                print("error bbox:",f)
-            else:
-                coords_list += [f_landmark]
-    
-    print("********************************************bbox_shift parameter adjustment**********************************************************")
-    print(f"Total frame:「{len(frames)}」 Manually adjust range : [ -{int(sum(average_range_minus) / len(average_range_minus))}~{int(sum(average_range_plus) / len(average_range_plus))} ] , the current value: {upperbondrange}")
-    print("*************************************************************************************************************************************")
-    return coords_list,frames
+def _range_text(frame_count, lower_ranges, upper_ranges, upperbondrange):
+    lower = int(sum(lower_ranges) / len(lower_ranges)) if lower_ranges else 0
+    upper = int(sum(upper_ranges) / len(upper_ranges)) if upper_ranges else 0
+    return f"Total frame:「{frame_count}」 Manually adjust range : [ -{lower}~{upper} ] , the current value: {upperbondrange}"
+
+
+def get_bbox_range(img_list, upperbondrange=0):
+    _, frames, lower_ranges, upper_ranges = _process_frames(img_list, upperbondrange)
+    return _range_text(len(frames), lower_ranges, upper_ranges, upperbondrange)
+
+
+def get_landmark_and_bbox(img_list, upperbondrange=0):
+    coords_list, frames, lower_ranges, upper_ranges = _process_frames(img_list, upperbondrange)
+    print(_range_text(len(frames), lower_ranges, upper_ranges, upperbondrange))
+    return coords_list, frames
     
 
 if __name__ == "__main__":

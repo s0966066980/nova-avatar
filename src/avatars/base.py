@@ -107,6 +107,12 @@ def play_audio(quit_event,queue):
 class BaseAvatar:
     def __init__(self, config):
         self.config = config
+        from src.avatars.catalog import avatar_uses_green_screen
+
+        self._green_screen = (
+            config.model.type == "musetalk"
+            and avatar_uses_green_screen(config.model.avatar_id)
+        )
         self.sample_rate = 16000
         # 每個音訊塊對應一幀影片（例如 50fps 音訊 -> 20ms 一個 chunk）
         self.chunk = self.sample_rate // config.audio.fps
@@ -575,6 +581,10 @@ class BaseAvatar:
                 frame_type=0 if self.speaking else audiotype,
                 eventpoint=video_eventpoint,
             )
+            if getattr(self, "_green_screen", False):
+                from src.scene.service import scene_service
+
+                combine_frame = scene_service.compose(combine_frame, green_screen=True)
             cv2.putText(combine_frame, "Nova Avatar", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
            
             image = combine_frame

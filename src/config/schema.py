@@ -361,6 +361,7 @@ class ReplyStreamingConfig:
 @dataclass
 class StageConfig:
     """數字人舞台顯示配置。"""
+    background_id: str = ""
     caption_max_chars: int = 120
     caption_x: int = 50
     caption_y: int = 90

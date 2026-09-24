@@ -17,6 +17,7 @@ const runtime = reactive({
     reply_rules: { revision: 1, activation: '', speech: '', board: '' }
   },
   stage: {
+    background_id: '',
     caption_max_chars: 120,
     caption_x: 50,
     caption_y: 90,
@@ -181,6 +182,8 @@ const loadingModels = ref(false)
 const applyingLlm = ref(false)
 const applyingAvatar = ref(false)
 const applyingStage = ref(false)
+const backgrounds = reactive({ items: [], archivedItems: [], background_id: '', loading: false, busy: false, error: '' })
+const archivedCharacters = reactive({ items: [] })
 const applyingVad = ref(false)
 const comparingVad = ref(false)
 const settingsError = ref('')
@@ -703,6 +706,7 @@ function applySnapshot(data) {
     })
   }
   runtime.stage = {
+    background_id: data.stage?.background_id || '',
     caption_max_chars: Number(data.stage?.caption_max_chars || 120),
     caption_x: Number(data.stage?.caption_x ?? 50),
     caption_y: Number(data.stage?.caption_y ?? 90),
@@ -1048,7 +1052,7 @@ const importing = ref(false)
 const importJob = ref(null)
 const importError = ref('')
 
-async function importCharacter({ file, engine, avatarId, overwrite = false }) {
+async function importCharacter({ file, engine, avatarId, overwrite = false, greenScreen = true }) {
   if (!file) {
     throw new Error('請選擇影片檔案')
   }
@@ -1059,6 +1063,7 @@ async function importCharacter({ file, engine, avatarId, overwrite = false }) {
     const form = new FormData()
     form.append('video', file)
     form.append('type', engine)
+    form.append('green_screen', engine === 'musetalk' && greenScreen ? 'true' : 'false')
     if (avatarId) form.append('avatar_id', avatarId)
     if (overwrite) form.append('overwrite', 'true')
     form.append('quality', JSON.stringify(mergeQuality(qualityDraft)))
@@ -1075,6 +1080,130 @@ async function importCharacter({ file, engine, avatarId, overwrite = false }) {
   } finally {
     importing.value = false
   }
+}
+
+async function loadBackgrounds() {
+  backgrounds.loading = true
+  backgrounds.error = ''
+  try {
+    const [activeResponse, archivedResponse] = await Promise.all([
+      fetch('/api/backgrounds'),
+      fetch('/api/backgrounds/deleted')
+    ])
+    const [data, archived] = await Promise.all([
+      parseJson(activeResponse),
+      parseJson(archivedResponse)
+    ])
+    backgrounds.items = data.items || []
+    backgrounds.archivedItems = archived.items || []
+    backgrounds.background_id = data.background_id || ''
+    return data
+  } catch (error) {
+    backgrounds.error = error.message
+    throw error
+  } finally {
+    backgrounds.loading = false
+  }
+}
+
+async function deleteBackground(backgroundId) {
+  backgrounds.busy = true
+  backgrounds.error = ''
+  try {
+    const result = await parseJson(await fetch(`/api/backgrounds/${encodeURIComponent(backgroundId)}`, {
+      method: 'DELETE'
+    }))
+    await loadBackgrounds()
+    return result
+  } catch (error) {
+    backgrounds.error = error.message
+    throw error
+  } finally {
+    backgrounds.busy = false
+  }
+}
+
+async function restoreBackground(archiveName) {
+  backgrounds.busy = true
+  backgrounds.error = ''
+  try {
+    const result = await parseJson(await fetch(`/api/backgrounds/deleted/${encodeURIComponent(archiveName)}/restore`, {
+      method: 'POST'
+    }))
+    await loadBackgrounds()
+    return result
+  } catch (error) {
+    backgrounds.error = error.message
+    throw error
+  } finally {
+    backgrounds.busy = false
+  }
+}
+
+async function uploadBackground(file) {
+  if (!file) throw new Error('請先選擇背景檔案')
+  backgrounds.busy = true
+  backgrounds.error = ''
+  try {
+    const form = new FormData()
+    form.append('background', file)
+    const item = await parseJson(await fetch('/api/backgrounds', { method: 'POST', body: form }))
+    await loadBackgrounds()
+    return item
+  } catch (error) {
+    backgrounds.error = error.message
+    throw error
+  } finally {
+    backgrounds.busy = false
+  }
+}
+
+async function selectBackground(backgroundId) {
+  backgrounds.busy = true
+  backgrounds.error = ''
+  try {
+    const data = await parseJson(await fetch('/api/background', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ background_id: backgroundId })
+    }))
+    backgrounds.background_id = data.background_id || ''
+    runtime.stage.background_id = backgrounds.background_id
+    return data
+  } catch (error) {
+    backgrounds.error = error.message
+    throw error
+  } finally {
+    backgrounds.busy = false
+  }
+}
+
+async function deleteCharacter(avatarId) {
+  const data = await parseJson(await fetch(`/api/avatars/${encodeURIComponent(avatarId)}`, { method: 'DELETE' }))
+  await loadRuntimeSettings()
+  await loadArchivedCharacters()
+  return data
+}
+
+async function loadArchivedCharacters() {
+  const data = await parseJson(await fetch('/api/avatars/deleted'))
+  archivedCharacters.items = data.items || []
+  return data
+}
+
+async function restoreCharacter(archiveName) {
+  const data = await parseJson(await fetch(`/api/avatars/deleted/${encodeURIComponent(archiveName)}/restore`, {
+    method: 'POST'
+  }))
+  await Promise.all([loadRuntimeSettings(), loadArchivedCharacters()])
+  return data
+}
+
+async function permanentlyDeleteCharacter(archiveName) {
+  const data = await parseJson(await fetch(`/api/avatars/deleted/${encodeURIComponent(archiveName)}`, {
+    method: 'DELETE'
+  }))
+  await loadArchivedCharacters()
+  return data
 }
 
 async function pollImportJob(jobId) {
@@ -1156,6 +1285,17 @@ export function useRuntimeSettings() {
     applyingLlm,
     applyingAvatar,
     applyingStage,
+    backgrounds,
+    loadBackgrounds,
+    uploadBackground,
+    selectBackground,
+    deleteBackground,
+    restoreBackground,
+    deleteCharacter,
+    archivedCharacters,
+    loadArchivedCharacters,
+    restoreCharacter,
+    permanentlyDeleteCharacter,
     settingsError,
     modelsError,
     stageError,

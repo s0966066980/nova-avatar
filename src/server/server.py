@@ -16,6 +16,7 @@ from src.server.state import state
 from src.server import routes
 from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
+from src.scene.service import scene_service
 
 
 async def on_shutdown(app):
@@ -25,12 +26,14 @@ async def on_shutdown(app):
     state.pcs.clear()
     shutdown_llama_server()
     shutdown_cosyvoice_server()
+    scene_service.close()
 
 
 def create_app():
     """建立並配置 aiohttp 應用"""
     # 單獨設定較大的請求體上限，方便上傳音影片
-    app = web.Application(client_max_size=1024**2*100)
+    # Leave space for multipart headers around the 100 MB background asset.
+    app = web.Application(client_max_size=1024**2*101)
     app.on_shutdown.append(on_shutdown)
     
     # 路由集中註冊，避免分散難維護
@@ -64,7 +67,19 @@ def create_app():
     app.router.add_post("/api/speech/path-picker", routes.pick_speech_path)
     app.router.add_get("/api/stage", routes.get_stage_settings)
     app.router.add_post("/api/stage", routes.set_stage_settings)
+    app.router.add_get("/api/backgrounds", routes.get_backgrounds)
+    app.router.add_post("/api/backgrounds", routes.upload_background)
+    app.router.add_post("/api/background", routes.select_background)
+    app.router.add_get("/api/backgrounds/{background_id}/preview", routes.background_preview)
+    app.router.add_delete("/api/backgrounds/{background_id}", routes.delete_background)
+    app.router.add_get("/api/backgrounds/deleted", routes.archived_backgrounds)
+    app.router.add_post("/api/backgrounds/deleted/{archive_name}/restore", routes.restore_archived_background)
+    app.router.add_delete("/api/avatars/{avatar_id}", routes.delete_avatar)
+    app.router.add_get("/api/avatars/deleted", routes.archived_avatars)
+    app.router.add_post("/api/avatars/deleted/{archive_name}/restore", routes.restore_archived_avatar)
+    app.router.add_delete("/api/avatars/deleted/{archive_name}", routes.delete_archived_avatar_permanently)
     app.router.add_get("/api/avatars/{avatar_id}/preview", routes.avatar_preview)
+    app.router.add_get("/api/avatars/{avatar_id}/scene-preview", routes.avatar_scene_preview)
     app.router.add_post("/api/avatars/import", routes.import_avatar)
     app.router.add_get("/api/avatars/import/{job_id}", routes.import_avatar_status)
     app.router.add_get("/api/voice-tests", routes.list_voice_tests)

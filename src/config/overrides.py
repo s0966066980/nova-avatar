@@ -83,6 +83,7 @@ def persist_runtime_overrides(config) -> None:
             ),
         },
         "stage": {
+            "background_id": str(getattr(getattr(config, "stage", None), "background_id", "") or ""),
             "caption_max_chars": int(
                 getattr(getattr(config, "stage", None), "caption_max_chars", 120)
             ),

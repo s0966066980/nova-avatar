@@ -496,6 +496,13 @@
                   <div class="avatar-name-txt">{{ char.label || char.name || char.id }}</div>
                   <div class="avatar-specs-txt">{{ char.resolution || '1080x1920' }} · {{ char.fps || 25 }}fps · {{ selectedEngine }}</div>
                 </div>
+                <div style="padding: 0 10px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                  <small>{{ char.green_screen ? '綠幕角色 · 可換背景' : '既有角色' }}</small>
+                  <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;"
+                    :disabled="runtime.avatar.avatar_id === char.id || importing"
+                    :aria-label="`刪除 ${char.label || char.id}`"
+                    @click.stop="requestDeleteAvatar(char)">刪除</button>
+                </div>
               </div>
             </div>
             <div v-else-if="!filteredCharacters.length && !loadingSettings" class="empty-state-card">
@@ -504,6 +511,21 @@
               <span v-if="settingsError">請先重新連線後端並重新載入設定。</span>
               <span v-else>{{ t('settings.avatar.emptyCharacters') }}</span>
             </div>
+
+            <details v-if="archivedCharacters.items.length" style="margin-top: 14px;">
+              <summary style="cursor: pointer; font-size: 12px;">本機回收區（{{ archivedCharacters.items.length }}）</summary>
+              <div v-for="item in archivedCharacters.items" :key="item.archive_name"
+                style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0;">
+                <span style="font-size: 12px;">{{ item.avatar_id }}</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;"
+                    @click="handleRestoreAvatar(item.archive_name)">復原</button>
+                  <button type="button" class="btn-danger" style="padding: 3px 8px; font-size: 11px;"
+                    :aria-label="`永久刪除 ${item.avatar_id}`"
+                    @click="requestPermanentlyDeleteAvatar(item)">刪除</button>
+                </div>
+              </div>
+            </details>
 
             <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 12px;">
               <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
@@ -526,6 +548,9 @@
                 <span v-if="importFile">{{ importFile.name }} (點擊替換)</span>
                 <span v-else>拖曳 MP4 / MOV 正面影片至此，或點擊選取檔案</span>
               </div>
+              <label v-if="selectedEngine === 'musetalk'" style="display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 12px;">
+                <input type="checkbox" v-model="importGreenScreen"> 上傳影片為綠幕素材（建立後可使用舞台背景）
+              </label>
               <div v-if="importFile" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
                 <input
                   type="text"
@@ -555,6 +580,49 @@
           role="tabpanel"
           aria-labelledby="railTab-stage"
         >
+          <section class="setting-card" style="grid-column: 1 / -1;">
+            <div class="card-title-row">
+              <div>
+                <div class="card-title-text"><i class="bi bi-image"></i> 演播場景背景</div>
+                <div class="card-subtitle-desc">共用同一場景；圖片、循環影片及 GIF 均可作為背景。講話中也可切換。</div>
+              </div>
+              <button type="button" class="btn-secondary" :disabled="backgrounds.busy || !backgrounds.background_id"
+                @click="handleSelectBackground('')">顯示原始綠幕</button>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px;">
+              <input ref="backgroundFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" aria-label="選擇舞台背景">
+              <button type="button" class="btn-apply-primary" :disabled="backgrounds.busy" @click="handleUploadBackground">上傳背景</button>
+              <small v-if="backgrounds.error" role="alert" style="color: #e57070;">{{ backgrounds.error }}</small>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;">
+              <div v-for="item in backgrounds.items" :key="item.id" style="min-width: 0;">
+                <button type="button" class="option-card-btn"
+                  :class="{ selected: backgrounds.background_id === item.id }"
+                  :disabled="backgrounds.busy" @click="handleSelectBackground(item.id)"
+                  style="padding: 6px; text-align: left; overflow: hidden; width: 100%;">
+                  <img v-if="item.preview_url" :src="item.preview_url" :alt="item.label"
+                    style="width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px;">
+                  <span class="opt-title" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ item.label }}</span>
+                  <small>{{ item.kind === 'video' ? '循環影片' : item.kind === 'gif' ? 'GIF' : '圖片' }}</small>
+                </button>
+                <button type="button" class="btn-secondary"
+                  style="width: 100%; margin-top: 5px; padding: 4px 8px; font-size: 11px;"
+                  :disabled="backgrounds.busy || backgrounds.background_id === item.id"
+                  :title="backgrounds.background_id === item.id ? '請先切換背景再刪除' : `刪除 ${item.label}`"
+                  @click="requestDeleteBackground(item)">刪除背景</button>
+              </div>
+            </div>
+            <p v-if="!backgrounds.items.length && !backgrounds.loading" style="font-size: 12px; color: var(--text-tertiary);">尚無背景，請先上傳。</p>
+            <details v-if="backgrounds.archivedItems.length" style="margin-top: 14px;">
+              <summary style="cursor: pointer; font-size: 12px;">背景回收區（{{ backgrounds.archivedItems.length }}）</summary>
+              <div v-for="item in backgrounds.archivedItems" :key="item.archive_name"
+                style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0;">
+                <span style="font-size: 12px;">{{ item.label }}</span>
+                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;"
+                  :disabled="backgrounds.busy" @click="handleRestoreBackground(item.archive_name)">復原</button>
+              </div>
+            </details>
+          </section>
           <!-- 左欄：看板排版參數與九宮格 -->
           <section class="setting-card">
             <div class="card-title-row">
@@ -780,9 +848,9 @@
               @pointercancel="finishStageDirectEdit"
             >
               <img
-                v-if="stagePreviewAvatarUrl"
+                v-if="stageScenePreviewUrl"
                 class="stage-preview-avatar"
-                :src="stagePreviewAvatarUrl"
+                :src="stageScenePreviewUrl"
                 :alt="`${stagePreviewAvatarName} 數位人舞台預覽`"
               >
               <div v-else class="mini-avatar-shape"></div>
@@ -1263,7 +1331,7 @@
             <button type="button" class="btn-secondary" @click="confirmKind = ''">{{ t('settings.cancel') }}</button>
             <button
               type="button"
-              :class="confirmKind === 'reset' ? 'btn-danger' : 'btn-primary'"
+              :class="['reset', 'delete-avatar', 'delete-background', 'purge-avatar'].includes(confirmKind) ? 'btn-danger' : 'btn-primary'"
               @click="confirmAction"
             >
               {{ t('settings.confirm') }}
@@ -1280,6 +1348,7 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
+import { avatarScenePreviewUrl } from '../scenePreview.js'
 import RagFlowSettings from './RagFlowSettings.vue'
 import {
   boardReopenPresentation,
@@ -1404,6 +1473,17 @@ const {
   applyingLlm,
   applyingAvatar,
   applyingStage,
+  backgrounds,
+  loadBackgrounds,
+  uploadBackground,
+  selectBackground,
+  deleteBackground,
+  restoreBackground,
+  deleteCharacter,
+  archivedCharacters,
+  loadArchivedCharacters,
+  restoreCharacter,
+  permanentlyDeleteCharacter,
   applyMouthQuality,
   qualityDraft,
   qualityDirty,
@@ -1568,8 +1648,9 @@ const stagePreviewAvatar = computed(() => {
   return runtime.characters.find((character) => character.id === avatarId) || null
 })
 
-const stagePreviewAvatarUrl = computed(() => (
-  stagePreviewAvatar.value?.preview_url || stagePreviewAvatar.value?.thumbnail || ''
+const stageScenePreviewUrl = computed(() => avatarScenePreviewUrl(
+  stagePreviewAvatar.value,
+  runtime.stage?.background_id
 ))
 
 const stagePreviewAvatarName = computed(() => (
@@ -1923,6 +2004,11 @@ const resetSettings = () => {
 
 const importFile = ref(null)
 const importAvatarId = ref('')
+const importGreenScreen = ref(true)
+const backgroundFileInput = ref(null)
+const avatarToDelete = ref(null)
+const archivedAvatarToDelete = ref(null)
+const backgroundToDelete = ref(null)
 const importFileInput = ref(null)
 const importNamePlaceholder = computed(() => `${selectedEngine.value || 'avatar'}_custom`)
 const canStartImport = computed(() => !!importFile.value && !importing.value && !applyingAvatar.value)
@@ -1947,7 +2033,8 @@ const handleImportCharacter = async () => {
     const result = await importCharacter({
       file: importFile.value,
       engine: selectedEngine.value,
-      avatarId: importAvatarId.value.trim()
+      avatarId: importAvatarId.value.trim(),
+      greenScreen: importGreenScreen.value
     })
     await loadRuntimeSettings()
     selectedEngine.value = result.engine
@@ -1961,13 +2048,106 @@ const handleImportCharacter = async () => {
   }
 }
 
+const handleUploadBackground = async () => {
+  try {
+    const file = backgroundFileInput.value?.files?.[0]
+    const item = await uploadBackground(file)
+    await selectBackground(item.id)
+    if (backgroundFileInput.value) backgroundFileInput.value.value = ''
+    emit('notification', '背景已上傳並套用', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  }
+}
+
+const handleSelectBackground = async (id) => {
+  try {
+    await selectBackground(id)
+    emit('notification', id ? '背景已切換' : '已顯示原始畫面', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  }
+}
+
+const requestDeleteBackground = (background) => {
+  backgroundToDelete.value = background
+  confirmKind.value = 'delete-background'
+}
+
+const handleDeleteBackground = async () => {
+  try {
+    await deleteBackground(backgroundToDelete.value.id)
+    emit('notification', '背景已移至本機回收區', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  } finally {
+    backgroundToDelete.value = null
+  }
+}
+
+const handleRestoreBackground = async (archiveName) => {
+  try {
+    await restoreBackground(archiveName)
+    emit('notification', '背景已復原', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  }
+}
+
+const requestDeleteAvatar = (character) => {
+  avatarToDelete.value = character
+  confirmKind.value = 'delete-avatar'
+}
+
+const handleDeleteAvatar = async () => {
+  try {
+    await deleteCharacter(avatarToDelete.value.id)
+    emit('notification', '數字人已移至本機封存', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  } finally {
+    avatarToDelete.value = null
+  }
+}
+
+const handleRestoreAvatar = async (archiveName) => {
+  try {
+    await restoreCharacter(archiveName)
+    emit('notification', '數字人已復原', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  }
+}
+
+const requestPermanentlyDeleteAvatar = (item) => {
+  archivedAvatarToDelete.value = item
+  confirmKind.value = 'purge-avatar'
+}
+
+const handlePermanentlyDeleteAvatar = async () => {
+  try {
+    await permanentlyDeleteCharacter(archivedAvatarToDelete.value.archive_name)
+    emit('notification', '數字人已永久刪除', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  } finally {
+    archivedAvatarToDelete.value = null
+  }
+}
+
 const confirmDialogTitle = computed(() => {
+  if (confirmKind.value === 'delete-background') return '刪除背景'
+  if (confirmKind.value === 'delete-avatar') return '刪除數字人'
+  if (confirmKind.value === 'purge-avatar') return '永久刪除數字人'
   if (confirmKind.value === 'avatar') return t('settings.avatar.confirmTitle')
   if (confirmKind.value === 'stt' || confirmKind.value === 'tts') return t('settings.speech.confirmTitle')
   return t('settings.confirmTitle')
 })
 
 const confirmDialogMessage = computed(() => {
+  if (confirmKind.value === 'delete-background') return `將 ${backgroundToDelete.value?.label || ''} 移至本機背景回收區？之後可以復原。`
+  if (confirmKind.value === 'delete-avatar') return `將 ${avatarToDelete.value?.label || avatarToDelete.value?.id || ''} 從角色庫移出並封存於本機？`
+  if (confirmKind.value === 'purge-avatar') return `永久刪除 ${archivedAvatarToDelete.value?.avatar_id || ''}？回收區中的原片和角色素材都會移除，且無法復原。`
   if (confirmKind.value === 'avatar') return t('settings.avatar.confirmMessage')
   if (confirmKind.value === 'stt' || confirmKind.value === 'tts') return t('settings.speech.confirmMessage')
   return t('settings.confirmMessage')
@@ -1977,6 +2157,9 @@ const confirmAction = () => {
   const kind = confirmKind.value
   confirmKind.value = ''
   if (kind === 'reset') resetSettings()
+  else if (kind === 'delete-background') handleDeleteBackground()
+  else if (kind === 'delete-avatar') handleDeleteAvatar()
+  else if (kind === 'purge-avatar') handlePermanentlyDeleteAvatar()
   else if (kind === 'avatar') applyAvatarChange()
   else if (kind === 'stt' || kind === 'tts') applySpeechChange(kind)
 }
@@ -1987,6 +2170,8 @@ const loadRuntimePanel = async () => {
     loadOllamaModels()
   ])
   if (runtimeResult.status === 'fulfilled') {
+    await loadBackgrounds().catch((error) => console.error('Failed to load backgrounds:', error))
+    await loadArchivedCharacters().catch((error) => console.error('Failed to load archived avatars:', error))
     vadDraft.type = 'silero'
     if (vad.type !== 'silero' || (vad.enabled && vad.asr_mode !== 'server')) {
       await applyVadSettings().catch((error) => {

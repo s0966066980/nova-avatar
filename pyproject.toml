@@ -26,6 +26,7 @@ dependencies = [
     "openai",
     "numpy<2",
     "opencv-python-headless<4.12",
+    "Pillow>=10,<13",
     "pydantic",
     "PyYAML",
     "scipy",

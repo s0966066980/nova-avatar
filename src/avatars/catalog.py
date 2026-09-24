@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -37,6 +39,9 @@ ENGINE_META: Dict[str, Dict[str, str]] = {
 
 ENGINE_ORDER = list(ENGINE_META.keys())
 IMPORTABLE_ENGINES = ("musetalk", "wav2lip")
+# The existing project trial asset has a verified uniform green backdrop. Keep
+# its files untouched; newly imported assets declare this in avator_info.json.
+CURRENT_GREEN_SCREEN_AVATAR_ID = "musetalk_avatar"
 
 
 def avatars_root() -> Path:
@@ -116,6 +121,75 @@ def _read_avatar_info(avatar_dir: Path) -> Dict[str, Any]:
         return {}
 
 
+def avatar_uses_green_screen(avatar_id: str) -> bool:
+    """Only explicitly marked MuseTalk assets are keyed against stage backgrounds."""
+    if not is_safe_avatar_id(avatar_id):
+        return False
+    avatar_dir = avatars_root() / avatar_id
+    if avatar_dir.is_symlink() or detect_avatar_type(avatar_dir) != "musetalk":
+        return False
+    info = _read_avatar_info(avatar_dir)
+    return info.get("green_screen", avatar_id == CURRENT_GREEN_SCREEN_AVATAR_ID) is True
+
+
+def archive_avatar(avatar_id: str) -> Path:
+    """Remove an inactive avatar from the catalog while keeping a restorable copy."""
+    if not is_safe_avatar_id(avatar_id):
+        raise ValueError("無效的角色 ID")
+    source = avatars_root() / avatar_id
+    if source.is_symlink() or not source.is_dir() or detect_avatar_type(source) is None:
+        raise ValueError("找不到數字人")
+    archive_root = avatars_root() / ".deleted"
+    archive_root.mkdir(parents=True, exist_ok=True)
+    destination = archive_root / f"{avatar_id}-{uuid.uuid4().hex[:12]}"
+    shutil.move(str(source), str(destination))
+    return destination
+
+
+def list_archived_avatars() -> List[Dict[str, str]]:
+    archive_root = avatars_root() / ".deleted"
+    if not archive_root.is_dir():
+        return []
+    items = []
+    for child in sorted(archive_root.iterdir(), key=lambda path: path.name):
+        avatar_id, separator, suffix = child.name.rpartition("-")
+        if (separator and is_safe_avatar_id(avatar_id) and len(suffix) == 12
+                and all(character in "0123456789abcdef" for character in suffix)
+                and child.is_dir() and not child.is_symlink()):
+            items.append({"archive_name": child.name, "avatar_id": avatar_id})
+    return items
+
+
+def restore_avatar(archive_name: str) -> str:
+    archived = next(
+        (item for item in list_archived_avatars() if item["archive_name"] == archive_name),
+        None,
+    )
+    if archived is None:
+        raise ValueError("找不到封存的數字人")
+    avatar_id = archived["avatar_id"]
+    destination = avatars_root() / avatar_id
+    if destination.exists() or destination.is_symlink():
+        raise ValueError("同名數字人已存在，無法復原")
+    shutil.move(str(avatars_root() / ".deleted" / archive_name), str(destination))
+    return avatar_id
+
+
+def delete_archived_avatar(archive_name: str) -> str:
+    """Permanently remove one validated avatar directory from the local recycle bin."""
+    archived = next(
+        (item for item in list_archived_avatars() if item["archive_name"] == archive_name),
+        None,
+    )
+    if archived is None:
+        raise ValueError("找不到封存的數字人")
+    source = avatars_root() / ".deleted" / archive_name
+    if source.is_symlink() or not source.is_dir():
+        raise ValueError("找不到封存的數字人")
+    shutil.rmtree(source)
+    return archived["avatar_id"]
+
+
 def list_avatar_characters() -> List[Dict[str, Any]]:
     root = avatars_root()
     if not root.is_dir():
@@ -135,6 +209,7 @@ def list_avatar_characters() -> List[Dict[str, Any]]:
                 "id": child.name,
                 "type": engine,
                 "label": info.get("avatar_id") or child.name,
+                "green_screen": engine == "musetalk" and avatar_uses_green_screen(child.name),
                 "has_preview": preview is not None,
                 "preview_url": f"/api/avatars/{child.name}/preview" if preview else None,
             }

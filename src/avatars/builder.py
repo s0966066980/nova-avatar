@@ -75,15 +75,8 @@ def extract_frames(video_path: Path, dest_dir: Path, max_frames: int = MAX_FRAME
             ok, frame = cap.read()
             if not ok:
                 break
-            cv2.putText(
-                frame,
-                "Nova Avatar",
-                (10, 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.3,
-                (128, 128, 128),
-                1,
-            )
+            # Keep creation assets clean. The live output adds project branding
+            # after any green-screen background composition.
             cv2.imwrite(str(dest_dir / f"{count:08d}.png"), frame)
             count += 1
     finally:
@@ -101,6 +94,7 @@ def build_character(
     overwrite: bool = False,
     progress: ProgressCb = None,
     quality: Optional[dict] = None,
+    green_screen: bool = False,
 ) -> dict:
     engine = (engine or "").strip().lower()
     avatar_id = (avatar_id or "").strip()
@@ -126,6 +120,10 @@ def build_character(
     work_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+        # Keep the exact uploaded source with the generated avatar. Import jobs
+        # remove their temporary upload after this build finishes.
+        source_name = f"source{video_path.suffix.lower()}"
+        shutil.copy2(video_path, work_dir / source_name)
         report(5, "正在抽取影片幀")
         full_imgs = work_dir / "full_imgs"
         frame_count = extract_frames(video_path, full_imgs)
@@ -134,9 +132,10 @@ def build_character(
             options = normalize_quality(quality)
         except QualityError as exc:
             raise BuildError(str(exc)) from exc
+        options["green_screen"] = bool(green_screen) if engine == "musetalk" else False
 
         if engine == "musetalk":
-            _build_musetalk(work_dir, avatar_id, str(video_path), report, options)
+            _build_musetalk(work_dir, avatar_id, source_name, report, options)
         else:
             _build_wav2lip(work_dir, report, options)
 
@@ -183,8 +182,12 @@ def _build_musetalk(
 
     info = {
         "avatar_id": avatar_id,
-        "video_path": video_path,
+        "video_path": f"data/avatars/{avatar_id}/{video_path}",
+        "source_path": f"data/avatars/{avatar_id}/{video_path}",
         "engine": "musetalk",
+        "source_project": "Nova Avatar",
+        "source_type": "user_upload",
+        "green_screen": bool(options.get("green_screen", False)),
         **musetalk,
         "mouth_sharpen": options["mouth_sharpen"],
         "paste_interpolation": options["paste_interpolation"],
@@ -217,6 +220,10 @@ def _build_musetalk(
         raise BuildError("沒有檢測到人臉。請使用正面、閉嘴、臉部清晰的短影片")
 
     report(65, "正在生成口型遮罩")
+    # Only frames with matching face coordinates and latents belong in the
+    # playable cycle. Removed frames remain recoverable from source_path.
+    for image_path in _sorted_images(full_imgs):
+        image_path.unlink()
     fp = FaceParsing(
         left_cheek_width=musetalk["left_cheek_width"],
         right_cheek_width=musetalk["right_cheek_width"],

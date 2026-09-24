@@ -286,8 +286,8 @@ See LICENSE and NOTICE.
             <div class="stage-viewport-center">
               <div class="stage-ratio-box" ref="videoWrapperRef" :data-board-style="runtime.stage.board_style || 'glass'">
                 <img
-                  v-if="!isConnected && (currentAvatar?.preview_url || currentAvatar?.thumbnail)"
-                  :src="currentAvatar.preview_url || currentAvatar.thumbnail"
+                  v-if="!isConnected && consoleScenePreviewUrl"
+                  :src="consoleScenePreviewUrl"
                   :alt="`${currentAvatar.label || currentAvatar.name || currentAvatar.id} 數位人預覽`"
                   class="stage-avatar-preview"
                 />
@@ -449,6 +449,7 @@ import VoiceTestPanel from './components/VoiceTestPanel.vue'
 import { useWebRTC } from './composables/useWebRTC'
 import { useI18n } from './composables/useI18n'
 import { useRuntimeSettings } from './composables/useRuntimeSettings'
+import { avatarScenePreviewUrl } from './scenePreview.js'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
@@ -602,6 +603,11 @@ const currentAvatar = computed(() => {
   const characters = Array.isArray(runtime.characters) ? runtime.characters : []
   return characters.find(character => character.id === runtime.avatar?.avatar_id) || null
 })
+
+const consoleScenePreviewUrl = computed(() => avatarScenePreviewUrl(
+  currentAvatar.value,
+  runtime.stage?.background_id
+))
 
 const currentAvatarMeta = computed(() => {
   const avatar = currentAvatar.value

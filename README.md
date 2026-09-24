@@ -22,7 +22,7 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
   選取知識庫、測試檢索並啟用。Nova 仍使用目前選定的 LLM 產生回答，
   RAGFlow 只提供本輪的參考片段。
 
-架構與已驗證的執行邊界見 [專案概覽](docs/project-overview.html)、
+架構與已驗證的執行邊界見 [數位人與場景架構](docs/avatar-scene-architecture.html)、
 [目前專案基線](docs/project-status.md) 和
 [軟體組合](docs/software-stack.md)。
 

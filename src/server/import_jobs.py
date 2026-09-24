@@ -48,6 +48,10 @@ _JOBS: Dict[str, ImportJob] = {}
 _WORKER_LOCK = threading.Lock()
 
 
+def import_in_progress() -> bool:
+    return _WORKER_LOCK.locked()
+
+
 def get_job(job_id: str) -> Optional[ImportJob]:
     return _JOBS.get(job_id)
 
@@ -61,6 +65,7 @@ def start_import_job(
     overwrite: bool = False,
     session_count: int = 0,
     quality: Optional[Dict[str, Any]] = None,
+    green_screen: bool = False,
 ) -> ImportJob:
     engine = (engine or "").strip().lower()
     if engine not in IMPORTABLE_ENGINES:
@@ -84,7 +89,7 @@ def start_import_job(
     _JOBS[job.id] = job
     thread = threading.Thread(
         target=_run_job,
-        args=(job, video_path, overwrite, quality),
+        args=(job, video_path, overwrite, quality, green_screen),
         daemon=True,
         name=f"avatar-import-{job.id}",
     )
@@ -97,6 +102,7 @@ def _run_job(
     video_path: Path,
     overwrite: bool,
     quality: Optional[Dict[str, Any]] = None,
+    green_screen: bool = False,
 ) -> None:
     if not _WORKER_LOCK.acquire(blocking=False):
         job.status = "failed"
@@ -119,6 +125,7 @@ def _run_job(
             overwrite=overwrite,
             progress=progress,
             quality=quality,
+            green_screen=green_screen,
         )
         job.status = "done"
         job.progress = 100

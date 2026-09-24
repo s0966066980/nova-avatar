@@ -99,6 +99,7 @@ class AvatarCatalogTests(unittest.TestCase):
             ):
                 characters = list_avatar_characters()
                 engines = {item["id"]: item for item in list_engines(characters)}
+                ok, reason = avatar_bootable("musetalk", "musetalk_avatar1")
 
             self.assertEqual(len(characters), 1)
             self.assertEqual(characters[0]["type"], "musetalk")
@@ -108,7 +109,6 @@ class AvatarCatalogTests(unittest.TestCase):
             self.assertFalse(engines["wav2lip"]["available"])
             self.assertTrue(engines["wav2lip"]["can_import"])
             self.assertFalse(engines["ernerf"]["can_import"])
-            ok, reason = avatar_bootable("musetalk", "musetalk_avatar1")
             self.assertTrue(ok, reason)
             ok, reason = avatar_bootable("musetalk", "missing")
             self.assertFalse(ok)
@@ -205,6 +205,7 @@ class OverridePersistTests(unittest.TestCase):
             self.assertEqual(
                 data["stage"],
                 {
+                    "background_id": "",
                     "caption_max_chars": 120,
                     "caption_x": 50,
                     "caption_y": 90,

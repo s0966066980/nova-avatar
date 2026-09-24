@@ -568,6 +568,49 @@ class MuseTalkResultQueuePolicyTests(unittest.TestCase):
         self.assertEqual(queued[2], speech_audio)
 
 
+class MuseTalkIdleContinuityTests(unittest.TestCase):
+    def test_dropped_idle_surplus_does_not_skip_source_frames(self):
+        """Idle rendering outruns the 25 fps consumer. The surplus silent pairs
+        may be dropped, but the frames that do play must stay consecutive;
+        skipping indices made idle motion visibly stutter."""
+        from src.avatars.musetalk.avatar import inference
+
+        batch_size = 4
+        quit_event = Event()
+        result_queue = queue.Queue(maxsize=3)
+        delivered = []
+        audio_out_queue = queue.Queue()
+        for _ in range(batch_size * 2 * 2):
+            audio_out_queue.put((np.zeros(320, dtype=np.float32), 1, None))
+
+        class FeatureQueue:
+            calls = 0
+
+            def get(self, block=True, timeout=None):
+                self.calls += 1
+                while not result_queue.empty():
+                    delivered.append(result_queue.get_nowait()[1])
+                if self.calls > 2:
+                    quit_event.set()
+                    raise queue.Empty
+                return [np.zeros(1, dtype=np.float32)] * batch_size
+
+        inference(
+            quit_event,
+            batch_size,
+            [None] * 20,
+            FeatureQueue(),
+            audio_out_queue,
+            result_queue,
+            None,
+            None,
+            None,
+            None,
+        )
+
+        self.assertEqual(delivered, [0, 1, 2, 3, 4, 5])
+
+
 class MuseTalkSpeechOnsetTests(unittest.TestCase):
     def test_mixed_batch_keeps_leading_silent_pair_idle(self):
         import torch
