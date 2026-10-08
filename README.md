@@ -1,197 +1,254 @@
-# Nova Avatar
+# Nova Avatar (Jetson Orin 版本)
 
 Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克風音訊，後端依序
 完成語音端點偵測、辨識、模型回答、語音合成與數位人渲染，再把影音和字幕送回
-瀏覽器。控制台用來對話與調整設定，`/stage.html` 是獨立的數位人舞台。
+瀏覽器。控制台用來對話與調整設定，`/stage.html` 是獨立的數位人演播舞台。
 
 > 本專案由 Kedreamix/Linly-Talker-Stream 衍生，現由 HongXian0903 獨立維護。
 > 上游與第三方來源見 [NOTICE](NOTICE) 和
 > [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-## 目前版本提供什麼
+此 `jetson-orin` 分支專為 **NVIDIA Jetson AGX Orin**（ARM64、JetPack 7／L4T R39.2.1、CUDA 13.2、cuDNN 9、Python 3.11）進行深度移植與加速優化。包含完整的邊緣端推論加速、TensorRT UNet、TAESD 輕量嘴型解碼、ARM64 原生編譯 CTranslate2、CUDA llama.cpp 以及原生 ARM64 RAGFlow 知識庫整合。
 
-- 服務端 Silero VAD、啟用麥克風後的免按對話、按住說話與插話；語音、字幕和畫面以對話輪次
-  隔離，取消或斷線後不再交付舊輪次內容。
-- faster-whisper／FunASR 辨識、Ollama／llama.cpp 回答，以及 Edge TTS 等可選
-  語音引擎。主要數位人引擎是 MuseTalk，其他引擎的支援與授權見下文。
-- 可選的語意片段串流回覆：完整回答尚未產生時即可開始合成語音。預設仍使用
-  一次交付完整回答的模式；Edge TTS＋MuseTalk 的串流組合已有實機驗證。
-- 獨立控制台和舞台、字幕、看板回答、Prompt／回覆規則、模型與角色設定，
-  以及控制台內的真實語音鏈路測試。
-- 新增 RAGFlow 文件檢索：管理者在 RAGFlow 匯入文件；控制台為目前數位人
-  選取知識庫、測試檢索並啟用。Nova 仍使用目前選定的 LLM 產生回答，
-  RAGFlow 只提供本輪的參考片段。
+---
 
-架構與已驗證的執行邊界見 [目前專案基線](docs/project-status.md)、
-[軟體組合](docs/software-stack.md) 和 [架構決策紀錄](docs/adr/)；
-綠幕數位人與背景合成見 [ADR 0014](docs/adr/0014-compose-green-screen-avatars-on-server.md)。
+## Jetson 版本核心架構與加速特色
 
-## 安裝 Nova Avatar
+1. **全鏈路即時串流（WebRTC）**：
+   - 瀏覽器與後端透過 WebRTC 雙向通訊，音訊以伺服器端 Silero VAD（CUDA 加速，說完靜音判定 300ms）進行端點偵測。
+   - 免按對話、按住說話與插話機制完整支援；取消或重連時透過輪次隔離（Generation Fence）丟棄過期媒體，不產生殘留雜音。
+   - 瀏覽器接收端設定 160ms 音訊抖動緩衝目標（Jitter Buffer Target），吸收邊緣端模型並行推論時的微小抖動。
 
-此 `jetson-orin` 分支獨立維護 AGX Orin／ARM64 版本，包含 Jetson 啟動、
-推論加速與原生 ARM64 RAGFlow 建置。`main` 保留原有版本；Jetson 更新
-請提交至 `jetson-orin`。模型、TensorRT engine、密碼與本機資料不包含在 Git。
+2. **MuseTalk 數位人推論加速**：
+   - **TensorRT UNet FP16 Engine**：在 Orin 上將 MuseTalk UNet 建置為 TensorRT 引擎（`.local/jetson/musetalk-unet-fp16.engine`），大幅降低 GPU 推論耗時。
+   - **TAESD 輕量嘴型解碼**：以本機 `madebyollin/taesd`（`.local/jetson/taesd/`）替換傳統繁重的 VAE 解碼，達成直式 720p（720×1280、25fps、batch 8）的即時生成需求。
+   - **平滑轉場與收尾穩定**：具備嘴型連續控制（Mouth Continuity）、待機相位對齊（Idle Alignment）與 4–6 影格收尾 Settling，避免閉嘴閃跳。
+   - 若 TensorRT 引擎或 TAESD 載入失敗，具備自動回退至原 PyTorch UNet／VAE 的保護機制。
 
-NVIDIA AGX Orin（ARM64、JetPack 7／CUDA 13.2）請依
-[Jetson 建置與 CUDA 驗證](docs/jetson-orin.md) 安裝；原有 x86 虛擬環境、
-CUDA Toolkit 和前端原生套件需要重新建置。
+3. **語音輸入（STT／ASR）在 CUDA 執行**：
+   - PyPI ARM64 的 CTranslate2 官方 wheel 預設不具備 CUDA 後端。本專案以主機 CUDA 13.2 與 cuDNN 針對 Orin SM 8.7 原生編譯 CTranslate2 wheel 與函式庫，使 **faster-whisper** 與 **FunASR** 均完整運行於 CUDA。
 
-以下以 Linux、MuseTalk 和預設 `config/config.yaml` 為例。需要 Python
-3.10／3.11、[uv](https://docs.astral.sh/uv/)、Node.js／npm、FFmpeg，以及
-設定檔指定的 Ollama 或 llama.cpp 模型服務。MuseTalk 需要 NVIDIA GPU、相容
-的 CUDA 環境與權重；安裝腳本編譯 mmcv 時可能需要 CUDA Toolkit 12.4。
+4. **語言模型（LLM）本機 CUDA 推論**：
+   - 內建針對 Orin SM 8.7 編譯之 CUDA **llama.cpp**，以 `torch.cuda.mem_get_info()` 支援 Orin 共享顯存配置。
+   - 預設使用 `llama/LFM2.5-2.6B-Q4_K_M.gguf`，具備 64-token 有限思考、GBNF 格式約束與看板／口語分離；亦支援 `llama/Qwen3.5-4B-UD-Q4_K_XL.gguf`、`Qwen3.5-2B-UD-Q4_K_XL.gguf` 或本機 Ollama 服務。
+
+5. **綠幕背景合成（Server-Side Chroma Key）**：
+   - 支援將 MuseTalk 綠幕數位人於伺服器端色鍵去背並合成至共用背景（圖片、GIF 或循環影片），背景邊界自動適配，講話中可動態切換背景。
+
+6. **原生 ARM64 RAGFlow 知識庫檢索**：
+   - 提供專屬 ARM64 Docker Compose 整合（RAGFlow v0.27.2），BGE-M3 嵌入模型由獨立的 GPU 程序加速，提供毫秒級的本機向量檢索。
+
+7. **CPU 執行緒隔離防爭用**：
+   - Orin CPU 由系統、WebRTC 媒體排程、解碼與推論共享。啟動腳本限制底層 BLAS/OpenCV 線程為 1（`OMP_NUM_THREADS=1`），杜絕 CPU 爭用導致的音訊撕裂與卡頓。
+
+---
+
+## 系統需求
+
+- **硬體**：NVIDIA Jetson AGX Orin 64GB / 32GB（或相容之 Orin 模組）。
+- **作業系統**：Ubuntu 24.04 LTS（aarch64）、JetPack 7 / L4T R39.2.1。
+- **CUDA 環境**：CUDA Toolkit 13.2（安裝於 `/usr/local/cuda`）、cuDNN 9。
+- **Python**：Python 3.11（搭配 [uv](https://docs.astral.sh/uv/) 套件管理工具）。
+- **前端工具**：Node.js 22 與 npm。
+- **系統相依套件**：
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y ffmpeg ninja-build cmake build-essential libopenblas-dev pkg-config lsof
+  ```
+
+---
+
+## 安裝步驟
+
+取得專案原始碼（切換至 `jetson-orin` 分支）：
 
 ```bash
-git clone https://github.com/s0966066980/nova-avatar.git
+git clone --branch jetson-orin https://github.com/s0966066980/nova-avatar.git
 cd nova-avatar
-bash scripts/setup-env.sh musetalk
-source .venv/bin/activate
-bash scripts/download_musetalk_weights.sh
+```
+
+### 1. 執行 Jetson 環境建置
+
+執行專屬 Jetson 環境安裝指令碼：
+
+```bash
+bash scripts/setup-jetson.sh
+```
+
+> **說明**：亦可執行 `bash scripts/setup-env.sh musetalk`，腳本偵測到 aarch64 Tegra 平台後會自動轉交 `setup-jetson.sh`。該腳本會執行：
+> 1. 編譯 ARM64 CUDA 13.2 原生 CTranslate2 函式庫與 wheel（存放於 `.local/jetson/`）。
+> 2. 建立 Python 3.11 虛擬環境並安裝相容之 PyTorch 2.11 cu130 ARM64 wheels。
+> 3. 自動修復 cuSPARSELt 0.8.0 wheel 的 manylinux metadata tag。
+> 4. 同步專案相依套件（`uv sync --extra vad --extra musetalk --extra funasr`）。
+> 5. 建置 Vue 3 前端控制台（`npm ci && npm run build`）。
+> 6. 執行 `scripts/check-cuda.py` 自檢矩陣運算與 CUDA 可用性。
+
+### 2. 編譯本機 llama.cpp
+
+```bash
+bash scripts/build-jetson-llama.sh
+```
+
+此腳本會以 `GGML_CUDA=ON` 與 Orin SM 87 架構編譯 llama.cpp v0.5.0，並產出可執行檔至 `.local/jetson/llama.cpp/`。若需要自動下載推薦模型，可加上 `--download-model`。
+
+### 3. 下載模型權重與準備 Engine
+
+1. **MuseTalk 基礎權重**：
+   ```bash
+   bash scripts/download_musetalk_weights.sh
+   ```
+   檢查 `models/musetalk/`、`models/sd-vae/` 與人臉解析權重是否齊全。
+
+2. **TAESD 輕量嘴型解碼器**：
+   下載 `madebyollin/taesd` 至 `.local/jetson/taesd`：
+   ```bash
+   uvx --from huggingface_hub hf download madebyollin/taesd \
+     config.json diffusion_pytorch_model.safetensors README.md \
+     --revision 614f76814bbe30edbe2e627ace1c2234c81a2c0e \
+     --local-dir .local/jetson/taesd
+   ```
+
+3. **TensorRT UNet Engine**：
+   確認 `.local/jetson/musetalk-unet-fp16.engine` 存在（若換機或更新 MuseTalk 權重，需透過 `.scratch/realtime-avatar/export_unet.py` 重新匯出與建置）。
+
+4. **LLM GGUF 模型**：
+   將 GGUF 模型放置於專案根目錄的 `llama/` 目錄中。例如：
+   - `llama/LFM2.5-2.6B-Q4_K_M.gguf`（`config_jetson.yaml` 預設模型）
+   - `llama/Qwen3.5-4B-UD-Q4_K_XL.gguf`
+
+5. **數位人形象素材**：
+   預設角色素材放置於 `data/avatars/musetalk_1/`。
+
+### 4. 產生本機 SSL 憑證
+
+瀏覽器 WebRTC 麥克風權限需要 HTTPS 安全連線：
+
+```bash
 bash scripts/create_ssl_certs.sh
 ```
 
-`setup-env.sh` 會安裝 Python、Avatar 與前端依賴；若 `.venv` 已存在，會詢問
-是否重建。權重下載後請檢查腳本列出的模型檔是否齊全。預設 YAML 啟用 SSL，
-因此首次啟動前需建立憑證。若改用其他 Avatar，請先核對其依賴和授權。
+將於 `ssl_certs/` 產生本機憑證檔（`localhost.crt` 與 `localhost.key`）。
 
-預設 LLM 設定使用本機 Ollama 的 `qwen3.5:4b`；請先啟動 Ollama 並備妥
-該模型，或在 `config/config.yaml` 改成可用的模型與服務位址。Avatar、
-STT、TTS、回覆模式也可在控制台設定。使用 llama.cpp 時，GGUF 模型統一
-放在專案的 `llama/` 目錄，`llamacpp_dir` 設為 `./llama`；Jetson 設定使用
-`Qwen3.5-4B-UD-Q4_K_XL.gguf`。只安裝核心依賴時可改用：
-
-```bash
-uv venv --python 3.10.19
-uv sync --extra vad
-cd web && npm install && cd ..
-```
-
-選用 MuseTalk 時請依前述 `setup-env.sh musetalk` 完成其 CUDA／OpenMMLab
-依賴。之後同步依賴應保留 `--extra musetalk`，避免移除相關套件。
-
-## 安裝 RAGFlow 文件檢索（選用）
-
-RAGFlow 使用獨立的 Docker Compose 專案、資料卷，以及主機上的 CPU
-嵌入服務。需要 Docker、Compose 2.40 以上、使用者層級 systemd 和 Ollama。
-部署腳本固定取得 RAGFlow `v0.27.2`，管理頁與 API 只開放在本機。
-未完成此節時，Nova 的一般對話仍可使用。
-
-首次部署：
-
-```bash
-bash scripts/ragflow.sh install-docker   # 已有 Docker/Compose 可略過
-bash scripts/ragflow.sh prepare
-bash scripts/ragflow.sh validate
-bash scripts/ragflow.sh pull-model
-bash scripts/ragflow.sh up
-```
-
-在部署主機開啟 `http://127.0.0.1:8088`，依序完成：
-
-1. 建立管理帳號，並立即更改初始密碼。初始密碼在未納入版控的
-   `.local/ragflow/upstream/docker/.env` 的 `ADMIN_DEFAULT_PASSWORD`。
-2. 在模型供應者設定新增 Ollama 執行個體：服務位址
-   `http://host.docker.internal:11435`，嵌入模型 `bge-m3`。
-3. 建立知識庫，上傳文件並完成解析。文件上傳／解析只在 RAGFlow 介面管理。
-4. 建立 API 金鑰：點右上角頭像 → 設定 → **API** 頁，建立並複製金鑰。
-5. 把金鑰寫入本機後端環境檔，不要貼進控制台或瀏覽器：
-
-```bash
-cp config/ragflow.env.example config/ragflow.env
-chmod 600 config/ragflow.env
-```
-
-在 `config/ragflow.env` 填入 `NOVA_RAGFLOW_API_KEY`；預設
-`NOVA_RAGFLOW_URL=http://127.0.0.1:9380`。`start-all.sh` 與
-`start-backend.sh` 只把這份檔案載入後端；前端程序會清掉這兩個變數。
-`config/ragflow.env.example` 只可保留空白金鑰欄位，不得填入真實金鑰。
-
-6. 重啟 Nova 後端。在控制台「設定 → 知識庫檢索」確認顯示「RAGFlow 已連線」，
-   為目前數位人選知識庫、先「測試檢索」，再啟用。設定從下一輪生效。
-
-推送到 GitHub 前，確認金鑰與 RAGFlow 密碼仍只在本機。`.gitignore` 已忽略
-`config/ragflow.env`、`config/ragflow_settings.yaml` 與 `.local/ragflow/`。
-可提交的是空白範本 `config/ragflow.env.example`。推送前執行：
-
-```bash
-git status
-git check-ignore -v config/ragflow.env .local/ragflow
-git diff --cached
-```
-
-`config/ragflow.env` 必須顯示為 ignored；暫存區不得出現金鑰、管理密碼或
-`.local/ragflow/`。金鑰也不得寫進 README、issue、PR 或截圖。若金鑰曾進入
-版本庫，先在 RAGFlow 撤銷並重建，再從 Git 歷史移除。
-
-建置步驟、行為、隔離、故障說明與驗證清單見
-[RAGFlow 本機檢索整合](docs/ragflow.md)。
+---
 
 ## 啟動與使用
 
-在專案根目錄執行：
+### 啟動模式選擇
+
+專案提供專屬 Jetson 啟動腳本，支援多種情境：
+
+#### 1. Jetson 一般對話模式（推薦）
 
 ```bash
-bash scripts/start-all.sh config/config.yaml
+bash scripts/start-jetson.sh
 ```
 
-此命令啟動後端與 Web 控制台。執行過 `ragflow.sh prepare` 的主機會一併
-啟動 RAGFlow；它尚未準備好時，啟動腳本會顯示提示並繼續啟動 Nova。
-若 RAGFlow 已由其他命令啟動，`start-all.sh` 會沿用該實例。按
-`Ctrl+C` 停止 Nova，以及這次由 `start-all.sh` 帶起的 RAGFlow 服務；
-既有 RAGFlow 實例會保持執行。暫時不啟動檢索服務可執行
-`NOVA_START_RAGFLOW=0 bash scripts/start-all.sh config/config.yaml`。
+- 使用 `config/config_jetson.yaml`。
+- 啟用直式 720p（720×1280）、TensorRT UNet 與 TAESD 輕量解碼。
+- Silero VAD（CUDA）、faster-whisper（CUDA）與 llama.cpp（CUDA）全鏈路啟動。
+- Edge TTS 合成語音。若已部署 RAGFlow 則會自動帶起檢索服務。
+- 保留控制台在 `config/runtime_overrides.yaml` 保存的使用者設定。
 
-| 入口 | 預設位址 | 用途 |
-| --- | --- | --- |
-| Web 控制台 | `https://localhost:3000` | 對話、設定、語音驗證 |
-| 數位人舞台 | `https://localhost:3000/stage.html` | 獨立演播畫面 |
-| 後端健康檢查 | `https://localhost:8010/health` | 確認 Nova 後端就緒 |
-| RAGFlow 管理頁 | `http://127.0.0.1:8088` | 建立知識庫、上傳與解析文件 |
-
-上表依預設 YAML 的 `app.ssl: true` 顯示 HTTPS；若關閉 SSL，Nova
-控制台和後端網址改用 HTTP。RAGFlow 管理頁只綁定主機 loopback，從另一
-台電腦無法直接連線。後端日誌在 `logs/start-all-backend.log`。
-
-啟動後，在控制台選擇數位人與模型，使用文字訊息或啟用麥克風開始對話。
-需要文件檢索時，到「設定 → 知識庫檢索」檢查連線、勾選知識庫並儲存，
-先按「測試檢索」確認有相關片段，再開啟該數位人的檢索。設定從下一輪
-對話生效。無命中時會標明回答沒有文件依據；RAGFlow 故障或逾時時，
-Nova 繼續一般回答並在控制台顯示狀態。檢索片段只是參考預覽，
-不代表正式引文。檢索設定依數位人分開保存，初始為關閉。
-
-如需分開啟動 Nova 前後端，可在不同終端執行
-`bash scripts/start-backend.sh config/config.yaml` 和
-`bash scripts/start-frontend.sh config/config.yaml`；RAGFlow 則以
-`bash scripts/ragflow.sh up`／`down` 獨立管理。
-
-## 設定與檢查
-
-`config/config.yaml` 設定服務埠、SSL、Avatar、VAD、STT、LLM、TTS、
-字幕與回覆模式；控制台可調整常用選項。切換 Avatar、STT 或 TTS 引擎前，
-先中斷目前 WebRTC 會話。RAGFlow 的非機密角色設定另存於
-`config/ragflow_settings.yaml`；API 金鑰留在 `config/ragflow.env`。
-
-開發與交付檢查：
+#### 2. 固定朗讀加速模式（--read-aloud）
 
 ```bash
-uv sync --group dev --extra vad --extra musetalk
+bash scripts/start-jetson.sh --read-aloud
+```
+
+- 使用 `config/config_jetson_read_aloud.yaml`。
+- 專用於固定文字的流暢度與口型驗證，**不載入 LLM、VAD 與 ASR**，忽略暫存覆蓋設定，節省資源。
+
+#### 3. 即時診斷模式（--realtime）
+
+```bash
+bash scripts/start-jetson.sh --realtime
+```
+
+- 使用 `config/config_jetson_realtime.yaml` 進行音畫同步與低延遲診斷。
+
+### 服務入口網址
+
+服務啟動後，可在本機瀏覽器開啟（從區域網路其他裝置連線時，請將 `localhost` 替換為 Jetson 的區網 IP）：
+
+| 入口 | 預設位址 | 用途說明 |
+| --- | --- | --- |
+| **Web 控制台** | `https://localhost:3000` | 數位人對話互動、各項參數微調、語音鏈路測試 |
+| **數位人獨立舞台** | `https://localhost:3000/stage.html` | 乾淨演播視窗，支援綠幕與背景即時合成 |
+| **後端健康檢查** | `https://localhost:8010/health` | 檢視後端服務與模型是否就緒（HTTP 200 / `ready: true`） |
+| **RAGFlow 管理介面** | `http://127.0.0.1:8088` | 文件上傳、解析與知識庫管理（僅本機 loopback） |
+
+後端執行日誌位於 `logs/start-all-backend.log`。按 `Ctrl+C` 可安全退出所有相關程序。
+
+---
+
+## 原生 ARM64 RAGFlow 知識庫檢索（選用）
+
+Nova Avatar 支援透過 RAGFlow 檢索本機知識庫，為數位人提供參考資料（由 Nova 既有 LLM 總結回答，RAGFlow 僅提供檢索片段）。
+
+在 Jetson ARM64 上，使用專屬原生建置流程：
+
+```bash
+# 1. 建置原生 ARM64 映像（固定使用 v0.27.2 commit a024bea0）
+bash scripts/ragflow.sh build
+
+# 2. 啟動 RAGFlow 容器與主機 GPU 嵌入程序（BGE-M3）
+bash scripts/ragflow.sh up
+
+# 3. 下載嵌入模型並預熱
+bash scripts/ragflow.sh pull-model
+
+# 4. 自動連線與建立 API 金鑰
+bash scripts/ragflow.sh connect
+
+# 5. 檢視服務狀態
+bash scripts/ragflow.sh status
+```
+
+連線設定與金鑰會自動寫入 `config/ragflow.env`（檔案權限 `0600`，由 `.gitignore` 忽略，嚴禁提交進 Git）。
+
+在控制台「設定 → 知識庫檢索」確認顯示「RAGFlow 已連線」，勾選知識庫並執行「測試檢索」後即可啟用。詳細建置與驗證說明見 [RAGFlow 本機檢索整合](docs/ragflow.md) 與 [ARM64 建置報告](docs/reports/ragflow-arm64.md)。
+
+---
+
+## 驗證與品質測試
+
+在提交與發布前，請依序執行以下各項測試：
+
+```bash
+# 1. 深度 CUDA 算子與實際模型推論檢查（含 MuseTalk、faster-whisper、FunASR、Silero）
+uv run python scripts/check-cuda.py --models
+
+# 2. 品牌、授權與專案整合契約稽核
 uv run python scripts/check-integration.py
+
+# 3. Python 測試套件
 uv run pytest
+
+# 4. 前端測試與生產環境建置
 cd web
 npm test
 npm run build
+cd ..
 ```
 
-`check-integration.py` 預設執行離線檢查。已準備好設定檔指定的 LLM
-與 Edge TTS 後，可執行 `uv run python scripts/check-integration.py --smoke`
-檢查實際服務。真實 WebRTC 語音回合的驗證方式見
-[目前專案基線](docs/project-status.md)。
+---
 
-## 授權與來源
+## 相關技術文件
 
-Nova Avatar 自行撰寫的程式採 [Apache-2.0](LICENSE)。MuseTalk 程式採
-MIT 授權；模型、權重與依賴另有條款。內含 Wav2Lip 整合僅供
-**Research / Non-commercial** 使用，不得視為可商用。RAGFlow、BGE-M3、
-語音、資料集與外部服務也須各自核對條款；根目錄授權不會擴及它們。
-詳見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)、
-[NOTICE](NOTICE) 和 [軟體組合](docs/software-stack.md)。
+- [NVIDIA AGX Orin 建置與 CUDA 驗證細節](docs/jetson-orin.md)
+- [數字人即時生成與 TensorRT UNet 診斷](docs/realtime-avatar.md)
+- [固定文字朗讀與音畫同步優化](docs/fixed-read-aloud.md)
+- [LFM 模型相容性與 720p／1080p 實測分析](docs/lfm-resolution.md)
+- [RAGFlow 本機檢索整合指南](docs/ragflow.md)
+- [專案軟體組合與邊界](docs/software-stack.md)
+- [架構決策紀錄（ADR）目錄](docs/adr/)
+
+---
+
+## 授權與來源標註
+
+- **Nova Avatar** 獨立撰寫之程式碼採 [Apache-2.0](LICENSE) 授權。
+- **MuseTalk** 程式碼採 MIT 授權（版權所有 Tencent Music Entertainment Group）；其模型權重及相依套件另受其個別條款約束。
+- 專案內整合之 **Wav2Lip** 僅供 **Research / Non-commercial**（學術／個人非商業用途），不得視為具商業許可。
+- RAGFlow、BGE-M3、外部語音合成與各語言模型權重均具獨立授權，專案根目錄授權不擴及其權重與外部服務。
+- 詳情請參閱 [NOTICE](NOTICE)、[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 與 [來源標註稽核](docs/source-attribution-audit.md)。

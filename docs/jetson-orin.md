@@ -67,8 +67,9 @@ CUDA Toolkit 使用 `/usr/local/cuda`，不使用移植過來的 `.cuda-toolkit`
 
 llama.cpp 固定為 v0.5.0，以 `GGML_CUDA=ON`、SM 87 編譯；可用
 `NOVA_BUILD_JOBS=4` 減少編譯並行數。llama.cpp 模型統一放在專案的
-`llama/` 目錄，目前使用 `llama/Qwen3.5-4B-UD-Q4_K_XL.gguf`。
-已有此模型時不需下載；若需要下載，可加上 `--download-model`，
+`llama/` 目錄，`config_jetson.yaml` 預設使用 `llama/LFM2.5-2.6B-Q4_K_M.gguf`，
+亦支援 `llama/Qwen3.5-4B-UD-Q4_K_XL.gguf` 與 `Qwen3.5-2B-UD-Q4_K_XL.gguf`。
+已有模型時不需下載；若需要下載 Qwen 模型，可加上 `--download-model`，
 腳本固定下載 revision 並驗證 SHA-256。
 MuseTalk、FunASR 與角色權重沿用 `models/`、`data/avatars/` 的既有檔案。
 全新 checkout 仍需按 README 下載 MuseTalk 權重並準備角色素材。
