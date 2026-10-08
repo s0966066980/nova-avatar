@@ -23,6 +23,11 @@ from src.server.voice_session import VoiceTurnSession
 
 async def offer(request):
     """處理 WebRTC offer 請求"""
+    if not getattr(state, "reply_prewarm_ready", True):
+        return web.json_response(
+            {"code": -1, "msg": "正在準備對話，請稍後再連線"},
+            status=503,
+        )
     if not getattr(state, "model_ready", False) or state.model is None or state.avatar is None:
         return web.Response(
             status=409,

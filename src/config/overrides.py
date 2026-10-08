@@ -63,6 +63,9 @@ def persist_runtime_overrides(config) -> None:
             "avatar_id": config.model.avatar_id,
             **quality_from_model(config.model),
         },
+        "video": {
+            "max_height": int(getattr(getattr(config, "video", None), "max_height", 0)),
+        },
         "reply_streaming": {
             "enabled": bool(
                 getattr(getattr(config, "reply_streaming", None), "enabled", False)
@@ -167,7 +170,7 @@ def persist_runtime_overrides(config) -> None:
     RUNTIME_OVERRIDES_FILE.parent.mkdir(parents=True, exist_ok=True)
     header = (
         "# 由設定面板自動生成，請勿手改關鍵結構。\n"
-        "# 會在啟動時覆蓋主配置中的 llm（含 reply_rules）/ model / reply_streaming / vad / asr / tts。\n"
+        "# 會在啟動時覆蓋主配置中的 llm（含 reply_rules）/ model / video / reply_streaming / vad / asr / tts。\n"
     )
     text = yaml.safe_dump(payload, allow_unicode=True, sort_keys=False)
     # Write and replace in the same directory so a process restart sees either

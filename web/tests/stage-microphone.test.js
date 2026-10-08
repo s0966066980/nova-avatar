@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
+import { configureReplyPlayout } from '../src/replyPlayout.js'
 
 const html = readFileSync(new URL('../stage.html', import.meta.url), 'utf8')
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
@@ -50,6 +51,7 @@ function stageHarness() {
     close() {}
   }
   const context = {
+    configureReplyPlayout,
     document: { getElementById: element },
     window: { ResizeObserver: null },
     navigator: { mediaDevices: { getUserMedia: async () => ({

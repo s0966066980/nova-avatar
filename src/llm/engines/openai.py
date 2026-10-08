@@ -20,6 +20,8 @@ from src.llm.base import (
 )
 from src.utils.logging import logger
 from src.llm.history import HistoryTransaction, TransactionalHistory
+from src.llm.llamacpp_protocol import is_lfm25_reasoning
+from src.llm.reply_contract import auto_reply_grammar
 
 
 class OpenAILLM(BaseLLM):
@@ -59,7 +61,7 @@ class OpenAILLM(BaseLLM):
         )
         # The configurable character limit applies to speech only. A board
         # response needs room for its JSON items and fixed protocol markers.
-        self.max_tokens = max(1024, response_token_budget(self.response_max_chars))
+        self.max_tokens = response_token_budget(self.response_max_chars)
 
         logger.info(
             f"LLM initialized: model={self.model}, base_url={self.base_url}"
@@ -132,7 +134,27 @@ class OpenAILLM(BaseLLM):
                 self.response_max_chars,
             )
         
+        completion = None
         try:
+            extra_body = dict(self.extra_body)
+            temperature = 0.6
+            llm_cfg = getattr(self.config, "llm", None)
+            if getattr(llm_cfg, "provider", "") == "llamacpp":
+                thinking = is_lfm25_reasoning(self.model)
+                board_cfg = getattr(llm_cfg, "board", None)
+                grammar = auto_reply_grammar(
+                    system_prompt, max_items=getattr(board_cfg, "max_items", 8),
+                    thinking=thinking,
+                )
+                if grammar:
+                    # The protocol is system-owned; stale custom grammars must
+                    # not replace it when the console switches models.
+                    extra_body["grammar"] = grammar
+                    temperature = 0.0
+                if thinking:
+                    extra_body.setdefault("repeat_penalty", 1.1)
+                    if not grammar:
+                        temperature = 0.1
             # 構建完整的訊息列表：system + 歷史對話
             messages = [{'role': 'system', 'content': system_prompt}]
             if history_transaction is None:
@@ -148,8 +170,8 @@ class OpenAILLM(BaseLLM):
                 messages=messages,
                 stream=True,
                 max_tokens=self.max_tokens,
-                temperature=0.6,
-                extra_body=self.extra_body or None,
+                temperature=temperature,
+                extra_body=extra_body or None,
             )
             
             init_time = time.perf_counter()
@@ -178,3 +200,8 @@ class OpenAILLM(BaseLLM):
         except Exception as e:
             logger.error("Unexpected LLM failure: %s", type(e).__name__)
             raise
+        finally:
+            # Cancellation and prewarm must release the HTTP stream too.
+            close = getattr(completion, "close", None)
+            if callable(close):
+                close()

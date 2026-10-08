@@ -1,0 +1,90 @@
+# Derived from InfiniFlow/RAGFlow v0.27.2, licensed under Apache-2.0.
+# Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+# Modified by HongXian0903, 2026.
+# Upstream: https://github.com/infiniflow/ragflow/tree/v0.27.2
+
+FROM node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS web-builder
+WORKDIR /ragflow/web
+COPY web/package.json web/package-lock.json ./
+RUN --mount=type=cache,id=nova-ragflow-npm,target=/root/.npm \
+    npm ci --registry=https://registry.npmjs.org
+COPY web ./
+COPY docs /ragflow/docs
+RUN NODE_OPTIONS=--max-old-space-size=4096 \
+    VITE_BUILD_SOURCEMAP=false VITE_MINIFY=esbuild npm run build
+
+FROM python:3.13-slim-bookworm@sha256:a1165e272e578941b84abc79e4ab38a0305cd12803a5c4247979ac7655f4d641 AS base
+ENV DEBIAN_FRONTEND=noninteractive PYTHONDONTWRITEBYTECODE=1 \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 \
+    UV_HTTP_TIMEOUT=200 UV_HTTP_RETRIES=3 \
+    UV_CONCURRENT_DOWNLOADS=4 UV_CONCURRENT_INSTALLS=2 UV_CONCURRENT_BUILDS=2 \
+    MAKEFLAGS=-j2 CARGO_BUILD_JOBS=2
+RUN --mount=type=cache,id=nova-ragflow-apt,target=/var/cache/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl git nginx chromium chromium-driver \
+    libglib2.0-0 libgl1 libgdiplus libjemalloc-dev pkg-config libgomp1 libicu72 \
+    unixodbc unixodbc-dev default-jre-headless ghostscript pandoc \
+    lmodern texlive-latex-extra texlive-xetex texlive-lang-chinese \
+    fonts-freefont-ttf fonts-noto-cjk postgresql-client && \
+    ln -s /usr/bin/chromium /usr/local/bin/chrome && \
+    ln -s /usr/bin/chromedriver /usr/local/bin/chromedriver
+RUN pip install --no-cache-dir uv==0.9.16
+WORKDIR /ragflow
+COPY --from=ragflow-assets /deepdoc /ragflow/rag/res/deepdoc
+COPY --from=ragflow-assets /nltk_data /root/nltk_data
+COPY --from=ragflow-assets /tika-server-standard-3.3.0.jar /ragflow/
+COPY --from=ragflow-assets /tika-server-standard-3.3.0.jar.md5 /ragflow/
+COPY --from=ragflow-assets /cl100k_base.tiktoken /ragflow/9b5ad71b2ce5302211f9c61530b329a4922fc6a4
+COPY --from=ragflow-assets /libssl1.1_1.1.1f-1ubuntu2_arm64.deb /tmp/
+RUN dpkg -i /tmp/libssl1.1_1.1.1f-1ubuntu2_arm64.deb && rm /tmp/*.deb
+ENV TIKA_SERVER_JAR=file:///ragflow/tika-server-standard-3.3.0.jar
+
+FROM base AS python-builder
+RUN --mount=type=cache,id=nova-ragflow-apt,target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    build-essential pkg-config libicu-dev libgbm-dev cargo \
+    zlib1g-dev libbz2-dev liblzma-dev libffi-dev
+COPY pyproject.toml uv.lock ./
+# Keep locked versions; normalize only the package registry URLs.
+RUN --mount=type=cache,id=nova-ragflow-uv,target=/root/.cache/uv \
+    sed -i 's|mirrors.aliyun.com/pypi|pypi.org|g; s|pypi.tuna.tsinghua.edu.cn|pypi.org|g; s|gitee.com|github.com|g' uv.lock && \
+    uv sync --python /usr/local/bin/python --frozen --no-dev && \
+    .venv/bin/python -m ensurepip --upgrade
+
+FROM base AS production
+LABEL org.opencontainers.image.title="RAGFlow ARM64 for Nova Avatar" \
+    org.opencontainers.image.version="0.27.2" \
+    org.opencontainers.image.revision="a024bea0cd93f39e6652a42bf84dd20c55bc560b" \
+    org.opencontainers.image.source="https://github.com/infiniflow/ragflow"
+ENV VIRTUAL_ENV=/ragflow/.venv PATH=/ragflow/.venv/bin:$PATH \
+    PYTHONPATH=/ragflow HF_ENDPOINT=https://huggingface.co
+COPY --from=python-builder /ragflow/.venv /ragflow/.venv
+COPY docker/entrypoint*.sh ./
+COPY docker/nginx/nginx.conf docker/nginx/proxy.conf /etc/nginx/
+COPY docker/nginx/ragflow.conf.golang docker/nginx/ragflow.conf.python docker/nginx/ragflow.conf.hybrid /etc/nginx/conf.d/
+RUN chmod +x ./entrypoint*.sh && rm -f /etc/nginx/sites-enabled/default
+COPY admin admin
+COPY api api
+COPY conf conf
+COPY deepdoc deepdoc
+COPY rag rag
+COPY agent agent
+COPY mcp mcp
+COPY common common
+COPY memory memory
+COPY bin bin
+COPY tools/scripts tools/scripts
+COPY pyproject.toml uv.lock LICENSE README.md ./
+COPY docker/service_conf.yaml.template ./conf/service_conf.yaml.template
+COPY --from=web-builder /ragflow/web/dist /ragflow/web/dist
+RUN printf 'v0.27.2\n' > /ragflow/VERSION
+# Preserve the upstream SQL Server connector's native ODBC driver.
+RUN --mount=type=cache,id=nova-ragflow-apt,target=/var/cache/apt,sharing=locked \
+    curl --fail --location https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
+      --output /tmp/packages-microsoft-prod.deb && \
+    dpkg -i /tmp/packages-microsoft-prod.deb && \
+    apt-get update && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 && \
+    rm /tmp/packages-microsoft-prod.deb
+ENTRYPOINT ["./entrypoint.sh"]

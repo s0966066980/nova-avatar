@@ -46,6 +46,7 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
         # without waiting for the steady-state model batch to fill.
         self.startup_batch_size = max(1, min(self.batch_size, 4))
         self._startup_batch_emitted = False
+        self._speech_batch_emitted = False
 
     @property
     def startup_batch_emitted(self) -> bool:
@@ -75,6 +76,59 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
         with self._paired_audio_lock:
             self._paired_audio_frames.clear()
         self._startup_batch_emitted = False
+        self._speech_batch_emitted = False
+
+    def _refresh_idle_lookahead(self, effective_batch_size):
+        """Replace idle lookahead with ready PCM before the first speech batch.
+
+        Retaining ten idle context frames leaves only six spoken PCM frames
+        in a steady-state batch. That 120 ms runway cannot cover the next
+        model call. Re-prime only untagged idle context, preserving the left
+        history and every spoken frame's feature alignment and order.
+        """
+        right = self.stride_right_size
+        if right <= 0 or self.av_offset_frames() != 0:
+            return True
+        with self._paired_audio_lock:
+            idle_context = (
+                len(self._paired_audio_frames) == right
+                and all(kind == 1 and event is None
+                        for _frame, kind, event in self._paired_audio_frames)
+            )
+        if not idle_context or len(self.frames) < right:
+            return True
+        with self.queue.mutex:
+            if not self.queue.queue:
+                return True
+            queued = len(self.queue.queue)
+            first_frame, first_event = self.queue.queue[0]
+            starts_speech = (
+                isinstance(first_event, dict)
+                and (first_event.get("status") == "start" or first_event.get("fragment_start"))
+            ) or (first_frame.size > 0 and float(np.max(np.abs(first_frame))) > 1e-4)
+            complete_short_fragment = any(
+                isinstance(event, dict)
+                and (event.get("fragment_end") or event.get("status") == "end")
+                for _frame, event in self.queue.queue
+            )
+        if not starts_speech:
+            return True
+        if queued < right + effective_batch_size * 2:
+            tts = getattr(self.parent, "tts", None)
+            pending = getattr(tts, "has_pending_work", None)
+            # A streaming first packet may be smaller than the lookahead.
+            # Keep it untouched until a full runway is ready. Short completed
+            # utterances and later speech batches must still drain promptly.
+            return (self._speech_batch_emitted or complete_short_fragment
+                    or not callable(pending) or not pending())
+        with self._paired_audio_lock:
+            self._paired_audio_frames.clear()
+        self.frames = self.frames[:-right]
+        for audio_frame, kind, event in self.get_audio_frames(right):
+            self.frames.append(audio_frame)
+            with self._paired_audio_lock:
+                self._paired_audio_frames.append((audio_frame, kind, event))
+        return True
 
     def run_step(self):
         """執行一步音訊特徵提取"""
@@ -84,6 +138,8 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
             if self._startup_batch_emitted
             else self.startup_batch_size
         )
+        if not self._refresh_idle_lookahead(effective_batch_size):
+            return False
         for audio_frame, type, eventpoint in self.get_audio_frames(effective_batch_size * 2):
             self.frames.append(audio_frame)
             item = (audio_frame, type, eventpoint)
@@ -122,14 +178,23 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
             )
         #print(f"whisper_chunks len:{len(whisper_chunks)},self.audio_feats len:{len(self.audio_feats)},self.output_queue len:{self.output_queue.qsize()}")
         #self.audio_feats = self.audio_feats[-(self.stride_left_size + self.stride_right_size):]
-        self.feat_queue.put(
-            MuseInferenceBatch(
-                features=whisper_chunks,
-                audio_frames=paired_audio_frames,
-                batch_size=effective_batch_size,
-            )
+        batch = MuseInferenceBatch(
+            features=whisper_chunks,
+            audio_frames=paired_audio_frames,
+            batch_size=effective_batch_size,
         )
+        quit_event = getattr(self, "quit_event", None)
+        while quit_event is None or not quit_event.is_set():
+            try:
+                self.feat_queue.put(batch, timeout=0.1)
+                break
+            except queue.Full:
+                continue
+        else:
+            return
         self._startup_batch_emitted = True
+        if any(kind == 0 for _frame, kind, _event in paired_audio_frames):
+            self._speech_batch_emitted = True
         mark_stage = getattr(self.parent, "mark_stage_end", None)
         if callable(mark_stage) and any(
             isinstance(eventpoint, dict) and eventpoint.get("turn_id")

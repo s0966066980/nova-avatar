@@ -226,7 +226,7 @@
             <div class="card-title-row">
               <div>
                 <div class="card-title-text"><i class="bi bi-list-check"></i> 系統角色 Prompt 與回覆規則</div>
-                <div class="card-subtitle-desc">定義 AI 數位人身分語氣，以及何時觸發看板結構化條列。</div>
+                <div class="card-subtitle-desc">角色、口語與看板規則由所有對話模型共用，切換模型後保留。回覆格式由系統自動套用。</div>
               </div>
               <div style="display: flex; gap: 8px;">
                 <button
@@ -269,7 +269,7 @@
             <div class="setting-form-row align-start">
               <div class="field-label-group">
                 <label for="llm-system-prompt" class="field-main-label">System Prompt</label>
-                <span id="llm-system-prompt-hint" class="field-sub-hint">每輪送給 LLM 的完整角色、能力範圍、語氣與回答原則。未設定時只會使用中性技術 fallback；請在此填入正式設定。</span>
+                <span id="llm-system-prompt-hint" class="field-sub-hint">設定角色、能力範圍、語氣與回答原則。口語與看板的格式由系統管理，不需為不同模型重寫。</span>
               </div>
               <div class="field-control-area flex-col">
                 <textarea
@@ -372,6 +372,40 @@
                   <span class="opt-badge" style="background: rgba(14,165,233,0.15); color: #38bdf8;">極速輕量</span>
                 </div>
                 <span class="opt-detail">傳統 GAN 架構，顯存消耗低，適合輕量邊緣設備。</span>
+              </div>
+            </div>
+
+            <div class="setting-form-row">
+              <div class="field-label-group">
+                <label for="avatar-output-height" class="field-main-label">{{ t('settings.videoOutput.title') }}</label>
+                <span id="avatar-output-hint" class="field-sub-hint">{{ t('settings.videoOutput.hint') }}</span>
+              </div>
+              <div class="field-control-area" style="display: flex; flex-direction: column; align-items: stretch; gap: 8px;">
+                <select
+                  id="avatar-output-height"
+                  class="std-select"
+                  v-model.number="selectedOutputHeight"
+                  :disabled="applyingVideo"
+                  aria-describedby="avatar-output-hint avatar-output-dimensions avatar-output-error"
+                  :aria-invalid="Boolean(videoError)"
+                >
+                  <option v-for="height in outputHeightOptions" :key="height" :value="height">
+                    {{ height === 0 ? t('settings.videoOutput.original') : `${height} px` }}
+                  </option>
+                </select>
+                <span id="avatar-output-dimensions" class="field-sub-hint" aria-live="polite">
+                  {{ outputDimensions ? `${t('settings.videoOutput.dimensions')} ${outputDimensions}` : t('settings.videoOutput.keepRatio') }}
+                </span>
+                <button
+                  type="button"
+                  class="btn-apply-primary"
+                  style="min-height: 44px;"
+                  :disabled="applyingVideo || !videoDirty"
+                  @click="handleApplyVideoSettings"
+                >
+                  {{ t('settings.videoOutput.apply') }}
+                </button>
+                <span id="avatar-output-error" v-show="videoError" role="alert" style="color: var(--danger);">{{ videoError }}</span>
               </div>
             </div>
 
@@ -1485,6 +1519,13 @@ const {
   restoreCharacter,
   permanentlyDeleteCharacter,
   applyMouthQuality,
+  selectedOutputHeight,
+  outputHeightOptions,
+  outputDimensions,
+  videoDirty,
+  applyingVideo,
+  videoError,
+  applyVideoSettings,
   qualityDraft,
   qualityDirty,
   applyingQuality,
@@ -1515,6 +1556,8 @@ const {
   rulesDirty,
   restoreDefaultRules,
   applyReplyRules,
+  applyLlmBehavior,
+  promptDirty,
   selectedStageCaptionMaxChars,
   selectedCaptionX,
   selectedCaptionY,
@@ -1833,9 +1876,17 @@ const handleApplyReplyRules = async () => {
 
 const handleApplyPromptAndRules = async () => {
   try {
-    await applyLlmModel()
-    await applyReplyRules()
+    await applyLlmBehavior()
     emit('notification', 'Prompt 與回覆規則已儲存並套用。', 'success')
+  } catch (error) {
+    emit('notification', error.message, 'error')
+  }
+}
+
+const handleApplyVideoSettings = async () => {
+  try {
+    const result = await applyVideoSettings()
+    emit('notification', t(result.requires_reconnect ? 'settings.videoOutput.savedReconnect' : 'settings.videoOutput.saved'), 'success')
   } catch (error) {
     emit('notification', error.message, 'error')
   }
@@ -1947,9 +1998,6 @@ const syncTheme = (theme) => {
   settings.value.theme = selectedThemeValue.value
 }
 
-const promptDirty = computed(() => (
-  selectedSystemPrompt.value.trim() !== (runtime.llm.system_prompt || '').trim()
-))
 
 const hasUnsavedChanges = computed(() => {
   return Boolean(
@@ -1959,6 +2007,7 @@ const hasUnsavedChanges = computed(() => {
     stageDirty.value ||
     avatarDirty.value ||
     qualityDirty.value ||
+    videoDirty.value ||
     vadDirty.value ||
     sttDirty.value ||
     ttsDirty.value
@@ -1968,10 +2017,15 @@ const hasUnsavedChanges = computed(() => {
 const saveAndApplyFullSettings = async () => {
   try {
     const promises = []
-    if (llmDirty.value || promptDirty.value) promises.push(applyLlmModel())
-    if (rulesDirty.value) promises.push(applyReplyRules())
+    let videoSave = null
+    if (promptDirty.value || rulesDirty.value) await applyLlmBehavior()
+    if (llmDirty.value) await applyLlmModel()
     if (stageDirty.value) promises.push(applyStageSettings())
     if (qualityDirty.value) promises.push(applyMouthQuality())
+    if (videoDirty.value) {
+      videoSave = applyVideoSettings()
+      promises.push(videoSave)
+    }
     if (avatarDirty.value) promises.push(applyAvatarChange())
     if (vadDirty.value) promises.push(applyVadSettings())
     if (sttDirty.value) promises.push(applySpeechChange('stt'))
@@ -1980,7 +2034,12 @@ const saveAndApplyFullSettings = async () => {
     persistLocalSettings()
     if (promises.length > 0) {
       await Promise.all(promises)
-      emit('notification', '✅ 設定已成功套用至全系統！', 'success')
+      if (videoSave) {
+        const result = await videoSave
+        emit('notification', t(result.requires_reconnect ? 'settings.videoOutput.savedReconnect' : 'settings.videoOutput.saved'), 'success')
+      } else {
+        emit('notification', '✅ 設定已成功套用至全系統！', 'success')
+      }
     } else {
       emit('notification', t('notifications.settingsSaved'), 'success')
     }

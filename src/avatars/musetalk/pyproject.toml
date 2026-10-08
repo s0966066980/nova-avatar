@@ -1,3 +1,7 @@
+# Portions derived from MuseTalk; MIT License.
+# Copyright (c) 2024 Tencent Music Entertainment Group.
+# Modified by HongXian0903, 2026. See ../../../THIRD_PARTY_NOTICES.md.
+
 [project]
 name = "nova-avatar-musetalk"
 version = "0.1.0"
@@ -27,10 +31,12 @@ dependencies = [
     "opencv-python-headless<4.12",
     "requests>=2.32.3",
     "soundfile>=0.12.1,<0.14",
-    "tensorboard==2.16.1",
-    "tensorflow==2.16.1",
+    # Training/OpenMMLab dependencies are not needed by ARM64 inference.
+    # tensorboard 2.16.1 also pulls CPU TensorFlow through tf-keras.
+    "tensorboard==2.16.1; platform_machine != 'aarch64'",
+    "tensorflow==2.16.1; platform_machine != 'aarch64'",
     "transformers>=4.44.1,<4.47",
-    "openmim>=0.3.9",
+    "openmim>=0.3.9; platform_machine != 'aarch64'",
     "setuptools==69.5.1",
     "mmengine>=0.10.3",
     # OpenMMLab packages - Install separately via mim (after installing this package):

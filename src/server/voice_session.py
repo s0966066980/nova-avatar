@@ -170,6 +170,10 @@ class VoiceTurnSession:
 
     async def prepare(self) -> None:
         """Prewarm Silero and STT before the session may announce listening."""
+        if not bool(getattr(self.config.vad, "enabled", True)):
+            self._close_gate()
+            self._emit("state", state="paused")
+            return
         self._emit("state", state="preparing")
         loop = asyncio.get_running_loop()
         try:
@@ -289,6 +293,12 @@ class VoiceTurnSession:
         try:
             while not self._closed:
                 frame = await track.recv()
+                # Keep draining the uplink while capture is paused, but do
+                # not schedule resampling work whose PCM feed_pcm discards.
+                # This avoids 50 unused executor round trips per second on
+                # the same event loop that releases reply RTP packets.
+                if not self._gate_open or self._segmenter is None or self._closed:
+                    continue
                 loop = asyncio.get_running_loop()
                 pcm_chunks = await loop.run_in_executor(
                     self._voice_executor,
@@ -336,6 +346,9 @@ class VoiceTurnSession:
             self._turn_id = uuid4().hex
         self._start_turn_context(self._turn_id)
         self._metrics.mark_speech_end()
+        endpoint_wait = getattr(segment, "endpoint_wait_ms", None)
+        if endpoint_wait is not None:
+            self._metrics.record_stage_duration("vad_endpoint", endpoint_wait / 1000.0)
         generation = self._generation
         self._turn_task = asyncio.create_task(
             self._process_turn(
@@ -379,6 +392,37 @@ class VoiceTurnSession:
             "reply_mode": self._pipeline_mode,
             "delivery": "events",
         }
+
+    async def start_read_aloud_turn(self, text: str, *, interrupt: bool = True) -> dict:
+        """Send fixed text to TTS with the normal capture and media fences."""
+        text = str(text or "").strip()
+        if not text:
+            raise ValueError("朗讀文字不可為空")
+        if self._closed:
+            raise RuntimeError("語音工作階段已關閉")
+        if interrupt and (
+            self._turn_id is not None
+            or self._turn_task is not None
+            or self._output_active
+        ):
+            await self.interrupt()
+        if self._turn_id is not None or self._turn_task is not None:
+            raise RuntimeError("上一個對話輪次尚未結束")
+        self._turn_id = uuid4().hex
+        self._start_turn_context(self._turn_id)
+        self._pipeline_mode = "read_aloud"
+        self._event_loop = asyncio.get_running_loop()
+        self._close_gate()
+        self._metrics.mark_speech_end()
+        self._llm_finished = True
+        envelope = {
+            "turn_id": self._turn_id,
+            "generation": self._generation,
+            "fragment_sequence": 0,
+        }
+        self._emit("state", state="tts_ready", turn_id=self._turn_id)
+        self.avatar.put_msg_txt(text, envelope)
+        return {"turn_id": self._turn_id, "reply_mode": "read_aloud", "delivery": "events"}
 
     def _segment_pcm_sync(self, pcm: np.ndarray):
         if self._segmenter_reset_pending:
@@ -538,6 +582,7 @@ class VoiceTurnSession:
             turn_context.transition(TurnState.LLM_STREAMING)
 
         self.mark_stage_start("llm_first_token")
+        self.mark_stage_start("llm_first_speech")
         self.mark_stage_start("llm_total")
         self.mark_stage_start("first_fragment")
 
@@ -738,6 +783,7 @@ class VoiceTurnSession:
             self._fragment_texts.setdefault(sequence, str(text))
         self.mark_stage_end("first_fragment")
         self.mark_stage_start("tts_first_encoded")
+        self.mark_stage_start("tts_pcm_available")
         self.mark_stage_start("tts_first_pcm")
         self.mark_stage_start("musetalk_first_batch")
         self.mark_stage_start("musetalk_inference_first_result")
@@ -926,7 +972,7 @@ class VoiceTurnSession:
 
     async def _finish_tail_guard(self) -> None:
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
-        if self._pipeline_mode == "streaming":
+        if self._pipeline_mode in {"streaming", "read_aloud"}:
             self._commit_history("completed")
         self._emit_turn_metrics("completed")
         if self._pipeline_mode == "streaming":
@@ -1236,6 +1282,7 @@ class VoiceTurnSession:
         was_open = self._gate_open
         allowed = (
             not self._closed
+            and bool(getattr(self.config.vad, "enabled", True))
             and not self._prepare_error
             and self._event_sink is not None
             and self._capture_requested

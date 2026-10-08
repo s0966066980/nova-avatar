@@ -166,6 +166,12 @@ class MuseTalkQualityConfig:
     max_tts_audio_wait_seconds: float = 0.35
     gap_grace_frames: int = 1
     closing_frames: int = 4
+    # Opt-in, locally built decoder engine; empty keeps the original VAE.
+    vae_engine_path: str = ""
+    # Approximate local TAESD decoder; empty preserves the original decoder.
+    tiny_vae_path: str = ""
+    # Optional local zero-step FP16 predictor engine.
+    unet_engine_path: str = ""
 
 
 @dataclass
@@ -332,6 +338,13 @@ class VideoConfig:
     width: int = 450
     height: int = 450
     fps: int = 25
+    # Zero preserves source size. Apply after mouth/transition geometry and
+    # before scene compositing and encoding; never stretch or upscale.
+    max_height: int = 0
+
+    def __post_init__(self):
+        if self.max_height != 0 and self.max_height < 2:
+            raise ValueError("video.max_height must be zero or at least 2")
 
 
 @dataclass

@@ -18,9 +18,11 @@ from src.avatars.catalog import (
 )
 from src.server.import_jobs import VIDEO_EXTS, get_job, import_in_progress, start_import_job
 from src.server.runtime_settings import (
+    apply_video_settings,
     SettingsError,
     apply_avatar,
     apply_llm_model,
+    apply_llm_behavior,
     apply_mouth_quality,
     apply_stt_settings,
     apply_tts_settings,
@@ -105,6 +107,21 @@ async def list_llm_models(request):
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     result = await fetch_llm_catalog(state.config)
     return _json({"code": 0, "data": result})
+
+
+async def set_llm_behavior(request):
+    if not state.config:
+        return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
+    try:
+        params = await request.json()
+        result = apply_llm_behavior(state.config, params.get("assistant_profile"),
+                                    params.get("rules"), params.get("expected_revision"))
+        return _json({"code": 0, "msg": "ok", "data": result})
+    except SettingsError as exc:
+        return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
+    except Exception as exc:
+        logger.exception("儲存 Prompt 與規則失敗")
+        return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
 async def set_llm_model(request):
@@ -372,6 +389,20 @@ async def set_avatar(request):
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
     except Exception as exc:
         logger.exception("切換數字人失敗")
+        return _json({"code": -1, "msg": str(exc)}, status=500)
+
+
+async def set_video_output(request):
+    if not state.config:
+        return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
+    try:
+        result = apply_video_settings(state.config, await request.json())
+        result["requires_reconnect"] = bool(_active_session_count())
+        return _json({"code": 0, "msg": "ok", "data": result})
+    except SettingsError as exc:
+        return _json({"code": -1, "msg": exc.message}, status=exc.status)
+    except Exception as exc:
+        logger.exception("更新數字人輸出解析度失敗")
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 

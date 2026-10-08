@@ -30,6 +30,7 @@ class ServerState:
         
         # 服務狀態
         self.server_ready = False
+        self.reply_prewarm_ready = True
         self.model_ready = False
         self.switching = False
     

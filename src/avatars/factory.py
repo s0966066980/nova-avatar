@@ -60,7 +60,14 @@ def prepare_avatar_model(config: Any):
     
     if model_type == 'musetalk':
         from .musetalk.avatar import load_model, load_avatar, warm_up
-        model = load_model()
+        engine_path = getattr(config.model.musetalk, "vae_engine_path", "")
+        options = {
+            "vae_engine_path": engine_path,
+            "tiny_vae_path": getattr(config.model.musetalk, "tiny_vae_path", ""),
+            "unet_engine_path": getattr(config.model.musetalk, "unet_engine_path", ""),
+        }
+        options = {name: value for name, value in options.items() if value}
+        model = load_model(**options) if options else load_model()
         avatar = load_avatar(config.model.avatar_id)
         warm_up(config.model.batch_size, model)
         return model, avatar

@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -13,8 +14,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.llm.llamacpp import (
     build_server_env,
     cuda_library_dirs,
+    cuda_free_mb,
     find_llama_server,
     gguf_block_count,
+    list_gguf_models,
     resolve_gguf,
     stop_llama_on_port,
     shutdown_llama_server,
@@ -23,6 +26,35 @@ from src.llm.llamacpp import (
 
 
 class CudaLibraryDiscoveryTests(unittest.TestCase):
+    def test_finds_jetson_build_without_path_launcher(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            binary = root / ".local" / "jetson" / "llama.cpp" / "build" / "bin" / "llama-server"
+            binary.parent.mkdir(parents=True)
+            binary.write_text("#!/bin/sh\n")
+            binary.chmod(0o755)
+            with patch("src.llm.llamacpp.shutil.which", return_value=None), patch(
+                "src.llm.llamacpp.get_project_root", return_value=root
+            ), patch("src.llm.llamacpp.Path.home", return_value=root / "home"):
+                self.assertEqual(find_llama_server(), binary)
+
+    def test_server_symlink_resolves_to_cuda_build_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            binary = root / "build" / "llama-server"
+            binary.parent.mkdir()
+            binary.write_text("#!/bin/sh\n")
+            launcher = root / "llama-server"
+            launcher.symlink_to(binary)
+            with patch("src.llm.llamacpp.shutil.which", return_value=str(launcher)):
+                self.assertEqual(find_llama_server(), binary.resolve())
+
+    def test_includes_cuda_13_library_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "libcudart.so.13").write_bytes(b"x")
+            self.assertIn(root.resolve(), [path.resolve() for path in cuda_library_dirs([root])])
+
     def test_includes_directory_that_has_libcudart(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -53,7 +85,72 @@ class CudaLibraryDiscoveryTests(unittest.TestCase):
             self.assertIn(str(cuda_dir), parts)
 
 
+class ModelDiscoveryTests(unittest.TestCase):
+    def test_finds_project_model_with_stale_configured_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model = root / "llama" / "Qwen3.5-4B-UD-Q4_K_XL.gguf"
+            model.parent.mkdir(parents=True)
+            model.write_bytes(b"GGUF")
+            with patch("src.llm.llamacpp.get_project_root", return_value=root), patch(
+                "src.llm.llamacpp.Path.home", return_value=root / "home"
+            ):
+                stale_dir = str(root / "old-llama")
+                self.assertEqual(resolve_gguf(model.stem, stale_dir), model)
+                self.assertEqual(resolve_gguf(model.name, stale_dir), model)
+                self.assertEqual([item["path"] for item in list_gguf_models(stale_dir)], [str(model)])
+                self.assertEqual(resolve_gguf(model.stem), model)
+
+    def test_relative_configured_directory_returns_absolute_model_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model = root / "llama" / "model.gguf"
+            model.parent.mkdir()
+            model.write_bytes(b"GGUF")
+            with patch("src.llm.llamacpp.get_project_root", return_value=root):
+                self.assertEqual(resolve_gguf("model", "./llama"), model.resolve())
+
+    def test_explicit_directory_takes_priority_over_project_model(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            configured = root / "custom" / "model.gguf"
+            project = root / "llama" / "model.gguf"
+            for model in (configured, project):
+                model.parent.mkdir(parents=True)
+                model.write_bytes(b"GGUF")
+            with patch("src.llm.llamacpp.get_project_root", return_value=root):
+                self.assertEqual(resolve_gguf("model", str(configured.parent)), configured)
+
+    def test_project_directory_is_listed_once_when_also_configured(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model = root / "llama" / "model.gguf"
+            model.parent.mkdir(parents=True)
+            model.write_bytes(b"GGUF")
+            with patch("src.llm.llamacpp.get_project_root", return_value=root), patch(
+                "src.llm.llamacpp.Path.home", return_value=root / "home"
+            ):
+                self.assertEqual(len(list_gguf_models(str(model.parent))), 1)
+
+
 class GpuLayerPlanningTests(unittest.TestCase):
+    def test_jetson_queries_cuda_when_smi_memory_is_unsupported(self):
+        fake_torch = types.SimpleNamespace(cuda=types.SimpleNamespace(
+            is_available=lambda: True,
+            mem_get_info=lambda: (12 * 1024**3, 16 * 1024**3),
+        ))
+        with patch("subprocess.check_output", return_value="[N/A]\n"), patch.dict(
+            sys.modules, {"torch": fake_torch}
+        ):
+            self.assertEqual(cuda_free_mb(), 12288)
+
+    def test_cpu_host_without_smi_returns_zero(self):
+        fake_torch = types.SimpleNamespace(cuda=types.SimpleNamespace(is_available=lambda: False))
+        with patch("subprocess.check_output", side_effect=FileNotFoundError), patch.dict(
+            sys.modules, {"torch": fake_torch}
+        ):
+            self.assertEqual(cuda_free_mb(), 0)
+
     def test_fits_all_layers_when_vram_is_enough(self):
         self.assertEqual(suggest_gpu_layers(2 * 1024**3, 12000, 32), 99)
 

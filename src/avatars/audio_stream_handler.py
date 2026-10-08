@@ -74,6 +74,28 @@ class BaseAudioStreamHandler:
         self._record_stale_drop("avatar_audio_enqueue")
         return False
 
+    def offer_audio_frame(self, audio_chunk, datainfo: dict) -> bool:
+        """Best-effort mouth input when an independent producer owns playback.
+
+        Only visual work may be discarded. Speech PCM has already been
+        accepted by the authoritative audio output before this method runs.
+        """
+        if not self._accepts_media(datainfo, "avatar_audio_enqueue"):
+            self._record_stale_drop("avatar_audio_enqueue")
+            return False
+        while True:
+            try:
+                self.queue.put_nowait((audio_chunk, datainfo))
+                return True
+            except queue.Full:
+                try:
+                    self.queue.get_nowait()
+                except queue.Empty:
+                    continue
+                record = getattr(self.parent, "record_stale_drop", None)
+                if callable(record):
+                    record("musetalk_audio", "visual_overload")
+
     def _accepts_media(self, eventpoint, stage: str) -> bool:
         if not (isinstance(eventpoint, dict) and eventpoint.get("turn_id")):
             return True

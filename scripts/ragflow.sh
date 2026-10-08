@@ -12,7 +12,7 @@ OVERLAY_FILE="$ROOT/integrations/ragflow/compose.nova.yml"
 EMBEDDING_UNIT="$ROOT/integrations/ragflow/nova-ragflow-embedding.service"
 
 usage() {
-    printf '用法：%s {install-docker|prepare|up|down|status|is-running|pull-model|validate}\n' "$0"
+    printf '用法：%s {install-docker|prepare|build|connect|up|down|status|is-running|pull-model|validate}\n' "$0"
 }
 
 prepare() {
@@ -32,7 +32,12 @@ prepare() {
 }
 
 compose() {
-    docker compose --env-file "$DEPLOY_DIR/docker/.env" \
+    # Select the native image without rewriting an existing private .env.
+    local image=infiniflow/ragflow:v0.27.2
+    if [ "$(uname -m)" = aarch64 ]; then
+        image=nova-avatar/ragflow:v0.27.2-arm64
+    fi
+    RAGFLOW_IMAGE="$image" docker compose --env-file "$DEPLOY_DIR/docker/.env" \
         -p nova-ragflow \
         -f "$COMPOSE_FILE" \
         -f "$OVERLAY_FILE" "$@"
@@ -92,14 +97,32 @@ case "${1:-}" in
         require_docker
         validate_compose
         ;;
+    build)
+        require_docker
+        exec bash "$ROOT/scripts/build-jetson-ragflow.sh"
+        ;;
+    connect)
+        exec python3 "$ROOT/scripts/ragflow_connection.py"
+        ;;
     up)
         prepare
         require_docker
         validate_compose
-        compose up -d
+        if [ "$(uname -m)" = aarch64 ]; then
+            if ! docker image inspect nova-avatar/ragflow:v0.27.2-arm64 >/dev/null 2>&1; then
+                printf 'ARM64 映像尚未建立，請執行 bash scripts/ragflow.sh build。\n' >&2
+                exit 1
+            fi
+            if [ "$(docker image inspect nova-avatar/ragflow:v0.27.2-arm64 --format '{{.Architecture}}')" != arm64 ]; then
+                printf 'RAGFlow 本機映像不是原生 ARM64，拒絕啟動。\n' >&2
+                exit 1
+            fi
+        fi
         systemctl --user link "$EMBEDDING_UNIT" >/dev/null 2>&1 || true
         systemctl --user daemon-reload
         systemctl --user enable --now nova-ragflow-embedding.service
+        compose up -d --wait --wait-timeout 300
+        python3 "$ROOT/scripts/ragflow_warm_embedding.py"
         printf 'RAGFlow 網頁：http://127.0.0.1:8088；API：http://127.0.0.1:9380\n'
         ;;
     down)
@@ -121,11 +144,15 @@ case "${1:-}" in
         exit 1
         ;;
     pull-model)
-        if ollama show bge-m3 >/dev/null 2>&1; then
+        ollama_bin="$(command -v ollama || true)"
+        ollama_bin="${ollama_bin:-$ROOT/.local/ragflow/ollama/bin/ollama}"
+        export OLLAMA_HOST="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'):11435"
+        if "$ollama_bin" show bge-m3 >/dev/null 2>&1; then
             printf '已存在 BGE-M3 模型，沿用主機現有檔案。\n'
         else
-            ollama pull bge-m3
+            "$ollama_bin" pull bge-m3
         fi
+        python3 "$ROOT/scripts/ragflow_warm_embedding.py"
         ;;
     *)
         usage >&2

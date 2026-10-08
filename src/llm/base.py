@@ -344,6 +344,8 @@ class BaseLLM(ABC):
             max_items=max_items,
             on_mode=on_mode if callable(on_mode) else None,
             on_board_item=emit_board_item if incremental_board else None,
+            guard_board_speech=True,
+            output_locale=str(getattr(profile, "output_locale", "zh-TW") or "zh-TW"),
         )
         if norm_mode != ReplyMode.AUTO and callable(on_mode):
             on_mode(norm_mode)
@@ -464,6 +466,10 @@ class BaseLLM(ABC):
 
                 for spoken in deltas:
                     spoken = normalize_visible_text(spoken)
+                    if spoken and target_avatar:
+                        mark_stage = getattr(target_avatar, "mark_stage_end", None)
+                        if callable(mark_stage):
+                            mark_stage("llm_first_speech")
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
                         if callable(notify_chunk):
@@ -482,6 +488,15 @@ class BaseLLM(ABC):
                             text_processor.process_chunk(spoken, send_to_avatar)
                     else:
                         spoken_response += spoken
+                if (
+                    target_avatar and semantic_stream
+                    and not is_legacy_markup and parser.speech_complete
+                ):
+                    # The end of SPEECH is a semantic boundary even if the
+                    # model omitted sentence punctuation. Board generation
+                    # must not hold an already complete spoken summary.
+                    for fragment in text_processor.flush():
+                        send_to_avatar(fragment)
             
             if not fenced:
                 if is_legacy_markup:
@@ -494,6 +509,10 @@ class BaseLLM(ABC):
                     if not delta:
                         continue
                     delta = normalize_visible_text(delta)
+                    if delta and target_avatar:
+                        mark_stage = getattr(target_avatar, "mark_stage_end", None)
+                        if callable(mark_stage):
+                            mark_stage("llm_first_speech")
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
                         if callable(notify_chunk):

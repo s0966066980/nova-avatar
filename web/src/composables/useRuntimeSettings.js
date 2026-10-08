@@ -40,6 +40,14 @@ const runtime = reactive({
     type: '',
     avatar_id: ''
   },
+  video: {
+    max_height: 0,
+    height_options: [450, 540, 720, 960, 1280, 1920, 0],
+    source_width: null,
+    source_height: null,
+    output_width: null,
+    output_height: null
+  },
   avatar_quality: {
     mouth_sharpen: 0.5,
     paste_interpolation: 'lanczos',
@@ -273,17 +281,20 @@ const currentProviderModels = computed(() => {
   return selectedProvider.value === 'llamacpp' ? llamacpp.models : ollama.models
 })
 
+const promptDirty = computed(() => (
+  selectedSystemPrompt.value !== (runtime.llm.system_prompt || '') ||
+  selectedRestrictionPrompt.value !== (runtime.llm.assistant_profile?.restriction_prompt || '') ||
+  selectedAssistantName.value !== (runtime.llm.assistant_profile?.assistant_name || '') ||
+  selectedOutputLocale.value !== (runtime.llm.assistant_profile?.output_locale || 'zh-TW') ||
+  Boolean(selectedEnforceOutputLocale.value) !== Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true) ||
+  selectedForbiddenSelfNames.value !== (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n')
+))
+
 const llmDirty = computed(() => {
-  if (!selectedLlm.value || !selectedSystemPrompt.value.trim() || responseLengthError.value || boardItemsError.value) return false
+  if (!selectedLlm.value || responseLengthError.value || boardItemsError.value) return false
   return (
     selectedProvider.value !== runtime.llm.provider ||
     selectedLlm.value !== runtime.llm.model ||
-    selectedSystemPrompt.value !== (runtime.llm.system_prompt || '') ||
-    selectedRestrictionPrompt.value !== (runtime.llm.assistant_profile?.restriction_prompt || '') ||
-    selectedAssistantName.value !== (runtime.llm.assistant_profile?.assistant_name || '') ||
-    selectedOutputLocale.value !== (runtime.llm.assistant_profile?.output_locale || 'zh-TW') ||
-    Boolean(selectedEnforceOutputLocale.value) !== Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true) ||
-    selectedForbiddenSelfNames.value !== (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n') ||
     Number(selectedResponseMaxChars.value) !== Number(runtime.llm.response_max_chars || 120) ||
     Number(selectedBoardMaxItems.value) !== Number(runtime.llm.board_max_items || 8) ||
     selectedReplyMode.value !== (runtime.llm.reply_mode || 'legacy') ||
@@ -470,6 +481,27 @@ function mergeQuality(raw) {
 const qualityDraft = reactive(mergeQuality())
 const applyingQuality = ref(false)
 const qualityError = ref('')
+
+const selectedOutputHeight = ref(0)
+const applyingVideo = ref(false)
+const videoError = ref('')
+const videoDirty = computed(() => selectedOutputHeight.value !== runtime.video.max_height)
+const outputHeightOptions = computed(() => {
+  const values = [...runtime.video.height_options]
+  for (const height of [runtime.video.max_height, selectedOutputHeight.value]) {
+    if (!values.includes(height)) values.unshift(height)
+  }
+  return values
+})
+const outputDimensions = computed(() => {
+  const { source_width: width, source_height: height } = runtime.video
+  if (!width || !height) return ''
+  const limit = selectedOutputHeight.value
+  if (!limit || limit >= height) return `${width} × ${height}`
+  const outputHeight = Math.max(2, Math.floor(limit / 2) * 2)
+  const outputWidth = Math.max(2, Math.floor(Math.round(width * outputHeight / height) / 2) * 2)
+  return `${outputWidth} × ${outputHeight}`
+})
 
 function assignQualityDraft(value) {
   const merged = mergeQuality(value)
@@ -674,6 +706,26 @@ async function applyVadSettings() {
   }
 }
 
+async function applyVideoSettings() {
+  applyingVideo.value = true
+  videoError.value = ''
+  try {
+    const data = await parseJson(await fetch('/api/avatar/output', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_height: selectedOutputHeight.value })
+    }))
+    Object.assign(runtime.video, data)
+    selectedOutputHeight.value = data.max_height
+    return data
+  } catch (error) {
+    videoError.value = error.message
+    throw error
+  } finally {
+    applyingVideo.value = false
+  }
+}
+
 async function applyMouthQuality() {
   applyingQuality.value = true
   qualityError.value = ''
@@ -726,6 +778,8 @@ function applySnapshot(data) {
     mic_preset: data.stage?.mic_preset || 'custom'
   }
   runtime.avatar = data.avatar
+  Object.assign(runtime.video, data.video || {})
+  selectedOutputHeight.value = runtime.video.max_height
   runtime.avatar_quality = mergeQuality(data.avatar_quality)
   assignQualityDraft(runtime.avatar_quality)
   runtime.engines = data.engines || []
@@ -843,6 +897,41 @@ async function applyReplyRules() {
   }
 }
 
+async function applyLlmBehavior() {
+  rulesSaving.value = true
+  rulesError.value = ''
+  rulesNotice.value = ''
+  try {
+    const data = await parseJson(await fetch('/api/llm/behavior', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expected_revision: rulesApplied.revision,
+        assistant_profile: {
+          assistant_name: selectedAssistantName.value,
+          system_prompt: selectedSystemPrompt.value,
+          restriction_prompt: selectedRestrictionPrompt.value,
+          output_locale: selectedOutputLocale.value,
+          enforce_output_locale: Boolean(selectedEnforceOutputLocale.value),
+          forbidden_self_names: selectedForbiddenSelfNames.value.split('\n').map((value) => value.trim()).filter(Boolean)
+        },
+        rules: { ...rulesDraft }
+      })
+    }))
+    runtime.llm.system_prompt = data.system_prompt
+    runtime.llm.assistant_profile = data.assistant_profile
+    Object.assign(rulesApplied, data.rules)
+    runtime.llm.reply_rules = { ...rulesApplied }
+    rulesNotice.value = '角色與規則已儲存，切換模型後繼續共用。'
+    return data
+  } catch (error) {
+    rulesError.value = error.message
+    throw error
+  } finally {
+    rulesSaving.value = false
+  }
+}
+
 function applyProviderBlock(target, block) {
   target.models = block.models || []
   target.reachable = Boolean(block.reachable)
@@ -894,7 +983,6 @@ async function loadOllamaModels() {
 async function applyLlmModel(
   model = selectedLlm.value,
   provider = selectedProvider.value,
-  systemPrompt = selectedSystemPrompt.value,
   responseMaxChars = selectedResponseMaxChars.value,
   replyMode = selectedReplyMode.value,
   boardMaxItems = selectedBoardMaxItems.value
@@ -907,25 +995,17 @@ async function applyLlmModel(
       body: JSON.stringify({
         model,
         provider,
-        system_prompt: systemPrompt,
         response_max_chars: Number(responseMaxChars),
         reply_mode: replyMode,
         board_max_items: Number(boardMaxItems),
-        semantic_wait_seconds: Number(selectedSemanticWaitSeconds.value),
-        assistant_profile: {
-          assistant_name: selectedAssistantName.value,
-          system_prompt: systemPrompt,
-          restriction_prompt: selectedRestrictionPrompt.value,
-          output_locale: selectedOutputLocale.value,
-          enforce_output_locale: Boolean(selectedEnforceOutputLocale.value),
-          forbidden_self_names: selectedForbiddenSelfNames.value.split('\n').map((value) => value.trim()).filter(Boolean)
-        }
+        semantic_wait_seconds: Number(selectedSemanticWaitSeconds.value)
+
       })
     }))
     runtime.llm.model = data.model
     runtime.llm.provider = data.provider || provider
     runtime.llm.base_url = data.base_url || runtime.llm.base_url
-    runtime.llm.system_prompt = data.system_prompt || systemPrompt
+    runtime.llm.system_prompt = data.system_prompt || runtime.llm.system_prompt
     runtime.llm.assistant_profile = data.assistant_profile || runtime.llm.assistant_profile
     runtime.llm.response_max_chars = Number(data.response_max_chars || responseMaxChars)
     runtime.llm.board_max_items = Number(data.board_max_items || boardMaxItems)
@@ -934,12 +1014,6 @@ async function applyLlmModel(
     ollama.current = data.model
     selectedLlm.value = data.model
     selectedProvider.value = data.provider || provider
-    selectedSystemPrompt.value = runtime.llm.system_prompt
-    selectedRestrictionPrompt.value = runtime.llm.assistant_profile?.restriction_prompt || ''
-    selectedAssistantName.value = runtime.llm.assistant_profile?.assistant_name || ''
-    selectedOutputLocale.value = runtime.llm.assistant_profile?.output_locale || 'zh-TW'
-    selectedEnforceOutputLocale.value = Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true)
-    selectedForbiddenSelfNames.value = (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n')
     selectedResponseMaxChars.value = runtime.llm.response_max_chars
     selectedBoardMaxItems.value = runtime.llm.board_max_items
     selectedReplyMode.value = runtime.llm.reply_mode
@@ -1324,6 +1398,8 @@ export function useRuntimeSettings() {
     loadReplyRules,
     restoreDefaultRules,
     applyReplyRules,
+    applyLlmBehavior,
+    promptDirty,
     selectedStageCaptionMaxChars,
     selectedCaptionX,
     selectedCaptionY,
@@ -1361,6 +1437,13 @@ export function useRuntimeSettings() {
     applyStageSettings,
     applyAvatar,
     applyMouthQuality,
+    selectedOutputHeight,
+    outputHeightOptions,
+    outputDimensions,
+    videoDirty,
+    applyingVideo,
+    videoError,
+    applyVideoSettings,
     qualityDraft,
     qualityDirty,
     applyingQuality,

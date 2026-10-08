@@ -30,9 +30,11 @@ def _start_edge_tts_prewarm(config) -> Thread | None:
     from src.tts.engines.edge import prewarm_edge_tts
 
     voice = str(getattr(config.tts, "ref_file", "") or "").strip()
+    def warm():
+        worker.prewarm_ready = prewarm_edge_tts(voice, decode_pcm=True)
+
     worker = Thread(
-        target=prewarm_edge_tts,
-        args=(voice,),
+        target=warm,
         name="edge-tts-prewarm",
         daemon=True,
     )
@@ -40,14 +42,16 @@ def _start_edge_tts_prewarm(config) -> Thread | None:
     return worker
 
 
-def _await_edge_tts_prewarm(worker: Thread | None) -> None:
+def _await_edge_tts_prewarm(worker: Thread | None) -> bool:
     if worker is None:
-        return
+        return True
     from src.tts.engines.edge import EDGE_WARMUP_TIMEOUT_SECONDS
 
     worker.join(timeout=EDGE_WARMUP_TIMEOUT_SECONDS + 1.0)
     if worker.is_alive():
         logger.warning("Edge TTS prewarm did not finish before server startup")
+        return False
+    return bool(getattr(worker, "prewarm_ready", False))
 
 
 def main():
@@ -157,7 +161,14 @@ def main():
             logger.exception("啟動 CosyVoice 失敗，請到設定重新套用 TTS")
 
     # Do not announce readiness while the first Edge connection is still cold.
-    _await_edge_tts_prewarm(edge_tts_prewarm)
+    edge_ready = _await_edge_tts_prewarm(edge_tts_prewarm)
+
+    from src.llm.prewarm import prewarm_local_llm
+
+    llm_ready = prewarm_local_llm(state.config)
+    state.reply_prewarm_ready = edge_ready and llm_ready
+    if not state.reply_prewarm_ready:
+        logger.warning("Reply prewarm incomplete; conversation is not ready")
 
     # 建立並執行應用
     app = create_app()

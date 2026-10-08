@@ -19,6 +19,13 @@ NC='\033[0m' # No Color
 
 # 專案路徑
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ "$(uname -m)" = "aarch64" ] && [ -f /etc/nv_tegra_release ]; then
+    if [ "${1:-musetalk}" != musetalk ]; then
+        echo "Jetson setup currently supports MuseTalk; see docs/jetson-orin.md."
+        exit 1
+    fi
+    exec bash "$PROJECT_ROOT/scripts/setup-jetson.sh"
+fi
 # Python 版本
 PYTHON_VERSION="3.10.19"
 # 預設 Avatar
@@ -74,7 +81,7 @@ check_uv() {
         curl -LsSf https://astral.sh/uv/install.sh | sh
         
         # 重新載入 PATH
-        export PATH="$HOME/.cargo/bin:$PATH"
+        export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
         
         if ! command -v uv &> /dev/null; then
             echo -e "${RED}❌ uv 安裝失敗${NC}"

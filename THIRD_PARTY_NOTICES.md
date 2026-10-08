@@ -64,10 +64,15 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - RAGFlow role: optional, separately deployed document retrieval service
 - RAGFlow version: v0.27.2; code license: Apache-2.0
 - RAGFlow source: <https://github.com/infiniflow/ragflow>
-- Ollama role: existing host installation, with a separate CPU embedding process
+- ARM64 build: pinned upstream source, native Python API/task executor,
+  DeepDoc models and Debian Chromium/ChromeDriver; upstream notices retained
+- Ollama role: separate GPU embedding process; existing host installation or
+  locally downloaded official ARM64 v0.35.1 and JetPack CUDA runner
 - Ollama source: <https://github.com/ollama/ollama>
 - BGE-M3 role: recommended multilingual embedding model
 - BGE-M3 source and model card: <https://huggingface.co/BAAI/bge-m3>
+- Native runtime packages retain their respective licenses; the Microsoft ODBC
+  driver is distributed under Microsoft's separate EULA, not Nova's Apache-2.0
 
 RAGFlow and model images are fetched on the host, not bundled in the Nova
 repository. Check their exact image and model licenses before redistribution;
@@ -93,6 +98,16 @@ are optional integrations. Verify the exact code, service, voice, model, and
 checkpoint terms before redistribution or commercial packaging.
 
 ## Models, weights, and datasets
+
+### Optional TAESD decoder
+
+- Source and model: <https://huggingface.co/madebyollin/taesd>
+- Upstream license: MIT, copyright (c) 2023 Ollin Boer Bohan
+- License text: <https://github.com/madebyollin/taesd/blob/main/LICENSE>
+- Role: explicitly selected approximate Stable Diffusion VAE decoder for the
+  optional MuseTalk real-time profile. Original avatar encoding remains in use.
+- The model is downloaded locally, not bundled. TAESD is approximate and changes
+  face detail; it is not a numerically equivalent replacement for the full VAE.
 
 Model weights and datasets are not relicensed by Nova Avatar. A usable code
 license does not imply that associated weights, training data, voices, or

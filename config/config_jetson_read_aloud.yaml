@@ -1,0 +1,128 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+# Fixed read-aloud profile verified with headed Chromium at 540px height.
+# Use /human type=echo; this profile does not start a local LLM.
+app:
+  listenport: 8010
+  max_session: 1
+  ssl: true
+  ssl_cert: ssl_certs/localhost.crt
+  ssl_key: ssl_certs/localhost.key
+  web:
+    port: 3000
+    host: 0.0.0.0
+model:
+  type: musetalk
+  avatar_id: musetalk_1
+  batch_size: 8
+  model_path: ./models
+  mouth_sharpen: 0.5
+  paste_interpolation: lanczos
+  musetalk:
+    bbox_shift: 0
+    extra_margin: 10
+    parsing_mode: jaw
+    left_cheek_width: 90
+    right_cheek_width: 90
+    upper_boundary_ratio: 0.5
+    expand: 1.5
+    mask_blur_ratio: 0.05
+    mouth_continuity: true
+    mouth_continuity_idle_alignment: true
+    opening_frames: 2
+    avatar_transition: true
+    settling_enabled: true
+    settling_frames: 5
+    settling_min_frames: 4
+    settling_max_frames: 6
+    phase_matching_enabled: true
+    phase_temporal_penalty: 0.015
+    micro_crossfade_enabled: true
+    micro_crossfade_frames: 2
+    micro_crossfade_fullframe_max_diff: 18.0
+    gap_grace_frames: 1
+    tiny_vae_path: .local/jetson/taesd
+    vae_engine_path: ''
+    unet_engine_path: .local/jetson/musetalk-unet-fp16.engine
+  wav2lip:
+    pad_top: 0
+    pad_bottom: 10
+    pad_left: 0
+    pad_right: 0
+tts:
+  type: edgetts
+  mode: auto
+  ref_file: zh-TW-HsiaoChenNeural
+  tts_server: http://127.0.0.1:9880
+  model: ''
+  language: Chinese
+  speaker: Vivian
+  instruct: ''
+  device: auto
+  edge_persistent_worker: true
+  edge_prefetch: true
+asr:
+  mode: server
+  type: whisper
+  model_size: base
+  language: zh
+  output_script: traditional-tw
+  device: cuda
+  min_speech_ms: 450
+  min_audio_rms: 0.003
+  min_confidence: 0.35
+llm:
+  provider: openai
+  api_key: ollama
+  base_url: http://127.0.0.1:9/v1
+  model: fixed-reply-diagnostic
+  llamacpp_dir: ./llama
+  llamacpp_host: 127.0.0.1
+  llamacpp_port: 8080
+  llamacpp_ctx: 8192
+  llamacpp_threads: 0
+  max_tokens: 128
+  response_max_chars: 120
+  extra_body:
+    reasoning_effort: none
+  response_router:
+    enabled: true
+    rule_first: true
+    llm_fallback: false
+    board_threshold: 3.0
+    simple_threshold: 0.0
+    classifier_max_tokens: 4
+  board:
+    enabled: true
+    max_items: 8
+reply_streaming:
+  enabled: false
+  semantic_wait_seconds: 0.5
+stage:
+  caption_max_chars: 120
+vad:
+  enabled: false
+  type: silero
+  sample_rate: 16000
+  frame_ms: 0
+  threshold: 0.5
+  aggressiveness: 2
+  device: cpu
+  model_path: ''
+  use_onnx: false
+  speech_start_ms: 100
+  min_speech_ms: 250
+  min_silence_ms: 300
+  speech_pad_ms: 150
+  max_speech_ms: 15000
+audio:
+  fps: 50
+  sample_rate: 16000
+  av_offset_ms: 0
+video:
+  width: 720
+  height: 1280
+  fps: 25
+  max_height: 1280
+custom_video:
+  config_path: ''

@@ -34,6 +34,7 @@ from fractions import Fraction
 from src.tts.factory import create_tts_engine
 from src.tts.base import sanitize_speech_text
 from src.utils.logging import logger
+from src.avatars.video_output import limit_video_height
 
 from tqdm import tqdm
 
@@ -205,6 +206,9 @@ class BaseAvatar:
         self._direct_audio_track = audio_track
         self._direct_audio_loop = loop
         self._direct_audio_quit = Event()
+        enable = getattr(audio_track, "enable_independent_audio", None)
+        if callable(enable):
+            enable()
 
     @property
     def direct_audio_enabled(self) -> bool:
@@ -212,6 +216,10 @@ class BaseAvatar:
             getattr(self, "_direct_audio_track", None) is not None
             and getattr(self, "_direct_audio_loop", None) is not None
         )
+
+    def stop_audio_output(self) -> None:
+        """Release a TTS producer blocked on a closing WebRTC connection."""
+        self._direct_audio_quit.set()
 
     def _enqueue_direct_audio(self, audio_chunk, eventpoint: dict) -> bool:
         if not self.direct_audio_enabled:
@@ -238,23 +246,6 @@ class BaseAvatar:
             self.record_audio_data(pcm)
             if eventpoint.get("turn_id"):
                 self.mark_stage_end("webrtc_audio_enqueue")
-            if eventpoint.get("fragment_end"):
-                # Edge's final PCM may itself be non-silent. Add one tagged
-                # silence frame so the playback clock can emit speaking_end
-                # and close the turn without waiting for renderer idle output.
-                silence = np.zeros(self.chunk, dtype=np.int16)
-                silence_frame = AudioFrame(
-                    format="s16", layout="mono", samples=silence.shape[0]
-                )
-                silence_frame.planes[0].update(silence.tobytes())
-                silence_frame.sample_rate = 16000
-                queued = enqueue_media_frame(
-                    self._direct_audio_track,
-                    silence_frame,
-                    eventpoint,
-                    self._direct_audio_loop,
-                    self._direct_audio_quit,
-                )
         return queued
 
     def fragment_playback_committed(self, eventpoint: dict) -> bool:
@@ -322,10 +313,18 @@ class BaseAvatar:
                 eventpoint.get("media_sequence", 0)
             )
             eventpoint["media_sequence"] = sequence
+        if self.direct_audio_enabled:
+            if not self._enqueue_direct_audio(audio_chunk, eventpoint):
+                return False
+            offer = getattr(self.audio_stream, "offer_audio_frame", None)
+            if callable(offer):
+                # Mouth backlog must never backpressure the PCM producer.
+                offer(audio_chunk, eventpoint)
+                return True
         accepted = self.audio_stream.put_audio_frame(audio_chunk,eventpoint)
         if not accepted:
             return False
-        return self._enqueue_direct_audio(audio_chunk, eventpoint)
+        return True
 
     def put_audio_file(self,filebyte,datainfo:dict={}): 
         # 檔案音訊按 chunk 切片後送入音訊流
@@ -498,6 +497,14 @@ class BaseAvatar:
                 continue
             video_eventpoint = dict(turn_events[0]) if turn_events else None
 
+            # Drop obsolete mouth work before paste-back and transitions. PCM
+            # has its own producer and must never wait for the renderer here.
+            if self.direct_audio_enabled:
+                video_is_current = getattr(audio_track, "video_is_current", None)
+                if callable(video_is_current) and not video_is_current(video_eventpoint):
+                    self.record_stale_drop("musetalk_result_consume", "late_video")
+                    continue
+
             # Audio is the user-visible clock. Enqueue it before the potentially
             # expensive paste-back/encode path so the first PCM frame is not
             # blocked behind video compositing.
@@ -509,7 +516,11 @@ class BaseAvatar:
             prepare_speech_start = getattr(
                 audio_track, "prepare_speech_start", None
             )
-            if speech_starts and callable(prepare_speech_start):
+            if (
+                not self.direct_audio_enabled
+                and speech_starts
+                and callable(prepare_speech_start)
+            ):
                 logger.info(
                     "[AVSync] speech start queued audio=%d video=%d",
                     getattr(audio_track, "_queue", None).qsize()
@@ -523,10 +534,7 @@ class BaseAvatar:
                     prepare_speech_start(), loop, quit_event
                 ):
                     break
-            direct_batch_contains_speech = any(
-                frame_type == 0 for _frame, frame_type, _eventpoint in audio_frames
-            )
-            if not self.direct_audio_enabled or not direct_batch_contains_speech:
+            if not self.direct_audio_enabled:
                 audio_enqueue_failed = False
                 for audio_frame in audio_frames:
                     frame, type, eventpoint = audio_frame
@@ -568,18 +576,16 @@ class BaseAvatar:
                     continue
                 combine_frame = current_frame
 
-            # Do not advance visual transition state for a frame that cannot
-            # be queued behind direct-audio playback yet.
-            if self.direct_audio_enabled:
-                audio_queue = getattr(audio_track, "_queue", None)
-                if audio_queue is not None and audio_queue.qsize() == 0:
-                    continue
             combine_frame = self._compose_avatar_transition(
                 combine_frame,
                 index=idx,
                 is_speech=self.speaking,
                 frame_type=0 if self.speaking else audiotype,
                 eventpoint=video_eventpoint,
+            )
+            combine_frame = limit_video_height(
+                combine_frame,
+                getattr(getattr(self.config, "video", None), "max_height", 0),
             )
             if getattr(self, "_green_screen", False):
                 from src.scene.service import scene_service

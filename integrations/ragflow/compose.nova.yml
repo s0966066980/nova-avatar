@@ -10,6 +10,16 @@ services:
       - "127.0.0.1:9380:9380"
     cpus: 4.0
     mem_limit: 6g
+    environment:
+      API_PROXY_SCHEME: python
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9380/api/v1/system/ping"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 12
 
   es01:
     ports: !override []

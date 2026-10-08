@@ -25,6 +25,7 @@ MANIFEST
 
 # Virtual environments
 .venv
+.venv-x86-backup-*/
 .venv-qwen-speech/
 venv/
 ENV/
@@ -37,6 +38,7 @@ uv.lock
 # IDE
 .vscode/
 .idea/
+.claude/settings.local.json
 *.swp
 *.swo
 *~
@@ -49,16 +51,25 @@ uv.lock
 
 # Project specific
 models/
+llama/*.gguf
 data/
 logs/
 config/runtime_overrides.yaml
 config/ragflow_settings.yaml
 config/ragflow.env
 .local/ragflow/
+.local/toolchains/
+.local/jetson/
 outputs/
 *.pt
 *.pth
 *.ckpt
+*.engine
+*.plan
+.scratch/**/*.onnx
+.scratch/**/*.npz
+.scratch/**/*.wav
+.scratch/**/*.mp3
 
 # Recordings
 data/records/

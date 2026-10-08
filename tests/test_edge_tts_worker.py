@@ -56,13 +56,13 @@ class EdgeTTSStartupTests(unittest.TestCase):
 
         with patch(
             "src.tts.engines.edge.prewarm_edge_tts",
-            side_effect=lambda voice: called.set(),
+            side_effect=lambda voice, **_kwargs: called.set() or True,
         ) as prewarm:
             worker = _start_edge_tts_prewarm(self._config())
-            _await_edge_tts_prewarm(worker)
+            self.assertTrue(_await_edge_tts_prewarm(worker))
 
         self.assertTrue(called.is_set())
-        prewarm.assert_called_once_with("zh-TW-YunJheNeural")
+        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True)
         self.assertFalse(worker.is_alive())
 
     def test_non_edge_engine_does_not_start_edge_prewarm(self):
@@ -230,6 +230,63 @@ class EdgeTTSWorkerTests(unittest.TestCase):
                 quit_event.set()
                 worker.join(timeout=2)
 
+    def test_mouth_backpressure_does_not_block_later_tts_network_requests(self):
+        """Full LLM text must keep synthesizing while PCM waits for playback."""
+        payload = _mp3_fixture()
+        blocked = Event()
+        release = Event()
+        later_started = Event()
+        stages = []
+
+        class Parent:
+            def mark_stage_end(self, stage):
+                stages.append(stage)
+
+            def put_audio_frame(self, _frame, eventpoint):
+                if eventpoint.get("fragment_sequence") == 0:
+                    blocked.set()
+                    release.wait(timeout=2)
+
+        class Communicate:
+            def __init__(self, index):
+                self.index = index
+
+            async def stream(self):
+                if self.index == 1:
+                    later_started.set()
+                yield {"type": "audio", "data": payload}
+
+        next_index = 0
+
+        def communicate(*_args):
+            nonlocal next_index
+            result = Communicate(next_index)
+            next_index += 1
+            return result
+
+        tts = self._make_tts(Parent())
+        for index in range(2):
+            tts.put_msg_txt(
+                "聲音應該連續播放。",
+                {"turn_id": "turn-1", "generation": 1, "fragment_sequence": index},
+            )
+        quit_event = Event()
+        worker = Thread(target=tts.process_tts, args=(quit_event,))
+        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+            worker.start()
+            try:
+                self.assertTrue(blocked.wait(timeout=1))
+                self.assertIn("tts_pcm_available", stages)
+                self.assertNotIn("tts_first_pcm", stages)
+                self.assertTrue(
+                    later_started.wait(timeout=0.25),
+                    "PCM backpressure blocked the shared TTS network loop",
+                )
+            finally:
+                release.set()
+                quit_event.set()
+                worker.join(timeout=3)
+
     def test_flush_talk_drops_prefetched_fragment_audio(self):
         payload = _mp3_fixture()
         first_pcm = Event()
@@ -341,6 +398,43 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         tts.close_worker()
         self.assertFalse(loop.is_running())
         self.assertFalse(thread.is_alive())
+
+    def test_ready_next_fragment_is_enqueued_before_previous_playback_ends(self):
+        payload = _mp3_fixture()
+        first_complete, second_complete = Event(), Event()
+        emitted = []
+
+        class Parent:
+            def fragment_playback_ended(self, _eventpoint):
+                return False  # PCM is queued, but playback has not caught up.
+
+            def put_audio_frame(self, _frame, eventpoint):
+                sequence = eventpoint['fragment_sequence']
+                emitted.append(sequence)
+                if eventpoint.get('status') == 'end':
+                    (first_complete if sequence == 0 else second_complete).set()
+
+        class WorkingCommunicate:
+            async def stream(self):
+                yield {'type': 'audio', 'data': payload}
+
+        tts = self._make_tts(Parent())
+        for sequence in range(2):
+            tts.put_msg_txt('固定回答。', {'turn_id': 'turn', 'generation': 1,
+                                      'fragment_sequence': sequence})
+        quit_event = Event()
+        worker = Thread(target=tts.process_tts, args=(quit_event,))
+        with patch('src.tts.engines.edge.edge_tts.Communicate',
+                   side_effect=lambda *_args: WorkingCommunicate()):
+            worker.start()
+            try:
+                self.assertTrue(first_complete.wait(timeout=1.5))
+                self.assertTrue(second_complete.wait(timeout=.8))
+                self.assertEqual(emitted, sorted(emitted))
+            finally:
+                quit_event.set()
+                worker.join(timeout=2)
+        self.assertFalse(worker.is_alive())
 
     def test_last_fragment_prefetch_releases_and_completes_promptly(self):
         payload = _mp3_fixture()

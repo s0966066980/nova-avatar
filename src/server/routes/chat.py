@@ -21,12 +21,19 @@ async def human(request):
         if params['type'] == 'echo':
             if avatar_stream is None:
                 raise KeyError(sessionid)
-            avatar_stream.put_msg_txt(params['text'])
+            voice_session = state.voice_sessions.get(sessionid)
+            if voice_session is None:
+                raise web.HTTPConflict(text="語音工作階段尚未連線")
+            started = await voice_session.start_read_aloud_turn(
+                params['text'],
+                interrupt=bool(params.get('interrupt')),
+            )
             response_text = params['text']
             response_payload = {
                 "code": 0,
                 "msg": "ok",
                 "response": response_text,
+                **started,
             }
         elif params['type'] == 'chat':
             voice_session = state.voice_sessions.get(sessionid)

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import re
 import secrets
 import subprocess
@@ -63,7 +64,10 @@ def prepare() -> Path:
         "MEM_LIMIT": "6442450944",
         "DOC_BULK_SIZE": "1",
         "EMBEDDING_BATCH_SIZE": "4",
-        "RAGFLOW_IMAGE": "infiniflow/ragflow:v0.27.2",
+        "RAGFLOW_IMAGE": (
+            "nova-avatar/ragflow:v0.27.2-arm64"
+            if platform.machine() == "aarch64" else "infiniflow/ragflow:v0.27.2"
+        ),
         "TZ": "Asia/Taipei",
     }
     for key, value in values.items():

@@ -3,6 +3,7 @@ import unittest
 
 from src.config.schema import Config
 from src.llm.base import BaseLLM
+from src.llm.engines.openai import OpenAILLM
 from src.llm.response_protocol import (
     BoardItem,
     BoardPayload,
@@ -52,6 +53,18 @@ class ThinkFilterTests(unittest.TestCase):
 
 
 class ResponseProtocolParserTests(unittest.TestCase):
+    def test_board_marker_can_arrive_one_character_at_a_time(self):
+        parser = ResponseProtocolParser(mode=ReplyMode.AUTO)
+        raw = ('[[MODE:BOARD]][[SPEECH]]看板摘要。[[BOARD_JSON]]'
+               '{"title":"部署","items":[{"title":"準備","content":"檢查環境。"}]}[[END]]')
+        speech = []
+        for char in raw:
+            speech.extend(parser.feed(char))
+        tail, board = parser.flush()
+        self.assertEqual("".join(speech + tail).strip(), "看板摘要。")
+        self.assertIsNotNone(board)
+        self.assertEqual(board.items[0].content, "檢查環境。")
+
     def test_simple_mode_stream(self):
         parser = ResponseProtocolParser(mode=ReplyMode.SIMPLE)
         out = []
@@ -210,6 +223,71 @@ class ResponseProtocolParserTests(unittest.TestCase):
 
 
 class EndToEndProtocolStreamingTests(unittest.TestCase):
+    def test_board_lists_split_across_chunks_never_reach_tts_or_history(self):
+        from types import SimpleNamespace
+        for summary in (
+            "部署需先確認環境準備，再執行安裝操作，最後進行功能測試。",
+            "三個步驟是環境檢查與安全配置，以及版本相容性驗證。",
+            "First check the environment, then install the service, finally run the tests.",
+        ):
+            with self.subTest(summary=summary):
+                class ListLLM(OpenAILLM):
+                    def chat_stream(self, message, system_prompt=None, **kwargs):
+                        raw = ('[[MODE:BOARD]][[SPEECH]]' + summary + '[[BOARD_JSON]]'
+                               '{"title":"部署","items":[{"title":"環境","content":"確認依賴版本。"}]}[[END]]')
+                        for offset in range(0, len(raw), 3):
+                            yield raw[offset:offset + 3]
+                spoken, boards = [], []
+                llm = ListLLM(Config(), api_key='test', model='any-model')
+                result = llm.generate_response('部署流程', SimpleNamespace(
+                    put_msg_txt=lambda text, info: spoken.append(text)), reply_mode=ReplyMode.AUTO,
+                    datainfo={'on_board': boards.append})
+                self.assertNotIn(summary, ''.join(spoken))
+                self.assertNotIn(summary, repr(llm.conversation_history))
+                self.assertIn('看板', result)
+                self.assertEqual(len(boards[-1]['items']), 1)
+
+    def test_simple_mode_keeps_requested_spoken_steps(self):
+        class SpokenLLM(OpenAILLM):
+            def chat_stream(self, message, system_prompt=None, **kwargs):
+                yield '[[MODE:SIMPLE]][[SPEECH]]首先檢查環境，其次安裝，最後測試。[[END]]'
+        result = SpokenLLM(Config(), api_key='test', model='any-model').generate_response(
+            '只用口述說明', stream_to_avatar=False, reply_mode=ReplyMode.AUTO)
+        self.assertEqual(result, '首先檢查環境，其次安裝，最後測試。')
+
+    def test_lfm_tool_only_reply_recovers_without_poisoning_history(self):
+        class ToolOnlyLLM(OpenAILLM):
+            def chat_stream(self, message, system_prompt=None, **kwargs):
+                yield "<|tool_call_st"
+                yield "art|>[BOARD(MODE:BOARD)]<|tool_call_end|>"
+
+        class Avatar:
+            def __init__(self):
+                self.fragments = []
+            def put_msg_txt(self, text, datainfo=None):
+                self.fragments.append(text)
+
+        avatar = Avatar()
+        llm = ToolOnlyLLM(Config(), api_key="test", model="test-model")
+        result = llm.generate_response(
+            "請列出系統安裝部署四步驟", avatar,
+            reply_mode=ReplyMode.AUTO,
+            datainfo={"on_mode": lambda mode: None},
+        )
+        self.assertEqual(result, FORMAT_RECOVERY_MESSAGE)
+        self.assertEqual("".join(avatar.fragments), FORMAT_RECOVERY_MESSAGE)
+        self.assertNotIn("BOARD(", repr(llm.conversation_history))
+
+    def test_mode_marker_inside_tool_call_cannot_become_spoken_text(self):
+        parser = ResponseProtocolParser(mode=ReplyMode.AUTO)
+        output = []
+        for chunk in ("<|tool_", "call_start|>[SIMPLE[MODE:SIMPLE], ",
+                      "[[SPEECH]]internal tool data]<|tool_call_end|>",
+                      "[[MODE:SIMPLE]][[SPEECH]]真正的回答。"):
+            output.extend(parser.feed(chunk))
+        final, _ = parser.flush()
+        self.assertEqual("".join(output + final), "真正的回答。")
+
     def test_generate_response_never_falls_back_to_suppressed_raw_json(self):
         class RawJsonLLM(BaseLLM):
             def chat_stream(self, message, system_prompt=None, **kwargs):
@@ -328,7 +406,7 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
         speech = parser.feed(raw)
         flush_speech, board = parser.flush()
         all_speech = "".join(speech + flush_speech).strip()
-        self.assertEqual(all_speech, "")
+        self.assertEqual(all_speech, FORMAT_RECOVERY_MESSAGE)
         self.assertIsNone(board)
 
     def test_json_double_bracket_repair(self):

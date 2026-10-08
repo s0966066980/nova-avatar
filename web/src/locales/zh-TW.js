@@ -52,6 +52,8 @@ export default {
 
   video: {
     title: '數位人影片',
+    enableSound: '啟用聲音',
+    enableSoundHint: '瀏覽器已暫停語音播放，點擊以啟用聲音',
     connect: '啟動連線',
     disconnect: '中斷連線',
     startRecord: '開始錄製',
@@ -138,6 +140,17 @@ export default {
       needDisconnect: '切換數位人會中斷目前連線，載入完成後請重新啟動連線。',
       confirmTitle: '切換數位人',
       confirmMessage: '切換數位人會中斷目前連線，並重新載入模型或角色素材，可能需要數十秒。確定繼續？'
+    },
+
+    videoOutput: {
+      title: '數字人輸出解析度',
+      hint: '選擇輸出高度，寬度依素材比例計算。較低解析度可減少影音卡頓；儲存後重新連線生效。',
+      original: '原始解析度',
+      dimensions: '輸出尺寸：',
+      keepRatio: '保持素材比例，不放大原始影像。',
+      apply: '儲存解析度',
+      saved: '解析度已儲存，下一次連線生效。',
+      savedReconnect: '解析度已儲存，請中斷並重新啟動連線以套用。'
     },
 
     stage: {
@@ -393,7 +406,7 @@ export default {
     settingsReset: '已恢復預設設定',
     webrtcCleared: 'WebRTC 連線設定已清除',
     llmSwitched: '對話模型已切換',
-    llmSettingsUpdated: '對話模型與預設 Prompt 已更新',
+    llmSettingsUpdated: '對話模型設定已更新',
     avatarSwitched: '數位人已切換，請重新啟動連線',
     vadSwitched: 'VAD 已更新',
     avatarImported: '角色已製作完成，可在上方選擇後套用',

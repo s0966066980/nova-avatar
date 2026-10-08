@@ -369,6 +369,17 @@ See LICENSE and NOTICE.
                 </button>
 
                 <button
+                  v-if="isConnected && replyPlaybackState === 'blocked'"
+                  type="button"
+                  class="btn-stage-sub"
+                  @click="resumePlayback"
+                  :title="t('video.enableSoundHint')"
+                >
+                  <i class="bi bi-volume-up" aria-hidden="true"></i>
+                  {{ t('video.enableSound') }}
+                </button>
+
+                <button
                   class="btn-stage-sub"
                   @click="isRecording ? handleStopRecord() : handleStartRecord()"
                   :disabled="!isConnected"
@@ -976,15 +987,21 @@ const handleVoiceTestFinished = (record) => {
   )
 }
 
+const replyPlaybackState = ref('idle')
+
 const {
   startPlay,
   stopPlay,
+  resumePlayback,
   setCaptureEnabled,
   interruptVoice,
   acknowledgeBoardDisplay,
 } = useWebRTC({
   onNotification: showNotification,
   onVoiceEvent: handleVoiceEvent,
+  onPlaybackState: (state) => {
+    replyPlaybackState.value = state
+  },
   onSessionId: (id) => {
     sessionId.value = id
   },
@@ -1410,7 +1427,7 @@ const sendTTSMessage = async () => {
   const message = ttsInput.value
   
   try {
-    await fetch('/human', {
+    const response = await fetch('/human', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1420,6 +1437,10 @@ const sendTTSMessage = async () => {
         sessionid: sessionId.value
       })
     })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok || data.code === -1) {
+      throw new Error(data.msg || `HTTP ${response.status}`)
+    }
     
     addMessage(`已傳送朗讀請求：${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`, 'system')
     ttsInput.value = ''

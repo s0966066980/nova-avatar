@@ -103,7 +103,7 @@ llm:
   api_key: ollama  # Ollama / llama-server 都不驗證，但不可為空
   base_url: http://localhost:11434/v1
   model: qwen3.5:4b
-  llamacpp_dir: /home/oliver/llama
+  llamacpp_dir: ./llama  # llama.cpp GGUF 模型統一放在專案的 llama/ 目錄
   llamacpp_host: 127.0.0.1
   llamacpp_port: 8080
   llamacpp_ctx: 8192          # 容納看板協定與最近10輪，避免超長 prompt 被拒絕

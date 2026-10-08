@@ -14,6 +14,48 @@ llama.cpp 語言模型服務不變。首次安裝與每位數位人的檢索設�
 
 ## 本機安裝
 
+Jetson / ARM64 使用固定來源自行建置的原生映像，而不是官方 x86 映像。
+先完成下列步驟，再繼續「建立知識庫與連接 Nova」：
+
+```bash
+bash scripts/ragflow.sh build
+bash scripts/ragflow.sh up
+bash scripts/ragflow.sh pull-model
+bash scripts/ragflow.sh connect
+bash scripts/ragflow.sh status
+```
+
+`build` 固定使用 v0.27.2 commit
+`a024bea0cd93f39e6652a42bf84dd20c55bc560b`，產出
+`nova-avatar/ragflow:v0.27.2-arm64`。Python、ONNX Runtime、XGBoost、Chromium
+與 ChromeDriver 均使用 ARM64 元件，並包含 DeepDoc、Tika、NLTK 及正式網頁。
+映像沿用 Python API 與任務執行器，部署設定明確指定 `API_PROXY_SCHEME=python`。
+這份建置沒有啟用選用的 Go API，也沒有將 RAGFlow 改成 TensorRT。
+容器文件解析使用 CPU，BGE-M3 嵌入由獨立的主機 GPU 程序處理。
+
+若主機沒有 Ollama，建置腳本會安裝官方 ARM64 v0.35.1 與 JetPack CUDA runner
+到 `.local/ragflow/ollama`，下載檔會比對 SHA-256。模型放在
+`.local/ragflow/ollama-models`；已有系統模型目錄時優先沿用。
+`connect` 沿用有效的 Nova API 金鑰；舊移植金鑰無效時，使用私有部署設定中的
+初始管理密碼登入、建立新金鑰，備份舊設定並將新設定寫入
+`config/ragflow.env`（0600）。此指令不會重設管理密碼；管理密碼已更改時，
+請從 RAGFlow 的 API 頁手動建立金鑰。
+它也會建立 `Ollama / nova-arm64 / bge-m3` 嵌入執行個體；沒有有效的預設嵌入模型
+時才將它設為預設，已有的有效模型設定會保留。
+
+ARM64 與 x86 共用同一個 Compose 專案和資料卷，啟動腳本按主機架構選擇映像，
+不改寫既有資料庫密碼。首次建置需下載套件與解析模型；之後會沿用建置快取。
+一般 Jetson 模式 `bash scripts/start-jetson.sh` 會帶起已準備好的 RAGFlow。
+`NOVA_START_RAGFLOW=0` 可略過；`--read-aloud` 與 `--realtime` 朗讀模式仍略過。
+`up` 會等候 API 健康檢查通過，啟動失敗會回報非零狀態。
+`up` 與 `pull-model` 會預熱已下載的 BGE-M3；嵌入程序預設持續保留模型，
+避免下一輪對話才等待冷載入。可在嵌入服務環境設定 `NOVA_RAGFLOW_KEEP_ALIVE`
+調整保留時間。
+
+只移植程式與設定檔不會帶入 PC 的 Docker 資料卷。若本機資料庫是空的，舊設定中
+選取的知識庫 ID 也沒有對應資料；請匯入文件，再於 Nova 控制台重新選擇知識庫。
+ARM64 建置不會自動將專案文件加入使用者知識庫。
+
 若主機尚未安裝 Docker，安裝套件需要主機使用者在終端輸入自己的 `sudo`
 密碼；不要在聊天中傳送密碼。Ubuntu 24.04 可執行：
 

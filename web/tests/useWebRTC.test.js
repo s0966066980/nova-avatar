@@ -1,3 +1,6 @@
+// Copyright (c) 2026 HongXian0903
+// SPDX-License-Identifier: Apache-2.0
+
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -50,6 +53,7 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
     })
   }
   let peerCount = 0
+  let connectedPeer
   let offerCount = 0
   const microphoneTrack = { enabled: true, stop() {} }
   const microphoneStream = {
@@ -59,6 +63,7 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
 
   class FakePeerConnection {
     constructor() {
+      connectedPeer = this
       peerCount += 1
       this.localDescription = null
     }
@@ -105,6 +110,13 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
     assert.equal(peerCount, 1)
     assert.equal(offerCount, 1)
     assert.equal(microphoneTrack.enabled, false)
+    const receiver = { jitterBufferTarget: null }
+    connectedPeer.ontrack({ track: { id: 'reply', kind: 'audio' }, receiver })
+    assert.equal(receiver.jitterBufferTarget, 160)
+    const videoReceiver = { jitterBufferTarget: null }
+    connectedPeer.ontrack({ track: { id: 'video', kind: 'video' }, receiver: videoReceiver })
+    assert.equal(videoReceiver.jitterBufferTarget, null)
+    assert.doesNotThrow(() => connectedPeer.ontrack({ track: { id: 'fallback', kind: 'audio' }, receiver: {} }))
     stopPlay()
   } finally {
     for (const name of globalNames) {

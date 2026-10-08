@@ -27,7 +27,9 @@ def validate(plan: dict) -> None:
     }
     if published != EXPECTED_PORTS:
         raise ValueError("對主機開放的連接埠不符合本機隔離規則")
-    if services["ragflow-cpu"].get("image") != "infiniflow/ragflow:v0.27.2":
+    if services["ragflow-cpu"].get("image") not in {
+        "infiniflow/ragflow:v0.27.2", "nova-avatar/ragflow:v0.27.2-arm64"
+    }:
         raise ValueError("RAGFlow 映像版本與固定版本不符")
     for name, service in services.items():
         if "ragflow" not in service.get("networks", {}):

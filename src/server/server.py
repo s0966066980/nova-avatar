@@ -55,10 +55,12 @@ def create_app():
     app.router.add_post("/api/ragflow/test", routes.test_ragflow_retrieval)
     app.router.add_get("/api/llm/models", routes.list_llm_models)
     app.router.add_post("/api/llm/model", routes.set_llm_model)
+    app.router.add_put("/api/llm/behavior", routes.set_llm_behavior)
     app.router.add_get("/api/llm/rules", routes.get_llm_rules)
     app.router.add_put("/api/llm/rules", routes.set_llm_rules)
     app.router.add_post("/api/avatar", routes.set_avatar)
     app.router.add_post("/api/avatar/quality", routes.set_mouth_quality)
+    app.router.add_post("/api/avatar/output", routes.set_video_output)
     app.router.add_get("/api/vad", routes.get_vad_settings)
     app.router.add_post("/api/vad", routes.set_vad_settings)
     app.router.add_get("/api/speech", routes.get_speech_settings)
@@ -136,7 +138,10 @@ def run_server(app, config):
     
     # 標記可用，供健康檢查使用
     state.server_ready = True
-    logger.info('✅ 服務已就緒，可以接受連線')
+    if getattr(state, "reply_prewarm_ready", True):
+        logger.info('✅ 服務已就緒，可以接受連線')
+    else:
+        logger.warning('回覆預熱未完成；健康檢查未就緒，暫不接受對話')
     
     def _run():
         # 獨立事件迴圈，避免與外部執行緒衝突

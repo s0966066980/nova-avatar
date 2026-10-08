@@ -52,6 +52,8 @@ export default {
   
   video: {
     title: 'Digital Human Video',
+    enableSound: 'Enable sound',
+    enableSoundHint: 'The browser paused voice playback. Click to enable sound.',
     connect: 'Start Connection',
     disconnect: 'Disconnect',
     startRecord: 'Start Recording',
@@ -138,6 +140,17 @@ export default {
       needDisconnect: 'Switching the digital human will disconnect the current session. Reconnect after it finishes loading.',
       confirmTitle: 'Switch digital human',
       confirmMessage: 'This will disconnect the current session and reload the model or character assets. It may take tens of seconds. Continue?'
+    },
+
+    videoOutput: {
+      title: 'Avatar output resolution',
+      hint: 'Choose the output height; width follows the source aspect ratio. Lower resolution reduces playback load. Save and reconnect to apply.',
+      original: 'Original resolution',
+      dimensions: 'Output size:',
+      keepRatio: 'Preserves source aspect ratio without upscaling.',
+      apply: 'Save resolution',
+      saved: 'Resolution saved for the next connection.',
+      savedReconnect: 'Resolution saved. Disconnect and start the connection again to apply.'
     },
 
     stage: {
@@ -393,7 +406,7 @@ export default {
     settingsReset: 'Reset to default settings',
     webrtcCleared: 'WebRTC connection settings cleared',
     llmSwitched: 'Chat model switched',
-    llmSettingsUpdated: 'Chat model and default prompt updated',
+    llmSettingsUpdated: 'Conversation model settings updated',
     avatarSwitched: 'Digital human switched. Please start the connection again',
     vadSwitched: 'VAD updated',
     avatarImported: 'Character created. Select it above and apply',

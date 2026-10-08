@@ -28,6 +28,14 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 
 ## 安裝 Nova Avatar
 
+此 `jetson-orin` 分支獨立維護 AGX Orin／ARM64 版本，包含 Jetson 啟動、
+推論加速與原生 ARM64 RAGFlow 建置。`main` 保留原有版本；Jetson 更新
+請提交至 `jetson-orin`。模型、TensorRT engine、密碼與本機資料不包含在 Git。
+
+NVIDIA AGX Orin（ARM64、JetPack 7／CUDA 13.2）請依
+[Jetson 建置與 CUDA 驗證](docs/jetson-orin.md) 安裝；原有 x86 虛擬環境、
+CUDA Toolkit 和前端原生套件需要重新建置。
+
 以下以 Linux、MuseTalk 和預設 `config/config.yaml` 為例。需要 Python
 3.10／3.11、[uv](https://docs.astral.sh/uv/)、Node.js／npm、FFmpeg，以及
 設定檔指定的 Ollama 或 llama.cpp 模型服務。MuseTalk 需要 NVIDIA GPU、相容
@@ -48,7 +56,9 @@ bash scripts/create_ssl_certs.sh
 
 預設 LLM 設定使用本機 Ollama 的 `qwen3.5:4b`；請先啟動 Ollama 並備妥
 該模型，或在 `config/config.yaml` 改成可用的模型與服務位址。Avatar、
-STT、TTS、回覆模式也可在控制台設定。只安裝核心依賴時可改用：
+STT、TTS、回覆模式也可在控制台設定。使用 llama.cpp 時，GGUF 模型統一
+放在專案的 `llama/` 目錄，`llamacpp_dir` 設為 `./llama`；Jetson 設定使用
+`Qwen3.5-4B-UD-Q4_K_XL.gguf`。只安裝核心依賴時可改用：
 
 ```bash
 uv venv --python 3.10.19

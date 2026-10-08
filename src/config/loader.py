@@ -208,7 +208,12 @@ def load_config(
     # 4. 合併設定面板寫入的執行時覆蓋（llm.model / 數字人引擎與角色）
     from src.config.overrides import load_runtime_overrides
 
-    overrides = load_runtime_overrides()
+    # An isolated diagnostic profile must not inherit the control panel's
+    # selected local LLM or avatar. Saved preferences remain untouched.
+    overrides_enabled = os.getenv("NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED", "1").strip().lower()
+    if overrides_enabled not in {"0", "1", "false", "true"}:
+        raise ValueError("NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED must be 0, 1, false, or true")
+    overrides = load_runtime_overrides() if overrides_enabled in {"1", "true"} else {}
     if overrides:
         config_dict = _merge_dicts(config_dict, overrides)
 

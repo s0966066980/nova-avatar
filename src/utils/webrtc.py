@@ -98,6 +98,8 @@ class PlayerStreamTrack(MediaStreamTrack):
         self.timelist = [] #記錄最近包的時間戳
         self.current_frame_count = 0
         self._last_video_item = None
+        self._independent_audio = False
+        self._last_committed_audio_event = None
         self._last_video_release_at: Optional[float] = None
         self._last_audio_release_at: Optional[float] = None
         self._audio_late_release = False
@@ -161,6 +163,27 @@ class PlayerStreamTrack(MediaStreamTrack):
         if self._player is not None:
             await self._player.prepare_speech_start()
 
+    def enable_independent_audio(self) -> None:
+        """PCM comes from TTS only; this track owns all intervening silence."""
+        if self.kind != "audio":
+            raise ValueError("independent audio requires an audio track")
+        self._independent_audio = True
+
+    def video_is_current(self, eventpoint, max_lag_frames: int = 4) -> bool:
+        """Reject visual work more than 80 ms behind the committed PCM unit."""
+        current = self._last_committed_audio_event
+        if not isinstance(current, dict) or not isinstance(eventpoint, dict):
+            return True
+        try:
+            if (current["turn_id"], current["generation"]) != (
+                eventpoint["turn_id"], eventpoint["generation"]
+            ):
+                return False
+            lag = int(current["media_sequence"]) - int(eventpoint["media_sequence"])
+            return lag <= max_lag_frames
+        except (KeyError, TypeError, ValueError):
+            return True
+
     def discard_stale_media(self) -> int:
         """Synchronously drain queued generations invalidated by cancellation."""
         kept = []
@@ -206,7 +229,16 @@ class PlayerStreamTrack(MediaStreamTrack):
         if hasattr(self, "_timestamp"):
             self._timestamp += int(packet_time * clock_rate)
             self.current_frame_count += 1
-            deadline = self._start + self.current_frame_count * packet_time
+            # Video PTS include the previous release's scheduler jitter. Use
+            # that timeline rather than an ideal frame counter, which drifts
+            # behind the 40 ms release floor and periodically skips three RTP
+            # slots even when decoded frames are continuously available.
+            media_time = (
+                self._timestamp / clock_rate
+                if self.kind == "video"
+                else self.current_frame_count * packet_time
+            )
+            deadline = self._start + media_time
             lag = now - deadline
             if self.kind == "audio":
                 self.last_audio_lag_seconds = lag
@@ -227,7 +259,7 @@ class PlayerStreamTrack(MediaStreamTrack):
                 ticks = int(packet_time * clock_rate)
                 self.current_frame_count += skipped
                 self._timestamp += skipped * ticks
-                deadline = self._start + self.current_frame_count * packet_time
+                deadline = self._start + self._timestamp / clock_rate
                 mylogger.warning(
                     "[AVSync] video pacing stalled %.0fms; skipped %d late frames",
                     lag * 1000.0,
@@ -251,6 +283,14 @@ class PlayerStreamTrack(MediaStreamTrack):
 
         if self.kind == "video":
             self._last_video_release_at = time.monotonic()
+            # Preserve monotonic PTS and the no-burst floor while reflecting
+            # the actual release time on the shared audio-clock origin. Small
+            # sleep overshoots become small timestamp intervals, not a future
+            # 120 ms jump that the receiver interprets as missing video.
+            self._timestamp = max(
+                self._timestamp,
+                round((self._last_video_release_at - self._start) * clock_rate),
+            )
 
         if self.kind == "audio":
             released_at = time.monotonic()
@@ -276,20 +316,54 @@ class PlayerStreamTrack(MediaStreamTrack):
 
         return self._timestamp, time_base
 
+    async def _dequeue_with_timeout(self):
+        # asyncio.wait_for in Python 3.10/3.11 can swallow cancellation when
+        # the queue read completes in the same tick. RTP shutdown must always
+        # preserve that cancellation, even while idle frames keep arriving.
+        pending = asyncio.create_task(self._queue.get())
+        try:
+            timeout = self._packet_time
+            if self.kind == "audio" and hasattr(self, "_timestamp"):
+                # recv() is called after Opus encoding and other event-loop
+                # work. A fresh 20 ms wait here extends every empty-queue
+                # packet by that work, slowing RTP and forcing the receiver
+                # to synthesize missing audio. Spend only the time remaining
+                # before the next audio deadline, including while idle.
+                deadline = self._start + (self.current_frame_count + 1) * AUDIO_PTIME
+                timeout = max(0.0, deadline - time.monotonic())
+            done, _ = await asyncio.wait({pending}, timeout=timeout)
+            if not done:
+                raise asyncio.TimeoutError
+            return pending.result()
+        finally:
+            if not pending.done():
+                pending.cancel()
+                await asyncio.gather(pending, return_exceptions=True)
+
     async def recv(self) -> Union[Frame, Packet]:        
         self._player._start(self)
 
         while True:
             try:
                 if self.kind == "video" and self._last_video_item is not None:
-                    frame,eventpoint = await asyncio.wait_for(
-                        self._queue.get(),
-                        timeout=self._packet_time,
-                    )
+                    frame,eventpoint = await self._dequeue_with_timeout()
+                elif self.kind == "audio":
+                    # The audio timeline must keep advancing while a renderer
+                    # batch is busy. Otherwise video repeats advance alone;
+                    # rebasing audio on resumption then leaves video scheduled
+                    # far into the future. Only synthesize untagged idle
+                    # silence; queued speech is never dropped or reordered.
+                    frame, eventpoint = await self._dequeue_with_timeout()
                 else:
                     frame,eventpoint = await self._queue.get()
             except asyncio.TimeoutError:
-                frame,eventpoint = self._last_video_item
+                if self.kind == "audio":
+                    frame = AudioFrame(format="s16", layout="mono", samples=320)
+                    frame.planes[0].update(bytes(640))
+                    frame.sample_rate = SAMPLE_RATE
+                    eventpoint = None
+                else:
+                    frame,eventpoint = self._last_video_item
             if not self._event_is_current(eventpoint, f"webrtc_{self.kind}_commit"):
                 self._record_stale_drop()
                 if self.kind == "video" and self._last_video_item == (frame, eventpoint):
@@ -308,6 +382,8 @@ class PlayerStreamTrack(MediaStreamTrack):
                 self._last_video_item = None
         frame.pts = pts
         frame.time_base = time_base
+        if self.kind == "audio" and isinstance(eventpoint, dict):
+            self._last_committed_audio_event = dict(eventpoint)
         if self.kind == "video":
             self._last_video_item = (frame, eventpoint)
 
@@ -555,6 +631,9 @@ class HumanPlayer:
         if not self.__started and self.__thread is not None:
             self.__log_debug("Stopping worker thread")
             self.__thread_quit.set()
+            stop_audio = getattr(self.__container, "stop_audio_output", None)
+            if callable(stop_audio):
+                stop_audio()
             self.__thread.join()
             self.__thread = None
 

@@ -52,6 +52,8 @@ export default {
   
   video: {
     title: '數字人影片',
+    enableSound: '启用声音',
+    enableSoundHint: '浏览器已暂停语音播放，点击以启用声音',
     connect: '啟動連線',
     disconnect: '斷開連線',
     startRecord: '開始錄製',
@@ -130,6 +132,17 @@ export default {
       needDisconnect: '切換數字人會斷開當前連線，載入完成後請重新啟動連線。',
       confirmTitle: '切換數字人',
       confirmMessage: '切換數字人會斷開當前連線，並重新載入模型或角色素材，可能需要數十秒。確定繼續？'
+    },
+
+    videoOutput: {
+      title: '数字人输出分辨率',
+      hint: '选择输出高度，宽度按素材比例计算。较低分辨率可减少影音卡顿；保存后重新连接生效。',
+      original: '原始分辨率',
+      dimensions: '输出尺寸：',
+      keepRatio: '保持素材比例，不放大原始图像。',
+      apply: '保存分辨率',
+      saved: '分辨率已保存，下次连接生效。',
+      savedReconnect: '分辨率已保存，请断开并重新启动连接以应用。'
     },
 
     stage: {

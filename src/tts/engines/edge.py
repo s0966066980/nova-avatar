@@ -10,6 +10,7 @@ import time
 from collections import deque
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from queue import Empty
+from types import SimpleNamespace
 from typing import Callable, Optional
 
 import av
@@ -107,8 +108,10 @@ class _DirectFrameSink:
         return None
 
     def emit(self, samples: np.ndarray, eventpoint: dict) -> None:
-        self.parent.put_audio_frame(samples, eventpoint)
+        # Availability can start speculative synthesis; it is not a playback
+        # commit. The bounded playback queue may block below, independently.
         self.first_pcm.set()
+        self.parent.put_audio_frame(samples, eventpoint)
 
     async def wait_for_space(self) -> None:
         return None
@@ -193,17 +196,30 @@ class _GatedFrameSink:
 
 
 
-async def _prewarm_edge_tts(voicename: str) -> bool:
-    """Open Edge's cold connection and stop as soon as one audio packet arrives."""
+async def _prewarm_edge_tts(voicename: str, *, decode_pcm: bool = False) -> bool:
+    """Warm the connection, optionally including decoding without playback."""
+    emitter = None
+    if decode_pcm:
+        owner = SimpleNamespace(
+            sample_rate=16000, chunk=320, state=State.RUNNING,
+            parent=SimpleNamespace(put_audio_frame=lambda *_: True),
+        )
+        emitter = _EdgePCMEmitter(owner, "", {})
     stream = edge_tts.Communicate("語音連線準備完成。", voicename).stream()
     iterator = stream.__aiter__()
     try:
         while True:
             item = await iterator.__anext__()
             if item.get("type") == "audio" and item.get("data"):
-                return True
+                if emitter is None:
+                    return True
+                await asyncio.to_thread(emitter.feed_mp3, item["data"])
+                if emitter.emitted:
+                    return True
     except StopAsyncIteration:
-        return False
+        if emitter is not None:
+            await asyncio.to_thread(emitter.finish)
+        return emitter is not None and emitter.emitted
     finally:
         aclose = getattr(iterator, "aclose", None)
         if callable(aclose):
@@ -217,13 +233,14 @@ def prewarm_edge_tts(
     voicename: str,
     *,
     timeout_seconds: float = EDGE_WARMUP_TIMEOUT_SECONDS,
+    decode_pcm: bool = False,
 ) -> bool:
     """Warm Edge networking before the first user turn; failure is non-fatal."""
     started_at = time.perf_counter()
     try:
         ready = asyncio.run(
             asyncio.wait_for(
-                _prewarm_edge_tts(voicename),
+                _prewarm_edge_tts(voicename, decode_pcm=decode_pcm),
                 timeout=max(0.1, float(timeout_seconds)),
             )
         )
@@ -463,10 +480,18 @@ class _EdgePCMEmitter:
             eventpoint.update({"status": "end"})
             if not turn_aware:
                 eventpoint.update({"text": self.text, **self.textevent})
+        first_fragment = self.textevent.get("fragment_sequence", 0) == 0
+        mark_stage = getattr(self.owner.parent, "mark_stage_end", None)
+        if (
+            self.emitted_chunks == 0
+            and first_fragment
+            and callable(mark_stage)
+            and self.textevent.get("turn_id")
+        ):
+            mark_stage("tts_pcm_available")
         self.frame_sink.emit(samples, eventpoint)
         if self.emitted_chunks == 0:
-            mark_stage = getattr(self.owner.parent, "mark_stage_end", None)
-            if callable(mark_stage) and self.textevent.get("turn_id"):
+            if first_fragment and callable(mark_stage) and self.textevent.get("turn_id"):
                 mark_stage("tts_first_pcm")
         self.emitted_chunks += 1
         self.emitted_samples += samples.size
@@ -694,8 +719,13 @@ class EdgeTTS(BaseTTS):
 
             if not self._finish_job(current):
                 continue
-            if not self._playback_ended(current):
-                self._launch_queued_prefetches()
+            self._launch_queued_prefetches()
+            if not self._prefetch_jobs and not self._playback_ended(current):
+                # Keep the last fragment pending until playback completes.
+                # A known next fragment can enter the bounded PCM FIFO as
+                # soon as all current PCM has been emitted. Waiting for the
+                # final audible frame first starves MuseTalk's lookahead and
+                # adds a fresh model-latency gap between every fragment.
                 time.sleep(0.01)
                 continue
             current = None
@@ -888,12 +918,15 @@ class EdgeTTS(BaseTTS):
                             mark_stage = getattr(self.parent, "mark_stage_end", None)
                             if callable(mark_stage) and textevent.get("turn_id"):
                                 mark_stage("tts_first_encoded")
-                        emitter.feed_mp3(item["data"])
+                        # PCM enqueue applies playback backpressure. Running
+                        # it on this shared event loop would stall every later
+                        # Edge request while mouth inference is still busy.
+                        await asyncio.to_thread(emitter.feed_mp3, item["data"])
                         log_first_audio()
                         await frame_sink.wait_for_space()
                         if emitter.cancelled:
                             return
-                emitter.finish()
+                await asyncio.to_thread(emitter.finish)
                 log_first_audio()
                 if emitter.cancelled:
                     return
@@ -917,8 +950,9 @@ class EdgeTTS(BaseTTS):
                         fragment_committed is not None and fragment_committed()
                     )
                     if committed:
-                        self._fail_closed_after_pcm(
-                            emitter, committed=True, exc=exc
+                        await asyncio.to_thread(
+                            self._fail_closed_after_pcm,
+                            emitter, committed=True, exc=exc,
                         )
                         return
                     if (
@@ -935,8 +969,9 @@ class EdgeTTS(BaseTTS):
                             EDGE_MAX_ATTEMPTS,
                         )
                         continue
-                    self._fail_closed_after_pcm(
-                        emitter, committed=False, exc=exc
+                    await asyncio.to_thread(
+                        self._fail_closed_after_pcm,
+                        emitter, committed=False, exc=exc,
                     )
                     return
                 logger.warning(

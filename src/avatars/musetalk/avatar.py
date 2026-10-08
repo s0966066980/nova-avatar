@@ -64,9 +64,10 @@ def _is_unscoped_idle_result(item) -> bool:
     audio_frames = _result_audio_frames(item)
     return bool(audio_frames) and all(
         frame_type != 0
-        and not (
-            isinstance(eventpoint, dict) and eventpoint.get("turn_id")
-        )
+        # Quiet TTS PCM may have an empty envelope on legacy/echo inputs.
+        # Only generated idle PCM has no event; synthesized pauses and final
+        # markers must retain their place in the authoritative audio timeline.
+        and eventpoint is None
         for _frame, frame_type, eventpoint in audio_frames
     )
 
@@ -166,7 +167,9 @@ def _media_batch_is_current(audio_frames, media_guard, stage: str) -> bool:
     )
 
 
-def load_model():
+def load_model(vae_engine_path="", *, tiny_vae_path="", unet_engine_path=""):
+    if vae_engine_path and tiny_vae_path:
+        raise ValueError("Choose either TensorRT VAE or the approximate tiny decoder")
     # load model weights
     vae, unet, pe = load_all_model()
     device = torch.device("cuda" if torch.cuda.is_available() else ("mps" if (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()) else "cpu"))
@@ -175,9 +178,33 @@ def load_model():
     vae.vae = vae.vae.half().to(device)
     #vae.vae.share_memory().to(device)
     unet.model = unet.model.half().to(device)
+    if unet_engine_path:
+        try:
+            from .inference_optimization import TensorRTUNet
+
+            unet.model = TensorRTUNet(unet.model, unet_engine_path)
+            logger.info("Using optional TensorRT UNet: %s", unet_engine_path)
+        except Exception as exc:
+            logger.warning("TensorRT UNet unavailable; using original predictor: %s", exc)
     #unet.model.share_memory()
     # Initialize audio processor and Whisper model
     audio_processor = Audio2Feature(model_path="./models/musetalk/whisper")
+    if tiny_vae_path:
+        try:
+            from .inference_optimization import TinyVAEDecoder
+
+            vae = TinyVAEDecoder(vae, tiny_vae_path)
+            logger.info("Using approximate Tiny VAE: %s", tiny_vae_path)
+        except Exception as exc:
+            logger.warning("Tiny VAE unavailable; using original decoder: %s", exc)
+    if vae_engine_path:
+        try:
+            from .vae_acceleration import TensorRTVAEDecoder
+
+            vae = TensorRTVAEDecoder(vae, vae_engine_path)
+            logger.info("Using optional TensorRT VAE: %s", vae_engine_path)
+        except Exception as exc:
+            logger.warning("TensorRT VAE unavailable; using original decoder: %s", exc)
     return vae, unet, pe, timesteps, audio_processor
 
 def load_avatar(avatar_id):
@@ -539,6 +566,7 @@ class MuseTalkAvatar(BaseAvatar):
         #if self.opt.asr:
         #     self.audio_stream.warm_up()
 
+        self.audio_stream.quit_event = quit_event
         self.init_customindex()
         self.tts.render(quit_event)
         
@@ -598,7 +626,12 @@ class MuseTalkAvatar(BaseAvatar):
                 tts_wait_started_at = None
 
             t = time.perf_counter()
-            self.audio_stream.run_step()
+            if self.audio_stream.run_step() is False:
+                # Initial TTS lookahead is still filling. Both media tracks
+                # retain their idle clock; do not consume a short speech
+                # runway or spin while waiting for the next PCM packet.
+                time.sleep(0.01)
+                continue
             #self.test_step(loop,audio_track,video_track)
             # totaltime += (time.perf_counter() - t)
             # count += self.opt.batch_size
@@ -606,7 +639,11 @@ class MuseTalkAvatar(BaseAvatar):
             #     print(f"------actual avg infer fps:{count/totaltime:.4f}")
             #     count=0
             #     totaltime=0
-            if video_track and video_track._queue.qsize() >= MIN_VIDEO_BUFFER_FRAMES:
+            # Feature/result queues already bound speech work. Sleeping here
+            # while PCM is ready delays the next model batch by up to 192 ms
+            # and can starve audio playback at a batch boundary.
+            if (video_track and self.audio_stream.queue.empty()
+                    and video_track._queue.qsize() >= MIN_VIDEO_BUFFER_FRAMES):
                 logger.debug('sleep qsize=%d',video_track._queue.qsize())
                 time.sleep(0.04*video_track._queue.qsize()*0.8)
             # if video_track._queue.qsize()>=5:

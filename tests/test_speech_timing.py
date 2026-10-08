@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 import asyncio
 import queue
 import time
@@ -26,6 +29,39 @@ class TTSSpeechTextTests(unittest.TestCase):
 
 
 class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_video_scheduler_jitter_does_not_create_periodic_rtp_gaps(self):
+        from src.utils.webrtc import VIDEO_CLOCK_RATE, PlayerStreamTrack
+
+        now = [100.0]
+        timestamps = []
+        releases = []
+
+        async def overshooting_sleep(delay):
+            now[0] += delay + 0.001
+
+        track = PlayerStreamTrack(None, kind="video")
+        try:
+            with (
+                patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+                patch("src.utils.webrtc.asyncio.sleep", new=overshooting_sleep),
+                patch("src.utils.webrtc.mylogger"),
+            ):
+                for _ in range(160):
+                    pts, _ = await track.next_timestamp()
+                    timestamps.append(pts)
+                    releases.append(now[0])
+                    now[0] += 0.010  # Encode the frame before requesting another.
+
+            gaps = np.diff(timestamps) / VIDEO_CLOCK_RATE
+            self.assertLess(max(gaps), 0.050)
+            self.assertLess(
+                max(abs(pts / VIDEO_CLOCK_RATE - (at - releases[0]))
+                    for pts, at in zip(timestamps, releases)),
+                0.005,
+            )
+        finally:
+            track.stop()
+
     async def test_player_reports_media_debt_and_av_offset_without_frames(self):
         from src.utils.webrtc import HumanPlayer
 

@@ -16,7 +16,7 @@ async def health_check(request):
         text=json.dumps(
             {
                 "code": 0,
-                "ready": state.server_ready,
+                "ready": state.server_ready and getattr(state, "reply_prewarm_ready", True),
                 "model_ready": bool(getattr(state, "model_ready", False)),
                 "avatar": {
                     "type": getattr(getattr(state.config, "model", None), "type", None) if state.config else None,

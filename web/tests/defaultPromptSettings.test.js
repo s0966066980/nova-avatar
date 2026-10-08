@@ -30,8 +30,8 @@ test('設定面板提供有標籤與說明的預設 Prompt 欄位', () => {
   assert.match(panel, /maxlength="8000"/)
 })
 
-test('套用 LLM 設定時會送出並同步預設 Prompt', () => {
-  assert.match(settings, /system_prompt:\s*systemPrompt/)
+test('儲存角色設定時會送出並同步預設 Prompt', () => {
+  assert.match(settings, /system_prompt:\s*selectedSystemPrompt\.value/)
   assert.match(settings, /runtime\.llm\.system_prompt\s*=\s*data\.system_prompt/)
 })
 
@@ -211,7 +211,7 @@ test('設定面板提供三區可編輯 Rule 並使用版本套用 API', () => {
 test('新版設定中心沿用實際 Rule 欄位並顯示載入與角色空狀態', () => {
   assert.match(panel, /v-model="rulesDraft\[rule\.key\]"/)
   assert.match(panel, /handleApplyPromptAndRules/)
-  assert.match(panel, /await applyLlmModel\(\)[\s\S]*await applyReplyRules\(\)/)
+  assert.match(panel, /handleApplyPromptAndRules[\s\S]*await applyLlmBehavior\(\)/)
   assert.match(panel, /v-if="loadingSettings"[\s\S]*載入/)
   assert.match(panel, /v-else-if="settingsError"[\s\S]*role="alert"/)
   assert.match(panel, /v-else-if="!filteredCharacters\.length && !loadingSettings"/)
@@ -246,8 +246,9 @@ test('放大的 9:16 舞台可直接拖曳看板與麥克風並保存位置', ()
 
 test('全域儲存會處理 Prompt、Rule，且 Prompt 編輯器有足夠高度', () => {
   assert.match(panel, /rows="8"/)
-  assert.match(panel, /const promptDirty = computed/)
-  assert.match(panel, /if \(llmDirty\.value \|\| promptDirty\.value\) promises\.push\(applyLlmModel\(\)\)/)
+  assert.match(settings, /const promptDirty = computed/)
+  assert.match(panel, /if \(promptDirty\.value \|\| rulesDirty\.value\) await applyLlmBehavior\(\)/)
+  assert.match(panel, /if \(llmDirty\.value\) await applyLlmModel\(\)/)
   assert.doesNotMatch(panel, /\{ key: 'speech'[\s\S]*\{ key: 'speech'/)
 })
 

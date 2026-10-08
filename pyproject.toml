@@ -19,6 +19,7 @@ dependencies = [
     "av",
     "edge-tts",
     "faster-whisper>=1.1",
+    "ctranslate2==4.8.2; platform_machine == 'aarch64'",
     "onnxruntime>=1.16,<1.24",
     "librosa",
     "omegaconf",
@@ -31,9 +32,14 @@ dependencies = [
     "PyYAML",
     "scipy",
     "soundfile==0.12.1",
-    "torch==2.5.0",
-    "torchvision",
-    "torchaudio",
+    "torch==2.5.0; platform_machine != 'aarch64'",
+    "torchvision==0.20.0; platform_machine != 'aarch64'",
+    "torchaudio==2.5.0; platform_machine != 'aarch64'",
+    # JetPack 7 / Orin: ARM64 CUDA wheels; the CUDA 13.2 driver supports cu130.
+    "torch==2.11.0; platform_machine == 'aarch64'",
+    "torchvision==0.26.0; platform_machine == 'aarch64'",
+    "torchaudio==2.11.0; platform_machine == 'aarch64'",
+    "optree>=0.13; platform_machine == 'aarch64'",
     "tqdm",
     "typing-extensions",
     "websockets==12.0",
@@ -66,14 +72,22 @@ dev = [
 
 [tool.uv.sources]
 nova-avatar-musetalk = { path = "src/avatars/musetalk", editable = true }
+# Built by setup-jetson.sh before uv sync; pin the source to prevent uv run
+# replacing the CUDA build with PyPI's CPU-only ARM64 wheel.
+ctranslate2 = [
+    { path = ".local/jetson/wheels/ctranslate2-4.8.2-cp311-cp311-linux_aarch64.whl", marker = "platform_machine == 'aarch64' and python_version == '3.11'" },
+]
 torch = [
-    { index = "pytorch-cu124" },
+    { index = "pytorch-cu124", marker = "platform_machine != 'aarch64'" },
+    { index = "pytorch-cu130", marker = "platform_machine == 'aarch64'" },
 ]
 torchvision = [
-    { index = "pytorch-cu124" },
+    { index = "pytorch-cu124", marker = "platform_machine != 'aarch64'" },
+    { index = "pytorch-cu130", marker = "platform_machine == 'aarch64'" },
 ]
 torchaudio = [
-    { index = "pytorch-cu124" },
+    { index = "pytorch-cu124", marker = "platform_machine != 'aarch64'" },
+    { index = "pytorch-cu130", marker = "platform_machine == 'aarch64'" },
 ]
 
 [tool.pytest.ini_options]
@@ -88,6 +102,11 @@ markers = [
     "slow: deterministic tests that normally take at least one second",
     "live: opt-in tests that use an explicitly configured external model",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [[tool.uv.index]]
 name = "pytorch-cu124"

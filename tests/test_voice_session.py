@@ -313,6 +313,27 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(heartbeat_delay, 0.05)
         await session.close()
 
+    async def test_paused_microphone_is_drained_without_resampling(self):
+        class Track:
+            def __init__(self):
+                self.frames = iter(range(20))
+
+            async def recv(self):
+                try:
+                    return next(self.frames)
+                except StopIteration:
+                    raise asyncio.CancelledError
+
+        session, _, _ = self.make_session()
+        session.handle_control(json.dumps({"type": "capture", "enabled": False}))
+        session._resample_frame_sync = Mock(return_value=[])
+        try:
+            with self.assertRaises(asyncio.CancelledError):
+                await session._consume_track(Track())
+            session._resample_frame_sync.assert_not_called()
+        finally:
+            await session.close()
+
     async def test_push_to_talk_finalize_does_not_block_the_media_event_loop(self):
         started = Event()
         release = Event()

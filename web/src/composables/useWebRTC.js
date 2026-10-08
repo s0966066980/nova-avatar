@@ -1,6 +1,8 @@
 // Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
 // Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
+import { configureReplyPlayout } from '../replyPlayout.js'
+
 // One peer connection carries avatar A/V, the microphone uplink and voice events.
 export function useWebRTC(options = {}) {
   let pc = null
@@ -15,11 +17,42 @@ export function useWebRTC(options = {}) {
   let shouldReconnect = false
   let lastStunServer = null
   let startPromise = null
+  let playbackState = null
   const boardDisplayReceipts = new Set()
-  const { onNotification, onVoiceEvent, onConnectionState, onSessionId } = options
+  const { onNotification, onVoiceEvent, onConnectionState, onSessionId, onPlaybackState } = options
 
   const notifyConnection = (state) => {
     if (onConnectionState) onConnectionState(state)
+  }
+
+  const notifyPlayback = (state) => {
+    if (playbackState === state) return
+    playbackState = state
+    if (onPlaybackState) onPlaybackState(state)
+  }
+
+  // Call directly from a click handler so browsers can authorize sound using
+  // that user gesture. Automatic attempts report when a click is required.
+  const resumePlayback = async () => {
+    const video = document.getElementById('video')
+    const stream = video?.srcObject
+    if (!stream || !video.play) return false
+    video.muted = false
+    if (video.volume === 0) video.volume = 1
+    try {
+      await video.play()
+      if (video.srcObject !== stream) return false
+      notifyPlayback(video.paused ? 'blocked' : 'playing')
+      return !video.paused
+    } catch (error) {
+      // A superseded connection must not change the new player's state.
+      if (video.srcObject !== stream) return false
+      notifyPlayback('blocked')
+      if (error?.name !== 'NotAllowedError' && error?.name !== 'AbortError' && onNotification) {
+        onNotification(`語音播放失敗：${error.message}`, 'error')
+      }
+      return false
+    }
   }
 
   const scheduleReconnect = () => {
@@ -109,12 +142,24 @@ export function useWebRTC(options = {}) {
     pc = new RTCPeerConnection(configuration)
 
     const remoteStream = new MediaStream()
+    const video = document.getElementById('video')
+    if (video) {
+      // Keep one media pipeline as audio and video tracks arrive separately.
+      video.srcObject = remoteStream
+      const updatePlayback = () => {
+        if (video.srcObject !== remoteStream || !remoteStream.getTracks().length) return
+        notifyPlayback(video.paused || video.muted || video.volume === 0 ? 'blocked' : 'playing')
+      }
+      video.onplaying = updatePlayback
+      video.onpause = updatePlayback
+      video.onvolumechange = updatePlayback
+    }
     pc.ontrack = (event) => {
+      configureReplyPlayout(event)
       if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
         remoteStream.addTrack(event.track)
       }
-      const video = document.getElementById('video')
-      if (video) video.srcObject = remoteStream
+      void resumePlayback()
     }
 
     pc.onconnectionstatechange = () => {
@@ -234,7 +279,13 @@ export function useWebRTC(options = {}) {
     microphoneStream = null
     sessionIdValue = 0
     const video = document.getElementById('video')
-    if (video) video.srcObject = null
+    if (video) {
+      video.onplaying = null
+      video.onpause = null
+      video.onvolumechange = null
+      video.srcObject = null
+    }
+    notifyPlayback('idle')
     notifyConnection('closed')
   }
 
@@ -245,6 +296,7 @@ export function useWebRTC(options = {}) {
   return {
     startPlay,
     stopPlay,
+    resumePlayback,
     setCaptureEnabled,
     interruptVoice,
     acknowledgeBoardDisplay,

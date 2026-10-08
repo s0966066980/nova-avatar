@@ -391,6 +391,7 @@ import {
 } from '/src/stageCaptionWindow.js';
 import { StageCaptionView } from '/src/stageCaptionView.js';
 import { shouldFadeStageReply } from '/src/stageReplyLifecycle.js';
+import { configureReplyPlayout } from '/src/replyPlayout.js';
 import {
   boardReopenPresentation,
   captionStyle,
@@ -774,6 +775,7 @@ import {
     // 元素重新接管已在播放的音訊管線，兩軌可能因此跑在各自的時鐘上。
     video.srcObject = remote;
     pc.ontrack = (e) => {
+      configureReplyPlayout(e);
       if(!remote.getTracks().some(t => t.id === e.track.id)) remote.addTrack(e.track);
     };
     pc.onconnectionstatechange = () => {

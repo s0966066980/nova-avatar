@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import io
 import json
 import tempfile
 import unittest
@@ -21,6 +23,7 @@ from src.ragflow.client import RagFlowClient, RagFlowConnection, RagFlowError, r
 from src.server.routes.ragflow import get_ragflow_settings
 from src.server.voice_session import VoiceTurnSession
 from scripts.ragflow_validate import EXPECTED_SERVICES, validate
+from scripts import ragflow_prepare, ragflow_connection
 
 DATASET_A = "a" * 32
 DATASET_B = "b" * 32
@@ -38,9 +41,66 @@ class RagFlowDeploymentTests(unittest.TestCase):
             {"host_ip": "127.0.0.1", "published": "9380", "target": 9380},
         ]
         validate({"services": services})
+        services["ragflow-cpu"]["image"] = "nova-avatar/ragflow:v0.27.2-arm64"
+        validate({"services": services})
+        services["ragflow-cpu"]["image"] = "nova-avatar/ragflow:latest"
+        with self.assertRaises(ValueError):
+            validate({"services": services})
+        services["ragflow-cpu"]["image"] = "nova-avatar/ragflow:v0.27.2-arm64"
         services["mysql"]["ports"] = [{"host_ip": "0.0.0.0", "published": "3306", "target": 3306}]
         with self.assertRaises(ValueError):
             validate({"services": services})
+
+    def test_migration_preserves_existing_managed_secrets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env_file = Path(directory) / ".env"
+            original = "# NOVA_RAGFLOW_MANAGED=1\nMYSQL_PASSWORD=existing-secret\nRAGFLOW_IMAGE=infiniflow/ragflow:v0.27.2\n"
+            env_file.write_text(original)
+            with patch.object(ragflow_prepare, "ENV_FILE", env_file), patch.object(
+                ragflow_prepare, "_stock_env", return_value="MYSQL_PASSWORD=stock\n"
+            ):
+                ragflow_prepare.prepare()
+            self.assertEqual(env_file.read_text(), original)
+            self.assertEqual(env_file.stat().st_mode & 0o777, 0o600)
+
+    def test_failed_bootstrap_keeps_credentials_and_hides_process_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env_file = Path(directory) / "ragflow.env"
+            original = "NOVA_RAGFLOW_API_KEY=old-secret\n"
+            env_file.write_text(original)
+            with patch.object(ragflow_connection, "ENV_FILE", env_file), patch.object(
+                ragflow_connection, "works", return_value=False
+            ), patch.object(ragflow_connection.subprocess, "run", return_value=SimpleNamespace(
+                returncode=1, stdout="secret-process-output", stderr="private-password"
+            )):
+                with self.assertRaises(RuntimeError) as raised:
+                    ragflow_connection.prepare()
+            self.assertEqual(env_file.read_text(), original)
+            self.assertNotIn("secret-process-output", str(raised.exception))
+            self.assertNotIn("private-password", str(raised.exception))
+
+    def test_replacement_backs_up_stale_key_without_displaying_new_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            env_file = root / "ragflow.env"
+            original = "NOVA_RAGFLOW_API_KEY=old-secret\nEXTRA_SETTING=keep\n"
+            env_file.write_text(original)
+            output = io.StringIO()
+            with patch.object(ragflow_connection, "ROOT", root), patch.object(
+                ragflow_connection, "ENV_FILE", env_file
+            ), patch.object(ragflow_connection, "works", side_effect=[False, True]), patch.object(
+                ragflow_connection.subprocess, "run", return_value=SimpleNamespace(
+                    returncode=0, stdout=json.dumps({"token": "new-secret"})
+                )
+            ), patch.object(ragflow_connection, "configure_embedding"), contextlib.redirect_stdout(output):
+                ragflow_connection.prepare()
+            self.assertIn("EXTRA_SETTING=keep", env_file.read_text())
+            self.assertIn("NOVA_RAGFLOW_API_KEY=new-secret", env_file.read_text())
+            self.assertNotIn("new-secret", output.getvalue())
+            self.assertEqual(env_file.stat().st_mode & 0o777, 0o600)
+            backup = next((root / ".local/ragflow/backups").glob("*.env"))
+            self.assertEqual(backup.read_text(), original)
+            self.assertEqual(backup.stat().st_mode & 0o777, 0o600)
 
 
 class RagFlowSettingsTests(unittest.TestCase):
