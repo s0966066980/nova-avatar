@@ -111,6 +111,9 @@ stale-output Gate；generation fence、取消或提交前檢查丟棄的媒體�
 - direct PCM／decoupled audio clock 是預設關閉的實驗路徑，不屬於 v1 正式保證。
 - 綠幕合成依即時色差計算柔邊，尚未保存逐幀全身 alpha；切換數位人仍須斷開會話。
 - RAGFlow 的每位數位人知識庫選擇是功能路由，不是存取控制。
+- 後端收到 SIGTERM／SIGINT 時先關閉 WebRTC 連線、語音工作階段與 owned llama-server，
+  15 秒內未完成即先停止 owned llama-server／CosyVoice 再強制結束；關閉期間再收到的訊號一律忽略。
+  啟動腳本停止後端時最多等 20 秒才 SIGKILL。
 - SIGKILL、斷電或核心崩潰無法觸發程序清理；外部管理的 llama-server 不由本程式終止。
 - `config/config_commercial.yaml` 是商業審查的部署起點，不是對任何模型、聲音、
   權重、資料集或服務的商業授權保證。

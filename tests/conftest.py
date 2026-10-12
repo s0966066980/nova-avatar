@@ -39,6 +39,7 @@ AREA_BY_FILE = {
     "test_response_protocol.py": "conversation",
     "test_runtime_settings.py": "runtime",
     "test_scene_background.py": "avatar",
+    "test_server_shutdown.py": "runtime",
     "test_sovits_tts.py": "speech",
     "test_speech_timing.py": "conversation",
     "test_stage_idle_reset.py": "conversation",

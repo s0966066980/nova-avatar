@@ -23,6 +23,10 @@ Edge TTS ＋ MuseTalk ＋ FunASR ＋ llama.cpp（Qwen3.5-9B）＋ Silero VAD ＋
 4. 訪客對話重置：舞台上一輪結束後閒置 N 秒（預設 10，控制台可設 3–300），清除舞台畫面、
    對話歷史與已顯示看板項目；訪客開始說話、新輪次、斷線都會取消倒數；控制台不受影響。
 
+5. 後端關閉：SIGTERM／SIGINT 由伺服器事件迴圈接手，先關閉 WebRTC 連線與語音工作階段再停
+   owned llama-server；關閉期間的重複訊號忽略，15 秒期限保底。修正前完成過對話的後端收到
+   SIGTERM 會卡在非 daemon 執行緒，必須 SIGKILL。
+
 ## 暫緩（詳見 issues/）
 
 認證與綁定位址、錄影路由、場域內容範圍、開機自啟與復原、驗收標準。

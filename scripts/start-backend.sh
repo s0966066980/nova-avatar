@@ -108,8 +108,11 @@ check_and_kill_port() {
         echo -e "${YELLOW}正在終止佔用埠的程式...${NC}"
         kill $pid 2>/dev/null
         
-        # 等待程式結束
-        sleep 2
+        # 等待程式結束：後端會先關閉連線與 llama-server，最多 15 秒
+        for _ in $(seq 1 40); do
+            kill -0 $pid 2>/dev/null || break
+            sleep 0.5
+        done
         
         # 檢查程式是否還存在
         if kill -0 $pid 2>/dev/null; then

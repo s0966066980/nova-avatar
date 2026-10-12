@@ -8,6 +8,10 @@
 
 """伺服器啟動和配置"""
 import asyncio
+import os
+import signal
+import threading
+
 from aiohttp import web
 import aiohttp_cors
 
@@ -19,11 +23,25 @@ from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
 
 
+# Upper bound for an orderly stop after SIGTERM/SIGINT. Closing WebRTC peers
+# lets the per-session render, inference and TTS threads see their quit events;
+# if anything still holds the process after this, it exits anyway.
+SHUTDOWN_DEADLINE_SECONDS = 15.0
+# How long aiohttp waits for open HTTP connections while cleaning up.
+HTTP_SHUTDOWN_TIMEOUT_SECONDS = 5.0
+
+
 async def on_shutdown(app):
     """伺服器關閉時的清理操作"""
     coros = [pc.close() for pc in state.pcs]
-    await asyncio.gather(*coros)
+    await asyncio.gather(*coros, return_exceptions=True)
     state.pcs.clear()
+    # The peers' "closed" callbacks may not get a turn before the loop stops.
+    for session in list(state.voice_sessions.values()):
+        try:
+            await session.close()
+        except Exception:
+            logger.exception("關閉語音工作階段失敗")
     shutdown_llama_server()
     shutdown_cosyvoice_server()
     scene_service.close()
@@ -142,7 +160,7 @@ def run_server(app, config):
         # 獨立事件迴圈，避免與外部執行緒衝突
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        runner = web.AppRunner(app)
+        runner = web.AppRunner(app, shutdown_timeout=HTTP_SHUTDOWN_TIMEOUT_SECONDS)
         loop.run_until_complete(runner.setup())
         
         if use_ssl:
@@ -157,6 +175,68 @@ def run_server(app, config):
             logger.info(f'✅ HTTP 服務已啟動: http://{listen_host}:{listen_port}')
         
         loop.run_until_complete(site.start())
-        loop.run_forever()
+        stop_signal = _install_stop_signals(loop)
+        try:
+            loop.run_forever()
+        finally:
+            _shutdown_loop(loop, runner)
+        if stop_signal:
+            raise SystemExit(128 + stop_signal[0])
     
     _run()
+
+
+def _force_exit(code: int) -> None:
+    """Exit now, but never leave owned model servers holding the GPU.
+
+    os._exit skips atexit, so the owned servers are stopped here explicitly.
+    """
+    logger.error("強制結束程序 exit=%s", code)
+    try:
+        shutdown_llama_server()
+        shutdown_cosyvoice_server()
+    finally:
+        os._exit(code)
+
+
+def _install_stop_signals(loop) -> list:
+    """Turn SIGTERM/SIGINT into an orderly stop of the serving loop.
+
+    Signals that arrive while stopping are ignored: one Ctrl+C reaches the
+    backend more than once (terminal, uv, start-all.sh cleanup), and treating a
+    repeat as "force now" cut the orderly stop short. The deadline still bounds
+    how long a stuck stop can take.
+    """
+    received: list = []
+
+    def request_stop(signum: int) -> None:
+        if received:
+            logger.info("關閉進行中，忽略訊號 %s", signum)
+            return
+        received.append(signum)
+        logger.info("收到關閉訊號 %s，正在關閉連線與服務", signum)
+        deadline = threading.Timer(
+            SHUTDOWN_DEADLINE_SECONDS, _force_exit, args=(128 + signum,)
+        )
+        deadline.daemon = True
+        deadline.start()
+        loop.stop()
+
+    for signum in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(signum, request_stop, signum)
+    return received
+
+
+def _shutdown_loop(loop, runner) -> None:
+    """Run aiohttp's shutdown hooks, settle leftover tasks, then close the loop."""
+    try:
+        loop.run_until_complete(runner.cleanup())
+    except Exception:
+        logger.exception("伺服器關閉清理失敗")
+    pending = [task for task in asyncio.all_tasks(loop) if not task.done()]
+    for task in pending:
+        task.cancel()
+    if pending:
+        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+    shutdown_llama_server()
+    loop.close()

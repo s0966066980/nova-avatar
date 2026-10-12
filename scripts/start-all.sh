@@ -50,7 +50,11 @@ cleanup() {
     echo -e "${YELLOW}🛑 正在停止所有服務...${NC}"
     if [ -n "$BACKEND_PID" ]; then
         kill "$BACKEND_PID" 2>/dev/null || true
-        sleep 1
+        # 後端會先關閉連線與 llama-server，最多 15 秒；逾時才強制終止。
+        for _ in $(seq 1 40); do
+            kill -0 "$BACKEND_PID" 2>/dev/null || break
+            sleep 0.5
+        done
         if kill -0 "$BACKEND_PID" 2>/dev/null; then
             kill -9 "$BACKEND_PID" 2>/dev/null || true
         fi
