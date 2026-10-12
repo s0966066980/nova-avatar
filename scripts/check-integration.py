@@ -128,16 +128,24 @@ def check_llm_smoke(cfg) -> str:
 
 def check_edgetts_smoke(cfg, text: str, output: Path | None) -> None:
     import edge_tts
+    from src.tts import edge_endpoint
 
     async def run() -> bytes:
         voices = {voice["ShortName"] for voice in await edge_tts.list_voices()}
         if cfg.tts.ref_file not in voices:
             _fail(f"Edge TTS 找不到語音 {cfg.tts.ref_file}")
-        audio = bytearray()
-        async for chunk in edge_tts.Communicate(text, cfg.tts.ref_file).stream():
-            if chunk["type"] == "audio":
-                audio.extend(chunk["data"])
-        return bytes(audio)
+        for attempt in range(2):
+            audio = bytearray()
+            try:
+                async for chunk in edge_tts.Communicate(text, cfg.tts.ref_file).stream():
+                    if chunk["type"] == "audio":
+                        audio.extend(chunk["data"])
+            except Exception as exc:
+                if attempt == 0 and edge_endpoint.note_failure(exc):
+                    continue
+                raise
+            return bytes(audio)
+        return b""
 
     audio = asyncio.run(run())
     if not audio:

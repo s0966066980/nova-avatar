@@ -16,6 +16,7 @@ import av
 import edge_tts
 import numpy as np
 
+from src.tts import edge_endpoint
 from src.tts.base import BaseTTS, State
 from src.server.reply_streaming.channel import PlayableFragment
 from src.server.reply_streaming.retry import RetryBudget
@@ -228,6 +229,7 @@ def prewarm_edge_tts(
             )
         )
     except Exception as exc:
+        edge_endpoint.note_failure(exc)
         logger.warning(
             "Edge TTS prewarm failed after %.3fs type=%s",
             time.perf_counter() - started_at,
@@ -939,6 +941,7 @@ class EdgeTTS(BaseTTS):
                         emitter, committed=False, exc=exc
                     )
                     return
+                edge_endpoint.note_failure(exc)
                 logger.warning(
                     "Edge TTS attempt %d/%d failed before first audio: %s",
                     attempt,

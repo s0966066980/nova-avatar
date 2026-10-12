@@ -17,6 +17,7 @@ AREA_BY_FILE = {
     "test_avatar_transition.py": "avatar",
     "test_branding_compliance.py": "governance",
     "test_cosyvoice_tts.py": "speech",
+    "test_edge_endpoint.py": "speech",
     "test_edge_tts_worker.py": "speech",
     "test_editable_llm_rules.py": "llm",
     "test_funasr.py": "speech",
