@@ -93,6 +93,17 @@ stale-output Gate；generation fence、取消或提交前檢查丟棄的媒體�
   `settling_enabled: true`、`avatar_transition: true`；settling 預設 5 影格，限制在 4–6 影格。
 - 音訊是媒體主時鐘；視訊不得讓音訊等待，也不得以 catch-up burst 追趕。
 
+## 場域試營運基線
+
+場域試營運的範圍、凍結組合與暫緩項目見 [`.scratch/field-pilot/spec.md`](../.scratch/field-pilot/spec.md)。
+
+- 凍結組合：Edge TTS ＋ MuseTalk ＋ FunASR ＋ llama.cpp（Qwen3.5-9B）＋ Silero VAD ＋
+  串流回覆開啟；其他引擎不納入場域驗收。
+- Edge TTS 依賴雲端，端點曾於 2026-10-10 前後改變；握手被拒時自動換主機。上線前仍須實測出聲。
+- 舞台 kiosk 模式（`scripts/start-kiosk.sh`）與訪客對話重置（預設 10 秒，控制台可設）已實作；
+  真實語音鏈路尚未在場域主機上驗證。
+- 暫緩：控制台認證、錄影路由、場域內容範圍、開機自啟與驗收標準。
+
 ## v1 執行邊界
 
 - 正式串流 SLO 只涵蓋 Edge TTS＋MuseTalk、單一活躍會話。
