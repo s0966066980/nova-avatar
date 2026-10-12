@@ -62,6 +62,11 @@ def is_handshake_rejection(exc: BaseException | None) -> bool:
     )
 
 
+def is_rate_limited(exc: BaseException | None) -> bool:
+    """The service answered the handshake with 429; the host itself is fine."""
+    return isinstance(exc, aiohttp.WSServerHandshakeError) and exc.status == 429
+
+
 def note_failure(exc: BaseException | None) -> bool:
     """Swap to the other host when ``exc`` is a rejected handshake.
 

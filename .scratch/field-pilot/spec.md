@@ -27,6 +27,10 @@ Edge TTS ＋ MuseTalk ＋ FunASR ＋ llama.cpp（Qwen3.5-9B）＋ Silero VAD ＋
    owned llama-server；關閉期間的重複訊號忽略，15 秒期限保底。修正前完成過對話的後端收到
    SIGTERM 會卡在非 daemon 執行緒，必須 SIGKILL。
 
+6. Edge TTS 首音韌性：預先備妥並重用 WebSocket 連線（`src/tts/edge_connection.py`）；429 短暫退避並多一次嘗試；
+   預取最多一段。延遲根因量測為建立連線時的網路偶發停頓（1–10 秒）與服務端限流；程式碼僅放大
+   （每段新連線、固定 2.5 秒逾時後才重建連線、預取併發）。對沖第二條連線實測無效，未採用。
+
 ## 暫緩（詳見 issues/）
 
 認證與綁定位址、錄影路由、場域內容範圍、開機自啟與復原、驗收標準。

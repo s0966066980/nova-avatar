@@ -40,6 +40,7 @@ tts:
   ref_file: zh-TW-HsiaoChenNeural
   edge_persistent_worker: true
   edge_prefetch: true
+  edge_connection_reuse: true  # 保留並重用 Edge 連線，避開每段重新建立連線的停頓
 
 asr:
   mode: server

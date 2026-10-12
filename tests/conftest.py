@@ -17,7 +17,9 @@ AREA_BY_FILE = {
     "test_avatar_transition.py": "avatar",
     "test_branding_compliance.py": "governance",
     "test_cosyvoice_tts.py": "speech",
+    "test_edge_connection.py": "speech",
     "test_edge_endpoint.py": "speech",
+    "test_edge_resilience.py": "speech",
     "test_edge_tts_worker.py": "speech",
     "test_editable_llm_rules.py": "llm",
     "test_funasr.py": "speech",
@@ -53,7 +55,7 @@ LIVE_FILES = frozenset({"test_live_llm_board_contract.py"})
 
 SLOW_TESTS = frozenset(
     {
-        "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_all_queued_fragments_begin_synthesis_before_first_finishes",
+        "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_keeps_only_the_next_fragment_in_flight",
         "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request",
         "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio",
         "tests/test_funasr.py::FunASRLocalModelTests::test_model_load_disables_network_update_check",

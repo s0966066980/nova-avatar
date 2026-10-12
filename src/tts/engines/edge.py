@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import threading
 import time
 from collections import deque
@@ -17,6 +18,7 @@ import edge_tts
 import numpy as np
 
 from src.tts import edge_endpoint
+from src.tts.edge_connection import EdgeConnectionPool
 from src.tts.base import BaseTTS, State
 from src.server.reply_streaming.channel import PlayableFragment
 from src.server.reply_streaming.retry import RetryBudget
@@ -33,6 +35,13 @@ EDGE_RETRY_STREAM_TIMEOUT_SECONDS = 15.0
 EDGE_CONTINUATION_STREAM_TIMEOUT_SECONDS = 15.0
 EDGE_WARMUP_TIMEOUT_SECONDS = 15.0
 EDGE_MAX_ATTEMPTS = 2
+# A 429 handshake is answered quickly and only means "slow down": wait a short
+# jittered moment and allow one extra attempt for it.
+EDGE_RATE_LIMIT_BACKOFF_SECONDS = (0.2, 0.4)
+EDGE_RATE_LIMIT_EXTRA_ATTEMPTS = 1
+# Later fragments synthesized ahead of playback. Each one is a new Edge
+# connection, so keep only the next fragment in flight.
+EDGE_MAX_PREFETCH_JOBS = 1
 ACTIVITY_THRESHOLD = 1e-4
 ONSET_THRESHOLD = 1e-5
 FRAME_SECONDS = 0.01
@@ -538,6 +547,7 @@ class EdgeTTS(BaseTTS):
         self._worker: Optional[_EdgeAsyncWorker] = None
         self._prefetch_jobs: deque[dict] = deque()
         self._worker_lock = threading.Lock()
+        self._pool: Optional[EdgeConnectionPool] = None
 
     @property
     def worker_loop(self):
@@ -561,11 +571,51 @@ class EdgeTTS(BaseTTS):
                 self._worker = _EdgeAsyncWorker()
             return self._worker
 
+    @property
+    def _reuse_enabled(self) -> bool:
+        return bool(getattr(getattr(self.config, "tts", None), "edge_connection_reuse", False))
+
+    def _loop_pool(self) -> Optional[EdgeConnectionPool]:
+        """The connection pool of the persistent worker loop, when running on it.
+
+        Connections belong to one event loop, so one-shot asyncio.run calls
+        keep using edge-tts's own connection per request.
+        """
+        worker = self._worker
+        if not self._reuse_enabled or worker is None:
+            return None
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            return None
+        if running is not worker.loop:
+            return None
+        if self._pool is None:
+            self._pool = EdgeConnectionPool()
+        return self._pool
+
+    async def _warm_connections(self) -> None:
+        pool = self._loop_pool()
+        if pool is not None:
+            pool.ensure_warm()
+
+    def _open_edge_stream(self, text: str, voicename: str):
+        pool = self._loop_pool()
+        if pool is not None:
+            return pool.stream(text, voicename).__aiter__()
+        return edge_tts.Communicate(text, voicename).stream().__aiter__()
+
     def close_worker(self) -> None:
         with self._worker_lock:
             worker = self._worker
             self._worker = None
         if worker is not None:
+            pool, self._pool = self._pool, None
+            if pool is not None:
+                try:
+                    worker.run(pool.close())
+                except Exception:
+                    logger.debug("Edge connection pool close failed", exc_info=True)
             worker.close()
 
     def _run_coro(self, coro):
@@ -583,7 +633,10 @@ class EdgeTTS(BaseTTS):
 
     def render(self, quit_event) -> None:
         if self._persistent_enabled:
-            self._ensure_worker()
+            worker = self._ensure_worker()
+            if self._reuse_enabled:
+                # Have a connection ready before the first visitor speaks.
+                worker.submit(self._warm_connections())
         super().render(quit_event)
 
     def process_tts(self, quit_event) -> None:
@@ -651,12 +704,17 @@ class EdgeTTS(BaseTTS):
             self._cancel_job(self._prefetch_jobs.popleft())
 
     def _launch_queued_prefetches(self) -> None:
-        """Synthesize every already-known later fragment while playback drains.
+        """Synthesize the next known fragment while the current one plays.
 
         Each sink retains its PCM until its turn is released, so completing
-        later requests early cannot reorder or overlap audible speech.
+        later requests early cannot reorder or overlap audible speech. At most
+        EDGE_MAX_PREFETCH_JOBS run ahead: every prefetch is a separate Edge
+        connection, and bursts of them draw 429s from the service.
         """
-        while self.state == State.RUNNING:
+        while (
+            self.state == State.RUNNING
+            and len(self._prefetch_jobs) < EDGE_MAX_PREFETCH_JOBS
+        ):
             try:
                 msg = self.msgqueue.get_nowait()
             except Empty:
@@ -843,7 +901,11 @@ class EdgeTTS(BaseTTS):
         if frame_sink is None:
             frame_sink = _DirectFrameSink(self.parent)
         frame_sink.bind()
-        for attempt in range(1, EDGE_MAX_ATTEMPTS + 1):
+        max_attempts = EDGE_MAX_ATTEMPTS
+        rate_limit_extra_attempts = 0
+        attempt = 0
+        while attempt < max_attempts:
+            attempt += 1
             received_audio = False
             emitter = _EdgePCMEmitter(
                 self,
@@ -864,8 +926,7 @@ class EdgeTTS(BaseTTS):
                         attempt,
                     )
 
-            stream = edge_tts.Communicate(text, voicename).stream()
-            iterator = stream.__aiter__()
+            iterator = self._open_edge_stream(text, voicename)
             try:
                 while self.state == State.RUNNING:
                     try:
@@ -907,7 +968,16 @@ class EdgeTTS(BaseTTS):
                 last_error = exc
                 if self.state != State.RUNNING:
                     return
-                can_retry = attempt < EDGE_MAX_ATTEMPTS
+                rate_limited = (
+                    not emitter.emitted_samples and edge_endpoint.is_rate_limited(exc)
+                )
+                if (
+                    rate_limited
+                    and rate_limit_extra_attempts < EDGE_RATE_LIMIT_EXTRA_ATTEMPTS
+                ):
+                    rate_limit_extra_attempts += 1
+                    max_attempts += 1
+                can_retry = attempt < max_attempts
                 if can_retry and retry_budget is not None:
                     permit = retry_budget.claim_retry()
                     can_retry = permit is not None
@@ -934,7 +1004,7 @@ class EdgeTTS(BaseTTS):
                             "Edge TTS discarded uncommitted PCM; "
                             "retrying fragment from start attempt %d/%d",
                             attempt + 1,
-                            EDGE_MAX_ATTEMPTS,
+                            max_attempts,
                         )
                         continue
                     self._fail_closed_after_pcm(
@@ -945,11 +1015,13 @@ class EdgeTTS(BaseTTS):
                 logger.warning(
                     "Edge TTS attempt %d/%d failed before first audio: %s",
                     attempt,
-                    EDGE_MAX_ATTEMPTS,
+                    max_attempts,
                     exc,
                 )
                 if not can_retry:
                     break
+                if rate_limited:
+                    await asyncio.sleep(random.uniform(*EDGE_RATE_LIMIT_BACKOFF_SECONDS))
             finally:
                 aclose = getattr(iterator, "aclose", None)
                 if callable(aclose):

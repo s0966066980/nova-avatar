@@ -210,6 +210,7 @@ class TTSConfig:
     device: str = "auto"  # auto | cpu | cuda
     edge_persistent_worker: bool = True
     edge_prefetch: bool = True
+    edge_connection_reuse: bool = True
 
 
 @dataclass

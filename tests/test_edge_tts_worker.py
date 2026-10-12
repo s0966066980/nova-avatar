@@ -172,7 +172,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
                 quit_event.set()
                 worker.join(timeout=2)
 
-    def test_all_queued_fragments_begin_synthesis_before_first_finishes(self):
+    def test_prefetch_keeps_only_the_next_fragment_in_flight(self):
         payload = _mp3_fixture()
         first_pcm = Event()
         first_hold = Event()
@@ -216,14 +216,16 @@ class EdgeTTSWorkerTests(unittest.TestCase):
             worker.start()
             try:
                 self.assertTrue(first_pcm.wait(timeout=1.5))
+                # The next fragment synthesizes ahead while the first plays...
                 self.assertTrue(started[1].wait(timeout=1.5))
-                self.assertTrue(started[2].wait(timeout=1.5))
+                # ...but no further connection opens until it takes the floor.
+                self.assertFalse(started[2].wait(timeout=0.3))
                 self.assertNotIn(1, emitted)
-                self.assertNotIn(2, emitted)
                 first_hold.set()
                 deadline = time.time() + 1.5
                 while 2 not in emitted and time.time() < deadline:
                     time.sleep(0.01)
+                self.assertTrue(started[2].is_set())
                 self.assertLess(emitted.index(0), emitted.index(1))
                 self.assertLess(emitted.index(1), emitted.index(2))
             finally:

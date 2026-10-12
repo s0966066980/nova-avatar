@@ -83,6 +83,7 @@ tts:
   device: auto
   edge_persistent_worker: true  # 重用 Edge 的本機 event loop，不是持久遠端連線
   edge_prefetch: true  # 第一片段出聲後最多預取下一段，降低片段間空窗
+  edge_connection_reuse: true  # 保留並重用 Edge 連線，避開每段重新建立連線的停頓
 
 # ASR 配置資訊，可以改對應的模型，建議browser
 asr:
