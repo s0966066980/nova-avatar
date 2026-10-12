@@ -190,3 +190,17 @@ test('一般舞台連線中斷仍顯示原本的重新連線畫面且不自動�
   assert.equal(stage.element('veilTitle').textContent, '連線中斷')
   assert.equal(stage.timers.length, timersBefore)
 })
+
+test('對話重置事件清除舞台字幕、看板與使用者字句，但不斷線也不關收音', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  stage.event({ seq: 1, type: 'user_transcript', text: '上一位訪客的問題' })
+  assert.equal(stage.element('said').textContent, '上一位訪客的問題')
+
+  stage.event({ seq: 2, type: 'conversation_reset' })
+
+  assert.equal(stage.element('said').textContent, '')
+  assert.equal(stage.element('hint').textContent, '直接說話')
+  assert.equal(stage.track.enabled, true)
+  assert.equal(stage.element('veil').hidden, true)
+})

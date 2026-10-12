@@ -363,6 +363,7 @@ class StageConfig:
     """數字人舞台顯示配置。"""
     background_id: str = ""
     caption_max_chars: int = 120
+    idle_reset_seconds: int = 10
     caption_x: int = 50
     caption_y: int = 90
     caption_width: int = 100

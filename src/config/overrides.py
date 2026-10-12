@@ -87,6 +87,9 @@ def persist_runtime_overrides(config) -> None:
             "caption_max_chars": int(
                 getattr(getattr(config, "stage", None), "caption_max_chars", 120)
             ),
+            "idle_reset_seconds": int(
+                getattr(getattr(config, "stage", None), "idle_reset_seconds", 10)
+            ),
             "caption_x": int(
                 getattr(getattr(config, "stage", None), "caption_x", 50)
             ),

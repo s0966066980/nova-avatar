@@ -207,6 +207,7 @@ class OverridePersistTests(unittest.TestCase):
                 {
                     "background_id": "",
                     "caption_max_chars": 120,
+                    "idle_reset_seconds": 10,
                     "caption_x": 50,
                     "caption_y": 90,
                     "caption_width": 100,
@@ -386,6 +387,22 @@ class DefaultPromptSettingsTests(unittest.TestCase):
             apply_stage_settings(Config(), {"board_width": 80})
         with self.assertRaises(SettingsError):
             apply_stage_settings(Config(), {"caption_width": 39})
+
+    def test_idle_reset_seconds_defaults_to_ten_and_persists_when_changed(self):
+        config = Config()
+        self.assertEqual(stage_snapshot(config)["idle_reset_seconds"], 10)
+
+        with patch("src.server.runtime_settings.persist_runtime_overrides") as persist:
+            result = apply_stage_settings(config, {"idle_reset_seconds": 45})
+
+        self.assertEqual(config.stage.idle_reset_seconds, 45)
+        self.assertEqual(result["idle_reset_seconds"], 45)
+        persist.assert_called_once_with(config)
+
+    def test_idle_reset_seconds_rejects_values_outside_three_to_three_hundred(self):
+        for value in (2, 301, 10.5, True, "not-a-number"):
+            with self.subTest(value=value), self.assertRaises(SettingsError):
+                apply_stage_settings(Config(), {"idle_reset_seconds": value})
 
     def test_stage_snapshot_rejects_invalid_config_value(self):
         config = Config()
