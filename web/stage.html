@@ -391,6 +391,10 @@ import {
 } from '/src/stageCaptionWindow.js';
 import { StageCaptionView } from '/src/stageCaptionView.js';
 import { shouldFadeStageReply } from '/src/stageReplyLifecycle.js';
+import { stageErrorMessage } from '/src/stageErrorMessage.js';
+import {
+  isKioskMode, kioskReconnectDelayMs, KIOSK_UNAVAILABLE_TITLE, KIOSK_UNAVAILABLE_TEXT
+} from '/src/stageKiosk.js';
 import {
   boardReopenPresentation,
   captionStyle,
@@ -422,6 +426,8 @@ import {
   let holding=false;         // 按鍵收音進行中
   let interruptedPress=false;// 插話按下後，鬆開仍屬於同一次操作
   let speaking=false;        // 數字人正在說話
+  const kiosk = isKioskMode(window.location.search);
+  let kioskTimer=null, kioskAttempt=0;
   let live=false;
   let replyTimer=null, saidTimer=null;
   let replyTurnId=null, replyRevision=0;
@@ -700,7 +706,11 @@ import {
   function onVoiceEvent(ev){
     if(ev.type === 'state'){
       if(ev.state === 'error' || ev.state === 'degraded'){
-        if(ev.error) showReply(String(ev.error), null);
+        const friendly = stageErrorMessage(ev);
+        if(friendly){
+          console.warn('[stage] voice session', ev.state, ev.error);
+          showReply(friendly, null);
+        }
         fadeReply();
       }
       const v = VISUAL[ev.state];
@@ -761,8 +771,20 @@ import {
     }
   }
 
+  // kiosk：連不上時不等人點按鈕，依退避時間自動重連，訪客只看到簡短提示。
+  function scheduleKioskReconnect(){
+    if(!kiosk) return;
+    clearTimeout(kioskTimer);
+    kioskTimer = setTimeout(connect, kioskReconnectDelayMs(kioskAttempt++));
+  }
+  function showKioskProblem(){
+    showVeil(KIOSK_UNAVAILABLE_TITLE, KIOSK_UNAVAILABLE_TEXT, {isError:true, btn:'重新連線', onBtn:connect});
+    scheduleKioskReconnect();
+  }
+
   // ── 建立 WebRTC 連線 ────────────────────────
   async function connect(){
+    clearTimeout(kioskTimer);
     teardown();
     showVeil('連線中', '正在建立與數字人的即時通道。', {btn:'', onBtn:null});
     veilBtn.hidden = true;
@@ -778,10 +800,11 @@ import {
     };
     pc.onconnectionstatechange = () => {
       const s = pc?.connectionState;
-      if(s === 'connected'){ live = true; hideVeil(); setMode(); refreshAffordance(); }
+      if(s === 'connected'){ live = true; kioskAttempt = 0; clearTimeout(kioskTimer); hideVeil(); setMode(); refreshAffordance(); }
       if(s === 'failed' || s === 'disconnected'){
         live = false; refreshAffordance();
-        showVeil('連線中斷', '與數字人的通道已斷開。', {isError:true, btn:'重新連線', onBtn:connect});
+        if(kiosk) showKioskProblem();
+        else showVeil('連線中斷', '與數字人的通道已斷開。', {isError:true, btn:'重新連線', onBtn:connect});
       }
     };
 
@@ -827,7 +850,8 @@ import {
         try{ m = (await res.json()).msg || m; }catch(_){}
         if(res.status === 409){
           teardown();
-          showVeil('數字人尚未就緒', m, {btn:'重試', onBtn:connect, alt:true});
+          if(kiosk) showKioskProblem();
+          else showVeil('數字人尚未就緒', m, {btn:'重試', onBtn:connect, alt:true});
           return;
         }
         throw new Error(m);
@@ -837,7 +861,8 @@ import {
       await pc.setRemoteDescription(new RTCSessionDescription({sdp:data.sdp, type:data.type}));
     }catch(err){
       teardown();
-      showVeil('無法連線', String(err.message || err), {isError:true, btn:'重試', onBtn:connect});
+      if(kiosk) showKioskProblem();
+      else showVeil('無法連線', String(err.message || err), {isError:true, btn:'重試', onBtn:connect});
     }
   }
 
@@ -904,13 +929,14 @@ import {
   });
 
   // ── 開場：需要一次使用者手勢才能自動播放帶聲音的影片 ──
-  veilBtn.onclick = async () => {
+  async function startSession(){
     veilBtn.hidden = true;
     await syncVadMode();
     await syncStageSettings();
     await connect();
     try{ await video.play(); }catch(_){}
-  };
+  }
+  veilBtn.onclick = startSession;
 
   addEventListener('beforeunload', teardown);
 
@@ -922,6 +948,7 @@ import {
   boardReopen?.addEventListener('click', () => { liveBoard.hidden=!liveBoard.hidden; applyBoardLayout(); });
   setMode();
   applyBoardLayout();
+  if(kiosk) startSession();
 })();
 </script>
 </body>

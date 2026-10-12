@@ -149,6 +149,21 @@ bash scripts/start-all.sh config/config.yaml
 Nova 繼續一般回答並在控制台顯示狀態。檢索片段只是參考預覽，
 不代表正式引文。檢索設定依數位人分開保存，初始為關閉。
 
+### 場域 kiosk 啟動
+
+場域主機要讓訪客直接使用數位人舞台時，在後端與前端啟動後執行：
+
+```bash
+bash scripts/start-kiosk.sh
+```
+
+腳本以 Chrome／Chromium 全螢幕開啟 `/stage.html?kiosk=1`，並預先放行聲音播放與
+麥克風，使用獨立的瀏覽器設定檔 `.local/kiosk-profile`。舞台看到 `kiosk=1` 會自動
+連線，連線中斷時依 2、3、5、8、10 秒退避自動重連，訪客只看到「數字人暫時無法使用」
+這類簡短提示。一般瀏覽器開啟 `/stage.html` 不受影響，仍是點一下進入。
+可用 `NOVA_KIOSK_URL`、`NOVA_KIOSK_BROWSER`、`NOVA_KIOSK_PROFILE` 覆寫網址、瀏覽器與
+設定檔位置。
+
 如需分開啟動 Nova 前後端，可在不同終端執行
 `bash scripts/start-backend.sh config/config.yaml` 和
 `bash scripts/start-frontend.sh config/config.yaml`；RAGFlow 則以

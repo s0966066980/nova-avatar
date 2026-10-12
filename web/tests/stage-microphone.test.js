@@ -5,11 +5,18 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
+import { stageErrorMessage } from '../src/stageErrorMessage.js'
+import {
+  isKioskMode,
+  kioskReconnectDelayMs,
+  KIOSK_UNAVAILABLE_TITLE,
+  KIOSK_UNAVAILABLE_TEXT
+} from '../src/stageKiosk.js'
 
 const html = readFileSync(new URL('../stage.html', import.meta.url), 'utf8')
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
 
-function stageHarness() {
+function stageHarness({ search = '' } = {}) {
   const elements = new Map()
   const element = (id) => {
     if (!elements.has(id)) {
@@ -33,6 +40,8 @@ function stageHarness() {
     return elements.get(id)
   }
   const sent = []
+  const fetchCalls = []
+  const timers = []
   const track = { enabled: false, stop() {} }
   let channel
   let peer
@@ -51,7 +60,7 @@ function stageHarness() {
   }
   const context = {
     document: { getElementById: element },
-    window: { ResizeObserver: null },
+    window: { ResizeObserver: null, location: { search } },
     navigator: { mediaDevices: { getUserMedia: async () => ({
       getAudioTracks: () => [track], getTracks: () => [track]
     }) } },
@@ -62,6 +71,12 @@ function stageHarness() {
     StageCaptionView: class { clear() {} destroy() {} },
     DEFAULT_STAGE_CAPTION_MAX_CHARS: 200,
     shouldFadeStageReply: () => false,
+    stageErrorMessage,
+    isKioskMode,
+    kioskReconnectDelayMs,
+    KIOSK_UNAVAILABLE_TITLE,
+    KIOSK_UNAVAILABLE_TEXT,
+    console,
     boardReopenPresentation: () => ({ style: {}, edge: 'top', icon: '▣' }),
     captionStyle: () => ({}),
     previewScale: () => 1,
@@ -69,12 +84,12 @@ function stageHarness() {
     STAGE_BOARD_PREVIEW_ITEMS: [],
     STAGE_BOARD_PREVIEW_TITLE: '',
     placeStageBoard: () => ({ width: 200, height: 200, left: 0, top: 0 }),
-    fetch: async (url) => ({ ok: true, json: async () => {
+    fetch: async (url) => (fetchCalls.push(url), { ok: true, json: async () => {
       if (url === '/api/vad') return { data: { enabled: true } }
       if (url === '/api/stage') return { data: {} }
       return { sessionid: 7, sdp: 'answer', type: 'answer' }
     } }),
-    setTimeout: () => 1,
+    setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length },
     clearTimeout() {},
     setInterval() {},
     addEventListener() {},
@@ -83,6 +98,9 @@ function stageHarness() {
   vm.runInNewContext(body, context)
   return {
     sent,
+    fetchCalls,
+    timers,
+    peerState(value) { peer.connectionState = value; peer.onconnectionstatechange() },
     track,
     element,
     async connect() {
@@ -130,4 +148,45 @@ test('暫停中的舞台插話會同步恢復前後端收音狀態', async () =>
     { type: 'capture', enabled: true, finalize: false },
     { type: 'interrupt' },
   ])
+})
+
+const flush = () => new Promise((resolve) => setImmediate(resolve))
+
+test('一般開啟舞台時維持點擊進入，不會自動連線', async () => {
+  const stage = stageHarness()
+  await flush()
+  assert.equal(stage.fetchCalls.includes('/offer'), false)
+})
+
+test('kiosk 標記開啟舞台時不需點擊就自動連線', async () => {
+  const stage = stageHarness({ search: '?kiosk=1' })
+  await flush()
+  assert.equal(stage.fetchCalls.includes('/offer'), true)
+})
+
+test('kiosk 連線中斷時顯示簡短提示並自動重連', async () => {
+  const stage = stageHarness({ search: '?kiosk=1' })
+  await flush()
+  stage.peerState('failed')
+
+  assert.equal(stage.element('veilTitle').textContent, KIOSK_UNAVAILABLE_TITLE)
+  assert.equal(stage.element('veilText').textContent, KIOSK_UNAVAILABLE_TEXT)
+  const retry = stage.timers.at(-1)
+  assert.equal(retry.ms, kioskReconnectDelayMs(0))
+
+  const offers = () => stage.fetchCalls.filter((url) => url === '/offer').length
+  const before = offers()
+  retry.fn()
+  await flush()
+  assert.equal(offers(), before + 1)
+})
+
+test('一般舞台連線中斷仍顯示原本的重新連線畫面且不自動重連', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  const timersBefore = stage.timers.length
+  stage.peerState('failed')
+
+  assert.equal(stage.element('veilTitle').textContent, '連線中斷')
+  assert.equal(stage.timers.length, timersBefore)
 })

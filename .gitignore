@@ -81,3 +81,4 @@ certs/
 src/omni/
 
 results/
+.local/kiosk-profile/
