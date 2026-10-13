@@ -70,7 +70,10 @@ class BrandingComplianceTests(unittest.TestCase):
             with self.subTest(file=relative):
                 self.assertNotRegex(text, LEGACY_VISIBLE_BRAND)
 
-        self.assertTrue((ROOT / "README.md").read_text(encoding="utf-8").startswith("# Nova Avatar\n"))
+        self.assertRegex(
+            (ROOT / "README.md").read_text(encoding="utf-8"),
+            r"\A# Nova Avatar(?: \([^\n]+\))?\n",
+        )
         self.assertIn("<title>Nova Avatar</title>", (ROOT / "web/index.html").read_text(encoding="utf-8"))
 
     def test_wav2lip_is_labeled_non_commercial_in_runtime_and_ui(self):

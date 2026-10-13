@@ -53,6 +53,7 @@ from src.tts.cosyvoice_runtime import (
     normalize_language,
 )
 from src.utils.logging import logger
+from src.avatars.presentation import mode as presentation_mode
 
 _SWITCH_LOCK = threading.Lock()
 _RULES_LOCK = threading.RLock()
@@ -212,6 +213,7 @@ def current_snapshot(config) -> Dict[str, Any]:
         "avatar": {
             "type": model_cfg.type,
             "avatar_id": model_cfg.avatar_id,
+            "presentation": presentation_mode(config),
         },
         "avatar_quality": quality_from_model(model_cfg),
         "video": video_output_snapshot(config),
@@ -638,8 +640,9 @@ def apply_stage_background(config, background_id: str) -> Dict[str, Any]:
         raise SettingsError("當前配置不支援舞台背景", status=400)
     selected = str(background_id or "").strip()
     previous = str(getattr(stage, "background_id", "") or "")
+    scene_options = {"preview_only": True} if presentation_mode(config) == "prerecorded" else {}
     try:
-        result = scene_service.select(selected)
+        result = scene_service.select(selected, **scene_options)
     except SceneError as exc:
         raise SettingsError(str(exc), status=400) from exc
     stage.background_id = selected
@@ -647,7 +650,7 @@ def apply_stage_background(config, background_id: str) -> Dict[str, Any]:
         persist_runtime_overrides(config)
     except Exception:
         stage.background_id = previous
-        scene_service.select(previous)
+        scene_service.select(previous, **scene_options)
         raise
     return result
 
@@ -930,7 +933,8 @@ def apply_avatar(config, engine: str, avatar_id: str, *, session_count: int) -> 
     characters = list_avatar_characters()
     engines = {item["id"]: item for item in list_engines(characters)}
     engine_info = engines[engine]
-    if not engine_info["available"]:
+    from src.avatars.presentation import mode
+    if not engine_info["available"] and mode(config, avatar_id) != "prerecorded":
         raise SettingsError(engine_info["message"] or f"{engine} 當前不可用")
 
     match = next((item for item in characters if item["id"] == avatar_id), None)
@@ -942,7 +946,7 @@ def apply_avatar(config, engine: str, avatar_id: str, *, session_count: int) -> 
     from src.server.state import state as server_state
 
     already_selected = config.model.type == engine and config.model.avatar_id == avatar_id
-    if already_selected and getattr(server_state, "model_ready", False) and server_state.model is not None:
+    if already_selected and getattr(server_state, "model_ready", False):
         return {
             "type": engine,
             "avatar_id": avatar_id,
@@ -982,12 +986,17 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
     from src.avatars.factory import load_avatar_data, prepare_avatar_model
     from src.server.state import state
 
-    type_changed = config.model.type != engine or state.model is None
+    from src.avatars.presentation import mode
     previous = f"{config.model.type}/{config.model.avatar_id}"
     pending = deepcopy(config)
     apply_engine_paths(pending, engine, avatar_id)
     pending.model.type = engine
     pending.model.avatar_id = avatar_id
+    type_changed = config.model.type != engine or state.model is None or mode(pending) == "prerecorded"
+    old_settings = deepcopy(config.model)
+    from src.scene.service import scene_service
+    old_preview_only = scene_service._preview_only
+    scene_changed = False
 
     state.switching = True
     try:
@@ -996,14 +1005,17 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
         else:
             new_model, new_avatar = state.model, load_avatar_data(pending)
 
-        old_model, old_avatar = state.model, state.avatar
-        state.model = new_model
-        state.avatar = new_avatar
-        state.model_ready = state.model is not None and state.avatar is not None
+        scene_options = {"preview_only": True} if mode(pending) == "prerecorded" else {}
+        scene_service.select(getattr(pending.stage, "background_id", ""), **scene_options)
+        scene_changed = True
         apply_engine_paths(config, engine, avatar_id)
         config.model.type = engine
         config.model.avatar_id = avatar_id
         persist_runtime_overrides(config)
+
+        old_model, old_avatar = state.model, state.avatar
+        state.model, state.avatar = new_model, new_avatar
+        state.model_ready = new_avatar is not None and (mode(pending) == "prerecorded" or new_model is not None)
 
         if type_changed and old_model is not new_model:
             del old_model, old_avatar
@@ -1017,8 +1029,14 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
             "type_changed": type_changed,
         }
     except SettingsError:
+        config.model = old_settings
+        if scene_changed:
+            scene_service.select(getattr(config.stage, "background_id", ""), preview_only=old_preview_only)
         raise
     except Exception as exc:
+        config.model = old_settings
+        if scene_changed:
+            scene_service.select(getattr(config.stage, "background_id", ""), preview_only=old_preview_only)
         logger.exception("切換數字人失敗")
         raise SettingsError(f"切換數字人失敗: {exc}", status=500) from exc
     finally:

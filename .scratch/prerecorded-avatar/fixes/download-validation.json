@@ -1,0 +1,32 @@
+[
+  {
+    "file": "console-record.mp4",
+    "width": 1080,
+    "height": 1920,
+    "fps": "1020000/41911",
+    "frames": 102,
+    "duration": 4.158,
+    "audio": 1,
+    "codec": "h264"
+  },
+  {
+    "file": "stage-record.mp4",
+    "width": 1080,
+    "height": 1920,
+    "fps": "2910000/133097",
+    "frames": 97,
+    "duration": 4.403,
+    "audio": 1,
+    "codec": "h264"
+  },
+  {
+    "file": "asset.mp4",
+    "width": 1080,
+    "height": 1920,
+    "fps": "25",
+    "frames": 200,
+    "duration": 7.96,
+    "audio": 0,
+    "codec": "h264"
+  }
+]

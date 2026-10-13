@@ -1,0 +1,46 @@
+[
+  {
+    "kind": "asset",
+    "strategy": "direct",
+    "fetch": {
+      "status": 200,
+      "bytes": 3767127,
+      "type": "video/mp4"
+    },
+    "bytes": 0,
+    "failure": "canceled"
+  },
+  {
+    "kind": "asset",
+    "strategy": "blob",
+    "fetch": {
+      "status": 200,
+      "bytes": 3767127,
+      "type": "video/mp4"
+    },
+    "bytes": 3767127,
+    "failure": null
+  },
+  {
+    "kind": "record",
+    "strategy": "direct",
+    "fetch": {
+      "status": 200,
+      "bytes": 9100684,
+      "type": "video/mp4"
+    },
+    "bytes": 0,
+    "failure": "canceled"
+  },
+  {
+    "kind": "record",
+    "strategy": "blob",
+    "fetch": {
+      "status": 200,
+      "bytes": 9100684,
+      "type": "video/mp4"
+    },
+    "bytes": 9100684,
+    "failure": null
+  }
+]

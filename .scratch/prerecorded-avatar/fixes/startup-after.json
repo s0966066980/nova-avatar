@@ -1,0 +1,17 @@
+{
+  "offer_ms": 2254.796973997145,
+  "picture_ms": 4409.431760999723,
+  "opacity": "1",
+  "canvas": [
+    1080,
+    1920
+  ],
+  "clockReady": false,
+  "events": {
+    "frames": 14,
+    "maxFrameGapMs": 316.60000000000036,
+    "transitions": [],
+    "clockFrames": 14,
+    "startedAt": 4129.20000000298
+  }
+}

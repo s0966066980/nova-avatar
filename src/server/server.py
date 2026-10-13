@@ -21,9 +21,8 @@ from src.scene.service import scene_service
 
 async def on_shutdown(app):
     """伺服器關閉時的清理操作"""
-    coros = [pc.close() for pc in state.pcs]
-    await asyncio.gather(*coros)
-    state.pcs.clear()
+    from src.server.routes.webrtc import close_sessions
+    await close_sessions()
     shutdown_llama_server()
     shutdown_cosyvoice_server()
     scene_service.close()
@@ -33,11 +32,15 @@ def create_app():
     """建立並配置 aiohttp 應用"""
     # 單獨設定較大的請求體上限，方便上傳音影片
     # Leave space for multipart headers around the 100 MB background asset.
-    app = web.Application(client_max_size=1024**2*101)
+    app = web.Application(client_max_size=1024**2*513)
+    from src.server.routes.presentation import register as register_presentation
+    register_presentation(app)
     app.on_shutdown.append(on_shutdown)
     
     # 路由集中註冊，避免分散難維護
     app.router.add_post("/offer", routes.offer)
+    from src.server.routes.webrtc import release_session
+    app.router.add_post("/api/sessions/release", release_session)
     app.router.add_post("/human", routes.human)
     app.router.add_post("/humanaudio", routes.humanaudio)
     app.router.add_post("/asr", routes.asr)

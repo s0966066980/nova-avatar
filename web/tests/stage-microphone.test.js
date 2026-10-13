@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
 import { configureReplyPlayout } from '../src/replyPlayout.js'
+import { mountPresentation, presentationPlayer, exportSceneRecording } from '../src/prerecordedPlayer.js'
 
 const html = readFileSync(new URL('../stage.html', import.meta.url), 'utf8')
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
@@ -51,8 +52,13 @@ function stageHarness() {
     close() {}
   }
   const context = {
+    newClientId: () => 'stage-test',
+    releaseSession: async () => {},
+    avatarIsReady: async () => true,
+    downloadMedia: async () => {},
     configureReplyPlayout,
-    document: { getElementById: element },
+    mountPresentation, presentationPlayer, exportSceneRecording,
+    document: { getElementById: (id) => id === 'scene-record-controls' ? elements.get(id) || null : element(id) },
     window: { ResizeObserver: null },
     navigator: { mediaDevices: { getUserMedia: async () => ({
       getAudioTracks: () => [track], getTracks: () => [track]
@@ -94,6 +100,7 @@ function stageHarness() {
       channel.onopen()
     },
     event(data) { channel.onmessage({ data: JSON.stringify(data) }) },
+    reopenChannel() { channel.onopen() },
   }
 }
 
@@ -111,6 +118,16 @@ test('舞台插話的按下與鬆開不會在多輪後關閉收音', async () =>
     assert.equal(stage.track.enabled, true, `插話第 ${turn} 輪後音軌仍需收音`)
     assert.notEqual(stage.sent.at(-1)?.enabled, false, `插話第 ${turn} 輪後伺服器仍需收音`)
   }
+})
+
+test('舞台重新開啟通道時保留使用者暫停收音的選擇', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  stage.element('mic').dispatch('pointerup')
+  assert.equal(stage.track.enabled, false)
+  stage.reopenChannel()
+  assert.equal(stage.track.enabled, false)
+  assert.equal(stage.sent.at(-1).enabled, false)
 })
 
 test('暫停中的舞台插話會同步恢復前後端收音狀態', async () => {

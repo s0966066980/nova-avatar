@@ -59,6 +59,7 @@ def persist_runtime_overrides(config) -> None:
             "reply_rules": rules_from_config(config),
         },
         "model": {
+            "presentation_modes": dict(getattr(config.model, "presentation_modes", {})),
             "type": config.model.type,
             "avatar_id": config.model.avatar_id,
             **quality_from_model(config.model),

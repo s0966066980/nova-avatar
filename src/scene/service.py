@@ -415,6 +415,7 @@ class SceneService:
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._background_id = ""
+        self._preview_only = False
         self._source: _BackgroundSource | None = None
         self._previous_frame: np.ndarray | None = None
         self._changed_at = 0.0
@@ -425,18 +426,21 @@ class SceneService:
         with self._lock:
             return {"background_id": self._background_id, "revision": self._revision}
 
-    def select(self, background_id: str, *, fade_seconds: float | None = None) -> dict[str, Any]:
+    def select(self, background_id: str, *, fade_seconds: float | None = None, preview_only: bool = False) -> dict[str, Any]:
         background_id = str(background_id or "").strip()
         with self._lock:
-            if background_id == self._background_id:
+            if background_id == self._background_id and preview_only == self._preview_only:
                 return self.snapshot()
         path = _asset_paths(background_id)[0] if background_id else None
+        if path and preview_only:
+            path = _asset_paths(background_id)[2]
         incoming = _BackgroundSource(path) if path else None
         with self._lock:
             previous = self._source
             self._previous_frame = previous.raw_frame() if previous is not None else None
             self._source = incoming
             self._background_id = background_id
+            self._preview_only = preview_only
             self._changed_at = time.monotonic()
             if fade_seconds is not None:
                 self._fade_seconds = max(0.0, min(1.0, float(fade_seconds)))

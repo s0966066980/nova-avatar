@@ -1,0 +1,4374 @@
+{
+  "seconds": 600,
+  "dual": true,
+  "headful": true,
+  "clock_delay": 0,
+  "pages": [
+    {
+      "state": "talking",
+      "mediaMs": 605623,
+      "metrics": {
+        "frames": 15322,
+        "maxFrameGapMs": 50.10000000009313,
+        "transitions": [
+          {
+            "state": "talking",
+            "mediaMs": 13392,
+            "at": 35988
+          },
+          {
+            "state": "idle",
+            "mediaMs": 17762,
+            "at": 40387.8
+          },
+          {
+            "state": "talking",
+            "mediaMs": 18214,
+            "at": 40821.2
+          },
+          {
+            "state": "idle",
+            "mediaMs": 19749,
+            "at": 42387.8
+          },
+          {
+            "state": "talking",
+            "mediaMs": 49072,
+            "at": 72069.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 53433,
+            "at": 76419.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 54010,
+            "at": 77019.7
+          },
+          {
+            "state": "idle",
+            "mediaMs": 57884,
+            "at": 80902.9
+          },
+          {
+            "state": "talking",
+            "mediaMs": 83687,
+            "at": 106985.2
+          },
+          {
+            "state": "idle",
+            "mediaMs": 88045,
+            "at": 111385
+          },
+          {
+            "state": "talking",
+            "mediaMs": 88623,
+            "at": 111985
+          },
+          {
+            "state": "idle",
+            "mediaMs": 92535,
+            "at": 115868.2
+          },
+          {
+            "state": "talking",
+            "mediaMs": 123075,
+            "at": 147066.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 132292,
+            "at": 156433.2
+          },
+          {
+            "state": "talking",
+            "mediaMs": 152297,
+            "at": 176699.1
+          },
+          {
+            "state": "idle",
+            "mediaMs": 156643,
+            "at": 181098.9
+          },
+          {
+            "state": "talking",
+            "mediaMs": 157106,
+            "at": 181548.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 158031,
+            "at": 182465.5
+          },
+          {
+            "state": "talking",
+            "mediaMs": 187137,
+            "at": 211981
+          },
+          {
+            "state": "idle",
+            "mediaMs": 191491,
+            "at": 216380.8
+          },
+          {
+            "state": "talking",
+            "mediaMs": 192079,
+            "at": 216980.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 195955,
+            "at": 220830.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 224155,
+            "at": 249429.5
+          },
+          {
+            "state": "idle",
+            "mediaMs": 233081,
+            "at": 258462.5
+          },
+          {
+            "state": "talking",
+            "mediaMs": 255388,
+            "at": 281111.6
+          },
+          {
+            "state": "idle",
+            "mediaMs": 259746,
+            "at": 285544.8
+          },
+          {
+            "state": "talking",
+            "mediaMs": 260193,
+            "at": 285994.7
+          },
+          {
+            "state": "idle",
+            "mediaMs": 264204,
+            "at": 289994.5
+          },
+          {
+            "state": "talking",
+            "mediaMs": 290203,
+            "at": 316343.5
+          },
+          {
+            "state": "idle",
+            "mediaMs": 294581,
+            "at": 320793.3
+          },
+          {
+            "state": "talking",
+            "mediaMs": 295038,
+            "at": 321226.6
+          },
+          {
+            "state": "idle",
+            "mediaMs": 296362,
+            "at": 322543.3
+          },
+          {
+            "state": "talking",
+            "mediaMs": 328302,
+            "at": 354908.6
+          },
+          {
+            "state": "idle",
+            "mediaMs": 337255,
+            "at": 363908.3
+          },
+          {
+            "state": "talking",
+            "mediaMs": 359112,
+            "at": 386107.4
+          },
+          {
+            "state": "idle",
+            "mediaMs": 363461,
+            "at": 390507.2
+          },
+          {
+            "state": "talking",
+            "mediaMs": 363956,
+            "at": 390990.5
+          },
+          {
+            "state": "idle",
+            "mediaMs": 367953,
+            "at": 394990.4
+          },
+          {
+            "state": "talking",
+            "mediaMs": 393898,
+            "at": 421222.6
+          },
+          {
+            "state": "idle",
+            "mediaMs": 398248,
+            "at": 425622.5
+          },
+          {
+            "state": "talking",
+            "mediaMs": 398740,
+            "at": 426105.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 402751,
+            "at": 430105.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 431153,
+            "at": 458904.4
+          },
+          {
+            "state": "idle",
+            "mediaMs": 434810,
+            "at": 462621
+          },
+          {
+            "state": "talking",
+            "mediaMs": 462994,
+            "at": 491153.1
+          },
+          {
+            "state": "idle",
+            "mediaMs": 467354,
+            "at": 495553
+          },
+          {
+            "state": "talking",
+            "mediaMs": 467810,
+            "at": 495986.3
+          },
+          {
+            "state": "idle",
+            "mediaMs": 471801,
+            "at": 499986.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 497750,
+            "at": 526301.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 502099,
+            "at": 530701.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 502556,
+            "at": 531151.6
+          },
+          {
+            "state": "idle",
+            "mediaMs": 506597,
+            "at": 535184.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 534862,
+            "at": 563866.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 543807,
+            "at": 572866.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 567256,
+            "at": 596632.3
+          },
+          {
+            "state": "idle",
+            "mediaMs": 571622,
+            "at": 601032.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 572040,
+            "at": 601465.4
+          },
+          {
+            "state": "idle",
+            "mediaMs": 573229,
+            "at": 602665.3
+          },
+          {
+            "state": "talking",
+            "mediaMs": 601313,
+            "at": 631030.9
+          }
+        ],
+        "clockFrames": 13321,
+        "startedAt": 22527.20000000298
+      },
+      "width": 1080,
+      "height": 1920,
+      "visibility": "visible",
+      "energy": 9.26183843032599,
+      "concealed": 1649,
+      "audioSamples": 29375520,
+      "renderer": "ANGLE (NVIDIA Corporation, NVIDIA Tegra Orin (nvgpu)/integrated, OpenGL 4.5.0)",
+      "video": {
+        "idle": {
+          "total": 11999,
+          "dropped": 0
+        },
+        "talking": {
+          "total": 4092,
+          "dropped": 0
+        }
+      },
+      "role": "console",
+      "render_fps": 25.002092731522577,
+      "page_errors": [],
+      "pcm_edges": [
+        {
+          "active": true,
+          "at": 36033.30000000447
+        },
+        {
+          "active": false,
+          "at": 36651.70000000298
+        },
+        {
+          "active": true,
+          "at": 36819.20000000298
+        },
+        {
+          "active": false,
+          "at": 40091.60000000149
+        },
+        {
+          "active": true,
+          "at": 41021
+        },
+        {
+          "active": false,
+          "at": 42319.10000000149
+        },
+        {
+          "active": true,
+          "at": 42471.60000000149
+        },
+        {
+          "active": false,
+          "at": 42611.70000000298
+        },
+        {
+          "active": true,
+          "at": 72087.70000000298
+        },
+        {
+          "active": false,
+          "at": 72691.70000000298
+        },
+        {
+          "active": true,
+          "at": 72878.10000000149
+        },
+        {
+          "active": false,
+          "at": 76131.80000000447
+        },
+        {
+          "active": true,
+          "at": 77039.60000000149
+        },
+        {
+          "active": false,
+          "at": 78351.70000000298
+        },
+        {
+          "active": true,
+          "at": 78519.5
+        },
+        {
+          "active": false,
+          "at": 80811.60000000149
+        },
+        {
+          "active": true,
+          "at": 107004.5
+        },
+        {
+          "active": false,
+          "at": 107651.60000000149
+        },
+        {
+          "active": true,
+          "at": 107808.10000000149
+        },
+        {
+          "active": false,
+          "at": 111091.60000000149
+        },
+        {
+          "active": true,
+          "at": 112004.70000000298
+        },
+        {
+          "active": false,
+          "at": 113291.60000000149
+        },
+        {
+          "active": true,
+          "at": 113474.10000000149
+        },
+        {
+          "active": false,
+          "at": 115751.60000000149
+        },
+        {
+          "active": true,
+          "at": 147011.6000000015
+        },
+        {
+          "active": false,
+          "at": 150687.80000000447
+        },
+        {
+          "active": true,
+          "at": 150995.20000000298
+        },
+        {
+          "active": false,
+          "at": 153174.6000000015
+        },
+        {
+          "active": true,
+          "at": 153477.40000000596
+        },
+        {
+          "active": false,
+          "at": 156291.6000000015
+        },
+        {
+          "active": true,
+          "at": 176731.70000000298
+        },
+        {
+          "active": false,
+          "at": 177355
+        },
+        {
+          "active": true,
+          "at": 177531.6000000015
+        },
+        {
+          "active": false,
+          "at": 180805.30000000447
+        },
+        {
+          "active": true,
+          "at": 181691.6000000015
+        },
+        {
+          "active": false,
+          "at": 182711.6000000015
+        },
+        {
+          "active": true,
+          "at": 212012.40000000596
+        },
+        {
+          "active": false,
+          "at": 212635.20000000298
+        },
+        {
+          "active": true,
+          "at": 212794.40000000596
+        },
+        {
+          "active": false,
+          "at": 216091.70000000298
+        },
+        {
+          "active": true,
+          "at": 216992.6000000015
+        },
+        {
+          "active": false,
+          "at": 218291.70000000298
+        },
+        {
+          "active": true,
+          "at": 218472.6000000015
+        },
+        {
+          "active": false,
+          "at": 220771.70000000298
+        },
+        {
+          "active": true,
+          "at": 249531.6000000015
+        },
+        {
+          "active": false,
+          "at": 253131.70000000298
+        },
+        {
+          "active": true,
+          "at": 253442.20000000298
+        },
+        {
+          "active": false,
+          "at": 258371.70000000298
+        },
+        {
+          "active": true,
+          "at": 281213.1000000015
+        },
+        {
+          "active": false,
+          "at": 281854.30000000447
+        },
+        {
+          "active": true,
+          "at": 282012.6000000015
+        },
+        {
+          "active": false,
+          "at": 285291.6000000015
+        },
+        {
+          "active": true,
+          "at": 286192.80000000447
+        },
+        {
+          "active": false,
+          "at": 287491.700000003
+        },
+        {
+          "active": true,
+          "at": 287672.80000000447
+        },
+        {
+          "active": false,
+          "at": 289959.90000000596
+        },
+        {
+          "active": true,
+          "at": 316464.6000000015
+        },
+        {
+          "active": false,
+          "at": 317072
+        },
+        {
+          "active": true,
+          "at": 317251.6000000015
+        },
+        {
+          "active": false,
+          "at": 320522.30000000447
+        },
+        {
+          "active": true,
+          "at": 321412
+        },
+        {
+          "active": false,
+          "at": 322724.200000003
+        },
+        {
+          "active": true,
+          "at": 354991.6000000015
+        },
+        {
+          "active": false,
+          "at": 358611.700000003
+        },
+        {
+          "active": true,
+          "at": 358891.6000000015
+        },
+        {
+          "active": false,
+          "at": 363851.6000000015
+        },
+        {
+          "active": true,
+          "at": 386191.5
+        },
+        {
+          "active": false,
+          "at": 386831.90000000596
+        },
+        {
+          "active": true,
+          "at": 386991.700000003
+        },
+        {
+          "active": false,
+          "at": 390271.700000003
+        },
+        {
+          "active": true,
+          "at": 391171.6000000015
+        },
+        {
+          "active": false,
+          "at": 392492.200000003
+        },
+        {
+          "active": true,
+          "at": 392651.6000000015
+        },
+        {
+          "active": false,
+          "at": 394951.6000000015
+        },
+        {
+          "active": true,
+          "at": 421312.80000000447
+        },
+        {
+          "active": false,
+          "at": 421931.700000003
+        },
+        {
+          "active": true,
+          "at": 422091.6000000015
+        },
+        {
+          "active": false,
+          "at": 425371.700000003
+        },
+        {
+          "active": true,
+          "at": 426271.6000000015
+        },
+        {
+          "active": false,
+          "at": 427596.40000000596
+        },
+        {
+          "active": true,
+          "at": 427752.80000000447
+        },
+        {
+          "active": false,
+          "at": 430039.80000000447
+        },
+        {
+          "active": true,
+          "at": 458951.700000003
+        },
+        {
+          "active": false,
+          "at": 462551.6000000015
+        },
+        {
+          "active": true,
+          "at": 462851.700000003
+        },
+        {
+          "active": false,
+          "at": 462913.80000000447
+        },
+        {
+          "active": true,
+          "at": 491211.6000000015
+        },
+        {
+          "active": false,
+          "at": 491843.6000000015
+        },
+        {
+          "active": true,
+          "at": 492011.6000000015
+        },
+        {
+          "active": false,
+          "at": 495281
+        },
+        {
+          "active": true,
+          "at": 496196.6000000015
+        },
+        {
+          "active": false,
+          "at": 497491.6000000015
+        },
+        {
+          "active": true,
+          "at": 497675.5
+        },
+        {
+          "active": false,
+          "at": 499951.6000000015
+        },
+        {
+          "active": true,
+          "at": 526376.900000006
+        },
+        {
+          "active": false,
+          "at": 527007.400000006
+        },
+        {
+          "active": true,
+          "at": 527151.6000000015
+        },
+        {
+          "active": false,
+          "at": 530451.6000000015
+        },
+        {
+          "active": true,
+          "at": 531351.6000000015
+        },
+        {
+          "active": false,
+          "at": 532651.700000003
+        },
+        {
+          "active": true,
+          "at": 532831.700000003
+        },
+        {
+          "active": false,
+          "at": 535131.700000003
+        },
+        {
+          "active": true,
+          "at": 563971.6000000015
+        },
+        {
+          "active": false,
+          "at": 567531.6000000015
+        },
+        {
+          "active": true,
+          "at": 567831.6000000015
+        },
+        {
+          "active": false,
+          "at": 572791.6000000015
+        },
+        {
+          "active": true,
+          "at": 596675
+        },
+        {
+          "active": false,
+          "at": 597331.6000000015
+        },
+        {
+          "active": true,
+          "at": 597491.6000000015
+        },
+        {
+          "active": false,
+          "at": 600771.6000000015
+        },
+        {
+          "active": true,
+          "at": 601674
+        },
+        {
+          "active": false,
+          "at": 602971.6000000015
+        },
+        {
+          "active": true,
+          "at": 631111.900000006
+        },
+        {
+          "active": false,
+          "at": 631758.3000000045
+        },
+        {
+          "active": true,
+          "at": 631932.5
+        },
+        {
+          "active": false,
+          "at": 635191.6000000015
+        }
+      ],
+      "voice_events": [
+        {
+          "type": "speaking_start",
+          "seq": 5,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "media_ms": 13280,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 7,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": true,
+          "media_ms": 13380,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 8,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": false,
+          "media_ms": 14020,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 9,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": true,
+          "media_ms": 14160,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 10,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": false,
+          "media_ms": 17440,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 11,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": true,
+          "media_ms": 18200,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 12,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": false,
+          "media_ms": 18220,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 13,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": true,
+          "media_ms": 18340,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 14,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": false,
+          "media_ms": 19640,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 15,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": true,
+          "media_ms": 19800,
+          "generation": 0
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 17,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "media_ms": 19920,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 19,
+          "turn_id": "7069344cf2284147851ba9e1ae7558f6",
+          "active": false,
+          "media_ms": 19940,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 24,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "media_ms": 48940,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 26,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": true,
+          "media_ms": 49040,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 27,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": false,
+          "media_ms": 49680,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 28,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": true,
+          "media_ms": 49820,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 29,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": false,
+          "media_ms": 53100,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 30,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": true,
+          "media_ms": 54000,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 31,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": false,
+          "media_ms": 55300,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 32,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": true,
+          "media_ms": 55480,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 33,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "active": false,
+          "media_ms": 57760,
+          "generation": 1
+        },
+        {
+          "type": "speaking_end",
+          "seq": 35,
+          "turn_id": "140ddc2f528744538c8c8a8623ae2c22",
+          "media_ms": 57880,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 42,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "media_ms": 83560,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 44,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": true,
+          "media_ms": 83660,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 45,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": false,
+          "media_ms": 84300,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 46,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": true,
+          "media_ms": 84440,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 47,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": false,
+          "media_ms": 87720,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 48,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": true,
+          "media_ms": 88620,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 49,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": false,
+          "media_ms": 89920,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 50,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": true,
+          "media_ms": 90100,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 51,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "active": false,
+          "media_ms": 92380,
+          "generation": 1
+        },
+        {
+          "type": "speaking_end",
+          "seq": 53,
+          "turn_id": "f36aeb2201614f8ea281e521833edb66",
+          "media_ms": 92500,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 95,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "media_ms": 122880,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 97,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "active": true,
+          "media_ms": 122980,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 98,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "active": false,
+          "media_ms": 126540,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 99,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "active": true,
+          "media_ms": 126820,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 100,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "active": false,
+          "media_ms": 129020,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 103,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "active": true,
+          "media_ms": 129300,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 104,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "active": false,
+          "media_ms": 132100,
+          "generation": 1
+        },
+        {
+          "type": "speaking_end",
+          "seq": 106,
+          "turn_id": "59a3afe628544f7d965cf3b114c812f0",
+          "media_ms": 132260,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 113,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "media_ms": 152160,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 115,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": true,
+          "media_ms": 152260,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 116,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": false,
+          "media_ms": 152900,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 117,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": true,
+          "media_ms": 153040,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 118,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": false,
+          "media_ms": 156320,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 119,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": true,
+          "media_ms": 157080,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 120,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": false,
+          "media_ms": 157100,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 121,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": true,
+          "media_ms": 157200,
+          "generation": 1
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 123,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "media_ms": 158200,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 125,
+          "turn_id": "bcf2347b1676454d8cb9e2fcafa17fa1",
+          "active": false,
+          "media_ms": 158240,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 130,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "media_ms": 187000,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 132,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": true,
+          "media_ms": 187100,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 133,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": false,
+          "media_ms": 187740,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 134,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": true,
+          "media_ms": 187880,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 135,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": false,
+          "media_ms": 191160,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 136,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": true,
+          "media_ms": 192060,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 137,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": false,
+          "media_ms": 193360,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 138,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": true,
+          "media_ms": 193520,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 139,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "active": false,
+          "media_ms": 195820,
+          "generation": 2
+        },
+        {
+          "type": "speaking_end",
+          "seq": 141,
+          "turn_id": "ad9fc4ca6b5f400485f41cb724d472c8",
+          "media_ms": 195940,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 182,
+          "turn_id": "2672c707754d4eaa88d7a8a79153cbbe",
+          "media_ms": 224040,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 184,
+          "turn_id": "2672c707754d4eaa88d7a8a79153cbbe",
+          "active": true,
+          "media_ms": 224140,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 185,
+          "turn_id": "2672c707754d4eaa88d7a8a79153cbbe",
+          "active": false,
+          "media_ms": 227680,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 186,
+          "turn_id": "2672c707754d4eaa88d7a8a79153cbbe",
+          "active": true,
+          "media_ms": 227960,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 187,
+          "turn_id": "2672c707754d4eaa88d7a8a79153cbbe",
+          "active": false,
+          "media_ms": 232920,
+          "generation": 2
+        },
+        {
+          "type": "speaking_end",
+          "seq": 189,
+          "turn_id": "2672c707754d4eaa88d7a8a79153cbbe",
+          "media_ms": 233080,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 196,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "media_ms": 255260,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 198,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": true,
+          "media_ms": 255360,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 199,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": false,
+          "media_ms": 256000,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 200,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": true,
+          "media_ms": 256140,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 201,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": false,
+          "media_ms": 259420,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 202,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": true,
+          "media_ms": 260180,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 203,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": false,
+          "media_ms": 260200,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 204,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": true,
+          "media_ms": 260300,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 205,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": false,
+          "media_ms": 261620,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 206,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": true,
+          "media_ms": 261780,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 207,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "active": false,
+          "media_ms": 264080,
+          "generation": 2
+        },
+        {
+          "type": "speaking_end",
+          "seq": 209,
+          "turn_id": "da27e4b630cc41f8b8d72c7eee48d70e",
+          "media_ms": 264200,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 216,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "media_ms": 290100,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 218,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": true,
+          "media_ms": 290200,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 219,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": false,
+          "media_ms": 290840,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 220,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": true,
+          "media_ms": 290980,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 221,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": false,
+          "media_ms": 294260,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 222,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": true,
+          "media_ms": 295020,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 223,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": false,
+          "media_ms": 295040,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 224,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": true,
+          "media_ms": 295160,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 225,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "active": false,
+          "media_ms": 296460,
+          "generation": 2
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 227,
+          "turn_id": "47e7c46f2a744585be695a7ce5f5ba08",
+          "media_ms": 296520,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 267,
+          "turn_id": "397b5109e7554f33bf10522c3b4e93c7",
+          "media_ms": 328200,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 269,
+          "turn_id": "397b5109e7554f33bf10522c3b4e93c7",
+          "active": true,
+          "media_ms": 328300,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 270,
+          "turn_id": "397b5109e7554f33bf10522c3b4e93c7",
+          "active": false,
+          "media_ms": 331840,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 271,
+          "turn_id": "397b5109e7554f33bf10522c3b4e93c7",
+          "active": true,
+          "media_ms": 332120,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 272,
+          "turn_id": "397b5109e7554f33bf10522c3b4e93c7",
+          "active": false,
+          "media_ms": 337080,
+          "generation": 3
+        },
+        {
+          "type": "speaking_end",
+          "seq": 274,
+          "turn_id": "397b5109e7554f33bf10522c3b4e93c7",
+          "media_ms": 337240,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 281,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "media_ms": 359000,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 283,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": true,
+          "media_ms": 359100,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 284,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": false,
+          "media_ms": 359740,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 285,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": true,
+          "media_ms": 359880,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 286,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": false,
+          "media_ms": 363160,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 287,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": true,
+          "media_ms": 363920,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 288,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": false,
+          "media_ms": 363940,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 289,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": true,
+          "media_ms": 364040,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 290,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": false,
+          "media_ms": 365360,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 291,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": true,
+          "media_ms": 365520,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 292,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "active": false,
+          "media_ms": 367820,
+          "generation": 3
+        },
+        {
+          "type": "speaking_end",
+          "seq": 294,
+          "turn_id": "f26f029977df4fb1bd9d814e29d44b94",
+          "media_ms": 367940,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 301,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "media_ms": 393780,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 303,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": true,
+          "media_ms": 393880,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 304,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": false,
+          "media_ms": 394520,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 305,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": true,
+          "media_ms": 394660,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 306,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": false,
+          "media_ms": 397940,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 307,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": true,
+          "media_ms": 398700,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 308,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": false,
+          "media_ms": 398720,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 309,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": true,
+          "media_ms": 398840,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 310,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": false,
+          "media_ms": 400140,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 311,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": true,
+          "media_ms": 400320,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 312,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "active": false,
+          "media_ms": 402600,
+          "generation": 3
+        },
+        {
+          "type": "speaking_end",
+          "seq": 314,
+          "turn_id": "fdc12831411849ebaca4974c9e01764c",
+          "media_ms": 402720,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 355,
+          "turn_id": "11544e9add7b4153a5eec97d3f7f4175",
+          "media_ms": 431020,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 357,
+          "turn_id": "11544e9add7b4153a5eec97d3f7f4175",
+          "active": true,
+          "media_ms": 431120,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 358,
+          "turn_id": "11544e9add7b4153a5eec97d3f7f4175",
+          "active": false,
+          "media_ms": 434660,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 359,
+          "turn_id": "11544e9add7b4153a5eec97d3f7f4175",
+          "active": true,
+          "media_ms": 434940,
+          "generation": 3
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 361,
+          "turn_id": "11544e9add7b4153a5eec97d3f7f4175",
+          "media_ms": 434980,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 363,
+          "turn_id": "11544e9add7b4153a5eec97d3f7f4175",
+          "active": false,
+          "media_ms": 435000,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 368,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "media_ms": 462860,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 370,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": true,
+          "media_ms": 462960,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 371,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": false,
+          "media_ms": 463600,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 372,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": true,
+          "media_ms": 463740,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 373,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": false,
+          "media_ms": 467020,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 374,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": true,
+          "media_ms": 467780,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 375,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": false,
+          "media_ms": 467800,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 376,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": true,
+          "media_ms": 467900,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 377,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": false,
+          "media_ms": 469220,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 378,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": true,
+          "media_ms": 469400,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 379,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "active": false,
+          "media_ms": 471680,
+          "generation": 4
+        },
+        {
+          "type": "speaking_end",
+          "seq": 381,
+          "turn_id": "267bd7c52b1b4074a9c848df27e31a7b",
+          "media_ms": 471800,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 388,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "media_ms": 497620,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 390,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": true,
+          "media_ms": 497720,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 391,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": false,
+          "media_ms": 498360,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 392,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": true,
+          "media_ms": 498500,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 393,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": false,
+          "media_ms": 501780,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 394,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": true,
+          "media_ms": 502540,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 395,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": false,
+          "media_ms": 502560,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 396,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": true,
+          "media_ms": 502660,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 397,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": false,
+          "media_ms": 503980,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 398,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": true,
+          "media_ms": 504160,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 399,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "active": false,
+          "media_ms": 506440,
+          "generation": 4
+        },
+        {
+          "type": "speaking_end",
+          "seq": 401,
+          "turn_id": "f0611ad1bbd548bd9e87c0f5a1ba240e",
+          "media_ms": 506560,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 442,
+          "turn_id": "e6b1c749c858457494943e498af462bc",
+          "media_ms": 534740,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 444,
+          "turn_id": "e6b1c749c858457494943e498af462bc",
+          "active": true,
+          "media_ms": 534840,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 445,
+          "turn_id": "e6b1c749c858457494943e498af462bc",
+          "active": false,
+          "media_ms": 538380,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 446,
+          "turn_id": "e6b1c749c858457494943e498af462bc",
+          "active": true,
+          "media_ms": 538660,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 447,
+          "turn_id": "e6b1c749c858457494943e498af462bc",
+          "active": false,
+          "media_ms": 543620,
+          "generation": 4
+        },
+        {
+          "type": "speaking_end",
+          "seq": 449,
+          "turn_id": "e6b1c749c858457494943e498af462bc",
+          "media_ms": 543780,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 456,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "media_ms": 567120,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 458,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": true,
+          "media_ms": 567220,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 459,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": false,
+          "media_ms": 567860,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 460,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": true,
+          "media_ms": 568000,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 461,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": false,
+          "media_ms": 571280,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 462,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": true,
+          "media_ms": 572040,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 463,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": false,
+          "media_ms": 572060,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 464,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": true,
+          "media_ms": 572180,
+          "generation": 4
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 466,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "media_ms": 573440,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 468,
+          "turn_id": "be4d9b463e2c41339e0cc9863a391492",
+          "active": false,
+          "media_ms": 573460,
+          "generation": 5
+        },
+        {
+          "type": "speaking_start",
+          "seq": 473,
+          "turn_id": "93ae5a9449d94739a5e2344998616237",
+          "media_ms": 601180,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 475,
+          "turn_id": "93ae5a9449d94739a5e2344998616237",
+          "active": true,
+          "media_ms": 601280,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 476,
+          "turn_id": "93ae5a9449d94739a5e2344998616237",
+          "active": false,
+          "media_ms": 601920,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 477,
+          "turn_id": "93ae5a9449d94739a5e2344998616237",
+          "active": true,
+          "media_ms": 602060,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 478,
+          "turn_id": "93ae5a9449d94739a5e2344998616237",
+          "active": false,
+          "media_ms": 605340,
+          "generation": 5
+        }
+      ],
+      "record": {
+        "result": {
+          "filename": "record_b31ddb21c7ce4b51a2cc47451d9eace2.mp4",
+          "url": "/download/record_b31ddb21c7ce4b51a2cc47451d9eace2.mp4"
+        },
+        "error": null
+      }
+    },
+    {
+      "state": "talking",
+      "mediaMs": 596015,
+      "metrics": {
+        "frames": 15065,
+        "maxFrameGapMs": 66.70000000001164,
+        "transitions": [
+          {
+            "state": "talking",
+            "mediaMs": 3775,
+            "at": 9691.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 8118,
+            "at": 14091.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 8577,
+            "at": 14541.7
+          },
+          {
+            "state": "idle",
+            "mediaMs": 10450,
+            "at": 16374.9
+          },
+          {
+            "state": "talking",
+            "mediaMs": 39456,
+            "at": 45740.4
+          },
+          {
+            "state": "idle",
+            "mediaMs": 43773,
+            "at": 50123.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 44224,
+            "at": 50590.2
+          },
+          {
+            "state": "idle",
+            "mediaMs": 48250,
+            "at": 54590
+          },
+          {
+            "state": "talking",
+            "mediaMs": 74061,
+            "at": 80722.3
+          },
+          {
+            "state": "idle",
+            "mediaMs": 78440,
+            "at": 85122.2
+          },
+          {
+            "state": "talking",
+            "mediaMs": 78886,
+            "at": 85588.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 82943,
+            "at": 89638.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 113291,
+            "at": 120637.4
+          },
+          {
+            "state": "idle",
+            "mediaMs": 122473,
+            "at": 129987.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 142561,
+            "at": 150352.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 146931,
+            "at": 154802.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 147391,
+            "at": 155236
+          },
+          {
+            "state": "idle",
+            "mediaMs": 148642,
+            "at": 156469.3
+          },
+          {
+            "state": "talking",
+            "mediaMs": 177404,
+            "at": 185634.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 181756,
+            "at": 190067.9
+          },
+          {
+            "state": "talking",
+            "mediaMs": 182213,
+            "at": 190517.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 186223,
+            "at": 194551.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 214242,
+            "at": 222883.3
+          },
+          {
+            "state": "idle",
+            "mediaMs": 223502,
+            "at": 232199.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 245776,
+            "at": 254832.1
+          },
+          {
+            "state": "idle",
+            "mediaMs": 250141,
+            "at": 259231.8
+          },
+          {
+            "state": "talking",
+            "mediaMs": 250588,
+            "at": 259681.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 254604,
+            "at": 263715
+          },
+          {
+            "state": "talking",
+            "mediaMs": 280479,
+            "at": 289880.7
+          },
+          {
+            "state": "idle",
+            "mediaMs": 284834,
+            "at": 294280.5
+          },
+          {
+            "state": "talking",
+            "mediaMs": 285290,
+            "at": 294747.1
+          },
+          {
+            "state": "idle",
+            "mediaMs": 287108,
+            "at": 296547.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 318727,
+            "at": 328595.7
+          },
+          {
+            "state": "idle",
+            "mediaMs": 327674,
+            "at": 337562.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 349564,
+            "at": 359794.5
+          },
+          {
+            "state": "idle",
+            "mediaMs": 353934,
+            "at": 364194.3
+          },
+          {
+            "state": "talking",
+            "mediaMs": 354397,
+            "at": 364644.3
+          },
+          {
+            "state": "idle",
+            "mediaMs": 358384,
+            "at": 368644.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 384525,
+            "at": 395076.4
+          },
+          {
+            "state": "idle",
+            "mediaMs": 388909,
+            "at": 399509.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 389356,
+            "at": 399959.5
+          },
+          {
+            "state": "idle",
+            "mediaMs": 393406,
+            "at": 403992.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 421682,
+            "at": 432674.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 425571,
+            "at": 436608.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 453489,
+            "at": 464840.3
+          },
+          {
+            "state": "idle",
+            "mediaMs": 457872,
+            "at": 469290.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 458284,
+            "at": 469690.1
+          },
+          {
+            "state": "idle",
+            "mediaMs": 462337,
+            "at": 473773.2
+          },
+          {
+            "state": "talking",
+            "mediaMs": 488260,
+            "at": 500005.6
+          },
+          {
+            "state": "idle",
+            "mediaMs": 492640,
+            "at": 504438.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 493256,
+            "at": 505038.7
+          },
+          {
+            "state": "idle",
+            "mediaMs": 497108,
+            "at": 508888.5
+          },
+          {
+            "state": "talking",
+            "mediaMs": 525338,
+            "at": 537570.7
+          },
+          {
+            "state": "idle",
+            "mediaMs": 534192,
+            "at": 546453.7
+          },
+          {
+            "state": "talking",
+            "mediaMs": 557717,
+            "at": 570252.8
+          },
+          {
+            "state": "idle",
+            "mediaMs": 562079,
+            "at": 574652.6
+          },
+          {
+            "state": "talking",
+            "mediaMs": 562525,
+            "at": 575085.9
+          },
+          {
+            "state": "idle",
+            "mediaMs": 564100,
+            "at": 576652.5
+          },
+          {
+            "state": "talking",
+            "mediaMs": 591794,
+            "at": 604734.7
+          }
+        ],
+        "clockFrames": 13094,
+        "startedAt": 6381.89999999851
+      },
+      "width": 1080,
+      "height": 1920,
+      "visibility": "visible",
+      "energy": 9.272011524127183,
+      "concealed": 3387,
+      "audioSamples": 28933440,
+      "renderer": "ANGLE (NVIDIA Corporation, NVIDIA Tegra Orin (nvgpu)/integrated, OpenGL 4.5.0)",
+      "video": {
+        "idle": {
+          "total": 11703,
+          "dropped": 0
+        },
+        "talking": {
+          "total": 4302,
+          "dropped": 0
+        }
+      },
+      "role": "stage",
+      "render_fps": 24.998760229992218,
+      "page_errors": [],
+      "pcm_edges": [
+        {
+          "active": true,
+          "at": 9675.20000000298
+        },
+        {
+          "active": false,
+          "at": 10311.29999999702
+        },
+        {
+          "active": true,
+          "at": 10470.10000000149
+        },
+        {
+          "active": false,
+          "at": 13756.70000000298
+        },
+        {
+          "active": true,
+          "at": 14670
+        },
+        {
+          "active": false,
+          "at": 15970
+        },
+        {
+          "active": true,
+          "at": 16150
+        },
+        {
+          "active": false,
+          "at": 16589.89999999851
+        },
+        {
+          "active": true,
+          "at": 45750
+        },
+        {
+          "active": false,
+          "at": 46370
+        },
+        {
+          "active": true,
+          "at": 46550
+        },
+        {
+          "active": false,
+          "at": 49830.10000000149
+        },
+        {
+          "active": true,
+          "at": 50740.60000000149
+        },
+        {
+          "active": false,
+          "at": 52030
+        },
+        {
+          "active": true,
+          "at": 52210.60000000149
+        },
+        {
+          "active": false,
+          "at": 54509.89999999851
+        },
+        {
+          "active": true,
+          "at": 80748.39999999851
+        },
+        {
+          "active": false,
+          "at": 81407.29999999702
+        },
+        {
+          "active": true,
+          "at": 81550
+        },
+        {
+          "active": false,
+          "at": 84830.39999999851
+        },
+        {
+          "active": true,
+          "at": 85731
+        },
+        {
+          "active": false,
+          "at": 87030
+        },
+        {
+          "active": true,
+          "at": 87207.29999999702
+        },
+        {
+          "active": false,
+          "at": 89510
+        },
+        {
+          "active": true,
+          "at": 120576.70000000298
+        },
+        {
+          "active": false,
+          "at": 124270
+        },
+        {
+          "active": true,
+          "at": 124529.89999999851
+        },
+        {
+          "active": false,
+          "at": 126699.70000000298
+        },
+        {
+          "active": true,
+          "at": 127012.29999999702
+        },
+        {
+          "active": false,
+          "at": 129817.29999999702
+        },
+        {
+          "active": true,
+          "at": 150377.3999999985
+        },
+        {
+          "active": false,
+          "at": 151015
+        },
+        {
+          "active": true,
+          "at": 151189.8999999985
+        },
+        {
+          "active": false,
+          "at": 154470
+        },
+        {
+          "active": true,
+          "at": 155370.20000000298
+        },
+        {
+          "active": false,
+          "at": 156699.3999999985
+        },
+        {
+          "active": true,
+          "at": 185690
+        },
+        {
+          "active": false,
+          "at": 186310
+        },
+        {
+          "active": true,
+          "at": 186490
+        },
+        {
+          "active": false,
+          "at": 189750
+        },
+        {
+          "active": true,
+          "at": 190670
+        },
+        {
+          "active": false,
+          "at": 191970
+        },
+        {
+          "active": true,
+          "at": 192141.8999999985
+        },
+        {
+          "active": false,
+          "at": 194430
+        },
+        {
+          "active": true,
+          "at": 222870.79999999702
+        },
+        {
+          "active": false,
+          "at": 226495.5
+        },
+        {
+          "active": true,
+          "at": 226733.8999999985
+        },
+        {
+          "active": false,
+          "at": 228943.8999999985
+        },
+        {
+          "active": true,
+          "at": 229230
+        },
+        {
+          "active": false,
+          "at": 232030
+        },
+        {
+          "active": true,
+          "at": 254830
+        },
+        {
+          "active": false,
+          "at": 255510
+        },
+        {
+          "active": true,
+          "at": 255649.8999999985
+        },
+        {
+          "active": false,
+          "at": 258913.5
+        },
+        {
+          "active": true,
+          "at": 259829.3999999985
+        },
+        {
+          "active": false,
+          "at": 261110.29999999702
+        },
+        {
+          "active": true,
+          "at": 261310.3999999985
+        },
+        {
+          "active": false,
+          "at": 263577.5
+        },
+        {
+          "active": true,
+          "at": 289910.6000000015
+        },
+        {
+          "active": false,
+          "at": 290550
+        },
+        {
+          "active": true,
+          "at": 290729.8999999985
+        },
+        {
+          "active": false,
+          "at": 293989.8999999985
+        },
+        {
+          "active": true,
+          "at": 294890
+        },
+        {
+          "active": false,
+          "at": 296190
+        },
+        {
+          "active": true,
+          "at": 296370
+        },
+        {
+          "active": false,
+          "at": 296752.8999999985
+        },
+        {
+          "active": true,
+          "at": 328669.5
+        },
+        {
+          "active": false,
+          "at": 332190
+        },
+        {
+          "active": true,
+          "at": 332454.6000000015
+        },
+        {
+          "active": false,
+          "at": 337390
+        },
+        {
+          "active": true,
+          "at": 359831.700000003
+        },
+        {
+          "active": false,
+          "at": 360470.799999997
+        },
+        {
+          "active": true,
+          "at": 360616.1000000015
+        },
+        {
+          "active": false,
+          "at": 363870
+        },
+        {
+          "active": true,
+          "at": 364770
+        },
+        {
+          "active": false,
+          "at": 366090
+        },
+        {
+          "active": true,
+          "at": 366260.5
+        },
+        {
+          "active": false,
+          "at": 368550.299999997
+        },
+        {
+          "active": true,
+          "at": 395106.299999997
+        },
+        {
+          "active": false,
+          "at": 395749.8999999985
+        },
+        {
+          "active": true,
+          "at": 395910
+        },
+        {
+          "active": false,
+          "at": 399190
+        },
+        {
+          "active": true,
+          "at": 400090
+        },
+        {
+          "active": false,
+          "at": 401377.8999999985
+        },
+        {
+          "active": true,
+          "at": 401570
+        },
+        {
+          "active": false,
+          "at": 403830
+        },
+        {
+          "active": true,
+          "at": 403870
+        },
+        {
+          "active": false,
+          "at": 403910.3999999985
+        },
+        {
+          "active": true,
+          "at": 432717.799999997
+        },
+        {
+          "active": false,
+          "at": 436270
+        },
+        {
+          "active": true,
+          "at": 436512.799999997
+        },
+        {
+          "active": false,
+          "at": 436853.299999997
+        },
+        {
+          "active": true,
+          "at": 464871.1000000015
+        },
+        {
+          "active": false,
+          "at": 465513.299999997
+        },
+        {
+          "active": true,
+          "at": 465690
+        },
+        {
+          "active": false,
+          "at": 468950
+        },
+        {
+          "active": true,
+          "at": 469853.8999999985
+        },
+        {
+          "active": false,
+          "at": 471170
+        },
+        {
+          "active": true,
+          "at": 471347.700000003
+        },
+        {
+          "active": false,
+          "at": 473637.200000003
+        },
+        {
+          "active": true,
+          "at": 500084.299999997
+        },
+        {
+          "active": false,
+          "at": 500710
+        },
+        {
+          "active": true,
+          "at": 500861.8999999985
+        },
+        {
+          "active": false,
+          "at": 504150
+        },
+        {
+          "active": true,
+          "at": 505065.1000000015
+        },
+        {
+          "active": false,
+          "at": 506370
+        },
+        {
+          "active": true,
+          "at": 506532.3999999985
+        },
+        {
+          "active": false,
+          "at": 508820.8999999985
+        },
+        {
+          "active": true,
+          "at": 537570.299999997
+        },
+        {
+          "active": false,
+          "at": 541134.700000003
+        },
+        {
+          "active": true,
+          "at": 541394.6000000015
+        },
+        {
+          "active": false,
+          "at": 546336.6000000015
+        },
+        {
+          "active": true,
+          "at": 570284.3999999985
+        },
+        {
+          "active": false,
+          "at": 570910
+        },
+        {
+          "active": true,
+          "at": 571101.299999997
+        },
+        {
+          "active": false,
+          "at": 574352.299999997
+        },
+        {
+          "active": true,
+          "at": 575250
+        },
+        {
+          "active": false,
+          "at": 576570
+        },
+        {
+          "active": true,
+          "at": 576730.1000000015
+        },
+        {
+          "active": false,
+          "at": 576901.5
+        },
+        {
+          "active": true,
+          "at": 604730
+        },
+        {
+          "active": false,
+          "at": 605394.1000000015
+        },
+        {
+          "active": true,
+          "at": 605549.8999999985
+        },
+        {
+          "active": false,
+          "at": 608812.200000003
+        }
+      ],
+      "voice_events": [
+        {
+          "type": "speaking_start",
+          "seq": 5,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "media_ms": 3640,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 7,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": true,
+          "media_ms": 3740,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 8,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": false,
+          "media_ms": 4380,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 9,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": true,
+          "media_ms": 4520,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 10,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": false,
+          "media_ms": 7800,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 11,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": true,
+          "media_ms": 8560,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 12,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": false,
+          "media_ms": 8580,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 13,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": true,
+          "media_ms": 8680,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 14,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": false,
+          "media_ms": 10000,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 15,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": true,
+          "media_ms": 10160,
+          "generation": 0
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 17,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "media_ms": 10580,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 19,
+          "turn_id": "bb0e8b49f5dd452f8f6feb219e2941f0",
+          "active": false,
+          "media_ms": 10620,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 24,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "media_ms": 39300,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 26,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": true,
+          "media_ms": 39400,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 27,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": false,
+          "media_ms": 40040,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 28,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": true,
+          "media_ms": 40180,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 29,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": false,
+          "media_ms": 43460,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 30,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": true,
+          "media_ms": 44220,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 31,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": false,
+          "media_ms": 44240,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 32,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": true,
+          "media_ms": 44360,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 33,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": false,
+          "media_ms": 45660,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 34,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": true,
+          "media_ms": 45840,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 35,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "active": false,
+          "media_ms": 48120,
+          "generation": 1
+        },
+        {
+          "type": "speaking_end",
+          "seq": 37,
+          "turn_id": "2bc525b136ef4ca2bd3b42893902c206",
+          "media_ms": 48240,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 44,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "media_ms": 73960,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 46,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": true,
+          "media_ms": 74060,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 47,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": false,
+          "media_ms": 74700,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 48,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": true,
+          "media_ms": 74840,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 49,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": false,
+          "media_ms": 78120,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 50,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": true,
+          "media_ms": 78880,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 51,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": false,
+          "media_ms": 78900,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 52,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": true,
+          "media_ms": 79020,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 53,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": false,
+          "media_ms": 80320,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 54,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": true,
+          "media_ms": 80480,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 55,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "active": false,
+          "media_ms": 82780,
+          "generation": 1
+        },
+        {
+          "type": "speaking_end",
+          "seq": 57,
+          "turn_id": "19cb7b317e244be4917a23ce845f8a4b",
+          "media_ms": 82900,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 98,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "media_ms": 113100,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 102,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "active": true,
+          "media_ms": 113200,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 103,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "active": false,
+          "media_ms": 116740,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 104,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "active": true,
+          "media_ms": 117000,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 105,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "active": false,
+          "media_ms": 119180,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 108,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "active": true,
+          "media_ms": 119480,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 109,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "active": false,
+          "media_ms": 122280,
+          "generation": 1
+        },
+        {
+          "type": "speaking_end",
+          "seq": 111,
+          "turn_id": "e9104eaa76f24cb192ebb593ffe593f3",
+          "media_ms": 122440,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 118,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "media_ms": 142440,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 120,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": true,
+          "media_ms": 142540,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 121,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": false,
+          "media_ms": 143180,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 122,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": true,
+          "media_ms": 143320,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 123,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": false,
+          "media_ms": 146600,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 124,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": true,
+          "media_ms": 147360,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 125,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": false,
+          "media_ms": 147380,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 126,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": true,
+          "media_ms": 147480,
+          "generation": 1
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 128,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "media_ms": 148780,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 130,
+          "turn_id": "3d80e09f644b4b489eafb851399d73b3",
+          "active": false,
+          "media_ms": 148820,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 135,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "media_ms": 177280,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 137,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": true,
+          "media_ms": 177380,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 138,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": false,
+          "media_ms": 178020,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 139,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": true,
+          "media_ms": 178160,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 140,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": false,
+          "media_ms": 181440,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 141,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": true,
+          "media_ms": 182200,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 142,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": false,
+          "media_ms": 182220,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 143,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": true,
+          "media_ms": 182320,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 144,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": false,
+          "media_ms": 183640,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 145,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": true,
+          "media_ms": 183800,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 146,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "active": false,
+          "media_ms": 186100,
+          "generation": 2
+        },
+        {
+          "type": "speaking_end",
+          "seq": 148,
+          "turn_id": "aeafba5327544a4491c7f04380f6a007",
+          "media_ms": 186220,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 191,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "media_ms": 214100,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 193,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "active": true,
+          "media_ms": 214200,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 194,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "active": false,
+          "media_ms": 217740,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 195,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "active": true,
+          "media_ms": 218000,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 196,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "active": false,
+          "media_ms": 220180,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 199,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "active": true,
+          "media_ms": 220480,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 200,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "active": false,
+          "media_ms": 223280,
+          "generation": 2
+        },
+        {
+          "type": "speaking_end",
+          "seq": 202,
+          "turn_id": "43ac6e077dd549719c506788357332d2",
+          "media_ms": 223440,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 209,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "media_ms": 245640,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 211,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": true,
+          "media_ms": 245740,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 212,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": false,
+          "media_ms": 246380,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 213,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": true,
+          "media_ms": 246520,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 214,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": false,
+          "media_ms": 249800,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 215,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": true,
+          "media_ms": 250560,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 216,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": false,
+          "media_ms": 250580,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 217,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": true,
+          "media_ms": 250700,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 218,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": false,
+          "media_ms": 252000,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 219,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": true,
+          "media_ms": 252180,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 220,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "active": false,
+          "media_ms": 254460,
+          "generation": 2
+        },
+        {
+          "type": "speaking_end",
+          "seq": 222,
+          "turn_id": "502860a2d394461e9962831a376115da",
+          "media_ms": 254580,
+          "generation": 2
+        },
+        {
+          "type": "speaking_start",
+          "seq": 229,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "media_ms": 280360,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 231,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": true,
+          "media_ms": 280460,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 232,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": false,
+          "media_ms": 281100,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 233,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": true,
+          "media_ms": 281240,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 234,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": false,
+          "media_ms": 284520,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 235,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": true,
+          "media_ms": 285280,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 236,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": false,
+          "media_ms": 285300,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 237,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": true,
+          "media_ms": 285400,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 238,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": false,
+          "media_ms": 286720,
+          "generation": 2
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 239,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": true,
+          "media_ms": 286900,
+          "generation": 2
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 241,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "media_ms": 287240,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 243,
+          "turn_id": "c4a8d054d37f4e029832a14fc7a074aa",
+          "active": false,
+          "media_ms": 287280,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 283,
+          "turn_id": "b07897dd4299407abe80240e9a67d5fe",
+          "media_ms": 318620,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 285,
+          "turn_id": "b07897dd4299407abe80240e9a67d5fe",
+          "active": true,
+          "media_ms": 318720,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 286,
+          "turn_id": "b07897dd4299407abe80240e9a67d5fe",
+          "active": false,
+          "media_ms": 322260,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 287,
+          "turn_id": "b07897dd4299407abe80240e9a67d5fe",
+          "active": true,
+          "media_ms": 322500,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 288,
+          "turn_id": "b07897dd4299407abe80240e9a67d5fe",
+          "active": false,
+          "media_ms": 327460,
+          "generation": 3
+        },
+        {
+          "type": "speaking_end",
+          "seq": 290,
+          "turn_id": "b07897dd4299407abe80240e9a67d5fe",
+          "media_ms": 327600,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 297,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "media_ms": 349440,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 299,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": true,
+          "media_ms": 349540,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 300,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": false,
+          "media_ms": 350180,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 301,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": true,
+          "media_ms": 350320,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 302,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": false,
+          "media_ms": 353600,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 303,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": true,
+          "media_ms": 354360,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 304,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": false,
+          "media_ms": 354380,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 305,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": true,
+          "media_ms": 354480,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 306,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": false,
+          "media_ms": 355800,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 307,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": true,
+          "media_ms": 355980,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 308,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "active": false,
+          "media_ms": 358260,
+          "generation": 3
+        },
+        {
+          "type": "speaking_end",
+          "seq": 310,
+          "turn_id": "2432f66e006243daa475f486c181e1c2",
+          "media_ms": 358380,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 317,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "media_ms": 384400,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 319,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": true,
+          "media_ms": 384500,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 320,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": false,
+          "media_ms": 385140,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 321,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": true,
+          "media_ms": 385280,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 322,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": false,
+          "media_ms": 388560,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 323,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": true,
+          "media_ms": 389320,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 324,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": false,
+          "media_ms": 389340,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 325,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": true,
+          "media_ms": 389440,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 326,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": false,
+          "media_ms": 390760,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 327,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": true,
+          "media_ms": 390940,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 328,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": false,
+          "media_ms": 393200,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 329,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": true,
+          "media_ms": 393260,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 330,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "active": false,
+          "media_ms": 393280,
+          "generation": 3
+        },
+        {
+          "type": "speaking_end",
+          "seq": 332,
+          "turn_id": "f7975547374d44f9a3be250c0aeb020b",
+          "media_ms": 393400,
+          "generation": 3
+        },
+        {
+          "type": "speaking_start",
+          "seq": 374,
+          "turn_id": "90cd87980c784618b8d1980164c68c66",
+          "media_ms": 421560,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 376,
+          "turn_id": "90cd87980c784618b8d1980164c68c66",
+          "active": true,
+          "media_ms": 421660,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 377,
+          "turn_id": "90cd87980c784618b8d1980164c68c66",
+          "active": false,
+          "media_ms": 425200,
+          "generation": 3
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 378,
+          "turn_id": "90cd87980c784618b8d1980164c68c66",
+          "active": true,
+          "media_ms": 425440,
+          "generation": 3
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 380,
+          "turn_id": "90cd87980c784618b8d1980164c68c66",
+          "media_ms": 425720,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 382,
+          "turn_id": "90cd87980c784618b8d1980164c68c66",
+          "active": false,
+          "media_ms": 425760,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 387,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "media_ms": 453360,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 389,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": true,
+          "media_ms": 453460,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 390,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": false,
+          "media_ms": 454100,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 391,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": true,
+          "media_ms": 454240,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 392,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": false,
+          "media_ms": 457520,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 393,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": true,
+          "media_ms": 458280,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 394,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": false,
+          "media_ms": 458300,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 395,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": true,
+          "media_ms": 458420,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 396,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": false,
+          "media_ms": 459720,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 397,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": true,
+          "media_ms": 459900,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 398,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "active": false,
+          "media_ms": 462180,
+          "generation": 4
+        },
+        {
+          "type": "speaking_end",
+          "seq": 400,
+          "turn_id": "6796e75e228e4a4fab89af6a16547045",
+          "media_ms": 462300,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 407,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "media_ms": 488160,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 409,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": true,
+          "media_ms": 488260,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 410,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": false,
+          "media_ms": 488900,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 411,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": true,
+          "media_ms": 489040,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 412,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": false,
+          "media_ms": 492320,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 413,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": true,
+          "media_ms": 493220,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 414,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": false,
+          "media_ms": 494520,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 415,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": true,
+          "media_ms": 494700,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 416,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "active": false,
+          "media_ms": 496980,
+          "generation": 4
+        },
+        {
+          "type": "speaking_end",
+          "seq": 418,
+          "turn_id": "7dc07c9632854615aea25b1908827635",
+          "media_ms": 497100,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 460,
+          "turn_id": "958066054ee14707a7c2f2725ef76f12",
+          "media_ms": 525200,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 462,
+          "turn_id": "958066054ee14707a7c2f2725ef76f12",
+          "active": true,
+          "media_ms": 525300,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 463,
+          "turn_id": "958066054ee14707a7c2f2725ef76f12",
+          "active": false,
+          "media_ms": 528840,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 464,
+          "turn_id": "958066054ee14707a7c2f2725ef76f12",
+          "active": true,
+          "media_ms": 529080,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 465,
+          "turn_id": "958066054ee14707a7c2f2725ef76f12",
+          "active": false,
+          "media_ms": 534020,
+          "generation": 4
+        },
+        {
+          "type": "speaking_end",
+          "seq": 467,
+          "turn_id": "958066054ee14707a7c2f2725ef76f12",
+          "media_ms": 534180,
+          "generation": 4
+        },
+        {
+          "type": "speaking_start",
+          "seq": 474,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "media_ms": 557600,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 476,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": true,
+          "media_ms": 557700,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 477,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": false,
+          "media_ms": 558340,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 478,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": true,
+          "media_ms": 558500,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 479,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": false,
+          "media_ms": 561760,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 480,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": true,
+          "media_ms": 562520,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 481,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": false,
+          "media_ms": 562540,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 482,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": true,
+          "media_ms": 562660,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 483,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": false,
+          "media_ms": 563960,
+          "generation": 4
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 484,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": true,
+          "media_ms": 564140,
+          "generation": 4
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 486,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "media_ms": 564260,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 488,
+          "turn_id": "07fa33407090414e983e9ea75faed85b",
+          "active": false,
+          "media_ms": 564280,
+          "generation": 5
+        },
+        {
+          "type": "speaking_start",
+          "seq": 493,
+          "turn_id": "5129e56a36814074a4ccb80717a111b6",
+          "media_ms": 591660,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 495,
+          "turn_id": "5129e56a36814074a4ccb80717a111b6",
+          "active": true,
+          "media_ms": 591760,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 496,
+          "turn_id": "5129e56a36814074a4ccb80717a111b6",
+          "active": false,
+          "media_ms": 592400,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 497,
+          "turn_id": "5129e56a36814074a4ccb80717a111b6",
+          "active": true,
+          "media_ms": 592540,
+          "generation": 5
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 498,
+          "turn_id": "5129e56a36814074a4ccb80717a111b6",
+          "active": false,
+          "media_ms": 595820,
+          "generation": 5
+        }
+      ],
+      "record": {
+        "result": {
+          "filename": "record_447695a0cedc463d9fb02d564d30d893.mp4",
+          "url": "/download/record_447695a0cedc463d9fb02d564d30d893.mp4"
+        },
+        "error": null
+      }
+    }
+  ]
+}

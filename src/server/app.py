@@ -75,11 +75,15 @@ def main():
     # 載入配置
     state.config_path = args.config
     state.config = load_config(config_file=args.config)
+    from src.server.presentation_jobs import recover_pending
+    recover_pending()
     logger.info(f"已載入配置: {state.config}")
     from src.scene.service import SceneError, scene_service
+    from src.avatars.presentation import mode
 
     try:
-        scene_service.select(getattr(state.config.stage, "background_id", ""))
+        scene_options = {"preview_only": True} if mode(state.config) == "prerecorded" else {}
+        scene_service.select(getattr(state.config.stage, "background_id", ""), **scene_options)
     except SceneError as exc:
         logger.warning("未能載入已選舞台背景：%s", exc)
         state.config.stage.background_id = ""
@@ -104,6 +108,10 @@ def main():
     engine = state.config.model.type
     avatar_id = state.config.model.avatar_id
     bootable, reason = avatar_bootable(engine, avatar_id)
+    from src.avatars.presentation import mode, snapshot
+    if mode(state.config) == "prerecorded":
+        presentation = snapshot(state.config)
+        bootable, reason = presentation["ready"], presentation["reason"]
     if bootable:
         logger.info(f"正在載入數字人: {engine} / {avatar_id}")
         try:

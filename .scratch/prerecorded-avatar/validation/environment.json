@@ -1,0 +1,21 @@
+{
+  "hardware": "NVIDIA Jetson AGX Orin Developer Kit",
+  "jetson_linux": "R39.2.1",
+  "power_mode": "MODE_50W (3)",
+  "browser": "Chromium 154.0.8037.97",
+  "display": "X11 :1",
+  "render_fps": 24.39944051447858,
+  "render_max_gap_ms": 116.70000000000073,
+  "mp4_video_frames": 665,
+  "mp4_duration_seconds": 46.131708,
+  "mp4_effective_video_fps": 14.4369,
+  "note": "45s initial single-window smoke; recorder cadence still under investigation",
+  "llm_model": "Qwen3.5-2B-UD-Q4_K_XL",
+  "tts_type": "edgetts",
+  "tts_voice": "zh-TW-HsiaoChenNeural",
+  "asr": "funasr",
+  "other_load": "RustDesk, local RAGFlow/MySQL/Ollama services; workspace development index workers suspended during final benchmark and resumed afterward",
+  "stage_background": "1080x1920 H264 video, 25fps, 5s loop",
+  "output": "1080x1920,25fps",
+  "recorder": "Explicit canvas frame requests; H264/Opus MP4 in this Chromium; video packet copy, AAC audio export"
+}

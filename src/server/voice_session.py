@@ -107,6 +107,7 @@ class VoiceTurnSession:
         self._manual_pause = False
         self._closed = False
         self._prepare_error = ""
+        self._preparing = False
         self._segmenter = None
         self._asr = None
         self._track_task: Optional[asyncio.Task] = None
@@ -171,19 +172,24 @@ class VoiceTurnSession:
     async def prepare(self) -> None:
         """Prewarm Silero and STT before the session may announce listening."""
         if not bool(getattr(self.config.vad, "enabled", True)):
+            self._preparing = False
             self._close_gate()
             self._emit("state", state="paused")
             return
+        self._preparing = True
+        self._close_gate()
         self._emit("state", state="preparing")
         loop = asyncio.get_running_loop()
         try:
             await loop.run_in_executor(None, self._prepare_sync)
         except Exception as exc:
+            self._preparing = False
             self._prepare_error = str(exc)
             self._gate_open = False
             logger.exception("Voice session prewarm failed")
             self._emit("state", state="degraded", error=self._prepare_error)
             return
+        self._preparing = False
         self._refresh_gate()
 
     def _prepare_sync(self) -> None:
@@ -1284,6 +1290,7 @@ class VoiceTurnSession:
             not self._closed
             and bool(getattr(self.config.vad, "enabled", True))
             and not self._prepare_error
+            and not self._preparing
             and self._event_sink is not None
             and self._capture_requested
             and not self._manual_pause
@@ -1388,6 +1395,16 @@ class VoiceTurnSession:
         if kind == "end":
             self._emit("board_end", turn_id=turn_id, board_id=board_id)
 
+    def on_output_audio_clock(self, active, media_seconds, eventpoint):
+        from src.avatars.presentation import mode
+        if mode(self.config) != "prerecorded":
+            return
+        self._presentation_media_ms = round(media_seconds * 1000)
+        previous = getattr(self, "_presentation_active", False)
+        self._presentation_active = bool(active)
+        if bool(active) != previous:
+            self._emit("presentation_activity", active=bool(active))
+
     def _emit(self, event_type: str, *, turn_id: Optional[str] = None, **payload) -> None:
         if self._event_sink is None:
             return
@@ -1398,6 +1415,9 @@ class VoiceTurnSession:
             "turn_id": turn_id if turn_id is not None else self._turn_id,
             **payload,
         }
+        if hasattr(self, "_presentation_media_ms"):
+            event.setdefault("media_ms", self._presentation_media_ms)
+            event.setdefault("generation", self._generation)
         try:
             self._event_sink(json.dumps(event, ensure_ascii=False))
         except Exception as exc:

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
 """HTTP-level regression tests for the lightweight health endpoint."""
 
 import unittest
@@ -38,6 +40,7 @@ class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
                     "code": 0,
                     "ready": True,
                     "model_ready": True,
+                    "switching": False,
                     "avatar": {"type": "ernerf", "avatar_id": "demo"},
                     "vad": {"enabled": True, "type": "silero"},
                 },

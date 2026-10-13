@@ -174,6 +174,29 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         return session, avatar, events
 
+    async def test_parallel_prepare_keeps_capture_gate_closed_until_ready(self):
+        import threading
+        entered, finish = threading.Event(), threading.Event()
+        session, _, events = self.make_session()
+        def warm():
+            entered.set()
+            finish.wait(2)
+        with patch.object(session, "_prepare_sync", side_effect=warm):
+            pending = asyncio.create_task(session.prepare())
+            try:
+                while not entered.is_set():
+                    await asyncio.sleep(.005)
+                events.clear()
+                session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
+                session._refresh_gate()
+                self.assertFalse(session._gate_open)
+                self.assertFalse(any(e.get("state") == "listening" for e in events))
+            finally:
+                finish.set()
+            await pending
+            self.assertTrue(session._gate_open)
+        await session.close()
+
     async def test_final_transcript_and_response_share_one_turn(self):
         segment = SimpleNamespace(
             audio=np.ones(1600, dtype=np.int16),

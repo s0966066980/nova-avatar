@@ -332,11 +332,12 @@
           role="tabpanel"
           aria-labelledby="railTab-avatar"
         >
+          <PrerecordedAvatarPanel :avatar-id="selectedAvatarId" :engine="selectedEngine" :is-current="selectedAvatarId === runtime.avatar.avatar_id" @applied="loadRuntimeSettings" @loaded="onPresentationLoaded" />
           <!-- 左欄：演算法引擎與貼回畫質參數 -->
-          <section class="setting-card">
+          <section v-if="selectedPresentation !== 'prerecorded'" class="setting-card">
             <div class="card-title-row">
               <div>
-                <div class="card-title-text"><i class="bi bi-layers-fill"></i> 唇形驅動引擎與畫質調優</div>
+                <div class="card-title-text"><i class="bi bi-layers-fill"></i> MuseTalk 即時嘴型與畫質設定</div>
                 <div class="card-subtitle-desc">選擇驅動人臉口型的神經網路架構與高清貼回參數。</div>
               </div>
               <button
@@ -1384,6 +1385,7 @@ import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
 import RagFlowSettings from './RagFlowSettings.vue'
+import PrerecordedAvatarPanel from './PrerecordedAvatarPanel.vue'
 import {
   boardReopenPresentation,
   captionStyle,
@@ -1393,6 +1395,9 @@ import {
   STAGE_CAPTION_RATIO
 } from '../stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
+
+const selectedPresentation = ref('musetalk')
+const onPresentationLoaded = (value) => { selectedPresentation.value = value.mode }
 
 const { t, setLocale } = useI18n()
 const props = defineProps({

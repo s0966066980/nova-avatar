@@ -1,0 +1,12 @@
+[
+  {
+    "mode": "musetalk",
+    "health_ready": true,
+    "pair_ready": true
+  },
+  {
+    "mode": "prerecorded",
+    "health_ready": true,
+    "pair_ready": true
+  }
+]

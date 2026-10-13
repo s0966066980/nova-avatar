@@ -18,6 +18,8 @@ class ServerState:
         self.voice_sessions: Dict[int, Any] = {}
         self.voice_test_history = VoiceTestHistory()
         self.session_roles: Dict[int, str] = {}
+        self.session_clients: Dict[int, str] = {}
+        self.session_cleanups: Dict[int, Any] = {}
         
         # WebRTC 連線管理
         self.pcs: Set[RTCPeerConnection] = set()
@@ -50,6 +52,8 @@ class ServerState:
             del self.avatar_streams[sessionid]
         self.voice_sessions.pop(sessionid, None)
         self.session_roles.pop(sessionid, None)
+        self.session_clients.pop(sessionid, None)
+        self.session_cleanups.pop(sessionid, None)
 
     def count_sessions(self, role: str) -> int:
         """計算指定頁面角色的會話；舊會話預設視為控制台。"""

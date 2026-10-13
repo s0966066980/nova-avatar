@@ -382,10 +382,10 @@ See LICENSE and NOTICE.
                 <button
                   class="btn-stage-sub"
                   @click="isRecording ? handleStopRecord() : handleStartRecord()"
-                  :disabled="!isConnected"
+                  :disabled="!isConnected || recordExportProgress !== null"
                 >
                   <i class="bi bi-record-circle" :style="{ color: isRecording ? 'var(--danger)' : '' }"></i>
-                  {{ isRecording ? '停止錄影' : '開始錄影' }}
+                  {{ recordExportProgress !== null ? `正在匯出 ${recordExportProgress}%` : isRecording ? '停止錄影' : '開始錄影' }}
                 </button>
 
                 <button
@@ -461,6 +461,8 @@ import { useWebRTC } from './composables/useWebRTC'
 import { useI18n } from './composables/useI18n'
 import { useRuntimeSettings } from './composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from './scenePreview.js'
+import { presentationPlayer, exportSceneRecording } from './prerecordedPlayer.js'
+import { downloadMedia } from './mediaDownload.js'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
@@ -548,6 +550,7 @@ const renderMarkdown = (text) => {
 const sessionId = ref(0)
 const connectionStatus = ref('disconnected')
 const isRecording = ref(false)
+const recordExportProgress = ref(null)
 const activeMode = ref('chat')
 const chatInput = ref('')
 const ttsInput = ref('')
@@ -1008,7 +1011,10 @@ const {
   onConnectionState: (state) => {
     if (state === 'connected') connectionStatus.value = 'connected'
     if (state === 'failed') connectionStatus.value = 'disconnected'
-    if (state === 'reconnecting') voiceState.value = 'reconnecting'
+    if (state === 'preparing' || state === 'reconnecting') {
+      connectionStatus.value = 'connecting'
+      voiceState.value = 'reconnecting'
+    }
     if (state === 'text_only') voiceState.value = 'degraded'
   }
 })
@@ -1184,6 +1190,7 @@ const onAvatarReady = async () => {
   await checkBackendReady()
 }
 
+let connectionAttempt = 0
 const handleStartConnection = async () => {
   console.log('🚀 使用者點選"開始連線"按鈕')
   if (connectionStatus.value === 'connecting') return
@@ -1198,6 +1205,7 @@ const handleStartConnection = async () => {
     return
   }
   
+  const attempt = ++connectionAttempt
   connectionStatus.value = 'connecting'
   // Establish A/V first. Even with Silero VAD enabled, the user must press
   // the microphone before the console transmits any microphone audio.
@@ -1211,29 +1219,14 @@ const handleStartConnection = async () => {
       showNotification(t('notifications.connectSuccess'), 'success')
     }
     
-    const checkConnection = setInterval(() => {
-      const video = document.getElementById('video')
-      if (video && video.readyState >= 3 && video.videoWidth > 0) {
-        connectionStatus.value = 'connected'
-        clearInterval(checkConnection)
-        
-        // 自動錄製
-        if (appSettings.value.autoRecord) {
-          setTimeout(() => {
-            handleStartRecord()
-          }, 1000)
-        }
-      }
-    }, 2000)
-    
-    setTimeout(() => {
-      if (connectionStatus.value === 'connecting') {
-        connectionStatus.value = 'disconnected'
-        showNotification(t('notifications.connectTimeout'), 'error')
-      }
-      clearInterval(checkConnection)
-    }, 60000)
+    if (attempt !== connectionAttempt) return
+    if (appSettings.value.autoRecord) {
+      setTimeout(() => {
+        if (attempt === connectionAttempt && connectionStatus.value === 'connected') handleStartRecord()
+      }, 1000)
+    }
   } catch (error) {
+    if (attempt !== connectionAttempt || error.name === 'AbortError') return
     console.error('連線失敗:', error)
     connectionStatus.value = 'disconnected'
     showNotification(t('notifications.connectFailed'), 'error')
@@ -1241,6 +1234,7 @@ const handleStartConnection = async () => {
 }
 
 const handleStopConnection = () => {
+  connectionAttempt++
   handsFreePaused.value = false
   stopPlay()
   sessionId.value = 0
@@ -1251,6 +1245,28 @@ const handleStopConnection = () => {
 }
 
 const handleStartRecord = async () => {
+  const player = presentationPlayer(document.getElementById('video'))
+  if (player) {
+    try {
+      player.startRecording(async (blob) => {
+        isRecording.value = false
+        recordExportProgress.value = 0
+        showNotification('正在保存並匯出 MP4…', 'info')
+        try {
+          const result = await exportSceneRecording(blob, (job) => { recordExportProgress.value = job.progress })
+          lastRecordFile.value = { filename: result.filename }
+          showNotification('MP4 已完成，可以下載錄影', 'success')
+        } catch (error) {
+          const url = URL.createObjectURL(blob)
+          lastRecordFile.value = { filename: `scene-original.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`, url }
+          showNotification(`匯出失敗，已保留原始錄影：${error.message}`, 'error')
+        } finally { recordExportProgress.value = null }
+      })
+      isRecording.value = true
+      showNotification('開始錄影，請保持這個頁面在前景', 'success')
+    } catch (error) { showNotification(error.message, 'error') }
+    return
+  }
   if (!sessionId.value) {
     console.error('無法錄製：sessionId 為空')
     showNotification(t('notifications.connectFirst'), 'warning')
@@ -1288,6 +1304,8 @@ const handleStartRecord = async () => {
 }
 
 const handleStopRecord = async () => {
+  const player = presentationPlayer(document.getElementById('video'))
+  if (player) { player.stopRecording(); return }
   if (!sessionId.value) {
     console.error('無法停止錄製：sessionId 為空')
     return
@@ -1333,21 +1351,17 @@ const handleStopRecord = async () => {
   }
 }
 
-const downloadRecord = () => {
+const downloadRecord = async () => {
   if (!lastRecordFile.value) {
     showNotification(t('notifications.noRecordFile'), 'warning')
     return
   }
   
-  const downloadUrl = `/download/${lastRecordFile.value.filename}`
-  const link = document.createElement('a')
-  link.href = downloadUrl
-  link.download = lastRecordFile.value.filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  
-  showNotification(t('notifications.downloading'), 'info')
+  const downloadUrl = lastRecordFile.value.url || `/download/${lastRecordFile.value.filename}`
+  try {
+    showNotification(t('notifications.downloading'), 'info')
+    await downloadMedia(downloadUrl, lastRecordFile.value.filename)
+  } catch (error) { showNotification(error.message, 'error') }
 }
 
 const scrollMessagesToEnd = () => {

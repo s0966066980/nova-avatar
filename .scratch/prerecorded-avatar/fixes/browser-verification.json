@@ -1,0 +1,91 @@
+{
+  "downloads": [
+    {
+      "kind": "console-record",
+      "bytes": 1291582
+    },
+    {
+      "kind": "stage-record",
+      "bytes": 1206514
+    },
+    {
+      "kind": "asset",
+      "bytes": 3767127
+    }
+  ],
+  "switches": [
+    {
+      "mode": "musetalk",
+      "ms": 35831.052351990365
+    },
+    {
+      "mode": "prerecorded",
+      "ms": 7494.387580998591
+    },
+    {
+      "mode": "musetalk",
+      "ms": 31071.22498699755
+    },
+    {
+      "mode": "prerecorded",
+      "ms": 6399.72491300432
+    }
+  ],
+  "offers": {
+    "console": [
+      {
+        "ms": 43.400000005960464,
+        "status": 200,
+        "sessionid": 413929
+      },
+      {
+        "ms": 6093.0999999940395,
+        "status": 200,
+        "sessionid": 874235
+      },
+      {
+        "ms": 97.80000001192093,
+        "status": 200,
+        "sessionid": 539689
+      },
+      {
+        "ms": 6516.79999999702,
+        "status": 200,
+        "sessionid": 408497
+      },
+      {
+        "ms": 53.8999999910593,
+        "status": 200,
+        "sessionid": 245222
+      }
+    ],
+    "stage": [
+      {
+        "ms": 36.900000005960464,
+        "status": 200,
+        "sessionid": 973745
+      },
+      {
+        "ms": 6223,
+        "status": 200,
+        "sessionid": 318748
+      },
+      {
+        "ms": 50.79999999701977,
+        "status": 200,
+        "sessionid": 733843
+      },
+      {
+        "ms": 6513.600000008941,
+        "status": 200,
+        "sessionid": 605704
+      },
+      {
+        "ms": 47.30000001192093,
+        "status": 200,
+        "sessionid": 913215
+      }
+    ]
+  },
+  "errors": []
+}

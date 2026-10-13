@@ -392,6 +392,11 @@ import {
 import { StageCaptionView } from '/src/stageCaptionView.js';
 import { shouldFadeStageReply } from '/src/stageReplyLifecycle.js';
 import { configureReplyPlayout } from '/src/replyPlayout.js';
+import { mountPresentation, presentationPlayer, exportSceneRecording } from '/src/prerecordedPlayer.js';
+import { downloadMedia } from '/src/mediaDownload.js';
+import { newClientId, releaseSession, avatarIsReady } from '/src/sessionTransport.js';
+const stageClientId = newClientId('stage');
+let stageGeneration = 0, stageRelease = Promise.resolve(), stageRetry = null, connectingPromise = null;
 import {
   boardReopenPresentation,
   captionStyle,
@@ -763,49 +768,82 @@ import {
   }
 
   // ── 建立 WebRTC 連線 ────────────────────────
-  async function connect(){
+  function connect(){
+    if(connectingPromise) return connectingPromise;
+    const pending = connectOnce();
+    connectingPromise = pending;
+    const clear = () => { if(connectingPromise === pending) connectingPromise = null; };
+    pending.then(clear, clear);
+    return pending;
+  }
+
+  function scheduleStageReconnect(){
+    if(stageRetry) return;
+    setCapture(false);
+    stageRetry = setTimeout(async () => {
+      stageRetry = null;
+      if(!(await avatarIsReady())) { scheduleStageReconnect(); return; }
+      await connect();
+      if(!pc) scheduleStageReconnect();
+    }, 1000);
+  }
+
+  async function connectOnce(){
     teardown();
+    const attempt = stageGeneration;
+    const checkCurrent = () => { if(attempt !== stageGeneration) throw new DOMException('連線已取消','AbortError'); };
     showVeil('連線中', '正在建立與數字人的即時通道。', {btn:'', onBtn:null});
     veilBtn.hidden = true;
 
-    pc = new RTCPeerConnection({iceServers:[]});
+    const peer = new RTCPeerConnection({iceServers:[]});
+    pc = peer;
 
     const remote = new MediaStream();
     // 只綁一次 srcObject。音軌與視訊軌是分開抵達的，每次 ontrack 都重綁會讓
     // 元素重新接管已在播放的音訊管線，兩軌可能因此跑在各自的時鐘上。
     video.srcObject = remote;
     pc.ontrack = (e) => {
+      if(attempt !== stageGeneration) return;
       configureReplyPlayout(e);
       if(!remote.getTracks().some(t => t.id === e.track.id)) remote.addTrack(e.track);
     };
     pc.onconnectionstatechange = () => {
-      const s = pc?.connectionState;
+      if(attempt !== stageGeneration) return;
+      const s = peer.connectionState;
       if(s === 'connected'){ live = true; hideVeil(); setMode(); refreshAffordance(); }
       if(s === 'failed' || s === 'disconnected'){
         live = false; refreshAffordance();
+        scheduleStageReconnect();
         showVeil('連線中斷', '與數字人的通道已斷開。', {isError:true, btn:'重新連線', onBtn:connect});
       }
     };
 
     chan = pc.createDataChannel('voice-events', {ordered:true});
-    chan.onopen = () => setCapture(autoMode && Boolean(micStream));
+    chan.onopen = () => { if(attempt === stageGeneration) setCapture(autoMode && !autoPaused && Boolean(micStream)); };
+    chan.onclose = () => { if(attempt === stageGeneration) scheduleStageReconnect(); };
     chan.onmessage = (e) => {
+      if(attempt !== stageGeneration) return;
       try{
         const msg = JSON.parse(e.data);
         if(!Number.isFinite(msg.seq) || msg.seq <= lastSeq) return;
         lastSeq = msg.seq;
+        if(msg.type === 'presentation_changing') { showVeil('切換呈現方式', '正在準備數位人，完成後會自動重新連線。', {btn:''}); scheduleStageReconnect(); return; }
+        presentationPlayer(video)?.receive(msg);
         onVoiceEvent(msg);
       }catch(_){ /* 壞掉的事件直接丟掉 */ }
     };
 
     // 麥克風拿不到也要能看數字人，退成純觀看
     try{
-      micStream = await navigator.mediaDevices.getUserMedia({
+      const microphone = await navigator.mediaDevices.getUserMedia({
         audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1}
       });
+      if(attempt !== stageGeneration) { microphone.getTracks().forEach(t=>t.stop()); return; }
+      micStream = microphone;
       pc.addTrack(micStream.getAudioTracks()[0], micStream);
       micStream.getAudioTracks()[0].enabled = false;
     }catch(err){
+      if(attempt !== stageGeneration) return;
       micStream = null;
       pc.addTransceiver('audio', {direction:'recvonly'});
       showSaid('麥克風無法使用，目前為純觀看');
@@ -813,15 +851,16 @@ import {
     pc.addTransceiver('video', {direction:'recvonly'});
 
     try{
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+      await stageRelease; checkCurrent();
+      const offer = await peer.createOffer(); checkCurrent();
+      await peer.setLocalDescription(offer); checkCurrent();
       const res = await fetch('/offer', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          client_role:'stage',
-          sdp:pc.localDescription.sdp,
-          type:pc.localDescription.type
+          client_role:'stage', client_id:stageClientId,
+          sdp:peer.localDescription.sdp,
+          type:peer.localDescription.type
         })
       });
       if(!res.ok){
@@ -830,31 +869,73 @@ import {
         if(res.status === 409){
           teardown();
           showVeil('數字人尚未就緒', m, {btn:'重試', onBtn:connect, alt:true});
+          scheduleStageReconnect();
           return;
         }
-        throw new Error(m);
+        const error = new Error(m);
+        error.retryable = [429,503].includes(res.status);
+        throw error;
       }
       const data = await res.json();
+      if(attempt !== stageGeneration) { await releaseSession(data.sessionid, stageClientId); return; }
       sessionId = data.sessionid;
-      await pc.setRemoteDescription(new RTCSessionDescription({sdp:data.sdp, type:data.type}));
+      await peer.setRemoteDescription(new RTCSessionDescription({sdp:data.sdp, type:data.type}));
+      checkCurrent();
+      await mountPresentation(video, data.presentation, (message) => showSaid(message), peer);
+      checkCurrent();
+      if(data.presentation?.mode === 'prerecorded') installSceneRecording();
     }catch(err){
+      if(attempt !== stageGeneration) return;
       teardown();
       showVeil('無法連線', String(err.message || err), {isError:true, btn:'重試', onBtn:connect});
+      if(err.retryable) scheduleStageReconnect();
     }
   }
 
   function teardown(){
+    stageGeneration++;
+    if(stageRetry) clearTimeout(stageRetry);
+    stageRetry = null;
+    if(sessionId) stageRelease = releaseSession(sessionId, stageClientId);
+    sessionId = 0;
+    presentationPlayer(video)?.dispose();
+    document.getElementById('scene-record-controls')?.remove();
     live = false; speaking = false; holding = false; interruptedPress = false; lastSeq = 0;
     clearReply();
-    if(chan){ chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){} }
+    if(chan){ chan.onopen=null; chan.onmessage=null; chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){} }
     chan = null;
-    if(pc){ try{pc.close();}catch(_){} }
+    if(pc){ pc.ontrack=null; pc.onconnectionstatechange=null; try{pc.close();}catch(_){} }
     pc = null;
     micStream?.getTracks().forEach(t => t.stop());
     micStream = null;
     video.srcObject = null;
     setVisual('idle');
     refreshAffordance();
+  }
+
+  function installSceneRecording(){
+    const controls = document.createElement('div');
+    controls.id = 'scene-record-controls';
+    controls.style.cssText = 'position:fixed;top:12px;right:12px;z-index:30;display:flex;gap:8px';
+    const button = document.createElement('button');
+    button.className = 'btn'; button.textContent = '開始錄影';
+    button.onclick = () => {
+      const player = presentationPlayer(video);
+      if(player?.recorder){ player.stopRecording(); button.disabled=true; button.textContent='正在匯出…'; return; }
+      try {
+        player.startRecording(async (blob) => {
+          button.disabled=true; button.textContent='正在匯出…';
+          let url, filename;
+          try { const result=await exportSceneRecording(blob, job=>{button.textContent=`正在匯出 ${job.progress}%`;}); url=result.url; filename=result.filename; }
+          catch(error){ url=URL.createObjectURL(blob); filename=`scene-original.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`; showSaid(`匯出失敗，保留原始錄影：${error.message}`); }
+          const link=document.createElement('a'); link.className='btn'; link.textContent='下載錄影'; link.href=url; link.download=filename;
+          link.onclick=async event=>{event.preventDefault();link.textContent='正在下載…';try{await downloadMedia(url,filename);}catch(error){showSaid(error.message);}finally{link.textContent='下載錄影';}};
+          controls.append(link); button.disabled=false; button.textContent='開始錄影';
+        });
+        button.textContent='停止錄影'; showSaid('錄影期間請保持這個視窗在前景');
+      } catch(error){ showSaid(error.message); }
+    };
+    controls.append(button); document.body.append(controls);
   }
 
   // ── 中央按鈕：按鍵收音 / 自動模式開關 / 插話 ──
@@ -915,6 +996,7 @@ import {
   };
 
   addEventListener('beforeunload', teardown);
+  addEventListener('pagehide', teardown);
 
   // 後台改 VAD 開關後，這裡最多 5 秒跟上
   setInterval(() => { syncVadMode(); syncStageSettings(); }, 5000);

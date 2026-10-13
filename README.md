@@ -144,7 +144,7 @@ bash scripts/start-jetson.sh
 ```
 
 - 使用 `config/config_jetson.yaml`。
-- 啟用直式 720p（720×1280）、TensorRT UNet 與 TAESD 輕量解碼。
+- 初始 MuseTalk 設定使用 TensorRT UNet 與 TAESD；後續沿用控制台保存的呈現方式與畫質。
 - Silero VAD（CUDA）、faster-whisper（CUDA）與 llama.cpp（CUDA）全鏈路啟動。
 - Edge TTS 合成語音。若已部署 RAGFlow 則會自動帶起檢索服務。
 - 保留控制台在 `config/runtime_overrides.yaml` 保存的使用者設定。
@@ -240,6 +240,7 @@ cd ..
 - [固定文字朗讀與音畫同步優化](docs/fixed-read-aloud.md)
 - [LFM 模型相容性與 720p／1080p 實測分析](docs/lfm-resolution.md)
 - [RAGFlow 本機檢索整合指南](docs/ragflow.md)
+- [預錄數位人、五秒說話素材與場景錄影](docs/prerecorded-avatars.md)
 - [專案軟體組合與邊界](docs/software-stack.md)
 - [架構決策紀錄（ADR）目錄](docs/adr/)
 

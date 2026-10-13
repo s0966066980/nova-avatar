@@ -25,6 +25,10 @@ def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseA
     # 每個 session 使用獨立 config，避免併發會話互相汙染（sessionid / customopt 等）
     session_config = deepcopy(config)
     session_config.sessionid = sessionid
+    from .presentation import mode
+    if mode(config) == "prerecorded":
+        from .prerecorded import PrerecordedAvatar
+        return PrerecordedAvatar(session_config)
     
     # 延遲匯入，避免啟動時載入全部模型依賴
     if model_type == 'wav2lip':
@@ -56,6 +60,9 @@ def prepare_avatar_model(config: Any):
     Returns:
         tuple: (model, avatar) 模型和 avatar 資料
     """
+    from .presentation import mode, require_ready
+    if mode(config) == "prerecorded":
+        return None, require_ready(config)
     model_type = config.model.type
     
     if model_type == 'musetalk':
@@ -105,6 +112,9 @@ def prepare_avatar_model(config: Any):
 
 def load_avatar_data(config: Any):
     """只過載角色素材，不重新載入引擎權重。"""
+    from .presentation import mode, require_ready
+    if mode(config) == "prerecorded":
+        return require_ready(config)
     model_type = config.model.type
     avatar_id = config.model.avatar_id
 

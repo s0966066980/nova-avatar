@@ -23,7 +23,7 @@ if [[ "$CONFIG_FILE" == --help || "$CONFIG_FILE" == -h ]]; then
     exit 0
 fi
 if [[ "$CONFIG_FILE" == config/config_jetson.yaml ]]; then
-    echo "Jetson 一般模式：直式 720p（720×1280）、TensorRT UNet 與輕量嘴型解碼；保留已保存的對話設定。"
+    echo "Jetson 一般模式：保留控制台已保存的對話、數位人呈現方式與畫質設定。"
 fi
 if [[ "$CONFIG_FILE" == --realtime || "$CONFIG_FILE" == --read-aloud ]]; then
     OUTPUT_HEIGHT=1280

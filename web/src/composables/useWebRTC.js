@@ -1,10 +1,15 @@
 // Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
 // Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
+import { newClientId, releaseSession, avatarIsReady } from '../sessionTransport.js'
 import { configureReplyPlayout } from '../replyPlayout.js'
+import { mountPresentation, presentationPlayer } from '../prerecordedPlayer.js'
 
 // One peer connection carries avatar A/V, the microphone uplink and voice events.
 export function useWebRTC(options = {}) {
+  const clientId = newClientId()
+  let generation = 0
+  let releasePromise = Promise.resolve()
   let pc = null
   let eventChannel = null
   let microphoneStream = null
@@ -64,10 +69,12 @@ export function useWebRTC(options = {}) {
     reconnectTimer = setTimeout(async () => {
       reconnectTimer = null
       if (!shouldReconnect) return
+      if (!(await avatarIsReady())) { scheduleReconnect(); return }
       try {
         await startPlay(lastStunServer, captureRequested)
       } catch (error) {
         if (onNotification) onNotification(`語音通道重連失敗：${error.message}`, 'error')
+        if (shouldReconnect) scheduleReconnect()
       }
     }, 500)
   }
@@ -139,7 +146,11 @@ export function useWebRTC(options = {}) {
 
     const configuration = { iceServers: [] }
     if (stunServer) configuration.iceServers.push({ urls: stunServer })
-    pc = new RTCPeerConnection(configuration)
+    const peer = new RTCPeerConnection(configuration)
+    pc = peer
+    const attempt = generation
+    const isCurrent = () => pc === peer && generation === attempt
+    const checkCurrent = () => { if (!isCurrent()) throw new DOMException('連線已取消', 'AbortError') }
 
     const remoteStream = new MediaStream()
     const video = document.getElementById('video')
@@ -155,6 +166,7 @@ export function useWebRTC(options = {}) {
       video.onvolumechange = updatePlayback
     }
     pc.ontrack = (event) => {
+      if (!isCurrent()) return
       configureReplyPlayout(event)
       if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
         remoteStream.addTrack(event.track)
@@ -163,43 +175,51 @@ export function useWebRTC(options = {}) {
     }
 
     pc.onconnectionstatechange = () => {
-      const state = pc?.connectionState || 'closed'
+      if (!isCurrent()) return
+      const state = peer.connectionState || 'closed'
       notifyConnection(state)
       if (state === 'failed' || state === 'disconnected') scheduleReconnect()
     }
     pc.oniceconnectionstatechange = () => {
-      if (pc?.iceConnectionState === 'failed') scheduleReconnect()
+      if (isCurrent() && peer.iceConnectionState === 'failed') scheduleReconnect()
     }
 
     eventChannel = pc.createDataChannel('voice-events', { ordered: true })
     eventChannel.onopen = () => {
+      if (!isCurrent()) return
       sendControl({
         type: 'capture',
         enabled: Boolean(microphoneStream) && captureRequested
       })
     }
     eventChannel.onmessage = (event) => {
+      if (!isCurrent()) return
       try {
         const message = JSON.parse(event.data)
         if (!Number.isFinite(message.seq) || message.seq <= lastEventSequence) return
         lastEventSequence = message.seq
+        if (message.type === 'presentation_changing') { scheduleReconnect(); return }
+        presentationPlayer(document.getElementById('video'))?.receive(message)
         if (onVoiceEvent) onVoiceEvent(message)
       } catch (error) {
         console.warn('Ignored invalid voice event', error)
       }
     }
     eventChannel.onclose = () => {
-      scheduleReconnect()
+      if (isCurrent()) scheduleReconnect()
     }
     eventChannel.onerror = () => {
-      scheduleReconnect()
+      if (isCurrent()) scheduleReconnect()
     }
 
     try {
-      microphoneStream = await openMicrophone()
+      const microphone = await openMicrophone()
+      if (!isCurrent()) { microphone.getTracks().forEach((track) => track.stop()); checkCurrent() }
+      microphoneStream = microphone
       pc.addTrack(microphoneStream.getAudioTracks()[0], microphoneStream)
       microphoneStream.getAudioTracks()[0].enabled = captureRequested
     } catch (error) {
+      checkCurrent()
       microphoneStream = null
       pc.addTransceiver('audio', { direction: 'recvonly' })
       if (onNotification) {
@@ -210,15 +230,19 @@ export function useWebRTC(options = {}) {
     pc.addTransceiver('video', { direction: 'recvonly' })
 
     try {
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
+      await releasePromise
+      checkCurrent()
+      const offer = await peer.createOffer()
+      checkCurrent()
+      await peer.setLocalDescription(offer)
+      checkCurrent()
       const response = await fetch('/offer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_role: 'console',
-          sdp: pc.localDescription.sdp,
-          type: pc.localDescription.type
+          client_role: 'console', client_id: clientId, stun_server: stunServer,
+          sdp: peer.localDescription.sdp,
+          type: peer.localDescription.type
         })
       })
       if (!response.ok) {
@@ -229,21 +253,30 @@ export function useWebRTC(options = {}) {
         } catch (_) {
           // Keep the HTTP fallback.
         }
-        throw new Error(message)
+        const error = new Error(message)
+        error.retryable = [409, 429, 503].includes(response.status)
+        throw error
       }
       const data = await response.json()
+      if (!isCurrent()) { await releaseSession(data.sessionid, clientId); checkCurrent() }
       sessionIdValue = data.sessionid
       if (onSessionId) onSessionId(sessionIdValue)
       const sessionInput = document.getElementById('sessionid')
       if (sessionInput) sessionInput.value = data.sessionid
-      await pc.setRemoteDescription(new RTCSessionDescription({
+      await peer.setRemoteDescription(new RTCSessionDescription({
         sdp: data.sdp,
         type: data.type
       }))
+      checkCurrent()
+      if (video) await mountPresentation(video, data.presentation, (message) => { if(isCurrent()) onNotification?.(message, 'error') }, peer)
+      checkCurrent()
       return sessionIdValue
     } catch (error) {
-      if (onNotification) onNotification(`WebRTC 連線失敗：${error.message}`, 'error')
-      stopPlay()
+      if (isCurrent()) {
+        if (onNotification) onNotification(`WebRTC 連線失敗：${error.message}`, 'error')
+        disposeConnection(false)
+        if (error.retryable && shouldReconnect) scheduleReconnect()
+      }
       throw error
     }
   }
@@ -260,24 +293,34 @@ export function useWebRTC(options = {}) {
   }
 
   function disposeConnection(manual = true) {
+    generation += 1
+    if (sessionIdValue) releasePromise = releaseSession(sessionIdValue, clientId)
+    presentationPlayer(document.getElementById('video'))?.dispose()
     if (manual) {
+      startPromise = null
       shouldReconnect = false
       if (reconnectTimer) clearTimeout(reconnectTimer)
       reconnectTimer = null
     }
     if (eventChannel) {
+      eventChannel.onopen = null
+      eventChannel.onmessage = null
       eventChannel.onclose = null
       eventChannel.onerror = null
       eventChannel.close()
     }
     eventChannel = null
     if (pc) {
+      pc.ontrack = null
+      pc.onconnectionstatechange = null
+      pc.oniceconnectionstatechange = null
       pc.close()
       pc = null
     }
     microphoneStream?.getTracks().forEach((track) => track.stop())
     microphoneStream = null
     sessionIdValue = 0
+    onSessionId?.(0)
     const video = document.getElementById('video')
     if (video) {
       video.onplaying = null
@@ -292,6 +335,9 @@ export function useWebRTC(options = {}) {
   function stopPlay() {
     disposeConnection(true)
   }
+
+  // Vue unmount does not run when an entire browser tab is closed/refreshed.
+  globalThis.addEventListener?.('pagehide', stopPlay)
 
   return {
     startPlay,

@@ -1,0 +1,38 @@
+{
+  "seconds": 25,
+  "browser_output": "Chromium --disable-audio-output test sink; no physical speaker check",
+  "pages": [
+    {
+      "role": "console",
+      "video": {
+        "width": 1080,
+        "height": 1920,
+        "codec": "h264"
+      },
+      "frames": 651,
+      "render_fps": 25.0251345245792,
+      "max_frame_gap_ms": 66.69999999999891,
+      "decoded_audio_energy": 0.38104132735485996,
+      "record_audio_rms": 0.028752432787605406,
+      "record_audio_peak": 0.3255336284637451,
+      "audio_samples": 2512896,
+      "page_errors": []
+    },
+    {
+      "role": "stage",
+      "video": {
+        "width": 1080,
+        "height": 1920,
+        "codec": "h264"
+      },
+      "frames": 626,
+      "render_fps": 24.095408164532913,
+      "max_frame_gap_ms": 83.30000000000018,
+      "decoded_audio_energy": 0.4472072360163681,
+      "record_audio_rms": 0.029749887577070304,
+      "record_audio_peak": 0.32550764083862305,
+      "audio_samples": 2506752,
+      "page_errors": []
+    }
+  ]
+}

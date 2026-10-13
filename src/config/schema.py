@@ -188,6 +188,7 @@ class ModelConfig:
     """模型配置"""
     type: str = "musetalk"  # wav2lip | musetalk | ultralight | ernerf | talkinggaussian
     avatar_id: str = "avator_1"
+    presentation_modes: dict[str, str] = field(default_factory=dict)
     batch_size: int = 16
     model_path: str = "./models"
     # 256 口型貼回時的觀感；不需重新製作角色

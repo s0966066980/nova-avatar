@@ -15,7 +15,7 @@ import time
 from typing import Tuple, Dict, Optional, Set, Union
 from av.frame import Frame
 from av.packet import Packet
-from av import AudioFrame
+from av import AudioFrame, VideoFrame
 import fractions
 import numpy as np
 
@@ -382,6 +382,10 @@ class PlayerStreamTrack(MediaStreamTrack):
                 self._last_video_item = None
         frame.pts = pts
         frame.time_base = time_base
+        if self.kind == "video" and getattr(self._player, "clock_only", False):
+            from src.avatars.prerecorded import clock_image
+            frame = VideoFrame.from_ndarray(clock_image(round(pts / VIDEO_CLOCK_RATE * 1000)), format="bgr24")
+            frame.pts, frame.time_base = pts, time_base
         if self.kind == "audio" and isinstance(eventpoint, dict):
             self._last_committed_audio_event = dict(eventpoint)
         if self.kind == "video":
@@ -407,6 +411,7 @@ class PlayerStreamTrack(MediaStreamTrack):
             rate = VIDEO_CLOCK_RATE if self.kind == "video" else SAMPLE_RATE
             self._player.notify_media_timing(self.kind, pts / rate, eventpoint)
         if self.kind == 'audio' and self._player is not None:
+            samples = np.empty(0, dtype=np.float32)
             try:
                 samples = frame.to_ndarray().astype(np.float32, copy=False)
                 active = bool(np.max(np.abs(samples))) if samples.size else False
@@ -415,6 +420,10 @@ class PlayerStreamTrack(MediaStreamTrack):
             notify_audio_frame = getattr(self._player, "notify_audio_frame", None)
             if callable(notify_audio_frame):
                 notify_audio_frame(eventpoint, active)
+            notify_audio_clock = getattr(self._player, "notify_audio_clock", None)
+            if callable(notify_audio_clock):
+                visual_active = bool(np.max(np.abs(samples)) > 32) if samples.size else False
+                notify_audio_clock(visual_active, pts / SAMPLE_RATE, eventpoint)
             self._player.notify_audio_activity(active)
         if self.kind == 'video':
             self.totaltime += (time.perf_counter() - self.lasttime)
@@ -452,6 +461,7 @@ class HumanPlayer:
         self, avatar_stream, format=None, options=None, timeout=None, loop=False, decode=True,
         on_audio_activity=None,
         on_audio_frame=None,
+        on_audio_clock=None,
         on_media_timing=None,
         on_audio_pacing=None,
         media_guard=None,
@@ -482,6 +492,8 @@ class HumanPlayer:
         )
 
         self.__container = avatar_stream
+        self.clock_only = bool(getattr(avatar_stream, "clock_only", False))
+        self.__on_audio_clock = on_audio_clock
         self.__on_audio_activity = on_audio_activity
         self.__on_audio_frame = on_audio_frame
         self.__on_media_timing = on_media_timing
@@ -514,6 +526,10 @@ class HumanPlayer:
     def notify_audio_frame(self, eventpoint, active: bool) -> None:
         if self.__on_audio_frame is not None:
             self.__on_audio_frame(eventpoint, active)
+
+    def notify_audio_clock(self, active, media_seconds, eventpoint):
+        if self.__on_audio_clock is not None:
+            self.__on_audio_clock(active, media_seconds, eventpoint)
 
     @staticmethod
     def _media_event_key(eventpoint) -> Optional[tuple[str, int, int]]:

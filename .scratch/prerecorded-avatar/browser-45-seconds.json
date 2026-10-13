@@ -1,0 +1,319 @@
+{
+  "seconds": 45,
+  "dual": false,
+  "headful": true,
+  "clock_delay": 0,
+  "pages": [
+    {
+      "state": "idle",
+      "mediaMs": 47927,
+      "metrics": {
+        "frames": 1198,
+        "maxFrameGapMs": 66.69999999999891,
+        "transitions": [
+          {
+            "state": "talking",
+            "mediaMs": 4035,
+            "at": 10349
+          },
+          {
+            "state": "idle",
+            "mediaMs": 8364,
+            "at": 14382.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 8810,
+            "at": 14782.1
+          },
+          {
+            "state": "idle",
+            "mediaMs": 9920,
+            "at": 15865.4
+          },
+          {
+            "state": "talking",
+            "mediaMs": 38793,
+            "at": 45097.6
+          },
+          {
+            "state": "idle",
+            "mediaMs": 43153,
+            "at": 49464.1
+          },
+          {
+            "state": "talking",
+            "mediaMs": 43612,
+            "at": 49947.3
+          },
+          {
+            "state": "idle",
+            "mediaMs": 47628,
+            "at": 53947.2
+          }
+        ],
+        "clockFrames": 1020,
+        "startedAt": 6333.10000000149
+      },
+      "width": 1080,
+      "height": 1920,
+      "visibility": "visible",
+      "energy": 0.951180307801321,
+      "concealed": 868,
+      "audioSamples": 2298720,
+      "renderer": "ANGLE (NVIDIA Corporation, NVIDIA Tegra Orin (nvgpu)/integrated, OpenGL 4.5.0)",
+      "video": {
+        "idle": {
+          "total": 872,
+          "dropped": 0
+        },
+        "talking": {
+          "total": 360,
+          "dropped": 0
+        }
+      },
+      "role": "stage",
+      "render_fps": 25.019067295555853,
+      "page_errors": [],
+      "pcm_edges": [
+        {
+          "active": true,
+          "at": 10326.5
+        },
+        {
+          "active": false,
+          "at": 10906.5
+        },
+        {
+          "active": true,
+          "at": 11046.40000000596
+        },
+        {
+          "active": false,
+          "at": 14066.40000000596
+        },
+        {
+          "active": true,
+          "at": 14910.10000000149
+        },
+        {
+          "active": false,
+          "at": 16146.40000000596
+        },
+        {
+          "active": true,
+          "at": 45113.30000000447
+        },
+        {
+          "active": false,
+          "at": 45746.40000000596
+        },
+        {
+          "active": true,
+          "at": 45907.70000000298
+        },
+        {
+          "active": false,
+          "at": 49146.40000000596
+        },
+        {
+          "active": true,
+          "at": 50046.40000000596
+        },
+        {
+          "active": false,
+          "at": 51366.40000000596
+        },
+        {
+          "active": true,
+          "at": 51546.40000000596
+        },
+        {
+          "active": false,
+          "at": 53826.5
+        }
+      ],
+      "voice_events": [
+        {
+          "type": "speaking_start",
+          "seq": 5,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "media_ms": 3880,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 7,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": true,
+          "media_ms": 3980,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 8,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": false,
+          "media_ms": 4620,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 9,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": true,
+          "media_ms": 4760,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 10,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": false,
+          "media_ms": 8040,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 11,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": true,
+          "media_ms": 8800,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 12,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": false,
+          "media_ms": 8820,
+          "generation": 0
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 13,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": true,
+          "media_ms": 8940,
+          "generation": 0
+        },
+        {
+          "type": "turn_cancelled",
+          "seq": 15,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "media_ms": 10140,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 17,
+          "turn_id": "7bf1d6308339449b92b5a6cffe7bae0c",
+          "active": false,
+          "media_ms": 10180,
+          "generation": 1
+        },
+        {
+          "type": "speaking_start",
+          "seq": 22,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "media_ms": 38660,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 24,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": true,
+          "media_ms": 38760,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 25,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": false,
+          "media_ms": 39400,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 26,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": true,
+          "media_ms": 39540,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 27,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": false,
+          "media_ms": 42820,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 28,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": true,
+          "media_ms": 43580,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 29,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": false,
+          "media_ms": 43600,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 30,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": true,
+          "media_ms": 43720,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 31,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": false,
+          "media_ms": 45020,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 32,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": true,
+          "media_ms": 45180,
+          "generation": 1
+        },
+        {
+          "type": "presentation_activity",
+          "seq": 33,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "active": false,
+          "media_ms": 47480,
+          "generation": 1
+        },
+        {
+          "type": "speaking_end",
+          "seq": 35,
+          "turn_id": "b09cc93201f54cd6864a662a17423cfb",
+          "media_ms": 47600,
+          "generation": 1
+        }
+      ],
+      "record": {
+        "result": {
+          "filename": "record_a0e0d4690b0d442fb994a178e24cbff5.mp4",
+          "url": "/download/record_a0e0d4690b0d442fb994a178e24cbff5.mp4"
+        },
+        "error": null
+      }
+    }
+  ]
+}

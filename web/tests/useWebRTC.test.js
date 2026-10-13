@@ -128,3 +128,45 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
     }
   }
 })
+
+test('stopping during microphone permission cancels only that attempt and permits a fresh connection', async () => {
+  const names = ['navigator','RTCPeerConnection','RTCSessionDescription','MediaStream','fetch','document']
+  const previous = new Map(names.map(n => [n, Object.getOwnPropertyDescriptor(globalThis, n)]))
+  const set = (n,v) => Object.defineProperty(globalThis,n,{value:v,configurable:true,writable:true})
+  const peers = [], sessions = [], tracks = []
+  let resolveMic, micCalls = 0, offerCalls = 0, rtc, first, second
+  const stream = () => { const t={enabled:true,stopped:false,stop(){this.stopped=true}}; tracks.push(t); return {getAudioTracks:()=>[t],getTracks:()=>[t]} }
+  class Peer {
+    constructor(){peers.push(this)}
+    createDataChannel(){return {readyState:'connecting',close(){}}}
+    addTrack(){} addTransceiver(){}
+    async createOffer(){offerCalls++;return {type:'offer',sdp:'offer'}}
+    async setLocalDescription(v){this.localDescription=v}
+    async setRemoteDescription(){} close(){}
+  }
+  try {
+    set('navigator',{mediaDevices:{getUserMedia:()=> ++micCalls===1 ? new Promise(r=>{resolveMic=r}) : Promise.resolve(stream())}})
+    set('RTCPeerConnection',Peer)
+    set('RTCSessionDescription',class{constructor(v){Object.assign(this,v)}})
+    set('MediaStream',class{getTracks(){return []} addTrack(){}})
+    set('document',{getElementById:()=>null})
+    set('fetch',async()=>({ok:true,json:async()=>({sessionid:42,type:'answer',sdp:'answer'})}))
+    rtc=useWebRTC({onSessionId:id=>{if(id)sessions.push(id)}})
+    first=rtc.startPlay();first.catch(()=>{})
+    await new Promise(r=>setImmediate(r))
+    rtc.stopPlay()
+    second=rtc.startPlay();second.catch(()=>{})
+    resolveMic(stream());resolveMic=null
+    assert.notEqual(second,first,'startPlay returned a cancelled attempt')
+    assert.equal(await second,42)
+    await assert.rejects(first,{name:'AbortError'})
+    assert.equal(offerCalls,1)
+    assert.deepEqual(sessions,[42])
+    assert.equal(tracks.at(-1).stopped,true,'late microphone stream leaked')
+  } finally {
+    resolveMic?.(stream())
+    await Promise.allSettled([first,second].filter(Boolean))
+    rtc?.stopPlay()
+    for(const [n,d] of previous){if(d)Object.defineProperty(globalThis,n,d);else delete globalThis[n]}
+  }
+})

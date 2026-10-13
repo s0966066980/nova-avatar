@@ -1,0 +1,90 @@
+{
+  "idle": {
+    "id": "0a5478acb8f747519262b2645329d033",
+    "kind": "upload",
+    "avatar_id": "musetalk_1",
+    "slot": "idle",
+    "status": "done",
+    "progress": 100,
+    "error": "",
+    "result": {
+      "name": "afb0aa23b0e54db2b786a7a9f83f44a0.mp4",
+      "width": 1080,
+      "height": 1920,
+      "fps": 25,
+      "frames": 200,
+      "duration": 8.0,
+      "audio": false,
+      "url": "/api/presentation/musetalk_1/media/afb0aa23b0e54db2b786a7a9f83f44a0.mp4"
+    },
+    "elapsed_seconds": 7.66
+  },
+  "talking": {
+    "id": "b376147c92264d5293697476ec3a23bb",
+    "kind": "generate",
+    "avatar_id": "musetalk_1",
+    "slot": "talking",
+    "status": "done",
+    "progress": 100,
+    "error": "",
+    "result": {
+      "name": "969cd117b9644e469b5723ccdd13b4ff.mp4",
+      "width": 1080,
+      "height": 1920,
+      "fps": 25,
+      "frames": 125,
+      "duration": 5.0,
+      "audio": false,
+      "quality": "full",
+      "url": "/api/presentation/musetalk_1/media/969cd117b9644e469b5723ccdd13b4ff.mp4"
+    },
+    "elapsed_seconds": 68.2
+  },
+  "assets": {
+    "avatar_id": "musetalk_1",
+    "mode": "musetalk",
+    "slots": {
+      "idle": {
+        "current": {
+          "name": "afb0aa23b0e54db2b786a7a9f83f44a0.mp4",
+          "width": 1080,
+          "height": 1920,
+          "fps": 25,
+          "frames": 200,
+          "duration": 8.0,
+          "audio": false,
+          "url": "/api/presentation/musetalk_1/media/afb0aa23b0e54db2b786a7a9f83f44a0.mp4"
+        }
+      },
+      "talking": {
+        "current": {
+          "name": "969cd117b9644e469b5723ccdd13b4ff.mp4",
+          "width": 1080,
+          "height": 1920,
+          "fps": 25,
+          "frames": 125,
+          "duration": 5.0,
+          "audio": false,
+          "quality": "full",
+          "url": "/api/presentation/musetalk_1/media/969cd117b9644e469b5723ccdd13b4ff.mp4"
+        }
+      }
+    },
+    "ready": true,
+    "reason": "",
+    "background": {
+      "id": "20a5ed29150e",
+      "label": "background1",
+      "kind": "image",
+      "preview_url": "/api/backgrounds/20a5ed29150e/preview",
+      "bytes": 16900,
+      "url": "/api/presentation/background/20a5ed29150e"
+    },
+    "max_height": 540,
+    "fps": 25,
+    "silence_ms": 300,
+    "transition_ms": 100,
+    "active_sessions": 0,
+    "busy": false
+  }
+}

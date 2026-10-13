@@ -1,0 +1,42 @@
+[
+  {
+    "manual": false,
+    "container": "mp4",
+    "mimeType": "video/mp4",
+    "renderFrames": 301,
+    "elapsed": 12.0345,
+    "frames": 273,
+    "mediaSpan": 11.9417,
+    "recordFps": 22.777326511300735
+  },
+  {
+    "manual": false,
+    "container": "webm",
+    "mimeType": "video/webm;codecs=vp8,opus",
+    "renderFrames": 301,
+    "elapsed": 12.01829999999702,
+    "frames": 265,
+    "mediaSpan": 11.933,
+    "recordFps": 22.12352300343585
+  },
+  {
+    "manual": true,
+    "container": "mp4",
+    "mimeType": "video/mp4",
+    "renderFrames": 300,
+    "elapsed": 12.0235,
+    "frames": 299,
+    "mediaSpan": 11.932366666666667,
+    "recordFps": 24.974090079922675
+  },
+  {
+    "manual": true,
+    "container": "webm",
+    "mimeType": "video/webm;codecs=vp8,opus",
+    "renderFrames": 301,
+    "elapsed": 12.03719999999553,
+    "frames": 300,
+    "mediaSpan": 11.968,
+    "recordFps": 24.983288770053477
+  }
+]

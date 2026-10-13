@@ -1,0 +1,20 @@
+{
+  "source_dimensions": [
+    1080,
+    1920
+  ],
+  "running_height_limit": 1280,
+  "output_only_frame_budget_ms": 40,
+  "measurements": [
+    {
+      "max_height": 1280,
+      "width": 720,
+      "height": 1280,
+      "resize_median_ms": 17.35,
+      "compose_median_ms": 22.39,
+      "encode_median_ms": 15.53,
+      "total_median_ms": 58.76,
+      "total_p95_ms": 65.94
+    }
+  ]
+}
