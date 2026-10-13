@@ -12,9 +12,11 @@ from concurrent.futures import TimeoutError as FuturesTimeoutError
 from queue import Empty
 from types import SimpleNamespace
 from typing import Callable, Optional
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import av
 import edge_tts
+from edge_tts import communicate as edge_transport
 import numpy as np
 
 from src.tts.base import BaseTTS, State
@@ -196,6 +198,26 @@ class _GatedFrameSink:
 
 
 
+def _edge_communicate(text: str, voicename: str):
+    """Bridge edge-tts 7.2.8 to Microsoft's replacement synthesis endpoint.
+
+    The legacy host started refusing synthesis with HTTP 403 in October 2026.
+    Keep this in Nova's adapter until edge-tts ships its endpoint migration
+    (https://github.com/rany2/edge-tts/pull/491); leave newer endpoints intact.
+    """
+    endpoint = urlsplit(edge_transport.WSS_URL)
+    if (
+        endpoint.netloc == "speech.platform.bing.com"
+        and endpoint.path == "/consumer/speech/synthesize/readaloud/edge/v1"
+    ):
+        token = parse_qs(endpoint.query)["TrustedClientToken"][0]
+        edge_transport.WSS_URL = (
+            "wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1?"
+            + urlencode({"Ocp-Apim-Subscription-Key": token})
+        )
+    return edge_tts.Communicate(text, voicename)
+
+
 async def _prewarm_edge_tts(voicename: str, *, decode_pcm: bool = False) -> bool:
     """Warm the connection, optionally including decoding without playback."""
     emitter = None
@@ -205,7 +227,7 @@ async def _prewarm_edge_tts(voicename: str, *, decode_pcm: bool = False) -> bool
             parent=SimpleNamespace(put_audio_frame=lambda *_: True),
         )
         emitter = _EdgePCMEmitter(owner, "", {})
-    stream = edge_tts.Communicate("語音連線準備完成。", voicename).stream()
+    stream = _edge_communicate("語音連線準備完成。", voicename).stream()
     iterator = stream.__aiter__()
     try:
         while True:
@@ -892,7 +914,7 @@ class EdgeTTS(BaseTTS):
                         attempt,
                     )
 
-            stream = edge_tts.Communicate(text, voicename).stream()
+            stream = _edge_communicate(text, voicename).stream()
             iterator = stream.__aiter__()
             try:
                 while self.state == State.RUNNING:

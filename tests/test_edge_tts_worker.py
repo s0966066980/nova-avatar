@@ -9,6 +9,7 @@ from io import BytesIO
 from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 import numpy as np
 
@@ -72,6 +73,56 @@ class EdgeTTSStartupTests(unittest.TestCase):
 
         self.assertIsNone(worker)
         prewarm.assert_not_called()
+
+
+class EdgeTTSTransportTests(unittest.IsolatedAsyncioTestCase):
+    async def _capture_prewarm_url(self, endpoint):
+        from edge_tts import communicate
+        from src.tts.engines.edge import _prewarm_edge_tts
+
+        requests = []
+
+        class ProbeComplete(Exception):
+            pass
+
+        class Session:
+            def __init__(self, **_kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *_args):
+                pass
+
+            def ws_connect(self, url, **_kwargs):
+                requests.append(url)
+                raise ProbeComplete
+
+        with patch.object(communicate, "WSS_URL", endpoint), patch.object(
+            communicate.aiohttp, "ClientSession", Session
+        ):
+            with self.assertRaises(ProbeComplete):
+                await _prewarm_edge_tts("zh-TW-HsiaoChenNeural")
+        return urlsplit(requests[0])
+
+    async def test_prewarm_migrates_the_rejected_legacy_synthesis_endpoint(self):
+        url = await self._capture_prewarm_url(
+            "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1"
+            "?TrustedClientToken=test-public-client-token"
+        )
+        self.assertEqual(url.netloc, "api.msedgeservices.com")
+        self.assertEqual(url.path, "/tts/cognitiveservices/websocket/v1")
+        query = parse_qs(url.query)
+        self.assertEqual(query["Ocp-Apim-Subscription-Key"], ["test-public-client-token"])
+        self.assertNotIn("TrustedClientToken", query)
+        self.assertIn("Sec-MS-GEC", query)
+        self.assertIn("ConnectionId", query)
+
+    async def test_prewarm_preserves_an_upstream_replacement_endpoint(self):
+        url = await self._capture_prewarm_url("wss://future.example/synthesize?key=test")
+        self.assertEqual(url.netloc, "future.example")
+        self.assertEqual(url.path, "/synthesize")
 
 
 class EdgeTTSWorkerTests(unittest.TestCase):
