@@ -6,6 +6,7 @@
 import json
 import subprocess
 import urllib.request
+from pathlib import Path
 
 
 def warm() -> None:
@@ -13,7 +14,8 @@ def warm() -> None:
         "docker", "network", "inspect", "bridge", "--format",
         "{{(index .IPAM.Config 0).Gateway}}",
     ], text=True).strip()
-    base = f"http://{gateway}:11435"
+    shared = (Path(__file__).resolve().parents[1] / ".local/ragflow/shared-ollama").exists()
+    base = f"http://{gateway}:{11436 if shared else 11435}"
     with urllib.request.urlopen(base + "/api/tags", timeout=10) as response:
         models = json.load(response)["models"]
     if not any(model["name"].split(":")[0] == "bge-m3" for model in models):

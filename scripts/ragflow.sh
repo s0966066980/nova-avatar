@@ -12,7 +12,7 @@ OVERLAY_FILE="$ROOT/integrations/ragflow/compose.nova.yml"
 EMBEDDING_UNIT="$ROOT/integrations/ragflow/nova-ragflow-embedding.service"
 
 usage() {
-    printf '用法：%s {install-docker|prepare|build|connect|up|down|status|is-running|pull-model|validate}\n' "$0"
+    printf '用法：%s {install-docker|prepare|build|connect|connect-chat [模型]|unify-models|sync-models|up|down|status|is-running|pull-model|validate}\n' "$0"
 }
 
 prepare() {
@@ -104,6 +104,15 @@ case "${1:-}" in
     connect)
         exec python3 "$ROOT/scripts/ragflow_connection.py"
         ;;
+    connect-chat)
+        exec python3 "$ROOT/scripts/ragflow_connection.py" --chat-model "${2:-qwen3.5:4b}"
+        ;;
+    unify-models)
+        exec python3 "$ROOT/scripts/ragflow_connection.py" --unify-models
+        ;;
+    sync-models)
+        exec python3 "$ROOT/scripts/ragflow_connection.py" --sync-models
+        ;;
     up)
         prepare
         require_docker
@@ -118,9 +127,17 @@ case "${1:-}" in
                 exit 1
             fi
         fi
-        systemctl --user link "$EMBEDDING_UNIT" >/dev/null 2>&1 || true
-        systemctl --user daemon-reload
-        systemctl --user enable --now nova-ragflow-embedding.service
+        if [ -f "$ROOT/.local/ragflow/shared-ollama" ]; then
+            python3 "$ROOT/scripts/ragflow_connection.py" --setup-proxy
+            systemctl --user enable --now nova-ragflow-model-sync.service
+        else
+            systemctl --user link "$EMBEDDING_UNIT" >/dev/null 2>&1 || true
+            systemctl --user daemon-reload
+            systemctl --user enable --now nova-ragflow-embedding.service
+        fi
+        if systemctl --user cat nova-ragflow-chat-proxy.socket >/dev/null 2>&1; then
+            systemctl --user enable --now nova-ragflow-chat-proxy.socket
+        fi
         compose up -d --wait --wait-timeout 300
         python3 "$ROOT/scripts/ragflow_warm_embedding.py"
         printf 'RAGFlow 網頁：http://127.0.0.1:8088；API：http://127.0.0.1:9380\n'
@@ -128,12 +145,17 @@ case "${1:-}" in
     down)
         require_docker
         systemctl --user disable --now nova-ragflow-embedding.service 2>/dev/null || true
+        systemctl --user disable --now nova-ragflow-model-sync.service 2>/dev/null || true
+        systemctl --user disable --now nova-ragflow-chat-proxy.socket nova-ragflow-chat-proxy.service 2>/dev/null || true
         compose down
         ;;
     status)
         require_docker
         compose ps
         printf 'RAGFlow 嵌入服務：%s\n' "$(systemctl --user is-active nova-ragflow-embedding.service 2>/dev/null || true)"
+        if [ -f "$ROOT/.local/ragflow/shared-ollama" ]; then
+            printf 'RAGFlow 共用模型：http://host.docker.internal:11436；自動同步：%s\n' "$(systemctl --user is-active nova-ragflow-model-sync.service 2>/dev/null || true)"
+        fi
         ;;
     is-running)
         require_docker
@@ -146,7 +168,11 @@ case "${1:-}" in
     pull-model)
         ollama_bin="$(command -v ollama || true)"
         ollama_bin="${ollama_bin:-$ROOT/.local/ragflow/ollama/bin/ollama}"
-        export OLLAMA_HOST="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'):11435"
+        if [ -f "$ROOT/.local/ragflow/shared-ollama" ]; then
+            export OLLAMA_HOST=127.0.0.1:11434
+        else
+            export OLLAMA_HOST="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'):11435"
+        fi
         if "$ollama_bin" show bge-m3 >/dev/null 2>&1; then
             printf '已存在 BGE-M3 模型，沿用主機現有檔案。\n'
         else

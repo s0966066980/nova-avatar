@@ -30,6 +30,106 @@ DATASET_B = "b" * 32
 
 
 class RagFlowDeploymentTests(unittest.TestCase):
+    def test_shared_model_sync_discovers_later_downloads_without_duplicates_or_default_changes(self):
+        installed = [{"name": "qwen3.5:4b"}]
+        registered = []
+        writes = []
+
+        def ollama(path, body=None):
+            if path == "/api/tags":
+                return {"models": installed}
+            return {"capabilities": ["embedding"] if body["model"] == "bge-m3:latest" else ["completion"]}
+
+        def api(_key, method, path, body=None):
+            if method == "POST" and path.endswith("/models"):
+                registered.append({"name": body["model_name"], "model_type": body["model_type"],
+                                   "provider_name": "Ollama", "instance_name": "nova-chat"})
+                writes.append((path, body))
+            elif path == "/providers":
+                return [{"name": "Ollama"}]
+            elif path == "/providers/Ollama/instances":
+                return [{"instance_name": "nova-chat"}]
+            elif path == "/providers/Ollama/instances/nova-chat":
+                return {"base_url": ragflow_connection.SHARED_MODEL_URL}
+            elif path == "/models":
+                return registered
+            else:
+                self.fail(f"Unexpected request: {method} {path}")
+
+        with patch.object(ragflow_connection, "ollama_api", side_effect=ollama), patch.object(
+            ragflow_connection, "model_api", side_effect=api
+        ):
+            ragflow_connection.sync_models("private-test-key")
+            installed.extend([{"name": "bge-m3:latest"}, {"name": "future-chat:latest"}])
+            ragflow_connection.sync_models("private-test-key")
+            ragflow_connection.sync_models("private-test-key")
+        self.assertEqual({m["name"] for m in registered}, {m["name"] for m in installed})
+        self.assertEqual(len(writes), 3)
+        self.assertEqual(next(m for m in registered if m["name"] == "bge-m3:latest")["model_type"], ["embedding"])
+        self.assertFalse(any(path == "/models/default" for path, _ in writes))
+
+    def test_endpoint_migration_keeps_all_existing_models_and_verification_metadata(self):
+        selected = [
+            {"name": "bge-m3", "model_type": ["embedding"], "max_tokens": 8192, "extra": {"verify": "success"}},
+            {"name": "another-embedding:latest", "model_type": ["embedding"], "max_tokens": 4096, "extra": {"custom": True}},
+        ]
+        writes = []
+
+        def api(_key, method, path, body=None):
+            if method == "PUT":
+                writes.append(body)
+            elif path.endswith("/models"):
+                return selected
+            else:
+                return {"instance_name": "nova-arm64", "api_key": "private-test-key",
+                        "base_url": "http://host.docker.internal:11435", "region": ""}
+
+        with patch.object(ragflow_connection, "model_api", side_effect=api):
+            ragflow_connection.set_instance_url("private-test-key", "nova-arm64")
+        self.assertEqual(writes[0]["base_url"], ragflow_connection.SHARED_MODEL_URL)
+        self.assertEqual([m["model_name"] for m in writes[0]["model_info"]], [m["name"] for m in selected])
+        self.assertEqual(writes[0]["model_info"][0]["extra"], selected[0]["extra"])
+        self.assertFalse(writes[0]["verify"])
+
+    def test_chat_registration_warms_the_model_and_preserves_embedding_and_defaults(self):
+        embedding = {"name": "bge-m3", "provider_name": "Ollama",
+                     "instance_name": "nova-arm64", "model_type": ["embedding"]}
+        models = [embedding.copy()]
+        calls = []
+
+        def respond(request, **_kwargs):
+            path = request.full_url.split("/api/v1")[-1]
+            calls.append((request.get_method(), path))
+            if request.full_url == "http://127.0.0.1:11434/api/chat":
+                self.assertEqual(json.loads(request.data)["model"], "qwen3.5:4b")
+                return io.StringIO(json.dumps({"done": True}))
+            if path == "/models":
+                data = models
+            elif path == "/providers":
+                data = [{"name": "Ollama"}]
+            elif path == "/providers/Ollama/instances" and request.get_method() == "GET":
+                data = [{"instance_name": "nova-arm64"}]
+            elif path == "/providers/Ollama/instances" and request.get_method() == "POST":
+                self.assertIn(("POST", "http://127.0.0.1:11434/api/chat"), calls)
+                body = json.loads(request.data)
+                self.assertEqual(body["base_url"], "http://host.docker.internal:11436")
+                model = body["model_info"][0]
+                models.append({"name": model["model_name"], "model_type": model["model_type"],
+                               "provider_name": "Ollama", "instance_name": body["instance_name"]})
+                data = None
+            else:
+                self.fail(f"Unexpected request: {request.get_method()} {path}")
+            return io.StringIO(json.dumps({"code": 0, "data": data}))
+
+        with patch.object(ragflow_connection.urllib.request, "urlopen", side_effect=respond):
+            ragflow_connection.configure_chat("private-test-key", "qwen3.5:4b")
+            ragflow_connection.configure_chat("private-test-key", "qwen3.5:4b")
+        self.assertEqual(models[0], embedding)
+        self.assertEqual(len(models), 2)
+        self.assertEqual(models[1]["model_type"], ["chat"])
+        self.assertEqual(calls.count(("POST", "/providers/Ollama/instances")), 1)
+        self.assertFalse(any(path == "/models/default" for _, path in calls))
+
     def test_rejects_any_public_or_additional_service_port(self):
         services = {
             name: {"networks": {"ragflow": None}, "mem_limit": "1024", "cpus": 1}

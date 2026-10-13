@@ -12,6 +12,9 @@ Nova Avatar 只向 RAGFlow 查找文件片段，並由 Nova 現有的模型、�
 可用 `NOVA_RAGFLOW_CUDA_VISIBLE_DEVICES` 覆寫）；Nova 原有的 Ollama 與
 llama.cpp 語言模型服務不變。首次安裝與每位數位人的檢索設定均預設關閉。
 
+這是首次安裝的獨立嵌入模式。若要讓 RAGFlow 使用平常 `ollama pull` 下載的
+所有聊天／嵌入模型，可在安裝完成後啟用下方的「統一模型服務」模式。
+
 ## 本機安裝
 
 Jetson / ARM64 使用固定來源自行建置的原生映像，而不是官方 x86 映像。
@@ -117,8 +120,66 @@ MuseTalk、STT 和語言模型一起估算），文件批量解析降至一次�
    知識庫並啟用。先用「測試檢索」確認能找出相關片段，再試文字與語音各一輪。
    設定從下一輪生效。
 
+API 金鑰對應建立它的 RAGFlow 帳號及工作區。使用自己註冊的帳號新增內容時，
+Nova 也必須使用該工作區的金鑰；初始 admin 帳號的有效金鑰不會自動取得其他
+帳號的知識庫。`connect` 沿用有效金鑰，只代表可以連線，不能保證它能看到目前
+瀏覽器帳號的內容。控制台清單為空時，先核對金鑰所屬帳號；更換
+`config/ragflow.env` 後重啟後端，再為目前數位人重新選取知識庫。
+
 本機以外的瀏覽器無法直接開啟 loopback 的 RAGFlow 管理頁。需遠端管理時，
 可在信任的連線上使用 SSH 埠轉送；不要直接把管理埠對外開放。
+
+## 手動文字內容與檔案解析
+
+在 RAGFlow 手動建立文字文件、加入片段時，內容可以直接建立檢索索引，
+不需要經過上傳 PDF／Word 的檔案解析流程。這類 `virtual` 文件即使顯示
+尚未開始解析，只要已有可用片段，就能用「測試檢索」確認內容。
+上傳的檔案則需要完成解析、產生片段後才能檢索。
+
+## 統一模型服務並自動同步下載的模型
+
+```bash
+bash scripts/ragflow.sh unify-models
+```
+
+啟用後，RAGFlow 的聊天與嵌入模型都使用 **`http://host.docker.internal:11436`**。
+此位址轉送至主機既有 `127.0.0.1:11434` Ollama，與一般 `ollama pull` 共用同一份
+模型清單。獨立的 `11435` 嵌入程序會停止；日常 `up`／`down` 管理轉送和清單同步，
+主機的 Ollama 仍由原本的系統服務管理。
+
+BGE-M3 使用已下載的本機 GGUF、原始模板與授權匯入，先驗證 1024 維向量與原服務
+一致，再切換既有模型執行個體。知識庫引用的模型 ID 與預設模型設定會保留。
+舊模型檔保留在原位置。
+
+之後直接執行 `ollama pull 模型名稱`。使用者層級的
+`nova-ragflow-model-sync.service` 每 30 秒讀取 Ollama 的模型清單，將新增的聊天／
+嵌入模型加入 `Ollama / nova-chat`。重新整理 RAGFlow 模型頁即可選取。
+同步不會改變管理者已選的預設模型，也不會刪除已註冊的模型。
+若要立即更新，可執行：
+
+```bash
+bash scripts/ragflow.sh sync-models
+```
+
+共用模式的模型駐留、GPU 與資源設定由主機 Ollama 管理；原先獨立嵌入程序的
+`NOVA_RAGFLOW_CUDA_VISIBLE_DEVICES` 與 systemd 記憶體上限適用於獨立模式。
+
+## 在獨立嵌入模式使用已安裝的聊天模型
+
+`11435` 是獨立的嵌入服務，模型清單只有 `bge-m3:latest` 時，不能從這份
+清單選取主機 `11434` 上的 `qwen3.5:4b`。若要在 RAGFlow 原生介面選取
+已安裝的 Qwen 聊天模型，執行：
+
+```bash
+bash scripts/ragflow.sh connect-chat qwen3.5:4b
+```
+
+此指令建立 `Ollama / nova-chat / qwen3.5:4b` 聊天模型執行個體，透過
+`http://host.docker.internal:11436` 轉送至現有 `127.0.0.1:11434` Ollama。
+轉送僅監聽 Docker 本機橋接位址，使用使用者層級 systemd socket；
+RAGFlow 日常 `up`／`down` 會一併啟停轉送。重新整理 RAGFlow 的模型設定頁後，
+可在聊天模型清單選取 Qwen。嵌入模型仍選 BGE-M3，聊天模型的預設值由管理者設定。
+Nova 的檢索輔助回答仍由目前選定的 Nova 模型產生。
 
 ## 行為與隔離邊界
 
