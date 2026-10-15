@@ -143,6 +143,234 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         self.addCleanup(tts.close_worker)
         return tts
 
+    def test_prefetch_handoff_preserves_pcm_order_while_output_is_blocked(self):
+        from src.tts.engines.edge import _GatedFrameSink
+
+        blocked, resume = Event(), Event()
+        received = []
+
+        class Parent:
+            def put_audio_frame(self, samples, eventpoint):
+                received.append((int(samples[0]), eventpoint["media_sequence"]))
+                if eventpoint["media_sequence"] == 0:
+                    blocked.set()
+                    resume.wait(timeout=2)
+
+        sink = _GatedFrameSink(Parent())
+        for sequence in (0, 1):
+            sink.emit(np.full(320, sequence), {"media_sequence": sequence})
+        releasing = Thread(target=sink.release)
+        releasing.start()
+        try:
+            self.assertTrue(blocked.wait(timeout=1))
+            # The decoder continues while release waits on the bounded WebRTC
+            # queue. New PCM must stay behind the already buffered samples.
+            sink.emit(np.full(320, 2), {"media_sequence": 2, "fragment_end": True})
+        finally:
+            resume.set()
+            releasing.join(timeout=2)
+
+        self.assertFalse(releasing.is_alive())
+        self.assertEqual(received, [(0, 0), (1, 1), (2, 2)])
+
+    def test_cancelling_prefetch_handoff_discards_unsent_pcm(self):
+        from src.tts.engines.edge import _GatedFrameSink
+
+        blocked, resume = Event(), Event()
+        received = []
+
+        class Parent:
+            def put_audio_frame(self, _samples, eventpoint):
+                received.append(eventpoint["media_sequence"])
+                if eventpoint["media_sequence"] == 0:
+                    blocked.set()
+                    resume.wait(timeout=2)
+
+        sink = _GatedFrameSink(Parent())
+        for sequence in (0, 1):
+            sink.emit(np.zeros(320), {"media_sequence": sequence})
+        releasing = Thread(target=sink.release)
+        releasing.start()
+        try:
+            self.assertTrue(blocked.wait(timeout=1))
+            sink.cancel()
+            sink.emit(np.zeros(320), {"media_sequence": 2})
+        finally:
+            resume.set()
+            releasing.join(timeout=2)
+
+        self.assertFalse(releasing.is_alive())
+        self.assertEqual(received, [0])
+
+    def test_rate_limited_synthesis_waits_before_retrying(self):
+        from aiohttp import WSServerHandshakeError
+
+        payload = _mp3_fixture()
+        frames, failures, requests = [], [], []
+
+        class Parent:
+            def put_audio_frame(self, frame, _eventpoint):
+                frames.append(frame)
+
+            def notify_fragment_synthesis_failed(self, _eventpoint, reason):
+                failures.append(reason)
+
+        class RateLimitedCommunicate:
+            async def stream(self):
+                requests.append(time.monotonic())
+                if len(requests) == 1 or requests[-1] - requests[0] < 0.95:
+                    raise WSServerHandshakeError(
+                        SimpleNamespace(real_url="https://example.invalid/tts"),
+                        (), status=429, headers={"Retry-After": "1"},
+                    )
+                yield {"type": "audio", "data": payload}
+
+        tts = self._make_tts(Parent())
+        with patch(
+            "src.tts.engines.edge.edge_tts.Communicate",
+            side_effect=lambda *_args: RateLimitedCommunicate(),
+        ):
+            tts.txt_to_audio(("等待限流恢復。", {
+                "turn_id": "turn-1", "generation": 1, "fragment_sequence": 0,
+            }))
+
+        self.assertEqual(failures, [])
+        self.assertTrue(frames)
+        self.assertEqual(len(requests), 2)
+        self.assertGreaterEqual(requests[1] - requests[0], 0.95)
+
+    def test_rate_limit_wait_can_be_cancelled_without_another_request(self):
+        from aiohttp import WSServerHandshakeError
+
+        rejected = Event()
+        requests, failures = [], []
+
+        class Parent:
+            def notify_fragment_synthesis_failed(self, _eventpoint, reason):
+                failures.append(reason)
+
+        class RateLimitedCommunicate:
+            async def stream(self):
+                requests.append(1)
+                rejected.set()
+                raise WSServerHandshakeError(
+                    SimpleNamespace(real_url="https://example.invalid/tts"),
+                    (), status=429, headers={"Retry-After": "5"},
+                )
+                yield  # Make this a stream even though it fails before audio.
+
+        tts = self._make_tts(Parent())
+        worker = Thread(target=tts.txt_to_audio, args=(("取消等待。", {
+            "turn_id": "turn-1", "generation": 1, "fragment_sequence": 0,
+        }),))
+        with patch(
+            "src.tts.engines.edge.edge_tts.Communicate",
+            side_effect=lambda *_args: RateLimitedCommunicate(),
+        ):
+            worker.start()
+            try:
+                self.assertTrue(rejected.wait(timeout=1))
+                tts.flush_talk()
+                worker.join(timeout=0.5)
+                self.assertFalse(worker.is_alive())
+            finally:
+                tts.flush_talk()
+                worker.join(timeout=1)
+
+        self.assertEqual(requests, [1])
+        self.assertEqual(failures, [])
+
+    def test_rate_limit_does_not_exceed_the_shared_retry_budget(self):
+        from aiohttp import WSServerHandshakeError
+        from src.server.reply_streaming.channel import PlayableFragment
+        from src.server.reply_streaming.retry import RetryBudget
+        from src.server.reply_streaming.turn import TurnContext
+
+        requests, failures = [], []
+
+        class Parent:
+            def notify_fragment_synthesis_failed(self, _eventpoint, reason):
+                failures.append(reason)
+
+        class RateLimitedCommunicate:
+            async def stream(self):
+                requests.append(1)
+                raise WSServerHandshakeError(
+                    SimpleNamespace(real_url="https://example.invalid/tts"),
+                    (), status=429, headers={"Retry-After": "5"},
+                )
+                yield
+
+        turn = TurnContext(turn_id="turn-1", generation=1)
+        fragment = PlayableFragment(
+            envelope=turn.envelope(stage="tts_fragment", sequence=0),
+            text="不得超出等待預算。", estimated_seconds=0.5,
+        )
+        tts = self._make_tts(Parent())
+        with patch(
+            "src.tts.engines.edge.edge_tts.Communicate",
+            side_effect=lambda *_args: RateLimitedCommunicate(),
+        ):
+            tts.synthesize_fragment(
+                fragment, chunk_guard=lambda _sequence: True,
+                retry_budget=RetryBudget(max_retries=1, extra_wait_seconds=0.1),
+            )
+
+        self.assertEqual(requests, [1])
+        self.assertEqual(failures, ["tts_exhausted_before_audio"])
+
+    def test_prefetch_limits_requests_and_eventually_emits_all_fragments_in_order(self):
+        from src.tts.engines.edge import EDGE_MAX_PREFETCH_JOBS
+
+        payload = _mp3_fixture()
+        release = Event()
+        started = [Event() for _ in range(6)]
+        emitted = []
+
+        class Parent:
+            def put_audio_frame(self, _frame, eventpoint):
+                emitted.append(eventpoint["fragment_sequence"])
+
+        class Communicate:
+            def __init__(self, index):
+                self.index = index
+
+            async def stream(self):
+                started[self.index].set()
+                yield {"type": "audio", "data": payload}
+                while not release.is_set():
+                    await asyncio.sleep(0.01)
+
+        tts = self._make_tts(Parent())
+        for sequence in range(len(started)):
+            tts.put_msg_txt(str(sequence), {
+                "turn_id": "turn-1", "generation": 1,
+                "fragment_sequence": sequence,
+            })
+        quit_event = Event()
+        worker = Thread(target=tts.process_tts, args=(quit_event,))
+        with patch(
+            "src.tts.engines.edge.edge_tts.Communicate",
+            side_effect=lambda text, _voice: Communicate(int(text)),
+        ):
+            worker.start()
+            try:
+                for index in range(EDGE_MAX_PREFETCH_JOBS + 1):
+                    self.assertTrue(started[index].wait(timeout=1))
+                self.assertFalse(started[EDGE_MAX_PREFETCH_JOBS + 1].wait(timeout=0.1))
+                release.set()
+                deadline = time.monotonic() + 2
+                while len(set(emitted)) < len(started) and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertEqual(set(emitted), set(range(len(started))))
+                self.assertEqual(emitted, sorted(emitted))
+            finally:
+                release.set()
+                quit_event.set()
+                worker.join(timeout=2)
+
+        self.assertFalse(worker.is_alive())
+
     def test_persistent_worker_reuses_the_same_event_loop(self):
         payload = _mp3_fixture()
 

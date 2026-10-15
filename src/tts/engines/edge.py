@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import threading
 import time
 from collections import deque
 from concurrent.futures import TimeoutError as FuturesTimeoutError
+from email.utils import parsedate_to_datetime
 from queue import Empty
 from types import SimpleNamespace
 from typing import Callable, Optional
@@ -35,6 +37,8 @@ EDGE_RETRY_STREAM_TIMEOUT_SECONDS = 15.0
 EDGE_CONTINUATION_STREAM_TIMEOUT_SECONDS = 15.0
 EDGE_WARMUP_TIMEOUT_SECONDS = 15.0
 EDGE_MAX_ATTEMPTS = 2
+EDGE_MAX_PREFETCH_JOBS = 2
+EDGE_RATE_LIMIT_BACKOFF_SECONDS = 1.0
 ACTIVITY_THRESHOLD = 1e-4
 ONSET_THRESHOLD = 1e-5
 FRAME_SECONDS = 0.01
@@ -181,11 +185,17 @@ class _GatedFrameSink:
         return None
 
     def release(self) -> None:
-        with self._lock:
-            self._released = True
-            frames = list(self._buffer)
-            self._buffer.clear()
-        for samples, eventpoint in frames:
+        # Remain gated while draining: the decoder can keep producing while
+        # put_audio_frame blocks on WebRTC backpressure. Switching to live
+        # output first lets new samples overtake the buffered prefix.
+        while True:
+            with self._lock:
+                if self._cancelled:
+                    return
+                if not self._buffer:
+                    self._released = True
+                    break
+                samples, eventpoint = self._buffer.popleft()
             self.parent.put_audio_frame(samples, eventpoint)
             self.first_pcm.set()
         self._wake()
@@ -583,6 +593,7 @@ class EdgeTTS(BaseTTS):
         self._worker: Optional[_EdgeAsyncWorker] = None
         self._prefetch_jobs: deque[dict] = deque()
         self._worker_lock = threading.Lock()
+        self._rate_limit_until = 0.0
 
     @property
     def worker_loop(self):
@@ -696,12 +707,15 @@ class EdgeTTS(BaseTTS):
             self._cancel_job(self._prefetch_jobs.popleft())
 
     def _launch_queued_prefetches(self) -> None:
-        """Synthesize every already-known later fragment while playback drains.
+        """Synthesize a bounded lookahead while playback drains.
 
         Each sink retains its PCM until its turn is released, so completing
         later requests early cannot reorder or overlap audible speech.
         """
-        while self.state == State.RUNNING:
+        while (
+            self.state == State.RUNNING
+            and len(self._prefetch_jobs) < EDGE_MAX_PREFETCH_JOBS
+        ):
             try:
                 msg = self.msgqueue.get_nowait()
             except Empty:
@@ -847,6 +861,42 @@ class EdgeTTS(BaseTTS):
         if callable(observe) and self.last_onset_preroll_ms:
             observe(self.last_onset_preroll_ms)
 
+    def _record_rate_limit(self, exc: Exception) -> None:
+        if getattr(exc, "status", None) != 429:
+            return
+        headers = getattr(exc, "headers", None) or {}
+        value = headers.get("Retry-After", "")
+        try:
+            delay = float(value)
+        except (TypeError, ValueError):
+            try:
+                delay = parsedate_to_datetime(value).timestamp() - time.time()
+            except (TypeError, ValueError, OverflowError):
+                delay = EDGE_RATE_LIMIT_BACKOFF_SECONDS
+        if not math.isfinite(delay):
+            delay = EDGE_RATE_LIMIT_BACKOFF_SECONDS
+        # A missing/expired Retry-After must not cause another immediate burst.
+        delay = max(EDGE_RATE_LIMIT_BACKOFF_SECONDS, delay)
+        self._rate_limit_until = max(
+            self._rate_limit_until, time.monotonic() + delay
+        )
+
+    async def _wait_for_rate_limit(self, max_wait_seconds: float) -> Optional[float]:
+        started = time.monotonic()
+        if self._rate_limit_until <= started:
+            return 0.0
+        deadline = started + max_wait_seconds
+        while self.state == State.RUNNING:
+            remaining = self._rate_limit_until - time.monotonic()
+            if remaining <= 0:
+                return time.monotonic() - started
+            if self._rate_limit_until >= deadline:
+                return None
+            # Share cooldown with prefetched requests and keep cancellation
+            # responsive without blocking the PCM/playback threads.
+            await asyncio.sleep(min(remaining, 0.05))
+        return None
+
     def _fail_closed_after_pcm(
         self,
         emitter: _EdgePCMEmitter,
@@ -894,6 +944,17 @@ class EdgeTTS(BaseTTS):
             frame_sink = _DirectFrameSink(self.parent)
         frame_sink.bind()
         for attempt in range(1, EDGE_MAX_ATTEMPTS + 1):
+            first_byte_timeout = (
+                EDGE_INITIAL_STREAM_TIMEOUT_SECONDS
+                if attempt == 1 else retry_timeout_seconds
+            )
+            waited = await self._wait_for_rate_limit(first_byte_timeout)
+            if self.state != State.RUNNING:
+                return
+            if waited is None:
+                break
+            if retry_budget is not None and attempt > 1:
+                first_byte_timeout = max(0.0, first_byte_timeout - waited)
             received_audio = False
             emitter = _EdgePCMEmitter(
                 self,
@@ -924,11 +985,7 @@ class EdgeTTS(BaseTTS):
                             timeout=(
                                 EDGE_CONTINUATION_STREAM_TIMEOUT_SECONDS
                                 if received_audio
-                                else (
-                                    EDGE_INITIAL_STREAM_TIMEOUT_SECONDS
-                                    if attempt == 1
-                                    else retry_timeout_seconds
-                                )
+                                else first_byte_timeout
                             ),
                         )
                     except StopAsyncIteration:
@@ -958,6 +1015,7 @@ class EdgeTTS(BaseTTS):
                 raise RuntimeError("Edge TTS returned no decodable audio")
             except Exception as exc:
                 last_error = exc
+                self._record_rate_limit(exc)
                 if self.state != State.RUNNING:
                     return
                 can_retry = attempt < EDGE_MAX_ATTEMPTS
