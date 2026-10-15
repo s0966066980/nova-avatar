@@ -23,6 +23,8 @@ async def on_shutdown(app):
     """伺服器關閉時的清理操作"""
     from src.server.routes.webrtc import close_sessions
     await close_sessions()
+    from src.tts.engines.edge import shutdown_edge_tts
+    await asyncio.to_thread(shutdown_edge_tts)
     shutdown_llama_server()
     shutdown_cosyvoice_server()
     scene_service.close()

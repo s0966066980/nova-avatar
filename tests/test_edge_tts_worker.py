@@ -63,7 +63,7 @@ class EdgeTTSStartupTests(unittest.TestCase):
             self.assertTrue(_await_edge_tts_prewarm(worker))
 
         self.assertTrue(called.is_set())
-        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True)
+        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True, keep_connection=False)
         self.assertFalse(worker.is_alive())
 
     def test_non_edge_engine_does_not_start_edge_prewarm(self):
@@ -73,6 +73,20 @@ class EdgeTTSStartupTests(unittest.TestCase):
 
         self.assertIsNone(worker)
         prewarm.assert_not_called()
+
+    def test_startup_prewarm_recovers_from_a_temporary_failure(self):
+        with patch("src.tts.engines.edge.prewarm_edge_tts", side_effect=[False, True]) as prewarm, patch(
+            "src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
+        ):
+            self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config())))
+        self.assertEqual(prewarm.call_count, 2)
+
+    def test_startup_prewarm_stops_after_three_failures(self):
+        with patch("src.tts.engines.edge.prewarm_edge_tts", return_value=False) as prewarm, patch(
+            "src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
+        ):
+            self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config())))
+        self.assertEqual(prewarm.call_count, 3)
 
 
 class EdgeTTSTransportTests(unittest.IsolatedAsyncioTestCase):

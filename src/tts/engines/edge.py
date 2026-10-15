@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import math
 import threading
 import time
@@ -14,14 +15,13 @@ from email.utils import parsedate_to_datetime
 from queue import Empty
 from types import SimpleNamespace
 from typing import Callable, Optional
-from urllib.parse import parse_qs, urlencode, urlsplit
 
 import av
 import edge_tts
-from edge_tts import communicate as edge_transport
 import numpy as np
 
 from src.tts.base import BaseTTS, State
+from src.tts.edge_connection import EdgeConnectionPool, configure_edge_endpoint
 from src.server.reply_streaming.channel import PlayableFragment
 from src.server.reply_streaming.retry import RetryBudget
 from src.utils.logging import logger
@@ -48,9 +48,11 @@ TRAILING_PAUSE_SECONDS = 0.12
 
 
 class _EdgeAsyncWorker:
-    """One background asyncio loop per EdgeTTS instance; not a persistent Edge socket."""
+    """Own one asyncio loop and, when enabled, its reusable Edge sockets."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, shared: bool = False) -> None:
+        self.shared = shared
+        self.pool = EdgeConnectionPool()
         self.loop = asyncio.new_event_loop()
         self.thread = threading.Thread(
             target=self._run,
@@ -97,12 +99,43 @@ class _EdgeAsyncWorker:
     def run(self, coro):
         return self.submit(coro).result()
 
+    async def warm_connections(self) -> None:
+        self.pool.ensure_warm()
+
     def close(self) -> None:
         loop = self.loop
         if loop.is_closed():
             return
+        try:
+            self.submit(self.pool.close()).result(timeout=3)
+        except Exception:
+            logger.debug("Edge TTS pool cleanup did not finish before loop shutdown")
         loop.call_soon_threadsafe(loop.stop)
         self.thread.join(timeout=2)
+
+
+_shared_worker: Optional[_EdgeAsyncWorker] = None
+_shared_worker_lock = threading.Lock()
+
+
+def _ensure_shared_worker() -> _EdgeAsyncWorker:
+    global _shared_worker
+    with _shared_worker_lock:
+        if _shared_worker is None:
+            _shared_worker = _EdgeAsyncWorker(shared=True)
+        return _shared_worker
+
+
+def shutdown_edge_tts() -> None:
+    """Release process-owned sockets after all visitor sessions have stopped."""
+    global _shared_worker
+    with _shared_worker_lock:
+        worker, _shared_worker = _shared_worker, None
+    if worker is not None:
+        worker.close()
+
+
+atexit.register(shutdown_edge_tts)
 
 
 class _DirectFrameSink:
@@ -215,20 +248,13 @@ def _edge_communicate(text: str, voicename: str):
     Keep this in Nova's adapter until edge-tts ships its endpoint migration
     (https://github.com/rany2/edge-tts/pull/491); leave newer endpoints intact.
     """
-    endpoint = urlsplit(edge_transport.WSS_URL)
-    if (
-        endpoint.netloc == "speech.platform.bing.com"
-        and endpoint.path == "/consumer/speech/synthesize/readaloud/edge/v1"
-    ):
-        token = parse_qs(endpoint.query)["TrustedClientToken"][0]
-        edge_transport.WSS_URL = (
-            "wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1?"
-            + urlencode({"Ocp-Apim-Subscription-Key": token})
-        )
+    configure_edge_endpoint()
     return edge_tts.Communicate(text, voicename)
 
 
-async def _prewarm_edge_tts(voicename: str, *, decode_pcm: bool = False) -> bool:
+async def _prewarm_edge_tts(
+    voicename: str, *, decode_pcm: bool = False, stream_factory=None,
+) -> bool:
     """Warm the connection, optionally including decoding without playback."""
     emitter = None
     if decode_pcm:
@@ -237,21 +263,30 @@ async def _prewarm_edge_tts(voicename: str, *, decode_pcm: bool = False) -> bool
             parent=SimpleNamespace(put_audio_frame=lambda *_: True),
         )
         emitter = _EdgePCMEmitter(owner, "", {})
-    stream = _edge_communicate("語音連線準備完成。", voicename).stream()
+    text = "語音連線準備完成。"
+    stream = (
+        _edge_communicate(text, voicename).stream()
+        if stream_factory is None else stream_factory(text, voicename)
+    )
     iterator = stream.__aiter__()
+    ready = False
     try:
         while True:
             item = await iterator.__anext__()
             if item.get("type") == "audio" and item.get("data"):
                 if emitter is None:
-                    return True
-                await asyncio.to_thread(emitter.feed_mp3, item["data"])
-                if emitter.emitted:
+                    ready = True
+                else:
+                    await asyncio.to_thread(emitter.feed_mp3, item["data"])
+                    ready = emitter.emitted
+                # Pooled sockets must consume turn.end before they can serve
+                # another request. An early close would discard the warm socket.
+                if ready and stream_factory is None:
                     return True
     except StopAsyncIteration:
         if emitter is not None:
             await asyncio.to_thread(emitter.finish)
-        return emitter is not None and emitter.emitted
+        return ready if emitter is None else emitter.emitted
     finally:
         aclose = getattr(iterator, "aclose", None)
         if callable(aclose):
@@ -266,16 +301,19 @@ def prewarm_edge_tts(
     *,
     timeout_seconds: float = EDGE_WARMUP_TIMEOUT_SECONDS,
     decode_pcm: bool = False,
+    keep_connection: bool = False,
 ) -> bool:
     """Warm Edge networking before the first user turn; failure is non-fatal."""
     started_at = time.perf_counter()
     try:
-        ready = asyncio.run(
-            asyncio.wait_for(
-                _prewarm_edge_tts(voicename, decode_pcm=decode_pcm),
-                timeout=max(0.1, float(timeout_seconds)),
-            )
+        worker = _ensure_shared_worker() if keep_connection else None
+        operation = asyncio.wait_for(
+            _prewarm_edge_tts(
+                voicename, decode_pcm=decode_pcm,
+                stream_factory=None if worker is None else worker.pool.stream,
+            ), timeout=max(0.1, float(timeout_seconds)),
         )
+        ready = asyncio.run(operation) if worker is None else worker.run(operation)
     except Exception as exc:
         logger.warning(
             "Edge TTS prewarm failed after %.3fs type=%s",
@@ -605,7 +643,11 @@ class EdgeTTS(BaseTTS):
         tts = getattr(self.config, "tts", None)
         prefetch = bool(getattr(tts, "edge_prefetch", True))
         persistent = bool(getattr(tts, "edge_persistent_worker", True))
-        return persistent or prefetch
+        return persistent or prefetch or self._reuse_enabled
+
+    @property
+    def _reuse_enabled(self) -> bool:
+        return bool(getattr(getattr(self.config, "tts", None), "edge_connection_reuse", False))
 
     @property
     def _prefetch_enabled(self) -> bool:
@@ -614,15 +656,20 @@ class EdgeTTS(BaseTTS):
     def _ensure_worker(self) -> _EdgeAsyncWorker:
         with self._worker_lock:
             if self._worker is None:
-                self._worker = _EdgeAsyncWorker()
+                self._worker = _ensure_shared_worker() if self._reuse_enabled else _EdgeAsyncWorker()
             return self._worker
 
     def close_worker(self) -> None:
         with self._worker_lock:
             worker = self._worker
             self._worker = None
-        if worker is not None:
+        if worker is not None and not worker.shared:
             worker.close()
+
+    def _open_edge_stream(self, text: str, voicename: str):
+        if self._reuse_enabled:
+            return self._worker.pool.stream(text, voicename)
+        return _edge_communicate(text, voicename).stream()
 
     def _run_coro(self, coro):
         if not self._persistent_enabled:
@@ -639,7 +686,9 @@ class EdgeTTS(BaseTTS):
 
     def render(self, quit_event) -> None:
         if self._persistent_enabled:
-            self._ensure_worker()
+            worker = self._ensure_worker()
+            if self._reuse_enabled:
+                worker.submit(worker.warm_connections())
         super().render(quit_event)
 
     def process_tts(self, quit_event) -> None:
@@ -975,7 +1024,7 @@ class EdgeTTS(BaseTTS):
                         attempt,
                     )
 
-            stream = _edge_communicate(text, voicename).stream()
+            stream = self._open_edge_stream(text, voicename)
             iterator = stream.__aiter__()
             try:
                 while self.state == State.RUNNING:

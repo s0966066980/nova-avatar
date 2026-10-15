@@ -13,6 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import json
 import argparse
+import time
 from threading import Thread
 import torch.multiprocessing as mp
 
@@ -21,6 +22,9 @@ from src.config.loader import load_config
 from src.avatars.factory import prepare_avatar_model
 from src.server.state import state
 from src.server.server import create_app, run_server
+
+EDGE_PREWARM_MAX_ATTEMPTS = 3
+EDGE_PREWARM_RETRY_SECONDS = 1.0
 
 
 def _start_edge_tts_prewarm(config) -> Thread | None:
@@ -31,7 +35,16 @@ def _start_edge_tts_prewarm(config) -> Thread | None:
 
     voice = str(getattr(config.tts, "ref_file", "") or "").strip()
     def warm():
-        worker.prewarm_ready = prewarm_edge_tts(voice, decode_pcm=True)
+        for attempt in range(EDGE_PREWARM_MAX_ATTEMPTS):
+            worker.prewarm_ready = prewarm_edge_tts(
+                voice, decode_pcm=True,
+                keep_connection=bool(getattr(config.tts, "edge_connection_reuse", False)),
+            )
+            if worker.prewarm_ready:
+                return
+            if attempt + 1 < EDGE_PREWARM_MAX_ATTEMPTS:
+                logger.warning("Edge TTS startup prewarm retry %d/%d", attempt + 2, EDGE_PREWARM_MAX_ATTEMPTS)
+                time.sleep(EDGE_PREWARM_RETRY_SECONDS * (attempt + 1))
 
     worker = Thread(
         target=warm,
@@ -47,7 +60,8 @@ def _await_edge_tts_prewarm(worker: Thread | None) -> bool:
         return True
     from src.tts.engines.edge import EDGE_WARMUP_TIMEOUT_SECONDS
 
-    worker.join(timeout=EDGE_WARMUP_TIMEOUT_SECONDS + 1.0)
+    retry_wait = EDGE_PREWARM_RETRY_SECONDS * sum(range(EDGE_PREWARM_MAX_ATTEMPTS))
+    worker.join(timeout=EDGE_WARMUP_TIMEOUT_SECONDS * EDGE_PREWARM_MAX_ATTEMPTS + retry_wait + 1.0)
     if worker.is_alive():
         logger.warning("Edge TTS prewarm did not finish before server startup")
         return False
