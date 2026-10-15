@@ -98,6 +98,16 @@ bash scripts/start-jetson.sh
 `https://localhost:3000/stage.html`；後端：`https://localhost:8010/health`。
 其他電腦連線時，把 localhost 換成 Orin 的區網 IP。
 
+舞台預設在回答播放與尾音保護結束、閒置 10 秒後重置訪客對話：清除該
+舞台會話的對話歷史、已顯示看板項目、字幕與使用者字句，保留 WebRTC
+連線和目前的收音設定。開始新的發話或對話輪次會取消倒數，輪次結束後
+重新計時。控制台會話保留自己的歷史。此功能共用伺服器輪次管理，適用於
+MuseTalk 即時呈現、預錄呈現和朗讀模式，不增加模型推論。
+
+在控制台「舞台設定」的「訪客對話重置時間」調整 3–300 秒並套用；設定
+會儲存至 `config/runtime_overrides.yaml`，後續閒置倒數使用新值。Jetson
+設定檔也可使用 `stage.idle_reset_seconds` 設定預設秒數。
+
 控制台的 `config/runtime_overrides.yaml` 會覆蓋啟動設定。這次移植已把
 ASR／VAD 裝置與 LLM 設定調整為 Orin 環境；之前的設定備份在
 `.local/jetson/runtime_overrides-before-migration.yaml`。若另有本機模型，

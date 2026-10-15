@@ -61,6 +61,9 @@ _RULES_LOCK = threading.RLock()
 DEFAULT_STAGE_CAPTION_MAX_CHARS = 120
 MIN_STAGE_CAPTION_MAX_CHARS = 20
 MAX_STAGE_CAPTION_MAX_CHARS = 2000
+DEFAULT_STAGE_IDLE_RESET_SECONDS = 10
+MIN_STAGE_IDLE_RESET_SECONDS = 3
+MAX_STAGE_IDLE_RESET_SECONDS = 300
 DEFAULT_CAPTION_X = 50
 DEFAULT_CAPTION_Y = 90
 DEFAULT_CAPTION_WIDTH = 100
@@ -437,6 +440,12 @@ def stage_snapshot(config) -> Dict[str, Any]:
     return {
         "background_id": str(getattr(stage, "background_id", "") or ""),
         "caption_max_chars": validate_stage_caption_max_chars(caption),
+        "idle_reset_seconds": _validate_int_range(
+            getattr(stage, "idle_reset_seconds", DEFAULT_STAGE_IDLE_RESET_SECONDS),
+            field="舞台閒置清場時間",
+            minimum=MIN_STAGE_IDLE_RESET_SECONDS,
+            maximum=MAX_STAGE_IDLE_RESET_SECONDS,
+        ),
         "caption_x": _validate_int_range(
             getattr(stage, "caption_x", DEFAULT_CAPTION_X),
             field="字幕帶左右位置",
@@ -532,6 +541,13 @@ def apply_stage_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
         if "caption_max_chars" in payload:
             stage.caption_max_chars = validate_stage_caption_max_chars(
                 payload["caption_max_chars"]
+            )
+        if "idle_reset_seconds" in payload:
+            stage.idle_reset_seconds = _validate_int_range(
+                payload["idle_reset_seconds"],
+                field="舞台閒置清場時間",
+                minimum=MIN_STAGE_IDLE_RESET_SECONDS,
+                maximum=MAX_STAGE_IDLE_RESET_SECONDS,
             )
         if "caption_x" in payload:
             stage.caption_x = _validate_int_range(

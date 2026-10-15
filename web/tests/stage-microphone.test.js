@@ -67,7 +67,12 @@ function stageHarness() {
     RTCSessionDescription: class { constructor(value) { Object.assign(this, value) } },
     MediaStream: class { getTracks() { return [] } addTrack() {} },
     StageCaptionWindow: class {},
-    StageCaptionView: class { clear() {} destroy() {} },
+    StageCaptionView: class {
+      constructor({ container }) { this.container = container }
+      append(text) { this.container.textContent += text }
+      clear() { this.container.textContent = '' }
+      destroy() {}
+    },
     DEFAULT_STAGE_CAPTION_MAX_CHARS: 200,
     shouldFadeStageReply: () => false,
     boardReopenPresentation: () => ({ style: {}, edge: 'top', icon: '▣' }),
@@ -149,4 +154,41 @@ test('暫停中的舞台插話會同步恢復前後端收音狀態', async () =>
     { type: 'capture', enabled: true, finalize: false },
     { type: 'interrupt' },
   ])
+})
+
+test('訪客重置清除字幕、看板與使用者字句，保持連線和收音', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  stage.event({ seq: 1, type: 'user_transcript', text: '上一位訪客的問題' })
+  stage.event({ seq: 2, type: 'assistant_fragment', turn_id: 'old', text: '上一位訪客的回答' })
+  stage.event({ seq: 3, type: 'assistant_board', turn_id: 'old', board: {
+    title: '上一輪看板', items: [{ title: '舊內容', body: '內容' }]
+  } })
+  assert.equal(stage.element('said').textContent, '上一位訪客的問題')
+  assert.equal(stage.element('reply').textContent, '上一位訪客的回答')
+  assert.equal(stage.element('board').hidden, false)
+  const sentBeforeReset = stage.sent.length
+
+  stage.event({ seq: 4, type: 'conversation_reset' })
+
+  assert.equal(stage.element('said').textContent, '')
+  assert.equal(stage.element('reply').textContent, '')
+  assert.equal(stage.element('boardList').innerHTML, '')
+  assert.equal(stage.element('board').hidden, true)
+  assert.equal(stage.element('hint').textContent, '直接說話')
+  assert.equal(stage.track.enabled, true)
+  assert.equal(stage.element('veil').hidden, true)
+  assert.equal(stage.sent.length, sentBeforeReset)
+  stage.event({ seq: 5, type: 'assistant_fragment', turn_id: 'new', text: '下一位訪客的回答' })
+  assert.equal(stage.element('reply').textContent, '下一位訪客的回答')
+})
+
+test('訪客重置保留舞台使用者暫停收音的選擇', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  stage.element('mic').dispatch('pointerup')
+  stage.event({ seq: 1, type: 'conversation_reset' })
+  assert.equal(stage.track.enabled, false)
+  assert.equal(stage.element('hint').textContent, '已暫停收音，點一下恢復')
+  assert.equal(stage.element('veil').hidden, true)
 })

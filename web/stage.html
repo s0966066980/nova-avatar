@@ -717,6 +717,14 @@ import {
     }
     if(ev.type === 'user_transcript' && ev.text){ showSaid(ev.text); return; }
     if(ev.type === 'board_clear'){ clearLiveBoard(); return; }
+    if(ev.type === 'conversation_reset'){
+      clearTimeout(saidTimer);
+      said.classList.remove('on');
+      said.textContent = '';
+      clearReply();
+      clearLiveBoard();
+      return;
+    }
     if(ev.type === 'assistant_board' && ev.board){
       liveBoard.turnId=ev.turn_id||null;
       liveBoard.title=ev.board.title||'';

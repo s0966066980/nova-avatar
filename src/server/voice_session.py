@@ -26,6 +26,7 @@ from av.audio.resampler import AudioResampler
 from src.asr.factory import get_asr_engine
 from src.llm.service import (
     acknowledge_session_board_item,
+    clear_session_history,
     commit_session_history,
     llm_response,
 )
@@ -130,6 +131,8 @@ class VoiceTurnSession:
         self._history_finalized_turns: set[str] = set()
         self._metrics_emitted_turns: set[str] = set()
         self._board_display_receipts: set[tuple[str, str, int, str]] = set()
+        self._conversation_dirty = False
+        self._idle_reset_task: Optional[asyncio.Task] = None
         self._llm_finished = False
         self._media_player = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -1018,6 +1021,7 @@ class VoiceTurnSession:
         self._emit_turn_metrics("interrupt", turn_id=interrupted_turn_id)
 
     async def close(self) -> None:
+        self._cancel_idle_reset()
         self._commit_history("disconnect")
         self._emit_turn_metrics("disconnect")
         self._closed = True
@@ -1211,6 +1215,8 @@ class VoiceTurnSession:
         )
 
     def _start_turn_context(self, turn_id: str) -> None:
+        self._conversation_dirty = True
+        self._cancel_idle_reset()
         if (
             self._turn_context is None
             or self._turn_context.turn_id != turn_id
@@ -1280,7 +1286,74 @@ class VoiceTurnSession:
         )
         return recovered
 
+    def _is_conversation_idle(self) -> bool:
+        return (
+            not self._closed
+            and self._turn_id is None
+            and self._turn_task is None
+            and self._finalize_task is None
+            and not self._output_active
+        )
+
+    def _idle_reset_delay(self) -> float:
+        stage = getattr(self.config, "stage", None)
+        try:
+            return float(getattr(stage, "idle_reset_seconds", 10))
+        except (TypeError, ValueError):
+            return 10.0
+
+    def _cancel_idle_reset(self) -> None:
+        task = self._idle_reset_task
+        self._idle_reset_task = None
+        if task is not None and not task.done():
+            task.cancel()
+
+    def _schedule_idle_reset(self) -> None:
+        """Count down to a visitor conversation reset while the stage sits idle.
+
+        Only a stage session resets: the console keeps its history for the
+        manager. The countdown starts when no turn is running and restarts after
+        any new speech or turn ends.
+        """
+        if (
+            self._presenter != "stage"
+            or not self._conversation_dirty
+            or not self._is_conversation_idle()
+        ):
+            return
+        delay = self._idle_reset_delay()
+        if delay <= 0:
+            return
+        task = self._idle_reset_task
+        if task is not None and not task.done():
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._idle_reset_task = loop.create_task(self._reset_after_idle(delay))
+
+    async def _reset_after_idle(self, delay: float) -> None:
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            return
+        self._idle_reset_task = None
+        if not self._conversation_dirty or not self._is_conversation_idle():
+            return
+        self.reset_conversation()
+
+    def reset_conversation(self) -> None:
+        """Forget the previous visitor: history, shown board items and stage content."""
+        clear_session_history(self.sessionid)
+        self._board_display_receipts.clear()
+        self._conversation_dirty = False
+        self._emit("board_clear")
+        self._emit("conversation_reset")
+        logger.info("Visitor conversation reset session=%s", self.sessionid)
+
     def _close_gate(self) -> None:
+        self._cancel_idle_reset()
         self._gate_open = False
         self._segmenter_reset_pending = True
 
@@ -1305,6 +1378,7 @@ class VoiceTurnSession:
         if allowed and self._metrics is not None:
             self._metrics.mark_listening_resumed()
         self._emit("state", state="listening" if allowed else "paused")
+        self._schedule_idle_reset()
 
     def _on_board_event(self, payload: dict) -> None:
         if not isinstance(payload, dict):

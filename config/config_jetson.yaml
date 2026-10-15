@@ -98,6 +98,7 @@ reply_streaming:
   semantic_wait_seconds: 0.5
 stage:
   caption_max_chars: 120
+  idle_reset_seconds: 10
 vad:
   enabled: true
   type: silero

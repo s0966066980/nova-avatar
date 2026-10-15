@@ -44,6 +44,7 @@ AREA_BY_FILE = {
     "test_scene_background.py": "avatar",
     "test_sovits_tts.py": "speech",
     "test_speech_timing.py": "conversation",
+    "test_stage_idle_reset.py": "conversation",
     "test_vad.py": "speech",
     "test_voice_session.py": "conversation",
     "test_webrtc_lifecycle.py": "runtime",

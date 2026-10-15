@@ -774,6 +774,27 @@
 
             <div class="setting-form-row">
               <div class="field-label-group">
+                <label for="stage-idle-reset-seconds" class="field-main-label">訪客對話重置時間</label>
+                <span id="stage-idle-reset-hint" class="field-sub-hint">舞台上一輪回答播放結束後，閒置多久清除畫面與對話上下文；保持連線與收音設定 (3–300 秒)</span>
+              </div>
+              <div class="field-control-area flex-col">
+                <input
+                  id="stage-idle-reset-seconds"
+                  type="number"
+                  class="std-input"
+                  min="3"
+                  max="300"
+                  step="1"
+                  v-model.number="selectedStageIdleResetSeconds"
+                  :aria-invalid="stageIdleResetError"
+                  aria-describedby="stage-idle-reset-hint stage-idle-reset-error"
+                >
+                <span id="stage-idle-reset-error" v-if="stageIdleResetError" class="field-sub-hint" role="alert">請輸入 3–300 秒的整數。</span>
+              </div>
+            </div>
+
+            <div class="setting-form-row">
+              <div class="field-label-group">
                 <label for="stage-board-preview" class="field-main-label">常態預覽看板</label>
                 <span class="field-sub-hint">在舞台與控制台中預設顯示示範看板</span>
               </div>
@@ -1564,6 +1585,8 @@ const {
   applyLlmBehavior,
   promptDirty,
   selectedStageCaptionMaxChars,
+  selectedStageIdleResetSeconds,
+  stageIdleResetError,
   selectedCaptionX,
   selectedCaptionY,
   selectedCaptionWidth,
