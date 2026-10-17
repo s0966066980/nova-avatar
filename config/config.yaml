@@ -1,6 +1,7 @@
 # 預設服務配置：埠 / SSL / TTS / LLM。
 # 數字人引擎、角色、Ollama 模型請在網頁「設定」裡選擇，不必再換 config_musetalk.yaml。
 app:
+  prewarm: true  # 啟動時預熱本機模型與語音鏈路
   listenport: 8010
   max_session: 1
   
@@ -24,6 +25,10 @@ model:
   mouth_sharpen: 0.5
   paste_interpolation: lanczos
   musetalk:
+    # Optional local TensorRT engines; setup-tensorrt.sh saves verified paths
+    # in ignored runtime_overrides.yaml. Empty paths use PyTorch.
+    unet_engine_path: ""
+    vae_engine_path: ""
     bbox_shift: 0
     extra_margin: 10
     parsing_mode: jaw

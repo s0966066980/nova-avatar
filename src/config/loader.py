@@ -229,6 +229,17 @@ def load_config(
             {"reply_streaming": {"enabled": normalized in {"1", "true"}}},
         )
 
+    # Process-only control for cold/warm comparisons; never persist a benchmark
+    # choice into the administrator's runtime settings.
+    prewarm_env = os.getenv("NOVA_AVATAR_PREWARM_ENABLED")
+    if prewarm_env is not None:
+        normalized = prewarm_env.strip().lower()
+        if normalized not in {"0", "1", "false", "true"}:
+            raise ValueError("NOVA_AVATAR_PREWARM_ENABLED must be 0, 1, false, or true")
+        config_dict = _merge_dicts(
+            config_dict, {"app": {"prewarm": normalized in {"1", "true"}}},
+        )
+
     # 5. 轉換為 Config 物件
     config = dict_to_config(config_dict)
     

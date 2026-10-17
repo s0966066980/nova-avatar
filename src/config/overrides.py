@@ -131,6 +131,14 @@ def persist_runtime_overrides(config) -> None:
         },
     }
 
+    # Engine selection is a deployment setting. Saving mouth quality in the
+    # control panel must not silently switch the next launch back to PyTorch.
+    musetalk = getattr(config.model, "musetalk", None)
+    payload["model"].setdefault("musetalk", {}).update({
+        name: str(getattr(musetalk, name, "") or "")
+        for name in ("unet_engine_path", "vae_engine_path")
+    })
+
     vad = getattr(config, "vad", None)
     if vad is not None:
         payload["vad"] = {

@@ -59,7 +59,7 @@ class OpenAILLM(BaseLLM):
         )
         # The configurable character limit applies to speech only. A board
         # response needs room for its JSON items and fixed protocol markers.
-        self.max_tokens = max(1024, response_token_budget(self.response_max_chars))
+        self.max_tokens = response_token_budget(self.response_max_chars)
 
         logger.info(
             f"LLM initialized: model={self.model}, base_url={self.base_url}"
@@ -132,6 +132,7 @@ class OpenAILLM(BaseLLM):
                 self.response_max_chars,
             )
         
+        completion = None
         try:
             # 構建完整的訊息列表：system + 歷史對話
             messages = [{'role': 'system', 'content': system_prompt}]
@@ -178,3 +179,7 @@ class OpenAILLM(BaseLLM):
         except Exception as e:
             logger.error("Unexpected LLM failure: %s", type(e).__name__)
             raise
+        finally:
+            close = getattr(completion, "close", None)
+            if callable(close):
+                close()

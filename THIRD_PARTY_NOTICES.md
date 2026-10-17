@@ -34,6 +34,19 @@ The MuseTalk code license permits commercial use, but bundled models and
 dependencies retain their own licenses. Verify every model and dependency used
 in a distribution.
 
+## NVIDIA TensorRT and ONNX (optional)
+
+- TensorRT role: optional full-model MuseTalk UNet/VAE inference acceleration
+- Package: `tensorrt-cu12==10.16.1.11`, downloaded into the local Python environment
+- Source and license terms: <https://developer.nvidia.com/tensorrt>
+- TensorRT is NVIDIA software governed by its own license, not Nova Avatar's Apache-2.0 license.
+- ONNX role: build-time model export; license: Apache-2.0
+- ONNX source: <https://github.com/onnx/onnx>
+
+TensorRT binaries, model exports, and generated engines are not bundled in this
+repository. Generated engines retain the applicable model and NVIDIA terms;
+verify those terms before redistribution.
+
 ## Wav2Lip
 
 - Role: optional lip-sync avatar engine

@@ -73,6 +73,8 @@ async def get_settings(request):
     data["switching"] = bool(getattr(state, "switching", False))
     data["ready"] = bool(state.server_ready)
     data["model_ready"] = bool(getattr(state, "model_ready", False))
+    roles = getattr(state, "roles", None)
+    data["roles"] = roles.snapshot() if roles else None
     return _json({"code": 0, "data": data})
 
 
@@ -411,6 +413,9 @@ async def delete_avatar(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     avatar_id = request.match_info.get("avatar_id", "")
+    roles = getattr(state, "roles", None)
+    if roles and any(p["avatar_id"] == avatar_id for lib in (roles.library, roles.store.load()) for p in lib["profiles"]):
+        return _json({"code": -1, "msg": "請先解除角色設定檔對此人物素材的引用"}, status=409)
     if avatar_id == state.config.model.avatar_id:
         return _json({"code": -1, "msg": "正在使用的數字人無法刪除，請先切換角色"}, status=409)
     if _active_session_count():

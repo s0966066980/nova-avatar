@@ -1,0 +1,100 @@
+[
+  {
+    "status": "available",
+    "kind": "current",
+    "query_seconds": 0.1008231980000005,
+    "cached": false,
+    "source": "交通部中央氣象署",
+    "observed_at": "2026-10-17T10:30:00+08:00",
+    "issued_at": null,
+    "fetched_at": "2026-10-17T10:42:57.384723+08:00",
+    "series_counts": {},
+    "requested_days": 1
+  },
+  {
+    "status": "available",
+    "kind": "current",
+    "query_seconds": 8.965900002522176e-05,
+    "cached": true,
+    "source": "交通部中央氣象署",
+    "observed_at": "2026-10-17T10:30:00+08:00",
+    "issued_at": null,
+    "fetched_at": "2026-10-17T10:42:57.384723+08:00",
+    "series_counts": {},
+    "requested_days": 1
+  },
+  {
+    "status": "available",
+    "kind": "forecast",
+    "query_seconds": 0.053335572000037246,
+    "cached": false,
+    "source": "交通部中央氣象署",
+    "observed_at": null,
+    "issued_at": null,
+    "fetched_at": "2026-10-17T10:42:57.437886+08:00",
+    "series_counts": {
+      "temperature_c": 20,
+      "apparent_temperature_c": 20,
+      "precipitation_probability_3h": 8,
+      "weather": 8
+    },
+    "requested_days": 1
+  },
+  {
+    "status": "available",
+    "kind": "forecast",
+    "query_seconds": 0.00010325600004534863,
+    "cached": true,
+    "source": "交通部中央氣象署",
+    "observed_at": null,
+    "issued_at": null,
+    "fetched_at": "2026-10-17T10:42:57.437886+08:00",
+    "series_counts": {
+      "temperature_c": 20,
+      "apparent_temperature_c": 20,
+      "precipitation_probability_3h": 8,
+      "weather": 8
+    },
+    "requested_days": 1
+  },
+  {
+    "status": "available",
+    "kind": "forecast",
+    "query_seconds": 0.05395186900000226,
+    "cached": false,
+    "source": "交通部中央氣象署",
+    "observed_at": null,
+    "issued_at": null,
+    "fetched_at": "2026-10-17T10:42:57.492035+08:00",
+    "series_counts": {
+      "temperature_c": 14,
+      "max_temperature_c": 14,
+      "min_temperature_c": 14,
+      "max_apparent_temperature_c": 14,
+      "min_apparent_temperature_c": 14,
+      "precipitation_probability_12h": 6,
+      "weather": 14
+    },
+    "requested_days": 7
+  },
+  {
+    "status": "available",
+    "kind": "forecast",
+    "query_seconds": 0.00013146500003813344,
+    "cached": true,
+    "source": "交通部中央氣象署",
+    "observed_at": null,
+    "issued_at": null,
+    "fetched_at": "2026-10-17T10:42:57.492035+08:00",
+    "series_counts": {
+      "temperature_c": 14,
+      "max_temperature_c": 14,
+      "min_temperature_c": 14,
+      "max_apparent_temperature_c": 14,
+      "min_apparent_temperature_c": 14,
+      "precipitation_probability_12h": 6,
+      "weather": 14
+    },
+    "requested_days": 7
+  }
+]

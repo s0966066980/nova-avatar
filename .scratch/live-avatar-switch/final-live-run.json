@@ -1,0 +1,8 @@
+{
+  "automated_acceptance": "passed",
+  "browser_acceptance": "passed",
+  "owned_final_backend_stopped": true,
+  "owned_llama_stopped": true,
+  "report": "validation-results.json",
+  "browser_report": "chrome-acceptance.json"
+}

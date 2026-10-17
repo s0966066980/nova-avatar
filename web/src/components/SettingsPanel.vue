@@ -1219,6 +1219,11 @@
           />
         </div>
 
+        <div v-show="activeSettingsTab === 'roles'" class="settings-category-panel"
+          id="catPanel-roles" role="tabpanel" aria-labelledby="railTab-roles">
+          <AvatarProfiles />
+        </div>
+
         <!-- ── 分類 5：系統偏好與自訂 ── -->
         <div
           v-show="activeSettingsTab === 'experience'"
@@ -1372,6 +1377,7 @@ import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
 import RagFlowSettings from './RagFlowSettings.vue'
+import AvatarProfiles from './AvatarProfiles.vue'
 import {
   boardReopenPresentation,
   captionStyle,
@@ -1659,6 +1665,7 @@ const currentBoardStyleLabel = computed(() => {
 })
 
 const settingsTabs = computed(() => [
+  { id: 'roles', icon: 'bi bi-people-fill', label: '角色設定與交接' },
   { id: 'ai', icon: 'bi bi-cpu-fill', label: 'AI 模型與規則', badge: selectedProvider.value === 'ollama' ? 'Ollama' : 'llama.cpp' },
   { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },

@@ -1,0 +1,10 @@
+{
+  "backend_pid": 69168,
+  "owned_llama_pids": [
+    69440
+  ],
+  "supplemental_checks": "passed",
+  "forced_backend_stop": false,
+  "backend_stopped": true,
+  "owned_llama_stopped": true
+}

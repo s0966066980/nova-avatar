@@ -1,0 +1,11 @@
+{
+  "samples": 203,
+  "backend_pid": 15405,
+  "peak_backend_rss_mib": 7667.609375,
+  "peak_gpu_used_mib": 12748.0,
+  "initial_backend_rss_mib": 7053.92578125,
+  "latest_backend_rss_mib": 7650.6875,
+  "latest_gpu_used_mib": 12716.0,
+  "sample_interval_seconds": 5,
+  "gpu_scope": "entire device including existing desktop processes"
+}

@@ -52,13 +52,13 @@ const protocol = useSSL ? 'https' : 'http'
 // 後端地址使用 localhost（前端訪問後端時）
 const backendTarget = `${protocol}://localhost:${backendPort}`
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [vue()],
   server: {
     host: webHost,
     port: webPort,
     // 根據配置檔案自動啟用/停用 HTTPS
-    ...(useSSL && {
+    ...(useSSL && command === 'serve' && {
       https: {
         key: fs.readFileSync(path.resolve(__dirname, '../ssl_certs/localhost.key')),
         cert: fs.readFileSync(path.resolve(__dirname, '../ssl_certs/localhost.crt'))
@@ -85,4 +85,4 @@ export default defineConfig({
       }
     }
   }
-})
+}))

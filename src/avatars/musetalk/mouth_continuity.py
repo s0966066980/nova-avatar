@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 import cv2
 import numpy as np
+from .frame_masks import BoundedFrameMasks
 
 
 class MouthContinuityController:
@@ -52,7 +53,7 @@ class MouthContinuityController:
             int(closing_frames if settling_frames is None else settling_frames),
         )
         self._align_idle_return = bool(align_idle_return)
-        self._full_masks = tuple(self._build_full_mask(index) for index in range(len(masks)))
+        self._full_masks = BoundedFrameMasks(len(masks), self._build_full_mask)
         self._mouth_boxes = tuple(self._mouth_box(mask) for mask in self._full_masks)
         self.reset()
 

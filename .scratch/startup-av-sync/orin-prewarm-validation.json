@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-16",
+  "enabled_by_default": true,
+  "reference_branch": "origin/jetson-orin@46db729",
+  "validation": {
+    "python_passed": 538,
+    "python_skipped": 3,
+    "web_tests_passed": 96,
+    "integration": "passed",
+    "web_build": "passed",
+    "diff_whitespace": "passed"
+  },
+  "cold_comparison": {
+    "trials": 8,
+    "per_role_per_mode": 2,
+    "order": "off/on/on/off",
+    "fresh_backend_and_llama_server": true,
+    "received_audio_and_video_in_every_trial": true,
+    "all_selected_prewarm_components_succeeded": true
+  },
+  "limitations": [
+    "process cold; OS file cache retained",
+    "two samples per role per mode",
+    "no 50-turn soak or browser audiovisual acceptance"
+  ],
+  "cleanup": "all benchmark-owned backend and llama-server processes closed"
+}

@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
+from threading import RLock
+import numpy as np
 import soundfile as sf
 from io import BytesIO
 from typing import Dict, Any
@@ -39,6 +42,8 @@ class BaseASR(ABC):
         self.config = config
         self.language = "zh"  # 預設中文
         self._initialized = False
+        self._ready_lock = RLock()
+        self._prewarmed = False
         
         logger.info(f'[ASR] 初始化 {self.__class__.__name__}')
     
@@ -132,9 +137,29 @@ class BaseASR(ABC):
 
     def ensure_ready(self) -> None:
         """Load the recognizer once so connection setup can fail before listening starts."""
-        if not self._initialized:
-            self._load_model()
-            self._initialized = True
+        with self._ready_lock:
+            if not self._initialized:
+                self._load_model()
+                self._initialized = True
+
+    def prewarm(self) -> None:
+        """Run the real inference path once; no utterance or history is created."""
+        with self._ready_lock:
+            self.ensure_ready()
+            if self._prewarmed:
+                return
+            started = time.perf_counter()
+            self._warm_up()
+            # Failed warmups remain retryable at session preparation.
+            self._prewarmed = True
+            logger.info('[ASR] inference prewarm ready engine=%s elapsed=%.3fs',
+                        type(self).__name__, time.perf_counter() - started)
+
+    def _warm_up(self) -> None:
+        wav = BytesIO()
+        sf.write(wav, np.zeros(16000, dtype=np.float32), 16000,
+                 format="WAV", subtype="PCM_16")
+        self.transcribe(wav.getvalue())
     
     def transcribe_text(self, audio_bytes: bytes) -> str:
         """

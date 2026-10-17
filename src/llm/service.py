@@ -15,6 +15,58 @@ from src.llm.router import ReplyMode
 from src.utils.logging import logger
 
 _session_llm_instances = {}
+_active_profiles = {}
+
+
+def select_session_profile(sessionid: int, profile_id: str = "") -> None:
+    """Select a stored identity without erasing any role's committed history."""
+    if profile_id:
+        _active_profiles[sessionid] = profile_id
+    else:
+        _active_profiles.pop(sessionid, None)
+
+
+def _session_key(sessionid, profile_id=None):
+    profile_id = _active_profiles.get(sessionid, "") if profile_id is None else profile_id
+    return (sessionid, profile_id) if profile_id else sessionid
+
+
+def _session_instance(avatar_stream, config, api_key=None, base_url=None, model=None):
+    sessionid = getattr(avatar_stream, "sessionid", 0)
+    profile_id = getattr(config, "profile_id", "")
+    select_session_profile(sessionid, profile_id)
+    key = _session_key(sessionid)
+    if key not in _session_llm_instances:
+        _session_llm_instances[key] = OpenAILLM(
+            config=config, parent=avatar_stream,
+            api_key=config.llm.api_key or api_key or "nova-avatar-local",
+            base_url=config.llm.base_url or base_url,
+            model=config.llm.model or model, max_history=10,
+        )
+    return _session_llm_instances[key]
+
+
+def prepare_spoken_history(message: str, avatar_stream, turn_id: str) -> None:
+    """A fixed handoff announcement commits through the same playback transaction."""
+    llm = _session_instance(avatar_stream, avatar_stream.config)
+    llm.begin_history_turn(message, turn_id=turn_id)
+
+
+def session_history(sessionid: int, profile_id=None) -> list:
+    llm = _session_llm_instances.get(_session_key(sessionid, profile_id))
+    return list(getattr(llm, "conversation_history", [])) if llm else []
+
+
+def discard_profile_history(sessionid, profile_id):
+    _session_llm_instances.pop(_session_key(sessionid, profile_id), None)
+
+
+def prepare_tool_board(avatar_stream, turn_id, board):
+    from src.llm.response_protocol import BoardItem, SessionBoardContext
+    llm = _session_instance(avatar_stream, avatar_stream.config)
+    llm.queue_board_for_display(SessionBoardContext(
+        turn_id=turn_id, title=board["title"], summary=None,
+        items=[BoardItem(title=p["title"], content=p["body"]) for p in board["items"]]))
 
 
 def llm_response(
@@ -44,9 +96,10 @@ def llm_response(
         sessionid = getattr(avatar_stream, 'sessionid', 0)
         
         # 為每個 session 維護獨立的 LLM 例項(保留對話歷史)
-        if sessionid not in _session_llm_instances:
+        key = _session_key(sessionid, getattr(config, "profile_id", ""))
+        if key not in _session_llm_instances:
             logger.info(f"Creating new LLM instance for session {sessionid}")
-            _session_llm_instances[sessionid] = OpenAILLM(
+            _session_llm_instances[key] = OpenAILLM(
                 config=config,
                 parent=avatar_stream,
                 api_key=api_key,
@@ -55,7 +108,9 @@ def llm_response(
                 max_history=10  # 保留最近10輪對話
             )
         
-        llm = _session_llm_instances[sessionid]
+        select_session_profile(sessionid, getattr(config, "profile_id", ""))
+        llm = _session_llm_instances[key]
+        llm.config = config
         llm.base_url = base_url
         llm.model = model
         if api_key:
@@ -109,10 +164,13 @@ def _ensure_llamacpp_if_needed(config) -> None:
     config.llm.base_url = base_url
 
 
-def clear_session_history(sessionid: int):
+def clear_session_history(sessionid: int, profile_id=None):
     """清空指定會話的對話歷史與看板快照"""
-    if sessionid in _session_llm_instances:
-        llm = _session_llm_instances[sessionid]
+    keys = [key for key in _session_llm_instances
+            if (key == sessionid or isinstance(key, tuple) and key[0] == sessionid)
+            and (profile_id is None or key == _session_key(sessionid, profile_id))]
+    for key in keys:
+        llm = _session_llm_instances[key]
         llm.clear_history()
         set_board = getattr(llm, "set_last_board", None)
         if callable(set_board):
@@ -122,8 +180,9 @@ def clear_session_history(sessionid: int):
 
 def get_session_board(sessionid: int):
     """取得指定會話最近一次成功生成的看板上下文"""
-    if sessionid in _session_llm_instances:
-        llm = _session_llm_instances[sessionid]
+    key = _session_key(sessionid)
+    if key in _session_llm_instances:
+        llm = _session_llm_instances[key]
         get_board = getattr(llm, "get_last_board", None)
         if callable(get_board):
             return get_board()
@@ -139,7 +198,7 @@ def acknowledge_session_board_item(
     presenter: str,
 ) -> bool:
     """Commit one board item only after its assigned presenter rendered it."""
-    llm = _session_llm_instances.get(sessionid)
+    llm = _session_llm_instances.get(_session_key(sessionid))
     acknowledge = getattr(llm, "acknowledge_board_display", None)
     if not callable(acknowledge):
         return False
@@ -160,7 +219,7 @@ def commit_session_history(
     terminal_reason: str,
 ) -> bool:
     """Commit exactly what crossed the playback boundary for one voice turn."""
-    llm = _session_llm_instances.get(sessionid)
+    llm = _session_llm_instances.get(_session_key(sessionid))
     commit = getattr(llm, "commit_pending_history_turn", None)
     if not callable(commit):
         return False
@@ -175,9 +234,10 @@ def commit_session_history(
 
 def remove_session(sessionid: int):
     """刪除指定會話的 LLM 例項"""
-    if sessionid in _session_llm_instances:
-        del _session_llm_instances[sessionid]
-        logger.info(f"Removed LLM instance for session {sessionid}")
+    for key in list(_session_llm_instances):
+        if key == sessionid or isinstance(key, tuple) and key[0] == sessionid:
+            del _session_llm_instances[key]
+    _active_profiles.pop(sessionid, None)
 
 
 def switch_llm_model(model: str):

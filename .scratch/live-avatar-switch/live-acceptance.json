@@ -1,0 +1,24 @@
+{
+  "one_input_owner": true,
+  "announcement_cancellation": true,
+  "silent_video_normalization": true,
+  "referenced_media_delete_guard": true,
+  "return_during_specialist_reply": true,
+  "directed_custom_video_and_return_effect": true,
+  "same_webrtc_tracks_both_clients": true,
+  "mode_switch_preserves_both_connections": true,
+  "visitor_memory_reset_event": true,
+  "both_clients_received_video": true,
+  "transition_measurements": [
+    {
+      "preparation_seconds": 2.782087977000174,
+      "duration_seconds": 0.4,
+      "sender_elapsed_seconds": 0.6885604989997773
+    },
+    {
+      "preparation_seconds": 1.2844456709999577,
+      "duration_seconds": 0.2,
+      "sender_elapsed_seconds": 0.4271960460000628
+    }
+  ]
+}

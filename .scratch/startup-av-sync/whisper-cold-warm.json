@@ -1,0 +1,14 @@
+{
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "input_samples": 11520,
+  "cold_ms": 287.257,
+  "warm_median_ms": 5.399,
+  "samples_ms": [
+    287.257,
+    4.854,
+    5.852,
+    6.036,
+    5.399,
+    4.657
+  ]
+}

@@ -370,29 +370,44 @@ def chroma_composite(foreground: np.ndarray, background: np.ndarray) -> np.ndarr
     # despill strength falls off with distance from any keyed pixel.
     radius = float(np.clip(foreground.shape[0] * _DESPILL_RADIUS_RATIO,
                            _DESPILL_RADIUS_MIN, _DESPILL_RADIUS_MAX))
-    keyed = cv2.compare(excess, _KEY_LOW, cv2.CMP_GT)
-    distance = cv2.distanceTransform(cv2.bitwise_not(keyed), cv2.DIST_L2, 3)
+    x, y, width, height = cv2.boundingRect(alpha)
+    if width == 0 or height == 0:
+        return background.copy()
+    # Pixels outside the visible silhouette have alpha=0 and never enter the
+    # blend. Keep a keyed border around its bounds so the cropped distance
+    # transform has exactly the same nearest zero pixels as the full frame.
+    left, top = max(0, x - 1), max(0, y - 1)
+    right = min(alpha.shape[1], x + width + 1)
+    bottom = min(alpha.shape[0], y + height + 1)
+    region = np.s_[top:bottom, left:right]
+    region_alpha = alpha[region]
+    distance = cv2.distanceTransform(
+        cv2.compare(excess[region], _KEY_LOW, cv2.CMP_LE), cv2.DIST_L2, 3,
+    )
     near_edge = cv2.compare(distance, radius + _DESPILL_CORE_PX, cv2.CMP_LT)
     band = cv2.bitwise_and(
-        cv2.bitwise_or(cv2.inRange(alpha, 1, 254), near_edge),
-        cv2.compare(alpha, 0, cv2.CMP_GT),
+        cv2.bitwise_or(cv2.inRange(region_alpha, 1, 254), near_edge),
+        cv2.compare(region_alpha, 0, cv2.CMP_GT),
     )
 
     out = background.copy()
     cv2.copyTo(foreground, cv2.compare(alpha, 255, cv2.CMP_EQ), out)
-    ys, xs = np.nonzero(band)
-    if ys.size == 0:
+    # OpenCV's vectorized scan avoids NumPy's full-frame nonzero pass on ARM.
+    points = cv2.findNonZero(band)
+    if points is None:
         return out
-    pixels = foreground[ys, xs].astype(np.float32)
-    bg_strength = 1.0 - raw_alpha[ys, xs].astype(np.float32) / 255.0
+    ys, xs = points[:, 0, 1], points[:, 0, 0]
+    indices = (ys + top) * foreground.shape[1] + xs + left
+    pixels = foreground.reshape(-1, 3)[indices].astype(np.float32)
+    bg_strength = 1.0 - raw_alpha[region][ys, xs].astype(np.float32) / 255.0
     tapered = np.maximum(0.0, distance[ys, xs] - _DESPILL_CORE_PX)
     despill = np.maximum(np.clip(1.0 - tapered / radius, 0.0, 1.0), bg_strength)
     green_px = pixels[:, 1]
     clean_green = np.minimum(green_px, np.maximum(pixels[:, 0], pixels[:, 2]))
     pixels[:, 1] = green_px * (1.0 - despill) + clean_green * despill
-    weight = (alpha[ys, xs].astype(np.float32) / 255.0)[:, None]
-    blended = pixels * weight + background[ys, xs].astype(np.float32) * (1.0 - weight)
-    out[ys, xs] = np.clip(np.rint(blended), 0, 255).astype(np.uint8)
+    weight = (region_alpha[ys, xs].astype(np.float32) / 255.0)[:, None]
+    blended = pixels * weight + background.reshape(-1, 3)[indices].astype(np.float32) * (1.0 - weight)
+    out.reshape(-1, 3)[indices] = np.clip(np.rint(blended), 0, 255).astype(np.uint8)
     return out
 
 

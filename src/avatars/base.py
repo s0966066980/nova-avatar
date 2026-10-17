@@ -25,6 +25,7 @@ from io import BytesIO
 import soundfile as sf
 
 import asyncio
+from contextlib import nullcontext
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from av import AudioFrame, VideoFrame
 
@@ -34,6 +35,7 @@ from fractions import Fraction
 from src.tts.factory import create_tts_engine
 from src.tts.base import sanitize_speech_text
 from src.utils.logging import logger
+from src.avatars.video_output import limit_video_height
 
 from tqdm import tqdm
 
@@ -293,6 +295,9 @@ class BaseAvatar:
             self._on_llm_chunk(text, dict(eventpoint or {}))
 
     def accepts_media(self, eventpoint, stage: str) -> bool:
+        if isinstance(eventpoint, dict) and "avatar_epoch" in eventpoint:
+            if eventpoint["avatar_epoch"] != getattr(self, "_asset_epoch", 0):
+                return False
         if not (isinstance(eventpoint, dict) and eventpoint.get("turn_id")):
             return True
         if self._media_guard is None:
@@ -479,9 +484,16 @@ class BaseAvatar:
         logger.info(f'[幀處理] process_frames 執行緒啟動, sessionid={self.config.sessionid}')
         while not quit_event.is_set():
             try:
-                res_frame,idx,audio_frames = self.res_frame_queue.get(block=True, timeout=1)
+                result = self.res_frame_queue.get(block=True, timeout=1)
+                res_frame,idx,audio_frames = result[:3]
+                asset_epoch = result[3] if len(result) > 3 else None
             except queue.Empty:
                 continue
+            if asset_epoch is not None:
+                if asset_epoch != getattr(self, "_asset_epoch", 0):
+                    continue
+                audio_frames = [(frame, kind, {**(eventpoint or {}), "avatar_epoch": asset_epoch})
+                                for frame, kind, eventpoint in audio_frames]
             turn_events = [
                 eventpoint
                 for _frame, _frame_type, eventpoint in audio_frames
@@ -496,7 +508,8 @@ class BaseAvatar:
                     "stale_generation",
                 )
                 continue
-            video_eventpoint = dict(turn_events[0]) if turn_events else None
+            video_eventpoint = dict(turn_events[0]) if turn_events else (
+                {"avatar_epoch": asset_epoch} if asset_epoch is not None else None)
 
             # Audio is the user-visible clock. Enqueue it before the potentially
             # expensive paste-back/encode path so the first PCM frame is not
@@ -545,46 +558,49 @@ class BaseAvatar:
                     if type == 0:
                         self.mark_stage_end("webrtc_audio_enqueue")
                 if audio_enqueue_failed:
+                    if not self.accepts_media(eventpoint, "renderer_audio_retry"):
+                        continue
                     break
             
-            if audio_frames[0][1]!=0 and audio_frames[1][1]!=0:  # 靜音時使用靜態幀或自定義影片
-                self.speaking = False
-                audiotype = audio_frames[0][1]
-                if self.custom_index.get(audiotype) is not None: #有自定義影片
-                    mirindex = self.mirror_index(len(self.custom_img_cycle[audiotype]),self.custom_index[audiotype])
-                    target_frame = self.custom_img_cycle[audiotype][mirindex]
-                    self.custom_index[audiotype] += 1
-                else:
-                    target_frame = self.frame_list_cycle[idx]
-                
-                combine_frame = target_frame
-            else:
-                self.speaking = True
-                try:
-                    current_frame = self.paste_back_frame(res_frame,idx)
-                    self.mark_stage_end("avatar_pasteback_done")
-                except Exception as e:
-                    logger.warning(f"paste_back_frame error: {e}")
-                    continue
-                combine_frame = current_frame
-
             # Do not advance visual transition state for a frame that cannot
             # be queued behind direct-audio playback yet.
             if self.direct_audio_enabled:
                 audio_queue = getattr(audio_track, "_queue", None)
                 if audio_queue is not None and audio_queue.qsize() == 0:
                     continue
-            combine_frame = self._compose_avatar_transition(
-                combine_frame,
-                index=idx,
-                is_speech=self.speaking,
-                frame_type=0 if self.speaking else audiotype,
-                eventpoint=video_eventpoint,
-            )
-            if getattr(self, "_green_screen", False):
-                from src.scene.service import scene_service
-
-                combine_frame = scene_service.compose(combine_frame, green_screen=True)
+            with getattr(self, "_assets_lock", nullcontext()):
+                if asset_epoch is not None and asset_epoch != getattr(self, "_asset_epoch", 0):
+                    continue
+                if audio_frames[0][1] != 0 and audio_frames[1][1] != 0:
+                    self.speaking = False
+                    audiotype = audio_frames[0][1]
+                    if self.custom_index.get(audiotype) is not None:
+                        mirindex = self.mirror_index(len(self.custom_img_cycle[audiotype]), self.custom_index[audiotype])
+                        combine_frame = self.custom_img_cycle[audiotype][mirindex]
+                        self.custom_index[audiotype] += 1
+                    else:
+                        combine_frame = self.frame_list_cycle[idx]
+                else:
+                    self.speaking = True
+                    try:
+                        combine_frame = self.paste_back_frame(res_frame, idx)
+                        self.mark_stage_end("avatar_pasteback_done")
+                    except Exception as e:
+                        logger.warning(f"paste_back_frame error: {e}")
+                        continue
+                combine_frame = self._compose_avatar_transition(
+                    combine_frame, index=idx, is_speech=self.speaking,
+                    frame_type=0 if self.speaking else audiotype, eventpoint=video_eventpoint)
+                presentation = getattr(self, "_role_presentation", None)
+                if presentation is not None:
+                    combine_frame = presentation.compose(combine_frame, green_screen=self._green_screen)
+                    video_eventpoint = {**(video_eventpoint or {}), **presentation.marker}
+                else:
+                    combine_frame = limit_video_height(
+                        combine_frame, getattr(getattr(self.config, "video", None), "max_height", 0))
+                    if getattr(self, "_green_screen", False):
+                        from src.scene.service import scene_service
+                        combine_frame = scene_service.compose(combine_frame, green_screen=True)
             cv2.putText(combine_frame, "Nova Avatar", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
            
             image = combine_frame
@@ -593,6 +609,8 @@ class BaseAvatar:
             if not enqueue_media_frame(
                 video_track, new_frame, video_eventpoint, loop, quit_event
             ):
+                if not self.accepts_media(video_eventpoint, "renderer_video_retry"):
+                    continue
                 break
             if video_eventpoint is not None:
                 self.mark_stage_end("webrtc_video_enqueue")

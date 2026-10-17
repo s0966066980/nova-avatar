@@ -55,6 +55,11 @@ funasr = [
 musetalk = [
     "nova-avatar-musetalk",
 ]
+tensorrt = [
+    # Keep the builder/runtime identical; engines must be rebuilt on upgrades.
+    "tensorrt-cu12==10.16.1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "onnx==1.17.0",
+]
 
 [project.urls]
 Repository = "https://github.com/s0966066980/nova-avatar"

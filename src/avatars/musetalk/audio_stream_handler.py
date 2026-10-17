@@ -9,7 +9,7 @@ import time
 import numpy as np
 from collections import deque
 from dataclasses import dataclass
-from threading import Lock
+from threading import Lock, RLock
 from typing import Any
 
 import queue
@@ -42,48 +42,107 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
         self.output_queue = Queue()
         self._paired_audio_frames = deque()
         self._paired_audio_lock = Lock()
+        self._context_lock = RLock()
+        self._context_epoch = 0
         # A short first batch gets the first mouth/audio frame onto WebRTC
         # without waiting for the steady-state model batch to fill.
         self.startup_batch_size = max(1, min(self.batch_size, 4))
         self._startup_batch_emitted = False
+        self._speech_batch_emitted = False
 
     @property
     def startup_batch_emitted(self) -> bool:
         return self._startup_batch_emitted
 
     def warm_up(self):
-        """Prime feature context and paired audio without an intermediate queue."""
-        offset = self.av_offset_frames()
-        primed = []
-        for _ in range(self.stride_left_size + self.stride_right_size):
-            audio_frame, frame_type, eventpoint = self.get_audio_frame()
-            self.frames.append(audio_frame)
-            primed.append((audio_frame, frame_type, eventpoint))
+        """Prime silent context without consuming any incoming reply PCM."""
+        with self._context_lock:
+            self._prime_context()
 
+    def _prime_context(self):
+        offset = self.av_offset_frames()
+        self.frames = [
+            np.zeros(self.chunk, dtype=np.float32)
+            for _ in range(self.stride_left_size + self.stride_right_size)
+        ]
+        paired_count = max(0, -offset) + self.stride_right_size - max(0, offset)
         paired = [
             (np.zeros(self.chunk, dtype=np.float32), 1, None)
-            for _ in range(max(0, -offset))
+            for _ in range(paired_count)
         ]
-        paired.extend(
-            primed[self.stride_left_size + max(0, offset):]
-        )
         with self._paired_audio_lock:
+            self._paired_audio_frames.clear()
             self._paired_audio_frames.extend(paired)
 
     def flush_talk(self):
-        super().flush_talk()
+        with self._context_lock:
+            self._context_epoch += 1
+            super().flush_talk()
+            self._prime_context()
+            self._startup_batch_emitted = False
+            self._speech_batch_emitted = False
+
+    def _refresh_idle_lookahead(self, effective_batch_size):
+        """Replace idle lookahead with ready PCM before the first speech batch.
+
+        Retaining ten idle context frames leaves only six spoken PCM frames
+        in a steady-state batch. That 120 ms runway cannot cover the next
+        model call. Re-prime only untagged idle context, preserving the left
+        history and every spoken frame's feature alignment and order.
+        """
+        right = self.stride_right_size
+        if right <= 0 or self.av_offset_frames() != 0:
+            return True
+        with self._paired_audio_lock:
+            idle_context = (
+                len(self._paired_audio_frames) == right
+                and all(kind == 1 and event is None
+                        for _frame, kind, event in self._paired_audio_frames)
+            )
+        if not idle_context or len(self.frames) < right:
+            return True
+        with self.queue.mutex:
+            if not self.queue.queue:
+                return True
+            queued = len(self.queue.queue)
+            first_frame, first_event = self.queue.queue[0]
+            starts_speech = (
+                isinstance(first_event, dict)
+                and (first_event.get("status") == "start" or first_event.get("fragment_start"))
+            ) or (first_frame.size > 0 and float(np.max(np.abs(first_frame))) > 1e-4)
+            complete_short_fragment = any(
+                isinstance(event, dict)
+                and (event.get("fragment_end") or event.get("status") == "end")
+                for _frame, event in self.queue.queue
+            )
+        if not starts_speech:
+            return True
+        if queued < right + effective_batch_size * 2:
+            tts = getattr(self.parent, "tts", None)
+            pending = getattr(tts, "has_pending_work", None)
+            # A streaming first packet may be smaller than the lookahead.
+            # Keep it untouched until a full runway is ready. Short completed
+            # utterances and later speech batches must still drain promptly.
+            return (self._speech_batch_emitted or complete_short_fragment
+                    or not callable(pending) or not pending())
         with self._paired_audio_lock:
             self._paired_audio_frames.clear()
-        self._startup_batch_emitted = False
+        self.frames = self.frames[:-right]
+        for audio_frame, kind, event in self.get_audio_frames(right):
+            self.frames.append(audio_frame)
+            with self._paired_audio_lock:
+                self._paired_audio_frames.append((audio_frame, kind, event))
+        return True
 
-    def run_step(self):
-        """執行一步音訊特徵提取"""
-        start_time = time.time()
+    def _collect_batch(self):
+        """Snapshot PCM and context together; feature extraction may be slow."""
         effective_batch_size = (
             self.batch_size
             if self._startup_batch_emitted
             else self.startup_batch_size
         )
+        if not self._refresh_idle_lookahead(effective_batch_size):
+            return False
         for audio_frame, type, eventpoint in self.get_audio_frames(effective_batch_size * 2):
             self.frames.append(audio_frame)
             item = (audio_frame, type, eventpoint)
@@ -109,10 +168,21 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
             or float(np.max(np.abs(frame))) <= 1e-4
             for frame, frame_type, _event in paired_audio_frames
         )
-        if all_idle:
+        inputs = None if all_idle else np.concatenate(self.frames)
+        context_size = self.stride_left_size + self.stride_right_size
+        self.frames = self.frames[-context_size:] if context_size else []
+        return self._context_epoch, effective_batch_size, paired_audio_frames, inputs
+
+    def run_step(self):
+        """Extract features without restoring context invalidated by a flush."""
+        with self._context_lock:
+            collected = self._collect_batch()
+        if collected is False or collected is None:
+            return collected
+        epoch, effective_batch_size, paired_audio_frames, inputs = collected
+        if inputs is None:
             whisper_chunks = ()
         else:
-            inputs = np.concatenate(self.frames)  # [N * chunk]
             whisper_feature = self.audio_processor.audio2feat(inputs)
             whisper_chunks = self.audio_processor.feature2chunks(
                 feature_array=whisper_feature,
@@ -122,19 +192,32 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
             )
         #print(f"whisper_chunks len:{len(whisper_chunks)},self.audio_feats len:{len(self.audio_feats)},self.output_queue len:{self.output_queue.qsize()}")
         #self.audio_feats = self.audio_feats[-(self.stride_left_size + self.stride_right_size):]
-        self.feat_queue.put(
-            MuseInferenceBatch(
-                features=whisper_chunks,
-                audio_frames=paired_audio_frames,
-                batch_size=effective_batch_size,
-            )
+        batch = MuseInferenceBatch(
+            features=whisper_chunks,
+            audio_frames=paired_audio_frames,
+            batch_size=effective_batch_size,
         )
-        self._startup_batch_emitted = True
+        quit_event = getattr(self, "quit_event", None)
+        while quit_event is None or not quit_event.is_set():
+            with self._context_lock:
+                if epoch != self._context_epoch:
+                    return False
+                try:
+                    self.feat_queue.put_nowait(batch)
+                    self._startup_batch_emitted = True
+                    if any(kind == 0 for _frame, kind, _event in paired_audio_frames):
+                        self._speech_batch_emitted = True
+                    break
+                except queue.Full:
+                    pass
+            # Release the context lock while applying backpressure so an
+            # interrupt can drain the queue and invalidate this pending batch.
+            time.sleep(0.01)
+        else:
+            return
         mark_stage = getattr(self.parent, "mark_stage_end", None)
         if callable(mark_stage) and any(
             isinstance(eventpoint, dict) and eventpoint.get("turn_id")
             for _frame, _frame_type, eventpoint in paired_audio_frames
         ):
             mark_stage("musetalk_first_batch")
-        # discard the old part to save memory
-        self.frames = self.frames[-(self.stride_left_size + self.stride_right_size):]

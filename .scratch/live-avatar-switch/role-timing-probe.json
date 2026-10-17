@@ -1,0 +1,247 @@
+{
+  "runs": [
+    {
+      "presenter": "stage",
+      "completed_handoffs": 1,
+      "input": "synthetic_microphone",
+      "specialist_first_audio_p95_seconds": 1.6012711920000129,
+      "cached_specialist_first_audio_p95_seconds": null,
+      "received_frames": {
+        "video": 537,
+        "audio": 1179,
+        "non_silent_audio": 663
+      },
+      "video_sizes": [
+        [
+          720,
+          1280
+        ]
+      ],
+      "weather_status": {
+        "available": 1
+      },
+      "stale_events": 0,
+      "transition_seconds": [
+        2.2771628609998515,
+        1.6584832500000175
+      ],
+      "turns": [
+        {
+          "source_first_audio_seconds": 1.170547,
+          "input_start_to_source_audio_seconds": 4.489237346999971,
+          "specialist_first_audio_seconds": 1.6012711920000129,
+          "source_to_target_audio_seconds": 4.180444217000058,
+          "source_metrics": {
+            "turn_id": "14a3f1bb486e40e885280f33b553cc0f",
+            "first_audio_seconds": 1.170547,
+            "interrupt_stop_seconds": null,
+            "listening_resume_seconds": null,
+            "max_media_debt_seconds": 0.24,
+            "max_abs_av_offset_seconds": 0.020433,
+            "stale_drops": {
+              "webrtc_video:late_video": 2
+            },
+            "audio_pacing_lag_ms": 0.0,
+            "audio_pacing_rebase_count": 0,
+            "audio_release_interval_ms": 14.942,
+            "audio_catch_up_burst_count": 0,
+            "tts_onset_preroll_ms": 90.0,
+            "tts_retry_after_pcm_count": 0,
+            "tts_retry_after_playback_commit_count": 0,
+            "stage_seconds": {
+              "vad_endpoint": null,
+              "asr": 0.040538,
+              "llm_first_token": null,
+              "llm_total": null,
+              "first_fragment": null,
+              "tts_first_encoded": 0.100075,
+              "tts_first_pcm": 0.10158,
+              "musetalk_first_batch": 0.123557,
+              "musetalk_inference_first_result": 0.16957,
+              "avatar_pasteback_done": 0.276878,
+              "webrtc_audio_enqueue": 0.255014,
+              "webrtc_video_enqueue": 0.0,
+              "avatar_to_webrtc_commit": 0.5148,
+              "webrtc_audio_commit": 0.5148
+            }
+          },
+          "specialist_metrics": {
+            "turn_id": "b0e49fe1643a40f5bc7b85bf7562664c",
+            "first_audio_seconds": 1.602011,
+            "interrupt_stop_seconds": null,
+            "listening_resume_seconds": null,
+            "max_media_debt_seconds": 0.24,
+            "max_abs_av_offset_seconds": 0.020967,
+            "stale_drops": {
+              "webrtc_video:late_video": 5
+            },
+            "audio_pacing_lag_ms": 0.0,
+            "audio_pacing_rebase_count": 0,
+            "audio_release_interval_ms": 14.942,
+            "audio_catch_up_burst_count": 0,
+            "tts_onset_preroll_ms": 110.0,
+            "tts_retry_after_pcm_count": 0,
+            "tts_retry_after_playback_commit_count": 0,
+            "stage_seconds": {
+              "vad_endpoint": null,
+              "asr": null,
+              "llm_first_token": 0.553663,
+              "llm_total": 3.641616,
+              "first_fragment": 0.897134,
+              "tts_first_encoded": 0.286498,
+              "tts_first_pcm": 0.287874,
+              "musetalk_first_batch": 0.313102,
+              "musetalk_inference_first_result": 0.36767,
+              "avatar_pasteback_done": 0.466235,
+              "webrtc_audio_enqueue": 0.443258,
+              "webrtc_video_enqueue": 0.0,
+              "avatar_to_webrtc_commit": 0.703527,
+              "webrtc_audio_commit": 0.703527
+            }
+          },
+          "weather_query": {
+            "status": "available",
+            "cached": false,
+            "query_seconds": 0.07862380599999597
+          }
+        }
+      ],
+      "transition_measurements": [
+        {
+          "preparation_seconds": 1.3827491189999819,
+          "duration_seconds": 0.6,
+          "sender_elapsed_seconds": 0.8934854179999547
+        },
+        {
+          "preparation_seconds": 0.7504839789999096,
+          "duration_seconds": 0.6,
+          "sender_elapsed_seconds": 0.8964889830001539
+        }
+      ],
+      "status": "completed",
+      "elapsed_seconds": 24.558584543000052
+    },
+    {
+      "presenter": "console",
+      "completed_handoffs": 1,
+      "input": "synthetic_microphone",
+      "specialist_first_audio_p95_seconds": 1.7810129199999665,
+      "cached_specialist_first_audio_p95_seconds": 1.7810129199999665,
+      "received_frames": {
+        "video": 509,
+        "audio": 1121,
+        "non_silent_audio": 601
+      },
+      "video_sizes": [
+        [
+          720,
+          1280
+        ]
+      ],
+      "weather_status": {
+        "available": 1
+      },
+      "stale_events": 0,
+      "transition_seconds": [
+        2.260808341000029,
+        1.6375548350001736
+      ],
+      "turns": [
+        {
+          "source_first_audio_seconds": 1.131366,
+          "input_start_to_source_audio_seconds": 4.4499880400001075,
+          "specialist_first_audio_seconds": 1.7810129199999665,
+          "source_to_target_audio_seconds": 4.343790440000021,
+          "source_metrics": {
+            "turn_id": "cc4e91953f80482e8ade883cdbc41a64",
+            "first_audio_seconds": 1.131366,
+            "interrupt_stop_seconds": null,
+            "listening_resume_seconds": null,
+            "max_media_debt_seconds": 0.24,
+            "max_abs_av_offset_seconds": 0.020267,
+            "stale_drops": {
+              "webrtc_video:late_video": 2
+            },
+            "audio_pacing_lag_ms": 0.0,
+            "audio_pacing_rebase_count": 0,
+            "audio_release_interval_ms": 18.134,
+            "audio_catch_up_burst_count": 0,
+            "tts_onset_preroll_ms": 90.0,
+            "tts_retry_after_pcm_count": 0,
+            "tts_retry_after_playback_commit_count": 0,
+            "stage_seconds": {
+              "vad_endpoint": null,
+              "asr": 0.039115,
+              "llm_first_token": null,
+              "llm_total": null,
+              "first_fragment": null,
+              "tts_first_encoded": 0.087742,
+              "tts_first_pcm": 0.08885,
+              "musetalk_first_batch": 0.111436,
+              "musetalk_inference_first_result": 0.150109,
+              "avatar_pasteback_done": 0.259221,
+              "webrtc_audio_enqueue": 0.237419,
+              "webrtc_video_enqueue": 0.0,
+              "avatar_to_webrtc_commit": 0.496734,
+              "webrtc_audio_commit": 0.496734
+            }
+          },
+          "specialist_metrics": {
+            "turn_id": "883443cc142f41f3abcf8d21b3b67ef6",
+            "first_audio_seconds": 1.78089,
+            "interrupt_stop_seconds": null,
+            "listening_resume_seconds": null,
+            "max_media_debt_seconds": 0.24,
+            "max_abs_av_offset_seconds": 0.020978,
+            "stale_drops": {
+              "webrtc_video:late_video": 5
+            },
+            "audio_pacing_lag_ms": 0.0,
+            "audio_pacing_rebase_count": 2,
+            "audio_release_interval_ms": 17.869,
+            "audio_catch_up_burst_count": 0,
+            "tts_onset_preroll_ms": 110.0,
+            "tts_retry_after_pcm_count": 0,
+            "tts_retry_after_playback_commit_count": 0,
+            "stage_seconds": {
+              "vad_endpoint": null,
+              "asr": null,
+              "llm_first_token": 0.872305,
+              "llm_total": 1.195766,
+              "first_fragment": 1.187822,
+              "tts_first_encoded": 0.213557,
+              "tts_first_pcm": 0.215408,
+              "musetalk_first_batch": 0.230456,
+              "musetalk_inference_first_result": 0.271427,
+              "avatar_pasteback_done": 0.356425,
+              "webrtc_audio_enqueue": 0.333746,
+              "webrtc_video_enqueue": 0.0,
+              "avatar_to_webrtc_commit": 0.592603,
+              "webrtc_audio_commit": 0.592603
+            }
+          },
+          "weather_query": {
+            "status": "available",
+            "cached": true,
+            "query_seconds": 0.00032000500004869536
+          }
+        }
+      ],
+      "transition_measurements": [
+        {
+          "preparation_seconds": 1.3484051390000786,
+          "duration_seconds": 0.6,
+          "sender_elapsed_seconds": 0.8997363549999591
+        },
+        {
+          "preparation_seconds": 0.7385695000000396,
+          "duration_seconds": 0.6,
+          "sender_elapsed_seconds": 0.8873699019998185
+        }
+      ],
+      "status": "completed",
+      "elapsed_seconds": 23.42569224900012
+    }
+  ],
+  "browser_audiovisual_acceptance": "not run; aiortc RTP receiver only"
+}

@@ -130,7 +130,7 @@ class PlayerStreamTrack(MediaStreamTrack):
     def _event_is_current(self, eventpoint, stage: str) -> bool:
         if not (
             isinstance(eventpoint, dict)
-            and eventpoint.get("turn_id")
+            and (eventpoint.get("turn_id") or "avatar_epoch" in eventpoint)
             and self._media_guard is not None
         ):
             return True
@@ -206,7 +206,14 @@ class PlayerStreamTrack(MediaStreamTrack):
         if hasattr(self, "_timestamp"):
             self._timestamp += int(packet_time * clock_rate)
             self.current_frame_count += 1
-            deadline = self._start + self.current_frame_count * packet_time
+            # Preserve actual video release jitter rather than accumulating
+            # it against an ideal counter and periodically skipping RTP slots.
+            media_time = (
+                self._timestamp / clock_rate
+                if self.kind == "video"
+                else self.current_frame_count * packet_time
+            )
+            deadline = self._start + media_time
             lag = now - deadline
             if self.kind == "audio":
                 self.last_audio_lag_seconds = lag
@@ -227,7 +234,7 @@ class PlayerStreamTrack(MediaStreamTrack):
                 ticks = int(packet_time * clock_rate)
                 self.current_frame_count += skipped
                 self._timestamp += skipped * ticks
-                deadline = self._start + self.current_frame_count * packet_time
+                deadline = self._start + self._timestamp / clock_rate
                 mylogger.warning(
                     "[AVSync] video pacing stalled %.0fms; skipped %d late frames",
                     lag * 1000.0,
@@ -251,6 +258,10 @@ class PlayerStreamTrack(MediaStreamTrack):
 
         if self.kind == "video":
             self._last_video_release_at = time.monotonic()
+            self._timestamp = max(
+                self._timestamp,
+                round((self._last_video_release_at - self._start) * clock_rate),
+            )
 
         if self.kind == "audio":
             released_at = time.monotonic()
@@ -276,20 +287,46 @@ class PlayerStreamTrack(MediaStreamTrack):
 
         return self._timestamp, time_base
 
-    async def recv(self) -> Union[Frame, Packet]:        
+    async def _dequeue_with_timeout(self):
+        # Explicitly own the queue task: wait_for can lose cancellation when
+        # cancellation and queue completion race on Python 3.10/3.11.
+        pending = asyncio.create_task(self._queue.get())
+        try:
+            timeout = self._packet_time
+            if self.kind == "audio" and hasattr(self, "_timestamp"):
+                # Opus encoding already consumed some of the 20 ms budget.
+                deadline = self._start + (self.current_frame_count + 1) * AUDIO_PTIME
+                timeout = max(0.0, deadline - time.monotonic())
+            done, _ = await asyncio.wait({pending}, timeout=timeout)
+            if not done:
+                raise asyncio.TimeoutError
+            return pending.result()
+        finally:
+            if not pending.done():
+                pending.cancel()
+                await asyncio.gather(pending, return_exceptions=True)
+
+    async def recv(self) -> Union[Frame, Packet]:
         self._player._start(self)
 
         while True:
             try:
                 if self.kind == "video" and self._last_video_item is not None:
-                    frame,eventpoint = await asyncio.wait_for(
-                        self._queue.get(),
-                        timeout=self._packet_time,
-                    )
+                    frame,eventpoint = await self._dequeue_with_timeout()
+                elif self.kind == "audio":
+                    frame,eventpoint = await self._dequeue_with_timeout()
                 else:
                     frame,eventpoint = await self._queue.get()
             except asyncio.TimeoutError:
-                frame,eventpoint = self._last_video_item
+                if self.kind == "audio":
+                    # Keep the authoritative clock moving through renderer
+                    # gaps. Queued speech is never dropped or reordered.
+                    frame = AudioFrame(format="s16", layout="mono", samples=320)
+                    frame.planes[0].update(bytes(640))
+                    frame.sample_rate = SAMPLE_RATE
+                    eventpoint = None
+                else:
+                    frame,eventpoint = self._last_video_item
             if not self._event_is_current(eventpoint, f"webrtc_{self.kind}_commit"):
                 self._record_stale_drop()
                 if self.kind == "video" and self._last_video_item == (frame, eventpoint):
@@ -341,6 +378,9 @@ class PlayerStreamTrack(MediaStreamTrack):
                 notify_audio_frame(eventpoint, active)
             self._player.notify_audio_activity(active)
         if self.kind == 'video':
+            notify_video_frame = getattr(self._player, "notify_video_frame", None)
+            if callable(notify_video_frame):
+                notify_video_frame(eventpoint)
             self.totaltime += (time.perf_counter() - self.lasttime)
             self.framecount += 1
             self.lasttime = time.perf_counter()
@@ -376,6 +416,7 @@ class HumanPlayer:
         self, avatar_stream, format=None, options=None, timeout=None, loop=False, decode=True,
         on_audio_activity=None,
         on_audio_frame=None,
+        on_video_frame=None,
         on_media_timing=None,
         on_audio_pacing=None,
         media_guard=None,
@@ -408,6 +449,7 @@ class HumanPlayer:
         self.__container = avatar_stream
         self.__on_audio_activity = on_audio_activity
         self.__on_audio_frame = on_audio_frame
+        self.__on_video_frame = on_video_frame
         self.__on_media_timing = on_media_timing
         self.__on_audio_pacing = on_audio_pacing
         self.__media_positions = {}
@@ -438,6 +480,10 @@ class HumanPlayer:
     def notify_audio_frame(self, eventpoint, active: bool) -> None:
         if self.__on_audio_frame is not None:
             self.__on_audio_frame(eventpoint, active)
+
+    def notify_video_frame(self, eventpoint) -> None:
+        if self.__on_video_frame is not None:
+            self.__on_video_frame(eventpoint)
 
     @staticmethod
     def _media_event_key(eventpoint) -> Optional[tuple[str, int, int]]:

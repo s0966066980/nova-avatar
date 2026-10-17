@@ -1,0 +1,16 @@
+{
+  "run_dir": "/tmp/nova-chrome-acceptance-5kqji_u1",
+  "url": "http://localhost:3000",
+  "backend": "http://localhost:8020",
+  "status": "passed",
+  "services_ready": false,
+  "backend_pid": 88734,
+  "frontend_pid": 87167,
+  "owned_llama_pid": 89016,
+  "browser_inventory": [],
+  "browser_error": "Browser is not available: chrome",
+  "browser_acceptance": "passed",
+  "browser_method": "Playwright; explicitly requested by user",
+  "report": "chrome-acceptance.json",
+  "test_services_stopped": true
+}

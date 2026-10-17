@@ -1,0 +1,14 @@
+{
+  "scope": "idle prewarmed backend without WebRTC clients; device GPU includes desktop",
+  "single_avatar": {
+    "backend_rss_mib": 5475.6640625,
+    "device_gpu_used_mib": 12529.0
+  },
+  "two_avatars": {
+    "backend_rss_mib": 6745.08984375,
+    "device_gpu_used_mib": 12531.0
+  },
+  "additional_backend_rss_mib": 1269.42578125,
+  "additional_device_gpu_mib": 2.0,
+  "preload_apply_seconds": 3.36500217899993
+}

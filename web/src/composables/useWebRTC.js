@@ -2,6 +2,8 @@
 // Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
 // One peer connection carries avatar A/V, the microphone uplink and voice events.
+import { canRoleInput } from '../roleState.js'
+
 export function useWebRTC(options = {}) {
   let pc = null
   let eventChannel = null
@@ -11,6 +13,7 @@ export function useWebRTC(options = {}) {
   // A connection must never begin transmitting microphone audio by default.
   // The console's microphone control is the explicit user consent boundary.
   let captureRequested = false
+  let roleCaptureAllowed = true
   let reconnectTimer = null
   let shouldReconnect = false
   let lastStunServer = null
@@ -69,7 +72,7 @@ export function useWebRTC(options = {}) {
   const setCaptureEnabled = (enabled, { finalize = false } = {}) => {
     captureRequested = Boolean(enabled)
     microphoneStream?.getAudioTracks().forEach((track) => {
-      track.enabled = Boolean(enabled)
+      track.enabled = Boolean(enabled) && roleCaptureAllowed
     })
     return sendControl({ type: 'capture', enabled: Boolean(enabled), finalize })
   }
@@ -103,18 +106,19 @@ export function useWebRTC(options = {}) {
     captureRequested = Boolean(initialCapture)
     notifyConnection('preparing')
     lastEventSequence = 0
+    roleCaptureAllowed = true
 
     const configuration = { iceServers: [] }
     if (stunServer) configuration.iceServers.push({ urls: stunServer })
     pc = new RTCPeerConnection(configuration)
 
     const remoteStream = new MediaStream()
+    const video = document.getElementById('video')
+    if (video) video.srcObject = remoteStream
     pc.ontrack = (event) => {
       if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
         remoteStream.addTrack(event.track)
       }
-      const video = document.getElementById('video')
-      if (video) video.srcObject = remoteStream
     }
 
     pc.onconnectionstatechange = () => {
@@ -138,6 +142,12 @@ export function useWebRTC(options = {}) {
         const message = JSON.parse(event.data)
         if (!Number.isFinite(message.seq) || message.seq <= lastEventSequence) return
         lastEventSequence = message.seq
+        if (message.type === 'role_state') {
+          roleCaptureAllowed = canRoleInput(message, 'console')
+          microphoneStream?.getAudioTracks().forEach(track => {
+            track.enabled = captureRequested && roleCaptureAllowed
+          })
+        }
         if (onVoiceEvent) onVoiceEvent(message)
       } catch (error) {
         console.warn('Ignored invalid voice event', error)

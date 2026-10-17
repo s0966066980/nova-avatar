@@ -1,0 +1,10 @@
+{
+  "run_dir": "/tmp/nova-role-validation-9roenwzf",
+  "config": "isolated",
+  "presenter": "console",
+  "target_handoffs": 50,
+  "status": "automated_passed_browser_pending",
+  "completed_handoffs": 50,
+  "owned_backend_stopped": true,
+  "report": "validation-results.json"
+}

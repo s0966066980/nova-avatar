@@ -300,6 +300,11 @@ class ResponseProtocolParser:
         return self._board_payload
 
     @property
+    def speech_complete(self) -> bool:
+        """A complete channel boundary can be played before board JSON ends."""
+        return self._state in (ParserState.IN_BOARD, ParserState.DONE)
+
+    @property
     def structured_payload_suppressed(self) -> bool:
         """Whether unmarked structured output was kept out of visible channels."""
         return self._structured_payload_suppressed
@@ -553,11 +558,15 @@ class ResponseProtocolParser:
                 pos = self._buffer.find(board_tag)
                 board_match_len = len(board_tag)
                 if pos == -1:
-                    alt_pattern = re.compile(r"\[{1,2}\s*BOARD(?:_JSON)?(?::\s*)?\]{1,2}", re.IGNORECASE)
+                    alt_pattern = re.compile(
+                        r"(?<!\[)(?:\[\[\s*BOARD(?:_JSON)?(?::\s*)?\]\]"
+                        r"|\[\s*BOARD(?:_JSON)?(?::\s*)?\])",
+                        re.IGNORECASE,
+                    )
                     m = alt_pattern.search(self._buffer)
                     if m:
                         pos = m.start()
-                        board_match_len = len(m.group(1)) if m.group(1) else 0
+                        board_match_len = len(m.group(0))
 
                 if pos != -1:
                     speech_part = self._buffer[:pos]

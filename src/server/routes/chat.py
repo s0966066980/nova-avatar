@@ -21,6 +21,14 @@ async def human(request):
         if params['type'] == 'echo':
             if avatar_stream is None:
                 raise KeyError(sessionid)
+            roles = getattr(state, 'roles', None)
+            if roles is not None and roles.enabled:
+                voice = state.voice_sessions.get(sessionid)
+                if voice is None or not voice.event_sink_ready:
+                    raise web.HTTPConflict(text="回覆事件通道尚未就緒，請稍後再試")
+                started = await voice.start_text_turn(params['text'],
+                    interrupt=bool(params.get('interrupt')), _speak_only=True)
+                return web.json_response({'code': 0, 'msg': 'accepted', **started})
             avatar_stream.put_msg_txt(params['text'])
             response_text = params['text']
             response_payload = {
@@ -69,6 +77,9 @@ async def interrupt_talk(request):
         sessionid = params.get('sessionid', 0)
         voice_session = state.voice_sessions.get(sessionid)
         if voice_session is not None:
+            roles = getattr(state, 'roles', None)
+            if roles is not None and roles.enabled and not roles.input_allowed(voice_session):
+                raise ValueError("目前由另一個輸入來源接收問題，請使用角色停止操作")
             await voice_session.interrupt()
         else:
             state.avatar_streams[sessionid].flush_talk()
@@ -108,7 +119,14 @@ async def clear_history(request):
         params = await request.json()
         sessionid = params.get('sessionid', 0)
         
-        clear_session_history(sessionid)
+        roles = getattr(state, 'roles', None)
+        voice = state.voice_sessions.get(sessionid)
+        if roles is not None and roles.enabled and voice is not None:
+            if not voice._is_conversation_idle():
+                await voice.interrupt()
+            voice.reset_conversation()
+        else:
+            clear_session_history(sessionid)
         
         return web.Response(
             content_type="application/json",

@@ -73,8 +73,8 @@ check_uv() {
         # 自動安裝 uv
         curl -LsSf https://astral.sh/uv/install.sh | sh
         
-        # 重新載入 PATH
-        export PATH="$HOME/.cargo/bin:$PATH"
+        # Current uv installer uses ~/.local/bin.
+        export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
         
         if ! command -v uv &> /dev/null; then
             echo -e "${RED}❌ uv 安裝失敗${NC}"
@@ -91,21 +91,8 @@ check_uv() {
 check_python() {
     echo -e "${BLUE}📋 檢查 Python 環境...${NC}"
     
-    # 檢查系統是否有指定的 Python 版本
-    if command -v python${PYTHON_VERSION} &> /dev/null; then
-        PYTHON_CMD="python${PYTHON_VERSION}"
-    elif command -v python3.10 &> /dev/null; then
-        PYTHON_CMD="python3.10"
-        echo -e "${YELLOW}⚠ 未找到 Python ${PYTHON_VERSION}，使用 python3.10${NC}"
-    elif command -v python3 &> /dev/null; then
-        PYTHON_CMD="python3"
-        PYTHON_VER=$(python3 --version | cut -d' ' -f2)
-        echo -e "${YELLOW}⚠ 未找到 Python ${PYTHON_VERSION}，使用系統 Python: ${PYTHON_VER}${NC}"
-    else
-        echo -e "${RED}❌ 錯誤: 未找到 Python${NC}"
-        echo -e "${YELLOW}請安裝 Python 3.10 或更高版本${NC}"
-        exit 1
-    fi
+    uv python install "$PYTHON_VERSION"
+    PYTHON_CMD="$(uv python find "$PYTHON_VERSION")"
     
     echo -e "${GREEN}✓${NC} Python 命令: $PYTHON_CMD"
 }
@@ -179,18 +166,10 @@ create_venv() {
     
     cd "$PROJECT_ROOT"
     
-    # 如果虛擬環境已存在，詢問是否重新建立
+    # Re-running installation preserves the existing environment and providers.
     if [ -d ".venv" ]; then
-        echo -e "${YELLOW}⚠ 虛擬環境 '.venv' 已存在${NC}"
-        read -p "是否重新建立？(y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${YELLOW}🗑 刪除現有虛擬環境...${NC}"
-            rm -rf .venv
-        else
-            echo -e "${GREEN}✓${NC} 使用現有虛擬環境"
-            return
-        fi
+        echo -e "${GREEN}✓${NC} 使用現有虛擬環境"
+        return
     fi
     
     echo -e "${YELLOW}📦 建立新的虛擬環境...${NC}"
@@ -207,9 +186,9 @@ install_core_deps() {
     
     echo -e "${YELLOW}📦 正在安裝基礎依賴...${NC}"
     if [ "$DEFAULT_AVATAR" = "musetalk" ]; then
-        uv sync --extra vad --extra musetalk
+        uv sync --inexact --extra vad --extra musetalk
     else
-        uv sync --extra vad
+        uv sync --inexact --extra vad
     fi
     
     echo -e "${GREEN}✓${NC} 核心依賴安裝完成（含 Silero / WebRTC VAD）"
@@ -270,12 +249,16 @@ install_frontend_deps() {
     # 檢查 Node.js
     if ! command -v node &> /dev/null; then
         echo -e "${RED}❌ 錯誤: 未檢測到 Node.js${NC}"
-        echo -e "${YELLOW}請先安裝 Node.js 16 或更高版本${NC}"
+        echo -e "${YELLOW}請先安裝 Node.js 22 或更高版本${NC}"
         echo -e "${YELLOW}訪問: https://nodejs.org/${NC}"
         exit 1
     fi
     
     NODE_VERSION=$(node --version)
+    if [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 22 ]; then
+        echo -e "${RED}❌ 需要 Node.js 22 或更高版本，目前為 $NODE_VERSION${NC}"
+        exit 1
+    fi
     echo -e "${GREEN}✓${NC} Node.js 環境: $NODE_VERSION"
     
     # 檢查 npm
@@ -290,7 +273,7 @@ install_frontend_deps() {
     cd "$PROJECT_ROOT/web"
     
     echo -e "${YELLOW}📦 正在安裝前端依賴...${NC}"
-    npm install
+    npm ci
     
     echo -e "${GREEN}✓${NC} 前端依賴安裝完成"
     
@@ -314,7 +297,7 @@ verify_installation() {
     echo -e "${GREEN}✓${NC} Python 環境: $PYTHON_VERSION_INSTALLED"
     
     # 檢查配置檔案
-    CONFIG_FILE="config/config_${DEFAULT_AVATAR}.yaml"
+    CONFIG_FILE="config/config.yaml"
     if [ -f "$CONFIG_FILE" ]; then
         echo -e "${GREEN}✓${NC} 配置檔案: $CONFIG_FILE"
     else
@@ -344,16 +327,18 @@ show_next_steps() {
     echo -e "${GREEN}   export DASHSCOPE_API_KEY=\"your_api_key_here\"${NC}"
     echo ""
     echo -e "${YELLOW}2. 啟動服務:${NC}"
-    echo -e "${GREEN}   bash scripts/start-all.sh config/config_${DEFAULT_AVATAR}.yaml${NC}"
+    echo -e "${GREEN}   bash scripts/download_musetalk_weights.sh  # MuseTalk 權重${NC}"
+    echo -e "${GREEN}   bash scripts/create_ssl_certs.sh${NC}"
+    echo -e "${GREEN}   bash scripts/start-all.sh config/config.yaml${NC}"
     echo ""
     echo -e "${YELLOW}3. 或者分步啟動:${NC}"
     echo -e "${GREEN}   # 啟動後端${NC}"
-    echo -e "${GREEN}   bash scripts/start-backend.sh config/config_${DEFAULT_AVATAR}.yaml${NC}"
+    echo -e "${GREEN}   bash scripts/start-backend.sh config/config.yaml${NC}"
     echo -e "${GREEN}   # 啟動前端（新終端）${NC}"
-    echo -e "${GREEN}   bash scripts/start-frontend.sh config/config_${DEFAULT_AVATAR}.yaml${NC}"
+    echo -e "${GREEN}   bash scripts/start-frontend.sh config/config.yaml${NC}"
     echo ""
     echo -e "${YELLOW}4. 訪問應用:${NC}"
-    echo -e "${GREEN}   http://localhost:3000${NC}"
+    echo -e "${GREEN}   https://localhost:3000${NC}"
     echo ""
 }
 

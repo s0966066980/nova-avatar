@@ -1,0 +1,179 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-17T12:00:09.227902+08:00",
+  "browser": {
+    "product": "installed Google Chrome",
+    "version": "155.0.8059.84",
+    "controller": "Playwright",
+    "headed": true
+  },
+  "environment": {
+    "frontend": "http://localhost:3000",
+    "backend": "http://localhost:8020",
+    "configuration": "isolated role profiles",
+    "input": "synthetic microphone and console text; real STT/LLM/TTS/WebRTC outputs"
+  },
+  "checks": {
+    "console_handoff": true,
+    "stage_handoff": true,
+    "ordered_browser_audio_and_transition": true,
+    "microphone_cancels_announcement": true,
+    "no_handoff_after_cancellation": true,
+    "custom_video_once": true,
+    "custom_video_silent": true,
+    "input_paused_during_transition": true,
+    "return_during_answer": true,
+    "independent_return_effect": true,
+    "same_tracks_both_clients": true,
+    "visitor_idle_reset": true,
+    "empty_captions_hidden": true,
+    "empty_board_button_hidden": true,
+    "real_board_close_reopen": true,
+    "mobile_portrait_and_landscape_no_horizontal_overflow": true,
+    "reduced_motion_stops_microphone_ring": true
+  },
+  "browser_measurements": {
+    "console": {
+      "frame_callbacks": 418,
+      "captured_frames": 84,
+      "audio_blocks": 872,
+      "video_intervals_seconds": [],
+      "transition_start_event_seconds": [
+        6.016
+      ],
+      "transition_complete_event_seconds": [
+        6.907
+      ],
+      "announcement_last_non_silent_seconds": 4.012,
+      "specialist_first_non_silent_seconds": 9.004,
+      "announcement_ends_before_transition": true,
+      "specialist_audio_after_transition": true
+    },
+    "stage": {
+      "frame_callbacks": 526,
+      "captured_frames": 106,
+      "audio_blocks": 1098,
+      "video_intervals_seconds": [],
+      "transition_start_event_seconds": [
+        11.882
+      ],
+      "transition_complete_event_seconds": [
+        12.805
+      ],
+      "announcement_last_non_silent_seconds": 7.61,
+      "specialist_first_non_silent_seconds": 15.311,
+      "announcement_ends_before_transition": true,
+      "specialist_audio_after_transition": true
+    },
+    "custom_video_before_fix": {
+      "frame_callbacks": 376,
+      "captured_frames": 76,
+      "audio_blocks": 835,
+      "video_intervals_seconds": [
+        [
+          7.941,
+          9.361
+        ],
+        [
+          11.317,
+          12.533
+        ]
+      ],
+      "transition_start_event_seconds": [
+        11.265,
+        16.994
+      ],
+      "transition_complete_event_seconds": [
+        12.367,
+        17.642
+      ],
+      "announcement_last_non_silent_seconds": 7.224,
+      "specialist_first_non_silent_seconds": 14.84,
+      "announcement_ends_before_transition": true,
+      "specialist_audio_after_transition": true,
+      "max_audio_rms_during_video": 0,
+      "video_after_common_start": false
+    },
+    "custom_video_after_fix": {
+      "frame_callbacks": 375,
+      "captured_frames": 76,
+      "audio_blocks": 839,
+      "video_intervals_seconds": [
+        [
+          11.744,
+          12.963
+        ]
+      ],
+      "transition_start_event_seconds": [
+        11.678,
+        17.042
+      ],
+      "transition_complete_event_seconds": [
+        12.764,
+        17.731
+      ],
+      "announcement_last_non_silent_seconds": 7.474,
+      "specialist_first_non_silent_seconds": 14.916,
+      "announcement_ends_before_transition": true,
+      "specialist_audio_after_transition": true,
+      "max_audio_rms_during_video": 0,
+      "video_after_common_start": true
+    }
+  },
+  "fixed_issues": [
+    {
+      "file": "web/src/App.vue",
+      "problem": "Empty captions displayed a fixed example answer",
+      "fix": "Render the caption only when actual caption text exists"
+    },
+    {
+      "file": "web/stage.html",
+      "problem": "The board button remained visible despite hidden=true",
+      "fix": "Honor the hidden attribute with a CSS rule"
+    },
+    {
+      "file": "src/profiles/media.py",
+      "problem": "A scheduled video exposed frame zero before the shared start, then appeared again",
+      "fix": "Hold the source frame and avoid reading the clip until the common start time"
+    }
+  ],
+  "page_errors_final_run": [],
+  "regressions": {
+    "chrome_empty_stage_script": "passed after reproducing both UI failures",
+    "python_media_and_coordinator": "21 passed including the new scheduled-video regression"
+  },
+  "artifacts": [
+    "chrome-artifacts/console-handoff-contact.png",
+    "chrome-artifacts/console-return-fixed.png",
+    "chrome-artifacts/console-weather.png",
+    "chrome-artifacts/custom-transition-verified-contact.png",
+    "chrome-artifacts/stage-answer-before-return-fixed.png",
+    "chrome-artifacts/stage-board.png",
+    "chrome-artifacts/stage-custom-video-fixed.png",
+    "chrome-artifacts/stage-mobile-landscape.png",
+    "chrome-artifacts/stage-mobile-portrait.png",
+    "chrome-artifacts/stage-ready-fixed.png",
+    "chrome-artifacts/stage-return-verified.png"
+  ],
+  "limits": [
+    "Browser video frames and decoded digital audio energy were inspected; physical speaker/room acoustics and hardware microphone were not exercised.",
+    "Chrome checks are focused scenarios; the earlier 50-round runs use aiortc and are not relabelled as Chrome runs."
+  ],
+  "cleanup": {
+    "test_transition_asset_removed": true,
+    "test_chrome_closed": true,
+    "backend_frontend_owned_llama_stopped": true
+  },
+  "validation": {
+    "integration_and_rebranding_audit": "passed",
+    "python": {
+      "passed": 582,
+      "skipped": 3
+    },
+    "web": {
+      "passed": 100
+    },
+    "production_build": "passed",
+    "git_diff_check": "passed"
+  }
+}

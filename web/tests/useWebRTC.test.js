@@ -1,3 +1,6 @@
+// Copyright (c) 2026 HongXian0903
+// SPDX-License-Identifier: Apache-2.0
+
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -36,7 +39,7 @@ test('控制台連線後維持收音關閉，需由麥克風按鈕手動開啟',
   assert.match(appSource, /startPlay\(null, false\)/)
 })
 
-test('連線準備期間的重複 startPlay 共用同一次 offer', async () => {
+test('重複 startPlay 共用 offer，分開抵達的音畫軌維持同一播放器', async () => {
   const globalNames = [
     'navigator', 'RTCPeerConnection', 'RTCSessionDescription',
     'MediaStream', 'fetch', 'document'
@@ -51,6 +54,9 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
   }
   let peerCount = 0
   let offerCount = 0
+  let peer
+  const playbackBindings = []
+  const video = { set srcObject(value) { if (value) playbackBindings.push(value) } }
   const microphoneTrack = { enabled: true, stop() {} }
   const microphoneStream = {
     getAudioTracks: () => [microphoneTrack],
@@ -60,10 +66,12 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
   class FakePeerConnection {
     constructor() {
       peerCount += 1
+      peer = this
       this.localDescription = null
     }
     createDataChannel() {
-      return { readyState: 'connecting', close() {} }
+      this.channel = { readyState: 'open', send() {}, close() {} }
+      return this.channel
     }
     addTrack() {}
     addTransceiver() {}
@@ -87,16 +95,17 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
       constructor(value) { Object.assign(this, value) }
     })
     setGlobal('MediaStream', class {
-      getTracks() { return [] }
-      addTrack() {}
+      tracks = []
+      getTracks() { return this.tracks }
+      addTrack(track) { this.tracks.push(track) }
     })
     setGlobal('fetch', async () => ({
       ok: true,
       json: async () => ({ sessionid: 7, sdp: 'answer', type: 'answer' })
     }))
-    setGlobal('document', { getElementById: () => null })
+    setGlobal('document', { getElementById: (id) => id === 'video' ? video : null })
 
-    const { startPlay, stopPlay } = useWebRTC()
+    const { startPlay, stopPlay, setCaptureEnabled } = useWebRTC()
     const first = startPlay()
     const second = startPlay()
 
@@ -105,6 +114,26 @@ test('連線準備期間的重複 startPlay 共用同一次 offer', async () => 
     assert.equal(peerCount, 1)
     assert.equal(offerCount, 1)
     assert.equal(microphoneTrack.enabled, false)
+    const audioTrack = { id: 'remote-audio', kind: 'audio' }
+    const videoTrack = { id: 'remote-video', kind: 'video' }
+    peer.ontrack({ track: audioTrack })
+    peer.ontrack({ track: videoTrack })
+    peer.ontrack({ track: audioTrack })
+    assert.equal(playbackBindings.length, 1, 'track arrival restarted the media clock')
+    assert.deepEqual(playbackBindings[0].getTracks(), [audioTrack, videoTrack])
+    setCaptureEnabled(true)
+    const roleEvent = (seq, mode) => peer.channel.onmessage({ data: JSON.stringify({
+      seq, type: 'role_state', enabled: true, phase: 'ready', mode
+    }) })
+    roleEvent(1, 'visitor')
+    assert.equal(microphoneTrack.enabled, false, 'visitor mode must mute console capture')
+    roleEvent(2, 'console')
+    assert.equal(microphoneTrack.enabled, true, 'restore the existing capture request')
+    setCaptureEnabled(false)
+    roleEvent(3, 'visitor')
+    roleEvent(4, 'console')
+    assert.equal(microphoneTrack.enabled, false, 'mode changes cannot grant microphone consent')
+    assert.equal(offerCount, 1)
     stopPlay()
   } finally {
     for (const name of globalNames) {

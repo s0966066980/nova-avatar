@@ -274,6 +274,7 @@ See LICENSE and NOTICE.
     color:var(--ink); padding:6px 12px; border-radius:999px; font-size:12px; cursor:pointer;
   }
   .board-reopen-icon{display:inline-grid;min-width:1em;place-items:center;font-size:18px;line-height:.7}
+  .board-reopen[hidden]{display:none!important}
   .float-board[hidden]{display:none!important}
   .float-board .board-head{
     display:flex; align-items:center; justify-content:space-between;
@@ -375,6 +376,9 @@ See LICENSE and NOTICE.
     </section>
     <button class="board-reopen" id="boardReopen" type="button" hidden aria-pressed="false"><span class="board-reopen-icon" id="boardReopenIcon" aria-hidden="true">▣</span> <span id="boardReopenLabel">展開看板</span></button>
 
+    <button class="btn" id="roleReturn" type="button" hidden
+      style="position:absolute;top:16px;left:16px;z-index:10;min-height:44px;max-width:calc(100% - 32px)">返回主數位人</button>
+
     <div class="veil" id="veil">
       <h1 id="veilTitle">數字人舞台</h1>
       <p id="veilText">點擊進入，瀏覽器會詢問麥克風權限。</p>
@@ -385,6 +389,7 @@ See LICENSE and NOTICE.
 </div>
 
 <script type="module">
+import { canRoleInput, canRoleReturn } from '/src/roleState.js';
 import {
   DEFAULT_STAGE_CAPTION_MAX_CHARS,
   StageCaptionWindow
@@ -426,6 +431,10 @@ import {
   let holding=false;         // 按鍵收音進行中
   let interruptedPress=false;// 插話按下後，鬆開仍屬於同一次操作
   let speaking=false;        // 數字人正在說話
+  let roleState={enabled:false};
+  let captureWanted=false;
+  const roleReturn=$('roleReturn');
+  roleReturn.addEventListener('click',()=>send({type:'role_return'}));
   const kiosk = isKioskMode(window.location.search);
   let kioskTimer=null, kioskAttempt=0;
   let live=false;
@@ -546,6 +555,11 @@ import {
 
   function refreshAffordance(){
     if(!live){ mic.disabled=true; hint.textContent='準備中'; return; }
+    if(!canRoleInput(roleState,'stage')){
+      mic.disabled=true;
+      hint.textContent=roleState.mode==='console' ? '控制台測試中' : '角色轉場中，請稍候';
+      return;
+    }
     mic.disabled=false;
     if(speaking){ hint.textContent = autoMode ? '點一下插話' : '點一下插話'; return; }
     if(autoMode){ hint.textContent = autoPaused ? '已暫停收音，點一下恢復' : '直接說話'; return; }
@@ -637,7 +651,8 @@ import {
     return true;
   }
   function setCapture(enabled, finalize=false){
-    micStream?.getAudioTracks().forEach(t => { t.enabled = Boolean(enabled); });
+    captureWanted=Boolean(enabled);
+    micStream?.getAudioTracks().forEach(t => { t.enabled = captureWanted && canRoleInput(roleState,'stage'); });
     return send({type:'capture', enabled:Boolean(enabled), finalize});
   }
   function interrupt(){
@@ -704,6 +719,21 @@ import {
 
   // ── 會話事件 ────────────────────────────────
   function onVoiceEvent(ev){
+    if(ev.type==='role_state'){
+      roleState=ev;
+      if(ev.error) showSaid('角色暫時無法切換，請再試一次。');
+      roleReturn.hidden=!(ev.enabled && ev.can_return);
+      roleReturn.disabled=!canRoleReturn(ev);
+      micStream?.getAudioTracks().forEach(t=>{t.enabled=captureWanted && canRoleInput(ev,'stage');});
+      refreshAffordance();
+      return;
+    }
+    if(ev.type==='role_error'){showSaid('目前無法切換角色，請稍後再試。');return;}
+    if(ev.type==='role_clear'){
+      speaking=false;holding=false;interruptedPress=false;
+      clearTimeout(saidTimer);said.classList.remove('on');said.textContent='';
+      clearReply();clearLiveBoard();refreshAffordance();return;
+    }
     if(ev.type === 'state'){
       if(ev.state === 'error' || ev.state === 'degraded'){
         const friendly = stageErrorMessage(ev);
@@ -875,6 +905,7 @@ import {
   }
 
   function teardown(){
+    roleState={enabled:false};captureWanted=false;roleReturn.hidden=true;
     live = false; speaking = false; holding = false; interruptedPress = false; lastSeq = 0;
     clearReply();
     if(chan){ chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){} }
@@ -926,11 +957,13 @@ import {
 
   // 空白鍵 = 同一顆按鈕
   addEventListener('keydown', (e) => {
+    if(e.target?.closest?.('button, input, textarea, select, a') && e.target !== mic) return;
     if(e.code !== 'Space' || e.repeat || mic.disabled) return;
     e.preventDefault();
     mic.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true}));
   });
   addEventListener('keyup', (e) => {
+    if(e.target?.closest?.('button, input, textarea, select, a') && e.target !== mic) return;
     if(e.code !== 'Space' || mic.disabled) return;
     e.preventDefault();
     mic.dispatchEvent(new PointerEvent('pointerup', {bubbles:true}));

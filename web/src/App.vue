@@ -99,7 +99,7 @@ See LICENSE and NOTICE.
                 <button
                   class="sample-btn"
                   @click="clearChatHistory"
-                  :disabled="!isConnected"
+                  :disabled="!isConnected || !roleInputAllowed"
                   :title="isConnected ? t('chat.clearHistory') : t('notifications.connectFirst')"
                   style="padding: 4px 10px;"
                 >
@@ -113,6 +113,23 @@ See LICENSE and NOTICE.
                   <i class="bi bi-sliders"></i> 前往看板設定
                 </button>
               </div>
+            </div>
+
+            <div v-if="roleRuntime.enabled" class="role-console-controls" role="group" aria-label="角色與輸入來源">
+              <span role="status">{{ activeRoleName }} · {{ rolePhaseLabel(roleRuntime.phase) }}</span>
+              <button type="button" class="sample-btn" :disabled="roleBusy || roleRuntime.applying || roleRuntime.phase !== 'ready'"
+                @click="roleAction('/mode', { mode: roleRuntime.mode === 'visitor' ? 'console' : 'visitor' })">
+                {{ roleRuntime.mode === 'visitor' ? '切到控制台測試' : '回到訪客模式' }}
+              </button>
+              <button v-if="roleRuntime.can_return" type="button" class="sample-btn" :disabled="roleBusy || !canRoleReturn(roleRuntime)" @click="roleAction('/return')">返回主數位人</button>
+              <button type="button" class="sample-btn" :disabled="roleBusy || roleRuntime.phase === 'transition'" @click="roleAction('/stop')">停止回答</button>
+              <label>對話紀錄
+                <select v-model="historyProfile" aria-label="查看角色對話紀錄">
+                  <option value="">全部角色</option>
+                  <option v-for="p in roleLibrary?.profiles || []" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+              </label>
+              <p v-if="!roleInputAllowed">{{ roleRuntime.mode === 'visitor' ? '目前由舞台接收訪客問題；控制台可返回或停止回答。' : '角色準備或轉場中，請稍候。' }}</p>
             </div>
 
             <!-- 快捷提問膠囊列 -->
@@ -136,7 +153,7 @@ See LICENSE and NOTICE.
               v-if="showTestPanel"
               ref="voiceTestPanelRef"
               :session-id="sessionId"
-              :connected="isConnected"
+              :connected="isConnected && roleInputAllowed"
               :busy="isThinking || ['avatar_speaking', 'tail_guard'].includes(voiceState)"
               :voice-state="voiceState"
               @close="showTestPanel = false"
@@ -148,7 +165,7 @@ See LICENSE and NOTICE.
             <!-- 對話模式：對話訊息瀑布流 -->
             <div v-if="activeMode === 'chat'" class="chat-flow-container" id="chatFlowBox" ref="messagesRef">
               <div
-                v-for="(msg, index) in chatMessages"
+                v-for="(msg, index) in visibleChatMessages"
                 :key="index"
                 class="bubble-row"
                 :class="msg.type === 'user' ? 'user' : 'ai'"
@@ -157,6 +174,7 @@ See LICENSE and NOTICE.
                   <i :class="msg.type === 'user' ? 'bi bi-person-fill' : 'bi bi-robot'"></i>
                 </div>
                 <div class="bubble-card">
+                  <div v-if="msg.profileId" class="role-message-label">{{ profileName(msg.profileId) }}<span v-if="msg.handoffId"> · 交接 {{ msg.handoffId.slice(0, 8) }}</span></div>
                   <div v-if="appSettings.showTimestamp && msg.time" style="font-size: 10.5px; opacity: 0.6; margin-bottom: 4px; font-family: var(--font-mono);">{{ msg.time }}</div>
                   <div v-html="renderMarkdown(msg.text)"></div>
                   <div
@@ -212,14 +230,14 @@ See LICENSE and NOTICE.
                 v-model="ttsInput"
                 class="std-textarea"
                 :placeholder="isConnected ? t('chat.ttsInputPlaceholder') : t('chat.inputPlaceholderDisconnected')"
-                :disabled="!isConnected"
+                :disabled="!isConnected || !roleInputAllowed"
                 rows="10"
                 style="flex: 1; resize: none;"
               ></textarea>
               <button
                 class="btn-send-main"
                 @click="sendTTSMessage"
-                :disabled="!isConnected || !ttsInput.trim()"
+                :disabled="!isConnected || !roleInputAllowed || !ttsInput.trim()"
                 style="align-self: flex-end; padding: 10px 24px;"
               >
                 <i class="bi bi-play-circle-fill"></i>
@@ -236,7 +254,7 @@ See LICENSE and NOTICE.
                   rows="1"
                   v-model="chatInput"
                   :placeholder="isConnected ? '輸入訊息，按 Enter 送出，Shift+Enter 換行...' : t('chat.inputPlaceholderDisconnected')"
-                  :disabled="!isConnected"
+                  :disabled="!isConnected || !roleInputAllowed"
                   @keydown.enter.exact.prevent="sendChatMessage"
                 ></textarea>
               </div>
@@ -250,7 +268,7 @@ See LICENSE and NOTICE.
                     class="btn-voice-push"
                     id="btnPushVoice"
                     :class="{ 'active-listening': isRecordingVoice }"
-                    :disabled="!isConnected"
+                    :disabled="!isConnected || !roleInputAllowed"
                     @mousedown="handleVoiceButtonPress"
                     @mouseup="handleVoiceButtonRelease"
                     @click="handleVoiceButtonClick"
@@ -263,7 +281,7 @@ See LICENSE and NOTICE.
                   <button
                     class="btn-send-main"
                     @click="sendChatMessage"
-                    :disabled="!isConnected || !chatInput.trim()"
+                    :disabled="!isConnected || !roleInputAllowed || !chatInput.trim()"
                   >
                     <i class="bi bi-send-fill"></i>
                     <span>送出</span>
@@ -334,8 +352,8 @@ See LICENSE and NOTICE.
                   <span class="stage-board-open-icon" aria-hidden="true">{{ consoleBoardOpenPresentation.icon }}</span> {{ stageBoard.hidden ? '展開看板' : '收合看板' }} ({{ visibleBoard.items.length }}項)
                 </button>
 
-                <div class="stage-captions-sub" style="z-index: 2;">
-                  「{{ stageCaptionText || '好的！這三大核心優勢已同步呈現於右側 9:16 舞台看板中。' }}」
+                <div v-if="stageCaptionText" class="stage-captions-sub" style="z-index: 2;">
+                  「{{ stageCaptionText }}」
                 </div>
 
                 <div class="recording-badge" v-if="isRecording" style="position: absolute; top: 12px; left: 12px; background: rgba(239, 68, 68, 0.9); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; z-index: 3;">
@@ -449,6 +467,8 @@ import VoiceTestPanel from './components/VoiceTestPanel.vue'
 import { useWebRTC } from './composables/useWebRTC'
 import { useI18n } from './composables/useI18n'
 import { useRuntimeSettings } from './composables/useRuntimeSettings'
+import { useRoles } from './composables/useRoles.js'
+import { canRoleInput, canRoleReturn, rolePhaseLabel } from './roleState.js'
 import { avatarScenePreviewUrl } from './scenePreview.js'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
@@ -474,6 +494,18 @@ marked.setOptions({
 })
 
 const { t, setLocale, loadLocale } = useI18n()
+const { roleRuntime, roleLibrary, roleRequest, roleEvent } = useRoles()
+const roleBusy = ref(false)
+const historyProfile = ref('')
+const roleInputAllowed = computed(() => canRoleInput(roleRuntime, 'console'))
+const activeRoleName = computed(() => profileName(roleRuntime.active_profile_id))
+function profileName(id) { return roleLibrary.value?.profiles.find(p => p.id === id)?.name || id || '目前角色' }
+async function roleAction(path, body) {
+  roleBusy.value = true
+  try { await roleRequest(path, 'POST', body) }
+  catch (error) { showNotification(error.message, 'error') }
+  finally { roleBusy.value = false }
+}
 const { vad, vadDraft, loadVadSettings, applyVadSettings, runtime, isStageConfiguring, selectedBoardPreview } = useRuntimeSettings()
 const handsFreeTalk = computed(() => Boolean(vad.enabled))
 
@@ -593,7 +625,7 @@ const setDesignSample = (sampleKey) => {
   }
 }
 const stageCaptionText = computed(() => {
-  const lastAi = [...chatMessages.value].reverse().find(m => m.type === 'ai')
+  const lastAi = [...chatMessages.value].reverse().find(m => m.type === 'ai' && m.captionEpoch === captionEpoch.value)
   if (!lastAi || !lastAi.text) return ''
   const clean = sanitizeChatText(lastAi.text)
   return clean.length > 80 ? clean.slice(-80) : clean
@@ -601,7 +633,9 @@ const stageCaptionText = computed(() => {
 
 const currentAvatar = computed(() => {
   const characters = Array.isArray(runtime.characters) ? runtime.characters : []
-  return characters.find(character => character.id === runtime.avatar?.avatar_id) || null
+  const roleAvatar = roleRuntime.enabled
+    ? roleLibrary.value?.profiles.find(p => p.id === roleRuntime.active_profile_id)?.avatar_id : null
+  return characters.find(character => character.id === (roleAvatar || runtime.avatar?.avatar_id)) || null
 })
 
 const consoleScenePreviewUrl = computed(() => avatarScenePreviewUrl(
@@ -618,7 +652,7 @@ const currentAvatarMeta = computed(() => {
   }
   return [
     avatar.label || avatar.name || avatar.id,
-    avatar.resolution,
+    roleRuntime.enabled ? '720×1280' : avatar.resolution,
     avatar.fps ? `${avatar.fps} FPS` : '',
     avatar.type || runtime.avatar?.type,
   ].filter(Boolean).join(' · ')
@@ -730,6 +764,9 @@ const appSettings = ref({
 })
 
 const chatMessages = ref([])
+const captionEpoch = ref(0)
+const visibleChatMessages = computed(() => historyProfile.value
+  ? chatMessages.value.filter(m => m.profileId === historyProfile.value) : chatMessages.value)
 const ragByTurn = reactive({})
 
 // 每個語音 turn 保留最後接受的 LLM delta 序號；晚到或重複事件不得污染文字預覽。
@@ -831,6 +868,25 @@ const getNotificationIcon = (type) => {
 }
 
 const handleVoiceEvent = (event) => {
+  roleEvent(event)
+  if (event.type === 'role_state' && event.error) showNotification(event.error, 'error')
+  if (event.type === 'role_clear') {
+    captionEpoch.value += 1
+    applyConsoleBoardEvent(stageBoard, { type: 'board_clear' })
+    isThinking.value = false
+    return
+  }
+  if (event.type === 'role_history_reset') {
+    chatMessages.value = chatMessages.value.filter(m => m.profileId !== event.reset_profile_id)
+    return
+  }
+  if (event.type === 'role_error') { showNotification(event.message, 'error'); return }
+  if (event.type === 'role_handoff') {
+    for (const message of chatMessages.value) {
+      if ([event.source_turn_id, event.target_turn_id].includes(message.voiceTurnId)) message.handoffId = event.handoff_id
+    }
+    return
+  }
   voiceTestPanelRef.value?.handleVoiceEvent(event)
   if (event.type === 'state') {
     voiceState.value = event.state
@@ -856,7 +912,7 @@ const handleVoiceEvent = (event) => {
   } else if (event.type === 'turn_cancelled' && event.turn_id) {
     delete ragByTurn[event.turn_id]
   } else if (event.type === 'user_transcript' && event.text) {
-    addMessage(event.text, 'user')
+    addMessage(event.text, 'user', { profileId: event.profile_id, voiceTurnId: event.turn_id })
   } else if (event.type === 'assistant_response_start') {
     isThinking.value = true
     if (event.turn_id) {
@@ -1346,6 +1402,8 @@ const addMessage = (text, type = 'user', metadata = {}) => {
     text,
     type,
     time: getCurrentTime(),
+    profileId: roleRuntime.enabled ? roleRuntime.active_profile_id : '',
+    captionEpoch: captionEpoch.value,
     ...metadata,
   })
   scrollMessagesToEnd()
@@ -1358,6 +1416,7 @@ const clearInput = () => {
 
 const sendChatMessage = async () => {
   if (!chatInput.value.trim()) return
+  if (!roleInputAllowed.value) return
   
   // 檢查是否已連線
   if (!isConnected.value) {
@@ -1400,6 +1459,7 @@ const sendChatMessage = async () => {
 
 const sendTTSMessage = async () => {
   if (!ttsInput.value.trim()) return
+  if (!roleInputAllowed.value) return
   
   // 檢查是否已連線
   if (!isConnected.value) {
@@ -1431,6 +1491,7 @@ const sendTTSMessage = async () => {
 
 // WebRTC microphone controls; server-side Silero owns endpointing and STT.
 const handleVoiceButtonPress = () => {
+  if (!roleInputAllowed.value) return
   if (handsFreeTalk.value || !isConnected.value) return
   handsFreePaused.value = false
   voiceState.value = 'listening'
@@ -1439,6 +1500,7 @@ const handleVoiceButtonPress = () => {
 }
 
 const handleVoiceButtonRelease = () => {
+  if (!roleInputAllowed.value) return
   if (handsFreeTalk.value || !isConnected.value) return
   isRecordingVoice.value = false
   voiceState.value = 'paused'
@@ -1446,6 +1508,7 @@ const handleVoiceButtonRelease = () => {
 }
 
 const handleVoiceButtonClick = () => {
+  if (!roleInputAllowed.value) return
   if (!handsFreeTalk.value || !isConnected.value) return
   if (avatarSpeaking.value) {
     handsFreePaused.value = false
@@ -1511,6 +1574,7 @@ const clearChatHistory = async () => {
 let videoResizeObserver = null
 
 onMounted(async () => {
+  roleRequest().catch(error => showNotification(error.message, 'error'))
   console.log('✅ Vue 應用已掛載')
   console.log('後端 API 地址: /offer (通過 Vite proxy 轉發到 localhost:8010)')
   
@@ -1568,6 +1632,25 @@ onMounted(async () => {
 
 <style>
 @import 'highlight.js/styles/atom-one-dark.css';
+
+.role-console-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.role-console-controls p { width: 100%; margin: 0; color: var(--text-secondary); }
+.role-console-controls select {
+  background: var(--input-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+}
+.role-message-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; }
 
 .app-root-shell {
   height: 100vh;

@@ -482,6 +482,14 @@ class BaseLLM(ABC):
                             text_processor.process_chunk(spoken, send_to_avatar)
                     else:
                         spoken_response += spoken
+                if (
+                    target_avatar and semantic_stream
+                    and not is_legacy_markup and parser.speech_complete
+                ):
+                    # The closed speech channel is a complete semantic unit,
+                    # including summaries whose model omitted punctuation.
+                    for fragment in text_processor.flush():
+                        send_to_avatar(fragment)
             
             if not fenced:
                 if is_legacy_markup:

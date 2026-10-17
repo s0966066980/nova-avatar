@@ -1,0 +1,7 @@
+{
+  "speech_max_chars": 60,
+  "board": "only when explicitly requested",
+  "question": "明天臺北市中正區會下雨嗎？請簡短回答。",
+  "input": "synthetic microphone",
+  "isolated_configuration": true
+}

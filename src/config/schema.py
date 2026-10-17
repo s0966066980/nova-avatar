@@ -20,6 +20,7 @@ class AppConfig:
     listenport: int = 8010
     listenhost: str = "0.0.0.0"  # 監聽地址：0.0.0.0 允許外部訪問，127.0.0.1 僅本地
     max_session: int = 1
+    prewarm: bool = True
     
     # SSL/HTTPS 配置
     ssl: bool = False  # 主開關：true 啟用 HTTPS，false 使用 HTTP
@@ -148,6 +149,9 @@ class MuseTalkQualityConfig:
     upper_boundary_ratio: float = 0.5
     expand: float = 1.5
     mask_blur_ratio: float = 0.05
+    # Optional engines built for this GPU/runtime; empty paths use PyTorch.
+    unet_engine_path: str = ""
+    vae_engine_path: str = ""
     # Keep the generated mouth temporally continuous across streamed fragments.
     mouth_continuity: bool = True
     # Align the final generated mouth to the moving idle-frame ROI during close.
@@ -333,6 +337,7 @@ class VideoConfig:
     width: int = 450
     height: int = 450
     fps: int = 25
+    max_height: int = 0  # 0 preserves the source; shrink before compositing/encoding
 
 
 @dataclass

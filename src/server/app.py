@@ -25,29 +25,35 @@ from src.server.server import create_app, run_server
 
 def _start_edge_tts_prewarm(config) -> Thread | None:
     """Overlap Edge's process-cold network setup with local model loading."""
-    if str(getattr(config.tts, "type", "")).strip().lower() != "edgetts":
+    if (not getattr(getattr(config, "app", None), "prewarm", True)
+            or str(getattr(config.tts, "type", "")).strip().lower() != "edgetts"):
         return None
     from src.tts.engines.edge import prewarm_edge_tts
 
     voice = str(getattr(config.tts, "ref_file", "") or "").strip()
+    def warm():
+        worker.prewarm_ready = prewarm_edge_tts(voice, decode_pcm=True)
+
     worker = Thread(
-        target=prewarm_edge_tts,
-        args=(voice,),
+        target=warm,
         name="edge-tts-prewarm",
         daemon=True,
     )
+    worker.prewarm_ready = False
     worker.start()
     return worker
 
 
-def _await_edge_tts_prewarm(worker: Thread | None) -> None:
+def _await_edge_tts_prewarm(worker: Thread | None) -> bool:
     if worker is None:
-        return
+        return True
     from src.tts.engines.edge import EDGE_WARMUP_TIMEOUT_SECONDS
 
     worker.join(timeout=EDGE_WARMUP_TIMEOUT_SECONDS + 1.0)
     if worker.is_alive():
         logger.warning("Edge TTS prewarm did not finish before server startup")
+        return False
+    return bool(getattr(worker, "prewarm_ready", False))
 
 
 def main():
@@ -156,8 +162,28 @@ def main():
         except Exception:
             logger.exception("啟動 CosyVoice 失敗，請到設定重新套用 TTS")
 
-    # Do not announce readiness while the first Edge connection is still cold.
-    _await_edge_tts_prewarm(edge_tts_prewarm)
+    # Orin's disposable prompt/PCM warmups also apply to x86. Prime actual
+    # recognizer inference here, so listening never spends its first turn on it.
+    enabled = state.config.app.prewarm
+    llm_ready = speech_ready = None
+    if enabled:
+        from src.llm.prewarm import prewarm_local_llm
+        from src.asr.prewarm import prewarm_speech_input
+
+        if state.config.llm.provider == "llamacpp":
+            llm_ready = prewarm_local_llm(state.config)
+        if state.config.vad.enabled:
+            speech_ready = prewarm_speech_input(state.config)
+    edge_ready = _await_edge_tts_prewarm(edge_tts_prewarm)
+    state.prewarm_status = {
+        "enabled": enabled,
+        "avatar": (state.model_ready if enabled and state.config.model.type
+                   in {"musetalk", "wav2lip", "ultralight"} else None),
+        "edge_tts": edge_ready if edge_tts_prewarm is not None else None,
+        "local_llm": llm_ready,
+        "speech_input": speech_ready,
+    }
+    logger.info("Startup prewarm: %s", state.prewarm_status)
 
     # 建立並執行應用
     app = create_app()

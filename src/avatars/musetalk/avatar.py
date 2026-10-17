@@ -64,9 +64,9 @@ def _is_unscoped_idle_result(item) -> bool:
     audio_frames = _result_audio_frames(item)
     return bool(audio_frames) and all(
         frame_type != 0
-        and not (
-            isinstance(eventpoint, dict) and eventpoint.get("turn_id")
-        )
+        # Quiet synthesized PCM still belongs to the speech timeline. Only
+        # generated idle frames have no event at all.
+        and eventpoint is None
         for _frame, frame_type, eventpoint in audio_frames
     )
 
@@ -166,7 +166,7 @@ def _media_batch_is_current(audio_frames, media_guard, stage: str) -> bool:
     )
 
 
-def load_model():
+def load_model(vae_engine_path="", *, unet_engine_path=""):
     # load model weights
     vae, unet, pe = load_all_model()
     device = torch.device("cuda" if torch.cuda.is_available() else ("mps" if (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()) else "cpu"))
@@ -175,6 +175,20 @@ def load_model():
     vae.vae = vae.vae.half().to(device)
     #vae.vae.share_memory().to(device)
     unet.model = unet.model.half().to(device)
+    if unet_engine_path:
+        try:
+            from .inference_optimization import TensorRTUNet
+            unet.model = TensorRTUNet(unet.model, unet_engine_path)
+            logger.info("Using optional TensorRT UNet: %s", unet_engine_path)
+        except Exception as exc:
+            logger.warning("TensorRT UNet unavailable; using original predictor: %s", exc)
+    if vae_engine_path:
+        try:
+            from .vae_acceleration import TensorRTVAEDecoder
+            vae = TensorRTVAEDecoder(vae, vae_engine_path)
+            logger.info("Using optional TensorRT VAE: %s", vae_engine_path)
+        except Exception as exc:
+            logger.warning("TensorRT VAE unavailable; using original decoder: %s", exc)
     #unet.model.share_memory()
     # Initialize audio processor and Whisper model
     audio_processor = Audio2Feature(model_path="./models/musetalk/whisper")
@@ -217,22 +231,27 @@ def load_avatar(avatar_id):
 
 @torch.no_grad()
 def warm_up(batch_size,model):
-    # 預熱函式
     logger.info('warmup model...')
     vae, unet, pe, timesteps, audio_processor = model
-    #batch_size = 16
-    #timesteps = torch.tensor([0], device=unet.device)
-    whisper_batch = np.ones((batch_size, 50, 384), dtype=np.uint8)
-    latent_batch = torch.ones(batch_size, 8, 32, 32).to(unet.device)
-
-    audio_feature_batch = torch.from_numpy(whisper_batch)
-    audio_feature_batch = audio_feature_batch.to(device=unet.device, dtype=unet.model.dtype)
-    audio_feature_batch = pe(audio_feature_batch)
-    latent_batch = latent_batch.to(dtype=unet.model.dtype)
-    pred_latents = unet.model(latent_batch,
-                              timesteps,
-                              encoder_hidden_states=audio_feature_batch).sample
-    vae.decode_latents(pred_latents)
+    # Idle playback bypasses Whisper. Exercise its real feature path before
+    # readiness, then both shapes used by the first and steady-state batches.
+    # These disposable tensors never enter a session or a playback queue.
+    features = audio_processor.audio2feat(np.zeros(16000, dtype=np.float32))
+    for size in dict.fromkeys((max(1, min(batch_size, 4)), batch_size)):
+        chunks = audio_processor.feature2chunks(
+            feature_array=features, fps=25, batch_size=size, start=5,
+        )
+        audio_feature_batch = torch.from_numpy(np.stack(chunks)).to(
+            device=unet.device, dtype=unet.model.dtype,
+        )
+        latent_batch = torch.ones(
+            size, 8, 32, 32, device=unet.device, dtype=unet.model.dtype,
+        )
+        pred_latents = unet.model(
+            latent_batch, timesteps,
+            encoder_hidden_states=pe(audio_feature_batch),
+        ).sample
+        vae.decode_latents(pred_latents)
 
 def read_imgs(img_list):
     frames = []
@@ -254,7 +273,7 @@ def __mirror_index(size, index):
 @torch.no_grad()
 def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,audio_out_queue,res_frame_queue,
               vae, unet, pe,timesteps, media_guard=None, on_stale_drop=None,
-              on_stage_end=None): #vae, unet, pe,timesteps
+              on_stage_end=None, asset_provider=None): #vae, unet, pe,timesteps
     
     # vae, unet, pe = load_diffusion_model()
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -288,6 +307,10 @@ def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,aud
             feature_item = audio_feat_queue.get(block=True, timeout=1)
         except queue.Empty:
             continue
+        asset_epoch = None
+        if asset_provider is not None:
+            asset_epoch, input_latent_list_cycle = asset_provider()
+            length = len(input_latent_list_cycle)
         if isinstance(feature_item, MuseInferenceBatch):
             whisper_chunks = feature_item.features
             audio_frames = list(feature_item.audio_frames)
@@ -327,6 +350,8 @@ def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,aud
                         on_stale_drop("musetalk_result", "stale_generation")
                     break
                 result = (None, __mirror_index(length, index), paired_audio)
+                if asset_epoch is not None:
+                    result = (*result, asset_epoch)
                 if _is_unscoped_idle_result(result) and res_frame_queue.full():
                     # Idle runs ahead of the 25 fps consumer. Drop the surplus
                     # silent pair but keep this pose for the next one; advancing
@@ -392,9 +417,12 @@ def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,aud
                     if any(frame_type == 0 for _, frame_type, _ in paired_audio)
                     else None
                 )
+                result = (output_frame, __mirror_index(length,index), paired_audio)
+                if asset_epoch is not None:
+                    result = (*result, asset_epoch)
                 if not put_result_frame(
                     res_frame_queue,
-                    (output_frame,__mirror_index(length,index),paired_audio),
+                    result,
                     quit_event,
                 ):
                     break
@@ -420,6 +448,15 @@ class MuseTalkAvatar(BaseAvatar):
         self.res_frame_queue = queue.Queue(self.batch_size * 2)
 
         self.vae, self.unet, self.pe, self.timesteps, self.audio_processor = model
+        from threading import RLock
+        self._assets_lock = RLock()
+        self._asset_epoch = 0
+        self._install_assets(avatar, config)
+        self.audio_stream = MuseAudioStreamHandler(config, self, self.audio_processor)
+        self.audio_stream.warm_up()
+        self.render_event = mp.Event()
+
+    def _install_assets(self, avatar, config):
         self.frame_list_cycle,self.mask_list_cycle,self.coord_list_cycle,self.mask_coords_list_cycle, self.input_latent_list_cycle = avatar
         from .mouth_continuity import MouthContinuityController
         from .avatar_transition import AvatarTransitionController
@@ -479,10 +516,22 @@ class MuseTalkAvatar(BaseAvatar):
             )
         #self.__loadavatar()
 
-        self.audio_stream = MuseAudioStreamHandler(config, self, self.audio_processor)
-        self.audio_stream.warm_up()
-        
-        self.render_event = mp.Event()
+    def asset_snapshot(self):
+        with self._assets_lock:
+            return self._asset_epoch, self.input_latent_list_cycle
+
+    def bind_profile(self, config, avatar):
+        """Swap immutable preloaded material; keep the renderer and media tracks."""
+        from src.avatars.catalog import avatar_uses_green_screen
+        self.flush_talk()
+        with self._assets_lock:
+            self._asset_epoch += 1
+            config.sessionid = self.sessionid
+            self.config = config
+            self.tts.config = config
+            self._green_screen = avatar_uses_green_screen(config.model.avatar_id)
+            self._install_assets(avatar, config)
+            self.idx = 0
 
     # def __del__(self):
     #     logger.info(f'musereal({self.sessionid}) delete')
@@ -539,6 +588,7 @@ class MuseTalkAvatar(BaseAvatar):
         #if self.opt.asr:
         #     self.audio_stream.warm_up()
 
+        self.audio_stream.quit_event = quit_event
         self.init_customindex()
         self.tts.render(quit_event)
         
@@ -548,7 +598,7 @@ class MuseTalkAvatar(BaseAvatar):
                                            self.audio_stream.feat_queue,self.audio_stream.output_queue,self.res_frame_queue,
                                            self.vae, self.unet, self.pe,self.timesteps,
                                            self.accepts_media,self.record_stale_drop,
-                                           self.mark_stage_end)) #mp.Process
+                                           self.mark_stage_end, self.asset_snapshot)) #mp.Process
         infer_thread.start()
         
         process_quit_event = Event()
@@ -598,7 +648,9 @@ class MuseTalkAvatar(BaseAvatar):
                 tts_wait_started_at = None
 
             t = time.perf_counter()
-            self.audio_stream.run_step()
+            if self.audio_stream.run_step() is False:
+                time.sleep(0.01)
+                continue
             #self.test_step(loop,audio_track,video_track)
             # totaltime += (time.perf_counter() - t)
             # count += self.opt.batch_size
@@ -606,7 +658,8 @@ class MuseTalkAvatar(BaseAvatar):
             #     print(f"------actual avg infer fps:{count/totaltime:.4f}")
             #     count=0
             #     totaltime=0
-            if video_track and video_track._queue.qsize() >= MIN_VIDEO_BUFFER_FRAMES:
+            if (video_track and self.audio_stream.queue.empty()
+                    and video_track._queue.qsize() >= MIN_VIDEO_BUFFER_FRAMES):
                 logger.debug('sleep qsize=%d',video_track._queue.qsize())
                 time.sleep(0.04*video_track._queue.qsize()*0.8)
             # if video_track._queue.qsize()>=5:

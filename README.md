@@ -28,36 +28,149 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 
 ## 安裝 Nova Avatar
 
-以下以 Linux、MuseTalk 和預設 `config/config.yaml` 為例。需要 Python
-3.10／3.11、[uv](https://docs.astral.sh/uv/)、Node.js／npm、FFmpeg，以及
-設定檔指定的 Ollama 或 llama.cpp 模型服務。MuseTalk 需要 NVIDIA GPU、相容
-的 CUDA 環境與權重；安裝腳本編譯 mmcv 時可能需要 CUDA Toolkit 12.4。
+以下以 Linux x86_64、NVIDIA GPU、MuseTalk 為例。先備妥：
+
+| 項目 | 需求 |
+| --- | --- |
+| GPU | NVIDIA GPU、可用的 `nvidia-smi`；顯存需同時容納數位人與本機 LLM |
+| Python | 安裝腳本以 uv 管理 Python 3.10.19，保留既有 `.venv` |
+| 系統工具 | Git、FFmpeg、OpenSSL、Node.js 22+／npm、C++ 編譯工具 |
+| CUDA | PyTorch 固定 cu124；首次編譯 mmcv 需 CUDA Toolkit 12.4／`nvcc` |
+| LLM | 預設為 Ollama `qwen3.5:4b`，也可設定 llama.cpp 或其他服務 |
+
+在專案根目錄依序執行：
 
 ```bash
 git clone https://github.com/s0966066980/nova-avatar.git
 cd nova-avatar
 bash scripts/setup-env.sh musetalk
-source .venv/bin/activate
 bash scripts/download_musetalk_weights.sh
 bash scripts/create_ssl_certs.sh
 ```
 
-`setup-env.sh` 會安裝 Python、Avatar 與前端依賴；若 `.venv` 已存在，會詢問
-是否重建。權重下載後請檢查腳本列出的模型檔是否齊全。預設 YAML 啟用 SSL，
-因此首次啟動前需建立憑證。若改用其他 Avatar，請先核對其依賴和授權。
+安裝腳本會準備 Python、MuseTalk／OpenMMLab 與前端依賴；重跑保留既有
+環境。權重下載沿用專案固定的套件，不會升級系統 pip 或強制切換鏡像。
+SSL 腳本不再要求互動輸入，已有憑證時會保留；預設服務使用 HTTPS。
 
-預設 LLM 設定使用本機 Ollama 的 `qwen3.5:4b`；請先啟動 Ollama 並備妥
-該模型，或在 `config/config.yaml` 改成可用的模型與服務位址。Avatar、
-STT、TTS、回覆模式也可在控制台設定。只安裝核心依賴時可改用：
+接著備妥角色素材：可在控制台匯入正面閉嘴影片，或執行：
 
 ```bash
-uv venv --python 3.10.19
-uv sync --extra vad
-cd web && npm install && cd ..
+uv run python src/avatars/musetalk/genavatar_musetalk.py \
+  --avatar_id musetalk_avatar1 --file /path/to/silent_video.mp4
 ```
 
-選用 MuseTalk 時請依前述 `setup-env.sh musetalk` 完成其 CUDA／OpenMMLab
-依賴。之後同步依賴應保留 `--extra musetalk`，避免移除相關套件。
+確認 Ollama 已啟動並有 `qwen3.5:4b`，或先將設定改成可用的模型服務。
+角色、STT、TTS 與回覆模式可在控制台調整。系統套件、CUDA 編譯排錯、
+權重檢查與依賴更新方式見 [完整安裝流程](docs/installation.md)。
+
+### 啟用 TensorRT GPU 加速（選用）
+
+完成上述 MuseTalk 安裝與權重下載後，在目標 GPU 上執行：
+
+```bash
+bash scripts/setup-tensorrt.sh
+uv run python scripts/verify-musetalk-tensorrt.py
+```
+
+第一行安裝固定的 CUDA 12 TensorRT 10、建立完整 UNet／VAE FP16 引擎，
+比較 batch 1、4、8 的速度與誤差，通過後才把引擎路徑寫入本機
+`config/runtime_overrides.yaml`。第二行透過正式載入流程，以目前角色
+latent 與 Whisper 特徵驗證合併推論及畫面誤差。之後正常啟動即可。
+
+本機 RTX 4090 的 batch 8 角色模型合併推論實測為 **96.19 → 38.49 ms，
+約 2.50 倍**，輸出 PSNR 57.72 dB；此數字只涵蓋 UNet＋完整 VAE＋
+CPU 像素交付，不能視為整體對話或 WebRTC 加速倍率。
+
+重驗已建好的引擎可使用 `bash scripts/setup-tensorrt.sh --verify-only`。
+建置參數、量測結果與回復 PyTorch 的方法見
+[TensorRT 安裝與驗證](docs/installation.md#tensorrt-安裝與驗證) 和
+[x86 效能紀錄](docs/x86-performance.md)。
+
+## 啟動與使用
+
+在專案根目錄執行：
+
+```bash
+bash scripts/start-all.sh config/config.yaml
+```
+
+此命令啟動後端與 Web 控制台。執行過 `ragflow.sh prepare` 的主機會一併
+啟動 RAGFlow；它尚未準備好時，啟動腳本會顯示提示並繼續啟動 Nova。
+若 RAGFlow 已由其他命令啟動，`start-all.sh` 會沿用該實例。按
+`Ctrl+C` 停止 Nova，以及這次由 `start-all.sh` 帶起的 RAGFlow 服務；
+既有 RAGFlow 實例會保持執行。暫時不啟動檢索服務可執行
+`NOVA_START_RAGFLOW=0 bash scripts/start-all.sh config/config.yaml`。
+
+| 入口 | 預設位址 | 用途 |
+| --- | --- | --- |
+| Web 控制台 | `https://localhost:3000` | 對話、設定、語音驗證 |
+| 數位人舞台 | `https://localhost:3000/stage.html` | 獨立演播畫面 |
+| 後端健康檢查 | `https://localhost:8010/health` | 確認 Nova 後端就緒 |
+| RAGFlow 管理頁 | `http://127.0.0.1:8088` | 建立知識庫、上傳與解析文件 |
+
+上表依預設 YAML 的 `app.ssl: true` 顯示 HTTPS；若關閉 SSL，Nova
+控制台和後端網址改用 HTTP。RAGFlow 管理頁只綁定主機 loopback，從另一
+台電腦無法直接連線。後端日誌在 `logs/start-all-backend.log`。
+
+啟動後，在控制台選擇數位人與模型，使用文字訊息或啟用麥克風開始對話。
+需要文件檢索時，到「設定 → 知識庫檢索」檢查連線、勾選知識庫並儲存，
+先按「測試檢索」確認有相關片段，再開啟該數位人的檢索。設定從下一輪
+對話生效。無命中時會標明回答沒有文件依據；RAGFlow 故障或逾時時，
+Nova 繼續一般回答並在控制台顯示狀態。檢索片段只是參考預覽，
+不代表正式引文。檢索設定依數位人分開保存，初始為關閉。
+
+### 角色設定與即時交接
+
+「系統設定中心 → 角色設定與交接」可分別保存角色的身分 Prompt、LLM、
+RAG 知識範圍、聲音與回覆規則，再選主數位人及專門數位人，啟用角色交接。
+首次啟動會將現有有效設定複製為主角色，不覆蓋之後的修改。
+設定保存在 `config/avatar_profiles.yaml`；先儲存，再套用，套用會等待目前輪次結束。
+
+首版即時組合使用兩位 MuseTalk 數位人，共用同一 LLM 服務與模型，以及同一
+語音合成引擎；聲線可不同。主角色依交接規則判斷接手主題，播完交接說明後轉場，
+專門角色回答原問題。舞台及控制台可返回主角色，WebRTC 連線與各角色記憶會保留。
+舞台閒置重置會清除本訪客全部角色記憶並回到主角色。
+
+去程、回程可各自選淡入淡出、左右滑動、縮放，或上傳 MP4／MOV／WebM
+轉場影片（100 MiB、30 秒內）。影片會完整驗證，轉為靜音、25 fps；
+共同輸出為 720×1280，保留原比例及共用背景。
+舞台連線時由訪客發問；控制台需先選「切到控制台測試」才可輸入，測試期間舞台暫停收音。
+
+天氣工具使用中央氣象署 CWA，授權碼只從服務端的 `NOVA_CWA_API_KEY`
+（亦支援 `CWA_API_KEY`）或已排除 Git 的 `config/cwa.env` 載入。
+可執行 `uv run python scripts/configure-cwa.py` 隱藏輸入既有授權碼。
+角色設定可指定場域縣市與鄉鎮；留白且訪客未提供地點時會先詢問。
+提供目前觀測與未來七天預報，降雨機率只使用來源提供的前三天資料；
+缺值、過舊或查詢失敗會明確說明，發布時間未知時不當成最新一報。
+
+驗證已啟用的角色組合（使用合成測試語音，不保存原始音訊或對話）：
+
+```bash
+uv run python scripts/run_role_soak.py --turns 50 --output .scratch/live-avatar-switch/role-soak.json
+```
+
+此工具使用真實 WebRTC 收送音畫，量測舞台與控制台各自的交接；瀏覽器觀看端的
+音畫順序與嘴型仍需另外驗收。
+
+### 場域 kiosk 啟動
+
+場域主機要讓訪客直接使用數位人舞台時，在後端與前端啟動後執行：
+
+```bash
+bash scripts/start-kiosk.sh
+```
+
+腳本以 Chrome／Chromium 全螢幕開啟 `/stage.html?kiosk=1`，並預先放行聲音播放與
+麥克風，使用獨立的瀏覽器設定檔 `.local/kiosk-profile`。舞台看到 `kiosk=1` 會自動
+連線，連線中斷時依 2、3、5、8、10 秒退避自動重連，訪客只看到「數字人暫時無法使用」
+這類簡短提示。一般瀏覽器開啟 `/stage.html` 不受影響，仍是點一下進入。
+可用 `NOVA_KIOSK_URL`、`NOVA_KIOSK_BROWSER`、`NOVA_KIOSK_PROFILE` 覆寫網址、瀏覽器與
+設定檔位置。
+
+如需分開啟動 Nova 前後端，可在不同終端執行
+`bash scripts/start-backend.sh config/config.yaml` 和
+`bash scripts/start-frontend.sh config/config.yaml`；RAGFlow 則以
+`bash scripts/ragflow.sh up`／`down` 獨立管理。
 
 ## 安裝 RAGFlow 文件檢索（選用）
 
@@ -116,59 +229,6 @@ git diff --cached
 建置步驟、行為、隔離、故障說明與驗證清單見
 [RAGFlow 本機檢索整合](docs/ragflow.md)。
 
-## 啟動與使用
-
-在專案根目錄執行：
-
-```bash
-bash scripts/start-all.sh config/config.yaml
-```
-
-此命令啟動後端與 Web 控制台。執行過 `ragflow.sh prepare` 的主機會一併
-啟動 RAGFlow；它尚未準備好時，啟動腳本會顯示提示並繼續啟動 Nova。
-若 RAGFlow 已由其他命令啟動，`start-all.sh` 會沿用該實例。按
-`Ctrl+C` 停止 Nova，以及這次由 `start-all.sh` 帶起的 RAGFlow 服務；
-既有 RAGFlow 實例會保持執行。暫時不啟動檢索服務可執行
-`NOVA_START_RAGFLOW=0 bash scripts/start-all.sh config/config.yaml`。
-
-| 入口 | 預設位址 | 用途 |
-| --- | --- | --- |
-| Web 控制台 | `https://localhost:3000` | 對話、設定、語音驗證 |
-| 數位人舞台 | `https://localhost:3000/stage.html` | 獨立演播畫面 |
-| 後端健康檢查 | `https://localhost:8010/health` | 確認 Nova 後端就緒 |
-| RAGFlow 管理頁 | `http://127.0.0.1:8088` | 建立知識庫、上傳與解析文件 |
-
-上表依預設 YAML 的 `app.ssl: true` 顯示 HTTPS；若關閉 SSL，Nova
-控制台和後端網址改用 HTTP。RAGFlow 管理頁只綁定主機 loopback，從另一
-台電腦無法直接連線。後端日誌在 `logs/start-all-backend.log`。
-
-啟動後，在控制台選擇數位人與模型，使用文字訊息或啟用麥克風開始對話。
-需要文件檢索時，到「設定 → 知識庫檢索」檢查連線、勾選知識庫並儲存，
-先按「測試檢索」確認有相關片段，再開啟該數位人的檢索。設定從下一輪
-對話生效。無命中時會標明回答沒有文件依據；RAGFlow 故障或逾時時，
-Nova 繼續一般回答並在控制台顯示狀態。檢索片段只是參考預覽，
-不代表正式引文。檢索設定依數位人分開保存，初始為關閉。
-
-### 場域 kiosk 啟動
-
-場域主機要讓訪客直接使用數位人舞台時，在後端與前端啟動後執行：
-
-```bash
-bash scripts/start-kiosk.sh
-```
-
-腳本以 Chrome／Chromium 全螢幕開啟 `/stage.html?kiosk=1`，並預先放行聲音播放與
-麥克風，使用獨立的瀏覽器設定檔 `.local/kiosk-profile`。舞台看到 `kiosk=1` 會自動
-連線，連線中斷時依 2、3、5、8、10 秒退避自動重連，訪客只看到「數字人暫時無法使用」
-這類簡短提示。一般瀏覽器開啟 `/stage.html` 不受影響，仍是點一下進入。
-可用 `NOVA_KIOSK_URL`、`NOVA_KIOSK_BROWSER`、`NOVA_KIOSK_PROFILE` 覆寫網址、瀏覽器與
-設定檔位置。
-
-如需分開啟動 Nova 前後端，可在不同終端執行
-`bash scripts/start-backend.sh config/config.yaml` 和
-`bash scripts/start-frontend.sh config/config.yaml`；RAGFlow 則以
-`bash scripts/ragflow.sh up`／`down` 獨立管理。
-
 ## 設定與檢查
 
 `config/config.yaml` 設定服務埠、SSL、Avatar、VAD、STT、LLM、TTS、
@@ -179,7 +239,8 @@ bash scripts/start-kiosk.sh
 開發與交付檢查：
 
 ```bash
-uv sync --group dev --extra vad --extra musetalk
+uv sync --inexact --group dev --extra vad --extra musetalk
+# 已啟用 TensorRT 時，同步依賴加上 --extra tensorrt。
 uv run python scripts/check-integration.py
 uv run pytest
 cd web
@@ -191,6 +252,9 @@ npm run build
 與 Edge TTS 後，可執行 `uv run python scripts/check-integration.py --smoke`
 檢查實際服務。真實 WebRTC 語音回合的驗證方式見
 [目前專案基線](docs/project-status.md)。
+
+x86 的影音排程、CPU 合成基準與可選完整模型 TensorRT 建置，見
+[x86 即時效能優化](docs/x86-performance.md)。
 
 ## 授權與來源
 

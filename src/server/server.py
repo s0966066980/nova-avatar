@@ -21,6 +21,8 @@ from src.server import routes
 from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
+from src.profiles.coordinator import initialize_roles
+from src.server.routes.profiles import register_profile_routes
 
 
 # Upper bound for an orderly stop after SIGTERM/SIGINT. Closing WebRTC peers
@@ -31,8 +33,23 @@ SHUTDOWN_DEADLINE_SECONDS = 15.0
 HTTP_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 
 
+@web.middleware
+async def profile_settings_guard(request, handler):
+    roles = getattr(state, "roles", None)
+    if roles and roles.enabled and request.path == "/humanaudio" and request.method == "POST":
+        return web.json_response({"code": -1, "msg": "角色組合請使用即時麥克風或文字對話"}, status=409)
+    if roles and roles.enabled and request.method in {"POST", "PUT"} and request.path in {
+        "/api/llm/model", "/api/llm/rules", "/api/avatar", "/api/avatar/quality",
+        "/api/speech/tts", "/api/ragflow/settings",
+    }:
+        return web.json_response({"code": -1, "msg": "角色組合啟用中，請至數位人設定檔修改並套用"}, status=409)
+    return await handler(request)
+
+
 async def on_shutdown(app):
     """伺服器關閉時的清理操作"""
+    if state.roles is not None:
+        await state.roles.close()
     coros = [pc.close() for pc in state.pcs]
     await asyncio.gather(*coros, return_exceptions=True)
     state.pcs.clear()
@@ -51,8 +68,13 @@ def create_app():
     """建立並配置 aiohttp 應用"""
     # 單獨設定較大的請求體上限，方便上傳音影片
     # Leave space for multipart headers around the 100 MB background asset.
-    app = web.Application(client_max_size=1024**2*101)
+    app = web.Application(client_max_size=1024**2*101, middlewares=[profile_settings_guard])
     app.on_shutdown.append(on_shutdown)
+    async def prepare_roles(app):
+        if state.config is not None and state.config_path:
+            await initialize_roles(state)
+    app.on_startup.append(prepare_roles)
+    register_profile_routes(app)
     
     # 路由集中註冊，避免分散難維護
     app.router.add_post("/offer", routes.offer)

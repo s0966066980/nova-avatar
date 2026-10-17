@@ -7,7 +7,6 @@
 # Based on LiveTalking (C) 2024 LiveTalking@lipku https://github.com/lipku/LiveTalking (Apache-2.0).
 
 """WebRTC 相關路由"""
-import json
 from aiohttp import web
 from aiortc import RTCPeerConnection, RTCSessionDescription, RTCIceServer, RTCConfiguration
 from aiortc.rtcrtpsender import RTCRtpSender
@@ -22,157 +21,163 @@ from src.server.voice_session import VoiceTurnSession
 
 
 async def offer(request):
-    """處理 WebRTC offer 請求"""
+    """Negotiate media while preparing speech only for an incoming audio track."""
     if not getattr(state, "model_ready", False) or state.model is None or state.avatar is None:
-        return web.Response(
-            status=409,
-            content_type="application/json",
-            text=json.dumps(
-                {"code": -1, "msg": "請先在設定中選擇並套用數字人引擎與角色"}
-            ),
+        return web.json_response(
+            {"code": -1, "msg": "請先在設定中選擇並套用數字人引擎與角色"}, status=409,
         )
-
+    roles = getattr(state, "roles", None)
+    if roles is not None and (roles.phase == "transition" or roles._apply_waiting):
+        return web.json_response({"code": -1, "msg": "角色正在切換，請稍後連線"}, status=409)
     params = await request.json()
     client_role = str(params.get("client_role", "console")).strip().lower()
     if client_role not in {"console", "stage"}:
         client_role = "console"
-
     max_sessions = max(1, int(getattr(state.config.app, "max_session", 1)))
+    if roles is not None and roles.enabled:
+        max_sessions = 1
     if state.count_sessions(client_role) >= max_sessions:
-        return web.Response(
-            status=429,
-            content_type="application/json",
-            text=json.dumps(
-                {
-                    "code": -1,
-                    "msg": f"{client_role} WebRTC 會話數已達上限，請先關閉同類頁面",
-                }
-            ),
+        return web.json_response(
+            {"code": -1, "msg": f"{client_role} WebRTC 會話數已達上限，請先關閉同類頁面"}, status=429,
         )
-
-    offer = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
-
-    # No await between this second check and reservation: concurrent offers
-    # cannot both pass max_session while avatar creation is in an executor.
-    if state.count_sessions(client_role) >= max_sessions:
-        return web.Response(
-            status=429,
-            content_type="application/json",
-            text=json.dumps(
-                {
-                    "code": -1,
-                    "msg": f"{client_role} WebRTC 會話數已達上限，請稍後再試",
-                }
-            ),
-        )
+    description = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
     sessionid = randN(6)
+    while sessionid in state.avatar_streams:
+        sessionid = randN(6)
+    # Reserve before the first await so concurrent requests cannot overbook.
     state.add_session(sessionid, None, role=client_role)
-    logger.info(
-        'sessionid=%d, role=%s, role sessions=%d, total sessions=%d',
-        sessionid,
-        client_role,
-        state.count_sessions(client_role),
-        len(state.avatar_streams),
-    )
-    
-    # 建立 avatar 可能耗時，放執行緒池
-    avatar_stream = await asyncio.get_event_loop().run_in_executor(
-        None, create_avatar, state.config, state.model, state.avatar, sessionid
-    )
-    state.add_session(sessionid, avatar_stream, role=client_role)
-
-    voice_session = VoiceTurnSession(
-        sessionid,
-        state.config,
-        avatar_stream,
-        presenter=client_role,
-        test_result_sink=state.voice_test_history.complete,
-    )
-    state.voice_sessions[sessionid] = voice_session
-    # This is intentionally before "listening": Silero and STT failures degrade
-    # the session to text without ever opening the microphone gate.
-    await voice_session.prepare()
-    
-    ice_server = RTCIceServer(urls='stun:stun.miwifi.com:3478')
-    pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[ice_server]))
-    state.add_peer_connection(pc)
+    logger.info("WebRTC session %d (%s) reserved", sessionid, client_role)
+    pc = voice_session = prepare_task = player = None
+    cleaning = False
 
     async def cleanup():
-        session = state.voice_sessions.get(sessionid)
-        if session is not None:
-            await session.close()
-        state.remove_peer_connection(pc)
-        state.remove_session(sessionid)
-
-    @pc.on("connectionstatechange")
-    async def on_connectionstatechange():
-        logger.info("Connection state is %s" % pc.connectionState)
-        if pc.connectionState == "failed":
-            await pc.close()
-            await cleanup()
-        elif pc.connectionState == "closed":
-            await cleanup()
-
-    @pc.on("datachannel")
-    def on_datachannel(channel):
-        if channel.label != "voice-events":
+        nonlocal cleaning
+        if cleaning:
             return
+        cleaning = True
+        try:
+            if prepare_task is not None:
+                prepare_task.cancel()
+                await asyncio.gather(prepare_task, return_exceptions=True)
+            operations = []
+            if voice_session is not None:
+                operations.append(voice_session.close())
+            if pc is not None:
+                operations.append(pc.close())
+            results = await asyncio.gather(*operations, return_exceptions=True)
+            for result in results:
+                if isinstance(result, BaseException):
+                    logger.warning("WebRTC cleanup failed type=%s", type(result).__name__)
+            if player is not None:
+                for track in (player.audio, player.video):
+                    stop = getattr(track, "stop", None)
+                    if callable(stop):
+                        stop()
+        finally:
+            if pc is not None:
+                state.remove_peer_connection(pc)
+            state.remove_session(sessionid)
+            from src.llm.service import remove_session as remove_llm_session
+            remove_llm_session(sessionid)
+            if roles is not None:
+                roles.unregister(sessionid)
 
-        def attach_voice_events():
-            voice_session.attach_event_sink(channel.send)
+    try:
+        # Shield the worker so a cancelled HTTP request can settle its resources
+        # before releasing the role reservation.
+        build = asyncio.create_task(asyncio.to_thread(
+            create_avatar, roles.config_for_session() if roles else state.config,
+            state.model, roles.data_for_session() if roles else state.avatar, sessionid,
+        ))
+        try:
+            avatar_stream = await asyncio.shield(build)
+        except asyncio.CancelledError:
+            await build
+            raise
+        state.add_session(sessionid, avatar_stream, role=client_role)
+        voice_session = VoiceTurnSession(
+            sessionid, avatar_stream.config if roles and roles.enabled else state.config,
+            avatar_stream, presenter=client_role,
+            test_result_sink=state.voice_test_history.complete,
+        )
+        # No capture may start before an actual microphone track is prepared.
+        voice_session._preparing = True
+        state.voice_sessions[sessionid] = voice_session
+        if roles is not None:
+            roles.register(voice_session)
+        ice_server = RTCIceServer(urls='stun:stun.miwifi.com:3478')
+        pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[ice_server]))
+        state.add_peer_connection(pc)
 
-        @channel.on("open")
-        def on_open():
-            attach_voice_events()
+        @pc.on("connectionstatechange")
+        async def on_connectionstatechange():
+            logger.info("WebRTC session %d: %s", sessionid, pc.connectionState)
+            if pc.connectionState in {"failed", "closed"}:
+                await cleanup()
 
-        @channel.on("message")
-        def on_message(message):
-            if isinstance(message, str):
-                voice_session.handle_control(message)
+        @pc.on("datachannel")
+        def on_datachannel(channel):
+            if channel.label != "voice-events":
+                return
 
-        @channel.on("close")
-        def on_close():
-            voice_session.detach_event_sink()
+            def attach_voice_events():
+                voice_session.attach_event_sink(channel.send)
 
-        if channel.readyState == "open":
-            attach_voice_events()
+            @channel.on("open")
+            def on_open():
+                attach_voice_events()
 
-    @pc.on("track")
-    def on_track(track):
-        if track.kind == "audio":
-            voice_session.start_track(track)
+            @channel.on("message")
+            def on_message(message):
+                if isinstance(message, str):
+                    voice_session.handle_control(message)
 
-    player = HumanPlayer(
-        state.avatar_streams[sessionid],
-        on_audio_activity=voice_session.on_output_audio,
-        on_audio_frame=voice_session.on_output_audio_frame,
-        on_media_timing=voice_session.observe_media_timing,
-        on_audio_pacing=voice_session.observe_audio_pacing,
-        media_guard=voice_session.accepts_media,
-        on_stale_drop=voice_session.record_stale_drop,
-    )
-    voice_session.attach_media_player(player)
-    pc.addTrack(player.audio)
-    pc.addTrack(player.video)
-    
-    capabilities = RTCRtpSender.getCapabilities("video")
-    preferences = list(filter(lambda x: x.name == "H264", capabilities.codecs))
-    preferences += list(filter(lambda x: x.name == "VP8", capabilities.codecs))
-    preferences += list(filter(lambda x: x.name == "rtx", capabilities.codecs))
-    video_transceiver = next(
-        (item for item in pc.getTransceivers() if item.kind == "video"),
-        None,
-    )
-    if video_transceiver is not None:
-        video_transceiver.setCodecPreferences(preferences)
+            @channel.on("close")
+            def on_close():
+                voice_session.detach_event_sink()
 
-    await pc.setRemoteDescription(offer)
-    answer = await pc.createAnswer()
-    await pc.setLocalDescription(answer)
+            if channel.readyState == "open":
+                attach_voice_events()
 
-    return web.Response(
-        content_type="application/json",
-        text=json.dumps(
-            {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type, "sessionid": sessionid}
-        ),
-    )
+        @pc.on("track")
+        def on_track(track):
+            nonlocal prepare_task
+            if track.kind == "audio" and not cleaning:
+                if prepare_task is None:
+                    voice_session._preparing = True
+                    prepare_task = asyncio.create_task(voice_session.prepare())
+                voice_session.start_track(track)
+
+        player = HumanPlayer(
+            avatar_stream,
+            on_audio_activity=voice_session.on_output_audio,
+            on_audio_frame=voice_session.on_output_audio_frame,
+            on_video_frame=voice_session.on_output_video_frame,
+            on_media_timing=voice_session.observe_media_timing,
+            on_audio_pacing=voice_session.observe_audio_pacing,
+            media_guard=voice_session.accepts_media,
+            on_stale_drop=voice_session.record_stale_drop,
+        )
+        voice_session.attach_media_player(player)
+        pc.addTrack(player.audio)
+        pc.addTrack(player.video)
+        capabilities = RTCRtpSender.getCapabilities("video")
+        preferences = [
+            codec for name in ("H264", "VP8", "rtx")
+            for codec in capabilities.codecs if codec.name == name
+        ]
+        video_transceiver = next(
+            (item for item in pc.getTransceivers() if item.kind == "video"), None,
+        )
+        if video_transceiver is not None:
+            video_transceiver.setCodecPreferences(preferences)
+        await pc.setRemoteDescription(description)
+        answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+        return web.json_response({
+            "sdp": pc.localDescription.sdp, "type": pc.localDescription.type,
+            "sessionid": sessionid,
+        })
+    except BaseException:
+        await cleanup()
+        raise

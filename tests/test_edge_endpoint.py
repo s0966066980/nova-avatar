@@ -54,11 +54,14 @@ class EdgeEndpointTests(unittest.TestCase):
             self.assertFalse(edge_endpoint.note_failure(_handshake_error(403)))
             self.assertEqual(edge_endpoint.current_url(), edge_endpoint.PRIMARY_WSS_URL)
 
-    def test_prewarm_rejection_moves_first_turn_to_the_other_host(self):
+    def test_prewarm_rejection_retries_the_other_host_before_first_turn(self):
         from src.tts.engines.edge import prewarm_edge_tts
+
+        attempted_urls = []
 
         class Rejected:
             async def stream(self):
+                attempted_urls.append(communicate.WSS_URL)
                 raise _handshake_error(403)
                 yield  # pragma: no cover
 
@@ -68,7 +71,10 @@ class EdgeEndpointTests(unittest.TestCase):
         ):
             self.assertFalse(prewarm_edge_tts("zh-TW-YunJheNeural", timeout_seconds=1))
 
-        self.assertEqual(communicate.WSS_URL, edge_endpoint.FALLBACK_WSS_URL)
+        self.assertEqual(attempted_urls, [edge_endpoint.PRIMARY_WSS_URL, edge_endpoint.FALLBACK_WSS_URL])
+        # Both hosts rejected prewarm. Ordinary request recovery should begin
+        # at the host other than the last rejected one.
+        self.assertEqual(communicate.WSS_URL, edge_endpoint.PRIMARY_WSS_URL)
 
 
 class EdgeWorkerHostFailoverTests(unittest.TestCase):

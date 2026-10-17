@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-16",
+  "branch_compared": "origin/jetson-orin@46db729",
+  "checks": {
+    "integration": "passed",
+    "python": {
+      "passed": 527,
+      "skipped": 3
+    },
+    "web_tests": {
+      "passed": 96
+    },
+    "web_build": "passed",
+    "diff_whitespace": "passed",
+    "browser_audiovisual_acceptance": "not run: no browser available",
+    "full_50_turn_soak": "not run: six turns per role"
+  },
+  "regressions": [
+    "single playback binding on staggered/duplicate track arrival",
+    "feature and PCM centers after interruption",
+    "discard in-flight Whisper batch after flush",
+    "release full feature queue on interrupt",
+    "warm Whisper plus startup and steady-state model batches"
+  ]
+}

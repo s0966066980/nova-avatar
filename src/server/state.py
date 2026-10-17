@@ -27,9 +27,11 @@ class ServerState:
         self.config_path = None
         self.model = None
         self.avatar = None
+        self.roles = None
         
         # 服務狀態
         self.server_ready = False
+        self.prewarm_status = {}
         self.model_ready = False
         self.switching = False
     

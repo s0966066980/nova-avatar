@@ -11,6 +11,10 @@ import pytest
 
 
 AREA_BY_FILE = {
+    "test_avatar_profiles.py": "runtime",
+    "test_cwa_weather.py": "conversation",
+    "test_role_media.py": "avatar",
+    "test_role_coordinator.py": "conversation",
     "test_answer_board.py": "conversation",
     "test_assistant_profile.py": "llm",
     "test_auto_response_protocol.py": "conversation",
@@ -34,10 +38,13 @@ AREA_BY_FILE = {
     "test_mouth_continuity.py": "avatar",
     "test_mouth_quality.py": "avatar",
     "test_musetalk_preprocessing.py": "avatar",
+    "test_musetalk_acceleration.py": "avatar",
     "test_optional_runtime_extras.py": "runtime",
     "test_playback_commit.py": "conversation",
     "test_ragflow_integration.py": "ragflow",
     "test_reply_streaming.py": "conversation",
+    "test_reply_latency.py": "conversation",
+    "test_realtime_avatar.py": "conversation",
     "test_response_protocol.py": "conversation",
     "test_runtime_settings.py": "runtime",
     "test_scene_background.py": "avatar",
@@ -47,6 +54,7 @@ AREA_BY_FILE = {
     "test_stage_idle_reset.py": "conversation",
     "test_vad.py": "speech",
     "test_voice_session.py": "conversation",
+    "test_webrtc_lifecycle.py": "conversation",
     "test_voice_test_history.py": "conversation",
     "test_whisper_asr.py": "speech",
 }

@@ -151,6 +151,12 @@ class FunASR(BaseASR):
             "language": "zh"
         }
     
+    def _warm_up(self) -> None:
+        super()._warm_up()
+        # Silence may produce no text. Warm the configured script conversion
+        # explicitly so its dictionary loading cannot fall on the first visitor.
+        convert_funasr_text("准备完成", self.output_script)
+
     def get_info(self) -> Dict[str, Any]:
         """獲取引擎資訊"""
         info = super().get_info()

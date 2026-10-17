@@ -1,62 +1,43 @@
-
-#!/bin/bash
-
-# Set root directory
-MUSETALK_ROOT_DIR="models/musetalk"
-MODEL_DIR="models"
-
-# Create all necessary subdirectories
-mkdir -p "$MODEL_DIR"
-mkdir -p "$MUSETALK_ROOT_DIR"
-mkdir -p "$MUSETALK_ROOT_DIR/musetalkV15"
-mkdir -p "$MUSETALK_ROOT_DIR/dwpose"
-mkdir -p "$MUSETALK_ROOT_DIR/whisper"
-mkdir -p "$MODEL_DIR/sd-vae"
-mkdir -p "$MODEL_DIR/face-parse-bisent"
-# mkdir -p "$MUSETALK_ROOT_DIR/syncnet"
-
-
-# Install required packages
-pip install -U "huggingface_hub[cli]"
-
-# Set HuggingFace mirror (for use in mainland China)
-export HF_ENDPOINT=https://hf-mirror.com
-
-# Download MuseTalk weights (TMElyralab/MuseTalk) - only download musetalkV15 subdirectory
-echo "Downloading MuseTalk musetalkV15 weights to $MUSETALK_ROOT_DIR..."
-hf download TMElyralab/MuseTalk --local-dir "$MUSETALK_ROOT_DIR" --include "musetalkV15/*"
-
-
-echo "Downloading SD VAE weights to $MODEL_DIR/sd-vae..."
-hf download stabilityai/sd-vae-ft-mse --local-dir "$MODEL_DIR/sd-vae"
-
-
-echo "Downloading Whisper weights to $MUSETALK_ROOT_DIR/whisper..."
-hf download openai/whisper-tiny --local-dir "$MUSETALK_ROOT_DIR/whisper" --include "config.json" "pytorch_model.bin" "preprocessor_config.json"
-
-echo "Downloading DWPose weights to $MUSETALK_ROOT_DIR/dwpose..."
-hf download yzd-v/DWPose --local-dir "$MUSETALK_ROOT_DIR/dwpose" --include "dw-ll_ucoco_384.pth"
-
-# # Download SyncNet weights to syncnet subdirectory
-# echo "Downloading SyncNet weights to $MUSETALK_ROOT_DIR/syncnet..."
-# hf download ByteDance/LatentSync --local-dir "$MUSETALK_ROOT_DIR/syncnet" --include "latentsync_syncnet.pt"
-
-
-echo "Downloading Face Parse Bisent weights to $MODEL_DIR/face-parse-bisent..."
-hf download ManyOtherFunctions/face-parse-bisent --local-dir "$MODEL_DIR/face-parse-bisent" --include "79999_iter.pth" "resnet18-5c106cde.pth"
-
-echo "Downloading s3fd-619a316812 weights to $MUSETALK_ROOT_DIR/s3fd-619a316812..."
-git clone https://www.modelscope.cn/HaveAnApplePie/s3fd-619a316812.git $MUSETALK_ROOT_DIR/s3fd-619a316812
-
-echo "All download commands have been executed, but the model files may not be downloaded. Please check the following directories and files exist:"
-echo "- models/musetalk/ (MuseTalk main weights)"
-echo "- models/musetalk/whisper/config.json"
-echo "- models/musetalk/whisper/pytorch_model.bin"
-echo "- models/musetalk/whisper/preprocessor_config.json"
-echo "- models/musetalk/dwpose/dw-ll_ucoco_384.pth"
-echo "- models/sd-vae/ (SD VAE weights)"
-echo "- models/face-parse-bisent/79999_iter.pth"
-echo "- models/face-parse-bisent/resnet18-5c106cde.pth"
-echo "If any file is missing, please check the download logs above."
-
-echo "If files are missing, run the script again."
+#!/usr/bin/env bash
+# Derived from Kedreamix/Linly-Talker-Stream; Apache-2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+set -euo pipefail
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+# Use the project's pinned huggingface-hub; do not upgrade it with system pip.
+# Set HF_ENDPOINT explicitly if a mirror is required.
+uv run --no-sync python - "$@" <<'PYTHON'
+import argparse
+from pathlib import Path
+from huggingface_hub import snapshot_download
+parser = argparse.ArgumentParser(description="Download/check MuseTalk weights in the project environment")
+parser.add_argument("--check", action="store_true", help="Check existing files without downloading")
+args = parser.parse_args()
+models = [
+    ("TMElyralab/MuseTalk", "models/musetalk", ["musetalkV15/*"]),
+    ("stabilityai/sd-vae-ft-mse", "models/sd-vae", ["config.json", "diffusion_pytorch_model.bin"]),
+    ("openai/whisper-tiny", "models/musetalk/whisper", ["config.json", "pytorch_model.bin", "preprocessor_config.json"]),
+    ("yzd-v/DWPose", "models/musetalk/dwpose", ["dw-ll_ucoco_384.pth"]),
+    ("ManyOtherFunctions/face-parse-bisent", "models/face-parse-bisent", ["79999_iter.pth", "resnet18-5c106cde.pth"]),
+]
+if not args.check:
+    for repo, directory, patterns in models:
+        snapshot_download(repo, local_dir=directory, allow_patterns=patterns)
+required = [
+    "models/musetalk/musetalkV15/unet.pth",
+    "models/musetalk/musetalkV15/musetalk.json",
+    "models/sd-vae/config.json",
+    "models/sd-vae/diffusion_pytorch_model.bin",
+    "models/musetalk/whisper/config.json",
+    "models/musetalk/whisper/pytorch_model.bin",
+    "models/musetalk/whisper/preprocessor_config.json",
+    "models/musetalk/dwpose/dw-ll_ucoco_384.pth",
+    "models/face-parse-bisent/79999_iter.pth",
+    "models/face-parse-bisent/resnet18-5c106cde.pth",
+]
+missing = [name for name in required if not Path(name).is_file()
+           or Path(name).stat().st_size < (1024 if name.endswith((".bin", ".pth")) else 1)]
+if missing:
+    raise SystemExit("Missing weights:\n" + "\n".join(missing))
+print("MuseTalk inference and avatar-preparation weights verified.")
+PYTHON

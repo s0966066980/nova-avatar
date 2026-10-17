@@ -34,6 +34,7 @@ export function applyTurnCommitted(messages, event) {
         type: 'ai',
         text: playedText,
         voiceTurnId: event.turn_id,
+        profileId: event.profile_id || '',
         streamingPreview: false,
         terminalReason: event.reason,
       },

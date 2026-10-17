@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
 import { stageErrorMessage } from '../src/stageErrorMessage.js'
+import { canRoleInput, canRoleReturn } from '../src/roleState.js'
 import {
   isKioskMode,
   kioskReconnectDelayMs,
@@ -72,6 +73,8 @@ function stageHarness({ search = '' } = {}) {
     DEFAULT_STAGE_CAPTION_MAX_CHARS: 200,
     shouldFadeStageReply: () => false,
     stageErrorMessage,
+    canRoleInput,
+    canRoleReturn,
     isKioskMode,
     kioskReconnectDelayMs,
     KIOSK_UNAVAILABLE_TITLE,
@@ -203,4 +206,33 @@ test('對話重置事件清除舞台字幕、看板與使用者字句，但不�
   assert.equal(stage.element('hint').textContent, '直接說話')
   assert.equal(stage.track.enabled, true)
   assert.equal(stage.element('veil').hidden, true)
+})
+
+test('角色轉場與控制台測試暫停舞台收音，恢復時不重建連線', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  const offers = stage.fetchCalls.filter(url => url === '/offer').length
+  stage.event({ seq: 1, type: 'role_state', enabled: true, phase: 'ready', mode: 'console' })
+  assert.equal(stage.track.enabled, false)
+  assert.equal(stage.element('mic').disabled, true)
+  stage.event({ seq: 2, type: 'role_state', enabled: true, phase: 'transition', mode: 'visitor' })
+  assert.equal(stage.track.enabled, false)
+  stage.event({ seq: 3, type: 'role_state', enabled: true, phase: 'ready', mode: 'visitor', can_return: true })
+  assert.equal(stage.track.enabled, true)
+  assert.equal(stage.element('mic').disabled, false)
+  assert.equal(stage.element('roleReturn').hidden, false)
+  stage.element('roleReturn').dispatch('click')
+  assert.deepEqual(stage.sent.at(-1), { type: 'role_return' })
+  assert.equal(stage.fetchCalls.filter(url => url === '/offer').length, offers)
+})
+
+test('轉場清畫面後保留連線，返回主角色時隱藏返回按鈕', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  stage.event({ seq: 1, type: 'user_transcript', text: '明天的天氣' })
+  stage.event({ seq: 2, type: 'role_clear' })
+  assert.equal(stage.element('said').textContent, '')
+  assert.equal(stage.element('veil').hidden, true)
+  stage.event({ seq: 3, type: 'role_state', enabled: true, phase: 'ready', mode: 'visitor', can_return: false })
+  assert.equal(stage.element('roleReturn').hidden, true)
 })

@@ -1,0 +1,164 @@
+{
+  "status": "automated_rtp_and_chrome_acceptance_passed",
+  "recorded_at": "2026-10-17T11:03:02.337076+08:00",
+  "base_commit": "73e7b74e7997042e9139eaea74428ca61abb0e3f",
+  "workspace_has_uncommitted_changes": true,
+  "validation": {
+    "integration_and_rebranding_audit": "passed",
+    "python": {
+      "passed": 582,
+      "skipped": 3
+    },
+    "web": {
+      "passed": 100
+    },
+    "production_build": "passed",
+    "git_diff_check": "passed"
+  },
+  "long_soak": [
+    {
+      "presenter": "stage",
+      "source": "role-soak-50.json",
+      "completed_handoffs": 50,
+      "transitions": 100,
+      "specialist_first_audio_p95_seconds": 1.8341780499998774,
+      "specialist_first_audio_max_seconds": 2.059925316999852,
+      "weather_available": 50,
+      "stale_fragment_events": 0,
+      "input": "synthetic_microphone",
+      "elapsed_seconds": 1066.2705377339998
+    },
+    {
+      "presenter": "console",
+      "source": "role-soak-console-50.json",
+      "completed_handoffs": 50,
+      "transitions": 100,
+      "specialist_first_audio_p95_seconds": 1.6564535607999802,
+      "specialist_first_audio_max_seconds": 1.679666076999979,
+      "weather_available": 50,
+      "stale_fragment_events": 0,
+      "input": "synthetic_microphone",
+      "elapsed_seconds": 1017.1814439919999
+    }
+  ],
+  "latency_basis": {
+    "specialist": "transition sender-completion event to server first-audio event; not browser playback ACK",
+    "long_soak_source_field": "historical source_first_audio_seconds includes fixture speech duration; do not use as speech-end first-audio latency",
+    "corrected_source_field": "role-timing-probe.json reads source_metrics.first_audio_seconds; input-start interval is stored separately",
+    "long_soak_p95": "all completed handoffs, including uncached queries; historical runs did not record per-turn cache flags"
+  },
+  "timing_probe": {
+    "source": "role-timing-probe.json",
+    "max_abs_server_av_offset_seconds": 0.020978,
+    "input": "synthetic_microphone",
+    "per_presenter_handoffs": 1
+  },
+  "live_acceptance": {
+    "source": "live-acceptance-2026-10-17.json",
+    "checks": {
+      "one_input_owner": true,
+      "announcement_cancellation": true,
+      "silent_video_normalization": true,
+      "referenced_media_delete_guard": true,
+      "return_during_specialist_reply": true,
+      "directed_custom_video_and_return_effect": true,
+      "same_webrtc_tracks_both_clients": true,
+      "mode_switch_preserves_both_connections": true,
+      "console_handoff_with_both_clients_connected": true,
+      "visitor_memory_reset_event": true,
+      "both_clients_received_video": true
+    },
+    "announcement_interrupt_to_listening_event_seconds": 0.0021699750000152562,
+    "return_request_to_main_ready_seconds": 1.7261865899999975,
+    "max_abs_server_av_offset_seconds": 0.020667
+  },
+  "resources": {
+    "console_50": {
+      "samples": 203,
+      "backend_pid": 15405,
+      "peak_backend_rss_mib": 7667.609375,
+      "peak_gpu_used_mib": 12748.0,
+      "initial_backend_rss_mib": 7053.92578125,
+      "latest_backend_rss_mib": 7650.6875,
+      "latest_gpu_used_mib": 12716.0,
+      "sample_interval_seconds": 5,
+      "gpu_scope": "entire device including existing desktop processes"
+    },
+    "historical_stage_50_and_console_42": {
+      "samples": 418,
+      "peak_backend_rss_mib": 8293.140625,
+      "peak_gpu_used_mib": 12949.0,
+      "latest_backend_rss_mib": 8268.3203125
+    },
+    "preload": {
+      "scope": "idle prewarmed backend without WebRTC clients; device GPU includes desktop",
+      "single_avatar": {
+        "backend_rss_mib": 5475.6640625,
+        "device_gpu_used_mib": 12529.0
+      },
+      "two_avatars": {
+        "backend_rss_mib": 6745.08984375,
+        "device_gpu_used_mib": 12531.0
+      },
+      "additional_backend_rss_mib": 1269.42578125,
+      "additional_device_gpu_mib": 2.0,
+      "preload_apply_seconds": 3.36500217899993
+    }
+  },
+  "cwa_live": {
+    "source": "cwa-latency-2026-10-17.json",
+    "current_tomorrow_week_and_cache": "passed",
+    "cold_query_seconds": [
+      0.1008231980000005,
+      0.053335572000037246,
+      0.05395186900000226
+    ],
+    "authorization_in_results": false,
+    "live_rate_limit_not_forced": true
+  },
+  "process_cleanup": {
+    "backend_pid": 69168,
+    "owned_llama_pids": [
+      69440
+    ],
+    "supplemental_checks": "passed",
+    "forced_backend_stop": false,
+    "backend_stopped": true,
+    "owned_llama_stopped": true
+  },
+  "remaining": [],
+  "updated_at": "2026-10-17T12:01:31.796635+08:00",
+  "browser_acceptance": {
+    "status": "passed",
+    "source": "chrome-acceptance.json",
+    "browser": {
+      "product": "installed Google Chrome",
+      "version": "155.0.8059.84",
+      "controller": "Playwright",
+      "headed": true
+    },
+    "checks": {
+      "console_handoff": true,
+      "stage_handoff": true,
+      "ordered_browser_audio_and_transition": true,
+      "microphone_cancels_announcement": true,
+      "no_handoff_after_cancellation": true,
+      "custom_video_once": true,
+      "custom_video_silent": true,
+      "input_paused_during_transition": true,
+      "return_during_answer": true,
+      "independent_return_effect": true,
+      "same_tracks_both_clients": true,
+      "visitor_idle_reset": true,
+      "empty_captions_hidden": true,
+      "empty_board_button_hidden": true,
+      "real_board_close_reopen": true,
+      "mobile_portrait_and_landscape_no_horizontal_overflow": true,
+      "reduced_motion_stops_microphone_ring": true
+    },
+    "limits": [
+      "Browser video frames and decoded digital audio energy were inspected; physical speaker/room acoustics and hardware microphone were not exercised.",
+      "Chrome checks are focused scenarios; the earlier 50-round runs use aiortc and are not relabelled as Chrome runs."
+    ]
+  }
+}

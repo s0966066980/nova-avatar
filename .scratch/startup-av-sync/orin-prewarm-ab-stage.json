@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "client_role": "stage",
+  "order": "off/on, on/off",
+  "process_cold": true,
+  "environment": {
+    "avatar": "musetalk_1",
+    "batch_size": 8,
+    "llm": "Qwen3.5-9B-UD-Q4_K_XL",
+    "stt": "funasr",
+    "tts": "edgetts",
+    "voice": "zh-TW-HsiaoChenNeural",
+    "background": "20a5ed29150e",
+    "max_video_height": 0
+  },
+  "fixture_samples": 70208,
+  "trials": [
+    {
+      "enabled": false,
+      "startup_seconds": 18.054213,
+      "connection_seconds": 8.472582,
+      "prewarm": {
+        "enabled": false,
+        "avatar": null,
+        "edge_tts": null,
+        "local_llm": null,
+        "speech_input": null
+      },
+      "metrics": {
+        "turn_id": "bb61f2ebef5544ed84869ccca1440274",
+        "first_audio_seconds": 2.311139,
+        "interrupt_stop_seconds": null,
+        "listening_resume_seconds": null,
+        "max_media_debt_seconds": 0.24,
+        "max_abs_av_offset_seconds": 0.021378,
+        "stale_drops": {
+          "webrtc_video:late_video": 6
+        },
+        "audio_pacing_lag_ms": 0.0,
+        "audio_pacing_rebase_count": 18,
+        "audio_release_interval_ms": 9.138,
+        "audio_catch_up_burst_count": 0,
+        "tts_onset_preroll_ms": 100.0,
+        "tts_retry_after_pcm_count": 0,
+        "tts_retry_after_playback_commit_count": 0,
+        "stage_seconds": {
+          "vad_endpoint": null,
+          "asr": 0.458083,
+          "llm_first_token": 0.692693,
+          "llm_total": 1.175117,
+          "first_fragment": 1.163682,
+          "tts_first_encoded": 0.171898,
+          "tts_first_pcm": 0.173687,
+          "musetalk_first_batch": 0.366984,
+          "musetalk_inference_first_result": 0.563249,
+          "avatar_pasteback_done": 0.590994,
+          "webrtc_audio_enqueue": 0.584868,
+          "webrtc_video_enqueue": 0.584747,
+          "avatar_to_webrtc_commit": 0.68864,
+          "webrtc_audio_commit": 0.68864
+        }
+      },
+      "received": {
+        "audio": 803,
+        "video": 376,
+        "active_audio": 362
+      }
+    },
+    {
+      "enabled": true,
+      "startup_seconds": 23.569902,
+      "connection_seconds": 3.831121,
+      "prewarm": {
+        "enabled": true,
+        "avatar": true,
+        "edge_tts": true,
+        "local_llm": true,
+        "speech_input": true
+      },
+      "metrics": {
+        "turn_id": "2df04d0a2cd04338a4395f769a17bb97",
+        "first_audio_seconds": 1.115478,
+        "interrupt_stop_seconds": null,
+        "listening_resume_seconds": null,
+        "max_media_debt_seconds": 0.24,
+        "max_abs_av_offset_seconds": 0.022956,
+        "stale_drops": {
+          "webrtc_video:late_video": 6
+        },
+        "audio_pacing_lag_ms": 0.0,
+        "audio_pacing_rebase_count": 1,
+        "audio_release_interval_ms": 16.191,
+        "audio_catch_up_burst_count": 0,
+        "tts_onset_preroll_ms": 100.0,
+        "tts_retry_after_pcm_count": 0,
+        "tts_retry_after_playback_commit_count": 0,
+        "stage_seconds": {
+          "vad_endpoint": null,
+          "asr": 0.046875,
+          "llm_first_token": 0.089453,
+          "llm_total": 0.637298,
+          "first_fragment": 0.626524,
+          "tts_first_encoded": 0.228132,
+          "tts_first_pcm": 0.229524,
+          "musetalk_first_batch": 0.249846,
+          "musetalk_inference_first_result": 0.306327,
+          "avatar_pasteback_done": 0.366037,
+          "webrtc_audio_enqueue": 0.362676,
+          "webrtc_video_enqueue": 0.362361,
+          "avatar_to_webrtc_commit": 0.441287,
+          "webrtc_audio_commit": 0.441287
+        }
+      },
+      "received": {
+        "audio": 706,
+        "video": 348,
+        "active_audio": 450
+      }
+    },
+    {
+      "enabled": true,
+      "startup_seconds": 22.821211,
+      "connection_seconds": 3.088908,
+      "prewarm": {
+        "enabled": true,
+        "avatar": true,
+        "edge_tts": true,
+        "local_llm": true,
+        "speech_input": true
+      },
+      "metrics": {
+        "turn_id": "b6ffe7df900a41e4921009b0c6a0c90e",
+        "first_audio_seconds": 1.033373,
+        "interrupt_stop_seconds": null,
+        "listening_resume_seconds": null,
+        "max_media_debt_seconds": 0.24,
+        "max_abs_av_offset_seconds": 0.021411,
+        "stale_drops": {
+          "webrtc_video:late_video": 5
+        },
+        "audio_pacing_lag_ms": 0.0,
+        "audio_pacing_rebase_count": 1,
+        "audio_release_interval_ms": 16.243,
+        "audio_catch_up_burst_count": 0,
+        "tts_onset_preroll_ms": 110.0,
+        "tts_retry_after_pcm_count": 0,
+        "tts_retry_after_playback_commit_count": 0,
+        "stage_seconds": {
+          "vad_endpoint": null,
+          "asr": 0.049156,
+          "llm_first_token": 0.098087,
+          "llm_total": 0.569787,
+          "first_fragment": 0.558855,
+          "tts_first_encoded": 0.227404,
+          "tts_first_pcm": 0.230599,
+          "musetalk_first_batch": 0.253178,
+          "musetalk_inference_first_result": 0.310838,
+          "avatar_pasteback_done": 0.349017,
+          "webrtc_audio_enqueue": 0.345579,
+          "webrtc_video_enqueue": 0.345204,
+          "avatar_to_webrtc_commit": 0.422764,
+          "webrtc_audio_commit": 0.422764
+        }
+      },
+      "received": {
+        "audio": 671,
+        "video": 331,
+        "active_audio": 425
+      }
+    },
+    {
+      "enabled": false,
+      "startup_seconds": 18.807032,
+      "connection_seconds": 7.166902,
+      "prewarm": {
+        "enabled": false,
+        "avatar": null,
+        "edge_tts": null,
+        "local_llm": null,
+        "speech_input": null
+      },
+      "metrics": {
+        "turn_id": "484b4e4f118b4c8d83490a72b9076178",
+        "first_audio_seconds": 2.234606,
+        "interrupt_stop_seconds": null,
+        "listening_resume_seconds": null,
+        "max_media_debt_seconds": 0.24,
+        "max_abs_av_offset_seconds": 0.022689,
+        "stale_drops": {
+          "webrtc_video:late_video": 6
+        },
+        "audio_pacing_lag_ms": 0.0,
+        "audio_pacing_rebase_count": 12,
+        "audio_release_interval_ms": 12.305,
+        "audio_catch_up_burst_count": 0,
+        "tts_onset_preroll_ms": 100.0,
+        "tts_retry_after_pcm_count": 0,
+        "tts_retry_after_playback_commit_count": 0,
+        "stage_seconds": {
+          "vad_endpoint": null,
+          "asr": 0.363327,
+          "llm_first_token": 0.67213,
+          "llm_total": 1.245709,
+          "first_fragment": 1.189069,
+          "tts_first_encoded": 0.289979,
+          "tts_first_pcm": 0.291746,
+          "musetalk_first_batch": 0.434371,
+          "musetalk_inference_first_result": 0.539953,
+          "avatar_pasteback_done": 0.602221,
+          "webrtc_audio_enqueue": 0.599144,
+          "webrtc_video_enqueue": 0.598975,
+          "avatar_to_webrtc_commit": 0.68141,
+          "webrtc_audio_commit": 0.68141
+        }
+      },
+      "received": {
+        "audio": 812,
+        "video": 388,
+        "active_audio": 369
+      }
+    }
+  ],
+  "summary": {
+    "cold": {
+      "trials": 2,
+      "startup_seconds": 18.430622,
+      "connection_seconds": 7.819742,
+      "first_audio_seconds": 2.272873,
+      "asr_seconds": 0.410705
+    },
+    "prewarmed": {
+      "trials": 2,
+      "startup_seconds": 23.195557,
+      "connection_seconds": 3.460014,
+      "first_audio_seconds": 1.074426,
+      "asr_seconds": 0.048016
+    },
+    "first_audio_reduction_seconds": 1.198447,
+    "first_audio_reduction_percent": 52.73
+  }
+}

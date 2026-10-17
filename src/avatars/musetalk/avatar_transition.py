@@ -10,6 +10,7 @@ from typing import Sequence
 
 import cv2
 import numpy as np
+from .frame_masks import BoundedFrameMasks
 
 from src.utils.logging import logger
 
@@ -49,7 +50,7 @@ class AvatarTransitionController:
         self.micro_crossfade_frames = max(0, int(micro_crossfade_frames))
         self.micro_crossfade_fullframe_max_diff = float(micro_crossfade_fullframe_max_diff)
         self.opening_frames = max(1, int(opening_frames))
-        self._full_masks = tuple(self._build_full_mask(i) for i in range(len(self._source_frames)))
+        self._full_masks = BoundedFrameMasks(len(self._source_frames), self._build_full_mask)
         self._source_pose_descriptors = tuple(self._descriptor(f, i) for i, f in enumerate(self._source_frames))
         self._lock = RLock()
         self.reset()

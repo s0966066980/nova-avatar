@@ -1,0 +1,112 @@
+{
+  "checks": {
+    "at_least_50_turns": false,
+    "av_offset": true,
+    "first_audio_p50": true,
+    "first_audio_p95": true,
+    "interrupt_stop": false,
+    "listening_resume": false,
+    "media_debt": true,
+    "stale_output": true
+  },
+  "environment": {
+    "avatar": "MuseTalk",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "llm": "llama.cpp",
+    "transport": "WebRTC",
+    "tts": "Edge TTS"
+  },
+  "metrics": {
+    "av_offset_seconds": {
+      "p95": 0.021007,
+      "target_p95_at_most": 0.08
+    },
+    "first_audio_seconds": {
+      "p50": 1.009899,
+      "p95": 1.47784,
+      "target_p50_at_most": 1.2,
+      "target_p95_at_most": 2.5
+    },
+    "interrupt_stop_seconds": {
+      "p95": null,
+      "target_p95_at_most": 0.2
+    },
+    "listening_resume_seconds": {
+      "p95": null,
+      "target_p95_at_most": 0.5
+    },
+    "media_debt_seconds": {
+      "maximum": 0.24,
+      "target_at_most": 2.0
+    },
+    "stage_seconds": {
+      "asr": {
+        "p50": 0.050762,
+        "p95": 0.400856
+      },
+      "avatar_pasteback_done": {
+        "p50": 0.326499,
+        "p95": 0.464402
+      },
+      "avatar_to_webrtc_commit": {
+        "p50": 0.40079,
+        "p95": 0.541274
+      },
+      "first_fragment": {
+        "p50": 0.532137,
+        "p95": 0.575208
+      },
+      "llm_first_token": {
+        "p50": 0.124888,
+        "p95": 0.146903
+      },
+      "llm_total": {
+        "p50": 0.588509,
+        "p95": 0.690323
+      },
+      "musetalk_first_batch": {
+        "p50": 0.239764,
+        "p95": 0.378508
+      },
+      "musetalk_inference_first_result": {
+        "p50": 0.286522,
+        "p95": 0.433237
+      },
+      "tts_first_encoded": {
+        "p50": 0.21989,
+        "p95": 0.255466
+      },
+      "tts_first_pcm": {
+        "p50": 0.222488,
+        "p95": 0.257259
+      },
+      "vad_endpoint": {
+        "p50": null,
+        "p95": null
+      },
+      "webrtc_audio_commit": {
+        "p50": 0.40079,
+        "p95": 0.541274
+      },
+      "webrtc_audio_enqueue": {
+        "p50": 0.323301,
+        "p95": 0.461567
+      },
+      "webrtc_video_enqueue": {
+        "p50": 0.323207,
+        "p95": 0.461422
+      }
+    }
+  },
+  "mode": "real_reply_streaming_soak",
+  "scenario_counts": {
+    "long": 1,
+    "short": 1,
+    "weak_punctuation": 1
+  },
+  "schema_version": 1,
+  "slo_pass": false,
+  "stale_drop_count": 18,
+  "stale_output_events": 0,
+  "turns": 3
+}

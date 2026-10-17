@@ -18,6 +18,7 @@ async def health_check(request):
                 "code": 0,
                 "ready": state.server_ready,
                 "model_ready": bool(getattr(state, "model_ready", False)),
+                **({"prewarm": state.prewarm_status} if getattr(state, "prewarm_status", None) else {}),
                 "avatar": {
                     "type": getattr(getattr(state.config, "model", None), "type", None) if state.config else None,
                     "avatar_id": getattr(getattr(state.config, "model", None), "avatar_id", None) if state.config else None,

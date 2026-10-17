@@ -122,14 +122,21 @@ class EventBroker:
 
 
 class SoakPeer:
-    def __init__(self, base_url: str, http: aiohttp.ClientSession) -> None:
+    def __init__(self, base_url: str, http: aiohttp.ClientSession, *, client_role: str = "stage") -> None:
         self.base_url = base_url.rstrip("/")
+        self.client_role = client_role
         self.http = http
         self.pc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
         self.audio = PushAudioTrack()
         self.events = EventBroker()
         self.channel = self.pc.createDataChannel("voice-events", ordered=True)
         self.channel.on("message", self.events.receive)
+        # The console deliberately starts paused. Opt in just as its explicit
+        # microphone button does; fixture audio is the only uplink here.
+        @self.channel.on("open")
+        def enable_fixture_capture():
+            self.channel.send(json.dumps({"type": "capture", "enabled": True}))
+
         self._drainers: list[asyncio.Task] = []
         self.pc.addTrack(self.audio)
         self.pc.addTransceiver("video", direction="recvonly")
@@ -146,11 +153,12 @@ class SoakPeer:
             json={
                 "sdp": self.pc.localDescription.sdp,
                 "type": self.pc.localDescription.type,
-                "client_role": "stage",
+                "client_role": self.client_role,
             },
         ) as response:
             response.raise_for_status()
             answer = await response.json()
+        self.sessionid = answer['sessionid']
         await self.pc.setRemoteDescription(
             RTCSessionDescription(sdp=answer["sdp"], type=answer["type"])
         )
@@ -254,14 +262,14 @@ async def run(args) -> dict:
     stale_events = 0
 
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as http:
-        peer = SoakPeer(args.base_url, http)
-        await peer.connect()
+        peer = SoakPeer(args.base_url, http, client_role=args.client_role)
         try:
+            await peer.connect()
             for index in range(args.turns):
                 if index and index % args.reconnect_every == 0:
                     stale_events += peer.events.stale_events
                     await peer.close()
-                    peer = SoakPeer(args.base_url, http)
+                    peer = SoakPeer(args.base_url, http, client_role=args.client_role)
                     await peer.connect()
 
                 if index % args.llm_interrupt_every == args.llm_interrupt_every - 1:
@@ -295,6 +303,7 @@ async def run(args) -> dict:
             "tts": "Edge TTS",
             "avatar": "MuseTalk",
             "transport": "WebRTC",
+            "client_role": args.client_role,
         },
     )
 
@@ -302,6 +311,7 @@ async def run(args) -> dict:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="https://localhost:8010")
+    parser.add_argument("--client-role", choices=("console", "stage"), default="stage")
     parser.add_argument("--turns", type=int, default=50)
     parser.add_argument("--interrupt-every", type=int, default=10)
     parser.add_argument("--llm-interrupt-every", type=int, default=15)

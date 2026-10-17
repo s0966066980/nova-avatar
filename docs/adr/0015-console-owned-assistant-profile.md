@@ -11,6 +11,9 @@ status: accepted
 
 助手名稱、System Prompt、限制 Prompt、輸出語系與禁止自稱名稱只由控制台保存為 `llm.assistant_profile`，經 Runtime Settings API 寫入 `config/runtime_overrides.yaml`，再由 `compose_system_prompt()` 組成送給 LLM 的提示詞。程式碼只保留回覆協定、解析器、格式規則與中性的技術 fallback，不得硬編碼任何產品角色身分；`config/prompt.txt` 與程式內角色範例不再是設定來源。
 
+2026-10-16：[ADR-0016](0016-isolate-avatar-profiles-and-visitor-memory.md)
+已接受以數位人設定檔隔離助手設定與角色對話記憶的新設計；此處記錄的全域保存方式仍是現況，新功能尚未實作。選擇既有角色保留該訪客的角色記憶，與下述修改身分欄位的清除行為分別處理。
+
 ## Considered Options
 
 - 保留 `prompt.txt`、程式預設與 runtime override 三方合併：拒絕，舊角色名稱會從任一來源漏出，修改角色時需搜尋多個檔案。

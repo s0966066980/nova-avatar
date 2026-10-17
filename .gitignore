@@ -54,6 +54,8 @@ logs/
 config/runtime_overrides.yaml
 config/ragflow_settings.yaml
 config/ragflow.env
+config/cwa.env
+config/avatar_profiles.yaml
 .local/ragflow/
 outputs/
 *.pt
@@ -82,3 +84,4 @@ src/omni/
 
 results/
 .local/kiosk-profile/
+.local/tensorrt/

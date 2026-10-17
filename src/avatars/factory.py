@@ -60,9 +60,15 @@ def prepare_avatar_model(config: Any):
     
     if model_type == 'musetalk':
         from .musetalk.avatar import load_model, load_avatar, warm_up
-        model = load_model()
+        acceleration = {
+            name: getattr(config.model.musetalk, name, "")
+            for name in ("unet_engine_path", "vae_engine_path")
+            if getattr(config.model.musetalk, name, "")
+        }
+        model = load_model(**acceleration)
         avatar = load_avatar(config.model.avatar_id)
-        warm_up(config.model.batch_size, model)
+        if getattr(getattr(config, "app", None), "prewarm", True):
+            warm_up(config.model.batch_size, model)
         return model, avatar
     elif model_type == 'wav2lip':
         from .wav2lip.avatar import load_model, load_avatar, warm_up
@@ -74,13 +80,15 @@ def prepare_avatar_model(config: Any):
             )
         model = load_model(str(ckpt))
         avatar = load_avatar(config.model.avatar_id)
-        warm_up(config.model.batch_size, model, 256)
+        if getattr(getattr(config, "app", None), "prewarm", True):
+            warm_up(config.model.batch_size, model, 256)
         return model, avatar
     elif model_type == 'ultralight':
         from .ultralight.avatar import load_model, load_avatar, warm_up
         model = load_model(config)
         avatar = load_avatar(config.model.avatar_id)
-        warm_up(config.model.batch_size, avatar, 160)
+        if getattr(getattr(config, "app", None), "prewarm", True):
+            warm_up(config.model.batch_size, avatar, 160)
         return model, avatar
     elif model_type == 'ernerf':
         from .ernerf.avatar import load_model, load_avatar

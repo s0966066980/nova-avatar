@@ -56,13 +56,13 @@ class EdgeTTSStartupTests(unittest.TestCase):
 
         with patch(
             "src.tts.engines.edge.prewarm_edge_tts",
-            side_effect=lambda voice: called.set(),
+            side_effect=lambda voice, **kwargs: called.set(),
         ) as prewarm:
             worker = _start_edge_tts_prewarm(self._config())
             _await_edge_tts_prewarm(worker)
 
         self.assertTrue(called.is_set())
-        prewarm.assert_called_once_with("zh-TW-YunJheNeural")
+        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True)
         self.assertFalse(worker.is_alive())
 
     def test_non_edge_engine_does_not_start_edge_prewarm(self):
@@ -91,6 +91,102 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         tts = EdgeTTS(config, parent)
         self.addCleanup(tts.close_worker)
         return tts
+
+    def test_prefetch_handoff_preserves_pcm_order_while_output_is_blocked(self):
+        from src.tts.engines.edge import _GatedFrameSink
+
+        blocked, resume = Event(), Event()
+        received = []
+
+        class Parent:
+            def put_audio_frame(self, samples, eventpoint):
+                received.append((int(samples[0]), eventpoint["media_sequence"]))
+                if eventpoint["media_sequence"] == 0:
+                    blocked.set()
+                    resume.wait(timeout=2)
+
+        sink = _GatedFrameSink(Parent())
+        for sequence in (0, 1):
+            sink.emit(np.full(320, sequence), {"media_sequence": sequence})
+        releasing = Thread(target=sink.release)
+        releasing.start()
+        try:
+            self.assertTrue(blocked.wait(timeout=1))
+            # The decoder continues while release waits on the bounded WebRTC
+            # queue. New PCM must stay behind the already buffered samples.
+            sink.emit(np.full(320, 2), {"media_sequence": 2, "fragment_end": True})
+        finally:
+            resume.set()
+            releasing.join(timeout=2)
+
+        self.assertFalse(releasing.is_alive())
+        self.assertEqual(received, [(0, 0), (1, 1), (2, 2)])
+
+
+    def test_cancelling_prefetch_handoff_discards_unsent_pcm(self):
+        from src.tts.engines.edge import _GatedFrameSink
+
+        blocked, resume = Event(), Event()
+        received = []
+
+        class Parent:
+            def put_audio_frame(self, _samples, eventpoint):
+                received.append(eventpoint["media_sequence"])
+                if eventpoint["media_sequence"] == 0:
+                    blocked.set()
+                    resume.wait(timeout=2)
+
+        sink = _GatedFrameSink(Parent())
+        for sequence in (0, 1):
+            sink.emit(np.zeros(320), {"media_sequence": sequence})
+        releasing = Thread(target=sink.release)
+        releasing.start()
+        try:
+            self.assertTrue(blocked.wait(timeout=1))
+            sink.cancel()
+            sink.emit(np.zeros(320), {"media_sequence": 2})
+        finally:
+            resume.set()
+            releasing.join(timeout=2)
+
+        self.assertFalse(releasing.is_alive())
+        self.assertEqual(received, [0])
+
+
+    def test_pcm_backpressure_does_not_block_the_next_network_request(self):
+        payload = _mp3_fixture()
+        blocked, resume, next_request = Event(), Event(), Event()
+
+        class Parent:
+            def put_audio_frame(self, _samples, eventpoint):
+                if eventpoint.get("fragment_sequence") == 0:
+                    blocked.set()
+                    resume.wait(timeout=2)
+
+        class Communicate:
+            def __init__(self, text):
+                self.text = text
+
+            async def stream(self):
+                if self.text == "第二段。":
+                    next_request.set()
+                yield {"type": "audio", "data": payload}
+
+        tts = self._make_tts(Parent())
+        for sequence, text in enumerate(("第一段。", "第二段。")):
+            tts.put_msg_txt(text, {"turn_id": "turn", "generation": 1, "fragment_sequence": sequence})
+        quit_event = Event()
+        worker = Thread(target=tts.process_tts, args=(quit_event,))
+        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=lambda text, _: Communicate(text)):
+            worker.start()
+            try:
+                self.assertTrue(blocked.wait(timeout=1))
+                self.assertTrue(next_request.wait(timeout=1), "PCM enqueue blocked the shared network loop")
+            finally:
+                resume.set()
+                quit_event.set()
+                worker.join(timeout=3)
+        self.assertFalse(worker.is_alive())
 
     def test_persistent_worker_reuses_the_same_event_loop(self):
         payload = _mp3_fixture()
