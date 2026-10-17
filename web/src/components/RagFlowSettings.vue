@@ -1,265 +1,150 @@
 <!-- Copyright (c) 2026 HongXian0903; SPDX-License-Identifier: Apache-2.0 -->
 <template>
-  <div class="rag-layout">
-    <section class="rag-card">
-      <div class="rag-heading">
-        <div>
-          <h2><i class="bi bi-journal-text" aria-hidden="true"></i> 知識庫檢索</h2>
-          <p>RAGFlow 負責找資料；數位人的回答仍由目前的 AI 模型產生。</p>
+  <div class="rag-editor">
+    <div class="rag-heading">
+      <div><h3>RAG 知識庫與文本</h3><p>設定「{{ profileName }}」可以參考的資料。{{ ragScopeLabel(selection) }}</p></div>
+      <button type="button" :disabled="loading || disabled" @click="refresh">{{ loading ? '連線檢查中…' : '重新整理知識庫' }}</button>
+    </div>
+    <p class="rag-hint">選擇會隨這份數位人設定檔儲存；即使共用人物素材，也各自使用自己的文本。</p>
+    <p v-if="loadError" class="rag-alert" role="alert">{{ loadError }}</p>
+    <p v-else-if="!loading && !configured" class="rag-alert" role="status">後端尚未設定 RAGFlow API 金鑰，設定完成後可讀取文件。</p>
+    <p v-else-if="ready" class="rag-connected" role="status">RAGFlow 已連線</p>
+    <label class="rag-check"><input type="checkbox" :checked="selection.enabled" :disabled="disabled" @change="update({ enabled: $event.target.checked })">為「{{ profileName }}」啟用知識庫檢索</label>
+    <div class="rag-columns">
+      <section aria-label="選擇知識庫">
+        <h4>1. 選擇知識庫 <small>{{ selection.dataset_ids.length }} / 8</small></h4>
+        <div class="rag-list">
+          <label v-for="dataset in datasets" :key="dataset.id" class="rag-item">
+            <input type="checkbox" :checked="selection.dataset_ids.includes(dataset.id)" :disabled="disabled || (!selection.dataset_ids.includes(dataset.id) && selection.dataset_ids.length >= 8)" @change="chooseDataset(dataset.id, $event.target.checked)">
+            <span><strong>{{ dataset.name }}</strong><small>{{ dataset.document_count }} 份文件 · {{ dataset.embedding_model || '未指定嵌入模型' }}</small></span>
+          </label>
         </div>
-        <span class="rag-status" :class="statusKind" role="status" aria-atomic="true">
-          {{ statusText }}
-        </span>
-      </div>
-
-      <p class="rag-scope">
-        目前數位人：<strong>{{ avatarId || '尚未選擇' }}</strong>。啟用狀態與知識庫只套用於這位數位人。
-      </p>
-      <p v-if="!loading && !configured" class="rag-alert" role="alert">
-        尚未在後端設定 RAGFlow API 金鑰。設定完成前，現有對話不受影響。
-      </p>
-      <p v-if="loadError" class="rag-alert" role="alert">{{ loadError }}</p>
-
-      <div class="rag-toggle-row">
-        <label class="rag-checkbox">
-          <input v-model="draft.enabled" type="checkbox" :disabled="!avatarId || saving">
-          <span>為這位數位人啟用檢索</span>
-        </label>
-        <span>儲存後從下一輪對話生效</span>
-      </div>
-
-      <div class="rag-section-heading">
-        <h3>選擇知識庫</h3>
-        <button type="button" class="rag-secondary" :disabled="loading || !configured" @click="refreshDatasets()">
-          <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> 重新整理
-        </button>
-      </div>
-      <p class="rag-hint">先在 RAGFlow 建立知識庫、上傳文件並完成解析，再於此選取；最多 8 個。</p>
-      <div v-if="loading" class="rag-placeholder" role="status">正在載入知識庫…</div>
-      <div v-else-if="datasets.length" class="rag-dataset-list">
-        <label v-for="dataset in datasets" :key="dataset.id" class="rag-dataset">
-          <input v-model="draft.datasetIds" type="checkbox" :value="dataset.id" :disabled="saving || (!draft.datasetIds.includes(dataset.id) && draft.datasetIds.length >= 8)">
-          <span class="rag-dataset-copy">
-            <strong>{{ dataset.name }}</strong>
-            <small>{{ dataset.document_count }} 份文件 · {{ dataset.embedding_model || '嵌入模型未指定' }}</small>
-          </span>
-        </label>
-      </div>
-      <p v-else class="rag-placeholder">目前沒有可選的知識庫。請先在 RAGFlow 完成文件解析。</p>
-      <p v-if="serviceReady && missingDatasetIds.length" class="rag-alert" role="alert">
-        已儲存的知識庫不在目前清單中：{{ missingDatasetIds.join('、') }}。請檢查 RAGFlow 帳號或重新選擇。
-      </p>
-
-      <div class="rag-actions">
-        <a :href="managementUrl" target="_blank" rel="noopener noreferrer" class="rag-secondary">
-          <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> 開啟本機 RAGFlow
-        </a>
-        <button type="button" class="rag-primary" :disabled="!avatarId || saving || !dirty" @click="save">
-          {{ saving ? '儲存中…' : '儲存檢索設定' }}
-        </button>
-      </div>
-      <p v-if="saveNotice" class="rag-notice" role="status" aria-atomic="true">{{ saveNotice }}</p>
-      <p v-if="saveError" class="rag-alert" role="alert">{{ saveError }}</p>
-    </section>
-
-    <section class="rag-card">
-      <h3><i class="bi bi-search" aria-hidden="true"></i> 測試檢索</h3>
-      <p class="rag-hint">只顯示找到的文件片段，不會呼叫回答模型，也不會加入對話歷史。</p>
-      <label class="rag-test-label" for="rag-test-question">測試問題</label>
-      <textarea id="rag-test-question" v-model.trim="testQuestion" rows="3" maxlength="2000" placeholder="輸入文件能回答的問題"></textarea>
-      <div class="rag-actions">
-        <span v-if="dirty" class="rag-hint">先儲存知識庫選擇，再執行測試。</span>
-        <button type="button" class="rag-primary" :disabled="testing || dirty || !serviceReady || !saved.datasetIds.length || !testQuestion.trim()" @click="runTest">
-          {{ testing ? '檢索中…' : '測試檢索' }}
-        </button>
-      </div>
+        <p v-if="!loading && ready && !datasets.length" class="rag-hint">目前沒有知識庫，請先在 RAGFlow 上傳並解析文件。</p>
+        <div v-for="id in missingDatasets" :key="id" class="rag-alert">
+          已選知識庫暫時無法讀取：<code>{{ id }}</code>
+          <button type="button" :disabled="disabled" @click="chooseDataset(id, false)">移除選擇</button>
+        </div>
+        <p class="rag-hint">移除知識庫會清除指定文件選擇，請重新勾選所需文本。</p>
+        <a :href="managementUrl" target="_blank" rel="noopener noreferrer">在 RAGFlow 上傳與管理文件 <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+      </section>
+      <section aria-label="選擇文本">
+        <h4>2. 設定文本範圍</h4>
+        <label class="rag-check"><input type="radio" :name="`rag-scope-${profileId}`" value="all" :checked="selection.document_scope === 'all'" :disabled="disabled" @change="update({ document_scope: 'all', document_ids: [] })">使用所選知識庫的全部文件</label>
+        <label class="rag-check"><input type="radio" :name="`rag-scope-${profileId}`" value="selected" :checked="selection.document_scope === 'selected'" :disabled="disabled" @change="update({ document_scope: 'selected', document_ids: [] })">只使用指定文本（最多 200 份）</label>
+        <p class="rag-hint">全部文件會包含之後新增的文件；指定文本只檢索勾選的文件。</p>
+        <p v-if="!selection.dataset_ids.length" class="rag-hint">先選擇知識庫，再查看文件名稱與解析狀態。</p>
+        <div v-for="id in selection.dataset_ids" :key="id" class="rag-document-group">
+          <h5>{{ datasetName(id) }}</h5>
+          <p v-if="documentLists[id]?.loading" class="rag-hint" role="status">正在讀取文件…</p>
+          <p v-if="documentLists[id]?.error" class="rag-alert" role="alert">{{ documentLists[id].error }} <button type="button" @click="loadDocuments(id)">重試</button></p>
+          <div class="rag-list">
+            <label v-for="doc in documentLists[id]?.documents || []" :key="doc.id" class="rag-item">
+              <input type="checkbox" :checked="selection.document_scope === 'all' || selection.document_ids.includes(doc.id)" :disabled="disabled || selection.document_scope === 'all' || (!selection.document_ids.includes(doc.id) && selection.document_ids.length >= 200)" @change="chooseDocument(doc.id, $event.target.checked)">
+              <span><strong>{{ doc.name }}</strong><small>{{ documentStatus(doc) }}</small></span>
+            </label>
+          </div>
+          <p v-if="documentLists[id] && !documentLists[id].loading && !documentLists[id].error && !documentLists[id].documents.length" class="rag-hint">這個知識庫尚無文件。</p>
+          <button v-if="documentLists[id]?.has_more" type="button" :disabled="documentLists[id].loading" @click="loadDocuments(id, documentLists[id].page + 1)">載入更多文件</button>
+        </div>
+        <div v-for="id in missingDocuments" :key="id" class="rag-alert">已指定文件尚未在清單中載入，或已移除：<code>{{ id }}</code><button type="button" :disabled="disabled" @click="chooseDocument(id, false)">移除選擇</button></div>
+        <p v-if="selection.enabled && scopeError" class="rag-alert" role="alert">{{ scopeError }}</p>
+      </section>
+    </div>
+    <section class="rag-test">
+      <h4>3. 測試此角色的檢索範圍</h4>
+      <p class="rag-hint">使用目前草稿的知識庫與文本選擇，只顯示檢索片段。儲存並套用設定後，正式對話才會使用這個範圍。</p>
+      <label :for="`rag-question-${profileId}`">測試問題</label>
+      <textarea :id="`rag-question-${profileId}`" v-model="testQuestion" rows="3" maxlength="2000" placeholder="輸入這些文本應該能回答的問題"></textarea>
+      <button type="button" :disabled="disabled || testing || !ready || Boolean(scopeError) || !testQuestion.trim()" @click="runTest">{{ testing ? '檢索中…' : '測試目前草稿' }}</button>
       <p v-if="testError" class="rag-alert" role="alert">{{ testError }}</p>
-      <div v-if="testResult" role="status" aria-atomic="true">
-        <p class="rag-result-summary">{{ testResult.status === 'matched' ? `找到 ${testResult.sources.length} 段檢索參考` : '知識庫沒有找到相關資料' }}</p>
-        <ol v-if="testResult.sources.length" class="rag-results">
-          <li v-for="(source, index) in testResult.sources" :key="`${source.document_id}-${index}`">
-            <strong>{{ source.document_name || '未命名文件' }}</strong>
-            <p>{{ source.content }}</p>
-          </li>
-        </ol>
+      <div v-if="testResult" role="status">
+        <p>{{ testResult.sources.length ? `找到 ${testResult.sources.length} 段文本參考` : '所選範圍內沒有找到相關資料' }}</p>
+        <ol class="rag-results"><li v-for="(source, index) in testResult.sources" :key="index"><strong>{{ source.document_name || '未命名文件' }}</strong><p>{{ source.content }}</p></li></ol>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { normalizeRagSelection, toggleDataset, selectionError, ragScopeLabel } from '../ragScope.js'
 
 const props = defineProps({
-  avatarId: { type: String, default: '' },
-  active: { type: Boolean, default: false }
+  modelValue: { type: Object, required: true },
+  profileId: { type: String, required: true },
+  profileName: { type: String, required: true },
+  disabled: Boolean
 })
-
-const draft = reactive({ enabled: false, datasetIds: [] })
-const saved = reactive({ enabled: false, datasetIds: [] })
-const configured = ref(false)
-const managementUrl = ref('http://127.0.0.1:8088')
-const datasets = ref([])
-const loading = ref(false)
-const loadError = ref('')
-const saving = ref(false)
-const saveError = ref('')
-const saveNotice = ref('')
-const testing = ref(false)
-const testQuestion = ref('')
-const testError = ref('')
-const testResult = ref(null)
-const serviceReady = ref(false)
-let loadGeneration = 0
-
-const dirty = computed(() => draft.enabled !== saved.enabled ||
-  JSON.stringify([...draft.datasetIds].sort()) !== JSON.stringify([...saved.datasetIds].sort()))
-const missingDatasetIds = computed(() => saved.datasetIds.filter(id => !datasets.value.some(item => item.id === id)))
-const statusKind = computed(() => loading.value ? 'loading' : !configured.value ? 'unconfigured' : serviceReady.value ? 'ready' : 'unavailable')
-const statusText = computed(() => loading.value ? '連線檢查中…' : !configured.value ? '尚未設定金鑰' : serviceReady.value ? 'RAGFlow 已連線' : 'RAGFlow 未連線')
+const emit = defineEmits(['update:modelValue'])
+const selection = computed(() => normalizeRagSelection(props.modelValue))
+const scopeError = computed(() => selectionError(selection.value))
+const configured = ref(false), ready = ref(false), loading = ref(false), loadError = ref('')
+const datasets = ref([]), documentLists = ref({}), managementUrl = ref('http://127.0.0.1:8088')
+const testQuestion = ref(''), testing = ref(false), testError = ref(''), testResult = ref(null)
+let generation = 0, testGeneration = 0
+const missingDatasets = computed(() => ready.value ? selection.value.dataset_ids.filter(id => !datasets.value.some(d => d.id === id)) : [])
+const missingDocuments = computed(() => selection.value.document_ids.filter(id => !Object.values(documentLists.value).some(list => list.documents.some(d => d.id === id))))
+const datasetName = id => datasets.value.find(d => d.id === id)?.name || id
+const update = changes => emit('update:modelValue', { ...selection.value, ...changes })
+const chooseDataset = (id, checked) => emit('update:modelValue', toggleDataset(selection.value, id, checked))
+const chooseDocument = (id, checked) => update({ document_ids: checked ? [...new Set([...selection.value.document_ids, id])] : selection.value.document_ids.filter(x => x !== id) })
+const documentStatus = doc => ({ DONE: '解析完成', 3: '解析完成', RUNNING: '解析中', 1: '解析中', UNSTART: '尚未解析', 0: '尚未解析', FAIL: '解析失敗', 4: '解析失敗', CANCEL: '解析已取消', 2: '解析已取消' }[doc.run] || '解析狀態未知') + ` · ${doc.chunk_count} 個片段`
 
 async function readJson(response) {
   const body = await response.json()
-  if (!response.ok || body.code !== 0) throw new Error(body.msg || 'RAGFlow 請求失敗')
+  if (!response.ok || body.code !== 0) throw Error(body.msg || 'RAGFlow 請求失敗')
   return body.data
 }
-
-async function load() {
-  const generation = ++loadGeneration
-  if (!props.active || !props.avatarId) return
-  const avatarId = props.avatarId
-  loading.value = true
-  saving.value = false
-  testing.value = false
-  serviceReady.value = false
-  loadError.value = ''
-  saveNotice.value = ''
-  testResult.value = null
+async function refresh() {
+  const current = ++generation
+  loading.value = true; loadError.value = ''; ready.value = false
+  documentLists.value = {}
   try {
-    const data = await readJson(await fetch(`/api/ragflow/settings?avatar_id=${encodeURIComponent(avatarId)}`))
-    if (generation !== loadGeneration) return
-    saved.enabled = Boolean(data.enabled)
-    saved.datasetIds = [...(data.dataset_ids || [])]
-    draft.enabled = saved.enabled
-    draft.datasetIds = [...saved.datasetIds]
-    configured.value = Boolean(data.configured)
-    managementUrl.value = data.management_url || managementUrl.value
-    await refreshDatasets(generation)
-  } catch (error) {
-    if (generation === loadGeneration) loadError.value = error.message
-  } finally {
-    if (generation === loadGeneration) loading.value = false
-  }
-}
-
-async function refreshDatasets(generation = loadGeneration) {
-  if (!configured.value) {
-    serviceReady.value = false
-    datasets.value = []
-    return
-  }
-  try {
+    const status = await readJson(await fetch('/api/ragflow/status'))
+    if (current !== generation) return
+    configured.value = status.configured
+    managementUrl.value = status.management_url || managementUrl.value
+    if (!configured.value) return
     const data = await readJson(await fetch('/api/ragflow/datasets'))
-    if (generation !== loadGeneration) return
-    datasets.value = data.datasets || []
-    serviceReady.value = true
-    loadError.value = ''
+    if (current !== generation) return
+    datasets.value = data.datasets || []; ready.value = true
+    await Promise.all(selection.value.dataset_ids.map(id => loadDocuments(id)))
   } catch (error) {
-    if (generation !== loadGeneration) return
-    serviceReady.value = false
-    datasets.value = []
-    loadError.value = error.message
-  }
+    if (current === generation) loadError.value = error.message
+  } finally { if (current === generation) loading.value = false }
 }
-
-async function save() {
-  const generation = loadGeneration
-  const avatarId = props.avatarId
-  saveError.value = ''
-  saveNotice.value = ''
-  if (draft.enabled && !draft.datasetIds.length) {
-    saveError.value = '請先選擇至少一個知識庫。'
-    return
-  }
-  saving.value = true
+async function loadDocuments(id, page = 1) {
+  const current = generation
+  const entry = documentLists.value[id] = { documents: page > 1 ? documentLists.value[id]?.documents || [] : [], loading: true, error: '', page, has_more: false }
   try {
-    const data = await readJson(await fetch('/api/ragflow/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ avatar_id: avatarId, enabled: draft.enabled, dataset_ids: draft.datasetIds })
-    }))
-    if (generation !== loadGeneration) return
-    saved.enabled = Boolean(data.enabled)
-    saved.datasetIds = [...data.dataset_ids]
-    saveNotice.value = '已儲存，從下一輪對話生效。'
-  } catch (error) {
-    if (generation === loadGeneration) saveError.value = error.message
-  } finally {
-    if (generation === loadGeneration) saving.value = false
-  }
+    const data = await readJson(await fetch(`/api/ragflow/datasets/${encodeURIComponent(id)}/documents?page=${page}`))
+    if (current !== generation) return
+    entry.documents = [...entry.documents, ...data.documents]; entry.has_more = data.has_more
+  } catch (error) { if (current === generation) entry.error = error.message }
+  finally { if (current === generation) { entry.loading = false; documentLists.value = { ...documentLists.value } } }
 }
-
 async function runTest() {
-  const generation = loadGeneration
-  const avatarId = props.avatarId
-  testing.value = true
-  testError.value = ''
-  testResult.value = null
+  const current = ++testGeneration
+  testing.value = true; testError.value = ''; testResult.value = null
   try {
     const result = await readJson(await fetch('/api/ragflow/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ avatar_id: avatarId, question: testQuestion.value.trim() })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: props.profileId, selection: selection.value, question: testQuestion.value.trim() })
     }))
-    if (generation === loadGeneration) testResult.value = result
-  } catch (error) {
-    if (generation === loadGeneration) testError.value = error.message
-  } finally {
-    if (generation === loadGeneration) testing.value = false
-  }
+    if (current === testGeneration) testResult.value = result
+  } catch (error) { if (current === testGeneration) testError.value = error.message }
+  finally { if (current === testGeneration) testing.value = false }
 }
-
-watch(() => [props.active, props.avatarId], load, { immediate: true })
+watch(() => selection.value.dataset_ids.join(','), () => {
+  if (ready.value) for (const id of selection.value.dataset_ids) if (!documentLists.value[id]) loadDocuments(id)
+})
+watch(() => [props.profileId, JSON.stringify(selection.value), testQuestion.value], () => {
+  ++testGeneration; testing.value = false; testResult.value = null; testError.value = ''
+})
+onMounted(refresh)
+onUnmounted(() => { ++generation; ++testGeneration })
 </script>
 
 <style scoped>
-.rag-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
-.rag-card { padding: 24px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); color: var(--text-primary); }
-.rag-heading, .rag-section-heading, .rag-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.rag-heading { align-items: flex-start; }
-h2, h3 { margin: 0; font-size: 19px; font-weight: 700; }
-h3 { font-size: 16px; }
-h2 i, h3 i { color: var(--brand-light); margin-right: 8px; }
-.rag-heading p, .rag-hint, .rag-scope, .rag-placeholder { color: var(--text-secondary); font-size: 13px; line-height: 1.55; }
-.rag-scope { margin: 20px 0; }
-.rag-status { white-space: nowrap; border: 1px solid var(--border-default); border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 700; }
-.rag-status.ready { color: var(--success); }
-.rag-status.unavailable, .rag-status.unconfigured { color: var(--warning); }
-.rag-alert { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; line-height: 1.5; }
-.rag-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-block: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; }
-.rag-checkbox, .rag-dataset { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.rag-checkbox { color: var(--text-primary); font-size: 14px; font-weight: 700; }
-input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--brand-light); flex: none; }
-.rag-section-heading { margin-top: 22px; }
-.rag-dataset-list { display: grid; gap: 8px; margin: 14px 0; max-height: 320px; overflow-y: auto; }
-.rag-dataset { padding: 11px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-surface-elevated); }
-.rag-dataset:focus-within { outline: 2px solid var(--brand-light); outline-offset: 2px; }
-.rag-dataset-copy { display: grid; gap: 3px; min-width: 0; }
-.rag-dataset-copy strong { overflow-wrap: anywhere; font-size: 13px; }
-.rag-dataset-copy small { color: var(--text-secondary); }
-.rag-actions { margin-top: 18px; justify-content: flex-end; flex-wrap: wrap; }
-.rag-primary, .rag-secondary { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 14px; border-radius: var(--radius-sm); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
-.rag-primary { border: 1px solid var(--brand-light); background: var(--brand-light); color: #111827; }
-.rag-secondary { border: 1px solid var(--border-default); background: var(--bg-surface-elevated); color: var(--text-primary); }
-button:disabled { opacity: 0.55; cursor: not-allowed; }
-.rag-notice { color: var(--success); font-size: 13px; }
-.rag-test-label { display: block; margin-top: 18px; margin-bottom: 7px; font-size: 13px; font-weight: 700; }
-textarea { width: 100%; min-height: 90px; box-sizing: border-box; resize: vertical; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-primary); background: var(--bg-surface-elevated); font: inherit; }
-textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
-.rag-result-summary { margin: 18px 0 8px; font-weight: 700; }
-.rag-results { padding-left: 22px; display: grid; gap: 12px; }
-.rag-results li { padding: 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
-.rag-results p { white-space: pre-wrap; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
-@media (max-width: 900px) { .rag-layout { grid-template-columns: 1fr; } }
-@media (max-width: 540px) { .rag-card { padding: 16px; } .rag-heading, .rag-toggle-row { align-items: flex-start; flex-direction: column; } }
+.rag-editor{min-width:0}.rag-heading{display:flex;justify-content:space-between;align-items:start;gap:16px;flex-wrap:wrap}.rag-editor h3{margin:0;font-size:18px}.rag-editor h4{font-size:14px;margin:16px 0}.rag-editor h5{font-size:13px;margin:12px 0}.rag-editor p,.rag-hint{font-size:13px;line-height:1.65;color:var(--text-secondary)}.rag-heading p{margin:8px 0}.rag-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:28px}.rag-editor label{font-size:13px}.rag-check,.rag-item{display:flex;gap:10px;align-items:center;margin:12px 0}.rag-item{padding:12px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface-elevated);margin:0}.rag-item span{display:grid;gap:5px;min-width:0;overflow-wrap:anywhere}.rag-editor input{width:17px;height:17px;flex:none;accent-color:var(--brand-light)}.rag-list{display:grid;gap:8px;max-height:310px;overflow:auto;padding:3px}.rag-editor small{font-size:12px;color:var(--text-secondary);font-weight:400}.rag-alert{padding:12px;border:1px solid var(--warning);border-radius:8px;overflow-wrap:anywhere}.rag-connected{color:var(--success)!important}.rag-editor code{color:inherit;overflow-wrap:anywhere}.rag-test{border-top:1px solid var(--border-subtle);margin-top:24px;padding-top:8px}.rag-test>label{display:block;margin-bottom:8px}.rag-editor textarea{display:block;width:100%;padding:12px;color:var(--text-primary);background:var(--bg-surface-elevated);border:1px solid var(--border-default);border-radius:8px;font:inherit;resize:vertical;margin-bottom:12px}.rag-editor button,.rag-editor a{font-size:13px}.rag-editor button{padding:8px 12px;border:1px solid var(--border-default);background:var(--bg-surface-elevated);color:var(--text-primary);border-radius:8px;cursor:pointer}.rag-editor button:disabled{opacity:.5;cursor:not-allowed}.rag-editor a{color:var(--brand-light)}.rag-editor :focus-visible{outline:2px solid var(--brand-light);outline-offset:3px}.rag-results li{padding:12px;overflow-wrap:anywhere}.rag-results p{white-space:pre-wrap}@media(max-width:900px){.rag-columns{grid-template-columns:1fr;gap:12px}}
 </style>

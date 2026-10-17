@@ -276,3 +276,81 @@ class RagFlowRouteTests(unittest.IsolatedAsyncioTestCase):
         payload = json.loads(response.text)
         self.assertTrue(payload["data"]["configured"])
         self.assertNotIn("top-secret", response.text)
+
+
+class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_saved_profile_and_draft_tests_use_role_scope_not_visual_id(self):
+        from unittest.mock import AsyncMock
+        from src.server.routes.ragflow import test_ragflow_retrieval
+        from src.server.state import state
+        saved_selection = {'enabled': True, 'dataset_ids': [DATASET_A],
+                           'document_scope': 'selected', 'document_ids': ['c' * 32]}
+        profile = {'id': 'main', 'avatar_id': 'shared_visual', 'rag': saved_selection}
+        roles = SimpleNamespace(store=SimpleNamespace(load=lambda: {'profiles': [profile]}))
+        retrieve = AsyncMock(return_value={'status': 'empty', 'sources': []})
+        with patch.object(state, 'roles', roles), patch.object(RagFlowClient, 'retrieve', retrieve):
+            request = SimpleNamespace(json=AsyncMock(return_value={'profile_id': 'main', 'question': '問題'}))
+            response = await test_ragflow_retrieval(request)
+            self.assertEqual(response.status, 200)
+            retrieve.assert_awaited_with('問題', [DATASET_A], document_ids=['c' * 32])
+            draft = {**saved_selection, 'dataset_ids': [DATASET_B], 'document_ids': ['d' * 32]}
+            request.json.return_value = {'profile_id': 'new_unsaved_role', 'question': '草稿問題', 'selection': draft}
+            response = await test_ragflow_retrieval(request)
+            self.assertEqual(response.status, 200)
+            retrieve.assert_awaited_with('草稿問題', [DATASET_B], document_ids=['d' * 32])
+            self.assertEqual(profile['rag'], saved_selection)
+
+    async def test_empty_explicit_document_scope_never_searches_entire_dataset(self):
+        from unittest.mock import AsyncMock
+        from src.server.routes.ragflow import test_ragflow_retrieval
+        retrieve = AsyncMock()
+        request = SimpleNamespace(json=AsyncMock(return_value={
+            'profile_id': 'main', 'question': '問題', 'selection': {
+                'enabled': False, 'dataset_ids': [DATASET_A],
+                'document_scope': 'selected', 'document_ids': []}}))
+        with patch.object(RagFlowClient, 'retrieve', retrieve):
+            response = await test_ragflow_retrieval(request)
+        self.assertEqual(response.status, 400)
+        retrieve.assert_not_awaited()
+
+    async def test_turn_uses_its_profiles_document_filter(self):
+        from unittest.mock import AsyncMock
+        config = Config()
+        config.profile_id = 'main'
+        config.profile_rag = {'enabled': True, 'dataset_ids': [DATASET_A],
+                              'document_scope': 'selected', 'document_ids': ['c' * 32]}
+        session = VoiceTurnSession(99, config, _Avatar())
+        retrieve = AsyncMock(return_value={'status': 'matched', 'sources': [{
+            'document_name': '角色專屬文本', 'content': '僅此角色的事實'}]})
+        calls = []
+        try:
+            with patch.object(RagFlowClient, 'retrieve', retrieve), patch(
+                'src.server.voice_session.llm_response',
+                side_effect=lambda _text, _avatar, **kwargs: calls.append(kwargs) or '回答'
+            ):
+                await session.start_text_turn('文件問題')
+                await session._turn_task
+            retrieve.assert_awaited_once_with('文件問題', [DATASET_A], document_ids=['c' * 32])
+            self.assertIn('僅此角色的事實', calls[0]['rag_context'])
+        finally:
+            await session.close()
+
+    async def test_document_listing_is_paginated_and_retrieval_discards_other_documents(self):
+        from unittest.mock import AsyncMock
+        client = RagFlowClient()
+        client._request = AsyncMock(return_value={'code': 0, 'data': {
+            'docs': [{'id': 'c' * 32, 'name': '服務說明.txt', 'run': 'DONE', 'chunk_count': 4}],
+            'total': 101}})
+        page = await client.list_documents(DATASET_A)
+        self.assertEqual(page['documents'][0]['name'], '服務說明.txt')
+        self.assertTrue(page['has_more'])
+        self.assertEqual(client._request.call_args.kwargs['params'], {'page': 1, 'page_size': 100})
+        client._request.return_value = {'code': 0, 'data': {'chunks': [
+            {'document_id': 'd' * 32, 'dataset_id': DATASET_A, 'content': '其他角色的文本'},
+            {'document_id': 'c' * 32, 'kb_id': DATASET_A, 'content': '正確文本', 'document_keyword': '服務說明.txt'},
+            {'document_id': 'c' * 32, 'kb_id': DATASET_B, 'content': '其他知識庫'},
+        ]}}
+        result = await client.retrieve('問題', [DATASET_A], document_ids=['c' * 32])
+        self.assertEqual([s['content'] for s in result['sources']], ['正確文本'])
+        self.assertEqual(result['sources'][0]['dataset_id'], DATASET_A)
+        self.assertEqual(client._request.call_args.kwargs['body']['document_ids'], ['c' * 32])

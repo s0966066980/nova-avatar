@@ -118,3 +118,56 @@ def test_return_resumes_only_that_roles_played_history_and_reset_clears_both(pro
     assert llm_service.session_history(123, "weather") == []
     llm_service.remove_session(123)
     assert not llm_service._session_llm_instances
+
+
+def test_document_scope_and_model_rules_are_per_profile_snapshots(profiles):
+    store, config, data = profiles
+    main, specialist = data['profiles']
+    specialist['avatar_id'] = main['avatar_id']
+    main['rag'].update(document_scope='selected', document_ids=['c' * 32])
+    main['llm'].update(board_max_items=3, reply_mode='streaming', semantic_wait_seconds=2.5)
+    saved = store.save(data, expected_revision=1)
+    a, b = [profile_config(config, p) for p in saved['profiles']]
+    assert a.profile_rag['document_ids'] == ['c' * 32]
+    assert b.profile_rag['document_scope'] == 'all'
+    assert b.profile_rag['document_ids'] == []
+    assert a.llm.board.max_items == 3
+    assert a.reply_streaming.enabled
+    assert a.reply_streaming.semantic_wait_seconds == 2.5
+    assert config.llm.board.max_items != 3
+    a.profile_rag['document_ids'].clear()
+    assert store.load()['profiles'][0]['rag']['document_ids'] == ['c' * 32]
+
+
+@pytest.mark.parametrize('change', [
+    {'document_scope': 'selected', 'document_ids': []},
+    {'document_scope': 'selected', 'document_ids': ['invalid']},
+    {'document_scope': 'selected', 'document_ids': ['c' * 32] * 2},
+    {'document_scope': {'invalid': True}},
+    {'document_scope': 'unknown'},
+])
+def test_bad_document_scope_does_not_replace_saved_library(profiles, change):
+    store, _, data = profiles
+    before = store.path.read_bytes()
+    data['profiles'][0]['rag'].update(change)
+    with pytest.raises(ProfileError):
+        store.save(data, expected_revision=1)
+    assert store.path.read_bytes() == before
+
+
+def test_existing_profiles_migrate_effective_shared_playback_choices_once(profiles):
+    import yaml
+    store, config, data = profiles
+    for profile in data['profiles']:
+        for key in ['board_max_items', 'reply_mode', 'semantic_wait_seconds']:
+            profile['llm'].pop(key)
+    store.path.write_text(yaml.safe_dump(data), encoding='utf8')
+    config.llm.board.max_items = 4
+    config.reply_streaming.enabled = True
+    config.reply_streaming.semantic_wait_seconds = 3
+    migrated = store.initialize(config)
+    assert migrated['revision'] == 2
+    assert all(p['llm']['reply_mode'] == 'streaming' for p in migrated['profiles'])
+    assert all(p['llm']['board_max_items'] == 4 for p in migrated['profiles'])
+    config.reply_streaming.enabled = False
+    assert store.initialize(config) == migrated

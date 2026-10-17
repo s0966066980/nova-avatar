@@ -1,0 +1,126 @@
+{
+  "runs": [
+    {
+      "presenter": "console",
+      "completed_handoffs": 1,
+      "input": "typed",
+      "specialist_first_audio_p95_seconds": 1.120131097999547,
+      "cached_specialist_first_audio_p95_seconds": null,
+      "received_frames": {
+        "video": 583,
+        "audio": 1286,
+        "non_silent_audio": 927
+      },
+      "video_sizes": [
+        [
+          720,
+          1280
+        ]
+      ],
+      "weather_status": {
+        "available": 1
+      },
+      "stale_events": 0,
+      "transition_seconds": [
+        2.4984809510006016,
+        1.6646255410014419
+      ],
+      "turns": [
+        {
+          "source_first_audio_seconds": 1.450075,
+          "input_start_to_source_audio_seconds": 1.4512030690002575,
+          "specialist_first_audio_seconds": 1.120131097999547,
+          "source_to_target_audio_seconds": 3.9197953660004714,
+          "source_metrics": {
+            "turn_id": "0106e861942047a8bb2148e2a2233f5f",
+            "first_audio_seconds": 1.450075,
+            "interrupt_stop_seconds": null,
+            "listening_resume_seconds": null,
+            "max_media_debt_seconds": 0.24,
+            "max_abs_av_offset_seconds": 0.020478,
+            "stale_drops": {
+              "webrtc_video:late_video": 2
+            },
+            "audio_pacing_lag_ms": 0.0,
+            "audio_pacing_rebase_count": 0,
+            "audio_release_interval_ms": 18.197,
+            "audio_catch_up_burst_count": 0,
+            "tts_onset_preroll_ms": 90.0,
+            "tts_retry_after_pcm_count": 0,
+            "tts_retry_after_playback_commit_count": 0,
+            "stage_seconds": {
+              "vad_endpoint": null,
+              "asr": null,
+              "llm_first_token": null,
+              "llm_total": null,
+              "first_fragment": null,
+              "tts_first_encoded": 0.10636,
+              "tts_first_pcm": 0.107931,
+              "musetalk_first_batch": 0.149246,
+              "musetalk_inference_first_result": 0.197917,
+              "avatar_pasteback_done": 0.270318,
+              "webrtc_audio_enqueue": 0.249147,
+              "webrtc_video_enqueue": 0.0,
+              "avatar_to_webrtc_commit": 0.508071,
+              "webrtc_audio_commit": 0.508071
+            }
+          },
+          "specialist_metrics": {
+            "turn_id": "9a104a64d99e4759844418ed33d264f7",
+            "first_audio_seconds": 1.120327,
+            "interrupt_stop_seconds": null,
+            "listening_resume_seconds": null,
+            "max_media_debt_seconds": 0.24,
+            "max_abs_av_offset_seconds": 0.0206,
+            "stale_drops": {
+              "webrtc_video:late_video": 7
+            },
+            "audio_pacing_lag_ms": 0.0,
+            "audio_pacing_rebase_count": 0,
+            "audio_release_interval_ms": 17.143,
+            "audio_catch_up_burst_count": 0,
+            "tts_onset_preroll_ms": 100.0,
+            "tts_retry_after_pcm_count": 0,
+            "tts_retry_after_playback_commit_count": 0,
+            "stage_seconds": {
+              "vad_endpoint": null,
+              "asr": null,
+              "llm_first_token": 0.285785,
+              "llm_total": 1.141084,
+              "first_fragment": 0.529897,
+              "tts_first_encoded": 0.167794,
+              "tts_first_pcm": 0.169768,
+              "musetalk_first_batch": 0.195265,
+              "musetalk_inference_first_result": 0.259638,
+              "avatar_pasteback_done": 0.353437,
+              "webrtc_audio_enqueue": 0.33129,
+              "webrtc_video_enqueue": 0.0,
+              "avatar_to_webrtc_commit": 0.590059,
+              "webrtc_audio_commit": 0.590059
+            }
+          },
+          "weather_query": {
+            "status": "available",
+            "cached": false,
+            "query_seconds": 0.20615836400065746
+          }
+        }
+      ],
+      "transition_measurements": [
+        {
+          "preparation_seconds": 1.6130841909998708,
+          "duration_seconds": 0.6,
+          "sender_elapsed_seconds": 0.8850165500007279
+        },
+        {
+          "preparation_seconds": 0.7852535609999904,
+          "duration_seconds": 0.6,
+          "sender_elapsed_seconds": 0.8755991899997753
+        }
+      ],
+      "status": "completed",
+      "elapsed_seconds": 26.83005447800133
+    }
+  ],
+  "browser_audiovisual_acceptance": "not run; aiortc RTP receiver only"
+}

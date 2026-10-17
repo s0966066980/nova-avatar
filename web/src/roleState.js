@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export function canRoleInput(role, presenter) {
+  if (role?.applying) return false
   return !role?.enabled || (!role.applying && ['ready', 'announcement'].includes(role.phase)
     && (role.mode === 'visitor' ? presenter === 'stage' : presenter === 'console'))
 }

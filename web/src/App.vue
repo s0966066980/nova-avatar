@@ -633,8 +633,7 @@ const stageCaptionText = computed(() => {
 
 const currentAvatar = computed(() => {
   const characters = Array.isArray(runtime.characters) ? runtime.characters : []
-  const roleAvatar = roleRuntime.enabled
-    ? roleLibrary.value?.profiles.find(p => p.id === roleRuntime.active_profile_id)?.avatar_id : null
+  const roleAvatar = roleRuntime.active_avatar_id
   return characters.find(character => character.id === (roleAvatar || runtime.avatar?.avatar_id)) || null
 })
 

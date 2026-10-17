@@ -36,6 +36,10 @@ HTTP_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 @web.middleware
 async def profile_settings_guard(request, handler):
     roles = getattr(state, "roles", None)
+    if roles and getattr(roles, "profiles_applied", False) and request.method in {"POST", "PUT"} and request.path in {
+        "/api/llm/model", "/api/llm/rules", "/api/ragflow/settings",
+    }:
+        return web.json_response({"code": -1, "msg": "請至數位人設定檔修改模型、規則與知識範圍並套用"}, status=409)
     if roles and roles.enabled and request.path == "/humanaudio" and request.method == "POST":
         return web.json_response({"code": -1, "msg": "角色組合請使用即時麥克風或文字對話"}, status=409)
     if roles and roles.enabled and request.method in {"POST", "PUT"} and request.path in {
@@ -92,6 +96,8 @@ def create_app():
     app.router.add_get("/api/ragflow/settings", routes.get_ragflow_settings)
     app.router.add_put("/api/ragflow/settings", routes.put_ragflow_settings)
     app.router.add_get("/api/ragflow/datasets", routes.list_ragflow_datasets)
+    app.router.add_get("/api/ragflow/status", routes.ragflow_status)
+    app.router.add_get("/api/ragflow/datasets/{dataset_id}/documents", routes.list_ragflow_documents)
     app.router.add_post("/api/ragflow/test", routes.test_ragflow_retrieval)
     app.router.add_get("/api/llm/models", routes.list_llm_models)
     app.router.add_post("/api/llm/model", routes.set_llm_model)

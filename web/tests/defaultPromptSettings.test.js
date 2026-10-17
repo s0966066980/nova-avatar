@@ -6,6 +6,8 @@ const panel = readFileSync(
   new URL('../src/components/SettingsPanel.vue', import.meta.url),
   'utf8'
 )
+const editor = readFileSync(new URL('../src/components/AvatarProfileEditor.vue', import.meta.url), 'utf8')
+const profiles = readFileSync(new URL('../src/components/AvatarProfiles.vue', import.meta.url), 'utf8')
 const settings = readFileSync(
   new URL('../src/composables/useRuntimeSettings.js', import.meta.url),
   'utf8'
@@ -24,10 +26,10 @@ const consoleCss = readFileSync(
 )
 
 test('設定面板提供有標籤與說明的預設 Prompt 欄位', () => {
-  assert.match(panel, /for="llm-system-prompt"/)
-  assert.match(panel, /<textarea[\s\S]*id="llm-system-prompt"/)
-  assert.match(panel, /aria-describedby="llm-system-prompt-hint llm-system-prompt-count"/)
-  assert.match(panel, /maxlength="8000"/)
+  assert.match(editor, /for="llm-system-prompt"/)
+  assert.match(editor, /<textarea[\s\S]*id="llm-system-prompt"/)
+  assert.match(editor, /aria-describedby="llm-system-prompt-hint llm-system-prompt-count"/)
+  assert.match(editor, /maxlength="12000"/)
 })
 
 test('套用 LLM 設定時會送出並同步預設 Prompt', () => {
@@ -36,20 +38,20 @@ test('套用 LLM 設定時會送出並同步預設 Prompt', () => {
 })
 
 test('設定面板提供可存取且有範圍限制的約略回覆字數欄位', () => {
-  assert.match(panel, /for="llm-response-max-chars"/)
-  assert.match(panel, /id="llm-response-max-chars"[\s\S]*type="number"/)
-  assert.match(panel, /min="20"/)
-  assert.match(panel, /max="2000"/)
-  assert.match(panel, /aria-describedby="llm-response-max-chars-hint llm-response-max-chars-meta"/)
+  assert.match(editor, /for="llm-response-max-chars"/)
+  assert.match(editor, /id="llm-response-max-chars"[\s\S]*type="number"/)
+  assert.match(editor, /min="20"/)
+  assert.match(editor, /max="2000"/)
+  assert.match(editor, /aria-describedby="llm-response-max-chars-hint"/)
 })
 
 test('設定面板可調整看板項目上限並說明系統固定規則', () => {
-  assert.match(panel, /for="llm-board-max-items"/)
-  assert.match(panel, /id="llm-board-max-items"[\s\S]*type="number"/)
-  assert.match(panel, /min="1"/)
-  assert.match(panel, /max="12"/)
-  assert.match(panel, /系統固定規則/)
-  assert.match(panel, /JSON 不會送入語音/)
+  assert.match(editor, /for="llm-board-max-items"/)
+  assert.match(editor, /id="llm-board-max-items"[\s\S]*type="number"/)
+  assert.match(editor, /min="1"/)
+  assert.match(editor, /max="12"/)
+  assert.match(editor, /系統固定規則/)
+  assert.match(editor, /JSON 不會送入語音/)
   assert.match(settings, /board_max_items:\s*Number\(boardMaxItems\)/)
   assert.match(settings, /runtime\.llm\.board_max_items\s*=\s*Number/)
 })
@@ -192,26 +194,21 @@ test('套用 LLM 設定時會送出並同步回覆字數', () => {
 })
 
 test('設定面板可選擇舊有或串流回覆模式並持久化', () => {
-  assert.match(panel, /for="llm-reply-mode"/)
-  assert.match(panel, /id="llm-reply-mode"[\s\S]*value="legacy"[\s\S]*value="streaming"/)
+  assert.match(editor, /for="llm-reply-mode"/)
+  assert.match(editor, /id="llm-reply-mode"[\s\S]*value="legacy"[\s\S]*value="streaming"/)
   assert.match(settings, /reply_mode:\s*replyMode/)
   assert.match(settings, /runtime\.llm\.reply_mode\s*=\s*data\.reply_mode/)
 })
 
-test('設定面板提供三區可編輯 Rule 並使用版本套用 API', () => {
-  assert.match(panel, /key: 'activation'/)
-  assert.match(panel, /key: 'speech'/)
-  assert.match(panel, /key: 'board'/)
-  assert.match(panel, /儲存並套用/)
-  assert.match(settings, /fetch\('\/api\/llm\/rules'/)
-  assert.match(settings, /expected_revision:/)
-  assert.match(settings, /restoreDefaultRules/)
+test('角色設定檔提供三區可編輯規則並共用一次版本儲存', () => {
+  for (const key of ['activation', 'speech', 'board']) assert.ok(editor.includes(`key: '${key}'`))
+  assert.ok(editor.includes('profile.reply_rules[rule.key]'))
+  assert.ok(profiles.includes('expected_revision: draft.value.revision'))
+  assert.ok(profiles.includes('儲存並套用'))
+  assert.doesNotMatch(panel, /handleApplyPromptAndRules|rulesDraft/)
 })
 
-test('新版設定中心沿用實際 Rule 欄位並顯示載入與角色空狀態', () => {
-  assert.match(panel, /v-model="rulesDraft\[rule\.key\]"/)
-  assert.match(panel, /handleApplyPromptAndRules/)
-  assert.match(panel, /await applyLlmModel\(\)[\s\S]*await applyReplyRules\(\)/)
+test('設定中心顯示載入失敗與角色空狀態', () => {
   assert.match(panel, /v-if="loadingSettings"[\s\S]*載入/)
   assert.match(panel, /v-else-if="settingsError"[\s\S]*role="alert"/)
   assert.match(panel, /v-else-if="!filteredCharacters\.length && !loadingSettings"/)
@@ -244,11 +241,11 @@ test('放大的 9:16 舞台可直接拖曳看板與麥克風並保存位置', ()
   assert.match(panel, /舞台位置已套用/)
 })
 
-test('全域儲存會處理 Prompt、Rule，且 Prompt 編輯器有足夠高度', () => {
-  assert.match(panel, /rows="8"/)
-  assert.match(panel, /const promptDirty = computed/)
-  assert.match(panel, /if \(llmDirty\.value \|\| promptDirty\.value\) promises\.push\(applyLlmModel\(\)\)/)
-  assert.doesNotMatch(panel, /\{ key: 'speech'[\s\S]*\{ key: 'speech'/)
+test('全域儲存透過角色設定檔一次套用 Prompt、Rule 與知識選擇', () => {
+  assert.ok(panel.includes('await profilesRef.value.saveAndApply()'))
+  assert.ok(profiles.includes("await roleRequest('/apply', 'POST')"))
+  assert.match(editor, /rows="8"/)
+  assert.doesNotMatch(panel, /promises\.push\(applyLlmModel/)
 })
 
 test('主題選擇會將執行中的 dark 或 white 狀態對應至可見樣式', () => {
@@ -257,14 +254,14 @@ test('主題選擇會將執行中的 dark 或 white 狀態對應至可見樣式'
   assert.match(panel, /@click="selectTheme\(theme\.id\)"/)
 })
 
-test('主題只保留卡片選擇，並持久化 Prompt 與 Rule 編輯器高度', () => {
+test('主題只保留卡片選擇，角色 Prompt 與 Rule 編輯器保留高度偏好', () => {
   assert.doesNotMatch(panel, /themeSelectDropdown/)
-  assert.match(panel, /const EDITOR_HEIGHT_STORAGE_KEY/)
-  assert.match(panel, /const rememberEditorHeight = \(event\)/)
-  assert.match(panel, /@pointerup="rememberEditorHeight"/)
-  assert.match(panel, /localStorage\.setItem\(EDITOR_HEIGHT_STORAGE_KEY/)
-  assert.match(panel, /:style="\{ height: `\$\{editorHeights\.prompt\}px` \}"/)
-  assert.match(panel, /:style="\{ height: `\$\{editorHeights\[rule\.key\]\}px` \}"/)
+  assert.match(editor, /const EDITOR_HEIGHT_STORAGE_KEY/)
+  assert.match(editor, /function rememberEditorHeight/)
+  assert.match(editor, /@pointerup="rememberEditorHeight"/)
+  assert.match(editor, /localStorage\.setItem\(EDITOR_HEIGHT_STORAGE_KEY/)
+  assert.ok(editor.includes('editorHeights.prompt'))
+  assert.ok(editor.includes('editorHeights[rule.key]'))
 })
 
 test('控制台空狀態不以固定示範對話與看板冒充即時資料', () => {

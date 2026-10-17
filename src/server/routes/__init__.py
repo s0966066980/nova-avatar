@@ -13,6 +13,8 @@ from .ragflow import (
     get_ragflow_settings,
     put_ragflow_settings,
     list_ragflow_datasets,
+    list_ragflow_documents,
+    ragflow_status,
     test_ragflow_retrieval,
 )
 from .settings import (
@@ -66,6 +68,8 @@ __all__ = [
     'get_ragflow_settings',
     'put_ragflow_settings',
     'list_ragflow_datasets',
+    'list_ragflow_documents',
+    'ragflow_status',
     'test_ragflow_retrieval',
     'get_settings',
     'get_vad_settings',

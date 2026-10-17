@@ -2,98 +2,173 @@
 <template>
   <div class="role-settings" :aria-busy="busy">
     <header class="role-top">
-      <div><h2>數位人設定檔與角色交接</h2><p>分別保存每位角色的身分、知識範圍與聲音。儲存後，套用至舞台與控制台。</p></div>
-      <div class="role-actions"><button type="button" @click="load" :disabled="busy">重新載入</button><button type="submit" form="role-library-form" :disabled="busy || !draft">儲存設定</button><button type="button" class="primary" :disabled="busy || dirty || !draft" @click="apply">{{ busy ? '處理中…' : '套用已儲存設定' }}</button></div>
+      <div><h2>數位人、AI 與知識設定</h2><p>先選數位人，再設定身分、回答模型、回覆規則與 RAG 文本；角色交接在同一處管理。</p></div>
+      <div class="role-actions">
+        <button type="button" :disabled="busy" @click="requestReload">重新載入</button>
+        <button type="submit" form="role-library-form" :disabled="busy || !dirty">僅儲存草稿</button>
+        <button type="button" class="primary" :disabled="busy || !draft" @click="run(saveAndApply)">{{ busy ? '處理中…' : '儲存並套用' }}</button>
+      </div>
     </header>
-    <p v-if="error" class="role-error" role="alert">{{ error }}</p>
-    <p v-if="notice" role="status">{{ notice }}</p>
-    <p class="role-status">{{ roleRuntime.enabled ? '角色交接已啟用' : '使用單角色模式' }} · {{ rolePhaseLabel(roleRuntime.phase) }} · {{ roleRuntime.weather_configured ? 'CWA 已設定' : 'CWA 尚未設定授權碼' }} <span v-if="dirty">· 有尚未儲存的修改</span></p>
-    <p v-if="roleRuntime.error" class="role-error" role="alert">{{ roleRuntime.error }}</p>
-    <form v-if="draft" id="role-library-form" @submit.prevent="save">
+    <div v-if="reloadPending" class="role-alert" role="alert">重新載入會捨棄尚未儲存的修改。<button type="button" @click="reloadPending = false; run(load)">捨棄並重新載入</button><button type="button" @click="reloadPending = false">繼續編輯</button></div>
+    <p v-if="error" class="role-alert" role="alert">{{ error }}</p>
+    <p v-if="notice" class="role-notice" role="status">{{ notice }}</p>
+    <div class="role-status" role="status">
+      <span>{{ roleRuntime.enabled ? '即時角色交接' : '單角色模式' }} · {{ rolePhaseLabel(roleRuntime.phase) }}</span>
+      <span v-if="draft">草稿版本 {{ draft.revision }} · {{ roleRuntime.profiles_applied ? `生效版本 ${roleRuntime.active_revision}` : '尚未套用設定檔' }}</span>
+      <strong v-if="dirty">有未儲存的修改</strong><strong v-else-if="pendingApply">已儲存，尚未套用</strong>
+    </div>
+    <p v-if="roleRuntime.error" class="role-alert" role="alert">{{ roleRuntime.error }}</p>
+    <p v-if="!draft && busy" role="status">正在載入數位人設定檔…</p>
+    <form v-if="draft" id="role-library-form" novalidate @submit.prevent="run(save)">
       <fieldset :disabled="busy">
-        <section class="role-card">
-          <h3>當次角色組合</h3>
-          <label class="check"><input type="checkbox" v-model="draft.enabled">啟用即時角色交接</label>
-          <div class="role-grid"><label>主數位人<select v-model="draft.pair.main"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label><label>專門數位人<select v-model="draft.pair.specialist"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label></div>
-          <p>首版組合共用 MuseTalk 推理與同一 LLM 服務、模型；每位角色保留自己的 Prompt、RAG、聲線及訪客記憶。</p>
-        </section>
-        <section class="role-card">
-          <div class="role-actions"><h3>角色設定檔</h3><button type="button" @click="cloneProfile">複製為新設定檔</button><button type="button" :disabled="draft.profiles.length <= 2 || inPair(selected)" @click="removeProfile">刪除設定檔</button></div>
-          <label>正在編輯<select v-model="selected"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}（{{ p.id }}）</option></select></label>
-          <template v-if="profile">
-            <div class="role-grid"><label>顯示名稱<input v-model="profile.name" required maxlength="80"></label><label>人物素材<select v-model="profile.avatar_id"><option v-for="a in avatars" :key="a.id" :value="a.id">{{ a.label || a.name || a.id }}</option><option v-if="!avatars.some(a => a.id === profile.avatar_id)" :value="profile.avatar_id">{{ profile.avatar_id }}</option></select></label></div>
-            <div class="role-grid"><label>推理引擎<select v-model="profile.engine"><option value="musetalk">MuseTalk</option><option value="wav2lip">Wav2Lip · Research / Non-commercial（不可用於即時組合）</option></select></label><label>助手自稱<input v-model="profile.assistant_profile.assistant_name" maxlength="200"></label></div>
-            <label>身分 Prompt<textarea v-model="profile.assistant_profile.system_prompt" rows="4" maxlength="12000"></textarea></label>
-            <label>限制 Prompt<textarea v-model="profile.assistant_profile.restriction_prompt" rows="3" maxlength="12000"></textarea></label>
-            <div class="role-grid"><label>輸出語系<select v-model="profile.assistant_profile.output_locale"><option value="zh-TW">繁體中文（臺灣）</option><option value="zh-CN">簡體中文</option><option value="en">英文</option><option value="auto">自動</option></select></label><label>禁止自稱名稱（逗號分隔）<input :value="profile.assistant_profile.forbidden_self_names.join(', ')" @change="profile.assistant_profile.forbidden_self_names = $event.target.value.split(/[,，]/).map(x=>x.trim()).filter(Boolean)"></label></div>
-            <label class="check"><input type="checkbox" v-model="profile.assistant_profile.enforce_output_locale">限制輸出語系</label>
-            <h4>回答模型</h4>
-            <div class="role-grid"><label>服務<select v-model="profile.llm.provider"><option value="llamacpp">llama.cpp</option><option value="ollama">Ollama</option><option value="openai">OpenAI 相容服務</option></select></label><label>模型<input v-model="profile.llm.model" required list="role-models"></label></div>
-            <datalist id="role-models"><option v-for="m in models" :key="m" :value="m"></option></datalist>
-            <label>服務網址<input v-model="profile.llm.base_url" type="url" placeholder="http://127.0.0.1:8080/v1"></label>
-            <div class="role-grid"><label>口語字數上限<input type="number" v-model.number="profile.llm.response_max_chars" min="20" max="2000"></label><label>模型 Token 預算<input type="number" v-model.number="profile.llm.max_tokens" min="16" max="8192"></label></div>
-            <h4>知識範圍</h4><label class="check"><input type="checkbox" v-model="profile.rag.enabled">啟用此角色的 RAG</label>
-            <button type="button" @click="loadDatasets">讀取知識庫清單</button>
-            <label v-for="d in datasets" :key="d.id" class="check"><input type="checkbox" :value="d.id" v-model="profile.rag.dataset_ids">{{ d.name || d.id }}</label>
-            <label>已選知識庫 ID（逗號分隔）<input :value="profile.rag.dataset_ids.join(', ')" @change="profile.rag.dataset_ids = $event.target.value.split(/[,，]/).map(x=>x.trim()).filter(Boolean)"></label>
-            <h4>聲音與回覆規則</h4>
-            <div class="role-grid"><label>語音引擎<input v-model="profile.tts.type" required></label><label>聲線／參考音檔<input v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label></div>
-            <details><summary>其他聲音設定</summary><label v-for="key in ['mode','ref_text','tts_server','model','language','speaker','instruct','device']" :key="key">{{ key }}<input :value="profile.tts[key] || ''" @input="profile.tts[key] = $event.target.value"></label></details>
-            <label v-for="(title,key) in ruleTitles" :key="key">{{ title }}<textarea v-model="profile.reply_rules[key]" rows="3" maxlength="12000"></textarea></label>
-            <label class="check"><input type="checkbox" v-model="profile.tools.weather">使用 CWA 即時天氣工具（臺灣）</label>
-          </template>
-        </section>
-        <section class="role-card"><h3>主數位人的交接規則</h3>
-          <label>專門角色的專長介紹<textarea v-model="draft.handoff.description" rows="2" required maxlength="2000"></textarea></label>
-          <label>何時交接<textarea v-model="draft.handoff.rules" rows="3" required maxlength="12000"></textarea></label>
-          <label>交接說明（播完後才轉場）<textarea v-model="draft.handoff.announcement" rows="2" required maxlength="2000"></textarea></label>
-          <h4>場域預設查詢地點</h4><p>留白時會向訪客確認縣市與鄉鎮，不會猜測地點。</p>
-          <div class="role-grid"><label>縣市<input v-model="draft.weather.county" placeholder="臺北市"></label><label>鄉鎮市區<input v-model="draft.weather.town" placeholder="中正區"></label></div>
-          <p>氣象資料來源：<a href="https://opendata.cwa.gov.tw/" target="_blank" rel="noopener">交通部中央氣象署</a>。授權碼僅在服務端設定。</p>
-        </section>
-        <section class="role-card"><h3>指定方向的角色轉場</h3><p>去程與回程可各自設定。自訂影片會移除音軌，長寬比例保留，空白處沿用舞台背景。</p>
-          <div class="role-grid"><label>來源<select v-model="edgeSource"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label><label>目的<select v-model="edgeTarget"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label></div>
-          <template v-if="edgeSource && edgeTarget && edgeSource !== edgeTarget">
-            <label>轉場類型<select v-model="edge.kind"><option value="effect">內建特效</option><option value="video">自訂影片</option></select></label>
-            <div v-if="edge.kind === 'effect'" class="role-grid"><label>特效<select v-model="edge.effect"><option value="fade">淡入淡出</option><option value="slide_left">向左滑動</option><option value="slide_right">向右滑動</option><option value="zoom">縮放</option></select></label><label>時長（秒）<input type="number" v-model.number="edge.duration" min="0.2" max="2" step="0.1"></label></div>
-            <template v-else><label>轉場影片<select v-model="edge.asset_id"><option value="">請選擇影片</option><option v-for="m in media" :key="m.id" :value="m.id">{{ m.name }} · {{ m.duration.toFixed(2) }} 秒</option></select></label><video v-if="edge.asset_id" :src="`/api/profiles/media/${edge.asset_id}`" controls muted playsinline class="role-video"></video></template>
-          </template>
-          <label>上傳轉場影片（MP4／MOV／WebM，100 MiB、30 秒內）<input type="file" accept=".mp4,.mov,.webm" @change="upload"></label>
-          <details><summary>管理轉場影片（{{ media.length }}）</summary><div v-for="m in media" :key="m.id" class="role-actions"><span>{{ m.name }}</span><button type="button" @click="deleteMedia(m.id)">刪除影片</button></div></details>
-        </section>
+        <nav class="role-workspaces" aria-label="設定範圍">
+          <button type="button" :aria-pressed="workspace === 'profiles'" @click="workspace = 'profiles'">數位人設定檔</button>
+          <button type="button" :aria-pressed="workspace === 'handoff'" @click="workspace = 'handoff'">角色組合、交接與轉場</button>
+        </nav>
+        <div v-show="workspace === 'profiles'" class="role-layout">
+          <aside class="role-list" aria-label="選擇要編輯的數位人">
+            <h3>數位人設定檔 <small>{{ draft.profiles.length }}</small></h3>
+            <button v-for="p in draft.profiles" :key="p.id" type="button" class="role-choice" :aria-pressed="selected === p.id" @click="selected = p.id">
+              <span class="role-choice-title">{{ p.name }}<small v-if="p.id === draft.pair.main">主數位人</small><small v-else-if="p.id === draft.pair.specialist">專門數位人</small></span>
+              <span>{{ p.llm.model }}</span><span>{{ ragScopeLabel(p.rag) }}</span>
+            </button>
+            <button type="button" :disabled="!profile || draft.profiles.length >= 30" @click="cloneProfile"><i class="bi bi-plus-lg" aria-hidden="true"></i> 複製為新設定檔</button>
+            <button type="button" :disabled="draft.profiles.length <= 2 || inPair(selected)" @click="removeProfile">刪除所選設定檔</button>
+            <p>主數位人與專門數位人需保留。刪除前可先在角色組合中改選。</p>
+          </aside>
+          <section v-if="profile" class="role-card role-editor-card">
+            <div class="role-editor-title"><div><h3>{{ profile.name }}</h3><p>目前編輯的數位人 · {{ profile.id }}</p></div><span v-if="roleRuntime.active_profile_id === profile.id">目前作用中</span></div>
+            <AvatarProfileEditor ref="editorRef" v-model="draft.profiles[profileIndex]" :avatars="runtime.characters" :providers="providers" :initial-section="initialSection" :disabled="busy" @restore-rules="restoreRules" />
+          </section>
+        </div>
+        <div v-show="workspace === 'handoff'" class="role-handoff">
+          <section class="role-card">
+            <h3>當次角色組合</h3>
+            <label class="check"><input type="checkbox" v-model="draft.enabled">啟用即時角色交接</label>
+            <div class="role-grid"><label>主數位人<select v-model="draft.pair.main"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label><label>專門數位人<select v-model="draft.pair.specialist"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label></div>
+            <p>關閉交接時使用主數位人的完整設定檔。啟用時，兩位角色共用 MuseTalk、同一模型服務與語音合成引擎，各自保留 Prompt、RAG 文本、聲線、規則與訪客記憶。</p>
+            <p v-if="pairError" class="role-alert" role="alert">{{ pairError }}</p>
+          </section>
+          <section class="role-card"><h3>主數位人的交接規則</h3>
+            <label>專門角色的專長介紹<textarea v-model="draft.handoff.description" rows="3" maxlength="2000"></textarea></label>
+            <label>何時交接<textarea v-model="draft.handoff.rules" rows="4" maxlength="12000"></textarea></label>
+            <label>交接說明（播完後才轉場）<textarea v-model="draft.handoff.announcement" rows="3" maxlength="2000"></textarea></label>
+            <h4>場域預設查詢地點</h4><p>留白時會向訪客確認縣市與鄉鎮。{{ roleRuntime.weather_configured ? 'CWA 已設定授權碼。' : 'CWA 尚未設定授權碼。' }}</p>
+            <div class="role-grid"><label>縣市<input v-model="draft.weather.county" placeholder="臺北市"></label><label>鄉鎮市區<input v-model="draft.weather.town" placeholder="中正區"></label></div>
+            <p>氣象資料來源：<a href="https://opendata.cwa.gov.tw/" target="_blank" rel="noopener">交通部中央氣象署</a>。授權碼僅在服務端設定。</p>
+          </section>
+          <section class="role-card"><h3>指定方向的角色轉場</h3><p>去程與回程各自設定。自訂影片會移除音軌，空白處沿用舞台背景。</p>
+            <div class="role-grid"><label>來源<select v-model="edgeSource"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label><label>目的<select v-model="edgeTarget"><option v-for="p in draft.profiles" :key="p.id" :value="p.id">{{ p.name }}</option></select></label></div>
+            <template v-if="edge">
+              <label>轉場類型<select v-model="edge.kind"><option value="effect">內建特效</option><option value="video">自訂影片</option></select></label>
+              <div v-if="edge.kind === 'effect'" class="role-grid"><label>特效<select v-model="edge.effect"><option value="fade">淡入淡出</option><option value="slide_left">向左滑動</option><option value="slide_right">向右滑動</option><option value="zoom">縮放</option></select></label><label>時長（秒）<input type="number" v-model.number="edge.duration" min="0.2" max="2" step="0.1"></label></div>
+              <template v-else><label>轉場影片<select v-model="edge.asset_id"><option value="">請選擇影片</option><option v-for="m in media" :key="m.id" :value="m.id">{{ m.name }} · {{ m.duration.toFixed(2) }} 秒</option></select></label><video v-if="edge.asset_id" :src="`/api/profiles/media/${edge.asset_id}`" controls muted playsinline class="role-video"></video></template>
+            </template>
+            <p v-else>請選擇不同的來源與目的角色。</p>
+            <label>上傳轉場影片（MP4／MOV／WebM，100 MiB、30 秒內）<input type="file" accept=".mp4,.mov,.webm" :disabled="!edge" @change="upload"></label>
+            <details><summary>管理轉場影片（{{ media.length }}）</summary><div v-for="m in media" :key="m.id" class="role-actions"><span>{{ m.name }}</span><button type="button" @click="deleteMedia(m.id)">刪除影片</button></div></details>
+          </section>
+        </div>
       </fieldset>
     </form>
   </div>
 </template>
 
 <script setup>
-import {ref, computed, onMounted, toRaw} from 'vue'
-import {useRoles} from '../composables/useRoles.js'
-import {useRuntimeSettings} from '../composables/useRuntimeSettings.js'
-import {directedTransition, rolePhaseLabel} from '../roleState.js'
-const {roleRuntime, roleRequest} = useRoles()
-const {runtime} = useRuntimeSettings()
-const draft=ref(null), selected=ref(''), media=ref([]), datasets=ref([]), models=ref([])
-const busy=ref(false), error=ref(''), notice=ref(''), savedText=ref(''), edgeSource=ref(''), edgeTarget=ref('')
-const ruleTitles={activation:'何時使用看板', speech:'口語回覆規則', board:'看板呈現規則'}
-const dirty=computed(()=>draft.value && JSON.stringify(draft.value)!==savedText.value)
-const profile=computed(()=>draft.value?.profiles.find(p=>p.id===selected.value))
-const avatars=computed(()=>runtime.characters.filter(a=>!a.type || a.type==='musetalk'))
-const edge=computed(()=>directedTransition(draft.value,edgeSource.value,edgeTarget.value))
-const inPair=id=>Object.values(draft.value.pair).includes(id)
-async function perform(action) { busy.value=true; error.value=''; notice.value=''; try {await action()} catch(e) {error.value=e.message} finally {busy.value=false} }
-function adopt(data) {draft.value=structuredClone(data.library); selected.value=draft.value.profiles.some(p=>p.id===selected.value)?selected.value:draft.value.pair.main; edgeSource.value=draft.value.pair.main; edgeTarget.value=draft.value.pair.specialist; directedTransition(draft.value,edgeSource.value,edgeTarget.value); savedText.value=JSON.stringify(draft.value); if(data.media)media.value=data.media}
-const load=()=>perform(async()=>{adopt(await roleRequest()); try {const r=await fetch('/api/llm/models'); const j=await r.json(); models.value=(j.data?.models||[]).map(m=>typeof m==='string'?m:m.id||m.name)}catch(_){}})
-const save=()=>perform(async()=>{if(draft.value.pair.main===draft.value.pair.specialist)throw Error('主角色與專門角色需選擇不同設定檔');adopt(await roleRequest('','PUT',{library:draft.value,expected_revision:draft.value.revision}));notice.value='設定已儲存，請套用以更新演播。'})
-const apply=()=>perform(async()=>{await roleRequest('/apply','POST');notice.value=roleRuntime.enabled?'設定已套用，演播回到主數位人。':'已套用單角色模式。'})
-function cloneProfile(){const p=structuredClone(toRaw(profile.value));p.id='role_'+crypto.randomUUID().replaceAll('-','').slice(0,12);p.name+=' 副本';draft.value.profiles.push(p);selected.value=p.id}
-function removeProfile(){draft.value.transitions=draft.value.transitions.filter(e=>e.source!==selected.value&&e.target!==selected.value);draft.value.profiles=draft.value.profiles.filter(p=>p.id!==selected.value);selected.value=draft.value.pair.main}
-const loadDatasets=()=>perform(async()=>{const r=await fetch('/api/ragflow/datasets');const j=await r.json();if(!r.ok)throw Error(j.msg||'無法讀取知識庫');datasets.value=j.data.datasets||[]})
-const upload=event=>perform(async()=>{const f=event.target.files[0];if(!f)return;if(f.size>100*1024*1024)throw Error('影片不可超過 100 MiB');const body=new FormData();body.append('file',f);const data=await roleRequest('/media','POST',body);media.value=data.media;if(edgeSource.value!==edgeTarget.value){edge.value.kind='video';edge.value.asset_id=data.asset.id;}event.target.value='';notice.value='影片已驗證並轉為無聲轉場，請儲存設定。'})
-const deleteMedia=id=>perform(async()=>{const data=await roleRequest('/media/'+id,'DELETE');media.value=data.media})
-onMounted(load)
+import { ref, computed, onMounted, watch, toRaw } from 'vue'
+import { useRoles } from '../composables/useRoles.js'
+import { useRuntimeSettings } from '../composables/useRuntimeSettings.js'
+import { directedTransition, rolePhaseLabel } from '../roleState.js'
+import { ragScopeLabel } from '../ragScope.js'
+import AvatarProfileEditor from './AvatarProfileEditor.vue'
+const props = defineProps({ initialSection: { type: String, default: 'identity' } })
+const { roleRuntime, roleRequest } = useRoles()
+const { runtime } = useRuntimeSettings()
+const draft = ref(null), selected = ref(''), media = ref([]), providers = ref({}), defaults = ref(null)
+const busy = ref(false), error = ref(''), notice = ref(''), savedText = ref(''), edgeSource = ref(''), edgeTarget = ref('')
+const workspace = ref('profiles'), editorRef = ref(null), reloadPending = ref(false)
+let adopting = false
+const dirty = computed(() => Boolean(draft.value && JSON.stringify(draft.value) !== savedText.value))
+const pendingApply = computed(() => draft.value && (!roleRuntime.profiles_applied || draft.value.revision !== roleRuntime.active_revision))
+const profileIndex = computed(() => draft.value?.profiles.findIndex(p => p.id === selected.value) ?? -1)
+const profile = computed(() => draft.value?.profiles[profileIndex.value])
+const edge = computed(() => draft.value?.transitions.find(e => e.source === edgeSource.value && e.target === edgeTarget.value))
+const inPair = id => Object.values(draft.value.pair).includes(id)
+const pairError = computed(() => {
+  if (!draft.value?.enabled) return ''
+  const main = draft.value.profiles.find(p => p.id === draft.value.pair.main)
+  const specialist = draft.value.profiles.find(p => p.id === draft.value.pair.specialist)
+  if (!main || !specialist || main.id === specialist.id) return '主角色與專門角色需選擇不同設定檔。'
+  if ([main, specialist].some(p => p.engine !== 'musetalk')) return '即時角色組合需要兩位 MuseTalk 數位人。'
+  if (['provider','model','base_url'].some(key => main.llm[key] !== specialist.llm[key])) return '兩位角色的模型服務、模型名稱與服務網址需一致。請分別在 AI 模型與規則中調整。'
+  if (main.tts.type !== specialist.tts.type) return '兩位角色需使用同一語音合成引擎，聲線可各自設定。'
+  return ''
+})
+async function run(action) {
+  busy.value = true; error.value = ''; notice.value = ''
+  try { await action() } catch (e) { error.value = e.message } finally { busy.value = false }
+}
+function adopt(data) {
+  adopting = true
+  draft.value = structuredClone(data.library)
+  selected.value = draft.value.profiles.some(p => p.id === selected.value) ? selected.value : draft.value.pair.main
+  edgeSource.value = draft.value.pair.main; edgeTarget.value = draft.value.pair.specialist
+  savedText.value = JSON.stringify(draft.value)
+  if (data.media) media.value = data.media
+  adopting = false
+}
+async function load() {
+  adopt(await roleRequest())
+  // Model discovery is optional; a manual model name remains editable offline.
+  try { const r = await fetch('/api/llm/models'); const j = await r.json(); providers.value = j.data?.providers || {} } catch { /* Keep manual entry available. */ }
+  try { const r = await fetch('/api/llm/rules'); const j = await r.json(); defaults.value = j.data?.defaults || null } catch { /* The editor retains existing rules. */ }
+}
+function requestReload() { if (dirty.value) reloadPending.value = true; else run(load) }
+async function save() {
+  if (draft.value.pair.main === draft.value.pair.specialist) throw Error('主角色與專門角色需選擇不同設定檔')
+  adopt(await roleRequest('', 'PUT', { library: draft.value, expected_revision: draft.value.revision }))
+  notice.value = '草稿已儲存；套用後才會更新舞台與控制台。'
+}
+async function saveAndApply() {
+  if (pairError.value) throw Error(pairError.value)
+  if (dirty.value) await save()
+  await roleRequest('/apply', 'POST')
+  notice.value = roleRuntime.enabled ? '設定已套用，舞台與控制台回到主數位人。' : '主數位人的完整設定已套用。'
+}
+async function saveAndApplyFromParent() {
+  busy.value = true; error.value = ''; notice.value = ''
+  try { await saveAndApply() } catch (e) { error.value = e.message; throw e } finally { busy.value = false }
+}
+function cloneProfile() {
+  const p = structuredClone(toRaw(profile.value))
+  p.id = 'role_' + crypto.randomUUID().replaceAll('-', '').slice(0,12); p.name += ' 副本'
+  draft.value.profiles.push(p); selected.value = p.id
+}
+function removeProfile() {
+  draft.value.transitions = draft.value.transitions.filter(e => e.source !== selected.value && e.target !== selected.value)
+  draft.value.profiles = draft.value.profiles.filter(p => p.id !== selected.value); selected.value = draft.value.pair.main
+}
+async function restoreRules() {
+  if (!defaults.value) { error.value = '無法取得預設規則，請重新載入後再試。'; return }
+  for (const key of ['activation','speech','board']) profile.value.reply_rules[key] = defaults.value[key]
+}
+const upload = event => run(async () => {
+  const f = event.target.files[0]; if (!f) return
+  if (f.size > 100 * 1024 * 1024) throw Error('影片不可超過 100 MiB')
+  const body = new FormData(); body.append('file', f)
+  const data = await roleRequest('/media', 'POST', body); media.value = data.media
+  if (edge.value) { edge.value.kind = 'video'; edge.value.asset_id = data.asset.id }
+  event.target.value = ''; notice.value = '影片已驗證並轉為無聲轉場，請儲存設定。'
+})
+const deleteMedia = id => run(async () => { media.value = (await roleRequest('/media/' + id, 'DELETE')).media })
+watch([workspace, edgeSource, edgeTarget], ([view, source, target]) => {
+  if (!adopting && view === 'handoff' && draft.value && source && target && source !== target) directedTransition(draft.value, source, target)
+}, { flush: 'sync' })
+watch(() => props.initialSection, value => { workspace.value = 'profiles'; editorRef.value?.openSection(value) })
+onMounted(() => run(load))
+defineExpose({ dirty, pendingApply, busy, saveAndApply: saveAndApplyFromParent })
 </script>
 
 <style scoped>
-.role-settings{color:var(--text-primary);width:100%;max-width:1400px;margin:auto;padding:8px}.role-top,.role-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}.role-top h2{font-size:22px}.role-top p,.role-card p,.role-status{font-size:13px;color:var(--text-secondary);line-height:1.7}.role-card{padding:24px;border:1px solid var(--border);border-radius:16px;background:var(--bg-surface);margin:18px 0}.role-card h3{font-size:17px;margin:0 0 14px}.role-card h4{font-size:14px;margin:20px 0 12px}.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.role-settings label{display:flex;flex-direction:column;gap:8px;font-size:13px;margin:14px 0}.role-settings .check{flex-direction:row;align-items:center}.role-settings input,.role-settings select,.role-settings textarea{background:var(--input-surface);color:var(--text-primary);border:1px solid var(--border);padding:10px 12px;border-radius:8px;width:100%;font:inherit}.role-settings .check input{width:auto}.role-settings textarea{resize:vertical;min-height:70px}.role-settings button{padding:10px 14px;border:1px solid var(--border);border-radius:8px;color:var(--text-primary);background:var(--bg-surface-elevated);font-size:13px;cursor:pointer}.role-settings button.primary{background:var(--brand,#7859d7);color:white}.role-settings button:disabled{opacity:.45;cursor:default}.role-settings :focus-visible{outline:2px solid #a893ff;outline-offset:3px}.role-settings fieldset{border:0;padding:0;min-width:0}.role-error{color:var(--danger);background:var(--danger-surface);padding:12px;border-radius:8px}.role-video{max-width:100%;height:220px;background:#111;margin-top:12px}.role-settings summary{cursor:pointer;padding:10px 0}@media(max-width:700px){.role-grid{grid-template-columns:1fr}.role-card{padding:16px}}
+.role-settings{color:var(--text-primary);width:100%;min-width:0;margin:auto}.role-top,.role-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}.role-top h2{font-size:22px;margin:0}.role-top p,.role-card p,.role-list p{font-size:13px;color:var(--text-secondary);line-height:1.7}.role-top>div:first-child{max-width:630px}.role-status{display:flex;flex-wrap:wrap;gap:12px 24px;padding:14px 0;margin:12px 0;color:var(--text-secondary);font-size:12px}.role-status strong{color:var(--warning)}.role-card{padding:24px;border:1px solid var(--border-default);border-radius:14px;background:var(--bg-surface);margin:0 0 20px;min-width:0}.role-card h3,.role-list h3{font-size:16px;margin:0 0 14px}.role-card h4{font-size:14px;margin:20px 0 12px}.role-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.role-handoff label{display:flex;flex-direction:column;gap:8px;font-size:13px;margin:14px 0}.role-handoff .check{flex-direction:row;align-items:center}.role-handoff input,.role-handoff select,.role-handoff textarea{background:var(--bg-surface-elevated);color:var(--text-primary);border:1px solid var(--border-default);padding:10px 12px;border-radius:8px;width:100%;font:inherit}.role-handoff .check input{width:auto}.role-handoff textarea{resize:vertical;min-height:70px}.role-settings button{padding:10px 14px;border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);background:var(--bg-surface);font-size:13px;cursor:pointer}.role-settings button.primary{background:var(--brand-light);border-color:var(--brand-light);color:#111827;font-weight:700}.role-settings button:disabled{opacity:.45;cursor:not-allowed}.role-settings :focus-visible{outline:2px solid var(--brand-light);outline-offset:3px}.role-settings fieldset{border:0;padding:0;min-width:0}.role-alert{color:var(--text-primary);border:1px solid var(--warning);padding:12px;border-radius:8px;font-size:13px;line-height:1.7;overflow-wrap:anywhere}.role-alert button{margin:4px}.role-notice{color:var(--success);font-size:13px}.role-video{max-width:100%;height:220px;background:#111;margin-top:12px}.role-settings summary{cursor:pointer;padding:10px 0}.role-workspaces{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}.role-workspaces button[aria-pressed=true]{border-color:var(--brand-light);color:var(--brand-light)}.role-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start}.role-list{display:grid;gap:10px;padding-top:4px;min-width:0}.role-list h3 small{color:var(--text-secondary);margin-left:8px}.role-list .role-choice{display:grid;text-align:left;gap:7px;padding:16px;font-size:12px;overflow-wrap:anywhere}.role-list .role-choice[aria-pressed=true]{border-color:var(--brand-light);background:var(--bg-surface-elevated)}.role-choice>span{color:var(--text-secondary)}.role-choice .role-choice-title{color:var(--text-primary);font-size:14px;font-weight:600;display:flex;gap:8px;flex-wrap:wrap;align-items:center}.role-choice small,.role-editor-title>span{font-size:11px;color:var(--brand-light);font-weight:500}.role-editor-title{display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap;padding-bottom:16px}.role-editor-title h3{font-size:20px;margin:0}.role-editor-title p{margin:8px 0 0}.role-handoff{max-width:1150px}.role-handoff a{color:var(--brand-light)}@media(max-width:1100px){.role-layout{grid-template-columns:1fr}.role-list{grid-template-columns:repeat(2,minmax(0,1fr))}.role-list h3,.role-list p{grid-column:1/-1}}@media(max-width:700px){.role-grid,.role-list{grid-template-columns:1fr}.role-card{padding:16px}.role-top h2{font-size:20px}}
 </style>

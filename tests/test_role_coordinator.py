@@ -112,9 +112,15 @@ def async_test(function):
 
 
 @pytest.mark.parametrize('apply_waiting', [False, True])
+@pytest.mark.parametrize('question,town', [
+    ('明天臺北市中正區會下雨嗎', '中正區'),
+    ('今天台北天氣如何？', ''),
+])
 @async_test
-async def test_handoff_waits_for_completed_audio_and_transition_video_before_one_delivery(field, monkeypatch, apply_waiting):
+async def test_handoff_waits_for_completed_audio_and_transition_video_before_one_delivery(field, monkeypatch, apply_waiting, question, town):
     roles = field
+    router = roles.router
+    roles.router = lambda *args: {**router(*args), 'town': town}
     voice, events = connect(roles)
     weather = {'status': 'available', 'source': 'CWA', 'series': {}}
     async def query(_):
@@ -123,9 +129,9 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
     llm = Mock(return_value='專門角色依資料回答')
     monkeypatch.setattr('src.server.voice_session.llm_response', llm)
     try:
-        accepted = await voice.start_text_turn('明天臺北市中正區會下雨嗎')
+        accepted = await voice.start_text_turn(question)
         await voice._turn_task
-        assert roles.phase == 'announcement'
+        assert roles.phase == 'announcement', voice.avatar.messages
         assert roles.current_id == 'main'
         llm.assert_not_called()
         roles._apply_waiting = apply_waiting
@@ -144,7 +150,7 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
         await wait_until(lambda: voice._turn_task is None)
         assert roles.current_id == 'weather'
         llm.assert_called_once()
-        assert llm.call_args.args[0] == '明天臺北市中正區會下雨嗎'
+        assert llm.call_args.args[0] == question
         assert '本輪氣象工具資料' in llm.call_args.kwargs['rag_context']
         assert voice.config.llm.assistant_profile.assistant_name == '天氣助手'
         assert len([e for e in events if e['type'] == 'role_handoff']) == 1
@@ -228,7 +234,7 @@ async def test_mode_switch_keeps_memories_and_rejects_other_input(field):
 
 
 @async_test
-async def test_disabling_roles_uses_same_single_role_config_for_existing_and_new_peers(field):
+async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers(field, monkeypatch):
     roles = field
     voice, _ = connect(roles)
     try:
@@ -236,10 +242,22 @@ async def test_disabling_roles_uses_same_single_role_config_for_existing_and_new
         disabled = dict(roles.library, enabled=False)
         # The saved main role may refer to material that was never preloaded.
         disabled['profiles'][0]['avatar_id'] = 'new_saved_material'
+        disabled['profiles'][0]['assistant_profile']['assistant_name'] = '單角色接待員'
+        disabled['profiles'][0]['rag'] = {'enabled': True, 'dataset_ids': ['a'*32],
+            'document_scope': 'selected', 'document_ids': ['c'*32]}
+        monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+        roles.loader = Mock(return_value=object())
+        monkeypatch.setattr('src.llm.llamacpp.ensure_server', lambda *_args, **_kwargs: 'http://localhost:8080/v1')
         await roles.apply(disabled)
         assert not roles.enabled
         assert voice.config.model.avatar_id == roles.config_for_session().model.avatar_id
-        assert not getattr(voice.config, 'profile_id', '')
+        assert voice.config.profile_id == 'main'
+        assert voice.config.llm.assistant_profile.assistant_name == '單角色接待員'
+        assert voice.config.profile_rag['document_ids'] == ['c'*32]
+        assert roles.config_for_session().profile_rag == voice.config.profile_rag
+        assert roles.data_for_session() is roles.assets['new_saved_material']
+        assert roles.snapshot()['profiles_applied']
+        assert roles.snapshot()['active_avatar_id'] == 'new_saved_material'
         assert voice.avatar._role_presentation is None
     finally:
         await voice.close()
@@ -267,3 +285,27 @@ async def test_stage_reconnect_waits_for_existing_console_work_then_restores_vis
     finally:
         await console.close()
         await stage.close()
+
+
+def test_single_role_apply_blocks_new_input_until_settings_are_bound(field):
+    field.library['enabled'] = False
+    voice = SimpleNamespace(_presenter='console')
+    assert field.input_allowed(voice)
+    field._apply_waiting = True
+    assert not field.input_allowed(voice)
+
+
+@pytest.mark.parametrize('text', ['今天台北天氣如何？', '今天臺北市天氣如何？'])
+def test_county_weather_question_handoffs_without_inventing_a_district(field, text):
+    result = dict(route='specialist', county='臺北市', town='', kind='forecast',
+                  start_date=datetime.now().date().isoformat(), end_date=datetime.now().date().isoformat())
+    response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
+    class Client:
+        def __init__(self, **_):
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
+        def __enter__(self): return self
+        def __exit__(self, *_): pass
+    route = route_question(field.state.config, field.library, 'main', text, [], {}, client_factory=Client)
+    assert route['route'] == 'specialist', route
+    assert route['county'] == '臺北市'
+    assert route.get('town', '') == ''

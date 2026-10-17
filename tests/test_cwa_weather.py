@@ -172,3 +172,55 @@ def test_total_weather_deadline_includes_waiting_for_the_cache_lock():
         finally:
             weather._lock.release()
     asyncio.run(scenario())
+
+
+def county_forecast():
+    data = forecast()
+    group = data['records']['Locations'][0]
+    group['LocationsName'] = '台灣'
+    group['Location'][0]['LocationName'] = '臺北市'
+    return data
+
+
+def test_county_forecast_preserves_city_scope_and_uses_official_county_products():
+    async def scenario():
+        calls = []
+        async def transport(dataset, params):
+            calls.append((dataset, params))
+            return county_forecast()
+        weather = CwaWeather(transport=transport, now=lambda: NOW)
+        city = WeatherQuery('臺北市', '', 'forecast', '2026-10-16', '2026-10-16')
+        result = await weather.query(city)
+        assert result['status'] == 'available', result
+        assert result['county'] == '臺北市' and result['town'] == ''
+        assert calls == [('F-D0047-089', {'LocationName': '臺北市'})]
+        assert result['series']['temperature_c'][0]['value'] == 26
+        assert (await weather.query(city))['cached'] is True
+        await weather.query(WeatherQuery('臺北市', '', 'forecast', '2026-10-16', '2026-10-22'))
+        assert calls[-1] == ('F-D0047-091', {'LocationName': '臺北市'})
+        # The whole city's forecast must not be cached or relabeled as a district.
+        assert (await weather.query(query()))['status'] == 'not_found'
+        assert calls[-1] == ('F-D0047-061', {'LocationName': '中正區'})
+    asyncio.run(scenario())
+
+
+def test_county_current_weather_identifies_the_actual_observation_station():
+    async def scenario():
+        async def transport(dataset, params):
+            assert dataset == 'O-A0003-001'
+            data = observation()
+            # A newer mountain station must not silently replace the city's
+            # own named station while that station's data is still fresh.
+            mountain = observation(temperature='19', observed='2026-10-16T11:59:00+08:00')['records']['Station'][0]
+            mountain['StationName'] = '陽明山'
+            mountain['GeoInfo']['TownName'] = '北投區'
+            data['records']['Station'].append(mountain)
+            return data
+        weather = CwaWeather(transport=transport, now=lambda: NOW)
+        result = await weather.query(WeatherQuery('臺北市', '', 'current', '2026-10-16', '2026-10-16'))
+        assert result['status'] == 'available', result
+        assert result['town'] == ''
+        assert result['station'] == '臺北'
+        assert result['station_town'] == '中正區'
+        assert result['temperature_c'] == 27.5
+    asyncio.run(scenario())

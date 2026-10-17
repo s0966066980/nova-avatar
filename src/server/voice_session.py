@@ -590,7 +590,9 @@ class VoiceTurnSession:
             self._emit("state", state="retrieving", turn_id=turn_id)
             try:
                 rag_result = await RagFlowClient().retrieve(
-                    text, rag_selection["dataset_ids"]
+                    text, rag_selection["dataset_ids"],
+                    **({"document_ids": rag_selection["document_ids"]}
+                       if rag_selection.get("document_scope") == "selected" else {}),
                 )
             except Exception as exc:
                 rag_result = {"status": "unavailable", "sources": []}

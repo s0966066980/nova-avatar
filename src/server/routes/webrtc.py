@@ -96,7 +96,9 @@ async def offer(request):
             raise
         state.add_session(sessionid, avatar_stream, role=client_role)
         voice_session = VoiceTurnSession(
-            sessionid, avatar_stream.config if roles and roles.enabled else state.config,
+            sessionid, avatar_stream.config if roles and (
+                roles.enabled or getattr(roles, "profiles_applied", False)
+            ) else state.config,
             avatar_stream, presenter=client_role,
             test_result_sink=state.voice_test_history.complete,
         )

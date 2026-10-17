@@ -19,6 +19,8 @@ route 只能是 answer（由主角色一般回答）、specialist（適合專門
 必要的問題背景只保留已確認的地點、日期及簡短事實，不能複製整段歷史或其他角色身分。
 當角色有 weather 工具且問題需要天氣：kind=current 或 forecast；county 必須是臺灣完整縣市名，
 town 是訪客明示、前文已確認或場域預設的鄉鎮市區，禁止猜測鄉鎮。
+只問明確縣市也有足夠地點：town 留空表示查詢全縣市，不必為了缺少鄉鎮而 clarify。
+詢問今天、明天等整天的天氣概況使用 forecast；明確詢問此刻觀測才使用 current。
 沒有提供日期時使用今天，明天等相對日期按下列今天日期解析。沒有足夠地點時讓欄位為空。
 當訪客更改地點，不能沿用另一個縣市的舊鄉鎮。不明確的地名應澄清。
 固定格式：
@@ -65,6 +67,7 @@ def route_question(config, library, current_id, text, history, confirmed, *, cli
             raise ProfileError("角色判斷欄位不正確")
         result[key] = value.strip()
     result["county"] = result["county"].replace("台", "臺")
+    result["town"] = result["town"].replace("台", "臺")
     if result["county"] and result["county"] not in COUNTIES:
         result.update(route="clarify", clarification="請問您想查詢臺灣哪個縣市及鄉鎮？")
     spoken = text.replace("台", "臺")

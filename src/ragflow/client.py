@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit
+from src.ragflow.selection import ragflow_id
 
 import aiohttp
 
@@ -134,12 +135,45 @@ class RagFlowClient:
                 break
         return datasets
 
-    async def retrieve(self, question: str, dataset_ids: list[str]) -> dict[str, Any]:
+    async def list_documents(self, dataset_id: str, *, page: int = 1) -> dict[str, Any]:
+        ragflow_id(dataset_id)
+        payload = await self._request(
+            "GET", f"/api/v1/datasets/{dataset_id}/documents", timeout=5.0,
+            params={"page": page, "page_size": 100},
+        )
+        data = payload.get("data")
+        if not isinstance(data, dict) or not isinstance(data.get("docs"), list):
+            raise RagFlowError("RAGFlow 文件清單格式不正確")
+        documents = []
+        for item in data["docs"]:
+            if not isinstance(item, dict):
+                continue
+            try:
+                document_id = ragflow_id(item.get("id"))
+            except ValueError:
+                continue
+            try:
+                chunk_count = max(0, int(item.get("chunk_count") or 0))
+            except (ValueError, TypeError):
+                chunk_count = 0
+            documents.append({
+                "id": document_id, "dataset_id": dataset_id,
+                "name": _bounded_text(item.get("name"), 240) or "未命名文件",
+                "run": _bounded_text(item.get("run"), 40),
+                "chunk_count": chunk_count,
+            })
+        total = data.get("total", data.get("total_datasets"))
+        has_more = page * 100 < total if type(total) is int else len(data["docs"]) == 100
+        return {"documents": documents, "page": page, "has_more": has_more}
+
+    async def retrieve(self, question: str, dataset_ids: list[str], *,
+                       document_ids: list[str] | None = None) -> dict[str, Any]:
         payload = await self._request(
             "POST", "/api/v1/retrieval", timeout=RETRIEVAL_TIMEOUT_SECONDS,
             body={
                 "question": question[:2000],
                 "dataset_ids": dataset_ids,
+                **({"document_ids": document_ids} if document_ids else {}),
                 "page": 1,
                 "page_size": MAX_CHUNKS,
                 "similarity_threshold": 0.2,
@@ -153,6 +187,10 @@ class RagFlowClient:
         for item in data["chunks"][:MAX_CHUNKS]:
             if not isinstance(item, dict):
                 continue
+            dataset_id = item.get("dataset_id") or item.get("kb_id")
+            if document_ids and (item.get("document_id") not in document_ids
+                                 or dataset_id not in dataset_ids):
+                continue
             content = _bounded_text(item.get("content"), MAX_CHUNK_CHARS)
             if not content:
                 continue
@@ -160,7 +198,7 @@ class RagFlowClient:
                 "content": content,
                 "document_name": _bounded_text(item.get("document_keyword"), 160),
                 "document_id": _bounded_text(item.get("document_id"), 64),
-                "dataset_id": _bounded_text(item.get("dataset_id"), 64),
+                "dataset_id": _bounded_text(dataset_id, 64),
             })
         return {"status": "matched" if sources else "empty", "sources": sources}
 

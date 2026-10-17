@@ -10,7 +10,7 @@
           <i class="bi bi-sliders2" style="color: var(--brand-light);"></i>
           <span>{{ t('settings.systemSettings') }}</span>
         </div>
-        <div class="rail-desc">滿板雙欄視覺架構 · 所有選項一目了然</div>
+        <div class="rail-desc">管理數位人的回答、知識與舞台體驗</div>
       </div>
       <nav class="rail-nav-list" role="tablist" :aria-label="t('settings.tabs.label')">
         <button
@@ -50,278 +50,9 @@
           <button type="button" class="btn-retry" @click="loadRuntimePanel">重新載入</button>
         </div>
 
-        <!-- ── 分類 1：AI 模型與對話規則 (滿板雙欄 Bento 佈局) ── -->
-        <div
-          v-show="activeSettingsTab === 'ai'"
-          class="settings-category-panel"
-          id="catPanel-ai"
-          role="tabpanel"
-          aria-labelledby="railTab-ai"
-        >
-          <!-- 左欄：推論後端與即時參數 -->
-          <section class="setting-card">
-            <div class="card-title-row">
-              <div>
-                <div class="card-title-text"><i class="bi bi-cpu-fill"></i> {{ t('settings.llm.title') }}</div>
-                <div class="card-subtitle-desc">{{ t('settings.llm.providerDesc') }}</div>
-              </div>
-              <button
-                type="button"
-                class="btn-apply-primary"
-                style="padding: 6px 14px; font-size: 12px;"
-                :disabled="applyingLlm"
-                @click="handleApplyLlm"
-              >
-                <i class="bi bi-check2" :class="{ spin: applyingLlm }"></i> 套用模型
-              </button>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="semantic-wait" class="field-main-label">語意等待上限</label>
-                <span class="field-sub-hint">模型尚未形成完整句子時，最多等待多久才尋找下一個可朗讀子句。</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input id="semantic-wait" type="range" class="std-range" min="0.5" max="30" step="0.5" v-model.number="selectedSemanticWaitSeconds">
-                  <span class="std-val-pill">{{ selectedSemanticWaitSeconds }} 秒</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid-options-row" role="listbox" :aria-label="t('settings.llm.provider')">
-              <div
-                class="option-card-btn"
-                :class="{ selected: selectedProvider === 'ollama' }"
-                role="option"
-                :aria-selected="selectedProvider === 'ollama'"
-                @click="selectProvider('ollama')"
-              >
-                <div class="opt-header-line">
-                  <span class="opt-title">Ollama</span>
-                  <span class="opt-badge" v-if="runtime.llm.provider === 'ollama'">使用中</span>
-                </div>
-                <span class="opt-detail">連接本機 Ollama 服務 ({{ activeLlmBackend.base_url || 'http://127.0.0.1:11434' }})</span>
-              </div>
-              <div
-                class="option-card-btn"
-                :class="{ selected: selectedProvider === 'llamacpp' }"
-                role="option"
-                :aria-selected="selectedProvider === 'llamacpp'"
-                @click="selectProvider('llamacpp')"
-              >
-                <div class="opt-header-line">
-                  <span class="opt-title">llama.cpp</span>
-                  <span class="opt-badge" style="background: rgba(100,116,139,0.2); color: var(--text-tertiary);">支援 GGUF</span>
-                </div>
-                <span class="opt-detail">使用 llama-server 獨立推論</span>
-              </div>
-            </div>
-
-            <!-- 回覆模式 (串流 vs 舊模式) -->
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="llm-reply-mode" class="field-main-label">{{ t('settings.llm.replyMode') }}</label>
-                <span id="llm-reply-mode-hint" class="field-sub-hint">邊生成邊合成音視訊，降低首字延遲 (約 550ms)</span>
-              </div>
-              <div class="field-control-area">
-                <select
-                  id="llm-reply-mode"
-                  class="std-select"
-                  v-model="selectedReplyMode"
-                  :disabled="applyingLlm || loadingSettings"
-                  aria-describedby="llm-reply-mode-hint"
-                >
-                  <option value="legacy">{{ t('settings.llm.legacyMode') }}</option>
-                  <option value="streaming">{{ t('settings.llm.streamingMode') }}</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- 模型選擇 -->
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="llm-model" class="field-main-label">{{ t('settings.llm.model') }}</label>
-                <span class="field-sub-hint">已偵測到的本機權重規格清單</span>
-              </div>
-              <div class="field-control-area">
-                <select
-                  id="llm-model"
-                  class="std-select"
-                  v-if="currentProviderModels.length"
-                  v-model="selectedLlm"
-                  :disabled="applyingLlm || loadingModels"
-                >
-                  <option
-                    v-for="model in currentProviderModels"
-                    :key="model.name"
-                    :value="model.name"
-                  >
-                    {{ formatOllamaOption(model) }}
-                  </option>
-                </select>
-                <input
-                  v-else
-                  id="llm-model"
-                  type="text"
-                  class="chat-text-entry"
-                  v-model="selectedLlm"
-                  :placeholder="selectedProvider === 'llamacpp' ? t('settings.llm.ggufPlaceholder') : t('settings.llm.manualPlaceholder')"
-                  :disabled="applyingLlm"
-                  autocomplete="off"
-                >
-              </div>
-            </div>
-
-            <!-- 單輪回答字數上限 -->
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="llm-response-max-chars" class="field-main-label">{{ t('settings.llm.responseLength') }}</label>
-                <span id="llm-response-max-chars-hint" class="field-sub-hint">{{ t('settings.llm.responseLengthDesc') }} (20–2000 字)</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    id="llm-response-max-chars"
-                    type="number"
-                    class="std-range"
-                    min="20"
-                    max="2000"
-                    step="10"
-                    v-model.number="selectedResponseMaxChars"
-                    :disabled="applyingLlm || loadingSettings"
-                    aria-describedby="llm-response-max-chars-hint llm-response-max-chars-meta"
-                  >
-                  <span class="std-val-pill" id="llm-response-max-chars-meta">{{ selectedResponseMaxChars }} 字</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 看板項目數量上限 -->
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="llm-board-max-items" class="field-main-label">{{ t('settings.llm.boardMaxItems') }}</label>
-                <span id="llm-board-max-items-hint" class="field-sub-hint">系統固定規則：條列式回答的最大項數 (1–12 項)，JSON 不會送入語音</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    id="llm-board-max-items"
-                    type="number"
-                    class="std-range"
-                    min="1"
-                    max="12"
-                    step="1"
-                    v-model.number="selectedBoardMaxItems"
-                    aria-describedby="llm-board-max-items-hint"
-                  >
-                  <span class="std-val-pill">{{ selectedBoardMaxItems }} 項</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- 右欄：提示詞與規則全域編輯器 -->
-          <section class="setting-card">
-            <div class="card-title-row">
-              <div>
-                <div class="card-title-text"><i class="bi bi-list-check"></i> 系統角色 Prompt 與回覆規則</div>
-                <div class="card-subtitle-desc">定義 AI 數位人身分語氣，以及何時觸發看板結構化條列。</div>
-              </div>
-              <div style="display: flex; gap: 8px;">
-                <button
-                  type="button"
-                  class="btn-restore-gray"
-                  style="padding: 4px 10px; font-size: 11.5px;"
-                  @click="restoreDefaultRules"
-                >
-                  還原預設
-                </button>
-                <button
-                  type="button"
-                  class="btn-apply-primary"
-                  style="padding: 4px 12px; font-size: 11.5px;"
-                  :disabled="rulesSaving"
-                  @click="handleApplyPromptAndRules"
-                >
-                  儲存 Prompt 與規則
-                </button>
-              </div>
-            </div>
-
-            <!-- 助手 Profile：角色設定由此處集中管理。 -->
-            <div class="setting-form-row">
-              <div class="field-label-group"><label for="assistant-name" class="field-main-label">助手名稱</label><span id="assistant-name-hint" class="field-sub-hint">明確自稱時使用的名稱。預設為空白，請填入此部署實際使用的角色名稱。</span></div>
-              <div class="field-control-area"><input id="assistant-name" class="std-input" v-model.trim="selectedAssistantName" maxlength="200" placeholder="例如：服務助手" aria-describedby="assistant-name-hint"></div>
-            </div>
-            <div class="setting-form-row">
-              <div class="field-label-group"><label for="assistant-output-locale" class="field-main-label">輸出語系</label><span id="assistant-output-locale-hint" class="field-sub-hint">決定可見回覆的文字正規化目標；預設為繁體中文（臺灣）。</span></div>
-              <div class="field-control-area"><select id="assistant-output-locale" class="std-select" v-model="selectedOutputLocale" aria-describedby="assistant-output-locale-hint"><option value="zh-TW">繁體中文（臺灣）</option><option value="en-US">English (US)</option></select></div>
-            </div>
-            <div class="setting-form-row">
-              <div class="field-label-group"><span class="field-main-label">強制語系正規化</span><span class="field-sub-hint">預設開啟。協定解析後統一轉換 Speech、看板、字幕與 History 的可見文字。</span></div>
-              <div class="field-control-area"><label class="std-switch"><input type="checkbox" v-model="selectedEnforceOutputLocale"><span class="std-slider-track"></span></label></div>
-            </div>
-            <div class="setting-form-row align-start">
-              <div class="field-label-group"><label for="assistant-forbidden-names" class="field-main-label">禁止自稱名稱</label><span id="assistant-forbidden-names-hint" class="field-sub-hint">預設為空白。每行一個舊稱呼；只防護「我是／我叫」等明確自稱，不會改寫專案名稱。</span></div>
-              <div class="field-control-area"><textarea id="assistant-forbidden-names" class="std-textarea" rows="3" v-model="selectedForbiddenSelfNames" placeholder="每行一個舊稱呼" aria-describedby="assistant-forbidden-names-hint"></textarea></div>
-            </div>
-            <div class="setting-form-row align-start">
-              <div class="field-label-group">
-                <label for="llm-system-prompt" class="field-main-label">System Prompt</label>
-                <span id="llm-system-prompt-hint" class="field-sub-hint">每輪送給 LLM 的完整角色、能力範圍、語氣與回答原則。未設定時只會使用中性技術 fallback；請在此填入正式設定。</span>
-              </div>
-              <div class="field-control-area flex-col">
-                <textarea
-                  id="llm-system-prompt"
-                  data-editor-key="prompt"
-                  class="std-textarea prompt-editor"
-                  rows="8"
-                  :style="{ height: `${editorHeights.prompt}px` }"
-                  @pointerup="rememberEditorHeight"
-                  maxlength="8000"
-                  v-model="selectedSystemPrompt"
-                  placeholder="描述助手身份、可協助的範圍、回答風格、語言與不確定時的處理方式。"
-                  aria-describedby="llm-system-prompt-hint llm-system-prompt-count"
-                ></textarea>
-                <div id="llm-system-prompt-count" class="field-meta" style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px; text-align: right;">
-                  {{ selectedSystemPrompt.length }} / 8000
-                </div>
-              </div>
-            </div>
-            <div class="setting-form-row align-start">
-              <div class="field-label-group">
-                <label for="assistant-restriction-prompt" class="field-main-label">限制 Prompt（不得說什麼）</label>
-                <span id="assistant-restriction-prompt-hint" class="field-sub-hint">明確列出禁止的主題、承諾、身份宣稱或敏感資訊。此規則每輪都會送給 LLM；預設為空白。</span>
-              </div>
-              <div class="field-control-area flex-col">
-                <textarea id="assistant-restriction-prompt" class="std-textarea" rows="5" maxlength="8000" v-model="selectedRestrictionPrompt" placeholder="例如：不得宣稱具備未設定的功能；不得提供醫療、法律或投資結論；不知道時必須直接說明。" aria-describedby="assistant-restriction-prompt-hint"></textarea>
-              </div>
-            </div>
-
-            <!-- 三區可編輯規則: activation, speech, board -->
-            <div
-              v-for="rule in ruleFields"
-              :key="rule.key"
-              class="setting-form-row align-start"
-            >
-              <div class="field-label-group">
-                <label :for="`rule-${rule.key}`" class="field-main-label">{{ rule.label }}</label>
-                <span class="field-sub-hint">{{ rule.description }} 可按「還原預設」回復系統提供的通用規則。</span>
-              </div>
-              <div class="field-control-area flex-col">
-                <textarea
-                  :id="`rule-${rule.key}`"
-                  :data-editor-key="rule.key"
-                  class="std-textarea"
-                  rows="3"
-                  :style="{ height: `${editorHeights[rule.key]}px` }"
-                  @pointerup="rememberEditorHeight"
-                  v-model="rulesDraft[rule.key]"
-                ></textarea>
-              </div>
-            </div>
-          </section>
+        <div v-show="activeSettingsTab === 'roles'" class="settings-category-panel unified-role-panel"
+          id="catPanel-roles" role="tabpanel" aria-labelledby="railTab-roles">
+          <AvatarProfiles ref="profilesRef" :initial-section="roleInitialSection" />
         </div>
 
         <!-- ── 分類 2：數位人與畫質 (滿板寬敞角色展示) ── -->
@@ -1206,24 +937,6 @@
           </section>
         </div>
 
-        <div
-          v-show="activeSettingsTab === 'rag'"
-          class="settings-category-panel"
-          id="catPanel-rag"
-          role="tabpanel"
-          aria-labelledby="railTab-rag"
-        >
-          <RagFlowSettings
-            :avatar-id="runtime.avatar.avatar_id"
-            :active="activeSettingsTab === 'rag'"
-          />
-        </div>
-
-        <div v-show="activeSettingsTab === 'roles'" class="settings-category-panel"
-          id="catPanel-roles" role="tabpanel" aria-labelledby="railTab-roles">
-          <AvatarProfiles />
-        </div>
-
         <!-- ── 分類 5：系統偏好與自訂 ── -->
         <div
           v-show="activeSettingsTab === 'experience'"
@@ -1328,7 +1041,7 @@
       </div>
 
       <!-- 滿板固定底部動作條 -->
-      <footer class="settings-fixed-footer">
+      <footer v-show="activeSettingsTab !== 'roles'" class="settings-fixed-footer">
         <button type="button" class="btn-restore-gray" @click="confirmKind = 'reset'">
           <i class="bi bi-arrow-counterclockwise"></i> 還原所有預設
         </button>
@@ -1376,7 +1089,6 @@ import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
-import RagFlowSettings from './RagFlowSettings.vue'
 import AvatarProfiles from './AvatarProfiles.vue'
 import {
   boardReopenPresentation,
@@ -1400,7 +1112,7 @@ const props = defineProps({
   },
   initialTab: {
     type: String,
-    default: 'ai'
+    default: 'roles'
   }
 })
 
@@ -1415,52 +1127,15 @@ const emit = defineEmits([
 
 const showSettings = ref(true)
 const isFullBleed = ref(true)
-const activeSettingsTab = ref(props.initialTab || 'ai')
+const activeSettingsTab = ref(['ai', 'rag', 'roles'].includes(props.initialTab) ? 'roles' : props.initialTab || 'roles')
+const profilesRef = ref(null)
+const roleInitialSection = ref(props.initialTab === 'rag' ? 'rag' : props.initialTab === 'ai' ? 'model' : 'identity')
 const settingsContentRef = ref(null)
 const confirmKind = ref('')
 const stagePreviewRef = ref(null)
 const stagePreviewSize = ref({ width: 405, height: 720 })
 let stagePreviewObserver = null
 const stageDirectEditTarget = ref('')
-const EDITOR_HEIGHT_STORAGE_KEY = STORAGE_KEYS.editorHeights
-const DEFAULT_EDITOR_HEIGHTS = Object.freeze({
-  prompt: 176,
-  activation: 96,
-  speech: 96,
-  board: 96
-})
-
-const loadEditorHeights = () => {
-  try {
-    const stored = JSON.parse(readMigratedStorage(
-      localStorage,
-      EDITOR_HEIGHT_STORAGE_KEY,
-      LEGACY_STORAGE_KEYS.editorHeights
-    ) || '{}')
-    return Object.fromEntries(Object.entries(DEFAULT_EDITOR_HEIGHTS).map(([key, fallback]) => {
-      const value = Number(stored[key])
-      return [key, Number.isFinite(value) && value >= 72 && value <= 1600 ? Math.round(value) : fallback]
-    }))
-  } catch {
-    return { ...DEFAULT_EDITOR_HEIGHTS }
-  }
-}
-
-const editorHeights = ref(loadEditorHeights())
-
-const persistEditorHeights = () => {
-  localStorage.setItem(EDITOR_HEIGHT_STORAGE_KEY, JSON.stringify(editorHeights.value))
-}
-
-const rememberEditorHeight = (event) => {
-  const editor = event.currentTarget
-  const key = editor.dataset.editorKey
-  const height = Math.round(parseFloat(getComputedStyle(editor).height))
-  if (!key || !Number.isFinite(height) || height < 72) return
-  editorHeights.value = { ...editorHeights.value, [key]: height }
-  persistEditorHeights()
-}
-
 const stageBoardStyles = [
   { id: 'glass', icon: '🪟', label: '毛玻璃視窗', desc: '半透霧面高雅質感' },
   { id: 'slate', icon: '🎬', label: '場記板', desc: '實色底與高對比色條' },
@@ -1484,21 +1159,9 @@ const boardPresets = [
   { id: 'br', labelKey: 'settings.stage.posBr' }
 ]
 
-const ruleFields = [
-  { key: 'activation', label: '看板啟用規則', description: '判斷本輪使用簡答或看板；理解語意，不只比對關鍵字。' },
-  { key: 'speech', label: '口語回答規則', description: '控制數字人口語摘要與看板提示方式。' },
-  { key: 'board', label: '看板內容規則', description: '控制條列項目、細節與追問指涉方式。' }
-]
-
 const {
   runtime,
-  ollama,
-  llamacpp,
-  selectedProvider,
-  currentProviderModels,
   loadingSettings,
-  loadingModels,
-  applyingLlm,
   applyingAvatar,
   applyingStage,
   backgrounds,
@@ -1518,31 +1181,9 @@ const {
   applyingQuality,
   qualityError,
   settingsError,
-  modelsError,
   stageError,
   selectedEngine,
   selectedAvatarId,
-  selectedLlm,
-  selectedSystemPrompt,
-  selectedRestrictionPrompt,
-  selectedAssistantName,
-  selectedOutputLocale,
-  selectedEnforceOutputLocale,
-  selectedForbiddenSelfNames,
-  selectedResponseMaxChars,
-  selectedBoardMaxItems,
-  selectedReplyMode,
-  selectedSemanticWaitSeconds,
-  rulesDraft,
-  rulesApplied,
-  rulesLimits,
-  rulesLoading,
-  rulesSaving,
-  rulesError,
-  rulesNotice,
-  rulesDirty,
-  restoreDefaultRules,
-  applyReplyRules,
   selectedStageCaptionMaxChars,
   selectedStageIdleResetSeconds,
   stageIdleResetError,
@@ -1568,18 +1209,13 @@ const {
   markBoardPositionCustom,
   selectMicPreset,
   markMicPositionCustom,
-  responseLengthError,
-  boardItemsError,
   stageCaptionLengthError,
   filteredCharacters,
-  llmDirty,
   stageDirty,
   avatarDirty,
   loadRuntimeSettings,
   loadOllamaModels,
-  applyLlmModel,
   applyStageSettings,
-  selectProvider,
   applyAvatar,
   importCharacter,
   importing,
@@ -1655,22 +1291,16 @@ const cosyvoiceLanguageOptions = computed(() => {
     : COSYVOICE_LANGUAGE_FALLBACK
 })
 
-const activeLlmBackend = computed(() => {
-  return selectedProvider.value === 'llamacpp' ? llamacpp : ollama
-})
-
 const currentBoardStyleLabel = computed(() => {
   const s = stageBoardStyles.find(item => item.id === selectedBoardStyle.value)
   return s ? s.label : '毛玻璃'
 })
 
 const settingsTabs = computed(() => [
-  { id: 'roles', icon: 'bi bi-people-fill', label: '角色設定與交接' },
-  { id: 'ai', icon: 'bi bi-cpu-fill', label: 'AI 模型與規則', badge: selectedProvider.value === 'ollama' ? 'Ollama' : 'llama.cpp' },
+  { id: 'roles', icon: 'bi bi-people-fill', label: '數位人、AI 與知識設定' },
   { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
   { id: 'voice', icon: 'bi bi-soundwave', label: '語音活動與辨識', badge: 'Silero' },
-  { id: 'rag', icon: 'bi bi-journal-text', label: '知識庫檢索', badge: 'RAGFlow' },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
 ])
 
@@ -1821,6 +1451,10 @@ const settings = ref({ ...defaultSettings })
 const selectedThemeValue = ref(normalizeThemeValue(props.currentTheme))
 
 const selectSettingsTab = (tabId) => {
+  if (tabId === 'ai' || tabId === 'rag') {
+    roleInitialSection.value = tabId === 'rag' ? 'rag' : 'model'
+    tabId = 'roles'
+  }
   activeSettingsTab.value = tabId
   if (settingsContentRef.value) settingsContentRef.value.scrollTop = 0
 }
@@ -1837,39 +1471,6 @@ const handleTabKeydown = (event, currentIndex) => {
   }
   event.preventDefault()
   selectSettingsTab(settingsTabs.value[nextIndex].id)
-}
-
-const formatOllamaOption = (model) => {
-  const extras = [model.parameter_size, model.size_label].filter(Boolean)
-  return extras.length ? `${model.name} · ${extras.join(' · ')}` : model.name
-}
-
-const handleApplyLlm = async () => {
-  try {
-    await applyLlmModel()
-    emit('notification', t('notifications.llmSettingsUpdated'), 'success')
-  } catch (error) {
-    emit('notification', error.message, 'error')
-  }
-}
-
-const handleApplyReplyRules = async () => {
-  try {
-    await applyReplyRules()
-    emit('notification', '回覆規則已儲存，從下一輪生效。', 'success')
-  } catch (error) {
-    emit('notification', error.message, 'error')
-  }
-}
-
-const handleApplyPromptAndRules = async () => {
-  try {
-    await applyLlmModel()
-    await applyReplyRules()
-    emit('notification', 'Prompt 與回覆規則已儲存並套用。', 'success')
-  } catch (error) {
-    emit('notification', error.message, 'error')
-  }
 }
 
 const handleApplyMouthQuality = async () => {
@@ -1978,15 +1579,10 @@ const syncTheme = (theme) => {
   settings.value.theme = selectedThemeValue.value
 }
 
-const promptDirty = computed(() => (
-  selectedSystemPrompt.value.trim() !== (runtime.llm.system_prompt || '').trim()
-))
-
 const hasUnsavedChanges = computed(() => {
   return Boolean(
-    llmDirty.value ||
-    promptDirty.value ||
-    rulesDirty.value ||
+    profilesRef.value?.dirty ||
+    profilesRef.value?.pendingApply ||
     stageDirty.value ||
     avatarDirty.value ||
     qualityDirty.value ||
@@ -1999,8 +1595,7 @@ const hasUnsavedChanges = computed(() => {
 const saveAndApplyFullSettings = async () => {
   try {
     const promises = []
-    if (llmDirty.value || promptDirty.value) promises.push(applyLlmModel())
-    if (rulesDirty.value) promises.push(applyReplyRules())
+    if (profilesRef.value?.dirty || profilesRef.value?.pendingApply) await profilesRef.value.saveAndApply()
     if (stageDirty.value) promises.push(applyStageSettings())
     if (qualityDirty.value) promises.push(applyMouthQuality())
     if (avatarDirty.value) promises.push(applyAvatarChange())
@@ -2248,7 +1843,7 @@ watch(() => props.currentTheme, (t) => {
   if (t) selectedThemeValue.value = normalizeThemeValue(t)
 })
 
-const openSettings = (tab = 'ai') => {
+const openSettings = (tab = 'roles') => {
   if (typeof tab === 'string') selectSettingsTab(tab)
   showSettings.value = true
 }
@@ -2274,6 +1869,8 @@ defineExpose({
 </script>
 
 <style scoped>
+.unified-role-panel { display: block; }
+
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;

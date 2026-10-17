@@ -18,11 +18,18 @@ import yaml
 from src.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig
 from src.llm.rules import rules_from_config, validate_rules
 from src.ragflow.settings import avatar_settings
+from src.ragflow.selection import validate_selection
 
 _ID = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
-_DATASET = re.compile(r"[a-fA-F0-9]{32}")
 LLM_FIELDS = ("provider", "model", "base_url", "max_tokens", "response_max_chars")
+LLM_PLAYBACK_DEFAULTS = {"board_max_items": 8, "reply_mode": "legacy", "semantic_wait_seconds": 0.5}
 EFFECTS = ("fade", "slide_left", "slide_right", "zoom")
+
+
+def _playback_settings(config):
+    return dict(board_max_items=config.llm.board.max_items,
+                reply_mode="streaming" if config.reply_streaming.enabled else "legacy",
+                semantic_wait_seconds=config.reply_streaming.semantic_wait_seconds)
 
 
 class ProfileError(ValueError):
@@ -65,7 +72,14 @@ def profile_config(base, profile: dict):
     result.model.type = profile["engine"]
     result.model.avatar_id = profile["avatar_id"]
     for key, value in profile["llm"].items():
-        setattr(result.llm, key, value)
+        if key == "board_max_items":
+            result.llm.board.max_items = value
+        elif key == "reply_mode":
+            result.reply_streaming.enabled = value == "streaming"
+        elif key == "semantic_wait_seconds":
+            result.reply_streaming.semantic_wait_seconds = value
+        else:
+            setattr(result.llm, key, value)
     result.llm.assistant_profile = AssistantProfileConfig(**profile["assistant_profile"])
     result.llm.reply_rules = ReplyRulesConfig(**profile["reply_rules"])
     result.tts = TTSConfig(**profile["tts"])
@@ -85,7 +99,7 @@ def _profile(value: dict) -> dict:
     identity = {**asdict(AssistantProfileConfig()), **identity}
     for key in ("assistant_name", "system_prompt", "restriction_prompt", "output_locale"):
         identity[key] = _text(identity[key], key, 12000)
-    if identity["output_locale"] not in {"zh-TW", "zh-CN", "en", "auto"}:
+    if identity["output_locale"] not in {"zh-TW", "zh-CN", "en", "en-US", "auto"}:
         raise ProfileError("輸出語系不正確")
     if not isinstance(identity["enforce_output_locale"], bool):
         raise ProfileError("語系限制必須是布林值")
@@ -93,8 +107,8 @@ def _profile(value: dict) -> dict:
     if not isinstance(names, list) or len(names) > 30:
         raise ProfileError("禁止自稱名稱格式不正確")
     identity["forbidden_self_names"] = [_text(x, "禁止自稱名稱", 80, empty=False) for x in names]
-    llm = _object(value.get("llm"), LLM_FIELDS, "回答模型")
-    llm = dict(llm)
+    llm = _object(value.get("llm"), (*LLM_FIELDS, *LLM_PLAYBACK_DEFAULTS), "回答模型")
+    llm = {**LLM_PLAYBACK_DEFAULTS, **llm}
     for key in ("provider", "model"):
         llm[key] = _text(llm.get(key), key, 160, empty=False)
     llm["base_url"] = _endpoint(llm.get("base_url", ""))
@@ -103,6 +117,15 @@ def _profile(value: dict) -> dict:
         if isinstance(number, bool) or not isinstance(number, int) or not lower <= number <= upper:
             raise ProfileError(f"{key} 必須介於 {lower}–{upper}")
         llm[key] = number
+    if llm["provider"] not in {"llamacpp", "ollama", "openai"}:
+        raise ProfileError("回答模型服務不正確")
+    if type(llm["board_max_items"]) is not int or not 1 <= llm["board_max_items"] <= 12:
+        raise ProfileError("看板項目上限必須介於 1–12")
+    if not isinstance(llm["reply_mode"], str) or llm["reply_mode"] not in {"legacy", "streaming"}:
+        raise ProfileError("回覆模式不正確")
+    wait = llm["semantic_wait_seconds"]
+    if type(wait) not in {int, float} or not 0.5 <= wait <= 30:
+        raise ProfileError("語意等待上限必須介於 0.5–30 秒")
     tts = _object(value.get("tts"), asdict(TTSConfig()), "聲音")
     tts = {**asdict(TTSConfig()), **tts}
     for item in fields(TTSConfig):
@@ -114,14 +137,10 @@ def _profile(value: dict) -> dict:
             tts[item.name] = _text(current, item.name, 4000)
     if tts["tts_server"]:
         tts["tts_server"] = _endpoint(tts["tts_server"])
-    rag = _object(value.get("rag"), {"enabled", "dataset_ids"}, "知識範圍")
-    enabled, ids = rag.get("enabled"), rag.get("dataset_ids")
-    if not isinstance(enabled, bool) or not isinstance(ids, list) or len(ids) > 8:
-        raise ProfileError("知識範圍格式不正確")
-    if any(not isinstance(x, str) or not _DATASET.fullmatch(x) for x in ids) or len(set(ids)) != len(ids):
-        raise ProfileError("知識庫識別碼不正確")
-    if enabled and not ids:
-        raise ProfileError("啟用檢索前請選擇知識庫")
+    try:
+        rag = validate_selection(value.get("rag"))
+    except ValueError as exc:
+        raise ProfileError(str(exc)) from exc
     raw_rules = value.get("reply_rules")
     _object(raw_rules, {"revision", "activation", "speech", "board"}, "回覆規則")
     try:
@@ -133,7 +152,7 @@ def _profile(value: dict) -> dict:
         raise ProfileError("天氣工具啟用狀態不正確")
     return {"id": pid, "name": name, "engine": engine, "avatar_id": avatar_id,
             "assistant_profile": identity, "llm": llm, "tts": tts,
-            "rag": {"enabled": enabled, "dataset_ids": list(ids)}, "reply_rules": rules,
+            "rag": rag, "reply_rules": rules,
             "tools": dict(tools)}
 
 
@@ -206,10 +225,21 @@ class ProfileStore:
                 raise ProfileError("角色設定 YAML 無法解析") from exc
 
     def initialize(self, config, *, defaults_path: Path | None = None) -> dict:
-        """Copy effective legacy choices once; never overwrite an existing library."""
+        """Migrate missing settings once, preserving every explicit role choice."""
         with self._lock:
             if self.path.exists() or self.path.is_symlink():
-                return self.load()
+                library = self.load()
+                raw = yaml.safe_load(self.path.read_text("utf-8"))
+                changed = False
+                for profile, original in zip(library["profiles"], raw["profiles"]):
+                    for key, value in _playback_settings(config).items():
+                        if key not in original["llm"]:
+                            profile["llm"][key] = value
+                            changed = True
+                if changed:
+                    library["revision"] += 1
+                    self._write(library)
+                return library
             defaults_path = defaults_path or Path(__file__).resolve().parents[2] / "config/avatar_profiles.defaults.yaml"
             defaults = yaml.safe_load(defaults_path.read_text("utf-8"))
             main = dict(id="main", name=config.llm.assistant_profile.assistant_name or config.model.avatar_id,
@@ -218,6 +248,7 @@ class ProfileStore:
                         llm={key: getattr(config.llm, key) for key in LLM_FIELDS},
                         tts=asdict(config.tts), rag=avatar_settings(config.model.avatar_id),
                         reply_rules=rules_from_config(config))
+            main["llm"].update(_playback_settings(config))
             specialist = deepcopy(main)
             specialist.update(id="weather", name=defaults["specialist"]["name"],
                               engine="musetalk", avatar_id=defaults["specialist"]["avatar_id"],

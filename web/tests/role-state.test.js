@@ -15,6 +15,7 @@ test('同時只有指定頁面能輸入，轉場及套用期間關閉兩端輸�
     assert.equal(canRoleInput({ ...role, phase }, 'console'), false)
   }
   assert.equal(canRoleInput({ ...role, applying: true }, 'console'), false)
+  assert.equal(canRoleInput({ enabled: false, applying: true }, 'console'), false)
   assert.equal(canRoleInput({ ...role, phase: 'announcement' }, 'console'), true)
 })
 

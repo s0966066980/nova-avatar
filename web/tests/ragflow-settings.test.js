@@ -9,13 +9,15 @@ const panel = readFileSync(new URL('../src/components/SettingsPanel.vue', import
 const rag = readFileSync(new URL('../src/components/RagFlowSettings.vue', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')
 
-test('RAG 設定是獨立頁籤並按數位人保存選擇', () => {
-  assert.match(panel, /RagFlowSettings/)
-  assert.match(rag, /avatar_id: avatarId, enabled: draft\.enabled, dataset_ids: draft\.datasetIds/)
-  assert.match(rag, /\/api\/ragflow\/settings/)
+test('RAG 與 AI 編輯整合進數位人設定檔，沿用舊頁籤連結', () => {
+  assert.match(panel, /AvatarProfiles/)
+  assert.doesNotMatch(panel, /id: 'ai'|id: 'rag'/)
+  assert.ok(panel.includes("tabId === 'ai' || tabId === 'rag'"))
+  assert.match(rag, /profile_id: props.profileId, selection: selection.value/)
+  assert.match(rag, /只使用指定文本/)
   assert.match(rag, /\/api\/ragflow\/datasets/)
   assert.match(rag, /\/api\/ragflow\/test/)
-  assert.doesNotMatch(rag, /NOVA_RAGFLOW_API_KEY|Authorization.*Bearer/)
+  assert.doesNotMatch(rag, /\/api\/ragflow\/settings|NOVA_RAGFLOW_API_KEY|Authorization.*Bearer/)
 })
 
 test('檢索參考與故障可顯示，但空結果不混入對話', () => {

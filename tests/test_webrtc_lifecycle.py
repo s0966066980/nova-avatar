@@ -158,3 +158,31 @@ def test_disconnect_releases_all_role_llm_parents(rtc, monkeypatch):
         assert not service._session_llm_instances
         assert sid not in service._active_profiles
     asyncio.run(run())
+
+
+def test_single_profile_config_drives_new_voice_sessions_without_handoff(rtc, monkeypatch):
+    from copy import deepcopy
+    from unittest.mock import Mock
+    effective = deepcopy(state.config)
+    effective.profile_id = 'main'
+    effective.profile_rag = {'enabled': True, 'dataset_ids': ['a'*32],
+        'document_scope': 'selected', 'document_ids': ['c'*32]}
+    roles = SimpleNamespace(enabled=False, profiles_applied=True, phase='disabled', _apply_waiting=False,
+        config_for_session=lambda: effective, data_for_session=lambda: object(),
+        register=Mock(), unregister=Mock())
+    monkeypatch.setattr(state, 'roles', roles)
+    monkeypatch.setattr(webrtc, 'create_avatar', lambda *args: SimpleNamespace(config=args[0]))
+    original = webrtc.VoiceTurnSession
+    captured = []
+    def voice(sessionid, config, avatar, **kwargs):
+        captured.append((config, avatar.config))
+        return original(sessionid, config, avatar, **kwargs)
+    monkeypatch.setattr(webrtc, 'VoiceTurnSession', voice)
+    async def run():
+        response = await webrtc.offer(rtc.request())
+        assert response.status == 200
+        assert captured[0][0] is captured[0][1] is effective
+        assert captured[0][0].profile_rag['document_ids'] == ['c'*32]
+        rtc.peers[0].connectionState = 'failed'
+        await rtc.peers[0].handlers['connectionstatechange']()
+    asyncio.run(run())

@@ -34,6 +34,7 @@ class RoleCoordinator:
         self.phase = "disabled"
         self.error = ""
         self.assets = {}
+        self.profiles_applied = False
         self.pending = {}
         self.continuations = {}
         self.confirmed = {}
@@ -57,6 +58,9 @@ class RoleCoordinator:
                     active_profile_id=self.current_id, pair=self.library["pair"],
                     active_revision=self.library["revision"], error=self.error,
                     weather_configured=self.weather.configured,
+                    profiles_applied=self.profiles_applied,
+                    active_avatar_id=self.profiles[self.current_id]["avatar_id"]
+                        if self.profiles_applied or self.enabled else "",
                     can_return=self.enabled and self.current_id == self.library["pair"]["specialist"]
                                and self.phase == "ready", applying=self._apply_waiting)
 
@@ -67,6 +71,8 @@ class RoleCoordinator:
             voice._refresh_gate()
 
     def input_allowed(self, session):
+        if self._apply_waiting:
+            return False
         if not self.enabled:
             return True
         role = "stage" if self.mode == "visitor" else "console"
@@ -90,6 +96,28 @@ class RoleCoordinator:
                 await asyncio.sleep(.05)
             async with self._lock:
                 previous = self.library
+                main = next(p for p in target["profiles"] if p["id"] == target["pair"]["main"])
+                if not target["enabled"]:
+                    if main["engine"] != self.state.config.model.type:
+                        raise ProfileError("請先在數位人與畫質頁載入設定檔使用的推理引擎", 409)
+                    if main["tts"]["type"] != self.state.config.tts.type:
+                        raise ProfileError("請先在語音設定頁載入設定檔使用的語音引擎", 409)
+                    aid = main["avatar_id"]
+                    for voice in self.state.voice_sessions.values():
+                        if (not hasattr(voice.avatar, "bind_profile")
+                                and voice.config.model.avatar_id != aid):
+                            raise ProfileError("此推理引擎切換人物素材前請先中斷連線", 409)
+                    if aid == self.state.config.model.avatar_id and self.state.avatar is not None:
+                        cache = {aid: self.state.avatar}
+                    elif aid in self.assets:
+                        cache = {aid: self.assets[aid]}
+                    else:
+                        from src.avatars.catalog import avatar_bootable
+                        valid, reason = avatar_bootable(main["engine"], aid)
+                        if not valid:
+                            raise ProfileError(reason, 409)
+                        cache = {aid: await asyncio.to_thread(
+                            self.loader, profile_config(self.state.config, main))}
                 if target["enabled"]:
                     main, specialist = compatible_pair(target, self.state.config)
                     if self.state.config.model.type != "musetalk":
@@ -116,20 +144,20 @@ class RoleCoordinator:
                     for edge in target["transitions"]:
                         if edge["kind"] == "video":
                             self.media.get(edge["asset_id"])
-                    config = profile_config(self.state.config, main)
-                    if config.llm.provider == "llamacpp":
-                        from src.llm.llamacpp import ensure_server
-                        config.llm.base_url = await asyncio.to_thread(
-                            ensure_server, config.llm.model,
-                            extra_dir=config.llm.llamacpp_dir,
-                            host=config.llm.llamacpp_host, port=config.llm.llamacpp_port,
-                            ctx=config.llm.llamacpp_ctx, threads=config.llm.llamacpp_threads)
-                        # The running endpoint can be normalized by ensure_server.
-                        for p in target["profiles"]:
-                            if p["id"] in {main["id"], specialist["id"]}:
-                                p["llm"]["base_url"] = config.llm.base_url
-                    self.assets = cache
+                config = profile_config(self.state.config, main)
+                if config.llm.provider == "llamacpp":
+                    from src.llm.llamacpp import ensure_server
+                    config.llm.base_url = await asyncio.to_thread(
+                        ensure_server, config.llm.model,
+                        extra_dir=config.llm.llamacpp_dir,
+                        host=config.llm.llamacpp_host, port=config.llm.llamacpp_port,
+                        ctx=config.llm.llamacpp_ctx, threads=config.llm.llamacpp_threads)
+                    for p in target["profiles"]:
+                        if p["id"] == main["id"] or (target["enabled"] and p["id"] == specialist["id"]):
+                            p["llm"]["base_url"] = config.llm.base_url
+                self.assets = cache
                 self.library = target
+                self.profiles_applied = True
                 self.current_id = target["pair"]["main"]
                 for old in previous["profiles"]:
                     new = self.profiles.get(old["id"])
@@ -140,18 +168,16 @@ class RoleCoordinator:
                 for voice in list(self.state.voice_sessions.values()):
                     voice._emit("board_clear")
                     voice._emit("role_clear")
-                    if target["enabled"]:
+                    if hasattr(voice.avatar, "bind_profile"):
                         await self._bind_async(voice, self.current_id)
-                    elif voice.sessionid in self.state.avatar_streams and hasattr(voice.avatar, "bind_profile"):
-                        # Resume the same legacy config used for future peers.
-                        # A saved role may have changed since its assets loaded.
-                        await asyncio.to_thread(voice.avatar.bind_profile,
-                            deepcopy(self.state.config), self.state.avatar)
-                        voice.config = voice.avatar.config
+                    else:
+                        voice.config = profile_config(self.state.config, main)
+                        voice.avatar.config = voice.config
+                        if getattr(voice.avatar, "tts", None) is not None:
+                            voice.avatar.tts.config = voice.config
                         voice._turn_context = None
-                        select_session_profile(voice.sessionid, "")
-                        if voice._media_player is not None:
-                            voice._media_player.discard_stale_media()
+                        select_session_profile(voice.sessionid, self.current_id)
+                    if not target["enabled"]:
                         presentation = getattr(voice.avatar, "_role_presentation", None)
                         if presentation:
                             presentation.close()
@@ -164,10 +190,10 @@ class RoleCoordinator:
         return self.snapshot()
 
     def config_for_session(self):
-        return profile_config(self.state.config, self.profiles[self.current_id]) if self.enabled else self.state.config
+        return profile_config(self.state.config, self.profiles[self.current_id]) if self.profiles_applied or self.enabled else self.state.config
 
     def data_for_session(self):
-        return self.assets[self.profiles[self.current_id]["avatar_id"]] if self.enabled else self.state.avatar
+        return self.assets[self.profiles[self.current_id]["avatar_id"]] if self.profiles_applied or self.enabled else self.state.avatar
 
     def register(self, voice):
         voice._role_coordinator = self
@@ -179,6 +205,8 @@ class RoleCoordinator:
             if voice._presenter == "stage":
                 self._visitor_resume_pending = True
                 self.reconcile_input_owner()
+        elif self.profiles_applied:
+            select_session_profile(voice.sessionid, self.current_id)
         self.notify()
 
     def unregister(self, sessionid):
@@ -264,10 +292,11 @@ class RoleCoordinator:
         target = self.profiles[specialist_id]
         weather_task = None
         if target["tools"]["weather"]:
-            if not route.get("county") or not route.get("town"):
-                return {"fixed": "請問您想查詢哪個縣市及鄉鎮的天氣？"}
-            self.confirmed[sid] = {"county": route["county"], "town": route["town"]}
-            weather_query = WeatherQuery(route["county"], route["town"], route["kind"],
+            if not route.get("county"):
+                return {"fixed": "請問您想查詢哪個縣市的天氣？"}
+            town = route.get("town", "")
+            self.confirmed[sid] = {"county": route["county"], "town": town}
+            weather_query = WeatherQuery(route["county"], town, route["kind"],
                                          route["start_date"], route["end_date"], route.get("accepted_at", ""))
             weather_task = asyncio.create_task(self.weather.query(weather_query))
         if self.current_id == specialist_id:
@@ -461,11 +490,10 @@ async def initialize_roles(state):
     library = await asyncio.to_thread(store.initialize, state.config)
     coordinator = RoleCoordinator(state, store, library)
     state.roles = coordinator
-    if library["enabled"]:
-        try:
-            await coordinator.apply(startup=True)
-        except Exception:
-            logger.exception("角色組合預載失敗，保持原數位人服務")
-            coordinator.phase = "disabled"
-            coordinator.error = "角色組合尚未就緒，請檢查角色設定並重新套用"
+    try:
+        await coordinator.apply(startup=True)
+    except Exception:
+        logger.exception("數位人設定檔載入失敗，保持原數位人服務")
+        coordinator.phase = "disabled"
+        coordinator.error = "數位人設定檔尚未就緒，請檢查設定並重新套用"
     return coordinator
