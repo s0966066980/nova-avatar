@@ -91,15 +91,19 @@ CPU 像素交付，不能視為整體對話或 WebRTC 加速倍率。
 在專案根目錄執行：
 
 ```bash
-bash scripts/start-all.sh config/config.yaml
+bash ./scripts/start-all.sh
 ```
 
 此命令啟動後端與 Web 控制台。執行過 `ragflow.sh prepare` 的主機會一併
-啟動 RAGFlow；它尚未準備好時，啟動腳本會顯示提示並繼續啟動 Nova。
+啟動 RAGFlow；尚未執行 `prepare` 的主機會提示略過 RAGFlow，繼續啟動 Nova。
+若已安裝的 Docker 尚未運行，啟動腳本會自動啟動它；需要管理權限時，
+直接在同一個終端提示輸入 `sudo` 密碼。RAGFlow 的容器、網頁、API 與嵌入
+服務就緒後，才會啟動 Nova 前後端，不必另開終端逐一啟動服務。
 若 RAGFlow 已由其他命令啟動，`start-all.sh` 會沿用該實例。按
 `Ctrl+C` 停止 Nova，以及這次由 `start-all.sh` 帶起的 RAGFlow 服務；
 既有 RAGFlow 實例會保持執行。暫時不啟動檢索服務可執行
 `NOVA_START_RAGFLOW=0 bash scripts/start-all.sh config/config.yaml`。
+首次安裝 Docker／模型及準備 RAGFlow 仍依下方安裝步驟進行。
 
 | 入口 | 預設位址 | 用途 |
 | --- | --- | --- |

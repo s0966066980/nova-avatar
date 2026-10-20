@@ -116,8 +116,8 @@ check_and_kill_port() {
     
     echo -e "${BLUE}🔍 檢查埠 $port 是否被佔用...${NC}"
     
-    # 查詢佔用埠的程式
-    local pid=$(lsof -ti:$port 2>/dev/null)
+    # 查詢佔用埠的程式（只找監聽者，避免誤殺已連線的瀏覽器等用戶端）
+    local pid=$(lsof -ti:$port -sTCP:LISTEN 2>/dev/null)
     
     if [ -n "$pid" ]; then
         echo -e "${YELLOW}⚠ 埠 $port 被程式 $pid 佔用${NC}"
@@ -142,7 +142,7 @@ check_and_kill_port() {
         fi
         
         # 再次檢查埠
-        local new_pid=$(lsof -ti:$port 2>/dev/null)
+        local new_pid=$(lsof -ti:$port -sTCP:LISTEN 2>/dev/null)
         if [ -n "$new_pid" ]; then
             echo -e "${RED}❌ 無法清理埠 $port，請手動處理${NC}"
             exit 1

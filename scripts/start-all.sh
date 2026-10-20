@@ -107,7 +107,8 @@ cd "$PROJECT_ROOT"
 clear_port() {
     local port=$1
     local pid
-    pid=$(lsof -ti:"$port" 2>/dev/null || true)
+    # 只找監聽此埠的伺服器，避免誤殺已連線的瀏覽器等用戶端。
+    pid=$(lsof -ti:"$port" -sTCP:LISTEN 2>/dev/null || true)
     if [ -n "$pid" ]; then
         echo -e "${YELLOW}⚠ 清理埠 $port (PID $pid)${NC}"
         kill $pid 2>/dev/null || true
@@ -118,14 +119,13 @@ clear_port() {
     fi
 }
 
-clear_port 8010
-clear_port 3000
-
 # 已完成本機 RAGFlow 準備後，日常啟動一併帶起其獨立服務。
 # 已在執行的 Compose 專案或嵌入服務屬於外部生命週期，不由本腳本停止。
 if [ "${NOVA_START_RAGFLOW:-auto}" != 0 ] && \
     { [ "${NOVA_START_RAGFLOW:-auto}" = 1 ] || [ -d "$PROJECT_ROOT/.local/ragflow/upstream/.git" ]; }; then
     echo -e "${BLUE}🔎 啟動 RAGFlow...${NC}"
+    # Docker 啟動時可能自動恢復既有容器，必須在這之後判定服務所有權。
+    bash "$PROJECT_ROOT/scripts/ragflow.sh" ensure-docker
     if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" is-running >/dev/null 2>&1; then
         RAGFLOW_OWNED=1
     fi
@@ -135,6 +135,9 @@ if [ "${NOVA_START_RAGFLOW:-auto}" != 0 ] && \
 else
     echo -e "${YELLOW}RAGFlow 尚未準備或已停用；部署方式見 docs/ragflow.md${NC}"
 fi
+
+clear_port 8010
+clear_port 3000
 
 PROTOCOL=$(read_protocol "$CONFIG_FILE")
 BACKEND_URL="${PROTOCOL}://localhost:8010"
