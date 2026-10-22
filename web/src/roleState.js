@@ -3,7 +3,7 @@
 
 export function canRoleInput(role, presenter) {
   if (role?.applying) return false
-  return !role?.enabled || (!role.applying && ['ready', 'announcement'].includes(role.phase)
+  return (!role?.enabled && !role?.input_mode_managed) || (!role.applying && ['ready', 'announcement', ...(role.enabled ? [] : ['disabled'])].includes(role.phase)
     && (role.mode === 'visitor' ? presenter === 'stage' : presenter === 'console'))
 }
 

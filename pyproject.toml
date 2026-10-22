@@ -13,6 +13,7 @@ maintainers = [
 ]
 
 dependencies = [
+    "regex>=2024.11.6",
     "aiohttp",
     "aiohttp-cors",
     "aiortc",

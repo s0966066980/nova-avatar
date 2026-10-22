@@ -171,7 +171,11 @@ async def get_speech_settings(request):
 async def get_stage_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    return _json({"code": 0, "data": stage_snapshot(state.config)})
+    return _json({"code": 0, "data": stage_snapshot(state.config),
+                  "greetings": [{"sessionid": v.sessionid, "status": v.greetings.status,
+                                 "error": v.greetings.error}
+                                for v in state.voice_sessions.values()
+                                if v._presenter == "stage"]})
 
 
 async def set_stage_settings(request):
@@ -179,7 +183,18 @@ async def set_stage_settings(request):
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     try:
         params = await request.json()
-        result = apply_stage_settings(state.config, params)
+        from copy import deepcopy
+        roles = getattr(state, "roles", None)
+        if params.get("idle_greeting_enabled") is True and roles is not None and not roles.profiles_applied:
+            raise SettingsError("請先將主數位人設定儲存並套用，再啟用閒置招呼")
+        main = roles.profiles[roles.library["pair"]["main"]] if roles is not None else None
+        result = apply_stage_settings(state.config, params, greeting_content=main.get("greeting") if main else None)
+        for voice in state.voice_sessions.values():
+            voice.config.stage = deepcopy(state.config.stage)
+            voice.greetings.refresh()
+            voice._refresh_gate()
+        if roles is not None:
+            roles.notify()
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)

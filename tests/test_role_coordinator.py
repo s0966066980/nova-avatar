@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+from copy import deepcopy
 from datetime import datetime
 import json
 from functools import wraps
@@ -234,6 +235,24 @@ async def test_mode_switch_keeps_memories_and_rejects_other_input(field):
 
 
 @async_test
+async def test_opening_stage_keeps_explicit_console_test_mode(field):
+    roles = field
+    console, _ = connect(roles)
+    await roles.set_mode('console')
+    stage, _ = connect(roles, 8, 'stage')
+    try:
+        assert roles.mode == 'console'
+        assert roles.input_allowed(console)
+        assert not roles.input_allowed(stage)
+        await roles.set_mode('visitor')
+        assert roles.input_allowed(stage)
+        assert not roles.input_allowed(console)
+    finally:
+        await console.close()
+        await stage.close()
+
+
+@async_test
 async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers(field, monkeypatch):
     roles = field
     voice, _ = connect(roles)
@@ -309,3 +328,146 @@ def test_county_weather_question_handoffs_without_inventing_a_district(field, te
     assert route['route'] == 'specialist', route
     assert route['county'] == '臺北市'
     assert route.get('town', '') == ''
+
+
+@async_test
+async def test_idle_greeting_due_before_clear_waits_for_automatic_main_return(field):
+    roles = field
+    roles.state.config.stage.idle_greeting_enabled = True
+    roles.state.config.stage.idle_greeting_seconds = 60
+    roles.profiles['main']['greeting']['scripts'] = ['主角色的歡迎詞']
+    roles.profiles['weather']['greeting']['scripts'] = ['專門角色不可自動招呼']
+    voice, _ = connect(roles, 8, 'stage')
+    now = [0.]
+    voice.greetings.clock = lambda: now[0]
+    voice._media_player = None
+    roles.edge = lambda *_: dict(kind='effect', effect='fade', duration=.001)
+    try:
+        voice.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
+        assert voice.greetings.deadline == 60
+        roles.current_id = 'weather'
+        roles._bind(voice, 'weather')
+        voice._conversation_dirty = True
+        voice._refresh_gate()
+        now[0] = 60
+        voice.greetings.tick()
+        assert voice.greetings.status == 'waiting_clear'
+        voice.reset_conversation()
+        assert voice._greeting_returning
+        await wait_until(lambda: bool(voice.avatar.messages))
+        assert roles.current_id == 'main'
+        assert voice.avatar.messages[-1][0] == '主角色的歡迎詞'
+        assert now[0] == 60  # no additional interval after the return transition
+        assert not voice._conversation_dirty
+    finally:
+        await voice.close()
+
+
+@async_test
+async def test_single_role_greetings_follow_console_mode_and_cancel_playback(field):
+    roles = field
+    roles.library['enabled'] = False
+    roles.phase = 'disabled'
+    roles.profiles_applied = True
+    roles.state.config.stage.idle_greeting_enabled = True
+    roles.profiles['main']['greeting']['scripts'] = ['單角色也會招呼']
+    voice, _ = connect(roles, 8, 'stage')
+    now = [0.]
+    voice.greetings.clock = lambda: now[0]
+    try:
+        assert roles.mode == 'visitor'
+        assert roles.input_allowed(voice)
+        voice.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
+        now[0] = 60
+        voice.greetings.tick()
+        await voice.greetings.preparation
+        old_media = dict(voice.avatar.messages[-1][1])
+        voice.on_output_audio_frame(old_media, True)
+        voice.on_output_audio(True)
+        await roles.set_mode('console')
+        assert not roles.input_allowed(voice)
+        assert voice._turn_id is None
+        assert not voice.accepts_media(old_media, 'late_audio')
+        assert voice.greetings.deadline is None
+        now[0] = 80
+        await roles.set_mode('visitor')
+        assert voice.greetings.deadline == 140
+    finally:
+        await voice.close()
+
+
+@async_test
+async def test_greeting_only_profile_apply_keeps_playing_media_and_avoids_rebinding(field):
+    roles = field
+    roles.profiles_applied = True
+    roles.state.config.stage.idle_greeting_enabled = True
+    roles.profiles['main']['greeting']['scripts'] = ['舊招呼']
+    voice, _ = connect(roles, 8, 'stage')
+    now = [0.]
+    voice.greetings.clock = lambda: now[0]
+    try:
+        voice.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
+        now[0] = 60
+        voice.greetings.tick()
+        await voice.greetings.preparation
+        voice.on_output_audio(True)
+        old_turn, old_epoch = voice._turn_id, voice.avatar._asset_epoch
+        target = deepcopy(roles.library)
+        target['profiles'][0]['greeting']['scripts'] = ['新招呼']
+        target['revision'] += 1
+        await roles.apply(target)
+        assert voice._turn_id == old_turn
+        assert voice.avatar._asset_epoch == old_epoch
+        assert voice.config.greeting.scripts == ['新招呼']
+        assert voice.greetings.status == 'playing'
+    finally:
+        await voice.close()
+
+
+@async_test
+async def test_greeting_apply_preserves_unapplied_identity_model_and_playing_media(field):
+    roles = field
+    roles.profiles_applied = True
+    roles.state.config.stage.idle_greeting_enabled = True
+    roles.profiles['main']['greeting']['scripts'] = ['正在播放的招呼']
+    voice, _ = connect(roles, 8, 'stage')
+    now = [0.]
+    voice.greetings.clock = lambda: now[0]
+    try:
+        voice.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
+        now[0] = 60
+        voice.greetings.tick()
+        await voice.greetings.preparation
+        voice.on_output_audio(True)
+        old_turn, old_epoch = voice._turn_id, voice.avatar._asset_epoch
+        old_identity = deepcopy(roles.profiles['main']['assistant_profile'])
+        old_model = roles.profiles['main']['llm']['model']
+        pending = deepcopy(roles.library)
+        pending['profiles'][0]['assistant_profile']['assistant_name'] = '尚未套用的新身分'
+        pending['profiles'][0]['llm']['model'] = 'unapplied-model'
+        pending['profiles'][0]['greeting']['scripts'] = ['下一次的新招呼']
+        saved = roles.store.save(pending, expected_revision=1)
+        await roles.apply_greeting('main', expected_revision=saved['revision'])
+        assert roles.profiles['main']['greeting']['scripts'] == ['下一次的新招呼']
+        assert roles.profiles['main']['assistant_profile'] == old_identity
+        assert roles.profiles['main']['llm']['model'] == old_model
+        assert roles.library['revision'] == 1  # full role revision is still pending
+        assert voice._turn_id == old_turn
+        assert voice.avatar._asset_epoch == old_epoch
+        assert voice.config.greeting.scripts == ['下一次的新招呼']
+        assert voice.config.llm.model == old_model
+        assert roles.store.load()['profiles'][0]['llm']['model'] == 'unapplied-model'
+    finally:
+        await voice.close()
+
+
+@async_test
+async def test_greeting_apply_requires_current_main_and_current_saved_revision(field):
+    roles = field
+    before = deepcopy(roles.library)
+    from src.profiles.store import ProfileError
+    with pytest.raises(ProfileError, match='主數位人已變更'):
+        await roles.apply_greeting('weather', expected_revision=1)
+    with pytest.raises(ProfileError, match='設定已更新'):
+        await roles.apply_greeting('main', expected_revision=999)
+    assert roles.library == before

@@ -20,6 +20,8 @@ const runtime = reactive({
     background_id: '',
     caption_max_chars: 120,
     idle_reset_seconds: 10,
+    idle_greeting_enabled: false,
+    idle_greeting_seconds: 60,
     caption_x: 50,
     caption_y: 90,
     caption_width: 100,
@@ -221,7 +223,7 @@ const rulesDirty = computed(() => JSON.stringify(rulesDraft) !== JSON.stringify(
   board: rulesApplied.board
 }))
 const selectedStageCaptionMaxChars = ref(120)
-const selectedStageIdleResetSeconds = ref(10)
+const selectedVisitorResetSeconds = ref(10)
 const selectedCaptionX = ref(50)
 const selectedCaptionY = ref(90)
 const selectedCaptionWidth = ref(100)
@@ -266,10 +268,29 @@ const stageCaptionLengthError = computed(() => {
   return !Number.isInteger(value) || value < 20 || value > 2000
 })
 
-const stageIdleResetError = computed(() => {
-  const value = Number(selectedStageIdleResetSeconds.value)
+const visitorResetError = computed(() => {
+  const value = Number(selectedVisitorResetSeconds.value)
   return !Number.isInteger(value) || value < 3 || value > 300
 })
+
+const applyingVisitor = ref(false)
+const visitorError = ref('')
+const visitorDirty = computed(() => !visitorResetError.value && selectedVisitorResetSeconds.value !== runtime.stage.idle_reset_seconds)
+async function applyVisitorSettings() {
+  if (visitorResetError.value) throw new Error('訪客對話重置時間必須介於 3–300 秒。')
+  applyingVisitor.value = true
+  visitorError.value = ''
+  try {
+    const data = await parseJson(await fetch('/api/stage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idle_reset_seconds: selectedVisitorResetSeconds.value })
+    }))
+    runtime.stage.idle_reset_seconds = Number(data.idle_reset_seconds)
+    selectedVisitorResetSeconds.value = runtime.stage.idle_reset_seconds
+    return data
+  } catch (error) { visitorError.value = error.message; throw error }
+  finally { applyingVisitor.value = false }
+}
 
 const filteredCharacters = computed(() => {
   if (!selectedEngine.value) return runtime.characters
@@ -321,11 +342,9 @@ const boardSizeError = computed(() => {
 
 const stageDirty = computed(() => (
   !stageCaptionLengthError.value &&
-  !stageIdleResetError.value &&
   !boardSizeError.value &&
   (
     Number(selectedStageCaptionMaxChars.value) !== Number(runtime.stage.caption_max_chars || 120) ||
-    Number(selectedStageIdleResetSeconds.value) !== Number(runtime.stage.idle_reset_seconds || 10) ||
     Number(selectedCaptionX.value) !== Number(runtime.stage.caption_x ?? 50) ||
     Number(selectedCaptionY.value) !== Number(runtime.stage.caption_y ?? 90) ||
     Number(selectedCaptionWidth.value) !== Number(runtime.stage.caption_width ?? 100) ||
@@ -718,6 +737,8 @@ function applySnapshot(data) {
     background_id: data.stage?.background_id || '',
     caption_max_chars: Number(data.stage?.caption_max_chars || 120),
     idle_reset_seconds: Number(data.stage?.idle_reset_seconds || 10),
+    idle_greeting_enabled: Boolean(data.stage?.idle_greeting_enabled),
+    idle_greeting_seconds: Number(data.stage?.idle_greeting_seconds ?? 60),
     caption_x: Number(data.stage?.caption_x ?? 50),
     caption_y: Number(data.stage?.caption_y ?? 90),
     caption_width: Number(data.stage?.caption_width ?? 100),
@@ -763,7 +784,7 @@ function applySnapshot(data) {
   selectedReplyMode.value = data.llm?.reply_mode || 'legacy'
   selectedSemanticWaitSeconds.value = Number(data.llm?.semantic_wait_seconds || 0.5)
   selectedStageCaptionMaxChars.value = runtime.stage.caption_max_chars
-  selectedStageIdleResetSeconds.value = runtime.stage.idle_reset_seconds
+  selectedVisitorResetSeconds.value = runtime.stage.idle_reset_seconds
   selectedCaptionX.value = runtime.stage.caption_x
   selectedCaptionY.value = runtime.stage.caption_y
   selectedCaptionWidth.value = runtime.stage.caption_width
@@ -998,7 +1019,6 @@ async function applyStageSettings(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         caption_max_chars: Number(captionMaxChars),
-        idle_reset_seconds: Number(selectedStageIdleResetSeconds.value),
         caption_x: Number(selectedCaptionX.value),
         caption_y: Number(selectedCaptionY.value),
         caption_width: Number(selectedCaptionWidth.value),
@@ -1018,7 +1038,6 @@ async function applyStageSettings(
       })
     }))
     runtime.stage.caption_max_chars = Number(data.caption_max_chars)
-    runtime.stage.idle_reset_seconds = Number(data.idle_reset_seconds ?? selectedStageIdleResetSeconds.value)
     runtime.stage.caption_x = Number(data.caption_x ?? selectedCaptionX.value)
     runtime.stage.caption_y = Number(data.caption_y ?? selectedCaptionY.value)
     runtime.stage.caption_width = Number(data.caption_width ?? selectedCaptionWidth.value)
@@ -1033,7 +1052,6 @@ async function applyStageSettings(
     runtime.stage.board_open_x = Number(data.board_open_x)
     runtime.stage.board_open_y = Number(data.board_open_y)
     selectedStageCaptionMaxChars.value = runtime.stage.caption_max_chars
-    selectedStageIdleResetSeconds.value = runtime.stage.idle_reset_seconds
     selectedCaptionX.value = runtime.stage.caption_x
     selectedCaptionY.value = runtime.stage.caption_y
     selectedCaptionWidth.value = runtime.stage.caption_width
@@ -1339,8 +1357,12 @@ export function useRuntimeSettings() {
     restoreDefaultRules,
     applyReplyRules,
     selectedStageCaptionMaxChars,
-    selectedStageIdleResetSeconds,
-    stageIdleResetError,
+    selectedVisitorResetSeconds,
+    visitorResetError,
+    visitorDirty,
+    visitorError,
+    applyingVisitor,
+    applyVisitorSettings,
     selectedCaptionX,
     selectedCaptionY,
     selectedCaptionWidth,

@@ -84,6 +84,8 @@ def persist_runtime_overrides(config) -> None:
             ),
         },
         "stage": {
+            "idle_greeting_enabled": bool(getattr(getattr(config, "stage", None), "idle_greeting_enabled", False)),
+            "idle_greeting_seconds": float(getattr(getattr(config, "stage", None), "idle_greeting_seconds", 60)),
             "background_id": str(getattr(getattr(config, "stage", None), "background_id", "") or ""),
             "caption_max_chars": int(
                 getattr(getattr(config, "stage", None), "caption_max_chars", 120)

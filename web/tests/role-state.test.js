@@ -32,3 +32,13 @@ test('返回僅在專門角色就緒時可操作，正反向轉場分開保存',
   assert.equal(directedTransition(library, 'main', 'weather'), forward)
   assert.equal(library.transitions.length, 2)
 })
+
+
+test('單角色啟用閒置招呼時仍遵守訪客／控制台輸入模式', () => {
+  const role = { enabled: false, input_mode_managed: true, phase: 'disabled', mode: 'visitor' }
+  assert.equal(canRoleInput(role, 'stage'), true)
+  assert.equal(canRoleInput(role, 'console'), false)
+  assert.equal(canRoleInput({ ...role, mode: 'console' }, 'stage'), false)
+  assert.equal(canRoleInput({ ...role, mode: 'console' }, 'console'), true)
+  assert.equal(canRoleInput({ ...role, applying: true }, 'stage'), false)
+})

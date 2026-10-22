@@ -115,9 +115,9 @@ See LICENSE and NOTICE.
               </div>
             </div>
 
-            <div v-if="roleRuntime.enabled" class="role-console-controls" role="group" aria-label="角色與輸入來源">
+            <div v-if="roleRuntime.enabled || roleRuntime.input_mode_managed" class="role-console-controls" role="group" aria-label="角色與輸入來源">
               <span role="status">{{ activeRoleName }} · {{ rolePhaseLabel(roleRuntime.phase) }}</span>
-              <button type="button" class="sample-btn" :disabled="roleBusy || roleRuntime.applying || roleRuntime.phase !== 'ready'"
+              <button type="button" class="sample-btn" :disabled="roleBusy || roleRuntime.applying || !['ready', 'disabled'].includes(roleRuntime.phase)"
                 @click="roleAction('/mode', { mode: roleRuntime.mode === 'visitor' ? 'console' : 'visitor' })">
                 {{ roleRuntime.mode === 'visitor' ? '切到控制台測試' : '回到訪客模式' }}
               </button>
@@ -867,6 +867,16 @@ const getNotificationIcon = (type) => {
 }
 
 const handleVoiceEvent = (event) => {
+  if (event.type === 'presentation_reset' || event.type === 'conversation_reset') {
+    chatMessages.value = []
+    assistantStreamState.clear()
+    for (const key of Object.keys(ragByTurn)) delete ragByTurn[key]
+    captionEpoch.value += 1
+    applyConsoleBoardEvent(stageBoard, { type: 'board_clear' })
+    isThinking.value = false
+    isRecordingVoice.value = false
+    return
+  }
   roleEvent(event)
   if (event.type === 'role_state' && event.error) showNotification(event.error, 'error')
   if (event.type === 'role_clear') {

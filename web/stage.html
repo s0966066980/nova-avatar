@@ -650,9 +650,16 @@ import {
     chan.send(JSON.stringify(msg));
     return true;
   }
+  function reportStageReady(){
+    send({type:'stage_ready', audible:live && !video.paused && !video.muted && video.volume > 0,
+      microphone:Boolean(micStream?.getAudioTracks().some(t => t.readyState === 'live' && !t.muted)),
+      interaction:!autoPaused});
+  }
+  for(const event of ['playing','pause','volumechange','emptied']) video.addEventListener(event, reportStageReady);
   function setCapture(enabled, finalize=false){
     captureWanted=Boolean(enabled);
     micStream?.getAudioTracks().forEach(t => { t.enabled = captureWanted && canRoleInput(roleState,'stage'); });
+    reportStageReady();
     return send({type:'capture', enabled:Boolean(enabled), finalize});
   }
   function interrupt(){
@@ -751,7 +758,7 @@ import {
     }
     if(ev.type === 'user_transcript' && ev.text){ showSaid(ev.text); return; }
     if(ev.type === 'board_clear'){ clearLiveBoard(); return; }
-    if(ev.type === 'conversation_reset'){
+    if(ev.type === 'conversation_reset' || ev.type === 'presentation_reset'){
       clearTimeout(saidTimer);
       said.classList.remove('on');
       said.textContent = '';
@@ -838,9 +845,9 @@ import {
     };
     pc.onconnectionstatechange = () => {
       const s = pc?.connectionState;
-      if(s === 'connected'){ live = true; kioskAttempt = 0; clearTimeout(kioskTimer); hideVeil(); setMode(); refreshAffordance(); }
+      if(s === 'connected'){ live = true; kioskAttempt = 0; clearTimeout(kioskTimer); hideVeil(); setMode(); refreshAffordance(); reportStageReady(); }
       if(s === 'failed' || s === 'disconnected'){
-        live = false; refreshAffordance();
+        live = false; reportStageReady(); refreshAffordance();
         if(kiosk) showKioskProblem();
         else showVeil('連線中斷', '與數字人的通道已斷開。', {isError:true, btn:'重新連線', onBtn:connect});
       }
@@ -862,6 +869,7 @@ import {
       micStream = await navigator.mediaDevices.getUserMedia({
         audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1}
       });
+      for(const track of micStream.getAudioTracks()) for(const event of ['ended','mute','unmute']) track.addEventListener?.(event, reportStageReady);
       pc.addTrack(micStream.getAudioTracks()[0], micStream);
       micStream.getAudioTracks()[0].enabled = false;
     }catch(err){
@@ -905,6 +913,7 @@ import {
   }
 
   function teardown(){
+    send({type:'stage_ready', audible:false, microphone:false, interaction:false});
     roleState={enabled:false};captureWanted=false;roleReturn.hidden=true;
     live = false; speaking = false; holding = false; interruptedPress = false; lastSeq = 0;
     clearReply();
@@ -975,7 +984,7 @@ import {
     await syncVadMode();
     await syncStageSettings();
     await connect();
-    try{ await video.play(); }catch(_){}
+    try{ await video.play(); reportStageReady(); }catch(_){ reportStageReady(); }
   }
   veilBtn.onclick = startSession;
 

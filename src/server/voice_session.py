@@ -24,7 +24,11 @@ import soundfile as sf
 from av.audio.resampler import AudioResampler
 
 from src.asr.factory import get_asr_engine
+from src.greetings.controller import IdleGreetingController
+from src.greetings.content import GreetingError
+from src.tts.base import sanitize_speech_text
 from src.llm.service import (
+    remember_greeting,
     acknowledge_session_board_item,
     clear_session_history,
     commit_session_history,
@@ -103,6 +107,15 @@ class VoiceTurnSession:
         self._test_result_sink = test_result_sink
         self._sequence = 0
         self._role_coordinator = None
+        self._presentation = None
+        self._turn_origin = "visitor"
+        self._greeting_trial_preparation = None
+        self._greeting_text = ""
+        self._greeting_tts_config = None
+        self._greeting_started = False
+        self._stage_ready = False
+        self._greeting_returning = False
+        self.greetings = IdleGreetingController(self, clock=clock)
         self._turn_id: Optional[str] = None
         self._generation = 0
         self._capture_requested = True
@@ -221,6 +234,8 @@ class VoiceTurnSession:
             self._refresh_gate()
         if self._role_coordinator is not None:
             self._role_coordinator.notify(self)
+        if self._presentation is not None:
+            self._presentation.replay(self)
 
     @property
     def event_sink_ready(self) -> bool:
@@ -229,6 +244,8 @@ class VoiceTurnSession:
 
     def detach_event_sink(self) -> None:
         self._event_sink = None
+        self._stage_ready = False
+        self.greetings.reset(stop_playing=True)
         self._close_gate()
 
     def attach_media_player(self, player) -> None:
@@ -267,8 +284,12 @@ class VoiceTurnSession:
                     self._emit("role_error", message="目前無法執行角色操作，請等目前輪次結束後再試。")
             asyncio.create_task(control_role())
             return
-        if (roles is not None and roles.enabled and kind == "interrupt"
+        if (roles is not None and roles.input_mode_managed and kind == "interrupt"
                 and not roles.input_allowed(self)):
+            return
+        if kind == "stage_ready" and self._presenter == "stage":
+            self._stage_ready = all(message.get(k) is True for k in ("audible", "microphone", "interaction"))
+            self.greetings.refresh()
             return
         if kind == "capture":
             enabled = bool(message.get("enabled"))
@@ -295,29 +316,33 @@ class VoiceTurnSession:
         elif kind == "interrupt":
             asyncio.create_task(self.interrupt())
         elif kind == "board_displayed":
-            turn_id = str(message.get("turn_id") or "")
-            board_id = str(message.get("board_id") or "")
-            presenter = str(message.get("presenter") or "")
-            item_index = message.get("item_index")
-            if presenter != self._presenter or not turn_id or board_id != turn_id:
+            if self._presentation is not None and self._presentation.acknowledge_board(self, message):
                 return
-            if isinstance(item_index, bool):
-                return
-            try:
-                item_index = int(item_index)
-            except (TypeError, ValueError):
-                return
-            receipt_key = (turn_id, board_id, item_index, presenter)
-            if receipt_key in self._board_display_receipts:
-                return
-            if acknowledge_session_board_item(
-                self.sessionid,
-                turn_id=turn_id,
-                board_id=board_id,
-                item_index=item_index,
-                presenter=presenter,
-            ):
-                self._board_display_receipts.add(receipt_key)
+            self._acknowledge_board(message, presenter=self._presenter)
+
+    def _acknowledge_board(self, message, *, presenter):
+        turn_id = str(message.get("turn_id") or "")
+        board_id = str(message.get("board_id") or "")
+        item_index = message.get("item_index")
+        if message.get("presenter") != presenter or not turn_id or board_id != turn_id:
+            return
+        if isinstance(item_index, bool):
+            return
+        try:
+            item_index = int(item_index)
+        except (TypeError, ValueError):
+            return
+        receipt_key = (turn_id, board_id, item_index, presenter)
+        if receipt_key in self._board_display_receipts:
+            return
+        if acknowledge_session_board_item(
+            self.sessionid,
+            turn_id=turn_id,
+            board_id=board_id,
+            item_index=item_index,
+            presenter=presenter,
+        ):
+            self._board_display_receipts.add(receipt_key)
 
     def start_track(self, track) -> None:
         if self._track_task:
@@ -346,6 +371,8 @@ class VoiceTurnSession:
             if not self._closed:
                 logger.warning(f"Microphone track ended: {exc}")
                 self._emit("state", state="reconnecting", error="microphone_track_lost")
+                self._stage_ready = False
+                self.greetings.reset(stop_playing=True)
                 self._close_gate()
 
     def _resample_frame_sync(self, frame) -> list[np.ndarray]:
@@ -359,13 +386,21 @@ class VoiceTurnSession:
         if not self._gate_open or self._closed or self._segmenter is None:
             return
         loop = asyncio.get_running_loop()
+        generation_at_input = self._generation
+        preparing_at_input = self.greetings.preparation is not None or (self.is_greeting and not self._greeting_started)
         was_speaking, is_speaking, segments = await loop.run_in_executor(
             self._voice_executor,
             self._segment_pcm_sync,
             pcm,
         )
-        if self._closed or not self._gate_open:
+        if self._closed or self._generation != generation_at_input:
             return
+        # Input accepted before first output keeps priority even when VAD's
+        # worker finishes just after the first greeting audio frame commits.
+        if not self._gate_open and not (preparing_at_input and self.is_greeting):
+            return
+        if (not was_speaking and is_speaking) or segments:
+            self.greetings.reset(stop_playing=preparing_at_input)
         if not was_speaking and is_speaking:
             self._turn_id = uuid4().hex
             self._start_turn_context(self._turn_id)
@@ -406,6 +441,7 @@ class VoiceTurnSession:
             and roles.current_id == roles.library["pair"]["specialist"])
         if roles is not None and not accepted_handoff and not roles.input_allowed(self):
             raise RuntimeError("目前由另一個輸入來源接收問題，或角色正在轉場")
+        self.greetings.reset()
         if interrupt and (
             self._turn_id is not None
             or self._turn_task is not None
@@ -697,7 +733,8 @@ class VoiceTurnSession:
 
     def _speak_fixed(self, question, response, turn_id, generation, input_source):
         """Fixed announcements/failures use the real TTS and played-only history."""
-        prepare_spoken_history(question, self.avatar, turn_id)
+        if not self.is_greeting:
+            prepare_spoken_history(question, self.avatar, turn_id)
         if self._turn_context is not None and self._turn_context.state == TurnState.CREATED:
             self._turn_context.transition(TurnState.LLM_STREAMING)
         if self._pipeline_mode == "streaming":
@@ -761,6 +798,9 @@ class VoiceTurnSession:
                     )
             if not self._output_active:
                 self._output_active = True
+                if self.is_greeting:
+                    self._greeting_started = True
+                    self.greetings.report("playing")
                 self._close_gate()
                 self._emit("speaking_start", turn_id=self._turn_id)
                 self._emit("state", state="avatar_speaking", turn_id=self._turn_id)
@@ -957,6 +997,8 @@ class VoiceTurnSession:
                 ended = True
 
         if committed_text is not None:
+            if self.is_greeting:
+                self.greetings.previous = self._greeting_text
             self._emit(
                 "assistant_fragment",
                 text=committed_text,
@@ -1032,24 +1074,34 @@ class VoiceTurnSession:
         self._emit("state", state="error", error=reason, turn_id=turn_id)
         self._turn_id = None
         self._turn_task = None
+        if self._turn_origin == "greeting":
+            self._turn_origin = "visitor"
+            self._restore_greeting_voice()
+            self.greetings.finished(error="招呼語音播放失敗，已略過本次")
         self._refresh_gate()
 
     async def _finish_tail_guard(self) -> None:
         completed_turn = self._turn_id
+        was_greeting = self.is_greeting
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
-        if self._pipeline_mode == "streaming" or getattr(self.config, "profile_id", ""):
+        if self.is_greeting or self._pipeline_mode == "streaming" or getattr(self.config, "profile_id", ""):
             self._commit_history("completed")
         self._emit_turn_metrics("completed")
         if self._pipeline_mode == "streaming":
             self._circuit_breaker.record_turn_success()
         await asyncio.sleep(0.3)
         self._turn_id = None
-        if self._role_coordinator is not None:
+        if was_greeting:
+            self._restore_greeting_voice()
+            self._turn_origin = "visitor"
+            self.greetings.finished()
+        elif self._role_coordinator is not None:
             await self._role_coordinator.after_playback(self, completed_turn)
         self._refresh_gate()
 
     async def interrupt(self) -> None:
         """Cancel the old turn, flush all queued speech, then reopen after a tail guard."""
+        self.greetings.reset()
         interrupted_turn_id = self._turn_id
         if self._role_coordinator is not None:
             self._role_coordinator.cancel(self.sessionid)
@@ -1075,6 +1127,7 @@ class VoiceTurnSession:
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
         await asyncio.sleep(0.3)
         self._turn_id = None
+        self._restore_greeting_voice()
         self._manual_pause = False
         self._capture_requested = True
         self._refresh_gate()
@@ -1083,6 +1136,7 @@ class VoiceTurnSession:
     async def close(self) -> None:
         if self._role_coordinator is not None:
             self._role_coordinator.cancel(self.sessionid)
+        self.greetings.close()
         self._cancel_idle_reset()
         self._commit_history("disconnect")
         self._emit_turn_metrics("disconnect")
@@ -1281,9 +1335,12 @@ class VoiceTurnSession:
             )
         )
 
-    def _start_turn_context(self, turn_id: str) -> None:
-        self._conversation_dirty = True
-        self._cancel_idle_reset()
+    def _start_turn_context(self, turn_id: str, *, origin="visitor") -> None:
+        self._turn_origin = origin
+        if origin == "visitor":
+            self.cancel_greeting_trial()
+            self._conversation_dirty = True
+            self._cancel_idle_reset()
         if (
             self._turn_context is None
             or self._turn_context.turn_id != turn_id
@@ -1336,6 +1393,10 @@ class VoiceTurnSession:
             played_text=played_text,
             reason=str(terminal_reason),
         )
+        if self.is_greeting:
+            if played_text:
+                remember_greeting(self.sessionid, played_text, profile_id=getattr(self.config, "profile_id", ""))
+            return bool(played_text)
         return commit_session_history(
             self.sessionid,
             target_turn,
@@ -1352,6 +1413,83 @@ class VoiceTurnSession:
             "healthy" if healthy else "unhealthy",
         )
         return recovered
+
+    @property
+    def is_greeting(self) -> bool:
+        return self._turn_origin == "greeting" and self._turn_id is not None
+
+    def greeting_conditions(self):
+        roles = self._role_coordinator
+        active = (self._presenter == "stage" and not self._closed
+                  and self._stage_ready and self._event_sink is not None
+                  and self.config.stage.idle_greeting_enabled
+                  and bool(self.config.vad.enabled) and not self._prepare_error
+                  and not self._preparing
+                  and (roles is None or roles.mode == "visitor")
+                  and (roles is None or not roles._apply_waiting)
+                  and (roles is None or roles.current_id == roles.library["pair"]["main"]
+                       or self._conversation_dirty or self._greeting_returning))
+        idle = (self._is_conversation_idle()
+                and (roles is None or roles.all_idle()) and
+                (roles is None or roles.phase in {"ready", "disabled"}
+                 or self._greeting_returning))
+        clear = (not self._conversation_dirty and not self._greeting_returning
+                 and (roles is None or roles.current_id == roles.library["pair"]["main"]))
+        return bool(active), bool(idle), bool(clear)
+
+    def start_greeting(self, text: str, *, playback_config=None) -> str:
+        """Queue fenced TTS without manufacturing a visitor history turn."""
+        if not sanitize_speech_text(text):
+            raise GreetingError("招呼文案沒有可朗讀文字，請補上招呼內容")
+        if not self._is_conversation_idle():
+            raise RuntimeError("目前有其他對話，請等待播放結束")
+        if playback_config is not None and getattr(self.avatar, "tts", None) is not None:
+            self._greeting_tts_config = self.avatar.tts.config
+            self.avatar.tts.config = playback_config
+        self._greeting_text = text
+        self._turn_id = uuid4().hex
+        self._greeting_started = False
+        self._start_turn_context(self._turn_id, origin="greeting")
+        # Always use played-only subtitles, independent of visitor reply mode.
+        self._pipeline_mode = "streaming"
+        try:
+            self._speak_fixed("", text, self._turn_id, self._generation, "greeting")
+        except Exception:
+            self.cancel_greeting(stop_playing=True)
+            raise
+        return self._turn_id
+
+    def cancel_greeting_trial(self):
+        task = self._greeting_trial_preparation
+        if task is not None:
+            task.cancel()
+            self._greeting_trial_preparation = None
+
+    def _restore_greeting_voice(self):
+        if self._greeting_tts_config is not None:
+            self.avatar.tts.config = self._greeting_tts_config
+            self._greeting_tts_config = None
+
+    def cancel_greeting(self, *, stop_playing=False) -> None:
+        if not self.is_greeting or self._greeting_started and not stop_playing:
+            return
+        turn_id = self._turn_id
+        self._commit_history("cancelled")
+        if self._turn_context is not None:
+            self._turn_context.cancel("greeting_cancelled")
+        self._generation += 1
+        if self._tail_task:
+            self._tail_task.cancel()
+            self._tail_task = None
+        self.avatar.flush_talk()
+        if self._media_player is not None:
+            self._media_player.discard_stale_media()
+        self._turn_id = None
+        self._turn_origin = "visitor"
+        self._output_active = False
+        self._restore_greeting_voice()
+        self._emit("turn_cancelled", turn_id=turn_id, reason="greeting_cancelled")
+        self._refresh_gate(refresh_greetings=False)
 
     def _is_conversation_idle(self) -> bool:
         return (
@@ -1432,7 +1570,7 @@ class VoiceTurnSession:
         self._gate_open = False
         self._segmenter_reset_pending = True
 
-    def _refresh_gate(self) -> None:
+    def _refresh_gate(self, *, refresh_greetings=True) -> None:
         if self._role_coordinator is not None:
             self._role_coordinator.reconcile_input_owner()
         was_open = self._gate_open
@@ -1448,7 +1586,7 @@ class VoiceTurnSession:
             and not self._output_active
             and self._turn_task is None
             and self._finalize_task is None
-            and self._turn_id is None
+            and (self._turn_id is None or self.is_greeting and not self._greeting_started)
         )
         self._gate_open = allowed
         if allowed and not was_open:
@@ -1457,6 +1595,8 @@ class VoiceTurnSession:
             self._metrics.mark_listening_resumed()
         self._emit("state", state="listening" if allowed else "paused")
         self._schedule_idle_reset()
+        if refresh_greetings:
+            self.greetings.refresh()
 
     def _on_board_event(self, payload: dict) -> None:
         if not isinstance(payload, dict):
@@ -1548,19 +1688,24 @@ class VoiceTurnSession:
             self._emit("board_end", turn_id=turn_id, board_id=board_id)
 
     def _emit(self, event_type: str, *, turn_id: Optional[str] = None, **payload) -> None:
-        if self._event_sink is None:
-            return
-        self._sequence += 1
         event = {
             "type": event_type,
-            "seq": self._sequence,
             "turn_id": turn_id if turn_id is not None else self._turn_id,
             **payload,
         }
         if getattr(self.config, "profile_id", ""):
             event["profile_id"] = self.config.profile_id
+        if self._presentation is not None:
+            self._presentation.publish(self, event)
+        else:
+            self._send_event(event)
+
+    def _send_event(self, event):
+        if self._event_sink is None:
+            return
+        self._sequence += 1
         try:
-            self._event_sink(json.dumps(event, ensure_ascii=False))
+            self._event_sink(json.dumps({**event, "seq": self._sequence}, ensure_ascii=False))
         except Exception as exc:
             logger.warning(f"Voice event channel failed closed: {exc}")
             self._event_sink = None

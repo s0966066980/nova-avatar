@@ -230,6 +230,8 @@ class OverridePersistTests(unittest.TestCase):
                     "background_id": "",
                     "caption_max_chars": 120,
                     "idle_reset_seconds": 10,
+                    "idle_greeting_enabled": False,
+                    "idle_greeting_seconds": 60,
                     "caption_x": 50,
                     "caption_y": 90,
                     "caption_width": 100,

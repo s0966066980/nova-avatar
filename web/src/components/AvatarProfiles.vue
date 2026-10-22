@@ -82,7 +82,7 @@ import { directedTransition, rolePhaseLabel } from '../roleState.js'
 import { ragScopeLabel } from '../ragScope.js'
 import AvatarProfileEditor from './AvatarProfileEditor.vue'
 const props = defineProps({ initialSection: { type: String, default: 'identity' } })
-const { roleRuntime, roleRequest } = useRoles()
+const { roleRuntime, roleRequest, roleLibrary } = useRoles()
 const { runtime } = useRuntimeSettings()
 const draft = ref(null), selected = ref(''), media = ref([]), providers = ref({}), defaults = ref(null)
 const busy = ref(false), error = ref(''), notice = ref(''), savedText = ref(''), edgeSource = ref(''), edgeTarget = ref('')
@@ -165,6 +165,7 @@ watch([workspace, edgeSource, edgeTarget], ([view, source, target]) => {
   if (!adopting && view === 'handoff' && draft.value && source && target && source !== target) directedTransition(draft.value, source, target)
 }, { flush: 'sync' })
 watch(() => props.initialSection, value => { workspace.value = 'profiles'; editorRef.value?.openSection(value) })
+watch(roleLibrary, value => { if (value && !busy.value && !dirty.value) adopt({ library: value }) })
 onMounted(() => run(load))
 defineExpose({ dirty, pendingApply, busy, saveAndApply: saveAndApplyFromParent })
 </script>

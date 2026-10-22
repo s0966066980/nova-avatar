@@ -241,8 +241,8 @@ test('放大的 9:16 舞台可直接拖曳看板與麥克風並保存位置', ()
   assert.match(panel, /舞台位置已套用/)
 })
 
-test('全域儲存透過角色設定檔一次套用 Prompt、Rule 與知識選擇', () => {
-  assert.ok(panel.includes('await profilesRef.value.saveAndApply()'))
+test('數位人內容由設定檔頁套用，其他頁不跨頁儲存角色草稿', () => {
+  assert.ok(!panel.includes('await profilesRef.value.saveAndApply()'))
   assert.ok(profiles.includes("await roleRequest('/apply', 'POST')"))
   assert.match(editor, /rows="8"/)
   assert.doesNotMatch(panel, /promises\.push\(applyLlmModel/)

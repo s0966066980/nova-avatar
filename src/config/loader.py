@@ -13,7 +13,7 @@ from .schema import (
     Config, AppConfig, ModelConfig, TTSConfig, ASRConfig, VADConfig, LLMConfig,
     AudioConfig, VideoConfig, CustomVideoConfig, ERNeRfConfig, TalkingGaussianConfig,
     MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
-    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig,
+    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig,
 )
 
 
@@ -156,6 +156,12 @@ def dict_to_config(config_dict: Dict) -> Config:
         **{key: value for key, value in stage_dict.items() if key in allowed_stage}
     )
 
+    from src.greetings.content import validate_content, validate_interval
+    greeting = GreetingConfig(**validate_content(config_dict.get("greeting")))
+    if type(stage_config.idle_greeting_enabled) is not bool:
+        raise ValueError("招呼開關須為布林值")
+    stage_config.idle_greeting_seconds = validate_interval(stage_config.idle_greeting_seconds)
+
     return Config(
         app=app_config,
         model=model_config,
@@ -168,6 +174,7 @@ def dict_to_config(config_dict: Dict) -> Config:
         custom_video=custom_video_config,
         reply_streaming=reply_streaming_config,
         stage=stage_config,
+        greeting=greeting,
     )
 
 

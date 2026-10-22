@@ -8,6 +8,7 @@ import gc
 import base64
 import threading
 from copy import deepcopy
+from dataclasses import asdict
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -26,6 +27,7 @@ from src.avatars.mouth_quality import (
     quality_from_model,
 )
 from src.config.overrides import persist_runtime_overrides
+from src.greetings.content import validate_interval, validate_content
 from src.llm.base import (
     DEFAULT_RESPONSE_MAX_CHARS,
     load_system_prompt,
@@ -348,6 +350,8 @@ def stage_snapshot(config) -> Dict[str, Any]:
     return {
         "background_id": str(getattr(stage, "background_id", "") or ""),
         "caption_max_chars": validate_stage_caption_max_chars(caption),
+        "idle_greeting_enabled": bool(getattr(stage, "idle_greeting_enabled", False)),
+        "idle_greeting_seconds": validate_interval(getattr(stage, "idle_greeting_seconds", 60)),
         "idle_reset_seconds": _validate_int_range(
             getattr(stage, "idle_reset_seconds", DEFAULT_STAGE_IDLE_RESET_SECONDS),
             field="舞台閒置清場時間",
@@ -439,11 +443,22 @@ def stage_snapshot(config) -> Dict[str, Any]:
     }
 
 
-def apply_stage_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
+def apply_stage_settings(config, params: Dict[str, Any], *, greeting_content=None) -> Dict[str, Any]:
     """更新並持久化數字人舞台顯示設定。"""
-    stage = getattr(config, "stage", None)
-    if stage is None:
+    if getattr(config, "stage", None) is None:
         raise SettingsError("當前配置不支援舞台設定，請更新 config.yaml", status=400)
+    params = dict(params)
+    enabled = params.get("idle_greeting_enabled", config.stage.idle_greeting_enabled)
+    if type(enabled) is not bool:
+        raise SettingsError("招呼開關須為布林值")
+    try:
+        interval = validate_interval(params.get("idle_greeting_seconds", config.stage.idle_greeting_seconds))
+        if enabled:
+            validate_content(greeting_content if greeting_content is not None else asdict(config.greeting), required=True)
+    except ValueError as exc:
+        raise SettingsError(str(exc)) from exc
+    original_stage = config.stage
+    stage = deepcopy(original_stage)
     payload = params or {}
     try:
         if "caption_max_chars" in payload:
@@ -551,7 +566,14 @@ def apply_stage_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
             stage.mic_preset = validate_board_preset(payload["mic_preset"])
     except ValueError as exc:
         raise SettingsError(str(exc)) from exc
-    persist_runtime_overrides(config)
+    stage.idle_greeting_enabled = enabled
+    stage.idle_greeting_seconds = interval
+    config.stage = stage
+    try:
+        persist_runtime_overrides(config)
+    except Exception:
+        config.stage = original_stage
+        raise
     return stage_snapshot(config)
 
 

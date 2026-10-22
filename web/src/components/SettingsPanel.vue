@@ -22,7 +22,7 @@
           role="tab"
           :class="{ active: activeSettingsTab === tab.id }"
           :aria-selected="activeSettingsTab === tab.id"
-          :aria-controls="`catPanel-${tab.id}`"
+          :aria-controls="tab.id === 'stage' ? 'settings-panel-stage' : `catPanel-${tab.id}`"
           :tabindex="activeSettingsTab === tab.id ? 0 : -1"
           @click="selectSettingsTab(tab.id)"
           @keydown="handleTabKeydown($event, index)"
@@ -53,6 +53,10 @@
         <div v-show="activeSettingsTab === 'roles'" class="settings-category-panel unified-role-panel"
           id="catPanel-roles" role="tabpanel" aria-labelledby="railTab-roles">
           <AvatarProfiles ref="profilesRef" :initial-section="roleInitialSection" />
+        </div>
+
+        <div v-show="activeSettingsTab === 'greeting'" class="settings-category-panel unified-role-panel" id="catPanel-greeting" role="tabpanel" aria-labelledby="railTab-greeting">
+          <IdleGreetingSettings v-if="greetingVisited" ref="greetingRef" :active="activeSettingsTab === 'greeting'" />
         </div>
 
         <!-- ── 分類 2：數位人與畫質 (滿板寬敞角色展示) ── -->
@@ -470,28 +474,6 @@
 
             <div class="setting-form-row">
               <div class="field-label-group">
-                <label for="stage-idle-reset-seconds" class="field-main-label">訪客對話重置時間</label>
-                <span class="field-sub-hint">舞台上一輪對話結束後閒置多久，就清除畫面與對話上下文 (3–300 秒)</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    id="stage-idle-reset-seconds"
-                    type="number"
-                    class="std-range"
-                    min="3"
-                    max="300"
-                    step="1"
-                    v-model.number="selectedStageIdleResetSeconds"
-                    :aria-invalid="stageIdleResetError"
-                  >
-                  <span class="std-val-pill">{{ selectedStageIdleResetSeconds }} 秒</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
                 <label for="stage-board-preview" class="field-main-label">常態預覽看板</label>
                 <span class="field-sub-hint">在舞台與控制台中預設顯示示範看板</span>
               </div>
@@ -669,20 +651,40 @@
           </section>
         </div>
 
-        <!-- ── 分類 4：語音活動與辨識 ── -->
-        <div
-          v-show="activeSettingsTab === 'voice'"
-          class="settings-category-panel"
-          id="catPanel-voice"
-          role="tabpanel"
-          aria-labelledby="railTab-voice"
-        >
+        <div v-show="activeSettingsTab === 'interaction'" class="settings-category-panel" id="catPanel-interaction" role="tabpanel" aria-labelledby="railTab-interaction">
+          <section class="setting-card">
+            <div class="card-title-row"><div><h2 class="card-title-text">訪客互動</h2><p class="card-subtitle-desc">管理訪客何時開始說話、何時送出，以及上一場對話何時清除。</p></div><button type="button" class="btn-apply-primary" :disabled="applyingVisitor || visitorResetError" @click="handleApplyVisitorSettings">套用訪客清場時間</button></div>
+            <div class="setting-form-row">
+              <div class="field-label-group">
+                <label for="visitor-idle-reset-seconds" class="field-main-label">訪客對話重置時間</label>
+                <span class="field-sub-hint">舞台上一輪對話結束後閒置多久，就清除畫面與對話上下文 (3–300 秒)</span>
+              </div>
+              <div class="field-control-area">
+                <div class="std-slider-combo">
+                  <input
+                    id="visitor-idle-reset-seconds"
+                    type="number"
+                    class="std-range"
+                    min="3"
+                    max="300"
+                    step="1"
+                    v-model.number="selectedVisitorResetSeconds"
+                    :aria-invalid="visitorResetError"
+                  >
+                  <span class="std-val-pill">{{ selectedVisitorResetSeconds }} 秒</span>
+                </div>
+              </div>
+            </div>
+
+            <p v-if="visitorError" role="alert">{{ visitorError }}</p>
+            <p>訪客模式由舞台接收現場語音；控制台測試模式由管理者發問或試播，避免兩邊同時操作。一般現場使用維持訪客模式即可。</p>
+          </section>
           <!-- 左欄：Silero VAD 免持收音 -->
           <section class="setting-card">
             <div class="card-title-row">
               <div>
                 <div class="card-title-text"><i class="bi bi-soundwave"></i> Silero VAD 語音端點偵測</div>
-                <div class="card-subtitle-desc">全雙工免持對話核心，自動判斷發話開始與停頓結束。</div>
+                <div class="card-subtitle-desc">自動判斷發話開始與停頓；播放期間暫停收音，可點選插話。</div>
               </div>
               <button
                 type="button"
@@ -697,7 +699,7 @@
 
             <div class="setting-form-row">
               <div class="field-label-group">
-                <span class="field-main-label">啟用免持全雙工收音</span>
+                <span class="field-main-label">啟用免持自動收音</span>
                 <span class="field-sub-hint">開口即錄，停頓超過閥值自動送出</span>
               </div>
               <div class="field-control-area">
@@ -749,6 +751,16 @@
             </div>
           </section>
 
+        </div>
+
+        <!-- ── 分類 4：語音活動與辨識 ── -->
+        <div
+          v-show="activeSettingsTab === 'voice'"
+          class="settings-category-panel"
+          id="catPanel-voice"
+          role="tabpanel"
+          aria-labelledby="railTab-voice"
+        >
           <!-- 右欄：STT 與 TTS 雙引擎設定 -->
           <section class="setting-card">
             <div class="card-title-row">
@@ -1041,16 +1053,16 @@
       </div>
 
       <!-- 滿板固定底部動作條 -->
-      <footer v-show="activeSettingsTab !== 'roles'" class="settings-fixed-footer">
-        <button type="button" class="btn-restore-gray" @click="confirmKind = 'reset'">
-          <i class="bi bi-arrow-counterclockwise"></i> 還原所有預設
+      <footer v-show="!['roles', 'greeting'].includes(activeSettingsTab)" class="settings-fixed-footer">
+        <button v-if="activeSettingsTab === 'experience'" type="button" class="btn-restore-gray" @click="confirmKind = 'reset'">
+          <i class="bi bi-arrow-counterclockwise"></i> 還原系統偏好預設
         </button>
         <div class="footer-right-actions">
           <span class="dirty-badge-text" id="dirtyIndicator" v-if="hasUnsavedChanges">
             <i class="bi bi-exclamation-circle-fill"></i> 有未儲存的變更
           </span>
-          <button type="button" class="btn-apply-primary" @click="saveAndApplyFullSettings">
-            <i class="bi bi-check-lg"></i> 儲存並套用設定
+          <button type="button" class="btn-apply-primary" :disabled="savingSettings || pageInvalid" @click="saveActiveSettings">
+            <i class="bi bi-check-lg"></i> 儲存並套用本頁設定
           </button>
         </div>
       </footer>
@@ -1090,6 +1102,7 @@ import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
 import AvatarProfiles from './AvatarProfiles.vue'
+import IdleGreetingSettings from './IdleGreetingSettings.vue'
 import {
   boardReopenPresentation,
   captionStyle,
@@ -1129,6 +1142,8 @@ const showSettings = ref(true)
 const isFullBleed = ref(true)
 const activeSettingsTab = ref(['ai', 'rag', 'roles'].includes(props.initialTab) ? 'roles' : props.initialTab || 'roles')
 const profilesRef = ref(null)
+const greetingRef = ref(null)
+const greetingVisited = ref(props.initialTab === 'greeting')
 const roleInitialSection = ref(props.initialTab === 'rag' ? 'rag' : props.initialTab === 'ai' ? 'model' : 'identity')
 const settingsContentRef = ref(null)
 const confirmKind = ref('')
@@ -1185,8 +1200,12 @@ const {
   selectedEngine,
   selectedAvatarId,
   selectedStageCaptionMaxChars,
-  selectedStageIdleResetSeconds,
-  stageIdleResetError,
+  selectedVisitorResetSeconds,
+  visitorResetError,
+  visitorDirty,
+  visitorError,
+  applyingVisitor,
+  applyVisitorSettings,
   selectedCaptionX,
   selectedCaptionY,
   selectedCaptionWidth,
@@ -1298,9 +1317,11 @@ const currentBoardStyleLabel = computed(() => {
 
 const settingsTabs = computed(() => [
   { id: 'roles', icon: 'bi bi-people-fill', label: '數位人、AI 與知識設定' },
+  { id: 'greeting', icon: 'bi bi-chat-heart', label: '閒置招呼' },
+  { id: 'interaction', icon: 'bi bi-mic', label: '訪客互動' },
   { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
-  { id: 'voice', icon: 'bi bi-soundwave', label: '語音活動與辨識', badge: 'Silero' },
+  { id: 'voice', icon: 'bi bi-soundwave', label: '語音辨識與合成' },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
 ])
 
@@ -1451,6 +1472,7 @@ const settings = ref({ ...defaultSettings })
 const selectedThemeValue = ref(normalizeThemeValue(props.currentTheme))
 
 const selectSettingsTab = (tabId) => {
+  if (tabId === 'greeting') greetingVisited.value = true
   if (tabId === 'ai' || tabId === 'rag') {
     roleInitialSection.value = tabId === 'rag' ? 'rag' : 'model'
     tabId = 'roles'
@@ -1518,6 +1540,13 @@ const applyAvatarChange = async () => {
   }
 }
 
+const handleApplyVisitorSettings = async () => {
+  try {
+    await applyVisitorSettings()
+    emit('notification', '訪客清場時間已套用', 'success')
+  } catch (error) { emit('notification', error.message, 'error') }
+}
+
 const handleApplyVad = async () => {
   try {
     vadDraft.type = 'silero'
@@ -1579,41 +1608,42 @@ const syncTheme = (theme) => {
   settings.value.theme = selectedThemeValue.value
 }
 
+const savingSettings = ref(false)
+const pageInvalid = computed(() => (activeSettingsTab.value === 'interaction' && visitorResetError.value) || (activeSettingsTab.value === 'stage' && (stageCaptionLengthError.value || boardSizeError.value)))
 const hasUnsavedChanges = computed(() => {
-  return Boolean(
-    profilesRef.value?.dirty ||
-    profilesRef.value?.pendingApply ||
-    stageDirty.value ||
-    avatarDirty.value ||
-    qualityDirty.value ||
-    vadDirty.value ||
-    sttDirty.value ||
-    ttsDirty.value
-  )
+  const states = {
+    roles: profilesRef.value?.dirty || profilesRef.value?.pendingApply,
+    greeting: greetingRef.value?.dirty,
+    stage: stageDirty.value,
+    interaction: visitorDirty.value || vadDirty.value,
+    avatar: avatarDirty.value || qualityDirty.value,
+    voice: sttDirty.value || ttsDirty.value
+  }
+  return Boolean(states[activeSettingsTab.value])
 })
 
-const saveAndApplyFullSettings = async () => {
+const saveActiveSettings = async () => {
+  if (savingSettings.value) return
+  savingSettings.value = true
   try {
-    const promises = []
-    if (profilesRef.value?.dirty || profilesRef.value?.pendingApply) await profilesRef.value.saveAndApply()
-    if (stageDirty.value) promises.push(applyStageSettings())
-    if (qualityDirty.value) promises.push(applyMouthQuality())
-    if (avatarDirty.value) promises.push(applyAvatarChange())
-    if (vadDirty.value) promises.push(applyVadSettings())
-    if (sttDirty.value) promises.push(applySpeechChange('stt'))
-    if (ttsDirty.value) promises.push(applySpeechChange('tts'))
-
-    persistLocalSettings()
-    if (promises.length > 0) {
-      await Promise.all(promises)
-      emit('notification', '✅ 設定已成功套用至全系統！', 'success')
-    } else {
-      emit('notification', t('notifications.settingsSaved'), 'success')
+    const tab = activeSettingsTab.value
+    if (tab === 'stage' && stageDirty.value) await applyStageSettings()
+    if (tab === 'interaction') {
+      if (visitorDirty.value) await applyVisitorSettings()
+      if (vadDirty.value) await applyVadSettings()
     }
-    emit('close-settings')
-  } catch (err) {
-    emit('notification', err.message, 'error')
-  }
+    if (tab === 'avatar') {
+      if (qualityDirty.value) await applyMouthQuality()
+      if (avatarDirty.value) await applyAvatarChange()
+    }
+    if (tab === 'voice') {
+      if (sttDirty.value) await applySpeechChange('stt')
+      if (ttsDirty.value) await applySpeechChange('tts')
+    }
+    if (tab === 'experience') persistLocalSettings()
+    emit('notification', '本頁設定已儲存並套用', 'success')
+  } catch (err) { emit('notification', err.message, 'error') }
+  finally { savingSettings.value = false }
 }
 
 const persistLocalSettings = () => {

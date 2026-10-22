@@ -98,6 +98,7 @@ class PlayerStreamTrack(MediaStreamTrack):
         self.timelist = [] #記錄最近包的時間戳
         self.current_frame_count = 0
         self._last_video_item = None
+        self.last_eventpoint = None
         self._last_video_release_at: Optional[float] = None
         self._last_audio_release_at: Optional[float] = None
         self._audio_late_release = False
@@ -388,6 +389,7 @@ class PlayerStreamTrack(MediaStreamTrack):
                 mylogger.info(f"------actual avg final fps:{self.framecount/self.totaltime:.4f}")
                 self.framecount = 0
                 self.totaltime=0
+        self.last_eventpoint = eventpoint
         return frame
     
     def stop(self):

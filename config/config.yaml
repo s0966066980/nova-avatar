@@ -137,6 +137,8 @@ reply_streaming:
 # 數字人舞台字幕顯示窗口；只影響舞台顯示，不限制模型生成長度
 stage:
   caption_max_chars: 120
+  idle_greeting_enabled: false  # 先在主數位人設定檔填寫招呼內容並儲存套用
+  idle_greeting_seconds: 60  # 閒置後開始準備；清場及返回主角色優先
 
 # VAD 服務端語音端點檢測：固定使用 Silero；WebRTC 負責傳輸，不負責判定語音
 vad:

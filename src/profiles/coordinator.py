@@ -14,6 +14,8 @@ from src.avatars.factory import load_avatar_data
 from src.llm.service import discard_profile_history, select_session_profile, session_history
 from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
 from src.profiles.routing import route_question
+from src.config.schema import GreetingConfig
+from src.greetings.content import validate_content
 from src.profiles.store import ProfileError, ProfileStore, compatible_pair, profile_config
 from src.profiles.weather import CwaWeather, WeatherQuery
 from src.utils.logging import logger
@@ -44,17 +46,22 @@ class RoleCoordinator:
         self._transition_id = ""
         self._transition_owner = None
         self._visitor_resume_pending = False
+        self._console_mode_requested = False
 
     @property
     def enabled(self):
         return bool(self.library["enabled"] and self.phase != "disabled")
 
     @property
+    def input_mode_managed(self):
+        return self.enabled or self.state.config.stage.idle_greeting_enabled
+
+    @property
     def profiles(self):
         return {p["id"]: p for p in self.library["profiles"]}
 
     def snapshot(self):
-        return dict(enabled=self.enabled, phase=self.phase, mode=self.mode,
+        return dict(enabled=self.enabled, input_mode_managed=self.input_mode_managed, phase=self.phase, mode=self.mode,
                     active_profile_id=self.current_id, pair=self.library["pair"],
                     active_revision=self.library["revision"], error=self.error,
                     weather_configured=self.weather.configured,
@@ -65,6 +72,9 @@ class RoleCoordinator:
                                and self.phase == "ready", applying=self._apply_waiting)
 
     def notify(self, session=None):
+        presentation = getattr(self.state, "presentation", None)
+        if presentation is not None:
+            presentation.refresh()
         targets = [session] if session is not None else list(self.state.voice_sessions.values())
         for voice in targets:
             voice._emit("role_state", **self.snapshot())
@@ -73,10 +83,10 @@ class RoleCoordinator:
     def input_allowed(self, session):
         if self._apply_waiting:
             return False
-        if not self.enabled:
+        if not self.input_mode_managed:
             return True
         role = "stage" if self.mode == "visitor" else "console"
-        return (session._presenter == role and self.phase in {"ready", "announcement"}
+        return (session._presenter == role and self.phase in {"ready", "announcement", "disabled"}
                 and not self._apply_waiting)
 
     def all_idle(self):
@@ -86,6 +96,30 @@ class RoleCoordinator:
         if self._apply_waiting:
             raise ProfileError("設定正在套用，請稍候", 409)
         target = deepcopy(library or self.store.load())
+        main = next(p for p in target["profiles"] if p["id"] == target["pair"]["main"])
+        if self.state.config.stage.idle_greeting_enabled:
+            try:
+                validate_content(main.get("greeting"), required=True)
+            except ValueError as exc:
+                raise ProfileError(str(exc)) from exc
+        def without_greetings(value):
+            value = deepcopy(value)
+            value.pop("revision", None)
+            for profile in value["profiles"]:
+                profile.pop("greeting", None)
+            return value
+        greeting_changed = any(new.get("greeting") != old.get("greeting")
+                               for new, old in zip(target["profiles"], self.library["profiles"]))
+        if self.profiles_applied and greeting_changed and without_greetings(target) == without_greetings(self.library):
+            self.library = target
+            for voice in self.state.voice_sessions.values():
+                voice.config.greeting = GreetingConfig(**self.profiles[self.current_id]["greeting"])
+                voice.greetings.refresh()
+            self.notify()
+            return self.snapshot()
+        for voice in self.state.voice_sessions.values():
+            if hasattr(voice, "greetings"):
+                voice.greetings.reset(stop_playing=False)
         self._apply_waiting = True
         self.notify()
         try:
@@ -189,6 +223,37 @@ class RoleCoordinator:
             self.notify()
         return self.snapshot()
 
+    async def apply_greeting(self, profile_id, *, expected_revision):
+        """Publish only the active main's greeting, preserving other saved drafts."""
+        if self._apply_waiting or self._lock.locked():
+            raise ProfileError("設定正在套用，請稍候再套用招呼", 409)
+        if profile_id != self.library["pair"]["main"]:
+            raise ProfileError("主數位人已變更，請在招呼頁重新載入設定", 409)
+        saved = self.store.load()
+        if type(expected_revision) is not int or expected_revision != saved["revision"]:
+            raise ProfileError("設定已更新，請重新載入招呼設定", 409)
+        profile = next((p for p in saved["profiles"] if p["id"] == profile_id), None)
+        if profile is None:
+            raise ProfileError("找不到主數位人設定，請重新載入", 409)
+        try:
+            greeting = validate_content(profile.get("greeting"),
+                                        required=self.state.config.stage.idle_greeting_enabled)
+        except ValueError as exc:
+            raise ProfileError(str(exc)) from exc
+        self.profiles[profile_id]["greeting"] = deepcopy(greeting)
+        # A greeting save must not claim unrelated role drafts were applied.
+        active_values, saved_values = deepcopy(self.library), deepcopy(saved)
+        active_values.pop("revision", None)
+        saved_values.pop("revision", None)
+        if active_values == saved_values:
+            self.library["revision"] = saved["revision"]
+        for voice in self.state.voice_sessions.values():
+            if getattr(voice.config, "profile_id", self.current_id) == profile_id:
+                voice.config.greeting = GreetingConfig(**deepcopy(greeting))
+            voice.greetings.refresh()
+        self.notify()
+        return self.snapshot()
+
     def config_for_session(self):
         return profile_config(self.state.config, self.profiles[self.current_id]) if self.profiles_applied or self.enabled else self.state.config
 
@@ -202,11 +267,14 @@ class RoleCoordinator:
             if getattr(voice.config, "profile_id", "") != self.current_id:
                 self._bind(voice, self.current_id)
             select_session_profile(voice.sessionid, self.current_id)
-            if voice._presenter == "stage":
+            if voice._presenter == "stage" and not self._console_mode_requested:
                 self._visitor_resume_pending = True
                 self.reconcile_input_owner()
         elif self.profiles_applied:
             select_session_profile(voice.sessionid, self.current_id)
+        if voice._presenter == "stage" and not self.enabled and not self._console_mode_requested:
+            self._visitor_resume_pending = True
+            self.reconcile_input_owner()
         self.notify()
 
     def unregister(self, sessionid):
@@ -221,15 +289,19 @@ class RoleCoordinator:
     async def set_mode(self, mode):
         if mode not in {"visitor", "console"}:
             raise ProfileError("請選擇訪客或控制台測試模式")
+        for voice in self.state.voice_sessions.values():
+            if hasattr(voice, "greetings"):
+                voice.greetings.reset(stop_playing=True)
         if not self.all_idle() or self.phase in {"announcement", "transition"}:
             raise ProfileError("請先等目前輪次結束，或停止目前回答後再切換輸入來源", 409)
         self.mode = mode
+        self._console_mode_requested = mode == "console"
         self._visitor_resume_pending = False
         self.notify()
         return self.snapshot()
 
     def reconcile_input_owner(self):
-        if (self._visitor_resume_pending and self.phase == "ready" and not self._apply_waiting
+        if (self._visitor_resume_pending and self.phase in {"ready", "disabled"} and not self._apply_waiting
                 and not self.pending and not self.continuations and self.all_idle()):
             self._visitor_resume_pending = False
             self.mode = "visitor"
@@ -381,6 +453,9 @@ class RoleCoordinator:
         if self.phase == "transition" or self._lock.locked():
             raise ProfileError("角色正在轉場，請稍候", 409)
         async with self._lock:
+            for voice in self.state.voice_sessions.values():
+                if hasattr(voice, "greetings") and not voice._greeting_returning:
+                    voice.greetings.reset(stop_playing=True)
             source = self.current_id
             if source == target:
                 return
@@ -471,7 +546,16 @@ class RoleCoordinator:
         self.confirmed.pop(voice.sessionid, None)
         self.cancel(voice.sessionid)
         if self.enabled and voice._presenter == "stage" and self.current_id != self.library["pair"]["main"]:
-            asyncio.create_task(self.return_to_main(voice))
+            voice._greeting_returning = True
+            async def return_after_clear():
+                try:
+                    await self.return_to_main(voice)
+                except ProfileError:
+                    pass  # return_to_main already publishes the failure
+                finally:
+                    voice._greeting_returning = False
+                    voice.greetings.refresh()
+            asyncio.create_task(return_after_clear())
 
     async def close(self):
         for sid in list(self.pending):

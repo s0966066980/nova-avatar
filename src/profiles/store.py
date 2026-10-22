@@ -15,7 +15,8 @@ from urllib.parse import urlsplit
 
 import yaml
 
-from src.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig
+from src.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig, GreetingConfig
+from src.greetings.content import validate_content
 from src.llm.rules import rules_from_config, validate_rules
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
@@ -83,13 +84,14 @@ def profile_config(base, profile: dict):
     result.llm.assistant_profile = AssistantProfileConfig(**profile["assistant_profile"])
     result.llm.reply_rules = ReplyRulesConfig(**profile["reply_rules"])
     result.tts = TTSConfig(**profile["tts"])
+    result.greeting = GreetingConfig(**validate_content(profile.get("greeting")))
     result.profile_rag = deepcopy(profile["rag"])
     return result
 
 
-def _profile(value: dict) -> dict:
+def validate_profile(value: dict) -> dict:
     allowed = {"id", "name", "engine", "avatar_id", "assistant_profile", "llm",
-               "tts", "rag", "reply_rules", "tools"}
+               "tts", "rag", "reply_rules", "tools", "greeting"}
     value = _object(value, allowed, "角色設定檔")
     pid = _identifier(value.get("id"))
     name = _text(value.get("name"), "角色名稱", 80, empty=False)
@@ -150,10 +152,14 @@ def _profile(value: dict) -> dict:
     tools = _object(value.get("tools", {"weather": False}), {"weather"}, "角色工具")
     if not isinstance(tools.get("weather"), bool):
         raise ProfileError("天氣工具啟用狀態不正確")
+    try:
+        greeting = validate_content(value.get("greeting"))
+    except ValueError as exc:
+        raise ProfileError(str(exc)) from exc
     return {"id": pid, "name": name, "engine": engine, "avatar_id": avatar_id,
             "assistant_profile": identity, "llm": llm, "tts": tts,
             "rag": rag, "reply_rules": rules,
-            "tools": dict(tools)}
+            "tools": dict(tools), "greeting": greeting}
 
 
 def validate_library(value: dict) -> dict:
@@ -164,7 +170,7 @@ def validate_library(value: dict) -> dict:
     profiles = value.get("profiles")
     if not isinstance(profiles, list) or not 2 <= len(profiles) <= 30:
         raise ProfileError("請保存 2–30 份角色設定檔")
-    normalized = [_profile(p) for p in profiles]
+    normalized = [validate_profile(p) for p in profiles]
     ids = {p["id"] for p in normalized}
     if len(ids) != len(normalized):
         raise ProfileError("角色識別碼不可重複")
@@ -247,7 +253,7 @@ class ProfileStore:
                         assistant_profile=asdict(config.llm.assistant_profile),
                         llm={key: getattr(config.llm, key) for key in LLM_FIELDS},
                         tts=asdict(config.tts), rag=avatar_settings(config.model.avatar_id),
-                        reply_rules=rules_from_config(config))
+                        reply_rules=rules_from_config(config), greeting=asdict(config.greeting))
             main["llm"].update(_playback_settings(config))
             specialist = deepcopy(main)
             specialist.update(id="weather", name=defaults["specialist"]["name"],

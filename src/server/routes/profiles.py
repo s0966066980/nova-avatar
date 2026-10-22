@@ -9,7 +9,8 @@ import tempfile
 
 from aiohttp import web
 from src.profiles.media import MAX_BYTES
-from src.profiles.store import ProfileError
+from src.profiles.store import ProfileError, validate_profile, profile_config
+from src.greetings.content import prepare_greeting, GreetingError
 from src.server.state import state
 
 
@@ -31,7 +32,8 @@ def endpoint(handler):
 @endpoint
 async def library(request, roles):
     return web.json_response({"code": 0, "library": roles.store.load(),
-                              "runtime": roles.snapshot(), "media": roles.media.list()})
+                              "runtime": roles.snapshot(), "media": roles.media.list(),
+                              "greeting_profile": roles.profiles[roles.library["pair"]["main"]]})
 
 
 @endpoint
@@ -118,7 +120,62 @@ async def delete_media(request, roles):
     return web.json_response({"code": 0, "media": roles.media.list()})
 
 
+@endpoint
+async def apply_greeting(request, roles):
+    body = await request.json()
+    runtime = await roles.apply_greeting(body["profile_id"], expected_revision=body["expected_revision"])
+    return web.json_response({"code": 0, "runtime": runtime})
+
+
+@endpoint
+async def greeting_preview(request, roles):
+    body = await request.json()
+    try:
+        config = profile_config(state.config, validate_profile(body["profile"]))
+        result = await prepare_greeting(config)
+    except GreetingError as exc:
+        raise ProfileError(str(exc)) from exc
+    return web.json_response({"code": 0, **result})
+
+
+@endpoint
+async def greeting_try(request, roles):
+    body = await request.json()
+    voice = state.voice_sessions.get(int(body.get("sessionid", 0)))
+    if roles.mode != "console" or voice is None or voice._presenter != "console" or not voice.event_sink_ready:
+        raise ProfileError("請切換到控制台測試模式並建立播放連線", 409)
+    config = profile_config(state.config, validate_profile(body["profile"]))
+    if config.tts.type != voice.config.tts.type:
+        raise ProfileError("請先載入草稿使用的語音引擎，再執行試播", 409)
+    if not voice._is_conversation_idle() or voice._greeting_trial_preparation is not None:
+        raise ProfileError("請等待目前對話或試播結束", 409)
+    # Keep this request cancellable and recheck ownership after AI preparation.
+    generation = voice._generation
+    preparing = asyncio.create_task(prepare_greeting(config, previous=voice.greetings.previous))
+    voice._greeting_trial_preparation = preparing
+    try:
+        result = await preparing
+        still_owned = voice._greeting_trial_preparation is preparing
+    except asyncio.CancelledError as exc:
+        raise ProfileError("試播已取消，請重新預覽或試播", 409) from exc
+    except GreetingError as exc:
+        raise ProfileError(str(exc)) from exc
+    finally:
+        if voice._greeting_trial_preparation is preparing:
+            voice._greeting_trial_preparation = None
+    if not still_owned or roles.mode != "console" or voice._closed or voice._generation != generation or not voice._is_conversation_idle():
+        raise ProfileError("試播準備期間連線或對話狀態已改變，請再試一次", 409)
+    try:
+        turn_id = voice.start_greeting(result["text"], playback_config=config)
+    except GreetingError as exc:
+        raise ProfileError(str(exc)) from exc
+    return web.json_response({"code": 0, **result, "turn_id": turn_id}, status=202)
+
+
 def register_profile_routes(app):
+    app.router.add_post("/api/profiles/greeting/apply", apply_greeting)
+    app.router.add_post("/api/profiles/greeting/preview", greeting_preview)
+    app.router.add_post("/api/profiles/greeting/try", greeting_try)
     app.router.add_get("/api/profiles", library)
     app.router.add_put("/api/profiles", save)
     app.router.add_post("/api/profiles/apply", apply)

@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Exercise reservation, negotiation and cleanup through the real offer route."""
 import asyncio
+import json
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 import pytest
 from src.config.schema import Config
 from src.server.state import state
@@ -15,7 +16,7 @@ def rtc(monkeypatch):
     config = Config()
     for name, value in dict(config=config, model_ready=True, model=object(), avatar=object(),
                             switching=False, avatar_streams={},
-                            voice_sessions={}, session_roles={}, pcs=set()).items():
+                            voice_sessions={}, session_roles={}, pcs=set(), presentation=None).items():
         monkeypatch.setattr(state, name, value, raising=False)
     peers, voices = [], []
     class Peer:
@@ -27,7 +28,9 @@ def rtc(monkeypatch):
         def on(self, name):
             def attach(fn): self.handlers[name] = fn; return fn
             return attach
-        def addTrack(self, track): pass
+        def addTrack(self, track):
+            if not hasattr(self, 'tracks'): self.tracks = {}
+            self.tracks[track.kind] = track
         def getTransceivers(self): return []
         async def setRemoteDescription(self, value):
             if value.sdp == 'bad': raise ValueError('invalid SDP')
@@ -42,7 +45,9 @@ def rtc(monkeypatch):
         voices.append(value)
         return value
     monkeypatch.setattr(webrtc, 'RTCPeerConnection', Peer)
-    monkeypatch.setattr(webrtc, 'HumanPlayer', lambda *a, **k: SimpleNamespace(audio=object(), video=object()))
+    monkeypatch.setattr(webrtc, 'HumanPlayer', lambda *a, **k: SimpleNamespace(
+        audio=SimpleNamespace(kind='audio'), video=SimpleNamespace(kind='video'),
+        discard_stale_media=Mock()))
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', voice)
     monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: object())
     def request(role='console', sdp='good'):
@@ -185,4 +190,55 @@ def test_single_profile_config_drives_new_voice_sessions_without_handoff(rtc, mo
         assert captured[0][0].profile_rag['document_ids'] == ['c'*32]
         rtc.peers[0].connectionState = 'failed'
         await rtc.peers[0].handlers['connectionstatechange']()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('mode,source_role', [('console', 'console'), ('visitor', 'stage')])
+@pytest.mark.parametrize('late_join', [False, True])
+def test_active_questions_and_played_answers_reach_both_pages(rtc, monkeypatch, mode, source_role, late_join):
+    from src.server.voice_session import VoiceTurnSession
+
+    roles = SimpleNamespace(enabled=False, profiles_applied=False, input_mode_managed=True,
+        phase='disabled', mode=mode, _apply_waiting=False, cancel=Mock(), unregister=Mock(), notify=Mock(),
+        reconcile_input_owner=Mock(),
+        config_for_session=lambda: state.config, data_for_session=lambda: state.avatar,
+        input_allowed=lambda voice: voice._presenter == ('stage' if roles.mode == 'visitor' else 'console'))
+    roles.register = lambda voice: setattr(voice, '_role_coordinator', roles)
+    monkeypatch.setattr(state, 'roles', roles)
+    monkeypatch.setattr(webrtc, 'VoiceTurnSession', VoiceTurnSession)
+    monkeypatch.setattr(webrtc, 'create_avatar', lambda config, *args: SimpleNamespace(
+        config=config, configure_media_fence=Mock(), flush_talk=Mock()))
+
+    async def run():
+        events = {}
+        try:
+            for index, role in enumerate([source_role, 'stage' if source_role == 'console' else 'console']):
+                response = await webrtc.offer(rtc.request(role))
+                sid = json.loads(response.text)['sessionid']
+                events[role] = []
+                state.voice_sessions[sid].attach_event_sink(lambda raw, role=role: events[role].append(json.loads(raw)))
+                if late_join and index == 0:
+                    state.voice_sessions[sid]._emit('user_transcript', turn_id='current-turn', text='目前的問題')
+                    state.voice_sessions[sid]._emit('assistant_fragment', turn_id='current-turn', text='實際播出的回答')
+            source = next(v for v in state.voice_sessions.values() if v._presenter == source_role)
+            if not late_join:
+                source._emit('user_transcript', turn_id='current-turn', text='目前的問題')
+                source._emit('assistant_fragment', turn_id='current-turn', text='實際播出的回答')
+            for role in ['console', 'stage']:
+                messages = [(e['type'], e.get('text')) for e in events[role] if e['type'] in {'user_transcript', 'assistant_fragment'}]
+                assert messages == [('user_transcript', '目前的問題'), ('assistant_fragment', '實際播出的回答')]
+            from unittest.mock import patch
+            viewer = next(v for v in state.voice_sessions.values() if v is not source)
+            receipt = json.dumps(dict(type='board_displayed', presenter=viewer._presenter,
+                turn_id='current-turn', board_id='current-turn', item_index=0))
+            with patch('src.server.voice_session.acknowledge_session_board_item', return_value=True) as acknowledge:
+                viewer.handle_control(receipt)
+                viewer.handle_control(receipt)
+                acknowledge.assert_called_once_with(source.sessionid, turn_id='current-turn',
+                    board_id='current-turn', item_index=0, presenter=viewer._presenter)
+        finally:
+            for peer in rtc.peers:
+                peer.connectionState = 'failed'
+                await peer.handlers['connectionstatechange']()
+
     asyncio.run(run())

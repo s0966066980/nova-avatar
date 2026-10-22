@@ -16,6 +16,19 @@ from src.utils.logging import logger
 
 _session_llm_instances = {}
 _active_profiles = {}
+_latest_greetings = {}
+
+
+def remember_greeting(sessionid, text, *, profile_id=""):
+    """Replace one played receipt; never append artificial visitor history."""
+    _latest_greetings[_session_key(sessionid, profile_id)] = str(text)
+
+
+def _clear_greetings(sessionid, profile_id=None):
+    for key in list(_latest_greetings):
+        if (key == sessionid or isinstance(key, tuple) and key[0] == sessionid) and (
+                profile_id is None or key == _session_key(sessionid, profile_id)):
+            _latest_greetings.pop(key, None)
 
 
 def select_session_profile(sessionid: int, profile_id: str = "") -> None:
@@ -59,6 +72,7 @@ def session_history(sessionid: int, profile_id=None) -> list:
 
 def discard_profile_history(sessionid, profile_id):
     _session_llm_instances.pop(_session_key(sessionid, profile_id), None)
+    _clear_greetings(sessionid, profile_id)
 
 
 def prepare_tool_board(avatar_stream, turn_id, board):
@@ -125,6 +139,9 @@ def llm_response(
             generation_datainfo["on_mode"] = mode_callback
         if getattr(avatar_stream, "_incremental_board", False):
             generation_datainfo["incremental_board"] = True
+        greeting = _latest_greetings.get(key, "")
+        if greeting:
+            rag_context += "\n最近一次實際播出的招呼（只供理解訪客追問）：\n" + greeting
         return llm.generate_response(
             message,
             avatar_stream,
@@ -166,6 +183,7 @@ def _ensure_llamacpp_if_needed(config) -> None:
 
 def clear_session_history(sessionid: int, profile_id=None):
     """清空指定會話的對話歷史與看板快照"""
+    _clear_greetings(sessionid, profile_id)
     keys = [key for key in _session_llm_instances
             if (key == sessionid or isinstance(key, tuple) and key[0] == sessionid)
             and (profile_id is None or key == _session_key(sessionid, profile_id))]
@@ -234,6 +252,7 @@ def commit_session_history(
 
 def remove_session(sessionid: int):
     """刪除指定會話的 LLM 例項"""
+    _clear_greetings(sessionid)
     for key in list(_session_llm_instances):
         if key == sessionid or isinstance(key, tuple) and key[0] == sessionid:
             del _session_llm_instances[key]

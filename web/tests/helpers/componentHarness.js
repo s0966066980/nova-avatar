@@ -9,7 +9,7 @@ import { createRenderer, h, nextTick, reactive } from 'vue'
 // test dependencies are needed to exercise event handlers and async state.
 export async function loadComponent(url, stubs = {}) {
   const { descriptor } = parse(readFileSync(url, 'utf8'), { filename: url.pathname })
-  let source = compileScript(descriptor, { id: url.pathname, inlineTemplate: true }).content
+  let source = compileScript(descriptor, { id: url.pathname, inlineTemplate: true, templateOptions: { compilerOptions: { hoistStatic: false } } }).content
   const imports = []
   const declarations = []
   for (const match of source.matchAll(/import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g)) {

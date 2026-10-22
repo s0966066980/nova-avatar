@@ -7,6 +7,7 @@ import vm from 'node:vm'
 import test from 'node:test'
 import { stageErrorMessage } from '../src/stageErrorMessage.js'
 import { canRoleInput, canRoleReturn } from '../src/roleState.js'
+import { StageCaptionWindow } from '../src/stageCaptionWindow.js'
 import {
   isKioskMode,
   kioskReconnectDelayMs,
@@ -35,7 +36,8 @@ function stageHarness({ search = '' } = {}) {
         addEventListener(type, handler) { handlers.set(type, handler) },
         dispatch(type) { handlers.get(type)?.({ preventDefault() {} }) },
         setAttribute() {},
-        async play() {},
+        paused: true, muted: false, volume: 1,
+        async play() { this.paused = false; this.dispatch('playing') },
       })
     }
     return elements.get(id)
@@ -43,7 +45,7 @@ function stageHarness({ search = '' } = {}) {
   const sent = []
   const fetchCalls = []
   const timers = []
-  const track = { enabled: false, stop() {} }
+  const track = { enabled: false, readyState: 'live', muted: false, stop() {} }
   let channel
   let peer
   class Peer {
@@ -68,8 +70,13 @@ function stageHarness({ search = '' } = {}) {
     RTCPeerConnection: Peer,
     RTCSessionDescription: class { constructor(value) { Object.assign(this, value) } },
     MediaStream: class { getTracks() { return [] } addTrack() {} },
-    StageCaptionWindow: class {},
-    StageCaptionView: class { clear() {} destroy() {} },
+    StageCaptionWindow,
+    StageCaptionView: class {
+      constructor({ container, captionWindow }) { this.container = container; this.window = captionWindow }
+      append(text, turnId) { this.window.append(text, turnId); this.container.textContent = this.window.text }
+      clear() { this.container.textContent = '' }
+      destroy() {}
+    },
     DEFAULT_STAGE_CAPTION_MAX_CHARS: 200,
     shouldFadeStageReply: () => false,
     stageErrorMessage,
@@ -208,6 +215,25 @@ test('對話重置事件清除舞台字幕、看板與使用者字句，但不�
   assert.equal(stage.element('veil').hidden, true)
 })
 
+test('控制台測試的提問與已播回答顯示在舞台，切回訪客模式會更新目前問答', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  stage.event({ seq: 1, type: 'role_state', enabled: true, phase: 'ready', mode: 'console' })
+  stage.event({ seq: 2, type: 'user_transcript', turn_id: 'console-turn', text: '控制台的問題', mirrored: true })
+  stage.event({ seq: 3, type: 'assistant_fragment', turn_id: 'console-turn', text: '測試中的已播回答', mirrored: true })
+  assert.equal(stage.element('said').textContent, '控制台的問題')
+  assert.equal(stage.element('reply').textContent, '測試中的已播回答')
+  assert.equal(stage.element('mic').disabled, true)
+  stage.event({ seq: 4, type: 'presentation_reset' })
+  assert.equal(stage.element('said').textContent, '')
+  assert.equal(stage.element('reply').textContent, '')
+  stage.event({ seq: 5, type: 'role_state', enabled: true, phase: 'ready', mode: 'visitor' })
+  stage.event({ seq: 6, type: 'user_transcript', turn_id: 'visitor-turn', text: '舞台目前的問題' })
+  stage.event({ seq: 7, type: 'assistant_fragment', turn_id: 'visitor-turn', text: '舞台目前的已播回答' })
+  assert.equal(stage.element('said').textContent, '舞台目前的問題')
+  assert.equal(stage.element('reply').textContent, '舞台目前的已播回答')
+})
+
 test('角色轉場與控制台測試暫停舞台收音，恢復時不重建連線', async () => {
   const stage = stageHarness()
   await stage.connect()
@@ -235,4 +261,28 @@ test('轉場清畫面後保留連線，返回主角色時隱藏返回按鈕', as
   assert.equal(stage.element('veil').hidden, true)
   stage.event({ seq: 3, type: 'role_state', enabled: true, phase: 'ready', mode: 'visitor', can_return: false })
   assert.equal(stage.element('roleReturn').hidden, true)
+})
+
+
+test('招呼就緒回報要求有聲播放、麥克風與未手動暫停，斷線立即撤銷', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  const ready = () => stage.sent.filter(message => message.type === 'stage_ready').at(-1)
+  assert.equal(ready().audible, true)
+  assert.equal(ready().microphone, true)
+  assert.equal(ready().interaction, true)
+  stage.element('video').muted = true
+  stage.element('video').dispatch('volumechange')
+  assert.equal(ready().audible, false)
+  stage.element('video').muted = false
+  stage.element('video').dispatch('playing')
+  stage.element('mic').dispatch('pointerup')
+  assert.equal(ready().interaction, false)
+  stage.element('mic').dispatch('pointerup')
+  assert.equal(ready().interaction, true)
+  stage.track.readyState = 'ended'
+  stage.element('video').dispatch('playing')
+  assert.equal(ready().microphone, false)
+  stage.peerState('disconnected')
+  assert.equal(ready().audible, false)
 })

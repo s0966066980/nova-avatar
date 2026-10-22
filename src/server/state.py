@@ -18,6 +18,7 @@ class ServerState:
         self.voice_sessions: Dict[int, Any] = {}
         self.voice_test_history = VoiceTestHistory()
         self.session_roles: Dict[int, str] = {}
+        self.presentation = None
         
         # WebRTC 連線管理
         self.pcs: Set[RTCPeerConnection] = set()

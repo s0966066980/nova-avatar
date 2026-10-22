@@ -18,6 +18,7 @@ from src.utils.logging import logger
 from src.server.state import state
 from src.server.utils import randN
 from src.server.voice_session import VoiceTurnSession
+from src.server.presentation import SessionPresentation
 
 
 async def offer(request):
@@ -47,7 +48,7 @@ async def offer(request):
     # Reserve before the first await so concurrent requests cannot overbook.
     state.add_session(sessionid, None, role=client_role)
     logger.info("WebRTC session %d (%s) reserved", sessionid, client_role)
-    pc = voice_session = prepare_task = player = None
+    pc = voice_session = prepare_task = player = presentation = None
     cleaning = False
 
     async def cleanup():
@@ -59,6 +60,8 @@ async def offer(request):
             if prepare_task is not None:
                 prepare_task.cancel()
                 await asyncio.gather(prepare_task, return_exceptions=True)
+            if presentation is not None:
+                await presentation.unregister(sessionid)
             operations = []
             if voice_session is not None:
                 operations.append(voice_session.close())
@@ -161,8 +164,12 @@ async def offer(request):
             on_stale_drop=voice_session.record_stale_drop,
         )
         voice_session.attach_media_player(player)
-        pc.addTrack(player.audio)
-        pc.addTrack(player.video)
+        if state.presentation is None:
+            state.presentation = SessionPresentation(state)
+        presentation = state.presentation
+        audio, video = presentation.register(voice_session, player)
+        pc.addTrack(audio)
+        pc.addTrack(video)
         capabilities = RTCRtpSender.getCapabilities("video")
         preferences = [
             codec for name in ("H264", "VP8", "rtx")

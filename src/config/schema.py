@@ -365,11 +365,23 @@ class ReplyStreamingConfig:
 
 
 @dataclass
+class GreetingConfig:
+    """Per-avatar proactive content; disabled by the stage by default."""
+    mode: str = "scripts"
+    scripts: List[str] = field(default_factory=list)
+    prompt: str = ""
+    min_chars: int = 20
+    max_chars: int = 60
+
+
+@dataclass
 class StageConfig:
     """數字人舞台顯示配置。"""
     background_id: str = ""
     caption_max_chars: int = 120
     idle_reset_seconds: int = 10
+    idle_greeting_enabled: bool = False
+    idle_greeting_seconds: float = 60.0
     caption_x: int = 50
     caption_y: int = 90
     caption_width: int = 100
@@ -402,6 +414,7 @@ class Config:
     custom_video: CustomVideoConfig = field(default_factory=CustomVideoConfig)
     reply_streaming: ReplyStreamingConfig = field(default_factory=ReplyStreamingConfig)
     stage: StageConfig = field(default_factory=StageConfig)
+    greeting: GreetingConfig = field(default_factory=GreetingConfig)
     
     # 其他動態配置
     sessionid: int = 0
