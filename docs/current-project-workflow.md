@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Current Project Workflow
 
-Updated: 2026-09-25
+Updated: 2026-10-22
 
 This document replaces informal carry-over work with a repeatable Nova Avatar
 maintenance flow. The current baseline is documented in
@@ -28,7 +28,12 @@ belong in `.scratch/` under the repository's issue-tracker convention.
 1. Make the smallest source, configuration, and documentation change that
    satisfies the accepted work item.
 2. Run focused tests first. For validation commands, prepare the development
-   environment with `uv sync --group dev`.
+   environment with `uv sync --group dev`, then run `uv run ruff check .` and
+   `npm --prefix web run lint`. Ruff covers application code, scripts, and tests;
+   bundled engine/vendor directories are excluded in `pyproject.toml`. ESLint
+   covers frontend source, tests, and configuration with JavaScript recommended
+   and Vue essential rules. The initial gate defers unused-code cleanup and
+   error-cause conventions, as documented in `web/eslint.config.js`.
 3. Run the offline project check:
 
    ```bash
@@ -45,6 +50,30 @@ belong in `.scratch/` under the repository's issue-tracker convention.
 5. Before handoff, run Python tests, frontend tests, and the production build.
    Run a voice/WebRTC soak only when its real services and hardware are in
    scope; record the report path in the active work item's comments.
+
+GitHub Actions runs these offline checks on pushes and pull requests through
+`.github/workflows/ci.yml`. Its Python job uses Python 3.11, CPU PyTorch wheels,
+the `funasr` and `vad` extras, and the `dev` and `ci` dependency groups. The `ci`
+group supplies the MuseTalk import probes required by the offline check without
+loading models. To reproduce the Python job in a separate environment:
+
+```bash
+export UV_PROJECT_ENVIRONMENT=/tmp/nova-avatar-ci-venv
+uv venv --python 3.11 "$UV_PROJECT_ENVIRONMENT"
+uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" \
+  --no-sources --torch-backend cpu --group dev --group ci -e '.[funasr,vad]'
+uv run --no-sync ruff check .
+uv run --no-sync python scripts/check-integration.py
+uv run --no-sync pytest
+```
+
+Keep `--no-sync` for commands in that isolated environment so they retain the
+installed CPU wheels instead of resolving the deployment's CUDA index again.
+The CPU backend uses uv's [PyTorch pip integration](https://docs.astral.sh/uv/guides/integration/pytorch/#automatic-backend-selection).
+
+The frontend job uses Node.js 22 and runs `npm ci`, `npm run lint`, `npm test`,
+and `npm run build` inside `web/`. Live service and hardware checks remain
+explicitly invoked checks outside this offline workflow.
 
 ## 清除過往工作項目與流程
 

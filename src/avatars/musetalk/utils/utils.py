@@ -1,3 +1,9 @@
+# Portions derived from MuseTalk.
+# Copyright (c) 2024 Tencent Music Entertainment Group.
+# Licensed under the MIT License.
+# Modified by HongXian0903, 2026.
+# See third_party/licenses/MuseTalk-LICENSE.txt.
+
 import os
 import cv2
 import numpy as np
@@ -7,21 +13,6 @@ import torch.nn.functional as F
 from einops import rearrange
 import shutil
 import os.path as osp
-
-# Try relative imports first (when used as a module)
-# Fall back to absolute imports (when run as a script)
-try:
-    from ..models.vae import VAE
-    from ..models.unet import UNet, PositionalEncoding
-except (ImportError, ValueError):
-    # Add parent directory to path for absolute imports
-    import sys
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(current_dir)
-    if parent_dir not in sys.path:
-        sys.path.insert(0, parent_dir)
-    from models.vae import VAE
-    from models.unet import UNet, PositionalEncoding
 
 # Get project root directory
 _current_file = os.path.abspath(__file__)
@@ -38,6 +29,20 @@ def load_all_model(
     unet_config=None,
     device=None,
 ):
+    # Pure media/queue utilities also run in offline checks. Import model
+    # classes only when inference is requested, after its assets are installed.
+    try:
+        from ..models.vae import VAE
+        from ..models.unet import UNet, PositionalEncoding
+    except (ImportError, ValueError):
+        # Preserve standalone-script imports used by upstream tools.
+        import sys
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        from models.vae import VAE
+        from models.unet import UNet, PositionalEncoding
+
     # Use absolute paths based on project root
     if unet_model_path is None:
         unet_model_path = os.path.join(PROJECT_ROOT, "models", "musetalk", "musetalkV15", "unet.pth")

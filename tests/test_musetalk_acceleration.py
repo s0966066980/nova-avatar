@@ -17,6 +17,31 @@ from src.avatars.base import BaseAvatar
 from src.config.schema import Config
 
 
+def test_utilities_import_without_loading_optional_model_classes(monkeypatch):
+    import builtins
+    import importlib.util
+    from pathlib import Path
+
+    original_import = builtins.__import__
+
+    def reject_model_import(name, *args, **kwargs):
+        if name in {"models.vae", "models.unet"}:
+            raise AssertionError("utility imports must not load model classes")
+        return original_import(name, *args, **kwargs)
+
+    path = Path(__file__).resolve().parents[1] / "src/avatars/musetalk/utils/utils.py"
+    spec = importlib.util.spec_from_file_location(
+        "src.avatars.musetalk.utils._import_probe", path
+    )
+    module = importlib.util.module_from_spec(spec)
+    with monkeypatch.context() as isolated:
+        isolated.setattr(builtins, "__import__", reject_model_import)
+        spec.loader.exec_module(module)
+
+    assert module.get_file_type("avatar.mp4") == "video"
+    assert callable(module.load_all_model)
+
+
 @pytest.mark.parametrize('batch_size,expected_shapes', [(1, [1]), (4, [4]), (8, [4, 8])])
 def test_model_warmup_exercises_whisper_and_both_runtime_batch_shapes(batch_size, expected_shapes):
     from src.avatars.musetalk.avatar import warm_up

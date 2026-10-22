@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 import sys
 import tempfile
 import unittest
@@ -100,6 +103,7 @@ class AvatarCatalogTests(unittest.TestCase):
                 characters = list_avatar_characters()
                 engines = {item["id"]: item for item in list_engines(characters)}
                 ok, reason = avatar_bootable("musetalk", "musetalk_avatar1")
+                missing_ok, missing_reason = avatar_bootable("musetalk", "missing")
 
             self.assertEqual(len(characters), 1)
             self.assertEqual(characters[0]["type"], "musetalk")
@@ -110,9 +114,8 @@ class AvatarCatalogTests(unittest.TestCase):
             self.assertTrue(engines["wav2lip"]["can_import"])
             self.assertFalse(engines["ernerf"]["can_import"])
             self.assertTrue(ok, reason)
-            ok, reason = avatar_bootable("musetalk", "missing")
-            self.assertFalse(ok)
-            self.assertIn("找不到角色", reason)
+            self.assertFalse(missing_ok)
+            self.assertIn("找不到角色", missing_reason)
 
 
 class OllamaHelperTests(unittest.TestCase):
@@ -161,6 +164,25 @@ class Wav2LipWeightsTests(unittest.TestCase):
 
 
 class OverridePersistTests(unittest.TestCase):
+    def test_failed_replace_preserves_previous_settings_and_cleans_temporary_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runtime_overrides.yaml"
+            previous = "previous: settings\n"
+            path.write_text(previous, encoding="utf-8")
+
+            with (
+                patch("src.config.overrides.RUNTIME_OVERRIDES_FILE", path),
+                patch(
+                    "src.config.overrides.os.replace",
+                    side_effect=OSError("simulated replace failure"),
+                ),
+                self.assertRaisesRegex(OSError, "simulated replace failure"),
+            ):
+                persist_runtime_overrides(Config())
+
+            self.assertEqual(path.read_text(encoding="utf-8"), previous)
+            self.assertEqual(list(Path(tmp).iterdir()), [path])
+
     def test_roundtrip(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "runtime_overrides.yaml"

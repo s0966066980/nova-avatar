@@ -5,6 +5,11 @@ on Kedreamix/Linly-Talker-Stream.
 
 ## Agent skills
 
+### Code navigation
+
+For this repository, use codebase-memory-mcp with `project="nova-avatar"`.
+See `docs/agents/code-navigation.md` when selecting or refreshing its index.
+
 ### Issue tracker
 
 Issues and specs are tracked as local Markdown under `.scratch/`. See `docs/agents/issue-tracker.md`.
@@ -44,9 +49,11 @@ Run the relevant focused tests while editing, then complete the rebranding
 audit and full validation before handoff:
 
 ```bash
+uv run ruff check .
 uv run python scripts/check-integration.py
 uv run pytest
 cd web
+npm run lint
 npm test
 npm run build
 ```

@@ -67,6 +67,15 @@ Repository = "https://github.com/s0966066980/nova-avatar"
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "ruff==0.17.1",
+]
+# Import probes used by the offline integration check; the full MuseTalk
+# training/runtime extra is unnecessary for these CPU tests.
+ci = [
+    "einops==0.8.1",
+    "ffmpeg-python>=0.2.0",
+    # Match the pinned torch release even if newer audio wheels relax metadata.
+    "torchaudio==2.5.0",
 ]
 
 [tool.uv.sources]
@@ -93,6 +102,25 @@ markers = [
     "slow: deterministic tests that normally take at least one second",
     "live: opt-in tests that use an explicitly configured external model",
 ]
+
+[tool.ruff]
+required-version = "==0.17.1"
+target-version = "py310"
+include = ["src/**/*.py", "scripts/**/*.py", "tests/**/*.py"]
+force-exclude = true
+extend-exclude = [
+    "src/avatars/ernerf",
+    "src/avatars/talkinggaussian",
+    "src/avatars/ultralight",
+    "src/avatars/wav2lip",
+    "src/avatars/musetalk/utils",
+    "src/avatars/musetalk/whisper",
+]
+
+[tool.ruff.lint]
+# Start with syntax/control-flow errors and undefined names. Style and unused
+# code cleanup can be introduced separately without rewriting inherited code.
+select = ["E9", "F63", "F7", "F82"]
 
 [[tool.uv.index]]
 name = "pytorch-cu124"

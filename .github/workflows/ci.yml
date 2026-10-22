@@ -1,0 +1,68 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python lint, integration check, and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.11.21'
+          python-version: '3.11'
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - name: Install development and offline-check dependencies
+        # uv's pip backend selects CPU wheels only for PyTorch packages.
+        run: |
+          uv venv --python 3.11
+          uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e '.[funasr,vad]'
+      - name: Lint Python
+        run: uv run --no-sync ruff check .
+      - name: Check branding, notices, and offline integration
+        run: uv run --no-sync python scripts/check-integration.py
+      - name: Run Python tests
+        run: uv run --no-sync pytest
+
+  web:
+    name: Frontend lint, tests, and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Lint frontend
+        run: npm run lint
+      - name: Run frontend tests
+        run: npm test
+      - name: Build frontend
+        run: npm run build
