@@ -28,6 +28,9 @@ MAX_IDLE_AGE_SECONDS = 60.0
 REFRESH_BEFORE_EXPIRY_SECONDS = 10.0
 CONNECT_TIMEOUT_SECONDS = 10.0
 RESPONSE_TIMEOUT_SECONDS = 15.0
+# A socket can remain locally open after its idle peer stops accepting speech.
+# Replace it before the synthesis caller exhausts its first-audio deadline.
+REUSED_FIRST_AUDIO_TIMEOUT_SECONDS = 1.0
 WARM_RETRY_SECONDS = 15.0
 
 _SPEECH_CONFIG = (
@@ -188,11 +191,17 @@ class EdgeConnectionPool:
             for request in requests:
                 while True:
                     try:
-                        async for chunk in self._request(connection, config, request):
+                        async for chunk in self._request(
+                            connection, config, request,
+                            first_audio_timeout=(
+                                REUSED_FIRST_AUDIO_TIMEOUT_SECONDS
+                                if reused and not yielded else RESPONSE_TIMEOUT_SECONDS
+                            ),
+                        ):
                             yielded = True
                             yield chunk
                         break
-                    except StaleConnection:
+                    except (StaleConnection, asyncio.TimeoutError):
                         if yielded or not reused:
                             raise
                         await connection.ws.close()
@@ -207,8 +216,12 @@ class EdgeConnectionPool:
                     await connection.ws.close()
             self.ensure_warm()
 
-    async def _request(self, connection, config, request):
+    async def _request(
+        self, connection, config, request, *,
+        first_audio_timeout: float = RESPONSE_TIMEOUT_SECONDS,
+    ):
         ws = connection.ws
+        first_audio_deadline = asyncio.get_running_loop().time() + first_audio_timeout
         try:
             await ws.send_str(_SPEECH_CONFIG.format(timestamp=transport.date_to_string()))
             await ws.send_str(transport.ssml_headers_plus_data(
@@ -218,7 +231,11 @@ class EdgeConnectionPool:
             raise StaleConnection() from exc
         audio_seen = False
         while True:
-            message = await asyncio.wait_for(ws.receive(), timeout=RESPONSE_TIMEOUT_SECONDS)
+            timeout = (
+                RESPONSE_TIMEOUT_SECONDS if audio_seen else
+                max(0.0, first_audio_deadline - asyncio.get_running_loop().time())
+            )
+            message = await asyncio.wait_for(ws.receive(), timeout=timeout)
             if message.type == aiohttp.WSMsgType.TEXT:
                 if "Path:turn.end" in message.data:
                     if not audio_seen:

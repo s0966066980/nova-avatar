@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from threading import Lock
 import soundfile as sf
 from io import BytesIO
 from typing import Dict, Any
@@ -39,6 +40,7 @@ class BaseASR(ABC):
         self.config = config
         self.language = "zh"  # 預設中文
         self._initialized = False
+        self._initialization_lock = Lock()
         
         logger.info(f'[ASR] 初始化 {self.__class__.__name__}')
     
@@ -132,9 +134,10 @@ class BaseASR(ABC):
 
     def ensure_ready(self) -> None:
         """Load the recognizer once so connection setup can fail before listening starts."""
-        if not self._initialized:
-            self._load_model()
-            self._initialized = True
+        with self._initialization_lock:
+            if not self._initialized:
+                self._load_model()
+                self._initialized = True
     
     def transcribe_text(self, audio_bytes: bytes) -> str:
         """

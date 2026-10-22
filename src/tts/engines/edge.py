@@ -38,6 +38,8 @@ EDGE_CONTINUATION_STREAM_TIMEOUT_SECONDS = 15.0
 EDGE_WARMUP_TIMEOUT_SECONDS = 15.0
 EDGE_MAX_ATTEMPTS = 2
 EDGE_MAX_PREFETCH_JOBS = 2
+# Recovery must finish before the renderer's initial-output stall watchdog.
+EDGE_TURN_RETRY_WAIT_SECONDS = 2.0
 EDGE_RATE_LIMIT_BACKOFF_SECONDS = 1.0
 ACTIVITY_THRESHOLD = 1e-4
 ONSET_THRESHOLD = 1e-5
@@ -632,6 +634,9 @@ class EdgeTTS(BaseTTS):
         self._prefetch_jobs: deque[dict] = deque()
         self._worker_lock = threading.Lock()
         self._rate_limit_until = 0.0
+        self._retry_lock = threading.Lock()
+        self._retry_turn_key = None
+        self._turn_retry_budget = None
 
     @property
     def worker_loop(self):
@@ -710,6 +715,7 @@ class EdgeTTS(BaseTTS):
                 text,
                 textevent,
                 started_at,
+                retry_budget=self._retry_budget_for(textevent),
                 fragment_committed=self._fragment_committed_predicate(textevent),
                 discard_uncommitted=self._discard_uncommitted_predicate(textevent),
                 frame_sink=sink,
@@ -831,6 +837,7 @@ class EdgeTTS(BaseTTS):
                     text,
                     textevent,
                     started_at,
+                    retry_budget=self._retry_budget_for(textevent),
                     fragment_committed=self._fragment_committed_predicate(textevent),
                     discard_uncommitted=self._discard_uncommitted_predicate(textevent),
                 )
@@ -883,6 +890,20 @@ class EdgeTTS(BaseTTS):
                 textevent,
                 "tts_exhausted_before_audio",
             )
+
+    def _retry_budget_for(self, textevent: dict) -> Optional[RetryBudget]:
+        """Bound recovery across all prefetched fragments of a reply turn."""
+        turn_id = textevent.get("turn_id")
+        if not turn_id:
+            return None
+        key = (turn_id, textevent.get("generation", 0))
+        with self._retry_lock:
+            if key != self._retry_turn_key:
+                self._retry_turn_key = key
+                self._turn_retry_budget = RetryBudget(
+                    max_retries=1, extra_wait_seconds=EDGE_TURN_RETRY_WAIT_SECONDS,
+                )
+            return self._turn_retry_budget
 
     def _fragment_committed_predicate(
         self, textevent: dict
@@ -1104,10 +1125,10 @@ class EdgeTTS(BaseTTS):
                     )
                     return
                 logger.warning(
-                    "Edge TTS attempt %d/%d failed before first audio: %s",
+                    "Edge TTS attempt %d/%d failed before first audio type=%s",
                     attempt,
                     EDGE_MAX_ATTEMPTS,
-                    exc,
+                    type(exc).__name__,
                 )
                 if not can_retry:
                     break

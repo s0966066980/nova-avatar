@@ -24,6 +24,7 @@ class FakeEdgeServer:
         self.connections = 0
         self.requests = 0
         self.request_connections = []
+        self.silent_connections = set()
         self.deny_new_connections = False
         self.close_after_request = False
         self.hold_end = False
@@ -64,6 +65,9 @@ class FakeEdgeServer:
             if message.type == WSMsgType.TEXT and "Path:ssml" in message.data:
                 self.requests += 1
                 self.request_connections.append(connection_id)
+                if connection_id in self.silent_connections:
+                    await ws.receive()
+                    return ws
                 header = b"X-RequestId:test\r\nContent-Type:audio/mpeg\r\nPath:audio\r\n"
                 frame = len(header).to_bytes(2, "big") + header + self.payload
                 await ws.send_bytes(frame)
@@ -186,6 +190,23 @@ class ConnectionPoolTests(unittest.TestCase):
             self.assertEqual(self.server.requests, 2)
             self.assertNotEqual(*self.server.request_connections)
         self.run_pool(scenario)
+
+    def test_silent_warm_socket_is_replaced_before_the_first_audio_deadline(self):
+        async def scenario(pool):
+            await self.speak(pool)
+            self.server.silent_connections.add(self.server.request_connections[0])
+            # Reproduce a warm socket that remains open but never answers.
+            # Recovery must happen inside the first request's latency budget.
+            await asyncio.wait_for(self.speak(pool), timeout=0.2)
+            self.assertEqual(self.server.requests, 3)
+            self.assertEqual(self.server.request_connections[:2], [1, 1])
+            self.assertNotEqual(self.server.request_connections[-1], 1)
+
+        with patch(
+            "src.tts.edge_connection.REUSED_FIRST_AUDIO_TIMEOUT_SECONDS",
+            0.03,
+        ):
+            self.run_pool(scenario)
 
     def test_expired_socket_is_replaced(self):
         now = [0.0]

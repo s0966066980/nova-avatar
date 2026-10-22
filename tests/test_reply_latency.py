@@ -170,6 +170,39 @@ def test_failed_reply_prewarm_never_announces_ready_or_accepts_a_peer():
     asyncio.run(run())
 
 
+def test_startup_preloads_the_selected_speech_recognizer():
+    from src.server.app import _await_asr_prewarm, _start_asr_prewarm
+
+    config = Config()
+    config.vad.enabled = True
+    config.asr.type = "funasr"
+    config.asr.model_size = "paraformer-zh"
+    engine = MagicMock()
+    with patch("src.asr.factory.get_asr_engine", return_value=engine) as get_engine:
+        assert _await_asr_prewarm(_start_asr_prewarm(config))
+    get_engine.assert_called_once_with("funasr", model_size="paraformer-zh", config=config)
+    engine.ensure_ready.assert_called_once()
+
+
+def test_failed_speech_input_prewarm_can_fall_back_to_session_preparation():
+    from src.server.app import _await_asr_prewarm, _start_asr_prewarm
+
+    config = Config()
+    config.vad.enabled = True
+    with patch("src.asr.factory.get_asr_engine", side_effect=RuntimeError("unavailable")):
+        assert not _await_asr_prewarm(_start_asr_prewarm(config))
+
+
+def test_disabled_voice_input_does_not_load_a_speech_recognizer():
+    from src.server.app import _await_asr_prewarm, _start_asr_prewarm
+
+    config = Config()
+    config.vad.enabled = False
+    with patch("src.asr.factory.get_asr_engine") as get_engine:
+        assert _await_asr_prewarm(_start_asr_prewarm(config))
+    get_engine.assert_not_called()
+
+
 def test_edge_prewarm_requires_decoded_pcm_when_requested():
     from src.tts.engines.edge import prewarm_edge_tts
     from tests.test_edge_tts_worker import _mp3_fixture

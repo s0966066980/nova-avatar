@@ -52,6 +52,13 @@ uv run pytest
 NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run pytest -q -m live
 ```
 
+The live checks cover startup prewarm, a spoken answer without a board, and
+explicit and rule-selected boards. Local llama.cpp starts with the selected
+context size, host, port, and model directory; test-owned servers stop afterward.
+To use an isolated YAML profile, set `NOVA_AVATAR_LIVE_LLM_CONFIG` to its path
+and `NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED=0` so saved console settings do not
+override that profile.
+
 The repository handoff gate remains:
 
 ```bash

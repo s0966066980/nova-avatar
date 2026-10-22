@@ -25,6 +25,41 @@ from src.server.server import create_app, run_server
 
 EDGE_PREWARM_MAX_ATTEMPTS = 3
 EDGE_PREWARM_RETRY_SECONDS = 1.0
+ASR_PREWARM_TIMEOUT_SECONDS = 30.0
+
+
+def _start_asr_prewarm(config) -> Thread | None:
+    """Load the shared recognizer while avatar and LLM startup are in flight."""
+    if not bool(getattr(getattr(config, "vad", None), "enabled", False)):
+        return None
+
+    def warm():
+        started = time.monotonic()
+        worker.prewarm_ready = False
+        try:
+            from src.asr.factory import get_asr_engine
+
+            engine = get_asr_engine(
+                config.asr.type, model_size=config.asr.model_size, config=config,
+            )
+            engine.ensure_ready()
+            worker.prewarm_ready = True
+            logger.info("ASR startup prewarm ready in %.3fs", time.monotonic() - started)
+        except Exception as exc:
+            logger.warning("ASR startup prewarm failed type=%s", type(exc).__name__)
+
+    worker = Thread(target=warm, name="asr-prewarm", daemon=True)
+    worker.start()
+    return worker
+
+
+def _await_asr_prewarm(worker: Thread | None) -> bool:
+    if worker is None:
+        return True
+    worker.join(timeout=ASR_PREWARM_TIMEOUT_SECONDS)
+    if worker.is_alive():
+        logger.warning("ASR prewarm still running; voice sessions will await preparation")
+    return bool(getattr(worker, "prewarm_ready", False))
 
 
 def _start_edge_tts_prewarm(config) -> Thread | None:
@@ -102,6 +137,7 @@ def main():
         logger.warning("未能載入已選舞台背景：%s", exc)
         state.config.stage.background_id = ""
     edge_tts_prewarm = _start_edge_tts_prewarm(state.config)
+    asr_prewarm = _start_asr_prewarm(state.config)
 
     # The llama.cpp child belongs to this backend when ensure_server starts it;
     # register termination cleanup before model loading so even Ctrl-C during
@@ -188,6 +224,7 @@ def main():
     from src.llm.prewarm import prewarm_local_llm
 
     llm_ready = prewarm_local_llm(state.config)
+    _await_asr_prewarm(asr_prewarm)
     state.reply_prewarm_ready = edge_ready and llm_ready
     if not state.reply_prewarm_ready:
         logger.warning("Reply prewarm incomplete; conversation is not ready")

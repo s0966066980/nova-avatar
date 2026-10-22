@@ -333,6 +333,41 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         self.assertEqual(requests, [1])
         self.assertEqual(failures, ["tts_exhausted_before_audio"])
 
+    def test_prefetched_first_reply_does_not_wait_past_its_retry_budget(self):
+        from aiohttp import WSServerHandshakeError
+
+        requests, failures = [], []
+
+        class RateLimitedCommunicate:
+            async def stream(self):
+                requests.append(1)
+                raise WSServerHandshakeError(
+                    SimpleNamespace(real_url="https://example.invalid/tts"),
+                    (), status=429, headers={"Retry-After": "5"},
+                )
+                yield
+
+        parent = SimpleNamespace(
+            notify_fragment_synthesis_failed=lambda _event, reason: failures.append(reason),
+        )
+        tts = self._make_tts(parent)
+        job = None
+        try:
+            with patch(
+                "src.tts.engines.edge.edge_tts.Communicate",
+                side_effect=lambda *_args: RateLimitedCommunicate(),
+            ):
+                job = tts._launch_stream(("第一輪回覆。", {
+                    "turn_id": "first", "generation": 0, "fragment_sequence": 0,
+                }), gated=False)
+                deadline = time.monotonic() + 0.3
+                while time.monotonic() < deadline and not tts._finish_job(job):
+                    pass
+                self.assertEqual(failures, ["tts_exhausted_before_audio"])
+                self.assertEqual(requests, [1])
+        finally:
+            tts._cancel_job(job)
+
     def test_prefetch_limits_requests_and_eventually_emits_all_fragments_in_order(self):
         from src.tts.engines.edge import EDGE_MAX_PREFETCH_JOBS
 

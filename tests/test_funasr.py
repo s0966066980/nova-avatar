@@ -1,5 +1,9 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 import tempfile
 import unittest
+from threading import Event, Thread
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -13,6 +17,38 @@ from src.asr.engines.funasr import (
 
 
 class FunASRLocalModelTests(unittest.TestCase):
+    def test_startup_and_first_session_share_one_model_load(self):
+        from src.asr.base import BaseASR
+
+        loading, release, duplicate = Event(), Event(), Event()
+        loads = []
+
+        class Recognizer(BaseASR):
+            def _load_model(self):
+                loads.append(1)
+                if len(loads) > 1:
+                    duplicate.set()
+                loading.set()
+                release.wait(timeout=2)
+
+            def _transcribe(self, audio_path):
+                return {"text": ""}
+
+        engine = Recognizer()
+        startup = Thread(target=engine.ensure_ready)
+        session = Thread(target=engine.ensure_ready)
+        startup.start()
+        self.assertTrue(loading.wait(timeout=1))
+        session.start()
+        try:
+            duplicate.wait(timeout=0.1)
+        finally:
+            release.set()
+            startup.join(timeout=1)
+            session.join(timeout=1)
+        self.assertEqual(loads, [1])
+        self.assertFalse(startup.is_alive() or session.is_alive())
+
     def test_converts_simplified_output_to_taiwan_traditional(self):
         self.assertEqual(
             convert_funasr_text("软件和鼠标", "traditional-tw"),
