@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Source Attribution Audit
 
-Updated: 2026-09-25
+Updated: 2026-10-22
 
 This is the maintained classification record for Nova Avatar source roots. It
 does not relicense code, models, weights, voices, datasets, or services. The
@@ -23,6 +23,7 @@ applicable.
 | `src/avatars/ernerf/`, `src/avatars/talkinggaussian/`, `src/avatars/ultralight/` | Bundled optional engines and third-party/vendor trees | Preserve embedded notices and verify code, submodules, models, datasets, and assets independently. | Not selected by the commercial review profile; per-component license review is open. |
 | `third_party/licenses/` | Third-party license notices | Keep without rebranding. | MuseTalk MIT and Wav2Lip non-commercial notices are present. |
 | `src/scene/`, `src/ragflow/`, `integrations/ragflow/` | Nova Avatar-authored integration code | Nova Avatar Apache-2.0 SPDX header; RAGFlow itself is an external service, not bundled source. | Files carry the Nova Avatar header. |
+| `tools/skill-maintenance/` | Independently authored Nova Avatar development tooling and generated source-mapping metadata | Use the Nova Avatar Apache-2.0 SPDX header for code and documentation; referenced skills retain their upstream licenses. | The registry example contains paths, aliases and fingerprints, with local paths replaced by placeholders; upstream skill contents and local runtime artifacts are not bundled. |
 | `docs/`, `tests/` and new Nova Avatar-only files | Nova Avatar-authored unless a file identifies another source | Use the Nova Avatar Apache-2.0 SPDX header only after confirming no copied third-party source. | New audit, workflow, stack, and profile files use Nova Avatar attribution. |
 
 ## Evidence and boundaries

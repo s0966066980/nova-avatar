@@ -17,6 +17,10 @@ The default five-role triage vocabulary is used unchanged. See `docs/agents/tria
 
 This repository uses a single-context domain-doc layout. See `docs/agents/domain.md`.
 
+### Local skill maintenance
+
+For updates to installed skills, see [local skill maintenance](tools/skill-maintenance/README.md).
+
 ## Rebranding and source attribution
 
 - Use `Nova Avatar` for user-visible branding, `nova-avatar` for package and
