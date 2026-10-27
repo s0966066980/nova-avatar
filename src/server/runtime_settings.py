@@ -1265,7 +1265,7 @@ TTS_ENGINE_META = {
     },
 }
 
-STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3")
+STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3", "turbo")
 STT_MODELS_BY_ENGINE = {
     "whisper": STT_MODEL_SIZES,
     "funasr": ("paraformer-zh",),

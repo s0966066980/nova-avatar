@@ -390,10 +390,12 @@ class ResponseProtocolParser:
         # Empty/reasoning-only completions are a failed spoken reply too.
         # Give the user feedback without treating recovery as a real answer.
         if not self._speech_accumulator:
-            self._speech_accumulator = FORMAT_RECOVERY_MESSAGE
+            recovery = ("Sorry, the reply could not be formatted. Please try again."
+                        if self._output_locale == 'en-US' else FORMAT_RECOVERY_MESSAGE)
+            self._speech_accumulator = recovery
             if self.on_speech:
-                self.on_speech(FORMAT_RECOVERY_MESSAGE)
-            return [FORMAT_RECOVERY_MESSAGE]
+                self.on_speech(recovery)
+            return [recovery]
         return []
 
     def feed(self, chunk: str) -> list[str]:

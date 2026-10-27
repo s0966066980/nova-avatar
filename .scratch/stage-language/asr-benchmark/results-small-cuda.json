@@ -1,0 +1,2383 @@
+{
+  "model": "small",
+  "device": "cuda",
+  "requested_compute_type": "float16",
+  "started_utc": "2026-10-27T03:52:28.578774+00:00",
+  "cold_definition": "new worker/model process; OS filesystem caches not flushed; imports and CUDA memory-probe context initialization precede the load timer; first decode includes lazy decode/kernel initialization",
+  "parameters": {
+    "language": null,
+    "task": "transcribe",
+    "beam_size": 5,
+    "vad_filter": false,
+    "temperature": [
+      0.0,
+      0.2,
+      0.4,
+      0.6,
+      0.8,
+      1.0
+    ],
+    "condition_on_previous_text": true,
+    "cpu_threads": 4,
+    "num_workers": 1
+  },
+  "ct2_supported_compute_types": [
+    "bfloat16",
+    "float16",
+    "float32",
+    "int8",
+    "int8_bfloat16",
+    "int8_float16",
+    "int8_float32"
+  ],
+  "runs": [
+    {
+      "phase": "cold_first_decode",
+      "repeat": 0,
+      "sample_id": "zh_fixture_01",
+      "category": "zh",
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "audio_seconds": 10.992,
+      "transcribe_seconds": 1.362148818996502,
+      "rtf": 0.12392183578934697,
+      "detected_language": "zh",
+      "language_probability": 1.0,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 7.0,
+          "text": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待。",
+          "avg_logprob": -0.18400931294928205,
+          "temperature": 0.0
+        },
+        {
+          "start": 7.0,
+          "end": 11.0,
+          "text": "最後記錄整段語音的播放時間。",
+          "avg_logprob": -0.18400931294928205,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "normalized_actual": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "cer_edits": 0,
+        "cer_reference_characters": 41,
+        "cer": 0.0,
+        "raw_script_cer": 0.0
+      },
+      "memory_before": {
+        "monotonic": 134080.781911459,
+        "rss_bytes": 1102049280,
+        "system_available_bytes": 44113727488,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43836284928,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22096076800
+      },
+      "memory_after": {
+        "monotonic": 134082.401018589,
+        "rss_bytes": 1644466176,
+        "system_available_bytes": 43859296256,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43582107648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350254080
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 1,
+      "sample_id": "zh_fixture_01",
+      "category": "zh",
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "audio_seconds": 10.992,
+      "transcribe_seconds": 0.8401758630061522,
+      "rtf": 0.07643521315558152,
+      "detected_language": "zh",
+      "language_probability": 1.0,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 7.0,
+          "text": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待。",
+          "avg_logprob": -0.18400931294928205,
+          "temperature": 0.0
+        },
+        {
+          "start": 7.0,
+          "end": 11.0,
+          "text": "最後記錄整段語音的播放時間。",
+          "avg_logprob": -0.18400931294928205,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "normalized_actual": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "cer_edits": 0,
+        "cer_reference_characters": 41,
+        "cer": 0.0,
+        "raw_script_cer": 0.0
+      },
+      "memory_before": {
+        "monotonic": 134082.403843701,
+        "rss_bytes": 1644474368,
+        "system_available_bytes": 43859296256,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43582107648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350254080
+      },
+      "memory_after": {
+        "monotonic": 134083.489842748,
+        "rss_bytes": 1644711936,
+        "system_available_bytes": 43726807040,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43449749504,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22482612224
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 1,
+      "sample_id": "zh_fixture_02",
+      "category": "zh",
+      "expected": "臺灣是位於西太平洋的島國，以多元文化、精緻飲食和優美的自然景觀聞名。這裡擁有從高山到海岸的豐富地質景觀，以及豐富的原住民文化和漢文化交融的特色。臺灣也是科技產業與農業並重的經濟體，生活節奏快且充滿活力。",
+      "transcript": "台灣是位於西太平洋的島國以多元文化、精緻飲食和優美的自然景觀文明這裡擁有從高山到海岸的豐富地質景觀以及豐富的原住民文化和漢文化交融的特色台灣也是科技產業與農業併重的經濟體生活節奏快且充滿活力",
+      "audio_seconds": 22.272,
+      "transcribe_seconds": 1.5945199279813096,
+      "rtf": 0.0715930283755976,
+      "detected_language": "zh",
+      "language_probability": 0.99951171875,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 2.6,
+          "text": "台灣是位於西太平洋的島國",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 2.6,
+          "end": 7.4,
+          "text": "以多元文化、精緻飲食和優美的自然景觀文明",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 7.4,
+          "end": 10.9,
+          "text": "這裡擁有從高山到海岸的豐富地質景觀",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 10.9,
+          "end": 15.6,
+          "text": "以及豐富的原住民文化和漢文化交融的特色",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 15.6,
+          "end": 19.2,
+          "text": "台灣也是科技產業與農業併重的經濟體",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 19.2,
+          "end": 22.1,
+          "text": "生活節奏快且充滿活力",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "臺灣是位於西太平洋的島國以多元文化精緻飲食和優美的自然景觀聞名這裡擁有從高山到海岸的豐富地質景觀以及豐富的原住民文化和漢文化交融的特色臺灣也是科技產業與農業並重的經濟體生活節奏快且充滿活力",
+        "normalized_actual": "臺灣是位於西太平洋的島國以多元文化精緻飲食和優美的自然景觀文明這裡擁有從高山到海岸的豐富地質景觀以及豐富的原住民文化和漢文化交融的特色臺灣也是科技產業與農業併重的經濟體生活節奏快且充滿活力",
+        "cer_edits": 3,
+        "cer_reference_characters": 94,
+        "cer": 0.031914893617021274,
+        "raw_script_cer": 0.05319148936170213
+      },
+      "memory_before": {
+        "monotonic": 134083.492623573,
+        "rss_bytes": 1644711936,
+        "system_available_bytes": 43726032896,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43448975360,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22483386368
+      },
+      "memory_after": {
+        "monotonic": 134085.342208016,
+        "rss_bytes": 1644863488,
+        "system_available_bytes": 43710005248,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43432964096,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22499397632
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 1,
+      "sample_id": "en_openai_jfk",
+      "category": "en",
+      "expected": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "audio_seconds": 11.0,
+      "transcribe_seconds": 0.6693176759872586,
+      "rtf": 0.06084706145338714,
+      "detected_language": "en",
+      "language_probability": 0.95849609375,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 11.0,
+          "text": " And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "avg_logprob": -0.20507811861378805,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "andsomyfellowamericansasknotwhatyourcountrycandoforyouaskwhatyoucandoforyourcountry",
+        "normalized_actual": "andsomyfellowamericansasknotwhatyourcountrycandoforyouaskwhatyoucandoforyourcountry",
+        "cer_edits": 0,
+        "cer_reference_characters": 83,
+        "cer": 0.0,
+        "raw_script_cer": 0.0,
+        "wer_edits": 0,
+        "wer_reference_words": 22,
+        "wer": 0.0
+      },
+      "memory_before": {
+        "monotonic": 134085.343469982,
+        "rss_bytes": 1644863488,
+        "system_available_bytes": 43710005248,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43432964096,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22499397632
+      },
+      "memory_after": {
+        "monotonic": 134086.26187214,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43704266752,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43427233792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22505127936
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 1,
+      "sample_id": "en_hf_librispeech",
+      "category": "en",
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
+      "transcript": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.",
+      "audio_seconds": 5.855,
+      "transcribe_seconds": 0.6338305209937971,
+      "rtf": 0.10825457233028131,
+      "detected_language": "en",
+      "language_probability": 0.99658203125,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 5.48,
+          "text": " Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.",
+          "avg_logprob": -0.16767939925193787,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "misterquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel",
+        "normalized_actual": "mrquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel",
+        "cer_edits": 4,
+        "cer_reference_characters": 73,
+        "cer": 0.0547945205479452,
+        "raw_script_cer": 0.0547945205479452,
+        "wer_edits": 1,
+        "wer_reference_words": 17,
+        "wer": 0.058823529411764705
+      },
+      "memory_before": {
+        "monotonic": 134086.263204313,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43704266752,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43427233792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22505127936
+      },
+      "memory_after": {
+        "monotonic": 134087.128214619,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43673321472,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43396317184,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22536044544
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 1,
+      "sample_id": "mixed_splice_zh_en",
+      "category": "mixed",
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。 And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+      "audio_seconds": 22.342,
+      "transcribe_seconds": 0.9292698509816546,
+      "rtf": 0.041592957254572314,
+      "detected_language": "zh",
+      "language_probability": 0.99951171875,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 3.4,
+          "text": "今天的測試會先確認聲音是否連續",
+          "avg_logprob": -0.19565217682848807,
+          "temperature": 0.0
+        },
+        {
+          "start": 4.0,
+          "end": 6.8,
+          "text": "接著比較嘴型推理造成的等待",
+          "avg_logprob": -0.19565217682848807,
+          "temperature": 0.0
+        },
+        {
+          "start": 7.4,
+          "end": 10.3,
+          "text": "最後記錄整段語音的播放時間",
+          "avg_logprob": -0.19565217682848807,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間andsomyfellowamericansasknotwhatyourcountrycandoforyouaskwhatyoucandoforyourcountry",
+        "normalized_actual": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "cer_edits": 83,
+        "cer_reference_characters": 124,
+        "cer": 0.6693548387096774,
+        "raw_script_cer": 0.6693548387096774
+      },
+      "memory_before": {
+        "monotonic": 134087.129627847,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43673321472,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43396317184,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22536044544
+      },
+      "memory_after": {
+        "monotonic": 134088.30528563,
+        "rss_bytes": 1648566272,
+        "system_available_bytes": 43564965888,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43288072192,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22644289536
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 1,
+      "sample_id": "mixed_splice_en_zh",
+      "category": "mixed",
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL 今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待,最後記錄整段語音的播放時間。",
+      "audio_seconds": 17.197,
+      "transcribe_seconds": 1.088554579007905,
+      "rtf": 0.06329909745931878,
+      "detected_language": "zh",
+      "language_probability": 0.99072265625,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 6.0,
+          "text": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.",
+          "avg_logprob": -0.2271126735378319,
+          "temperature": 0.0
+        },
+        {
+          "start": 6.0,
+          "end": 17.0,
+          "text": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待,最後記錄整段語音的播放時間。",
+          "avg_logprob": -0.2271126735378319,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "misterquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "normalized_actual": "mrquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "cer_edits": 4,
+        "cer_reference_characters": 114,
+        "cer": 0.03508771929824561,
+        "raw_script_cer": 0.03508771929824561
+      },
+      "memory_before": {
+        "monotonic": 134088.307060997,
+        "rss_bytes": 1648566272,
+        "system_available_bytes": 43564965888,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43288072192,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22644289536
+      },
+      "memory_after": {
+        "monotonic": 134089.63710705,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43611504640,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43334561792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22597799936
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 2,
+      "sample_id": "zh_fixture_01",
+      "category": "zh",
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "audio_seconds": 10.992,
+      "transcribe_seconds": 0.8085499340086244,
+      "rtf": 0.07355803620893599,
+      "detected_language": "zh",
+      "language_probability": 1.0,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 7.0,
+          "text": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待。",
+          "avg_logprob": -0.18400931294928205,
+          "temperature": 0.0
+        },
+        {
+          "start": 7.0,
+          "end": 11.0,
+          "text": "最後記錄整段語音的播放時間。",
+          "avg_logprob": -0.18400931294928205,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "normalized_actual": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "cer_edits": 0,
+        "cer_reference_characters": 41,
+        "cer": 0.0,
+        "raw_script_cer": 0.0
+      },
+      "memory_before": {
+        "monotonic": 134089.638713939,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43611504640,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43334561792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22597799936
+      },
+      "memory_after": {
+        "monotonic": 134090.66602857,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43693772800,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43416748032,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22515613696
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 2,
+      "sample_id": "zh_fixture_02",
+      "category": "zh",
+      "expected": "臺灣是位於西太平洋的島國，以多元文化、精緻飲食和優美的自然景觀聞名。這裡擁有從高山到海岸的豐富地質景觀，以及豐富的原住民文化和漢文化交融的特色。臺灣也是科技產業與農業並重的經濟體，生活節奏快且充滿活力。",
+      "transcript": "台灣是位於西太平洋的島國以多元文化、精緻飲食和優美的自然景觀文明這裡擁有從高山到海岸的豐富地質景觀以及豐富的原住民文化和漢文化交融的特色台灣也是科技產業與農業併重的經濟體生活節奏快且充滿活力",
+      "audio_seconds": 22.272,
+      "transcribe_seconds": 1.407330781017663,
+      "rtf": 0.06318834325689938,
+      "detected_language": "zh",
+      "language_probability": 0.99951171875,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 2.6,
+          "text": "台灣是位於西太平洋的島國",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 2.6,
+          "end": 7.4,
+          "text": "以多元文化、精緻飲食和優美的自然景觀文明",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 7.4,
+          "end": 10.9,
+          "text": "這裡擁有從高山到海岸的豐富地質景觀",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 10.9,
+          "end": 15.6,
+          "text": "以及豐富的原住民文化和漢文化交融的特色",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 15.6,
+          "end": 19.2,
+          "text": "台灣也是科技產業與農業併重的經濟體",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        },
+        {
+          "start": 19.2,
+          "end": 22.1,
+          "text": "生活節奏快且充滿活力",
+          "avg_logprob": -0.11037660256410256,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "臺灣是位於西太平洋的島國以多元文化精緻飲食和優美的自然景觀聞名這裡擁有從高山到海岸的豐富地質景觀以及豐富的原住民文化和漢文化交融的特色臺灣也是科技產業與農業並重的經濟體生活節奏快且充滿活力",
+        "normalized_actual": "臺灣是位於西太平洋的島國以多元文化精緻飲食和優美的自然景觀文明這裡擁有從高山到海岸的豐富地質景觀以及豐富的原住民文化和漢文化交融的特色臺灣也是科技產業與農業併重的經濟體生活節奏快且充滿活力",
+        "cer_edits": 3,
+        "cer_reference_characters": 94,
+        "cer": 0.031914893617021274,
+        "raw_script_cer": 0.05319148936170213
+      },
+      "memory_before": {
+        "monotonic": 134090.669215054,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43693772800,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43416748032,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22515613696
+      },
+      "memory_after": {
+        "monotonic": 134092.311710349,
+        "rss_bytes": 1641558016,
+        "system_available_bytes": 43877990400,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43600781312,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22331580416
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 2,
+      "sample_id": "en_openai_jfk",
+      "category": "en",
+      "expected": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "audio_seconds": 11.0,
+      "transcribe_seconds": 0.6294548719888553,
+      "rtf": 0.05722317018080503,
+      "detected_language": "en",
+      "language_probability": 0.95849609375,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 11.0,
+          "text": " And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+          "avg_logprob": -0.20507811861378805,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "andsomyfellowamericansasknotwhatyourcountrycandoforyouaskwhatyoucandoforyourcountry",
+        "normalized_actual": "andsomyfellowamericansasknotwhatyourcountrycandoforyouaskwhatyoucandoforyourcountry",
+        "cer_edits": 0,
+        "cer_reference_characters": 83,
+        "cer": 0.0,
+        "raw_script_cer": 0.0,
+        "wer_edits": 0,
+        "wer_reference_words": 22,
+        "wer": 0.0
+      },
+      "memory_before": {
+        "monotonic": 134092.313786832,
+        "rss_bytes": 1641558016,
+        "system_available_bytes": 43877990400,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43600781312,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22331580416
+      },
+      "memory_after": {
+        "monotonic": 134093.180279001,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43855425536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43578241024,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22354120704
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 2,
+      "sample_id": "en_hf_librispeech",
+      "category": "en",
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
+      "transcript": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.",
+      "audio_seconds": 5.855,
+      "transcribe_seconds": 0.6520741319982335,
+      "rtf": 0.11137047514914321,
+      "detected_language": "en",
+      "language_probability": 0.99658203125,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 5.48,
+          "text": " Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.",
+          "avg_logprob": -0.16767939925193787,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "misterquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel",
+        "normalized_actual": "mrquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel",
+        "cer_edits": 4,
+        "cer_reference_characters": 73,
+        "cer": 0.0547945205479452,
+        "raw_script_cer": 0.0547945205479452,
+        "wer_edits": 1,
+        "wer_reference_words": 17,
+        "wer": 0.058823529411764705
+      },
+      "memory_before": {
+        "monotonic": 134093.182263486,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43855425536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43578241024,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22354120704
+      },
+      "memory_after": {
+        "monotonic": 134094.095419586,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43812126720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43534983168,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22397378560
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 2,
+      "sample_id": "mixed_splice_zh_en",
+      "category": "mixed",
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。 And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+      "audio_seconds": 22.342,
+      "transcribe_seconds": 0.9985524659859948,
+      "rtf": 0.04469396052215535,
+      "detected_language": "zh",
+      "language_probability": 0.99951171875,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 3.4,
+          "text": "今天的測試會先確認聲音是否連續",
+          "avg_logprob": -0.19565217682848807,
+          "temperature": 0.0
+        },
+        {
+          "start": 4.0,
+          "end": 6.8,
+          "text": "接著比較嘴型推理造成的等待",
+          "avg_logprob": -0.19565217682848807,
+          "temperature": 0.0
+        },
+        {
+          "start": 7.4,
+          "end": 10.3,
+          "text": "最後記錄整段語音的播放時間",
+          "avg_logprob": -0.19565217682848807,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間andsomyfellowamericansasknotwhatyourcountrycandoforyouaskwhatyoucandoforyourcountry",
+        "normalized_actual": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "cer_edits": 83,
+        "cer_reference_characters": 124,
+        "cer": 0.6693548387096774,
+        "raw_script_cer": 0.6693548387096774
+      },
+      "memory_before": {
+        "monotonic": 134094.097735779,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43812126720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43534983168,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22397378560
+      },
+      "memory_after": {
+        "monotonic": 134095.336654476,
+        "rss_bytes": 1641570304,
+        "system_available_bytes": 43835658240,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43558490112,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22373871616
+      }
+    },
+    {
+      "phase": "warm",
+      "repeat": 2,
+      "sample_id": "mixed_splice_en_zh",
+      "category": "mixed",
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL 今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待,最後記錄整段語音的播放時間。",
+      "audio_seconds": 17.197,
+      "transcribe_seconds": 1.1984639870061073,
+      "rtf": 0.0696902940632731,
+      "detected_language": "zh",
+      "language_probability": 0.99072265625,
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 6.0,
+          "text": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.",
+          "avg_logprob": -0.2271126735378319,
+          "temperature": 0.0
+        },
+        {
+          "start": 6.0,
+          "end": 17.0,
+          "text": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待,最後記錄整段語音的播放時間。",
+          "avg_logprob": -0.2271126735378319,
+          "temperature": 0.0
+        }
+      ],
+      "metrics": {
+        "normalized_expected": "misterquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "normalized_actual": "mrquilteristheapostleofthemiddleclassesandwearegladtowelcomehisgospel今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+        "cer_edits": 4,
+        "cer_reference_characters": 114,
+        "cer": 0.03508771929824561,
+        "raw_script_cer": 0.03508771929824561
+      },
+      "memory_before": {
+        "monotonic": 134095.338655537,
+        "rss_bytes": 1641582592,
+        "system_available_bytes": 43835658240,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43558490112,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22373871616
+      },
+      "memory_after": {
+        "monotonic": 134096.764344003,
+        "rss_bytes": 1685204992,
+        "system_available_bytes": 44360593408,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 44082900992,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 21849460736
+      }
+    }
+  ],
+  "memory_before_load": {
+    "monotonic": 134080.175914593,
+    "rss_bytes": 390422528,
+    "system_available_bytes": 44264562688,
+    "cuda_mem_get_info_status": 0,
+    "cuda_free_bytes": 43987632128,
+    "cuda_total_bytes": 65932361728,
+    "cuda_global_used_bytes": 21944729600
+  },
+  "model_load_seconds": 0.6052323970070574,
+  "actual_compute_type": "float16",
+  "memory_after_load": {
+    "monotonic": 134080.781602919,
+    "rss_bytes": 1102049280,
+    "system_available_bytes": 44113727488,
+    "cuda_mem_get_info_status": 0,
+    "cuda_free_bytes": 43836284928,
+    "cuda_total_bytes": 65932361728,
+    "cuda_global_used_bytes": 22096076800
+  },
+  "status": "passed",
+  "memory_observations": {
+    "sampling_seconds": 0.1,
+    "peak_process_rss_bytes": 1785868288,
+    "min_system_available_bytes": 43557085184,
+    "max_cuda_global_used_bytes": 22652166144,
+    "process_maxrss_bytes": 1684357120,
+    "samples": [
+      {
+        "monotonic": 134080.113733375,
+        "rss_bytes": 248537088,
+        "system_available_bytes": 44272316416,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43986636800,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 21945724928
+      },
+      {
+        "monotonic": 134080.175914593,
+        "rss_bytes": 390422528,
+        "system_available_bytes": 44264562688,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43987632128,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 21944729600
+      },
+      {
+        "monotonic": 134080.276035585,
+        "rss_bytes": 596971520,
+        "system_available_bytes": 44117049344,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43839602688,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22092759040
+      },
+      {
+        "monotonic": 134080.376605787,
+        "rss_bytes": 775761920,
+        "system_available_bytes": 43961671680,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43684380672,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22247981056
+      },
+      {
+        "monotonic": 134080.478299653,
+        "rss_bytes": 977227776,
+        "system_available_bytes": 43863105536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43585912832,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22346448896
+      },
+      {
+        "monotonic": 134080.578812482,
+        "rss_bytes": 1117192192,
+        "system_available_bytes": 44033282048,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43755917312,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22176444416
+      },
+      {
+        "monotonic": 134080.777719711,
+        "rss_bytes": 1101516800,
+        "system_available_bytes": 44113727488,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43836284928,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22096076800
+      },
+      {
+        "monotonic": 134080.781602919,
+        "rss_bytes": 1102049280,
+        "system_available_bytes": 44113727488,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43836284928,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22096076800
+      },
+      {
+        "monotonic": 134080.781911459,
+        "rss_bytes": 1102049280,
+        "system_available_bytes": 44113727488,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43836284928,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22096076800
+      },
+      {
+        "monotonic": 134080.878312893,
+        "rss_bytes": 1143713792,
+        "system_available_bytes": 44135043072,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43857575936,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22074785792
+      },
+      {
+        "monotonic": 134080.97880662,
+        "rss_bytes": 1179910144,
+        "system_available_bytes": 44106567680,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43829129216,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22103232512
+      },
+      {
+        "monotonic": 134081.079275644,
+        "rss_bytes": 1243619328,
+        "system_available_bytes": 44051402752,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43774021632,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22158340096
+      },
+      {
+        "monotonic": 134081.18010207,
+        "rss_bytes": 1338175488,
+        "system_available_bytes": 44028481536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43751120896,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22181240832
+      },
+      {
+        "monotonic": 134081.28125854,
+        "rss_bytes": 1490268160,
+        "system_available_bytes": 43895582720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43618357248,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22314004480
+      },
+      {
+        "monotonic": 134081.381763723,
+        "rss_bytes": 1580744704,
+        "system_available_bytes": 43879305216,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43602096128,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22330265600
+      },
+      {
+        "monotonic": 134081.482271435,
+        "rss_bytes": 1535733760,
+        "system_available_bytes": 43879198720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43601989632,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22330372096
+      },
+      {
+        "monotonic": 134081.582768909,
+        "rss_bytes": 1621209088,
+        "system_available_bytes": 43867844608,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43590647808,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22341713920
+      },
+      {
+        "monotonic": 134081.683243824,
+        "rss_bytes": 1706262528,
+        "system_available_bytes": 43853565952,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43576381440,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22355980288
+      },
+      {
+        "monotonic": 134081.78375538,
+        "rss_bytes": 1709158400,
+        "system_available_bytes": 43828510720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43551350784,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22381010944
+      },
+      {
+        "monotonic": 134081.884300087,
+        "rss_bytes": 1709625344,
+        "system_available_bytes": 43829215232,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43552055296,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22380306432
+      },
+      {
+        "monotonic": 134081.987702385,
+        "rss_bytes": 1710555136,
+        "system_available_bytes": 43840536576,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43563364352,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22368997376
+      },
+      {
+        "monotonic": 134082.088244596,
+        "rss_bytes": 1710555136,
+        "system_available_bytes": 43862544384,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43585351680,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22347010048
+      },
+      {
+        "monotonic": 134082.208924247,
+        "rss_bytes": 1644466176,
+        "system_available_bytes": 43859296256,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43582107648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350254080
+      },
+      {
+        "monotonic": 134082.401018589,
+        "rss_bytes": 1644466176,
+        "system_available_bytes": 43859296256,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43582107648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350254080
+      },
+      {
+        "monotonic": 134082.403843701,
+        "rss_bytes": 1644474368,
+        "system_available_bytes": 43859296256,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43582107648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350254080
+      },
+      {
+        "monotonic": 134082.503220905,
+        "rss_bytes": 1745145856,
+        "system_available_bytes": 43882008576,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43604795392,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22327566336
+      },
+      {
+        "monotonic": 134082.603722736,
+        "rss_bytes": 1745145856,
+        "system_available_bytes": 43906002944,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43628765184,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22303596544
+      },
+      {
+        "monotonic": 134082.704257175,
+        "rss_bytes": 1745154048,
+        "system_available_bytes": 43900600320,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43623370752,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22308990976
+      },
+      {
+        "monotonic": 134082.810430254,
+        "rss_bytes": 1711599616,
+        "system_available_bytes": 43883696128,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43606482944,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22325878784
+      },
+      {
+        "monotonic": 134082.91095375,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43820216320,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43543064576,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22389297152
+      },
+      {
+        "monotonic": 134083.01153702,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43794927616,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43517800448,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22414561280
+      },
+      {
+        "monotonic": 134083.112041636,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43776090112,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43498983424,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22433378304
+      },
+      {
+        "monotonic": 134083.21254014,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43745124352,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43468050432,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22464311296
+      },
+      {
+        "monotonic": 134083.366134463,
+        "rss_bytes": 1644711936,
+        "system_available_bytes": 43737640960,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43460571136,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22471790592
+      },
+      {
+        "monotonic": 134083.488023894,
+        "rss_bytes": 1644711936,
+        "system_available_bytes": 43726807040,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43449749504,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22482612224
+      },
+      {
+        "monotonic": 134083.489842748,
+        "rss_bytes": 1644711936,
+        "system_available_bytes": 43726807040,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43449749504,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22482612224
+      },
+      {
+        "monotonic": 134083.492623573,
+        "rss_bytes": 1644711936,
+        "system_available_bytes": 43726032896,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43448975360,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22483386368
+      },
+      {
+        "monotonic": 134083.591866065,
+        "rss_bytes": 1745375232,
+        "system_available_bytes": 43715973120,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43438927872,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22493433856
+      },
+      {
+        "monotonic": 134083.692418493,
+        "rss_bytes": 1745375232,
+        "system_available_bytes": 43709689856,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43432648704,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22499713024
+      },
+      {
+        "monotonic": 134083.793106438,
+        "rss_bytes": 1745375232,
+        "system_available_bytes": 43723665408,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43446611968,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22485749760
+      },
+      {
+        "monotonic": 134083.896878756,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43723374592,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43446321152,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22486040576
+      },
+      {
+        "monotonic": 134083.997611053,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43724394496,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43447341056,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22485020672
+      },
+      {
+        "monotonic": 134084.098139992,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43743993856,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43466919936,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22465441792
+      },
+      {
+        "monotonic": 134084.198766243,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43738529792,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43461459968,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22470901760
+      },
+      {
+        "monotonic": 134084.304083658,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43717627904,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43440578560,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22491783168
+      },
+      {
+        "monotonic": 134084.404919282,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43704467456,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43427430400,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22504931328
+      },
+      {
+        "monotonic": 134084.508072344,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43744538624,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43467464704,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22464897024
+      },
+      {
+        "monotonic": 134084.60859508,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43758911488,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43481821184,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22450540544
+      },
+      {
+        "monotonic": 134084.709067993,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43759017984,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43481927680,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22450434048
+      },
+      {
+        "monotonic": 134084.812128485,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43763310592,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43486216192,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22446145536
+      },
+      {
+        "monotonic": 134084.912621429,
+        "rss_bytes": 1711820800,
+        "system_available_bytes": 43736842240,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43459776512,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22472585216
+      },
+      {
+        "monotonic": 134085.014013977,
+        "rss_bytes": 1711824896,
+        "system_available_bytes": 43736068096,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43459002368,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22473359360
+      },
+      {
+        "monotonic": 134085.156747859,
+        "rss_bytes": 1644863488,
+        "system_available_bytes": 43708456960,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43431419904,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22500941824
+      },
+      {
+        "monotonic": 134085.342208016,
+        "rss_bytes": 1644863488,
+        "system_available_bytes": 43710005248,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43432964096,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22499397632
+      },
+      {
+        "monotonic": 134085.343469982,
+        "rss_bytes": 1644863488,
+        "system_available_bytes": 43710005248,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43432964096,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22499397632
+      },
+      {
+        "monotonic": 134085.37706445,
+        "rss_bytes": 1644888064,
+        "system_available_bytes": 43701489664,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43424456704,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22507905024
+      },
+      {
+        "monotonic": 134085.479829427,
+        "rss_bytes": 1745559552,
+        "system_available_bytes": 43699695616,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43422666752,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22509694976
+      },
+      {
+        "monotonic": 134085.580388485,
+        "rss_bytes": 1678450688,
+        "system_available_bytes": 43680858112,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43403845632,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22528516096
+      },
+      {
+        "monotonic": 134085.680869178,
+        "rss_bytes": 1745559552,
+        "system_available_bytes": 43680858112,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43403845632,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22528516096
+      },
+      {
+        "monotonic": 134085.78179012,
+        "rss_bytes": 1712013312,
+        "system_available_bytes": 43671056384,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43394056192,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22538305536
+      },
+      {
+        "monotonic": 134085.882305341,
+        "rss_bytes": 1712013312,
+        "system_available_bytes": 43675897856,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43398889472,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22533472256
+      },
+      {
+        "monotonic": 134085.982814353,
+        "rss_bytes": 1712013312,
+        "system_available_bytes": 43675283456,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43398279168,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22534082560
+      },
+      {
+        "monotonic": 134086.130664297,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43706531840,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43429494784,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22502866944
+      },
+      {
+        "monotonic": 134086.26187214,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43704266752,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43427233792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22505127936
+      },
+      {
+        "monotonic": 134086.263204313,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43704266752,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43427233792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22505127936
+      },
+      {
+        "monotonic": 134086.253153927,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43704266752,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43427233792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22505127936
+      },
+      {
+        "monotonic": 134086.365096826,
+        "rss_bytes": 1745567744,
+        "system_available_bytes": 43685429248,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43408412672,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22523949056
+      },
+      {
+        "monotonic": 134086.465851659,
+        "rss_bytes": 1745567744,
+        "system_available_bytes": 43669377024,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43392376832,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22539984896
+      },
+      {
+        "monotonic": 134086.567419571,
+        "rss_bytes": 1745567744,
+        "system_available_bytes": 43652288512,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43375304704,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22557057024
+      },
+      {
+        "monotonic": 134086.668077322,
+        "rss_bytes": 1712013312,
+        "system_available_bytes": 43638325248,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43361357824,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22571003904
+      },
+      {
+        "monotonic": 134086.769508213,
+        "rss_bytes": 1712013312,
+        "system_available_bytes": 43625938944,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43348983808,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22583377920
+      },
+      {
+        "monotonic": 134086.87003963,
+        "rss_bytes": 1712013312,
+        "system_available_bytes": 43644346368,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43367370752,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22564990976
+      },
+      {
+        "monotonic": 134087.128214619,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43673321472,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43396317184,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22536044544
+      },
+      {
+        "monotonic": 134087.129627847,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43673321472,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43396317184,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22536044544
+      },
+      {
+        "monotonic": 134087.009072616,
+        "rss_bytes": 1644904448,
+        "system_available_bytes": 43673321472,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43396317184,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22536044544
+      },
+      {
+        "monotonic": 134087.231370766,
+        "rss_bytes": 1749229568,
+        "system_available_bytes": 43680288768,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43403276288,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22529085440
+      },
+      {
+        "monotonic": 134087.33224845,
+        "rss_bytes": 1749229568,
+        "system_available_bytes": 43686342656,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43409326080,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22523035648
+      },
+      {
+        "monotonic": 134087.435974861,
+        "rss_bytes": 1749229568,
+        "system_available_bytes": 43720884224,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43443830784,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22488530944
+      },
+      {
+        "monotonic": 134087.536498119,
+        "rss_bytes": 1715675136,
+        "system_available_bytes": 43721072640,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43444019200,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22488342528
+      },
+      {
+        "monotonic": 134087.636993476,
+        "rss_bytes": 1715675136,
+        "system_available_bytes": 43708416000,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43431378944,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22500982784
+      },
+      {
+        "monotonic": 134087.737515297,
+        "rss_bytes": 1715675136,
+        "system_available_bytes": 43644649472,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43367673856,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22564687872
+      },
+      {
+        "monotonic": 134087.838031646,
+        "rss_bytes": 1715675136,
+        "system_available_bytes": 43582439424,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43305525248,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22626836480
+      },
+      {
+        "monotonic": 134087.938548538,
+        "rss_bytes": 1715675136,
+        "system_available_bytes": 43557085184,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43280195584,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22652166144
+      },
+      {
+        "monotonic": 134088.039072887,
+        "rss_bytes": 1715675136,
+        "system_available_bytes": 43570565120,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43293663232,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22638698496
+      },
+      {
+        "monotonic": 134088.30528563,
+        "rss_bytes": 1648566272,
+        "system_available_bytes": 43564965888,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43288072192,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22644289536
+      },
+      {
+        "monotonic": 134088.184197186,
+        "rss_bytes": 1648566272,
+        "system_available_bytes": 43564965888,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43288072192,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22644289536
+      },
+      {
+        "monotonic": 134088.307060997,
+        "rss_bytes": 1648566272,
+        "system_available_bytes": 43564965888,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43288072192,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22644289536
+      },
+      {
+        "monotonic": 134088.407099785,
+        "rss_bytes": 1752293376,
+        "system_available_bytes": 43561979904,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43285086208,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22647275520
+      },
+      {
+        "monotonic": 134088.507615302,
+        "rss_bytes": 1752293376,
+        "system_available_bytes": 43560357888,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43283468288,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22648893440
+      },
+      {
+        "monotonic": 134088.608194758,
+        "rss_bytes": 1752293376,
+        "system_available_bytes": 43570421760,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43293851648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22638510080
+      },
+      {
+        "monotonic": 134088.708718663,
+        "rss_bytes": 1718738944,
+        "system_available_bytes": 43576958976,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43300052992,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22632308736
+      },
+      {
+        "monotonic": 134088.809221512,
+        "rss_bytes": 1718738944,
+        "system_available_bytes": 43595993088,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43319066624,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22613295104
+      },
+      {
+        "monotonic": 134088.90970129,
+        "rss_bytes": 1718738944,
+        "system_available_bytes": 43589922816,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43313000448,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22619361280
+      },
+      {
+        "monotonic": 134089.011102142,
+        "rss_bytes": 1718738944,
+        "system_available_bytes": 43571601408,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43294699520,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22637662208
+      },
+      {
+        "monotonic": 134089.112138648,
+        "rss_bytes": 1718738944,
+        "system_available_bytes": 43569573888,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43292672000,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22639689728
+      },
+      {
+        "monotonic": 134089.212670297,
+        "rss_bytes": 1718738944,
+        "system_available_bytes": 43588816896,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43311898624,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22620463104
+      },
+      {
+        "monotonic": 134089.313728147,
+        "rss_bytes": 1718738944,
+        "system_available_bytes": 43590475776,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43313553408,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22618808320
+      },
+      {
+        "monotonic": 134089.460562956,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43611504640,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43334561792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22597799936
+      },
+      {
+        "monotonic": 134089.63710705,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43611504640,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43334561792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22597799936
+      },
+      {
+        "monotonic": 134089.638713939,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43611504640,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43334561792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22597799936
+      },
+      {
+        "monotonic": 134089.740066349,
+        "rss_bytes": 1752297472,
+        "system_available_bytes": 43618254848,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43341307904,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22591053824
+      },
+      {
+        "monotonic": 134089.840601938,
+        "rss_bytes": 1685188608,
+        "system_available_bytes": 43664449536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43387453440,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22544908288
+      },
+      {
+        "monotonic": 134089.941154391,
+        "rss_bytes": 1752297472,
+        "system_available_bytes": 43648598016,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43371618304,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22560743424
+      },
+      {
+        "monotonic": 134090.041636381,
+        "rss_bytes": 1718743040,
+        "system_available_bytes": 43636346880,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43359379456,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22572982272
+      },
+      {
+        "monotonic": 134090.14214813,
+        "rss_bytes": 1718743040,
+        "system_available_bytes": 43637403648,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43360436224,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22571925504
+      },
+      {
+        "monotonic": 134090.2426738,
+        "rss_bytes": 1718743040,
+        "system_available_bytes": 43655675904,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43378688000,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22553673728
+      },
+      {
+        "monotonic": 134090.343170605,
+        "rss_bytes": 1718743040,
+        "system_available_bytes": 43693498368,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43416473600,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22515888128
+      },
+      {
+        "monotonic": 134090.443665139,
+        "rss_bytes": 1718743040,
+        "system_available_bytes": 43693756416,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43416731648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22515630080
+      },
+      {
+        "monotonic": 134090.66602857,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43693772800,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43416748032,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22515613696
+      },
+      {
+        "monotonic": 134090.669215054,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43693772800,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43416748032,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22515613696
+      },
+      {
+        "monotonic": 134090.556472078,
+        "rss_bytes": 1651634176,
+        "system_available_bytes": 43693772800,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43416748032,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22515613696
+      },
+      {
+        "monotonic": 134090.769720728,
+        "rss_bytes": 1742217216,
+        "system_available_bytes": 43728875520,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43451817984,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22480543744
+      },
+      {
+        "monotonic": 134090.870225314,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43764858880,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43487764480,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22444597248
+      },
+      {
+        "monotonic": 134090.970875401,
+        "rss_bytes": 1742217216,
+        "system_available_bytes": 43772739584,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43495636992,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22436724736
+      },
+      {
+        "monotonic": 134091.071624496,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43789414400,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43512295424,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22420066304
+      },
+      {
+        "monotonic": 134091.172390326,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43814649856,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43537506304,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22394855424
+      },
+      {
+        "monotonic": 134091.272918271,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43815534592,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43538386944,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22393974784
+      },
+      {
+        "monotonic": 134091.373657094,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43819847680,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43542695936,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22389665792
+      },
+      {
+        "monotonic": 134091.474379309,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43821703168,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43544551424,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22387810304
+      },
+      {
+        "monotonic": 134091.575090038,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43840180224,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43563008000,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22369353728
+      },
+      {
+        "monotonic": 134091.675812865,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43840135168,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43562962944,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22369398784
+      },
+      {
+        "monotonic": 134091.776460365,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43857059840,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43579871232,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22352490496
+      },
+      {
+        "monotonic": 134091.877059449,
+        "rss_bytes": 1708662784,
+        "system_available_bytes": 43895971840,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43618746368,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22313615360
+      },
+      {
+        "monotonic": 134091.977598247,
+        "rss_bytes": 1708666880,
+        "system_available_bytes": 43904008192,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43626774528,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22305587200
+      },
+      {
+        "monotonic": 134092.149457079,
+        "rss_bytes": 1641558016,
+        "system_available_bytes": 43877990400,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43600781312,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22331580416
+      },
+      {
+        "monotonic": 134092.311710349,
+        "rss_bytes": 1641558016,
+        "system_available_bytes": 43877990400,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43600781312,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22331580416
+      },
+      {
+        "monotonic": 134092.313786832,
+        "rss_bytes": 1641558016,
+        "system_available_bytes": 43877990400,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43600781312,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22331580416
+      },
+      {
+        "monotonic": 134092.412507031,
+        "rss_bytes": 1745575936,
+        "system_available_bytes": 43858894848,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43581706240,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350655488
+      },
+      {
+        "monotonic": 134092.513184034,
+        "rss_bytes": 1712021504,
+        "system_available_bytes": 43859431424,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43582242816,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350118912
+      },
+      {
+        "monotonic": 134092.613817778,
+        "rss_bytes": 1745575936,
+        "system_available_bytes": 43858657280,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43581468672,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350893056
+      },
+      {
+        "monotonic": 134092.715756625,
+        "rss_bytes": 1712021504,
+        "system_available_bytes": 43863228416,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43586035712,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22346326016
+      },
+      {
+        "monotonic": 134092.816483616,
+        "rss_bytes": 1712021504,
+        "system_available_bytes": 43887775744,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43610558464,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22321803264
+      },
+      {
+        "monotonic": 134092.917186959,
+        "rss_bytes": 1712021504,
+        "system_available_bytes": 43894034432,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43616808960,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22315552768
+      },
+      {
+        "monotonic": 134093.062049788,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43855425536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43578241024,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22354120704
+      },
+      {
+        "monotonic": 134093.180279001,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43855425536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43578241024,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22354120704
+      },
+      {
+        "monotonic": 134093.182263486,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43855425536,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43578241024,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22354120704
+      },
+      {
+        "monotonic": 134093.280800747,
+        "rss_bytes": 1745575936,
+        "system_available_bytes": 43861958656,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43584765952,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22347595776
+      },
+      {
+        "monotonic": 134093.381297502,
+        "rss_bytes": 1678467072,
+        "system_available_bytes": 43859169280,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43581980672,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22350381056
+      },
+      {
+        "monotonic": 134093.481978829,
+        "rss_bytes": 1745575936,
+        "system_available_bytes": 43852976128,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43575791616,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22356570112
+      },
+      {
+        "monotonic": 134093.582509122,
+        "rss_bytes": 1712021504,
+        "system_available_bytes": 43844734976,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43567558656,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22364803072
+      },
+      {
+        "monotonic": 134093.683084247,
+        "rss_bytes": 1712021504,
+        "system_available_bytes": 43845193728,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43568017408,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22364344320
+      },
+      {
+        "monotonic": 134093.783585486,
+        "rss_bytes": 1712021504,
+        "system_available_bytes": 43849244672,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43572064256,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22360297472
+      },
+      {
+        "monotonic": 134093.922266518,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43812126720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43534983168,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22397378560
+      },
+      {
+        "monotonic": 134094.095419586,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43812126720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43534983168,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22397378560
+      },
+      {
+        "monotonic": 134094.097735779,
+        "rss_bytes": 1644912640,
+        "system_available_bytes": 43812126720,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43534983168,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22397378560
+      },
+      {
+        "monotonic": 134094.196067959,
+        "rss_bytes": 1742233600,
+        "system_available_bytes": 43806769152,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43529633792,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22402727936
+      },
+      {
+        "monotonic": 134094.296553038,
+        "rss_bytes": 1742233600,
+        "system_available_bytes": 43805995008,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43528859648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22403502080
+      },
+      {
+        "monotonic": 134094.39717965,
+        "rss_bytes": 1742233600,
+        "system_available_bytes": 43805995008,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43528859648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22403502080
+      },
+      {
+        "monotonic": 134094.497841687,
+        "rss_bytes": 1708679168,
+        "system_available_bytes": 43805995008,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43528859648,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22403502080
+      },
+      {
+        "monotonic": 134094.598433935,
+        "rss_bytes": 1708679168,
+        "system_available_bytes": 43804975104,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43527839744,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22404521984
+      },
+      {
+        "monotonic": 134094.699003689,
+        "rss_bytes": 1708679168,
+        "system_available_bytes": 43811856384,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43534712832,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22397648896
+      },
+      {
+        "monotonic": 134094.804079492,
+        "rss_bytes": 1708679168,
+        "system_available_bytes": 43821760512,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43544608768,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22387752960
+      },
+      {
+        "monotonic": 134094.905250774,
+        "rss_bytes": 1708679168,
+        "system_available_bytes": 43835654144,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43558486016,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22373875712
+      },
+      {
+        "monotonic": 134095.00579544,
+        "rss_bytes": 1708679168,
+        "system_available_bytes": 43837190144,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43560022016,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22372339712
+      },
+      {
+        "monotonic": 134095.165150434,
+        "rss_bytes": 1641570304,
+        "system_available_bytes": 43836690432,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43559522304,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22372839424
+      },
+      {
+        "monotonic": 134095.329654636,
+        "rss_bytes": 1641570304,
+        "system_available_bytes": 43836690432,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43559522304,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22372839424
+      },
+      {
+        "monotonic": 134095.336654476,
+        "rss_bytes": 1641570304,
+        "system_available_bytes": 43835658240,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43558490112,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22373871616
+      },
+      {
+        "monotonic": 134095.338655537,
+        "rss_bytes": 1641582592,
+        "system_available_bytes": 43835658240,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43558490112,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22373871616
+      },
+      {
+        "monotonic": 134095.430168871,
+        "rss_bytes": 1685204992,
+        "system_available_bytes": 43828928512,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43551768576,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22380593152
+      },
+      {
+        "monotonic": 134095.533936213,
+        "rss_bytes": 1752313856,
+        "system_available_bytes": 43828928512,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43551768576,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22380593152
+      },
+      {
+        "monotonic": 134095.634473268,
+        "rss_bytes": 1785868288,
+        "system_available_bytes": 43828928512,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43551768576,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22380593152
+      },
+      {
+        "monotonic": 134095.73503013,
+        "rss_bytes": 1785868288,
+        "system_available_bytes": 43828944896,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43551784960,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22380576768
+      },
+      {
+        "monotonic": 134095.835539056,
+        "rss_bytes": 1718759424,
+        "system_available_bytes": 43842629632,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43565457408,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22366904320
+      },
+      {
+        "monotonic": 134095.936060207,
+        "rss_bytes": 1718759424,
+        "system_available_bytes": 43838226432,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43561058304,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22371303424
+      },
+      {
+        "monotonic": 134096.036539406,
+        "rss_bytes": 1718759424,
+        "system_available_bytes": 43836420096,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43559251968,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22373109760
+      },
+      {
+        "monotonic": 134096.140080515,
+        "rss_bytes": 1718759424,
+        "system_available_bytes": 43836166144,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43558998016,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22373363712
+      },
+      {
+        "monotonic": 134096.240602946,
+        "rss_bytes": 1718759424,
+        "system_available_bytes": 43838812160,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43561644032,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22370717696
+      },
+      {
+        "monotonic": 134096.341099456,
+        "rss_bytes": 1718759424,
+        "system_available_bytes": 44138438656,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 43863953408,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 22068408320
+      },
+      {
+        "monotonic": 134096.441790749,
+        "rss_bytes": 1718759424,
+        "system_available_bytes": 44349472768,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 44071792640,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 21860569088
+      },
+      {
+        "monotonic": 134096.599094676,
+        "rss_bytes": 1685204992,
+        "system_available_bytes": 44360593408,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 44082900992,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 21849460736
+      },
+      {
+        "monotonic": 134096.764344003,
+        "rss_bytes": 1685204992,
+        "system_available_bytes": 44360593408,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 44082900992,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 21849460736
+      },
+      {
+        "monotonic": 134096.766486406,
+        "rss_bytes": 1685213184,
+        "system_available_bytes": 44360593408,
+        "cuda_mem_get_info_status": 0,
+        "cuda_free_bytes": 44082900992,
+        "cuda_total_bytes": 65932361728,
+        "cuda_global_used_bytes": 21849460736
+      }
+    ]
+  },
+  "completed_utc": "2026-10-27T03:52:45.249199+00:00"
+}

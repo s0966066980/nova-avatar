@@ -1,0 +1,9 @@
+sample_id,category,voice,expected,small_transcript,turbo_transcript,small_seconds,turbo_seconds
+product_zh_01,zh,zh-TW-HsiaoChenNeural,請問訂單編號一二三的進度？,请问订单编号123的进度,請問訂單編號123的進度,0.6094041780161206,1.2903175750107039
+product_zh_02,zh,zh-TW-HsiaoChenNeural,博物館明天幾點開門，星期六需要預約嗎？,"博物館明天幾點開門,星期六需要預約嗎?",博物馆明天几点开门星期六需要预约吗,0.63344638000126,1.4533314909785986
+product_en_01,en,en-US-JennyNeural,What time does the museum open tomorrow?,What time does the museum open tomorrow?,What time does the museum open tomorrow?,0.5319843160104938,1.28571040998213
+product_en_02,en,en-US-JennyNeural,Could you check the status of my order and explain the return policy?,Could you check the status of my order and explain the return policy?,Could you check the status of my order and explain the return policy?,0.5189090550120454,1.3162339999980759
+product_mixed_01,mixed,en-US-EmmaMultilingualNeural,請幫我查一下 order number A B C one two three 的進度。,请帮我查一下 Order No. ABC 123 的进度。,请帮我查一下Order Number ABC123的进度。,0.48677568399580196,1.350584234984126
+product_mixed_02,mixed,en-US-EmmaMultilingualNeural,這個 product 有沒有 warranty 和 return policy？,这个Product 有没有Warranty和Return Policy?,这个product有没有warranty和return policy?,0.6181604970188346,1.3155612550035585
+product_mixed_03,mixed,en-US-EmmaMultilingualNeural,Can you explain 退貨流程 and tell me how many days it takes?,Can you explain to a Hualou chung and tell me how many days it takes?,Can you explain to a huo leocheng and tell me how many days it takes?,0.5840839490119833,1.35021847000462
+product_mixed_04,mixed,en-US-EmmaMultilingualNeural,我想 book a meeting room，明天 morning 還有空位嗎？,"我想播给meeting room,明天morning还有空位吗?",我想book a meeting room明天morning还有空位吗?,0.5660521849931683,1.337403731973609

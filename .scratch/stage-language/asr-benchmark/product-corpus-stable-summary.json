@@ -1,0 +1,883 @@
+{
+  "copyright": "Copyright (c) 2026 HongXian0903",
+  "SPDX-License-Identifier": "Apache-2.0",
+  "results": [
+    {
+      "sample_id": "product_zh_01",
+      "category": "zh",
+      "expected": "請問訂單編號一二三的進度？",
+      "small": {
+        "sample_id": "product_zh_01",
+        "category": "zh",
+        "voice": "zh-TW-HsiaoChenNeural",
+        "expected": "請問訂單編號一二三的進度？",
+        "transcript": "请问订单编号123的进度",
+        "audio_seconds": 3.264,
+        "warm_transcribe_seconds": 0.6094041780161206,
+        "rtf": 0.18670471140199774,
+        "detected_language": "zh",
+        "language_probability": 0.99951171875,
+        "metrics": {
+          "normalized_expected": "請問訂單編號一二三的進度",
+          "normalized_actual": "請問訂單編號123的進度",
+          "cer_edits": 3,
+          "cer_reference_characters": 12,
+          "cer": 0.25,
+          "raw_script_cer": 0.8333333333333334
+        },
+        "anchors": {
+          "zh": {
+            "訂單": true,
+            "進度": true
+          },
+          "en": {}
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 2.56,
+            "text": "请问订单编号123的进度",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_zh_01",
+        "category": "zh",
+        "voice": "zh-TW-HsiaoChenNeural",
+        "expected": "請問訂單編號一二三的進度？",
+        "transcript": "請問訂單編號123的進度",
+        "audio_seconds": 3.264,
+        "warm_transcribe_seconds": 1.2903175750107039,
+        "rtf": 0.39531788450082844,
+        "detected_language": "zh",
+        "language_probability": 0.99853515625,
+        "metrics": {
+          "normalized_expected": "請問訂單編號一二三的進度",
+          "normalized_actual": "請問訂單編號123的進度",
+          "cer_edits": 3,
+          "cer_reference_characters": 12,
+          "cer": 0.25,
+          "raw_script_cer": 0.25
+        },
+        "anchors": {
+          "zh": {
+            "訂單": true,
+            "進度": true
+          },
+          "en": {}
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 2.62,
+            "text": "請問訂單編號123的進度",
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "sample_id": "product_zh_02",
+      "category": "zh",
+      "expected": "博物館明天幾點開門，星期六需要預約嗎？",
+      "small": {
+        "sample_id": "product_zh_02",
+        "category": "zh",
+        "voice": "zh-TW-HsiaoChenNeural",
+        "expected": "博物館明天幾點開門，星期六需要預約嗎？",
+        "transcript": "博物館明天幾點開門,星期六需要預約嗎?",
+        "audio_seconds": 4.632,
+        "warm_transcribe_seconds": 0.63344638000126,
+        "rtf": 0.13675439982756046,
+        "detected_language": "zh",
+        "language_probability": 0.99951171875,
+        "metrics": {
+          "normalized_expected": "博物館明天幾點開門星期六需要預約嗎",
+          "normalized_actual": "博物館明天幾點開門星期六需要預約嗎",
+          "cer_edits": 0,
+          "cer_reference_characters": 17,
+          "cer": 0.0,
+          "raw_script_cer": 0.0
+        },
+        "anchors": {
+          "zh": {
+            "博物館": true,
+            "明天": true,
+            "預約": true
+          },
+          "en": {}
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 4.0,
+            "text": "博物館明天幾點開門,星期六需要預約嗎?",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_zh_02",
+        "category": "zh",
+        "voice": "zh-TW-HsiaoChenNeural",
+        "expected": "博物館明天幾點開門，星期六需要預約嗎？",
+        "transcript": "博物馆明天几点开门星期六需要预约吗",
+        "audio_seconds": 4.632,
+        "warm_transcribe_seconds": 1.4533314909785986,
+        "rtf": 0.31375895746515514,
+        "detected_language": "zh",
+        "language_probability": 0.998046875,
+        "metrics": {
+          "normalized_expected": "博物館明天幾點開門星期六需要預約嗎",
+          "normalized_actual": "博物館明天幾點開門星期六需要預約嗎",
+          "cer_edits": 0,
+          "cer_reference_characters": 17,
+          "cer": 0.0,
+          "raw_script_cer": 0.47058823529411764
+        },
+        "anchors": {
+          "zh": {
+            "博物館": true,
+            "明天": true,
+            "預約": true
+          },
+          "en": {}
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 1.92,
+            "text": "博物馆明天几点开门",
+            "temperature": 0.0
+          },
+          {
+            "start": 1.92,
+            "end": 3.74,
+            "text": "星期六需要预约吗",
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "sample_id": "product_en_01",
+      "category": "en",
+      "expected": "What time does the museum open tomorrow?",
+      "small": {
+        "sample_id": "product_en_01",
+        "category": "en",
+        "voice": "en-US-JennyNeural",
+        "expected": "What time does the museum open tomorrow?",
+        "transcript": "What time does the museum open tomorrow?",
+        "audio_seconds": 2.904,
+        "warm_transcribe_seconds": 0.5319843160104938,
+        "rtf": 0.18319019146366866,
+        "detected_language": "en",
+        "language_probability": 0.99755859375,
+        "metrics": {
+          "normalized_expected": "whattimedoesthemuseumopentomorrow",
+          "normalized_actual": "whattimedoesthemuseumopentomorrow",
+          "cer_edits": 0,
+          "cer_reference_characters": 33,
+          "cer": 0.0,
+          "raw_script_cer": 0.0,
+          "wer_edits": 0,
+          "wer_reference_words": 7,
+          "wer": 0.0
+        },
+        "anchors": {
+          "zh": {},
+          "en": {
+            "museum": true,
+            "open": true,
+            "tomorrow": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 2.0,
+            "text": " What time does the museum open tomorrow?",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_en_01",
+        "category": "en",
+        "voice": "en-US-JennyNeural",
+        "expected": "What time does the museum open tomorrow?",
+        "transcript": "What time does the museum open tomorrow?",
+        "audio_seconds": 2.904,
+        "warm_transcribe_seconds": 1.28571040998213,
+        "rtf": 0.44273774448420455,
+        "detected_language": "en",
+        "language_probability": 0.99853515625,
+        "metrics": {
+          "normalized_expected": "whattimedoesthemuseumopentomorrow",
+          "normalized_actual": "whattimedoesthemuseumopentomorrow",
+          "cer_edits": 0,
+          "cer_reference_characters": 33,
+          "cer": 0.0,
+          "raw_script_cer": 0.0,
+          "wer_edits": 0,
+          "wer_reference_words": 7,
+          "wer": 0.0
+        },
+        "anchors": {
+          "zh": {},
+          "en": {
+            "museum": true,
+            "open": true,
+            "tomorrow": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 1.8800000000000001,
+            "text": " What time does the museum open tomorrow?",
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "sample_id": "product_en_02",
+      "category": "en",
+      "expected": "Could you check the status of my order and explain the return policy?",
+      "small": {
+        "sample_id": "product_en_02",
+        "category": "en",
+        "voice": "en-US-JennyNeural",
+        "expected": "Could you check the status of my order and explain the return policy?",
+        "transcript": "Could you check the status of my order and explain the return policy?",
+        "audio_seconds": 4.296,
+        "warm_transcribe_seconds": 0.5189090550120454,
+        "rtf": 0.12078888617598822,
+        "detected_language": "en",
+        "language_probability": 0.99853515625,
+        "metrics": {
+          "normalized_expected": "couldyoucheckthestatusofmyorderandexplainthereturnpolicy",
+          "normalized_actual": "couldyoucheckthestatusofmyorderandexplainthereturnpolicy",
+          "cer_edits": 0,
+          "cer_reference_characters": 56,
+          "cer": 0.0,
+          "raw_script_cer": 0.0,
+          "wer_edits": 0,
+          "wer_reference_words": 13,
+          "wer": 0.0
+        },
+        "anchors": {
+          "zh": {},
+          "en": {
+            "order": true,
+            "return": true,
+            "policy": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 4.0,
+            "text": " Could you check the status of my order and explain the return policy?",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_en_02",
+        "category": "en",
+        "voice": "en-US-JennyNeural",
+        "expected": "Could you check the status of my order and explain the return policy?",
+        "transcript": "Could you check the status of my order and explain the return policy?",
+        "audio_seconds": 4.296,
+        "warm_transcribe_seconds": 1.3162339999980759,
+        "rtf": 0.3063859404092355,
+        "detected_language": "en",
+        "language_probability": 0.99951171875,
+        "metrics": {
+          "normalized_expected": "couldyoucheckthestatusofmyorderandexplainthereturnpolicy",
+          "normalized_actual": "couldyoucheckthestatusofmyorderandexplainthereturnpolicy",
+          "cer_edits": 0,
+          "cer_reference_characters": 56,
+          "cer": 0.0,
+          "raw_script_cer": 0.0,
+          "wer_edits": 0,
+          "wer_reference_words": 13,
+          "wer": 0.0
+        },
+        "anchors": {
+          "zh": {},
+          "en": {
+            "order": true,
+            "return": true,
+            "policy": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.2800000000000002,
+            "text": " Could you check the status of my order and explain the return policy?",
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "sample_id": "product_mixed_01",
+      "category": "mixed",
+      "expected": "請幫我查一下 order number A B C one two three 的進度。",
+      "small": {
+        "sample_id": "product_mixed_01",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "請幫我查一下 order number A B C one two three 的進度。",
+        "transcript": "请帮我查一下 Order No. ABC 123 的进度。",
+        "audio_seconds": 4.56,
+        "warm_transcribe_seconds": 0.48677568399580196,
+        "rtf": 0.10674905350785131,
+        "detected_language": "zh",
+        "language_probability": 0.9921875,
+        "metrics": {
+          "normalized_expected": "請幫我查一下ordernumberabconetwothree的進度",
+          "normalized_actual": "請幫我查一下ordernoabc123的進度",
+          "cer_edits": 16,
+          "cer_reference_characters": 34,
+          "cer": 0.47058823529411764,
+          "raw_script_cer": 0.5588235294117647
+        },
+        "anchors": {
+          "zh": {
+            "進度": true
+          },
+          "en": {
+            "order": true,
+            "number": false
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 4.3,
+            "text": "请帮我查一下 Order No. ABC 123 的进度。",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_mixed_01",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "請幫我查一下 order number A B C one two three 的進度。",
+        "transcript": "请帮我查一下Order Number ABC123的进度。",
+        "audio_seconds": 4.56,
+        "warm_transcribe_seconds": 1.350584234984126,
+        "rtf": 0.2961807532859926,
+        "detected_language": "zh",
+        "language_probability": 0.884765625,
+        "metrics": {
+          "normalized_expected": "請幫我查一下ordernumberabconetwothree的進度",
+          "normalized_actual": "請幫我查一下ordernumberabc123的進度",
+          "cer_edits": 11,
+          "cer_reference_characters": 34,
+          "cer": 0.3235294117647059,
+          "raw_script_cer": 0.4117647058823529
+        },
+        "anchors": {
+          "zh": {
+            "進度": true
+          },
+          "en": {
+            "order": true,
+            "number": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 4.04,
+            "text": "请帮我查一下Order Number ABC123的进度。",
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "sample_id": "product_mixed_02",
+      "category": "mixed",
+      "expected": "這個 product 有沒有 warranty 和 return policy？",
+      "small": {
+        "sample_id": "product_mixed_02",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "這個 product 有沒有 warranty 和 return policy？",
+        "transcript": "这个Product 有没有Warranty和Return Policy?",
+        "audio_seconds": 3.648,
+        "warm_transcribe_seconds": 0.6181604970188346,
+        "rtf": 0.16945189063016297,
+        "detected_language": "zh",
+        "language_probability": 0.72900390625,
+        "metrics": {
+          "normalized_expected": "這個product有沒有warranty和returnpolicy",
+          "normalized_actual": "這個product有沒有warranty和returnpolicy",
+          "cer_edits": 0,
+          "cer_reference_characters": 33,
+          "cer": 0.0,
+          "raw_script_cer": 0.09090909090909091
+        },
+        "anchors": {
+          "zh": {
+            "這個": true,
+            "有沒有": true
+          },
+          "en": {
+            "product": true,
+            "warranty": true,
+            "return": true,
+            "policy": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.5,
+            "text": "这个Product 有没有Warranty和Return Policy?",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_mixed_02",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "這個 product 有沒有 warranty 和 return policy？",
+        "transcript": "这个product有没有warranty和return policy?",
+        "audio_seconds": 3.648,
+        "warm_transcribe_seconds": 1.3155612550035585,
+        "rtf": 0.36062534402509827,
+        "detected_language": "zh",
+        "language_probability": 0.9951171875,
+        "metrics": {
+          "normalized_expected": "這個product有沒有warranty和returnpolicy",
+          "normalized_actual": "這個product有沒有warranty和returnpolicy",
+          "cer_edits": 0,
+          "cer_reference_characters": 33,
+          "cer": 0.0,
+          "raw_script_cer": 0.09090909090909091
+        },
+        "anchors": {
+          "zh": {
+            "這個": true,
+            "有沒有": true
+          },
+          "en": {
+            "product": true,
+            "warranty": true,
+            "return": true,
+            "policy": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.1,
+            "text": "这个product有没有warranty和return policy?",
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "sample_id": "product_mixed_03",
+      "category": "mixed",
+      "expected": "Can you explain 退貨流程 and tell me how many days it takes?",
+      "small": {
+        "sample_id": "product_mixed_03",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "Can you explain 退貨流程 and tell me how many days it takes?",
+        "transcript": "Can you explain to a Hualou chung and tell me how many days it takes?",
+        "audio_seconds": 3.864,
+        "warm_transcribe_seconds": 0.5840839490119833,
+        "rtf": 0.15116044229088596,
+        "detected_language": "en",
+        "language_probability": 0.98779296875,
+        "metrics": {
+          "normalized_expected": "canyouexplain退貨流程andtellmehowmanydaysittakes",
+          "normalized_actual": "canyouexplaintoahualouchungandtellmehowmanydaysittakes",
+          "cer_edits": 14,
+          "cer_reference_characters": 44,
+          "cer": 0.3181818181818182,
+          "raw_script_cer": 0.3181818181818182
+        },
+        "anchors": {
+          "zh": {
+            "退貨": false,
+            "流程": false
+          },
+          "en": {
+            "explain": true,
+            "days": true,
+            "takes": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.6,
+            "text": " Can you explain to a Hualou chung and tell me how many days it takes?",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_mixed_03",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "Can you explain 退貨流程 and tell me how many days it takes?",
+        "transcript": "Can you explain to a huo leocheng and tell me how many days it takes?",
+        "audio_seconds": 3.864,
+        "warm_transcribe_seconds": 1.35021847000462,
+        "rtf": 0.3494354218438458,
+        "detected_language": "en",
+        "language_probability": 0.99365234375,
+        "metrics": {
+          "normalized_expected": "canyouexplain退貨流程andtellmehowmanydaysittakes",
+          "normalized_actual": "canyouexplaintoahuoleochengandtellmehowmanydaysittakes",
+          "cer_edits": 14,
+          "cer_reference_characters": 44,
+          "cer": 0.3181818181818182,
+          "raw_script_cer": 0.3181818181818182
+        },
+        "anchors": {
+          "zh": {
+            "退貨": false,
+            "流程": false
+          },
+          "en": {
+            "explain": true,
+            "days": true,
+            "takes": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 3.42,
+            "text": " Can you explain to a huo leocheng and tell me how many days it takes?",
+            "temperature": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "sample_id": "product_mixed_04",
+      "category": "mixed",
+      "expected": "我想 book a meeting room，明天 morning 還有空位嗎？",
+      "small": {
+        "sample_id": "product_mixed_04",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "我想 book a meeting room，明天 morning 還有空位嗎？",
+        "transcript": "我想播给meeting room,明天morning还有空位吗?",
+        "audio_seconds": 4.224,
+        "warm_transcribe_seconds": 0.5660521849931683,
+        "rtf": 0.13400856652300386,
+        "detected_language": "zh",
+        "language_probability": 0.99658203125,
+        "metrics": {
+          "normalized_expected": "我想bookameetingroom明天morning還有空位嗎",
+          "normalized_actual": "我想播給meetingroom明天morning還有空位嗎",
+          "cer_edits": 5,
+          "cer_reference_characters": 32,
+          "cer": 0.15625,
+          "raw_script_cer": 0.21875
+        },
+        "anchors": {
+          "zh": {
+            "我想": true,
+            "明天": true,
+            "空位": true
+          },
+          "en": {
+            "book": false,
+            "meeting": true,
+            "room": true,
+            "morning": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 4.0,
+            "text": "我想播给meeting room,明天morning还有空位吗?",
+            "temperature": 0.0
+          }
+        ]
+      },
+      "large-v3-turbo": {
+        "sample_id": "product_mixed_04",
+        "category": "mixed",
+        "voice": "en-US-EmmaMultilingualNeural",
+        "expected": "我想 book a meeting room，明天 morning 還有空位嗎？",
+        "transcript": "我想book a meeting room明天morning还有空位吗?",
+        "audio_seconds": 4.224,
+        "warm_transcribe_seconds": 1.337403731973609,
+        "rtf": 0.3166202016982976,
+        "detected_language": "zh",
+        "language_probability": 0.9716796875,
+        "metrics": {
+          "normalized_expected": "我想bookameetingroom明天morning還有空位嗎",
+          "normalized_actual": "我想bookameetingroom明天morning還有空位嗎",
+          "cer_edits": 0,
+          "cer_reference_characters": 32,
+          "cer": 0.0,
+          "raw_script_cer": 0.0625
+        },
+        "anchors": {
+          "zh": {
+            "我想": true,
+            "明天": true,
+            "空位": true
+          },
+          "en": {
+            "book": true,
+            "meeting": true,
+            "room": true,
+            "morning": true
+          }
+        },
+        "segments": [
+          {
+            "start": 0.0,
+            "end": 1.54,
+            "text": "我想book a meeting room",
+            "temperature": 0.0
+          },
+          {
+            "start": 1.54,
+            "end": 3.8000000000000003,
+            "text": "明天morning还有空位吗?",
+            "temperature": 0.0
+          }
+        ]
+      }
+    }
+  ],
+  "warm_median_seconds": {
+    "small": 0.5750680670025758,
+    "large-v3-turbo": 1.3268188659858424
+  },
+  "same_application_and_llama_processes_across_candidates": true,
+  "background_workload_states": {
+    "small": {
+      "before": [
+        {
+          "pid": 2378506,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793073969.58,
+          "rss": 4624252928,
+          "cpu_times": [
+            3.24,
+            1.48,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2378314,
+          "name": "python",
+          "entrypoint": "src/server/app.py",
+          "create_time": 1793073965.36,
+          "rss": 2389921792,
+          "cpu_times": [
+            13.94,
+            2.44,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2128942,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793066784.2,
+          "rss": 1930518528,
+          "cpu_times": [
+            7.06,
+            2.25,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "after": [
+        {
+          "pid": 2378506,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793073969.58,
+          "rss": 4624252928,
+          "cpu_times": [
+            3.25,
+            1.48,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2378314,
+          "name": "python",
+          "entrypoint": "src/server/app.py",
+          "create_time": 1793073965.36,
+          "rss": 2390183936,
+          "cpu_times": [
+            13.96,
+            2.45,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2128942,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793066784.2,
+          "rss": 1930518528,
+          "cpu_times": [
+            7.06,
+            2.26,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    "large-v3-turbo": {
+      "before": [
+        {
+          "pid": 2378506,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793073969.58,
+          "rss": 4624252928,
+          "cpu_times": [
+            3.25,
+            1.49,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2378314,
+          "name": "python",
+          "entrypoint": "src/server/app.py",
+          "create_time": 1793073965.36,
+          "rss": 2390183936,
+          "cpu_times": [
+            13.96,
+            2.45,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2128942,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793066784.2,
+          "rss": 1930518528,
+          "cpu_times": [
+            7.06,
+            2.26,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "after": [
+        {
+          "pid": 2378506,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793073969.58,
+          "rss": 4624252928,
+          "cpu_times": [
+            3.25,
+            1.49,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2378314,
+          "name": "python",
+          "entrypoint": "src/server/app.py",
+          "create_time": 1793073965.36,
+          "rss": 2390183936,
+          "cpu_times": [
+            13.96,
+            2.45,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "pid": 2128942,
+          "name": "llama-server",
+          "entrypoint": null,
+          "create_time": 1793066784.2,
+          "rss": 1930518528,
+          "cpu_times": [
+            7.06,
+            2.26,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ]
+    }
+  },
+  "health_checks": {
+    "small": [
+      {
+        "url": "http://127.0.0.1:8010/health",
+        "error": "Remote end closed connection without response"
+      },
+      {
+        "url": "http://127.0.0.1:8080/health",
+        "status": 200,
+        "body": "{\"status\":\"ok\"}"
+      }
+    ],
+    "large-v3-turbo": [
+      {
+        "url": "http://127.0.0.1:8010/health",
+        "error": "Remote end closed connection without response"
+      },
+      {
+        "url": "http://127.0.0.1:8080/health",
+        "status": 200,
+        "body": "{\"status\":\"ok\"}"
+      }
+    ]
+  },
+  "limitation": "App/LLM resident workload differs from earlier fallback corpus. Same resident process identities do not prove identical instantaneous activity or live avatar frame/TTS/LLM-generation stress. Synthetic multilingual voice and ASR anchor agreement do not establish human accent quality.",
+  "config_hashes_same_between_candidates": true
+}

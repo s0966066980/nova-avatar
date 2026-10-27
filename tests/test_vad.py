@@ -20,7 +20,7 @@ from src.vad.factory import (
     release_vad_engine,
 )
 from src.vad.segmenter import VADSegmenter, detect_speech_segments, extract_speech
-from src.vad.service import preprocess_audio_bytes
+from src.vad.service import create_segmenter, preprocess_audio_bytes
 
 SR = 16000
 
@@ -299,6 +299,24 @@ def _speech_like(duration_ms: int, seed: int = 0) -> np.ndarray:
 class SileroEngineTests(unittest.TestCase):
     def tearDown(self):
         release_vad_engine()
+
+    def test_streaming_microphones_own_independent_recurrent_models(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        first = create_segmenter(_VADCfg(type="silero"))
+        second = create_segmenter(_VADCfg(type="silero"))
+        self.assertIsNot(first.vad, second.vad)
+        for segmenter in (first, second):
+            segmenter.vad.ensure_ready()
+        self.assertIsNot(first.vad.model, second.vad.model)
+
+        def exercise(segmenter):
+            for _ in range(40):
+                segmenter.reset()
+                self.assertEqual(list(segmenter.process(silence(64))), [])
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(exercise, (first, second)))
 
     def test_detects_speech_and_ignores_silence(self):
         vad = get_vad_engine("silero", sample_rate=SR)

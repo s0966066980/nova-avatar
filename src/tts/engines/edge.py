@@ -265,7 +265,7 @@ async def _prewarm_edge_tts(
             parent=SimpleNamespace(put_audio_frame=lambda *_: True),
         )
         emitter = _EdgePCMEmitter(owner, "", {})
-    text = "語音連線準備完成。"
+    text = "語音連線準備完成。" if voicename.startswith('zh-') else "Speech connection is ready."
     stream = (
         _edge_communicate(text, voicename).stream()
         if stream_factory is None else stream_factory(text, voicename)

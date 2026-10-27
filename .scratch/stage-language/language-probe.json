@@ -1,0 +1,14 @@
+[
+  {
+    "variant": "current",
+    "response": "[[MODE:SIMPLE]]\n[[SPEECH]]\n好的，這是一個簡短的語音連線測試。我已經準備好接收您的指令，請您開始測試吧。\n[[END]]"
+  },
+  {
+    "variant": "override",
+    "response": "[[MODE:SIMPLE]]\n[[SPEECH]]\nThis is a short speech connection test. I understand. How can I help you today?\n[[END]]"
+  },
+  {
+    "variant": "user_hint",
+    "response": "[[MODE:SIMPLE]]\n[[SPEECH]]\nI understand. I am ready for your short speech connection test. Please go ahead when you are ready.\n[[END]]"
+  }
+]

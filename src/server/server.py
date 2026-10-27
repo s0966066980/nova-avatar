@@ -54,6 +54,11 @@ def create_app():
     app.router.add_get("/health", routes.health_check)
     app.router.add_get("/download/{filename}", routes.download_record)
     app.router.add_get("/api/settings", routes.get_settings)
+    from src.server.conversations import list_conversations, save_defaults, update_conversation, clear_conversation
+    app.router.add_post(r'/api/conversations/{sessionid:\d+}/clear', clear_conversation)
+    app.router.add_get('/api/conversations', list_conversations)
+    app.router.add_post('/api/conversations/defaults', save_defaults)
+    app.router.add_post('/api/conversations/{sessionid:\\d+}', update_conversation)
     app.router.add_get("/api/ragflow/settings", routes.get_ragflow_settings)
     app.router.add_put("/api/ragflow/settings", routes.put_ragflow_settings)
     app.router.add_get("/api/ragflow/datasets", routes.list_ragflow_datasets)

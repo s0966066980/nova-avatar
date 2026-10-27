@@ -48,6 +48,8 @@ class ServerState:
     
     def remove_session(self, sessionid: int):
         """移除會話"""
+        from src.llm.service import remove_session
+        remove_session(sessionid)
         if sessionid in self.avatar_streams:
             del self.avatar_streams[sessionid]
         self.voice_sessions.pop(sessionid, None)

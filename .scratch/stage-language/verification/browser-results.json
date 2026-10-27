@@ -1,0 +1,350 @@
+{
+  "started_at": 1793076282.3866198,
+  "errors": [],
+  "session_ids": [
+    317989,
+    402694
+  ],
+  "initial_sessions": {
+    "model_context": {
+      "model": "gemma-4-E2B_q4_0-it",
+      "capacity": 8192
+    },
+    "defaults": {
+      "locale": "zh-TW",
+      "history_max_messages": 20,
+      "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+      "voice_en_us": "en-US-JennyNeural"
+    },
+    "voices": {
+      "zh-TW": [
+        {
+          "id": "zh-TW-HsiaoChenNeural",
+          "label": "曉臻（女聲）"
+        },
+        {
+          "id": "zh-TW-HsiaoYuNeural",
+          "label": "曉雨（女聲）"
+        },
+        {
+          "id": "zh-TW-YunJheNeural",
+          "label": "雲哲（男聲）"
+        }
+      ],
+      "en-US": [
+        {
+          "id": "en-US-JennyNeural",
+          "label": "Jenny（美式女聲）"
+        },
+        {
+          "id": "en-US-AriaNeural",
+          "label": "Aria（美式女聲）"
+        },
+        {
+          "id": "en-US-GuyNeural",
+          "label": "Guy（美式男聲）"
+        }
+      ]
+    },
+    "sessions": [
+      {
+        "sessionid": 317989,
+        "role": "stage",
+        "locale": "zh-TW",
+        "history_max_messages": 20,
+        "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+        "voice_en_us": "en-US-JennyNeural",
+        "switching": false,
+        "pending_history_max_messages": null,
+        "idle_reset_seconds": 3.0,
+        "memory": {
+          "retained_messages": 0,
+          "max_messages": 20,
+          "pending_max_messages": null,
+          "evicted_messages": 0,
+          "oldest_message": null,
+          "oldest_message_number": null,
+          "context": null
+        }
+      },
+      {
+        "sessionid": 402694,
+        "role": "stage",
+        "locale": "en-US",
+        "history_max_messages": 20,
+        "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+        "voice_en_us": "en-US-JennyNeural",
+        "switching": false,
+        "pending_history_max_messages": null,
+        "idle_reset_seconds": 3.0,
+        "memory": {
+          "retained_messages": 0,
+          "max_messages": 20,
+          "pending_max_messages": null,
+          "evicted_messages": 0,
+          "oldest_message": null,
+          "oldest_message_number": null,
+          "context": null
+        }
+      }
+    ]
+  },
+  "english_voice_turn": {
+    "transcript": {
+      "type": "user_transcript",
+      "seq": 7,
+      "turn_id": "0bcd73a50ce94c92b902191982cbd6d4",
+      "text": "Hello",
+      "media_ms": 3340,
+      "generation": 0
+    },
+    "commit": {
+      "type": "turn_committed",
+      "seq": 66,
+      "turn_id": "0bcd73a50ce94c92b902191982cbd6d4",
+      "played_text": "Hello. I am Nova Avatar. I am here to help you with your questions. Feel free to ask me anything you need assistance with.",
+      "reason": "completed",
+      "media_ms": 11880,
+      "generation": 0
+    }
+  },
+  "chinese_input_english_output": {
+    "transcript": {
+      "type": "user_transcript",
+      "seq": 71,
+      "turn_id": "3ddb6e2e975d4f9bb0e45bb95b599c8d",
+      "text": "您好,這是一段語音連線測試",
+      "media_ms": 16240,
+      "generation": 0
+    },
+    "commit": {
+      "type": "turn_committed",
+      "seq": 118,
+      "turn_id": "3ddb6e2e975d4f9bb0e45bb95b599c8d",
+      "played_text": "I understand. I am ready for your voice connection test. Please proceed with your test.",
+      "reason": "completed",
+      "media_ms": 22580,
+      "generation": 0
+    }
+  },
+  "after_switch": {
+    "sessionid": 317989,
+    "role": "stage",
+    "locale": "en-US",
+    "history_max_messages": 20,
+    "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+    "voice_en_us": "en-US-JennyNeural",
+    "switching": false,
+    "pending_history_max_messages": null,
+    "idle_reset_seconds": 3.0,
+    "memory": {
+      "retained_messages": 2,
+      "max_messages": 20,
+      "pending_max_messages": null,
+      "evicted_messages": 0,
+      "oldest_message_number": 1,
+      "oldest_message": {
+        "role": "user",
+        "content": "請記住本次測試的通關詞 NOVA42，回答收到即可。"
+      },
+      "context": {
+        "model": "gemma-4-E2B_q4_0-it",
+        "capacity": 8192,
+        "input_tokens": 1868,
+        "history_tokens": 0,
+        "history_estimated": true,
+        "reserved_output_tokens": 588,
+        "estimated": false,
+        "source": "provider usage",
+        "observed_at": 1793076311.4876063,
+        "remaining_tokens": 5736,
+        "usage_percent": 30.0,
+        "other_input_tokens": 1868,
+        "over_capacity": false
+      }
+    }
+  },
+  "cross_language_memory": {
+    "type": "turn_committed",
+    "seq": 74,
+    "turn_id": "6eb0f7189d8d4652aeeda86a44165fa1",
+    "played_text": "You asked me to remember the code NOVA42.",
+    "reason": "completed",
+    "media_ms": 32080,
+    "generation": 1
+  },
+  "controller_after_apply": {
+    "model_context": {
+      "model": "gemma-4-E2B_q4_0-it",
+      "capacity": 8192
+    },
+    "defaults": {
+      "locale": "zh-TW",
+      "history_max_messages": 20,
+      "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+      "voice_en_us": "en-US-JennyNeural"
+    },
+    "voices": {
+      "zh-TW": [
+        {
+          "id": "zh-TW-HsiaoChenNeural",
+          "label": "曉臻（女聲）"
+        },
+        {
+          "id": "zh-TW-HsiaoYuNeural",
+          "label": "曉雨（女聲）"
+        },
+        {
+          "id": "zh-TW-YunJheNeural",
+          "label": "雲哲（男聲）"
+        }
+      ],
+      "en-US": [
+        {
+          "id": "en-US-JennyNeural",
+          "label": "Jenny（美式女聲）"
+        },
+        {
+          "id": "en-US-AriaNeural",
+          "label": "Aria（美式女聲）"
+        },
+        {
+          "id": "en-US-GuyNeural",
+          "label": "Guy（美式男聲）"
+        }
+      ]
+    },
+    "sessions": [
+      {
+        "sessionid": 317989,
+        "role": "stage",
+        "locale": "en-US",
+        "history_max_messages": 3,
+        "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+        "voice_en_us": "en-US-JennyNeural",
+        "switching": false,
+        "pending_history_max_messages": null,
+        "idle_reset_seconds": 3.0,
+        "memory": {
+          "retained_messages": 3,
+          "max_messages": 3,
+          "pending_max_messages": null,
+          "evicted_messages": 1,
+          "oldest_message_number": 2,
+          "oldest_message": {
+            "role": "assistant",
+            "content": "我已經記住了，通關詞是 NOVA42。"
+          },
+          "context": {
+            "model": "gemma-4-E2B_q4_0-it",
+            "capacity": 8192,
+            "input_tokens": 1938,
+            "history_tokens": 35,
+            "history_estimated": true,
+            "reserved_output_tokens": 588,
+            "estimated": false,
+            "source": "provider usage",
+            "observed_at": 1793076317.2154136,
+            "remaining_tokens": 5666,
+            "usage_percent": 30.8,
+            "other_input_tokens": 1903,
+            "over_capacity": false
+          }
+        }
+      },
+      {
+        "sessionid": 402694,
+        "role": "stage",
+        "locale": "en-US",
+        "history_max_messages": 20,
+        "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+        "voice_en_us": "en-US-JennyNeural",
+        "switching": false,
+        "pending_history_max_messages": null,
+        "idle_reset_seconds": 3.0,
+        "memory": {
+          "retained_messages": 0,
+          "max_messages": 20,
+          "pending_max_messages": null,
+          "evicted_messages": 0,
+          "oldest_message_number": null,
+          "oldest_message": null,
+          "context": null
+        }
+      }
+    ]
+  },
+  "mid_reply_switch": {
+    "cancelled_turn": "8dfea717c8024e33acebadfb7ed4bd39",
+    "sessions": [
+      {
+        "sessionid": 317989,
+        "role": "stage",
+        "locale": "zh-TW",
+        "history_max_messages": 3,
+        "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+        "voice_en_us": "en-US-JennyNeural",
+        "switching": false,
+        "pending_history_max_messages": null,
+        "idle_reset_seconds": 3.0,
+        "memory": {
+          "retained_messages": 3,
+          "max_messages": 3,
+          "pending_max_messages": null,
+          "evicted_messages": 3,
+          "oldest_message_number": 4,
+          "oldest_message": {
+            "role": "assistant",
+            "content": "You asked me to remember the code NOVA42."
+          },
+          "context": {
+            "model": "gemma-4-E2B_q4_0-it",
+            "capacity": 8192,
+            "input_tokens": 1948,
+            "history_tokens": 34,
+            "history_estimated": true,
+            "reserved_output_tokens": 588,
+            "estimated": false,
+            "source": "provider usage",
+            "observed_at": 1793076322.435005,
+            "remaining_tokens": 5656,
+            "usage_percent": 31.0,
+            "other_input_tokens": 1914,
+            "over_capacity": false
+          }
+        }
+      },
+      {
+        "sessionid": 402694,
+        "role": "stage",
+        "locale": "en-US",
+        "history_max_messages": 20,
+        "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+        "voice_en_us": "en-US-JennyNeural",
+        "switching": false,
+        "pending_history_max_messages": null,
+        "idle_reset_seconds": 3.0,
+        "memory": {
+          "retained_messages": 0,
+          "max_messages": 20,
+          "pending_max_messages": null,
+          "evicted_messages": 0,
+          "oldest_message_number": null,
+          "oldest_message": null,
+          "context": null
+        }
+      }
+    ]
+  },
+  "english_received_audio": [
+    {
+      "bytes": 154871,
+      "energy": 0.8168019672268285
+    }
+  ],
+  "reconnect": {
+    "new_sessionid": 127432,
+    "message": "Reconnected to a new conversation. Previous conversation memory was cleared."
+  },
+  "passed": true
+}

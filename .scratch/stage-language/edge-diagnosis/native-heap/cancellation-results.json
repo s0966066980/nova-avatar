@@ -1,0 +1,34 @@
+[
+  {
+    "path": "synthesis",
+    "cancel": false,
+    "feed_still_running_when_coroutine_cancelled": false,
+    "finish_calls_on_cancel": null,
+    "finish_calls_total": 1,
+    "max_simultaneous_emitter_operations": 1
+  },
+  {
+    "path": "synthesis",
+    "cancel": true,
+    "feed_still_running_when_coroutine_cancelled": true,
+    "finish_calls_on_cancel": 0,
+    "finish_calls_total": 0,
+    "max_simultaneous_emitter_operations": 1
+  },
+  {
+    "path": "prewarm",
+    "cancel": false,
+    "feed_still_running_when_coroutine_cancelled": false,
+    "finish_calls_on_cancel": null,
+    "finish_calls_total": 1,
+    "max_simultaneous_emitter_operations": 1
+  },
+  {
+    "path": "prewarm",
+    "cancel": true,
+    "feed_still_running_when_coroutine_cancelled": true,
+    "finish_calls_on_cancel": 0,
+    "finish_calls_total": 0,
+    "max_simultaneous_emitter_operations": 1
+  }
+]

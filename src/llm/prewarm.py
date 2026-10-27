@@ -34,6 +34,7 @@ def prewarm_local_llm(config, *, timeout_seconds: float = 25.0) -> bool:
             model=llm.model,
         )
         profile = llm.assistant_profile
+        engine.observe_context = False
         prompt = compose_system_prompt(
             load_system_prompt(config),
             reply_mode=ReplyMode.AUTO,

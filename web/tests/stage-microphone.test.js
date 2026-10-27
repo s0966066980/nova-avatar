@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
+import { stageText, stageItemCount } from '../src/stageLocale.js'
 import { configureReplyPlayout } from '../src/replyPlayout.js'
 import { mountPresentation, presentationPlayer, exportSceneRecording } from '../src/prerecordedPlayer.js'
 
@@ -34,7 +35,7 @@ function stageHarness() {
     }
     return elements.get(id)
   }
-  const sent = []
+  const sent = [], offers = []
   const track = { enabled: false, stop() {} }
   let channel
   let peer
@@ -52,6 +53,7 @@ function stageHarness() {
     close() {}
   }
   const context = {
+    stageText, stageItemCount,
     newClientId: () => 'stage-test',
     releaseSession: async () => {},
     avatarIsReady: async () => true,
@@ -82,9 +84,10 @@ function stageHarness() {
     STAGE_BOARD_PREVIEW_ITEMS: [],
     STAGE_BOARD_PREVIEW_TITLE: '',
     placeStageBoard: () => ({ width: 200, height: 200, left: 0, top: 0 }),
-    fetch: async (url) => ({ ok: true, json: async () => {
+    fetch: async (url, options = {}) => ({ ok: true, json: async () => {
       if (url === '/api/vad') return { data: { enabled: true } }
       if (url === '/api/stage') return { data: {} }
+      if (url === '/offer') offers.push(JSON.parse(options.body))
       return { sessionid: 7, sdp: 'answer', type: 'answer' }
     } }),
     setTimeout: () => 1,
@@ -95,6 +98,7 @@ function stageHarness() {
   const body = script.replace(/^import[\s\S]*?from '[^']+';\s*/gm, '')
   vm.runInNewContext(body, context)
   return {
+    offers,
     sent,
     track,
     element,
@@ -133,6 +137,41 @@ test('舞台重新開啟通道時保留使用者暫停收音的選擇', async ()
   stage.reopenChannel()
   assert.equal(stage.track.enabled, false)
   assert.equal(stage.sent.at(-1).enabled, false)
+})
+
+test('舞台英文入口傳遞語系，切換確認前暫停收音且不翻譯既有內容', async () => {
+  const stage = stageHarness()
+  const selector = stage.element('stageLocale')
+  selector.value = 'en-US'
+  selector.onchange()
+  await stage.connect()
+  assert.equal(stage.offers[0].locale, 'en-US')
+  assert.equal(stage.element('modeText').textContent, 'Hands-free')
+  stage.event({ seq: 1, type: 'user_transcript', text: '請記住這段中文' })
+  selector.value = 'zh-TW'
+  selector.onchange()
+  assert.deepEqual(stage.sent.at(-1), { type: 'conversation_settings', settings: { locale: 'zh-TW' } })
+  assert.equal(stage.track.enabled, false)
+  assert.equal(selector.disabled, true)
+  stage.event({ seq: 2, type: 'conversation_settings', locale: 'zh-TW' })
+  assert.equal(selector.value, 'zh-TW')
+  assert.equal(selector.disabled, false)
+  assert.equal(stage.track.enabled, true)
+  assert.equal(stage.element('said').textContent, '請記住這段中文')
+})
+
+test('舞台語系切換失敗恢復原語系與收音', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  const selector = stage.element('stageLocale')
+  selector.value = 'en-US'
+  selector.onchange()
+  assert.equal(stage.track.enabled, false)
+  stage.event({ seq: 1, type: 'conversation_settings_error', locale: 'zh-TW', error: 'voice_unavailable' })
+  assert.equal(selector.value, 'zh-TW')
+  assert.equal(selector.disabled, false)
+  assert.equal(stage.track.enabled, true)
+  assert.match(stage.element('languageStatus').textContent, /保留原設定/)
 })
 
 test('暫停中的舞台插話會同步恢復前後端收音狀態', async () => {

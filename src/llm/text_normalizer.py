@@ -16,6 +16,17 @@ _SELF_IDENTITY = re.compile(
 _IDENTITY_QUESTION = re.compile(r"你是誰|你叫什麼|你的(?:名字|名稱|身份)|自我介紹|介紹你自己")
 
 
+def join_spoken_fragments(fragments) -> str:
+    """Keep Latin sentence spacing when individually trimmed speech is committed."""
+    result = ''
+    for text in fragments:
+        if (result and text and result[-1] in '.!?,;:'
+                and text[0].isascii() and text[0].isalnum()):
+            result += ' '
+        result += text
+    return result
+
+
 def strip_unsolicited_self_introduction(
     text: str, *, user_message: str, assistant_name: str
 ) -> str:
@@ -29,7 +40,10 @@ def strip_unsolicited_self_introduction(
         rf"^\s*(?:您好[，,！!。\s]*)?(?:我(?:是|叫)|我的名字是)\s*{name}"
         r"(?:[，,。！!、\s]+(?:很高興(?:為您)?服務|很高興認識您|我可以協助您)[，,。！!、\s]*)?"
     )
-    stripped = leading_intro.sub("", text).lstrip("，,。！!、 \n")
+    stripped = leading_intro.sub("", text)
+    if stripped == text:
+        return text
+    stripped = stripped.lstrip("，,。！!、 \n")
     return stripped or text
 
 

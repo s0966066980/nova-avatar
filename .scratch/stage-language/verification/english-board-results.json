@@ -1,0 +1,61 @@
+{
+  "passed": true,
+  "voice": "en-US-AriaNeural",
+  "board": {
+    "type": "board_end",
+    "seq": 27,
+    "turn_id": "d2f7e316a48542bc8e9a40c7dceeb78c",
+    "board_id": "d2f7e316a48542bc8e9a40c7dceeb78c",
+    "media_ms": 4420,
+    "generation": 1
+  },
+  "items": "01\nEnvironment Setup\n\nPrepare the necessary computing environment, ensuring all required hardware and software dependencies are correctly installed and configured for the Nova Avatar system.\n\n02\nModel Integration\n\nIntegrate the Nova Avatar core model into the prepared environment, which involves loading the model weights and setting up the initial inference pipeline.\n\n03\nFinal Testing and Validation\n\nConduct thorough testing to validate the system's performance, ensuring it meets all operational requirements before full deployment.",
+  "commit": {
+    "type": "turn_committed",
+    "seq": 34,
+    "turn_id": "d2f7e316a48542bc8e9a40c7dceeb78c",
+    "played_text": "Here are the three deployment steps for Nova Avatar.",
+    "reason": "completed",
+    "media_ms": 5140,
+    "generation": 1
+  },
+  "session": [
+    {
+      "sessionid": 296043,
+      "role": "stage",
+      "locale": "en-US",
+      "history_max_messages": 20,
+      "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+      "voice_en_us": "en-US-AriaNeural",
+      "switching": false,
+      "pending_history_max_messages": null,
+      "idle_reset_seconds": 3.0,
+      "memory": {
+        "retained_messages": 2,
+        "max_messages": 20,
+        "pending_max_messages": null,
+        "evicted_messages": 0,
+        "oldest_message_number": 1,
+        "oldest_message": {
+          "role": "user",
+          "content": "Show a board with three deployment steps for Nova Avatar, with a short explanation for each step."
+        },
+        "context": {
+          "model": "gemma-4-E2B_q4_0-it",
+          "capacity": 8192,
+          "input_tokens": 1908,
+          "history_tokens": 0,
+          "history_estimated": true,
+          "reserved_output_tokens": 588,
+          "estimated": false,
+          "source": "provider usage",
+          "observed_at": 1793076100.1811318,
+          "remaining_tokens": 5696,
+          "usage_percent": 30.5,
+          "other_input_tokens": 1908,
+          "over_capacity": false
+        }
+      }
+    }
+  ]
+}

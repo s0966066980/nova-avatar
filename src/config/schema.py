@@ -398,6 +398,15 @@ class StageConfig:
 
 
 @dataclass
+class ConversationConfig:
+    """New-session defaults, separate from the assistant's identity."""
+    locale: str = "zh-TW"
+    history_max_messages: int = 20
+    voice_zh_tw: str = "zh-TW-HsiaoChenNeural"
+    voice_en_us: str = "en-US-JennyNeural"
+
+
+@dataclass
 class Config:
     """全域性配置"""
     app: AppConfig = field(default_factory=AppConfig)
@@ -411,6 +420,7 @@ class Config:
     custom_video: CustomVideoConfig = field(default_factory=CustomVideoConfig)
     reply_streaming: ReplyStreamingConfig = field(default_factory=ReplyStreamingConfig)
     stage: StageConfig = field(default_factory=StageConfig)
+    conversation: ConversationConfig = field(default_factory=ConversationConfig)
     
     # 其他動態配置
     sessionid: int = 0

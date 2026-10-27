@@ -1,0 +1,360 @@
+{
+  "copyright": "Copyright (c) 2026 HongXian0903",
+  "SPDX-License-Identifier": "Apache-2.0",
+  "scope": "research records only; not a license for model weights or third-party audio",
+  "generated_utc": "2026-10-27T03:57:58.593326+00:00",
+  "benchmark_started_utc": "2026-10-27T03:52:28.112387+00:00",
+  "benchmark_completed_utc": "2026-10-27T03:53:12.329767+00:00",
+  "models": {
+    "small": {
+      "device": "cuda",
+      "compute_type": "float16",
+      "model_load_seconds": 0.6052323970070574,
+      "cold_first_decode_seconds": 1.362148818996502,
+      "load_plus_first_decode_seconds": 1.9673812160035595,
+      "warm_median_seconds": 0.8847228569939034,
+      "warm_range_seconds": [
+        0.6294548719888553,
+        1.5945199279813096
+      ],
+      "peak_process_rss_gib": 1.6632194519042969,
+      "rss_before_load_gib": 0.36360931396484375,
+      "rss_after_load_gib": 1.0263633728027344,
+      "min_system_available_gib": 40.565696716308594,
+      "cuda_global_before_gib": 20.4376220703125,
+      "cuda_global_peak_gib": 21.096473693847656,
+      "categories": {
+        "zh": {
+          "warm_median_seconds": 1.1237533220119076,
+          "weighted_cer": 0.022222222222222223,
+          "weighted_wer": null
+        },
+        "en": {
+          "warm_median_seconds": 0.6429523264960153,
+          "weighted_cer": 0.02564102564102564,
+          "weighted_wer": 0.02564102564102564
+        },
+        "mixed": {
+          "warm_median_seconds": 1.0435535224969499,
+          "weighted_cer": 0.36554621848739494,
+          "weighted_wer": null
+        }
+      }
+    },
+    "large-v3-turbo": {
+      "device": "cuda",
+      "compute_type": "float16",
+      "model_load_seconds": 1.0866285919910297,
+      "cold_first_decode_seconds": 2.0573392489750404,
+      "load_plus_first_decode_seconds": 3.14396784096607,
+      "warm_median_seconds": 1.5643221989885205,
+      "warm_range_seconds": [
+        1.368868665973423,
+        2.1327932570129633
+      ],
+      "peak_process_rss_gib": 2.9992103576660156,
+      "rss_before_load_gib": 0.3637046813964844,
+      "rss_after_load_gib": 2.313488006591797,
+      "min_system_available_gib": 40.3117561340332,
+      "cuda_global_before_gib": 19.832717895507812,
+      "cuda_global_peak_gib": 21.34954071044922,
+      "categories": {
+        "zh": {
+          "warm_median_seconds": 1.8807543209986761,
+          "weighted_cer": 0.044444444444444446,
+          "weighted_wer": null
+        },
+        "en": {
+          "warm_median_seconds": 1.399036068993155,
+          "weighted_cer": 0.02564102564102564,
+          "weighted_wer": 0.02564102564102564
+        },
+        "mixed": {
+          "warm_median_seconds": 1.5941256849910133,
+          "weighted_cer": 0.6596638655462185,
+          "weighted_wer": null
+        }
+      }
+    }
+  },
+  "per_fixture": [
+    {
+      "model": "small",
+      "sample_id": "zh_fixture_01",
+      "category": "zh",
+      "audio_seconds": 10.992,
+      "warm_median_seconds": 0.8243628985073883,
+      "warm_seconds": [
+        0.8401758630061522,
+        0.8085499340086244
+      ],
+      "transcript_stable": true,
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "detected_language": "zh",
+      "cer": 0.0,
+      "raw_script_cer": 0.0,
+      "wer": null
+    },
+    {
+      "model": "small",
+      "sample_id": "zh_fixture_02",
+      "category": "zh",
+      "audio_seconds": 22.272,
+      "warm_median_seconds": 1.5009253544994863,
+      "warm_seconds": [
+        1.5945199279813096,
+        1.407330781017663
+      ],
+      "transcript_stable": true,
+      "expected": "臺灣是位於西太平洋的島國，以多元文化、精緻飲食和優美的自然景觀聞名。這裡擁有從高山到海岸的豐富地質景觀，以及豐富的原住民文化和漢文化交融的特色。臺灣也是科技產業與農業並重的經濟體，生活節奏快且充滿活力。",
+      "transcript": "台灣是位於西太平洋的島國以多元文化、精緻飲食和優美的自然景觀文明這裡擁有從高山到海岸的豐富地質景觀以及豐富的原住民文化和漢文化交融的特色台灣也是科技產業與農業併重的經濟體生活節奏快且充滿活力",
+      "detected_language": "zh",
+      "cer": 0.031914893617021274,
+      "raw_script_cer": 0.05319148936170213,
+      "wer": null
+    },
+    {
+      "model": "small",
+      "sample_id": "en_openai_jfk",
+      "category": "en",
+      "audio_seconds": 11.0,
+      "warm_median_seconds": 0.6493862739880569,
+      "warm_seconds": [
+        0.6693176759872586,
+        0.6294548719888553
+      ],
+      "transcript_stable": true,
+      "expected": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "detected_language": "en",
+      "cer": 0.0,
+      "raw_script_cer": 0.0,
+      "wer": 0.0
+    },
+    {
+      "model": "small",
+      "sample_id": "en_hf_librispeech",
+      "category": "en",
+      "audio_seconds": 5.855,
+      "warm_median_seconds": 0.6429523264960153,
+      "warm_seconds": [
+        0.6338305209937971,
+        0.6520741319982335
+      ],
+      "transcript_stable": true,
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
+      "transcript": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.",
+      "detected_language": "en",
+      "cer": 0.0547945205479452,
+      "raw_script_cer": 0.0547945205479452,
+      "wer": 0.058823529411764705
+    },
+    {
+      "model": "small",
+      "sample_id": "mixed_splice_zh_en",
+      "category": "mixed",
+      "audio_seconds": 22.342,
+      "warm_median_seconds": 0.9639111584838247,
+      "warm_seconds": [
+        0.9292698509816546,
+        0.9985524659859948
+      ],
+      "transcript_stable": true,
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。 And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+      "detected_language": "zh",
+      "cer": 0.6693548387096774,
+      "raw_script_cer": 0.6693548387096774,
+      "wer": null
+    },
+    {
+      "model": "small",
+      "sample_id": "mixed_splice_en_zh",
+      "category": "mixed",
+      "audio_seconds": 17.197,
+      "warm_median_seconds": 1.1435092830070062,
+      "warm_seconds": [
+        1.088554579007905,
+        1.1984639870061073
+      ],
+      "transcript_stable": true,
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL 今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "Mr. Quilter is the Apostle of the Middle Classes, and we are glad to welcome his Gospel.今天的測試會先確認聲音是否連續,接著比較嘴型推理造成的等待,最後記錄整段語音的播放時間。",
+      "detected_language": "zh",
+      "cer": 0.03508771929824561,
+      "raw_script_cer": 0.03508771929824561,
+      "wer": null
+    },
+    {
+      "model": "large-v3-turbo",
+      "sample_id": "zh_fixture_01",
+      "category": "zh",
+      "audio_seconds": 10.992,
+      "warm_median_seconds": 1.6381410975009203,
+      "warm_seconds": [
+        1.591422783996677,
+        1.6848594110051636
+      ],
+      "transcript_stable": true,
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "今天的测试会先确认声音是否连续接着比较嘴型推理造成的等待最后记录诊断语音的播放时间",
+      "detected_language": "zh",
+      "cer": 0.07317073170731707,
+      "raw_script_cer": 0.43902439024390244,
+      "wer": null
+    },
+    {
+      "model": "large-v3-turbo",
+      "sample_id": "zh_fixture_02",
+      "category": "zh",
+      "audio_seconds": 22.272,
+      "warm_median_seconds": 2.104721244002576,
+      "warm_seconds": [
+        2.0766492309921887,
+        2.1327932570129633
+      ],
+      "transcript_stable": true,
+      "expected": "臺灣是位於西太平洋的島國，以多元文化、精緻飲食和優美的自然景觀聞名。這裡擁有從高山到海岸的豐富地質景觀，以及豐富的原住民文化和漢文化交融的特色。臺灣也是科技產業與農業並重的經濟體，生活節奏快且充滿活力。",
+      "transcript": "台湾是位于西太平洋的岛国以多元文化、精致饮食和优美的自然景观文明这里拥有从高山到海岸的丰富地质景观以及丰富的原住民文化和汉文化交融的特色台湾也是科技产业与农业并重的经济体生活节奏快且充满活力",
+      "detected_language": "zh",
+      "cer": 0.031914893617021274,
+      "raw_script_cer": 0.35106382978723405,
+      "wer": null
+    },
+    {
+      "model": "large-v3-turbo",
+      "sample_id": "en_openai_jfk",
+      "category": "en",
+      "audio_seconds": 11.0,
+      "warm_median_seconds": 1.4036961844976759,
+      "warm_seconds": [
+        1.4122388719988521,
+        1.3951534969964996
+      ],
+      "transcript_stable": true,
+      "expected": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "detected_language": "en",
+      "cer": 0.0,
+      "raw_script_cer": 0.0,
+      "wer": 0.0
+    },
+    {
+      "model": "large-v3-turbo",
+      "sample_id": "en_hf_librispeech",
+      "category": "en",
+      "audio_seconds": 5.855,
+      "warm_median_seconds": 1.3858936534816166,
+      "warm_seconds": [
+        1.368868665973423,
+        1.4029186409898102
+      ],
+      "transcript_stable": true,
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
+      "transcript": "Mr. Quilter is the apostle of the middle classes, and we are glad to welcome his gospel.",
+      "detected_language": "en",
+      "cer": 0.0547945205479452,
+      "raw_script_cer": 0.0547945205479452,
+      "wer": 0.058823529411764705
+    },
+    {
+      "model": "large-v3-turbo",
+      "sample_id": "mixed_splice_zh_en",
+      "category": "mixed",
+      "audio_seconds": 22.342,
+      "warm_median_seconds": 1.5324773034953978,
+      "warm_seconds": [
+        1.537221613980364,
+        1.5277329930104315
+      ],
+      "transcript_stable": true,
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。 And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "transcript": "今天的測試會先確認聲音是否連續接著比較嘴型推理造成的等待最後記錄整段語音的播放時間",
+      "detected_language": "zh",
+      "cer": 0.6693548387096774,
+      "raw_script_cer": 0.6693548387096774,
+      "wer": null
+    },
+    {
+      "model": "large-v3-turbo",
+      "sample_id": "mixed_splice_en_zh",
+      "category": "mixed",
+      "audio_seconds": 17.197,
+      "warm_median_seconds": 1.6699274849961512,
+      "warm_seconds": [
+        1.68882521399064,
+        1.6510297560016625
+      ],
+      "transcript_stable": true,
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL 今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "transcript": "今天的测试会先确认声音是否连续接着比较嘴型推理造成的等待最后记录整段语音的播放时间",
+      "detected_language": "zh",
+      "cer": 0.6491228070175439,
+      "raw_script_cer": 0.7807017543859649,
+      "wer": null
+    }
+  ],
+  "formal_config_hashes_unchanged": true,
+  "power_query_unchanged": true,
+  "background_services": [
+    {
+      "pid": 5264,
+      "name": "java",
+      "entrypoint": null,
+      "present_before_and_after": true
+    },
+    {
+      "pid": 2128942,
+      "name": "llama-server",
+      "entrypoint": null,
+      "present_before_and_after": true
+    },
+    {
+      "pid": 6142,
+      "name": "python3",
+      "entrypoint": "rag/svr/task_executor.py",
+      "present_before_and_after": true
+    },
+    {
+      "pid": 6133,
+      "name": "python3",
+      "entrypoint": "api/ragflow_server.py",
+      "present_before_and_after": true
+    },
+    {
+      "pid": 6121,
+      "name": "python3",
+      "entrypoint": "admin/server/admin_server.py",
+      "present_before_and_after": true
+    },
+    {
+      "pid": 6136,
+      "name": "python3",
+      "entrypoint": "rag/svr/sync_data_source.py",
+      "present_before_and_after": true
+    },
+    {
+      "pid": 3767,
+      "name": "mysqld",
+      "entrypoint": null,
+      "present_before_and_after": true
+    },
+    {
+      "pid": 3782,
+      "name": "silo",
+      "entrypoint": null,
+      "present_before_and_after": true
+    },
+    {
+      "pid": 3960,
+      "name": "java",
+      "entrypoint": null,
+      "present_before_and_after": true
+    }
+  ],
+  "avatar_service_present": false,
+  "avatar_service_detection": "heuristic entrypoint check plus manually reviewed recorded processes/listeners; does not establish rendering activity",
+  "avatar_rendering_load_verified": false,
+  "limitation": "This records background-service coexistence. Full live-avatar shared-load acceptance was not exercised."
+}

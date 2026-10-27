@@ -52,6 +52,13 @@ async def offer(request):
     if not state.model_ready or (state.model is None and mode(state.config) != "prerecorded") or state.avatar is None:
         return web.json_response({"code": -1, "msg": "請先在設定中選擇並套用數字人引擎與角色"}, status=409)
     params = await request.json()
+    from src.server.conversations import defaults, validate, configure_avatar, check_language_support
+    try:
+        conversation = validate({'locale': params.get('locale', defaults(state.config)['locale'])},
+                                defaults(state.config))
+        check_language_support(state.config, conversation['locale'])
+    except ValueError as exc:
+        return web.json_response({'code': -1, 'msg': str(exc)}, status=409)
     client_role = str(params.get("client_role", "console")).strip().lower()
     if client_role not in {"console", "stage"}:
         client_role = "console"
@@ -111,6 +118,7 @@ async def offer(request):
             await creating
             raise
         state.add_session(sessionid, avatar_stream, role=client_role)
+        configure_avatar(avatar_stream, conversation)
         voice_session = VoiceTurnSession(sessionid, state.config, avatar_stream,
                                         presenter=client_role, test_result_sink=state.voice_test_history.complete)
         state.voice_sessions[sessionid] = voice_session

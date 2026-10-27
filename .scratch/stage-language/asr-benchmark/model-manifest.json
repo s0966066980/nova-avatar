@@ -1,0 +1,271 @@
+{
+  "models": [
+    {
+      "model": "small",
+      "repo": "openai/whisper-small",
+      "revision": "973afd24965f72e36ca33b3055d56a652f456b4d",
+      "local_model_path": "models/whisper-small",
+      "source_files": [
+        {
+          "name": "README.md",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/README.md",
+          "size": 20153,
+          "sha256": "967fa44eefe5d3436e040b0f171fc54da67aad96923bae10af37dac9be5bb6b0",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "added_tokens.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/added_tokens.json",
+          "size": 34604,
+          "sha256": "9715fd2243b6f06a5858b5e32950d2853f73dd5bc201aafcf76f5082a2d8acd1",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "config.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/config.json",
+          "size": 1967,
+          "sha256": "e6a2b489da1b5aed65a8eb8d1e7466fa867ad5643a8bc138ba708bd56b2875c4",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "generation_config.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/generation_config.json",
+          "size": 3868,
+          "sha256": "71565b8ef50d0bf7a1193ed4bbed195b94e70c18894d81bba2f1233dcec3ab53",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "merges.txt",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/merges.txt",
+          "size": 493869,
+          "sha256": "2df2990a395e35e8dfbc7511e08c12d56018d8d04691e0133e5d63b21e154dc6",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "normalizer.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/normalizer.json",
+          "size": 52666,
+          "sha256": "bf1c507dc8724ca9cf9903640dacfb69dae2f00edee4f21ceba106a7392f26dd",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "preprocessor_config.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/preprocessor_config.json",
+          "size": 184990,
+          "sha256": "9b5cd03a36fbb8a627c64d98a5b5b126ead95a77720723944487311f0110b666",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "special_tokens_map.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/special_tokens_map.json",
+          "size": 2194,
+          "sha256": "e67ae3a0aaa99abcd9f187138e12db1f65c16a14761c50ef10eef2c174a7a691",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "tokenizer.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/tokenizer.json",
+          "size": 2480466,
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "tokenizer_config.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/tokenizer_config.json",
+          "size": 282683,
+          "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "vocab.json",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/vocab.json",
+          "size": 835550,
+          "sha256": "8f680bba319e01a653d2e8a5dbc17a9157179e0576e6ce74ce0c06356c6e24f9",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "model.safetensors",
+          "source_url": "https://huggingface.co/openai/whisper-small/resolve/973afd24965f72e36ca33b3055d56a652f456b4d/model.safetensors",
+          "size": 966995080,
+          "sha256": "1d7734884874f1a1513ed9aa760a4f8e97aaa02fd6d93a3a85d27b2ae9ca596b",
+          "upstream_lfs_sha256": "1d7734884874f1a1513ed9aa760a4f8e97aaa02fd6d93a3a85d27b2ae9ca596b"
+        }
+      ],
+      "model_card_license_metadata": "apache-2.0",
+      "conversion": {
+        "method": "local ctranslate2.converters.TransformersConverter; process-local dtype -> torch_dtype keyword compatibility adapter for Transformers 4.46",
+        "device": "CPU",
+        "quantization": "float16",
+        "seconds": 3.9059688900015317,
+        "ctranslate2": "4.8.2",
+        "transformers": "4.46.0",
+        "trained_or_finetuned": false,
+        "files": [
+          {
+            "name": "config.json",
+            "size": 2370,
+            "sha256": "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828"
+          },
+          {
+            "name": "model.bin",
+            "size": 483546977,
+            "sha256": "eef2cbde70d256f29b6e3432c85b92becd26f804650e855cc4ff7e66f12122b0"
+          },
+          {
+            "name": "preprocessor_config.json",
+            "size": 184990,
+            "sha256": "9b5cd03a36fbb8a627c64d98a5b5b126ead95a77720723944487311f0110b666"
+          },
+          {
+            "name": "tokenizer.json",
+            "size": 2480466,
+            "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+          },
+          {
+            "name": "vocabulary.json",
+            "size": 1068103,
+            "sha256": "5ad28279db5e546349708b9a74736e2c018737ac5a600f1048f1f26c99b85b47"
+          }
+        ]
+      }
+    },
+    {
+      "model": "large-v3-turbo",
+      "repo": "openai/whisper-large-v3-turbo",
+      "revision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+      "local_model_path": "models/whisper-large-v3-turbo",
+      "source_files": [
+        {
+          "name": "README.md",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/README.md",
+          "size": 21196,
+          "sha256": "aaef74a740faca90fa1899c4233ebe17f2093b9846d0acf16d9131bf650e9585",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "added_tokens.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/added_tokens.json",
+          "size": 34648,
+          "sha256": "3c51f66c4c21f9e126970078f11ae77a78c74aee8df606ee9daba86e467108e0",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "config.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/config.json",
+          "size": 1256,
+          "sha256": "c5b526b3e3cd64cd8940dabb45e8ba726629e22d8ed389c29b552f9140daf04a",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "generation_config.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/generation_config.json",
+          "size": 3772,
+          "sha256": "cce11bfe3aaa6ae9e072ea2637caaec8795e68d9b67e655a5af16ee509681a4c",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "merges.txt",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/merges.txt",
+          "size": 493869,
+          "sha256": "2df2990a395e35e8dfbc7511e08c12d56018d8d04691e0133e5d63b21e154dc6",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "normalizer.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/normalizer.json",
+          "size": 52666,
+          "sha256": "bf1c507dc8724ca9cf9903640dacfb69dae2f00edee4f21ceba106a7392f26dd",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "preprocessor_config.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/preprocessor_config.json",
+          "size": 340,
+          "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "special_tokens_map.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/special_tokens_map.json",
+          "size": 2186,
+          "sha256": "baea4ea09372eb4fca86b4e4346139fd73cb807d5087e9de0948e971739c3e74",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "tokenizer.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/tokenizer.json",
+          "size": 2710337,
+          "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "tokenizer_config.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/tokenizer_config.json",
+          "size": 282843,
+          "sha256": "844b642c73a91359722f47b35705f7174686df33d252695d8572cf9ac03a6389",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "vocab.json",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/vocab.json",
+          "size": 1036558,
+          "sha256": "e2aa043ef015641d363d8288e7c241c85e36a5c761fb303598e0710233344387",
+          "upstream_lfs_sha256": null
+        },
+        {
+          "name": "model.safetensors",
+          "source_url": "https://huggingface.co/openai/whisper-large-v3-turbo/resolve/41f01f3fe87f28c78e2fbf8b568835947dd65ed9/model.safetensors",
+          "size": 1617824864,
+          "sha256": "542566a422ae4f3fd23f1ba11add198fca01bbf82e66e6a2857b3f608b1eb9d1",
+          "upstream_lfs_sha256": "542566a422ae4f3fd23f1ba11add198fca01bbf82e66e6a2857b3f608b1eb9d1"
+        }
+      ],
+      "model_card_license_metadata": "mit",
+      "conversion": {
+        "method": "local ctranslate2.converters.TransformersConverter; process-local dtype -> torch_dtype keyword compatibility adapter for Transformers 4.46",
+        "device": "CPU",
+        "quantization": "float16",
+        "seconds": 5.022250381007325,
+        "ctranslate2": "4.8.2",
+        "transformers": "4.46.0",
+        "trained_or_finetuned": false,
+        "files": [
+          {
+            "name": "config.json",
+            "size": 2263,
+            "sha256": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e"
+          },
+          {
+            "name": "model.bin",
+            "size": 1617884929,
+            "sha256": "e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da"
+          },
+          {
+            "name": "preprocessor_config.json",
+            "size": 340,
+            "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711"
+          },
+          {
+            "name": "tokenizer.json",
+            "size": 2710337,
+            "sha256": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd"
+          },
+          {
+            "name": "vocabulary.json",
+            "size": 1068114,
+            "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1"
+          }
+        ]
+      }
+    }
+  ],
+  "license_source": {
+    "repo": "https://github.com/openai/whisper",
+    "revision": "86098128c0b4f24f0e2aa2994de830614b474227",
+    "license_url": "https://raw.githubusercontent.com/openai/whisper/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE",
+    "license_sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
+    "license": "MIT",
+    "weight_scope": "OpenAI README license section explicitly covers code and model weights",
+    "small_hub_metadata_note": "The pinned openai/whisper-small card metadata labels apache-2.0, while OpenAI original repo explicitly licenses code and model weights MIT; preserve both statements, do not silently relabel."
+  }
+}

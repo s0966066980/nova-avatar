@@ -1,0 +1,42 @@
+[
+  {
+    "variant": "nova-adapter",
+    "language": "en",
+    "voice": "en-US-JennyNeural",
+    "ok": true,
+    "bytes": 27072,
+    "artifact": "nova-adapter-en.mp3",
+    "idle_connections": 0,
+    "seconds": 0.765
+  },
+  {
+    "variant": "nova-adapter",
+    "language": "zh",
+    "voice": "zh-TW-HsiaoChenNeural",
+    "ok": true,
+    "bytes": 22752,
+    "artifact": "nova-adapter-zh.mp3",
+    "idle_connections": 0,
+    "seconds": 0.727
+  },
+  {
+    "variant": "persistent-pool",
+    "language": "en",
+    "voice": "en-US-JennyNeural",
+    "ok": true,
+    "bytes": 27072,
+    "artifact": "persistent-pool-en.mp3",
+    "idle_connections": 1,
+    "seconds": 0.636
+  },
+  {
+    "variant": "persistent-pool",
+    "language": "zh",
+    "voice": "zh-TW-HsiaoChenNeural",
+    "ok": true,
+    "bytes": 22752,
+    "artifact": "persistent-pool-zh.mp3",
+    "idle_connections": 1,
+    "seconds": 0.178
+  }
+]

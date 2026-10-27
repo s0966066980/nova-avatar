@@ -5,6 +5,7 @@
 """faster-whisper ASR adapter used by the server-side voice pipeline."""
 
 import math
+from pathlib import Path
 
 from typing import Dict, Any
 
@@ -20,6 +21,8 @@ class WhisperASR(BaseASR):
     while inference is provided exclusively by faster-whisper/CTranslate2.
     """
     
+    supports_language_options = True
+
     def __init__(self, config=None, model_size: str = "base"):
         """
         初始化 Whisper ASR
@@ -56,15 +59,18 @@ class WhisperASR(BaseASR):
             f'[Whisper] 正在載入 faster-whisper: {self.model_size} '
             f'({self.device}/{self.compute_type})'
         )
+        local_name = {'small': 'whisper-small', 'turbo': 'whisper-large-v3-turbo'}.get(self.model_size)
+        local = Path(__file__).resolve().parents[3] / 'models' / (local_name or '')
+        model_path = str(local) if local_name and (local / 'model.bin').is_file() else self.model_size
         self.model = WhisperModel(
-            self.model_size,
+            model_path,
             device=self.device,
             compute_type=self.compute_type,
         )
         self.model_type = "faster-whisper"
         logger.info('[Whisper] faster-whisper 模型載入成功')
     
-    def _transcribe(self, audio_path: str) -> Dict[str, Any]:
+    def _transcribe(self, audio_path: str, *, language: str | None = None) -> Dict[str, Any]:
         """
         使用 Whisper 識別音訊
         
@@ -74,7 +80,8 @@ class WhisperASR(BaseASR):
         Returns:
             識別結果字典
         """
-        language = None if self.language == "auto" else self.language
+        selected_language = self.language if language is None else language
+        language = None if selected_language == "auto" else selected_language
         segments, info = self.model.transcribe(
             audio_path,
             language=language,

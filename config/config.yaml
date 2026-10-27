@@ -2,7 +2,7 @@
 # 數字人引擎、角色、Ollama 模型請在網頁「設定」裡選擇，不必再換 config_musetalk.yaml。
 app:
   listenport: 8010
-  max_session: 1
+  max_session: 2  # 各 presenter 可同時使用兩場獨立語系對話
   
   # SSL/HTTPS 配置（可選，啟用後支援遠端錄音功能）
   ssl: true

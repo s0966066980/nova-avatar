@@ -17,7 +17,7 @@ import numpy as np
 
 from src.utils.logging import logger
 from src.vad.audio import decode_audio, pcm16_to_wav_bytes
-from src.vad.factory import get_vad_engine_from_config
+from src.vad.factory import create_vad_from_config, get_vad_engine_from_config
 from src.vad.segmenter import detect_speech_segments
 
 
@@ -122,7 +122,10 @@ def create_segmenter(vad_config, config=None):
     """
     from src.vad.segmenter import VADSegmenter
 
-    vad = get_vad_engine_from_config(vad_config, config=config)
+    # Silero keeps recurrent state inside the model. Each microphone runs in
+    # its own executor, so sharing the singleton here mixes conversations and
+    # can corrupt native Torch state during concurrent inference/reset.
+    vad = create_vad_from_config(vad_config, config=config)
     return VADSegmenter(vad, **_segmenter_kwargs(vad_config))
 
 

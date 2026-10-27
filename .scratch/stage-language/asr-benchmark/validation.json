@@ -1,0 +1,32 @@
+{
+  "model_files_sha256_verified": 34,
+  "audio_fixtures_verified": 6,
+  "gpu_transcriptions_recorded": 26,
+  "syntax_checks": "passed",
+  "local_report_links": "passed",
+  "power_and_observed_config_hashes_unchanged": true,
+  "tracked_background_services_survived": true,
+  "workers_exited": true,
+  "multilingual_probe": {
+    "model": "small",
+    "warm_fixtures": 6,
+    "unscored_warmup": 1,
+    "all_raw_transcripts_and_metrics_equal_baseline": true,
+    "mixed_omission_improved": false,
+    "worker_exit_code": 0,
+    "formal_settings_and_power_unchanged": true
+  },
+  "product_adapter_corpus": {
+    "synthetic_single_request_questions": 8,
+    "mixed_questions": 4,
+    "voice": "en-US-EmmaMultilingualNeural",
+    "all_audio_hashes_verified": true,
+    "counted_decodes_across_two_rounds": 32,
+    "unscored_warmups": 4,
+    "same_raw_transcripts_across_rounds": true,
+    "stable_round_same_app_and_llama_identities": true,
+    "source_and_settings_edited_by_researcher": false,
+    "workers_exited": true,
+    "formal_quality_acceptance": false
+  }
+}

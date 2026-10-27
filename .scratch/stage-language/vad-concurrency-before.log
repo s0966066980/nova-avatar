@@ -1,0 +1,7 @@
+shared_engine True
+Fatal Python error: Segmentation fault
+
+Thread 0x0000fffee50af1a0 (most recent call first):
+  File "/home/oliver/nova-avatar/src/vad/base.py", line 138 in speech_prob
+  File "/home/oliver/nova-avatar/src/vad/base.py", line 142 in is_speech
+  File

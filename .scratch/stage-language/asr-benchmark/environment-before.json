@@ -1,0 +1,6914 @@
+{
+  "time_utc": "2026-10-27T03:52:28.112387+00:00",
+  "platform": "Linux-6.8.12-1021-tegra-aarch64-with-glibc2.39",
+  "machine": "aarch64",
+  "python": "3.11.16 (main, Sep 29 2026, 14:58:32) [Clang 22.1.3 ]",
+  "versions": {
+    "faster-whisper": "1.2.1",
+    "ctranslate2": "4.8.2",
+    "torch": "2.11.0+cu130",
+    "transformers": "4.46.0",
+    "huggingface-hub": "0.30.2",
+    "edge-tts": "7.2.8",
+    "av": "17.1.0",
+    "soundfile": "0.12.1",
+    "opencc": "1.4.2",
+    "psutil": "7.2.2"
+  },
+  "memory": {
+    "total": 65932361728,
+    "available": 44397862912,
+    "percent": 32.7,
+    "used": 21534498816,
+    "free": 27203919872,
+    "active": 8659214336,
+    "inactive": 20797800448,
+    "buffers": 680341504,
+    "cached": 17241718784,
+    "shared": 48066560,
+    "slab": 799580160
+  },
+  "loadavg": [
+    7.7861328125,
+    6.5576171875,
+    3.7392578125
+  ],
+  "nvpmodel_query": {
+    "returncode": 0,
+    "stdout": "NV Power Mode: MAXN\n0\n",
+    "stderr": ""
+  },
+  "nvidia_smi": {
+    "returncode": 0,
+    "stdout": "Tue Oct 27 11:52:28 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 595.78                 Driver Version: 595.78         CUDA Version: 13.2     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Orin (nvgpu)                  N/A  |   N/A              N/A |                  N/A |\n| N/A   N/A  N/A             N/A  /  N/A  | Not Supported          |     N/A          N/A |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n",
+    "stderr": ""
+  },
+  "listeners": {
+    "returncode": 0,
+    "stdout": "State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                                       \nLISTEN 0      4096         0.0.0.0:631        0.0.0.0:*                                                 \nLISTEN 0      4096         0.0.0.0:22         0.0.0.0:*                                                 \nLISTEN 0      128     192.168.1.50:34795      0.0.0.0:*    users:((\"rustdesk\",pid=2118984,fd=20))       \nLISTEN 0      4096   127.0.0.53%lo:53         0.0.0.0:*                                                 \nLISTEN 0      512        127.0.0.1:46417      0.0.0.0:*                                                 \nLISTEN 0      4096      127.0.0.54:53         0.0.0.0:*                                                 \nLISTEN 0      4096       127.0.0.1:9380       0.0.0.0:*                                                 \nLISTEN 0      16         127.0.0.1:9749       0.0.0.0:*    users:((\"codebase-memory\",pid=2141289,fd=15))\nLISTEN 0      4096       127.0.0.1:11434      0.0.0.0:*                                                 \nLISTEN 0      4096       127.0.0.1:8088       0.0.0.0:*                                                 \nLISTEN 0      4096      172.17.0.1:11436      0.0.0.0:*    users:((\"systemd-socket-\",pid=2128888,fd=3)) \nLISTEN 0      128        127.0.0.1:33451      0.0.0.0:*    users:((\"codex\",pid=2127900,fd=37))          \nLISTEN 0      4096               *:6566             *:*                                                 \nLISTEN 0      4096               *:5201             *:*                                                 \nLISTEN 0      4096            [::]:631           [::]:*                                                 \nLISTEN 0      4096            [::]:22            [::]:*                                                 \n",
+    "stderr": ""
+  },
+  "tegra_release": "# R39 (release), REVISION: 2.1, GCID: 46758480, BOARD: generic, EABI: aarch64, DATE: Fri Aug  7 05:54:22 AM UTC 2026\n# KERNEL_VARIANT: oot\nTARGET_USERSPACE_LIB_DIR=nvidia\nTARGET_USERSPACE_LIB_DIR_PATH=usr/lib/aarch64-linux-gnu/nvidia\n",
+  "config_sha256_readonly": {
+    "config/runtime_overrides.yaml": "c8723bfc9aa02f94a17374ab061ab9faa6a480ce7d7affb2865f1baca809c219",
+    "config/config.yaml": "c2653f9fbe56fc084440fb520fdcca3810b449d60f30fc721ab60b91f71d61e9"
+  },
+  "processes": [
+    {
+      "cpu_times": [
+        354.22,
+        172.22,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "java",
+      "create_time": 1792939093.81,
+      "pid": 5264,
+      "executable": "/usr/share/elasticsearch/jdk/bin/java",
+      "python_entrypoint": null,
+      "rss": 3657830400
+    },
+    {
+      "cpu_times": [
+        6.83,
+        2.03,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "llama-server",
+      "create_time": 1793066784.2,
+      "pid": 2128942,
+      "executable": "/usr/local/lib/ollama/llama-server",
+      "python_entrypoint": null,
+      "rss": 1930518528
+    },
+    {
+      "cpu_times": [
+        242.79,
+        65.36,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1792939117.72,
+      "pid": 6142,
+      "executable": "python3",
+      "python_entrypoint": "rag/svr/task_executor.py",
+      "rss": 1356685312
+    },
+    {
+      "cpu_times": [
+        313.01,
+        35.3,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1792939117.72,
+      "pid": 6133,
+      "executable": "python3",
+      "python_entrypoint": "api/ragflow_server.py",
+      "rss": 1335164928
+    },
+    {
+      "cpu_times": [
+        50.45,
+        7.37,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1792939117.71,
+      "pid": 6121,
+      "executable": "python3",
+      "python_entrypoint": "admin/server/admin_server.py",
+      "rss": 984711168
+    },
+    {
+      "cpu_times": [
+        1917.1,
+        87.19,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1792939117.72,
+      "pid": 6136,
+      "executable": "python3",
+      "python_entrypoint": "rag/svr/sync_data_source.py",
+      "rss": 862265344
+    },
+    {
+      "cpu_times": [
+        64.37,
+        23.62,
+        146.54,
+        35.46,
+        0.0
+      ],
+      "name": "codex",
+      "create_time": 1793067088.98,
+      "pid": 2140956,
+      "executable": "/home/oliver/.codex/packages/app-server-daemon/releases/0.164.0-aarch64-unknown-linux-musl/bin/codex",
+      "python_entrypoint": null,
+      "rss": 744275968
+    },
+    {
+      "cpu_times": [
+        89.41,
+        8.44,
+        0.02,
+        0.01,
+        0.0
+      ],
+      "name": "codebase-memory-mcp",
+      "create_time": 1793073131.84,
+      "pid": 2345737,
+      "executable": "/home/oliver/.local/bin/codebase-memory/codebase-memory-mcp",
+      "python_entrypoint": null,
+      "rss": 635150336
+    },
+    {
+      "cpu_times": [
+        352.87,
+        57.86,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gnome-shell",
+      "create_time": 1793066514.86,
+      "pid": 2118233,
+      "executable": "/usr/bin/gnome-shell",
+      "python_entrypoint": null,
+      "rss": 530386944
+    },
+    {
+      "cpu_times": [
+        701.29,
+        396.32,
+        0.26,
+        0.17,
+        0.0
+      ],
+      "name": "mysqld",
+      "create_time": 1792939088.89,
+      "pid": 3767,
+      "executable": "mysqld",
+      "python_entrypoint": null,
+      "rss": 455163904
+    },
+    {
+      "cpu_times": [
+        130.6,
+        12.98,
+        8.42,
+        3.35,
+        0.0
+      ],
+      "name": "codex",
+      "create_time": 1793066772.08,
+      "pid": 2127900,
+      "executable": "codex",
+      "python_entrypoint": null,
+      "rss": 434769920
+    },
+    {
+      "cpu_times": [
+        7.11,
+        1.18,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gnome-software",
+      "create_time": 1793066516.11,
+      "pid": 2118581,
+      "executable": "/usr/bin/gnome-software",
+      "python_entrypoint": null,
+      "rss": 296742912
+    },
+    {
+      "cpu_times": [
+        25.59,
+        33.09,
+        0.01,
+        0.0,
+        0.0
+      ],
+      "name": "rustdesk",
+      "create_time": 1793066521.8,
+      "pid": 2119562,
+      "executable": "/usr/share/rustdesk/rustdesk",
+      "python_entrypoint": null,
+      "rss": 270184448
+    },
+    {
+      "cpu_times": [
+        3.75,
+        0.69,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nautilus",
+      "create_time": 1793066687.92,
+      "pid": 2125463,
+      "executable": "/usr/bin/nautilus",
+      "python_entrypoint": null,
+      "rss": 240545792
+    },
+    {
+      "cpu_times": [
+        436.88,
+        411.43,
+        0.02,
+        0.01,
+        0.0
+      ],
+      "name": "Xorg",
+      "create_time": 1793066513.26,
+      "pid": 2117695,
+      "executable": "/usr/lib/xorg/Xorg",
+      "python_entrypoint": null,
+      "rss": 184983552
+    },
+    {
+      "cpu_times": [
+        1269.83,
+        116.45,
+        132.07,
+        308.51,
+        0.0
+      ],
+      "name": "rustdesk",
+      "create_time": 1793066516.82,
+      "pid": 2118984,
+      "executable": "/usr/share/rustdesk/rustdesk",
+      "python_entrypoint": null,
+      "rss": 178479104
+    },
+    {
+      "cpu_times": [
+        187.43,
+        52.34,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "silo",
+      "create_time": 1792939088.89,
+      "pid": 3782,
+      "executable": "silo",
+      "python_entrypoint": null,
+      "rss": 168992768
+    },
+    {
+      "cpu_times": [
+        3.01,
+        0.52,
+        4.23,
+        2.23,
+        0.0
+      ],
+      "name": "codex",
+      "create_time": 1793066773.14,
+      "pid": 2128088,
+      "executable": "/home/oliver/.codex/packages/app-server-daemon/releases/0.164.0-aarch64-unknown-linux-musl/bin/codex",
+      "python_entrypoint": null,
+      "rss": 165679104
+    },
+    {
+      "cpu_times": [
+        2.73,
+        1.34,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "mutter-x11-frames",
+      "create_time": 1793066515.2,
+      "pid": 2118285,
+      "executable": "/usr/libexec/mutter-x11-frames",
+      "python_entrypoint": null,
+      "rss": 158711808
+    },
+    {
+      "cpu_times": [
+        10.39,
+        2.83,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "xdg-desktop-portal-gnome",
+      "create_time": 1793066516.8,
+      "pid": 2118982,
+      "executable": "/usr/libexec/xdg-desktop-portal-gnome",
+      "python_entrypoint": null,
+      "rss": 142835712
+    },
+    {
+      "cpu_times": [
+        5.0,
+        1.47,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ibus-engine-chewing",
+      "create_time": 1793066516.74,
+      "pid": 2118977,
+      "executable": "/usr/libexec/ibus-engine-chewing",
+      "python_entrypoint": null,
+      "rss": 131174400
+    },
+    {
+      "cpu_times": [
+        470.63,
+        220.15,
+        0.29,
+        0.12,
+        0.0
+      ],
+      "name": "dockerd",
+      "create_time": 1792939087.78,
+      "pid": 3018,
+      "executable": "/usr/bin/dockerd",
+      "python_entrypoint": null,
+      "rss": 118956032
+    },
+    {
+      "cpu_times": [
+        39.07,
+        49.0,
+        4.92,
+        0.41,
+        0.0
+      ],
+      "name": "java",
+      "create_time": 1792939089.16,
+      "pid": 3960,
+      "executable": "/usr/share/elasticsearch/jdk/bin/java",
+      "python_entrypoint": null,
+      "rss": 101339136
+    },
+    {
+      "cpu_times": [
+        191.27,
+        23.68,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gnome-terminal-server",
+      "create_time": 1793066753.73,
+      "pid": 2127303,
+      "executable": "/usr/libexec/gnome-terminal-server",
+      "python_entrypoint": null,
+      "rss": 84660224
+    },
+    {
+      "cpu_times": [
+        21.41,
+        10.06,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "fwupd",
+      "create_time": 1792942655.32,
+      "pid": 66361,
+      "executable": "/usr/libexec/fwupd/fwupd",
+      "python_entrypoint": null,
+      "rss": 78675968
+    },
+    {
+      "cpu_times": [
+        0.23,
+        0.07,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "evolution-alarm-notify",
+      "create_time": 1793066516.1,
+      "pid": 2118550,
+      "executable": "/usr/libexec/evolution-data-server/evolution-alarm-notify",
+      "python_entrypoint": null,
+      "rss": 70762496
+    },
+    {
+      "cpu_times": [
+        97.69,
+        14.99,
+        0.04,
+        0.01,
+        0.0
+      ],
+      "name": "gjs",
+      "create_time": 1793066518.36,
+      "pid": 2119201,
+      "executable": "gjs",
+      "python_entrypoint": null,
+      "rss": 68702208
+    },
+    {
+      "cpu_times": [
+        2.21,
+        0.66,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.1,
+      "pid": 2118568,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 65118208
+    },
+    {
+      "cpu_times": [
+        451.97,
+        226.19,
+        0.0,
+        0.02,
+        0.0
+      ],
+      "name": "containerd",
+      "create_time": 1792939087.63,
+      "pid": 2922,
+      "executable": "/usr/bin/containerd",
+      "python_entrypoint": null,
+      "rss": 62169088
+    },
+    {
+      "cpu_times": [
+        1.01,
+        1.41,
+        0.01,
+        0.0,
+        0.0
+      ],
+      "name": "rustdesk",
+      "create_time": 1793066516.91,
+      "pid": 2119000,
+      "executable": "/usr/share/rustdesk/rustdesk",
+      "python_entrypoint": null,
+      "rss": 57274368
+    },
+    {
+      "cpu_times": [
+        61.43,
+        44.41,
+        18.86,
+        2.33,
+        0.0
+      ],
+      "name": "snapd",
+      "create_time": 1792939083.21,
+      "pid": 1219,
+      "executable": "/usr/lib/snapd/snapd",
+      "python_entrypoint": null,
+      "rss": 54767616
+    },
+    {
+      "cpu_times": [
+        0.09,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "evolution-source-registry",
+      "create_time": 1793066515.95,
+      "pid": 2118441,
+      "executable": "/usr/libexec/evolution-source-registry",
+      "python_entrypoint": null,
+      "rss": 43421696
+    },
+    {
+      "cpu_times": [
+        6.42,
+        1.16,
+        0.62,
+        1.04,
+        0.0
+      ],
+      "name": "ollama",
+      "create_time": 1792939087.61,
+      "pid": 2911,
+      "executable": "/usr/local/bin/ollama",
+      "python_entrypoint": null,
+      "rss": 39731200
+    },
+    {
+      "cpu_times": [
+        0.17,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "evolution-addressbook-factory",
+      "create_time": 1793066516.33,
+      "pid": 2118853,
+      "executable": "/usr/libexec/evolution-addressbook-factory",
+      "python_entrypoint": null,
+      "rss": 36741120
+    },
+    {
+      "cpu_times": [
+        0.24,
+        0.13,
+        9.73,
+        2.08,
+        0.0
+      ],
+      "name": "update-notifier",
+      "create_time": 1793066576.12,
+      "pid": 2121607,
+      "executable": "/usr/bin/update-notifier",
+      "python_entrypoint": null,
+      "rss": 36679680
+    },
+    {
+      "cpu_times": [
+        157.05,
+        372.91,
+        5704.83,
+        10456.64,
+        0.0
+      ],
+      "name": "rustdesk",
+      "create_time": 1792939087.65,
+      "pid": 2935,
+      "executable": "/usr/bin/rustdesk",
+      "python_entrypoint": null,
+      "rss": 36085760
+    },
+    {
+      "cpu_times": [
+        6.29,
+        0.64,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ibus-extension-gtk3",
+      "create_time": 1793066516.14,
+      "pid": 2118629,
+      "executable": "/usr/libexec/ibus-extension-gtk3",
+      "python_entrypoint": null,
+      "rss": 33484800
+    },
+    {
+      "cpu_times": [
+        0.18,
+        0.03,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-media-keys",
+      "create_time": 1793066516.06,
+      "pid": 2118511,
+      "executable": "/usr/libexec/gsd-media-keys",
+      "python_entrypoint": null,
+      "rss": 31244288
+    },
+    {
+      "cpu_times": [
+        0.13,
+        0.05,
+        0.04,
+        0.02,
+        0.0
+      ],
+      "name": "tracker-miner-fs-3",
+      "create_time": 1793066516.74,
+      "pid": 2118978,
+      "executable": "/usr/libexec/tracker-miner-fs-3",
+      "python_entrypoint": null,
+      "rss": 29884416
+    },
+    {
+      "cpu_times": [
+        0.16,
+        0.05,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-power",
+      "create_time": 1793066516.06,
+      "pid": 2118513,
+      "executable": "/usr/libexec/gsd-power",
+      "python_entrypoint": null,
+      "rss": 29327360
+    },
+    {
+      "cpu_times": [
+        0.17,
+        0.03,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-xsettings",
+      "create_time": 1793066516.09,
+      "pid": 2118538,
+      "executable": "/usr/libexec/gsd-xsettings",
+      "python_entrypoint": null,
+      "rss": 28717056
+    },
+    {
+      "cpu_times": [
+        0.21,
+        0.05,
+        0.01,
+        0.11,
+        0.0
+      ],
+      "name": "jtop",
+      "create_time": 1792939083.12,
+      "pid": 1077,
+      "executable": "/usr/bin/python3",
+      "python_entrypoint": null,
+      "rss": 27492352
+    },
+    {
+      "cpu_times": [
+        0.07,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gjs",
+      "create_time": 1793066516.42,
+      "pid": 2118921,
+      "executable": "/usr/bin/gjs",
+      "python_entrypoint": null,
+      "rss": 27332608
+    },
+    {
+      "cpu_times": [
+        0.13,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "xdg-desktop-portal-gtk",
+      "create_time": 1793066517.42,
+      "pid": 2119153,
+      "executable": "/usr/libexec/xdg-desktop-portal-gtk",
+      "python_entrypoint": null,
+      "rss": 27295744
+    },
+    {
+      "cpu_times": [
+        0.07,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gjs",
+      "create_time": 1793066516.02,
+      "pid": 2118461,
+      "executable": "/usr/bin/gjs",
+      "python_entrypoint": null,
+      "rss": 27197440
+    },
+    {
+      "cpu_times": [
+        2.02,
+        2.57,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "systemd-journald",
+      "create_time": 1792939077.92,
+      "pid": 283,
+      "executable": "/usr/lib/systemd/systemd-journald",
+      "python_entrypoint": null,
+      "rss": 26480640
+    },
+    {
+      "cpu_times": [
+        0.15,
+        0.07,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python",
+      "create_time": 1793073147.38,
+      "pid": 2346339,
+      "executable": ".venv/bin/python",
+      "python_entrypoint": ".scratch/stage-language/asr-benchmark/benchmark.py",
+      "rss": 26365952
+    },
+    {
+      "cpu_times": [
+        0.16,
+        0.04,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-color",
+      "create_time": 1793066516.05,
+      "pid": 2118484,
+      "executable": "/usr/libexec/gsd-color",
+      "python_entrypoint": null,
+      "rss": 26263552
+    },
+    {
+      "cpu_times": [
+        0.16,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-wacom",
+      "create_time": 1793066516.08,
+      "pid": 2118530,
+      "executable": "/usr/libexec/gsd-wacom",
+      "python_entrypoint": null,
+      "rss": 26144768
+    },
+    {
+      "cpu_times": [
+        0.14,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ibus-x11",
+      "create_time": 1793066516.15,
+      "pid": 2118655,
+      "executable": "/usr/libexec/ibus-x11",
+      "python_entrypoint": null,
+      "rss": 25800704
+    },
+    {
+      "cpu_times": [
+        0.14,
+        0.03,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-keyboard",
+      "create_time": 1793066516.06,
+      "pid": 2118509,
+      "executable": "/usr/libexec/gsd-keyboard",
+      "python_entrypoint": null,
+      "rss": 25657344
+    },
+    {
+      "cpu_times": [
+        0.06,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "evolution-calendar-factory",
+      "create_time": 1793066516.21,
+      "pid": 2118712,
+      "executable": "/usr/libexec/evolution-calendar-factory",
+      "python_entrypoint": null,
+      "rss": 25333760
+    },
+    {
+      "cpu_times": [
+        0.8,
+        0.78,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "codex-code-mode-host",
+      "create_time": 1793068499.82,
+      "pid": 2185649,
+      "executable": "/home/oliver/.codex/packages/app-server-daemon/releases/0.164.0-aarch64-unknown-linux-musl/bin/codex-code-mode-host",
+      "python_entrypoint": null,
+      "rss": 24764416
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.03,
+        0.18,
+        0.11,
+        0.0
+      ],
+      "name": "jtop",
+      "create_time": 1792939083.77,
+      "pid": 2012,
+      "executable": "/usr/bin/python3",
+      "python_entrypoint": null,
+      "rss": 24539136
+    },
+    {
+      "cpu_times": [
+        0.03,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "goa-daemon",
+      "create_time": 1793066516.06,
+      "pid": 2118504,
+      "executable": "/usr/libexec/goa-daemon",
+      "python_entrypoint": null,
+      "rss": 23728128
+    },
+    {
+      "cpu_times": [
+        2.56,
+        1.78,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.47,
+      "pid": 2118958,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23527424
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.45,
+      "pid": 2118950,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.45,
+      "pid": 2118951,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.46,
+      "pid": 2118952,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.46,
+      "pid": 2118953,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.46,
+      "pid": 2118954,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.46,
+      "pid": 2118955,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.46,
+      "pid": 2118956,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.46,
+      "pid": 2118957,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23371776
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.44,
+      "pid": 2118943,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23334912
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.44,
+      "pid": 2118942,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23330816
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.44,
+      "pid": 2118928,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23326720
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.44,
+      "pid": 2118930,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23326720
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.44,
+      "pid": 2118931,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23326720
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.44,
+      "pid": 2118940,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23326720
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.44,
+      "pid": 2118941,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23326720
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.43,
+      "pid": 2118925,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23322624
+    },
+    {
+      "cpu_times": [
+        11.17,
+        2.59,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "jtop",
+      "create_time": 1792939083.76,
+      "pid": 2004,
+      "executable": "/usr/bin/python3",
+      "python_entrypoint": null,
+      "rss": 23232512
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.47,
+      "pid": 2118959,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23105536
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.47,
+      "pid": 2118960,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23105536
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066516.47,
+      "pid": 2118961,
+      "executable": "python3",
+      "python_entrypoint": "/usr/share/nvpmodel_indicator/nvpmodel_indicator.py",
+      "rss": 23105536
+    },
+    {
+      "cpu_times": [
+        1.26,
+        0.44,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1793066512.85,
+      "pid": 2117620,
+      "executable": "/usr/bin/python3",
+      "python_entrypoint": "/home/oliver/nova-avatar/scripts/ragflow_connection.py",
+      "rss": 23072768
+    },
+    {
+      "cpu_times": [
+        0.15,
+        0.15,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "wireplumber",
+      "create_time": 1793066512.85,
+      "pid": 2117625,
+      "executable": "/usr/bin/wireplumber",
+      "python_entrypoint": null,
+      "rss": 20758528
+    },
+    {
+      "cpu_times": [
+        46.33,
+        26.06,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cups-browsed",
+      "create_time": 1792939128.42,
+      "pid": 7331,
+      "executable": "cups-browsed",
+      "python_entrypoint": null,
+      "rss": 20676608
+    },
+    {
+      "cpu_times": [
+        9.21,
+        6.22,
+        0.24,
+        0.05,
+        0.0
+      ],
+      "name": "NetworkManager",
+      "create_time": 1792939084.12,
+      "pid": 2058,
+      "executable": "/usr/sbin/NetworkManager",
+      "python_entrypoint": null,
+      "rss": 20602880
+    },
+    {
+      "cpu_times": [
+        0.18,
+        0.24,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvargus-daemon",
+      "create_time": 1792939088.04,
+      "pid": 3135,
+      "executable": "/usr/sbin/nvargus-daemon",
+      "python_entrypoint": null,
+      "rss": 20250624
+    },
+    {
+      "cpu_times": [
+        318.3,
+        180.22,
+        0.6,
+        1.16,
+        0.0
+      ],
+      "name": "redis-server",
+      "create_time": 1792939089.17,
+      "pid": 3963,
+      "executable": "redis-server *:6379",
+      "python_entrypoint": null,
+      "rss": 19996672
+    },
+    {
+      "cpu_times": [
+        23.12,
+        41.51,
+        2231.41,
+        213.3,
+        0.0
+      ],
+      "name": "codebase-memory-mcp",
+      "create_time": 1793067093.78,
+      "pid": 2141289,
+      "executable": "/home/oliver/.local/bin/codebase-memory/codebase-memory-mcp",
+      "python_entrypoint": null,
+      "rss": 19562496
+    },
+    {
+      "cpu_times": [
+        8.93,
+        14.88,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "pipewire-pulse",
+      "create_time": 1793066512.85,
+      "pid": 2117626,
+      "executable": "/usr/bin/pipewire-pulse",
+      "python_entrypoint": null,
+      "rss": 18972672
+    },
+    {
+      "cpu_times": [
+        0.1,
+        0.03,
+        0.2,
+        0.09,
+        0.0
+      ],
+      "name": "gnome-session-binary",
+      "create_time": 1793066514.75,
+      "pid": 2118157,
+      "executable": "/usr/libexec/gnome-session-binary",
+      "python_entrypoint": null,
+      "rss": 18649088
+    },
+    {
+      "cpu_times": [
+        60.12,
+        34.02,
+        238.81,
+        151.69,
+        0.0
+      ],
+      "name": "containerd-shim-runc-v2",
+      "create_time": 1792939088.83,
+      "pid": 3622,
+      "executable": "/usr/bin/containerd-shim-runc-v2",
+      "python_entrypoint": null,
+      "rss": 18239488
+    },
+    {
+      "cpu_times": [
+        74.11,
+        44.63,
+        261.51,
+        176.71,
+        0.0
+      ],
+      "name": "containerd-shim-runc-v2",
+      "create_time": 1792939088.83,
+      "pid": 3620,
+      "executable": "/usr/bin/containerd-shim-runc-v2",
+      "python_entrypoint": null,
+      "rss": 18149376
+    },
+    {
+      "cpu_times": [
+        71.63,
+        44.54,
+        266.35,
+        183.79,
+        0.0
+      ],
+      "name": "containerd-shim-runc-v2",
+      "create_time": 1792939088.83,
+      "pid": 3624,
+      "executable": "/usr/bin/containerd-shim-runc-v2",
+      "python_entrypoint": null,
+      "rss": 18079744
+    },
+    {
+      "cpu_times": [
+        0.07,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "python3",
+      "create_time": 1792939083.16,
+      "pid": 1122,
+      "executable": "python3",
+      "python_entrypoint": "/opt/nvidia/pva-allow-2/bin/nvidiaPvaAllowd.py",
+      "rss": 18075648
+    },
+    {
+      "cpu_times": [
+        81.54,
+        48.0,
+        360.11,
+        264.84,
+        0.0
+      ],
+      "name": "containerd-shim-runc-v2",
+      "create_time": 1792939088.83,
+      "pid": 3621,
+      "executable": "/usr/bin/containerd-shim-runc-v2",
+      "python_entrypoint": null,
+      "rss": 17690624
+    },
+    {
+      "cpu_times": [
+        75.94,
+        45.81,
+        340.59,
+        203.11,
+        0.0
+      ],
+      "name": "containerd-shim-runc-v2",
+      "create_time": 1792939088.83,
+      "pid": 3619,
+      "executable": "/usr/bin/containerd-shim-runc-v2",
+      "python_entrypoint": null,
+      "rss": 17653760
+    },
+    {
+      "cpu_times": [
+        0.03,
+        0.03,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gnome-shell-calendar-server",
+      "create_time": 1793066515.9,
+      "pid": 2118432,
+      "executable": "/usr/libexec/gnome-shell-calendar-server",
+      "python_entrypoint": null,
+      "rss": 17436672
+    },
+    {
+      "cpu_times": [
+        0.05,
+        0.02,
+        0.47,
+        0.17,
+        0.0
+      ],
+      "name": "gnome-session-binary",
+      "create_time": 1793066513.81,
+      "pid": 2117845,
+      "executable": "/usr/libexec/gnome-session-binary",
+      "python_entrypoint": null,
+      "rss": 16171008
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gnome-remote-desktop-daemon",
+      "create_time": 1792939083.12,
+      "pid": 1075,
+      "executable": "/usr/libexec/gnome-remote-desktop-daemon",
+      "python_entrypoint": null,
+      "rss": 15699968
+    },
+    {
+      "cpu_times": [
+        0.47,
+        0.29,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "udisksd",
+      "create_time": 1792939083.26,
+      "pid": 1276,
+      "executable": "/usr/libexec/udisks2/udisksd",
+      "python_entrypoint": null,
+      "rss": 15384576
+    },
+    {
+      "cpu_times": [
+        56.24,
+        33.4,
+        430.97,
+        616.23,
+        0.0
+      ],
+      "name": "systemd",
+      "create_time": 1792939068.0,
+      "pid": 1,
+      "executable": "/sbin/init",
+      "python_entrypoint": null,
+      "rss": 15028224
+    },
+    {
+      "cpu_times": [
+        0.15,
+        0.09,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "xdg-desktop-portal",
+      "create_time": 1793066516.37,
+      "pid": 2118877,
+      "executable": "/usr/libexec/xdg-desktop-portal",
+      "python_entrypoint": null,
+      "rss": 14692352
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-printer",
+      "create_time": 1793066516.18,
+      "pid": 2118695,
+      "executable": "/usr/libexec/gsd-printer",
+      "python_entrypoint": null,
+      "rss": 14520320
+    },
+    {
+      "cpu_times": [
+        0.09,
+        0.05,
+        0.12,
+        0.1,
+        0.0
+      ],
+      "name": "colord",
+      "create_time": 1792939089.85,
+      "pid": 4328,
+      "executable": "/usr/libexec/colord",
+      "python_entrypoint": null,
+      "rss": 14516224
+    },
+    {
+      "cpu_times": [
+        3.75,
+        0.73,
+        1063.92,
+        142.44,
+        0.0
+      ],
+      "name": "systemd",
+      "create_time": 1793066512.39,
+      "pid": 2117587,
+      "executable": "/usr/lib/systemd/systemd",
+      "python_entrypoint": null,
+      "rss": 13307904
+    },
+    {
+      "cpu_times": [
+        1.55,
+        1.13,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "systemd-resolved",
+      "create_time": 1792939082.44,
+      "pid": 987,
+      "executable": "/usr/lib/systemd/systemd-resolved",
+      "python_entrypoint": null,
+      "rss": 13262848
+    },
+    {
+      "cpu_times": [
+        33.54,
+        24.62,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cupsd",
+      "create_time": 1792939127.64,
+      "pid": 7314,
+      "executable": "cupsd",
+      "python_entrypoint": null,
+      "rss": 13168640
+    },
+    {
+      "cpu_times": [
+        14.58,
+        2.48,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ibus-daemon",
+      "create_time": 1793066516.04,
+      "pid": 2118482,
+      "executable": "/usr/bin/ibus-daemon",
+      "python_entrypoint": null,
+      "rss": 12816384
+    },
+    {
+      "cpu_times": [
+        10.75,
+        8.76,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "pipewire",
+      "create_time": 1793066512.85,
+      "pid": 2117621,
+      "executable": "/usr/bin/pipewire",
+      "python_entrypoint": null,
+      "rss": 12464128
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-sharing",
+      "create_time": 1793066516.08,
+      "pid": 2118526,
+      "executable": "/usr/libexec/gsd-sharing",
+      "python_entrypoint": null,
+      "rss": 12447744
+    },
+    {
+      "cpu_times": [
+        149.22,
+        43.06,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "polkitd",
+      "create_time": 1792939083.18,
+      "pid": 1162,
+      "executable": "/usr/lib/polkit-1/polkitd",
+      "python_entrypoint": null,
+      "rss": 12369920
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-datetime",
+      "create_time": 1793066516.05,
+      "pid": 2118487,
+      "executable": "/usr/libexec/gsd-datetime",
+      "python_entrypoint": null,
+      "rss": 12210176
+    },
+    {
+      "cpu_times": [
+        0.04,
+        0.05,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ModemManager",
+      "create_time": 1792939084.17,
+      "pid": 2109,
+      "executable": "/usr/sbin/ModemManager",
+      "python_entrypoint": null,
+      "rss": 12193792
+    },
+    {
+      "cpu_times": [
+        5.1,
+        6.65,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "codebase-memory-mcp",
+      "create_time": 1793068615.15,
+      "pid": 2189438,
+      "executable": "/home/oliver/.local/bin/codebase-memory/codebase-memory-mcp",
+      "python_entrypoint": null,
+      "rss": 11857920
+    },
+    {
+      "cpu_times": [
+        5.13,
+        6.58,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "codebase-memory-mcp",
+      "create_time": 1793068622.21,
+      "pid": 2189670,
+      "executable": "/home/oliver/.local/bin/codebase-memory/codebase-memory-mcp",
+      "python_entrypoint": null,
+      "rss": 11857920
+    },
+    {
+      "cpu_times": [
+        6.03,
+        9.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "codebase-memory-mcp",
+      "create_time": 1793067090.31,
+      "pid": 2141162,
+      "executable": "/home/oliver/.local/bin/codebase-memory/codebase-memory-mcp",
+      "python_entrypoint": null,
+      "rss": 11804672
+    },
+    {
+      "cpu_times": [
+        0.17,
+        0.09,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfs-udisks2-volume-monitor",
+      "create_time": 1793066516.12,
+      "pid": 2118595,
+      "executable": "/usr/libexec/gvfs-udisks2-volume-monitor",
+      "python_entrypoint": null,
+      "rss": 11603968
+    },
+    {
+      "cpu_times": [
+        13.53,
+        6.29,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "wpa_supplicant",
+      "create_time": 1792939084.13,
+      "pid": 2068,
+      "executable": "/usr/sbin/wpa_supplicant",
+      "python_entrypoint": null,
+      "rss": 11255808
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-print-notifications",
+      "create_time": 1793066516.07,
+      "pid": 2118516,
+      "executable": "/usr/libexec/gsd-print-notifications",
+      "python_entrypoint": null,
+      "rss": 11202560
+    },
+    {
+      "cpu_times": [
+        70.69,
+        172.73,
+        143.95,
+        221.44,
+        0.0
+      ],
+      "name": "systemd-udevd",
+      "create_time": 1792939078.78,
+      "pid": 349,
+      "executable": "/usr/lib/systemd/systemd-udevd",
+      "python_entrypoint": null,
+      "rss": 11067392
+    },
+    {
+      "cpu_times": [
+        0.04,
+        0.0,
+        48.37,
+        6.78,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1793066754.18,
+      "pid": 2127341,
+      "executable": "bash",
+      "python_entrypoint": null,
+      "rss": 10244096
+    },
+    {
+      "cpu_times": [
+        0.03,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1793066770.46,
+      "pid": 2127843,
+      "executable": "bash",
+      "python_entrypoint": null,
+      "rss": 10244096
+    },
+    {
+      "cpu_times": [
+        0.05,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gnome-keyring-daemon",
+      "create_time": 1793066512.88,
+      "pid": 2117637,
+      "executable": "/usr/bin/gnome-keyring-daemon",
+      "python_entrypoint": null,
+      "rss": 10219520
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.02,
+        0.01,
+        0.01,
+        0.0
+      ],
+      "name": "gdm-session-worker",
+      "create_time": 1793066510.5,
+      "pid": 2117502,
+      "executable": "gdm-session-worker",
+      "python_entrypoint": null,
+      "rss": 9953280
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-sound",
+      "create_time": 1793066516.08,
+      "pid": 2118528,
+      "executable": "/usr/libexec/gsd-sound",
+      "python_entrypoint": null,
+      "rss": 9744384
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfsd-http",
+      "create_time": 1793069207.19,
+      "pid": 2211232,
+      "executable": "/usr/libexec/gvfsd-http",
+      "python_entrypoint": null,
+      "rss": 9695232
+    },
+    {
+      "cpu_times": [
+        0.41,
+        0.51,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "goa-identity-service",
+      "create_time": 1793066516.15,
+      "pid": 2118666,
+      "executable": "/usr/libexec/goa-identity-service",
+      "python_entrypoint": null,
+      "rss": 9383936
+    },
+    {
+      "cpu_times": [
+        0.22,
+        0.27,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "systemd-networkd",
+      "create_time": 1792939082.15,
+      "pid": 824,
+      "executable": "/usr/lib/systemd/systemd-networkd",
+      "python_entrypoint": null,
+      "rss": 9281536
+    },
+    {
+      "cpu_times": [
+        0.05,
+        0.04,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "upowerd",
+      "create_time": 1792939090.73,
+      "pid": 4661,
+      "executable": "/usr/libexec/upowerd",
+      "python_entrypoint": null,
+      "rss": 9146368
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfsd-trash",
+      "create_time": 1793066517.11,
+      "pid": 2119072,
+      "executable": "/usr/libexec/gvfsd-trash",
+      "python_entrypoint": null,
+      "rss": 9109504
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.02,
+        1.05,
+        1.31,
+        0.0
+      ],
+      "name": "gdm3",
+      "create_time": 1792939087.64,
+      "pid": 2932,
+      "executable": "/usr/sbin/gdm3",
+      "python_entrypoint": null,
+      "rss": 9027584
+    },
+    {
+      "cpu_times": [
+        0.42,
+        0.8,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "docker-proxy",
+      "create_time": 1792939089.27,
+      "pid": 4094,
+      "executable": "/usr/bin/docker-proxy",
+      "python_entrypoint": null,
+      "rss": 8691712
+    },
+    {
+      "cpu_times": [
+        48.67,
+        22.54,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "systemd-logind",
+      "create_time": 1792939083.25,
+      "pid": 1264,
+      "executable": "/usr/lib/systemd/systemd-logind",
+      "python_entrypoint": null,
+      "rss": 8675328
+    },
+    {
+      "cpu_times": [
+        6.47,
+        10.44,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "(udev-worker)",
+      "create_time": 1793066883.72,
+      "pid": 2134141,
+      "executable": "(udev-worker)",
+      "python_entrypoint": null,
+      "rss": 8622080
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfsd-recent",
+      "create_time": 1793066688.7,
+      "pid": 2125504,
+      "executable": "/usr/libexec/gvfsd-recent",
+      "python_entrypoint": null,
+      "rss": 8531968
+    },
+    {
+      "cpu_times": [
+        0.04,
+        0.1,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "docker-proxy",
+      "create_time": 1792939089.24,
+      "pid": 4039,
+      "executable": "/usr/bin/docker-proxy",
+      "python_entrypoint": null,
+      "rss": 8445952
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-smartcard",
+      "create_time": 1793066516.08,
+      "pid": 2118527,
+      "executable": "/usr/libexec/gsd-smartcard",
+      "python_entrypoint": null,
+      "rss": 8331264
+    },
+    {
+      "cpu_times": [
+        0.16,
+        0.13,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-housekeeping",
+      "create_time": 1793066516.05,
+      "pid": 2118493,
+      "executable": "/usr/libexec/gsd-housekeeping",
+      "python_entrypoint": null,
+      "rss": 8155136
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-disk-utility-notify",
+      "create_time": 1793066516.11,
+      "pid": 2118588,
+      "executable": "/usr/libexec/gsd-disk-utility-notify",
+      "python_entrypoint": null,
+      "rss": 7942144
+    },
+    {
+      "cpu_times": [
+        4.29,
+        3.75,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "codebase-memory-mcp",
+      "create_time": 1793070531.41,
+      "pid": 2259536,
+      "executable": "/home/oliver/.local/bin/codebase-memory/codebase-memory-mcp",
+      "python_entrypoint": null,
+      "rss": 7925760
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "at-spi-bus-launcher",
+      "create_time": 1793066514.49,
+      "pid": 2118082,
+      "executable": "/usr/libexec/at-spi-bus-launcher",
+      "python_entrypoint": null,
+      "rss": 7913472
+    },
+    {
+      "cpu_times": [
+        0.03,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfsd",
+      "create_time": 1793066514.73,
+      "pid": 2118135,
+      "executable": "/usr/libexec/gvfsd",
+      "python_entrypoint": null,
+      "rss": 7905280
+    },
+    {
+      "cpu_times": [
+        0.14,
+        0.27,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "at-spi2-registryd",
+      "create_time": 1793066515.26,
+      "pid": 2118310,
+      "executable": "/usr/libexec/at-spi2-registryd",
+      "python_entrypoint": null,
+      "rss": 7905280
+    },
+    {
+      "cpu_times": [
+        0.06,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfs-afc-volume-monitor",
+      "create_time": 1793066516.24,
+      "pid": 2118745,
+      "executable": "/usr/libexec/gvfs-afc-volume-monitor",
+      "python_entrypoint": null,
+      "rss": 7897088
+    },
+    {
+      "cpu_times": [
+        1.24,
+        1.38,
+        0.01,
+        0.0,
+        0.0
+      ],
+      "name": "accounts-daemon",
+      "create_time": 1792939083.23,
+      "pid": 1242,
+      "executable": "/usr/libexec/accounts-daemon",
+      "python_entrypoint": null,
+      "rss": 7839744
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "sshd",
+      "create_time": 1792939087.65,
+      "pid": 2938,
+      "executable": "sshd:",
+      "python_entrypoint": null,
+      "rss": 7503872
+    },
+    {
+      "cpu_times": [
+        446.67,
+        135.49,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "dbus-daemon",
+      "create_time": 1792939083.11,
+      "pid": 1070,
+      "executable": "@dbus-daemon",
+      "python_entrypoint": null,
+      "rss": 7475200
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "controller",
+      "create_time": 1792939095.98,
+      "pid": 5367,
+      "executable": "/usr/share/elasticsearch/modules/x-pack-ml/platform/linux-aarch64/bin/controller",
+      "python_entrypoint": null,
+      "rss": 7380992
+    },
+    {
+      "cpu_times": [
+        0.25,
+        0.45,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "systemd-timesyncd",
+      "create_time": 1792939082.45,
+      "pid": 994,
+      "executable": "/usr/lib/systemd/systemd-timesyncd",
+      "python_entrypoint": null,
+      "rss": 7356416
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ibus-memconf",
+      "create_time": 1793066516.13,
+      "pid": 2118614,
+      "executable": "/usr/libexec/ibus-memconf",
+      "python_entrypoint": null,
+      "rss": 7340032
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "xdg-document-portal",
+      "create_time": 1793066516.38,
+      "pid": 2118895,
+      "executable": "/usr/libexec/xdg-document-portal",
+      "python_entrypoint": null,
+      "rss": 7340032
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfsd-fuse",
+      "create_time": 1793066514.74,
+      "pid": 2118143,
+      "executable": "/usr/libexec/gvfsd-fuse",
+      "python_entrypoint": null,
+      "rss": 7311360
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "power-profiles-daemon",
+      "create_time": 1792939083.19,
+      "pid": 1177,
+      "executable": "/usr/libexec/power-profiles-daemon",
+      "python_entrypoint": null,
+      "rss": 7286784
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ibus-portal",
+      "create_time": 1793066516.17,
+      "pid": 2118687,
+      "executable": "/usr/libexec/ibus-portal",
+      "python_entrypoint": null,
+      "rss": 7266304
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-a11y-settings",
+      "create_time": 1793066516.05,
+      "pid": 2118483,
+      "executable": "/usr/libexec/gsd-a11y-settings",
+      "python_entrypoint": null,
+      "rss": 6893568
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfs-gphoto2-volume-monitor",
+      "create_time": 1793066516.3,
+      "pid": 2118811,
+      "executable": "/usr/libexec/gvfs-gphoto2-volume-monitor",
+      "python_entrypoint": null,
+      "rss": 6864896
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "dhcpd",
+      "create_time": 1792939084.14,
+      "pid": 2078,
+      "executable": "/usr/sbin/dhcpd",
+      "python_entrypoint": null,
+      "rss": 6836224
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-rfkill",
+      "create_time": 1793066516.07,
+      "pid": 2118520,
+      "executable": "/usr/libexec/gsd-rfkill",
+      "python_entrypoint": null,
+      "rss": 6770688
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.01,
+        0.0
+      ],
+      "name": "sudo",
+      "create_time": 1793066516.78,
+      "pid": 2118980,
+      "executable": "sudo",
+      "python_entrypoint": null,
+      "rss": 6598656
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfsd-metadata",
+      "create_time": 1793066518.55,
+      "pid": 2119268,
+      "executable": "/usr/libexec/gvfsd-metadata",
+      "python_entrypoint": null,
+      "rss": 6516736
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gcr-ssh-agent",
+      "create_time": 1793066514.67,
+      "pid": 2118094,
+      "executable": "/usr/libexec/gcr-ssh-agent",
+      "python_entrypoint": null,
+      "rss": 6500352
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "systemd-socket-proxyd",
+      "create_time": 1793066783.64,
+      "pid": 2128888,
+      "executable": "/usr/lib/systemd/systemd-socket-proxyd",
+      "python_entrypoint": null,
+      "rss": 6488064
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfs-mtp-volume-monitor",
+      "create_time": 1793066516.27,
+      "pid": 2118776,
+      "executable": "/usr/libexec/gvfs-mtp-volume-monitor",
+      "python_entrypoint": null,
+      "rss": 6459392
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gvfs-goa-volume-monitor",
+      "create_time": 1793066516.33,
+      "pid": 2118849,
+      "executable": "/usr/libexec/gvfs-goa-volume-monitor",
+      "python_entrypoint": null,
+      "rss": 6438912
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "switcheroo-control",
+      "create_time": 1792939083.24,
+      "pid": 1260,
+      "executable": "/usr/libexec/switcheroo-control",
+      "python_entrypoint": null,
+      "rss": 6373376
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gsd-screensaver-proxy",
+      "create_time": 1793066516.07,
+      "pid": 2118524,
+      "executable": "/usr/libexec/gsd-screensaver-proxy",
+      "python_entrypoint": null,
+      "rss": 6193152
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "xdg-permission-store",
+      "create_time": 1793066515.9,
+      "pid": 2118429,
+      "executable": "/usr/libexec/xdg-permission-store",
+      "python_entrypoint": null,
+      "rss": 6176768
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "bluetoothd",
+      "create_time": 1792939083.11,
+      "pid": 1069,
+      "executable": "/usr/libexec/bluetooth/bluetoothd",
+      "python_entrypoint": null,
+      "rss": 6156288
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gdm-x-session",
+      "create_time": 1793066513.26,
+      "pid": 2117693,
+      "executable": "/usr/libexec/gdm-x-session",
+      "python_entrypoint": null,
+      "rss": 6152192
+    },
+    {
+      "cpu_times": [
+        4.43,
+        1.98,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "dbus-daemon",
+      "create_time": 1793066512.87,
+      "pid": 2117632,
+      "executable": "/usr/bin/dbus-daemon",
+      "python_entrypoint": null,
+      "rss": 5885952
+    },
+    {
+      "cpu_times": [
+        0.13,
+        0.05,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "dconf-service",
+      "create_time": 1793066517.38,
+      "pid": 2119149,
+      "executable": "/usr/libexec/dconf-service",
+      "python_entrypoint": null,
+      "rss": 5840896
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "pipewire",
+      "create_time": 1793066512.85,
+      "pid": 2117622,
+      "executable": "/usr/bin/pipewire",
+      "python_entrypoint": null,
+      "rss": 5517312
+    },
+    {
+      "cpu_times": [
+        0.67,
+        1.81,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "haveged",
+      "create_time": 1792939082.43,
+      "pid": 982,
+      "executable": "/usr/sbin/haveged",
+      "python_entrypoint": null,
+      "rss": 5386240
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "gnome-session-ctl",
+      "create_time": 1793066514.71,
+      "pid": 2118110,
+      "executable": "/usr/libexec/gnome-session-ctl",
+      "python_entrypoint": null,
+      "rss": 5345280
+    },
+    {
+      "cpu_times": [
+        0.08,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "dbus-daemon",
+      "create_time": 1793066514.52,
+      "pid": 2118089,
+      "executable": "/usr/bin/dbus-daemon",
+      "python_entrypoint": null,
+      "rss": 4718592
+    },
+    {
+      "cpu_times": [
+        0.06,
+        0.1,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "rsyslogd",
+      "create_time": 1793066880.08,
+      "pid": 2133950,
+      "executable": "/usr/sbin/rsyslogd",
+      "python_entrypoint": null,
+      "rss": 4640768
+    },
+    {
+      "cpu_times": [
+        41.73,
+        41.29,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "avahi-daemon",
+      "create_time": 1792939083.1,
+      "pid": 1068,
+      "executable": "avahi-daemon:",
+      "python_entrypoint": null,
+      "rss": 4329472
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv-tee-supplica",
+      "create_time": 1792939082.12,
+      "pid": 803,
+      "executable": "/bin/bash",
+      "python_entrypoint": null,
+      "rss": 3592192
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "(sd-pam)",
+      "create_time": 1793066512.43,
+      "pid": 2117599,
+      "executable": "(sd-pam)",
+      "python_entrypoint": null,
+      "rss": 3575808
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "iperf3",
+      "create_time": 1792939087.61,
+      "pid": 2908,
+      "executable": "/usr/bin/iperf3",
+      "python_entrypoint": null,
+      "rss": 3203072
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1793073147.36,
+      "pid": 2346336,
+      "executable": "/bin/bash",
+      "python_entrypoint": null,
+      "rss": 3198976
+    },
+    {
+      "cpu_times": [
+        0.23,
+        1.04,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "rtkit-daemon",
+      "create_time": 1792939088.22,
+      "pid": 3239,
+      "executable": "/usr/libexec/rtkit-daemon",
+      "python_entrypoint": null,
+      "rss": 3166208
+    },
+    {
+      "cpu_times": [
+        0.03,
+        0.01,
+        22.83,
+        1.25,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1792939088.89,
+      "pid": 3775,
+      "executable": "bash",
+      "python_entrypoint": null,
+      "rss": 2973696
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6123,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6124,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6125,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6126,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6127,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6129,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6130,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6132,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6134,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6137,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6138,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6140,
+      "executable": "nginx: worker process",
+      "python_entrypoint": null,
+      "rss": 2781184
+    },
+    {
+      "cpu_times": [
+        0.1,
+        0.15,
+        1.47,
+        3.01,
+        0.0
+      ],
+      "name": "cron",
+      "create_time": 1792939083.24,
+      "pid": 1248,
+      "executable": "/usr/sbin/cron",
+      "python_entrypoint": null,
+      "rss": 2662400
+    },
+    {
+      "cpu_times": [
+        0.08,
+        0.06,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kerneloops",
+      "create_time": 1792939087.64,
+      "pid": 2934,
+      "executable": "/usr/sbin/kerneloops",
+      "python_entrypoint": null,
+      "rss": 2658304
+    },
+    {
+      "cpu_times": [
+        0.09,
+        0.05,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kerneloops",
+      "create_time": 1792939087.66,
+      "pid": 2955,
+      "executable": "/usr/sbin/kerneloops",
+      "python_entrypoint": null,
+      "rss": 2658304
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1792939117.72,
+      "pid": 6128,
+      "executable": "bash",
+      "python_entrypoint": null,
+      "rss": 2134016
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1792939117.72,
+      "pid": 6131,
+      "executable": "bash",
+      "python_entrypoint": null,
+      "rss": 2134016
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1792939117.7,
+      "pid": 6119,
+      "executable": "bash",
+      "python_entrypoint": null,
+      "rss": 2125824
+    },
+    {
+      "cpu_times": [
+        0.1,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "auditd",
+      "create_time": 1792939082.43,
+      "pid": 984,
+      "executable": "/sbin/auditd",
+      "python_entrypoint": null,
+      "rss": 2113536
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "agetty",
+      "create_time": 1792939087.66,
+      "pid": 2950,
+      "executable": "/sbin/agetty",
+      "python_entrypoint": null,
+      "rss": 1966080
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "agetty",
+      "create_time": 1792939087.66,
+      "pid": 2957,
+      "executable": "/sbin/agetty",
+      "python_entrypoint": null,
+      "rss": 1966080
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "agetty",
+      "create_time": 1792939087.66,
+      "pid": 2954,
+      "executable": "/sbin/agetty",
+      "python_entrypoint": null,
+      "rss": 1957888
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "bash",
+      "create_time": 1792939117.72,
+      "pid": 6135,
+      "executable": "bash",
+      "python_entrypoint": null,
+      "rss": 1945600
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "seatd",
+      "create_time": 1792939083.2,
+      "pid": 1204,
+      "executable": "seatd",
+      "python_entrypoint": null,
+      "rss": 1798144
+    },
+    {
+      "cpu_times": [
+        5.62,
+        30.77,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvfancontrol",
+      "create_time": 1792939084.13,
+      "pid": 2062,
+      "executable": "/usr/sbin/nvfancontrol",
+      "python_entrypoint": null,
+      "rss": 1748992
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nginx",
+      "create_time": 1792939117.72,
+      "pid": 6122,
+      "executable": "nginx:",
+      "python_entrypoint": null,
+      "rss": 1740800
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "fusermount3",
+      "create_time": 1793066516.4,
+      "pid": 2118905,
+      "executable": "fusermount3",
+      "python_entrypoint": null,
+      "rss": 1740800
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "tee-supplicant",
+      "create_time": 1792939082.13,
+      "pid": 810,
+      "executable": "/usr/sbin/tee-supplicant",
+      "python_entrypoint": null,
+      "rss": 1728512
+    },
+    {
+      "cpu_times": [
+        0.07,
+        0.02,
+        0.1,
+        0.28,
+        0.0
+      ],
+      "name": "run-cupsd",
+      "create_time": 1792939127.16,
+      "pid": 7065,
+      "executable": "/bin/sh",
+      "python_entrypoint": null,
+      "rss": 1683456
+    },
+    {
+      "cpu_times": [
+        0.08,
+        0.0,
+        0.01,
+        0.02,
+        0.0
+      ],
+      "name": "run-cups-browse",
+      "create_time": 1792939127.21,
+      "pid": 7072,
+      "executable": "/bin/sh",
+      "python_entrypoint": null,
+      "rss": 1654784
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "avahi-daemon",
+      "create_time": 1792939083.34,
+      "pid": 1429,
+      "executable": "avahi-daemon:",
+      "python_entrypoint": null,
+      "rss": 1609728
+    },
+    {
+      "cpu_times": [
+        1.06,
+        2.97,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "tini",
+      "create_time": 1792939088.88,
+      "pid": 3757,
+      "executable": "tini",
+      "python_entrypoint": null,
+      "rss": 1081344
+    },
+    {
+      "cpu_times": [
+        1.09,
+        2.65,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "tini",
+      "create_time": 1792939088.89,
+      "pid": 3765,
+      "executable": "/bin/tini",
+      "python_entrypoint": null,
+      "rss": 974848
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kthreadd",
+      "create_time": 1792939068.0,
+      "pid": 2,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "pool_workqueue_release",
+      "create_time": 1792939068.0,
+      "pid": 3,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-rcu_g",
+      "create_time": 1792939068.0,
+      "pid": 4,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-rcu_p",
+      "create_time": 1792939068.0,
+      "pid": 5,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-slub_",
+      "create_time": 1792939068.0,
+      "pid": 6,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-netns",
+      "create_time": 1792939068.0,
+      "pid": 7,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/0:0H-kblockd",
+      "create_time": 1792939068.0,
+      "pid": 10,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        256.33,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u24:0+devfreq_wq",
+      "create_time": 1792939068.0,
+      "pid": 11,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-mm_pe",
+      "create_time": 1792939068.0,
+      "pid": 12,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "rcu_tasks_kthread",
+      "create_time": 1792939068.0,
+      "pid": 13,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "rcu_tasks_trace_kthread",
+      "create_time": 1792939068.0,
+      "pid": 14,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        7.97,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/0",
+      "create_time": 1792939068.0,
+      "pid": 15,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.02,
+        20.7,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "rcu_preempt",
+      "create_time": 1792939068.0,
+      "pid": 16,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.6,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/0",
+      "create_time": 1792939068.0,
+      "pid": 17,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/0",
+      "create_time": 1792939068.0,
+      "pid": 18,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/1",
+      "create_time": 1792939068.0,
+      "pid": 19,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/1",
+      "create_time": 1792939068.0,
+      "pid": 20,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        2.2,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/1",
+      "create_time": 1792939068.0,
+      "pid": 21,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/1:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 23,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/2",
+      "create_time": 1792939068.0,
+      "pid": 24,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/2",
+      "create_time": 1792939068.0,
+      "pid": 25,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        1.82,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/2",
+      "create_time": 1792939068.0,
+      "pid": 26,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/2:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 28,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/3",
+      "create_time": 1792939068.0,
+      "pid": 29,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/3",
+      "create_time": 1792939068.0,
+      "pid": 30,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.06,
+        1.78,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/3",
+      "create_time": 1792939068.0,
+      "pid": 31,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/3:0H-kblockd",
+      "create_time": 1792939068.0,
+      "pid": 33,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/4",
+      "create_time": 1792939068.0,
+      "pid": 34,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.12,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/4",
+      "create_time": 1792939068.0,
+      "pid": 35,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.26,
+        4.75,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/4",
+      "create_time": 1792939068.0,
+      "pid": 36,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/4:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 38,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/5",
+      "create_time": 1792939068.0,
+      "pid": 39,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/5",
+      "create_time": 1792939068.0,
+      "pid": 40,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.03,
+        1.58,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/5",
+      "create_time": 1792939068.0,
+      "pid": 41,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/5:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 43,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/6",
+      "create_time": 1792939068.0,
+      "pid": 44,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/6",
+      "create_time": 1792939068.0,
+      "pid": 45,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.05,
+        1.45,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/6",
+      "create_time": 1792939068.0,
+      "pid": 46,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/6:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 48,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/7",
+      "create_time": 1792939068.0,
+      "pid": 49,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/7",
+      "create_time": 1792939068.0,
+      "pid": 50,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.17,
+        1.38,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/7",
+      "create_time": 1792939068.0,
+      "pid": 51,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/7:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 53,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/8",
+      "create_time": 1792939068.0,
+      "pid": 54,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.12,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/8",
+      "create_time": 1792939068.0,
+      "pid": 55,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.15,
+        6.78,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/8",
+      "create_time": 1792939068.0,
+      "pid": 56,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/8:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 58,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/9",
+      "create_time": 1792939068.0,
+      "pid": 59,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/9",
+      "create_time": 1792939068.0,
+      "pid": 60,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.05,
+        1.59,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/9",
+      "create_time": 1792939068.0,
+      "pid": 61,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/9:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 63,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/10",
+      "create_time": 1792939068.0,
+      "pid": 64,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/10",
+      "create_time": 1792939068.0,
+      "pid": 65,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        1.55,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/10",
+      "create_time": 1792939068.0,
+      "pid": 66,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/10:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 68,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "cpuhp/11",
+      "create_time": 1792939068.0,
+      "pid": 69,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.15,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "migration/11",
+      "create_time": 1792939068.0,
+      "pid": 70,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.06,
+        1.56,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksoftirqd/11",
+      "create_time": 1792939068.0,
+      "pid": 71,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/11:0H-events_highpri",
+      "create_time": 1792939068.0,
+      "pid": 73,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kdevtmpfs",
+      "create_time": 1792939068.01,
+      "pid": 77,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-inet_",
+      "create_time": 1792939068.02,
+      "pid": 78,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.03,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kauditd",
+      "create_time": 1792939068.02,
+      "pid": 79,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.22,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "khungtaskd",
+      "create_time": 1792939069.24,
+      "pid": 84,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "oom_reaper",
+      "create_time": 1792939069.24,
+      "pid": 85,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-write",
+      "create_time": 1792939069.24,
+      "pid": 86,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.8,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kcompactd0",
+      "create_time": 1792939069.24,
+      "pid": 87,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "ksmd",
+      "create_time": 1792939069.3,
+      "pid": 88,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        6.49,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "khugepaged",
+      "create_time": 1792939069.3,
+      "pid": 90,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-kinte",
+      "create_time": 1792939069.3,
+      "pid": 91,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-kbloc",
+      "create_time": 1792939069.3,
+      "pid": 92,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-blkcg",
+      "create_time": 1792939069.3,
+      "pid": 93,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-tpm_d",
+      "create_time": 1792939069.31,
+      "pid": 97,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-ata_s",
+      "create_time": 1792939069.32,
+      "pid": 99,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-edac-",
+      "create_time": 1792939069.36,
+      "pid": 100,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-devfr",
+      "create_time": 1792939069.38,
+      "pid": 102,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "watchdogd",
+      "create_time": 1792939069.39,
+      "pid": 103,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-quota",
+      "create_time": 1792939069.41,
+      "pid": 105,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/8:1H-kblockd",
+      "create_time": 1792939069.43,
+      "pid": 106,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-rpcio",
+      "create_time": 1792939069.5,
+      "pid": 107,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-xprti",
+      "create_time": 1792939069.5,
+      "pid": 108,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kswapd0",
+      "create_time": 1792939069.57,
+      "pid": 109,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-nfsio",
+      "create_time": 1792939069.58,
+      "pid": 110,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-vfio-",
+      "create_time": 1792939072.86,
+      "pid": 118,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-dm_bu",
+      "create_time": 1792939072.9,
+      "pid": 119,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/136-3160000.i2c",
+      "create_time": 1792939074.9,
+      "pid": 126,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/137-3180000.i2c",
+      "create_time": 1792939074.9,
+      "pid": 129,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/138-3190000.i2c",
+      "create_time": 1792939074.91,
+      "pid": 130,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/139-31b0000.i2c",
+      "create_time": 1792939074.92,
+      "pid": 131,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/140-31c0000.i2c",
+      "create_time": 1792939074.93,
+      "pid": 132,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/141-31e0000.i2c",
+      "create_time": 1792939074.93,
+      "pid": 133,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/142-c240000.i2c",
+      "create_time": 1792939074.96,
+      "pid": 134,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/143-c250000.i2c",
+      "create_time": 1792939075.02,
+      "pid": 135,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        1.5,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u28:0-hci0",
+      "create_time": 1792939075.07,
+      "pid": 140,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u29:0",
+      "create_time": 1792939075.07,
+      "pid": 141,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u30:0",
+      "create_time": 1792939075.07,
+      "pid": 142,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u31:0",
+      "create_time": 1792939075.07,
+      "pid": 143,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-sdhci",
+      "create_time": 1792939075.07,
+      "pid": 144,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/144-mmc0",
+      "create_time": 1792939075.07,
+      "pid": 145,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-mmc_c",
+      "create_time": 1792939075.24,
+      "pid": 147,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.18,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/3:1H-kblockd",
+      "create_time": 1792939075.25,
+      "pid": 148,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.15,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/0:1H-kblockd",
+      "create_time": 1792939075.26,
+      "pid": 149,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/146-3610000.usb",
+      "create_time": 1792939075.38,
+      "pid": 150,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/147-3610000.usb",
+      "create_time": 1792939075.38,
+      "pid": 151,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-sdhci",
+      "create_time": 1792939075.41,
+      "pid": 152,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/155-mmc1",
+      "create_time": 1792939075.41,
+      "pid": 153,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/158-3400000.mmc cd",
+      "create_time": 1792939075.54,
+      "pid": 155,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/4:1H-kblockd",
+      "create_time": 1792939075.61,
+      "pid": 175,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/183-tegra-pcie-intr",
+      "create_time": 1792939075.64,
+      "pid": 179,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-nvme-",
+      "create_time": 1792939075.66,
+      "pid": 181,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-nvme-",
+      "create_time": 1792939075.66,
+      "pid": 182,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-nvme-",
+      "create_time": 1792939075.66,
+      "pid": 183,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.1,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/9:1H-kblockd",
+      "create_time": 1792939075.71,
+      "pid": 187,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/186-1-0008",
+      "create_time": 1792939075.77,
+      "pid": 188,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-uas",
+      "create_time": 1792939075.78,
+      "pid": 197,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-1-000",
+      "create_time": 1792939075.86,
+      "pid": 201,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-1-000",
+      "create_time": 1792939075.9,
+      "pid": 202,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/183-aerdrv",
+      "create_time": 1792939076.14,
+      "pid": 204,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/188-tegra-pcie-intr",
+      "create_time": 1792939076.16,
+      "pid": 205,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/188-aerdrv",
+      "create_time": 1792939076.56,
+      "pid": 210,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/190-nvme0q0",
+      "create_time": 1792939076.65,
+      "pid": 214,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.21,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/191-nvme0q1",
+      "create_time": 1792939076.67,
+      "pid": 215,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.24,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/192-nvme0q2",
+      "create_time": 1792939076.67,
+      "pid": 216,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.28,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/193-nvme0q3",
+      "create_time": 1792939076.67,
+      "pid": 217,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.25,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/194-nvme0q4",
+      "create_time": 1792939076.67,
+      "pid": 218,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.26,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/195-nvme0q5",
+      "create_time": 1792939076.67,
+      "pid": 219,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.29,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/196-nvme0q6",
+      "create_time": 1792939076.67,
+      "pid": 220,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.28,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/197-nvme0q7",
+      "create_time": 1792939076.67,
+      "pid": 221,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.32,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/198-nvme0q8",
+      "create_time": 1792939076.67,
+      "pid": 222,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        1.27,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/199-nvme0q9",
+      "create_time": 1792939076.67,
+      "pid": 223,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        1.08,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/200-nvme0q10",
+      "create_time": 1792939076.67,
+      "pid": 224,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.41,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/201-nvme0q11",
+      "create_time": 1792939076.67,
+      "pid": 225,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.39,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/202-nvme0q12",
+      "create_time": 1792939076.67,
+      "pid": 226,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/203-tegra-pcie-intr",
+      "create_time": 1792939076.71,
+      "pid": 227,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.18,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/2:1H-kblockd",
+      "create_time": 1792939077.0,
+      "pid": 233,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        9.98,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "jbd2/nvme0n1p1-8",
+      "create_time": 1792939077.01,
+      "pid": 234,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-ext4-",
+      "create_time": 1792939077.01,
+      "pid": 235,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.34,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/11:1H-nvpps_wq",
+      "create_time": 1792939077.12,
+      "pid": 242,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-mld",
+      "create_time": 1792939077.15,
+      "pid": 243,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.31,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/10:1H-kblockd",
+      "create_time": 1792939077.15,
+      "pid": 244,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-ipv6_",
+      "create_time": 1792939077.15,
+      "pid": 245,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.19,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/7:1H-kblockd",
+      "create_time": 1792939077.29,
+      "pid": 270,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/1:1H-kblockd",
+      "create_time": 1792939077.54,
+      "pid": 277,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.18,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/5:1H-kblockd",
+      "create_time": 1792939077.86,
+      "pid": 279,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/6:1H-kblockd",
+      "create_time": 1792939078.04,
+      "pid": 302,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/205-bc00000.rtcpu",
+      "create_time": 1792939078.29,
+      "pid": 310,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "capture-control",
+      "create_time": 1792939078.55,
+      "pid": 313,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "capture",
+      "create_time": 1792939078.55,
+      "pid": 314,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/214-host1x_general",
+      "create_time": 1792939078.56,
+      "pid": 331,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.25,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "hwrng",
+      "create_time": 1792939079.25,
+      "pid": 406,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/215-3210000.spi",
+      "create_time": 1792939079.33,
+      "pid": 414,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "spi0",
+      "create_time": 1792939079.35,
+      "pid": 418,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/216-nvvrs-pseq-irq",
+      "create_time": 1792939079.37,
+      "pid": 431,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-cfg80",
+      "create_time": 1792939079.39,
+      "pid": 432,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/219-3230000.spi",
+      "create_time": 1792939079.43,
+      "pid": 434,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "spi1",
+      "create_time": 1792939079.44,
+      "pid": 435,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-nvpps",
+      "create_time": 1792939079.85,
+      "pid": 493,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/222-tegra_dce_isr",
+      "create_time": 1792939079.86,
+      "pid": 497,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.74,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/223-tegra_dce_isr",
+      "create_time": 1792939079.86,
+      "pid": 498,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-dce-a",
+      "create_time": 1792939079.86,
+      "pid": 499,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/226-tsec_riscv_irq",
+      "create_time": 1792939079.88,
+      "pid": 500,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        2.61,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvmap-bz",
+      "create_time": 1792939080.0,
+      "pid": 520,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-btfww",
+      "create_time": 1792939080.04,
+      "pid": 529,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u28:1-hci0",
+      "create_time": 1792939080.09,
+      "pid": 536,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-tx_bw",
+      "create_time": 1792939080.49,
+      "pid": 652,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        70.61,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "sugov:0",
+      "create_time": 1792939083.2,
+      "pid": 1207,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        76.93,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "sugov:4",
+      "create_time": 1792939083.2,
+      "pid": 1209,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        73.22,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "sugov:8",
+      "create_time": 1792939083.2,
+      "pid": 1211,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/272-gk20a_stall",
+      "create_time": 1792939083.25,
+      "pid": 1266,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        1.24,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/273-gk20a_stall",
+      "create_time": 1792939083.25,
+      "pid": 1268,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        16.61,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/274-gk20a_stall",
+      "create_time": 1792939083.25,
+      "pid": 1269,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        614.64,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/275-gk20a_nonstall",
+      "create_time": 1792939083.26,
+      "pid": 1272,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv_queue",
+      "create_time": 1792939083.33,
+      "pid": 1398,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv_mem_pool_scrubber_queue",
+      "create_time": 1792939083.33,
+      "pid": 1399,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv_mem_pool_scrubber_queue",
+      "create_time": 1792939083.33,
+      "pid": 1400,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv_mem_pool_scrubber_queue",
+      "create_time": 1792939083.33,
+      "pid": 1401,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv_queue",
+      "create_time": 1792939083.33,
+      "pid": 1402,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv_open_q",
+      "create_time": 1792939083.35,
+      "pid": 1435,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.07,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvidia-modeset/kthread_q",
+      "create_time": 1792939083.37,
+      "pid": 1498,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvidia-modeset/deferred_close_kthread_q",
+      "create_time": 1792939083.37,
+      "pid": 1499,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvidia",
+      "create_time": 1792939083.38,
+      "pid": 1507,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nv_queue",
+      "create_time": 1792939083.38,
+      "pid": 1508,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "sw-quiesce",
+      "create_time": 1792939083.44,
+      "pid": 1699,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        491.35,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvgpu_channel_poll_ga10b",
+      "create_time": 1792939083.46,
+      "pid": 1747,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.04,
+        0.62,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvgpu_pg_init_ga10b",
+      "create_time": 1792939083.49,
+      "pid": 1807,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.08,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "nvgpu_clk_arb_poll_ga10b",
+      "create_time": 1792939083.56,
+      "pid": 1901,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "file-storage",
+      "create_time": 1792939083.65,
+      "pid": 1988,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/279-6800000.ethernet:00",
+      "create_time": 1792939087.07,
+      "pid": 2869,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "irq/266-end0.common_irq",
+      "create_time": 1792939087.13,
+      "pid": 2870,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        76.38,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "RTW_CMD_THREAD",
+      "create_time": 1792939087.17,
+      "pid": 2873,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/R-dio/o",
+      "create_time": 1792939090.01,
+      "pid": 4344,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "krfcommd",
+      "create_time": 1792939090.42,
+      "pid": 4514,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        2.05,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/2:1-cgroup_release",
+      "create_time": 1792940854.84,
+      "pid": 38392,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        1.94,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/4:1-pm",
+      "create_time": 1792943078.8,
+      "pid": 75947,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        1.75,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/9:1-events",
+      "create_time": 1792946367.92,
+      "pid": 129920,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        32.45,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/0:0-events",
+      "create_time": 1793015958.06,
+      "pid": 1282869,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.92,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/5:2-mm_percpu_wq",
+      "create_time": 1793019833.94,
+      "pid": 1345895,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.26,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/3:1-mm_percpu_wq",
+      "create_time": 1793020500.27,
+      "pid": 1357721,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/4:2-mm_percpu_wq",
+      "create_time": 1793048455.1,
+      "pid": 1819060,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.13,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/6:2-mm_percpu_wq",
+      "create_time": 1793056261.21,
+      "pid": 1946701,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.12,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/2:2-events",
+      "create_time": 1793062398.99,
+      "pid": 2047812,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.61,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:0-events_freezable_power_",
+      "create_time": 1793065562.97,
+      "pid": 2099839,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/11:2-mm_percpu_wq",
+      "create_time": 1793066516.18,
+      "pid": 2118696,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.13,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/9:0-mm_percpu_wq",
+      "create_time": 1793066518.4,
+      "pid": 2119224,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.11,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/10:1-mm_percpu_wq",
+      "create_time": 1793066528.7,
+      "pid": 2120240,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/5:1-cgroup_free",
+      "create_time": 1793066582.06,
+      "pid": 2121957,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.08,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/7:3-mm_percpu_wq",
+      "create_time": 1793066839.5,
+      "pid": 2131752,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.07,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/3:2-events",
+      "create_time": 1793066880.01,
+      "pid": 2133943,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/10:0-cgroup_release",
+      "create_time": 1793066894.16,
+      "pid": 2134608,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/11:0-cgroup_free",
+      "create_time": 1793067089.23,
+      "pid": 2141048,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.4,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/1:2-mm_percpu_wq",
+      "create_time": 1793068451.64,
+      "pid": 2184082,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.09,
+        0.13,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/8:2-events",
+      "create_time": 1793068635.06,
+      "pid": 2190162,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.29,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:2-events_freezable_power_",
+      "create_time": 1793068648.28,
+      "pid": 2190546,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.13,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:4-events_unbound",
+      "create_time": 1793068740.44,
+      "pid": 2193851,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.44,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:1-events_freezable_power_",
+      "create_time": 1793068910.42,
+      "pid": 2200088,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.26,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/8:0-events",
+      "create_time": 1793069207.51,
+      "pid": 2211301,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/7:0",
+      "create_time": 1793069969.26,
+      "pid": 2241658,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.17,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:4-events_unbound",
+      "create_time": 1793070219.1,
+      "pid": 2249362,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.43,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:6-events_freezable_power_",
+      "create_time": 1793070514.01,
+      "pid": 2258830,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:6-events_freezable_power_",
+      "create_time": 1793070547.8,
+      "pid": 2260141,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.07,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:7-events_freezable_power_",
+      "create_time": 1793070563.16,
+      "pid": 2260584,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.09,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:8-events_freezable_power_",
+      "create_time": 1793070944.09,
+      "pid": 2273455,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/6:0-events",
+      "create_time": 1793071091.19,
+      "pid": 2278114,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.11,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:4-events_freezable_power_",
+      "create_time": 1793071796.06,
+      "pid": 2299754,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.05,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:7-events_freezable_power_",
+      "create_time": 1793071817.56,
+      "pid": 2300438,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.03,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:3-events_freezable_power_",
+      "create_time": 1793072008.02,
+      "pid": 2306296,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.04,
+        0.14,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:0-events_unbound",
+      "create_time": 1793072153.43,
+      "pid": 2310713,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:2-events_freezable_power_",
+      "create_time": 1793072185.18,
+      "pid": 2311688,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.36,
+        42.21,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u24:1-ext4-rsv-conversion",
+      "create_time": 1793072260.61,
+      "pid": 2314017,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.1,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:2-flush-259:0",
+      "create_time": 1793072464.73,
+      "pid": 2320271,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:3-events_freezable_power_",
+      "create_time": 1793072464.73,
+      "pid": 2320272,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:5-events_freezable_power_",
+      "create_time": 1793072496.47,
+      "pid": 2321225,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.06,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:6-events_freezable_power_",
+      "create_time": 1793072497.5,
+      "pid": 2321266,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/0:2",
+      "create_time": 1793072519.94,
+      "pid": 2321978,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.1,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:0-events_freezable_power_",
+      "create_time": 1793072618.33,
+      "pid": 2325028,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.02,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:1-events_unbound",
+      "create_time": 1793072672.6,
+      "pid": 2326710,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.19,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:1-events_freezable_power_",
+      "create_time": 1793072685.91,
+      "pid": 2327163,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/1:1-mm_percpu_wq",
+      "create_time": 1793072767.8,
+      "pid": 2330168,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.16,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:7-events_freezable_power_",
+      "create_time": 1793072768.86,
+      "pid": 2330189,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:3-events_freezable_power_",
+      "create_time": 1793072819.03,
+      "pid": 2332315,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:5-events_freezable_power_",
+      "create_time": 1793072836.44,
+      "pid": 2332992,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.07,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u27:8-events_unbound",
+      "create_time": 1793072853.85,
+      "pid": 2333906,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u26:8",
+      "create_time": 1793072884.57,
+      "pid": 2335312,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u24:2",
+      "create_time": 1793072886.59,
+      "pid": 2335418,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/u25:5",
+      "create_time": 1793072893.78,
+      "pid": 2335701,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/8:1-events",
+      "create_time": 1793073027.33,
+      "pid": 2341717,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    },
+    {
+      "cpu_times": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "name": "kworker/10:2-cgroup_free",
+      "create_time": 1793073048.52,
+      "pid": 2342491,
+      "executable": null,
+      "python_entrypoint": null,
+      "rss": 0
+    }
+  ],
+  "gpu_memory_note": "nvidia-smi does not provide per-process GPU memory on this Orin. CUDA-visible used memory is device-global shared memory and cannot be added to RSS as separate physical RAM."
+}

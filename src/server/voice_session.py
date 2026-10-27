@@ -107,6 +107,12 @@ class VoiceTurnSession:
         self._gate_open = False
         self._manual_pause = False
         self._closed = False
+        from src.server.conversations import defaults, configure_avatar
+        self._conversation = defaults(getattr(avatar, 'config', None) or config)
+        self._settings_switching = False
+        self._pending_history_limit = None
+        self._settings_lock = asyncio.Lock()
+        configure_avatar(avatar, self._conversation)
         self._prepare_error = ""
         self._preparing = False
         self._segmenter = None
@@ -185,6 +191,9 @@ class VoiceTurnSession:
         loop = asyncio.get_running_loop()
         try:
             await loop.run_in_executor(None, self._prepare_sync)
+            if self._conversation['locale'] == 'en-US':
+                from src.server.conversations import warm_voice
+                await warm_voice(self.config, self._conversation)
         except Exception as exc:
             self._preparing = False
             self._prepare_error = str(exc)
@@ -210,6 +219,7 @@ class VoiceTurnSession:
 
     def attach_event_sink(self, sink: EventSink) -> None:
         self._event_sink = sink
+        self._emit('conversation_settings', **self._conversation)
         if self._prepare_error:
             self._emit("state", state="degraded", error=self._prepare_error)
         else:
@@ -244,6 +254,9 @@ class VoiceTurnSession:
         except (TypeError, json.JSONDecodeError):
             return
         kind = message.get("type")
+        if kind == 'conversation_settings':
+            asyncio.create_task(self._apply_conversation_control(message.get('settings', {})))
+            return
         if kind == "capture":
             enabled = bool(message.get("enabled"))
             finalize = (
@@ -298,6 +311,56 @@ class VoiceTurnSession:
             self._track_task.cancel()
         self._track_task = asyncio.create_task(self._consume_track(track))
 
+    async def _apply_conversation_control(self, values: dict) -> None:
+        try:
+            await self.apply_conversation(values)
+        except (ValueError, RuntimeError, TypeError) as exc:
+            self._emit('conversation_settings_error', error=str(exc), **self._conversation)
+
+    async def apply_conversation(self, values: dict) -> None:
+        from src.server.conversations import validate, check_language_support, configure_avatar, warm_voice
+        from src.llm.service import set_session_history_limit
+        async with self._settings_lock:
+            candidate = validate(values, self._conversation)
+            language_change = any(candidate[key] != self._conversation[key]
+                                  for key in ('locale', 'voice_zh_tw', 'voice_en_us'))
+            if language_change:
+                if (getattr(self.config.tts, 'type', '') != 'edgetts'
+                        and any(candidate[key] != self._conversation[key]
+                                for key in ('voice_zh_tw', 'voice_en_us'))):
+                    raise ValueError('voice_controls_require_edge_tts')
+                check_language_support(self.config, candidate['locale'])
+                capture, paused = self._capture_requested, self._manual_pause
+                self._settings_switching = True
+                self._emit('conversation_settings_pending')
+                self._close_gate()
+                try:
+                    await self.interrupt()
+                    if self._closed:
+                        raise RuntimeError('對話已結束')
+                    await warm_voice(self.config, candidate)
+                    if self._closed:
+                        raise RuntimeError('對話已結束')
+                    # Old media is fenced before changing the per-avatar config.
+                    configure_avatar(self.avatar, candidate)
+                except Exception:
+                    self._emit('conversation_settings_error', error='voice_unavailable', **self._conversation)
+                    raise
+                finally:
+                    self._settings_switching = False
+                    self._capture_requested, self._manual_pause = capture, paused
+                    self._refresh_gate()
+            limit = candidate['history_max_messages']
+            if self._turn_id is not None or self._turn_task is not None or self._output_active:
+                self._pending_history_limit = limit
+                candidate['history_max_messages'] = self._conversation['history_max_messages']
+            else:
+                self._pending_history_limit = None
+                set_session_history_limit(self.sessionid, limit)
+            self._conversation = candidate
+            configure_avatar(self.avatar, candidate)
+            self._emit('conversation_settings', **self._conversation)
+
     async def _consume_track(self, track) -> None:
         try:
             while not self._closed:
@@ -309,11 +372,14 @@ class VoiceTurnSession:
                 if not self._gate_open or self._segmenter is None or self._closed:
                     continue
                 loop = asyncio.get_running_loop()
+                generation = self._generation
                 pcm_chunks = await loop.run_in_executor(
                     self._voice_executor,
                     self._resample_frame_sync,
                     frame,
                 )
+                if generation != self._generation:
+                    continue
                 for pcm in pcm_chunks:
                     await self.feed_pcm(pcm)
         except asyncio.CancelledError:
@@ -335,12 +401,13 @@ class VoiceTurnSession:
         if not self._gate_open or self._closed or self._segmenter is None:
             return
         loop = asyncio.get_running_loop()
+        generation = self._generation
         was_speaking, is_speaking, segments = await loop.run_in_executor(
             self._voice_executor,
             self._segment_pcm_sync,
             pcm,
         )
-        if self._closed:
+        if self._closed or generation != self._generation or not self._gate_open:
             return
         if not was_speaking and is_speaking:
             self._turn_id = uuid4().hex
@@ -443,13 +510,14 @@ class VoiceTurnSession:
 
     async def _finalize_capture(self) -> None:
         loop = asyncio.get_running_loop()
+        generation = self._generation
         try:
             segments = await loop.run_in_executor(
                 self._voice_executor,
                 lambda: list(self._segmenter.flush()),
             )
             self._segmenter_reset_pending = True
-            if self._closed:
+            if self._closed or generation != self._generation:
                 return
             if not segments:
                 return
@@ -502,7 +570,11 @@ class VoiceTurnSession:
             wav = BytesIO()
             sf.write(wav, audio, sample_rate, format="WAV", subtype="PCM_16")
             self.mark_stage_start("asr")
-            result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
+            if getattr(self._asr, 'supports_language_options', False) is True:
+                result = await loop.run_in_executor(None, partial(
+                    self._asr.transcribe, wav.getvalue(), language='auto'))
+            else:
+                result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
             self.mark_stage_end("asr")
             if not self._is_current(turn_id, generation):
                 return
@@ -597,6 +669,7 @@ class VoiceTurnSession:
 
         kwargs = {
             "stream_to_avatar": self._pipeline_mode == "streaming",
+            "defer_history_commit": True,
             "datainfo": {
                 "turn_id": turn_id,
                 "generation": generation,
@@ -635,8 +708,7 @@ class VoiceTurnSession:
         self._llm_finished = True
         self._emit("state", state="tts_ready", turn_id=turn_id)
         if not response:
-            if self._pipeline_mode == "streaming":
-                self._commit_history("no_audio", turn_id=turn_id)
+            self._commit_history("no_audio", turn_id=turn_id)
             self._emit_turn_metrics("no_audio", turn_id=turn_id)
             self._turn_id = None
             self._turn_task = None
@@ -670,6 +742,14 @@ class VoiceTurnSession:
     ) -> None:
         if not self._is_current(turn_id, generation):
             return
+        from src.llm.context_usage import ContextCapacityError
+        if isinstance(exc, ContextCapacityError):
+            self._history_finalized_turns.add(turn_id)
+            self._emit('state', state='error', error='context_capacity', turn_id=turn_id)
+            self._turn_id = None
+            self._turn_task = None
+            self._refresh_gate()
+            return
         if self._turn_context is not None:
             self._turn_context.fail("pipeline_error")
         if self._pipeline_mode == "streaming":
@@ -678,8 +758,7 @@ class VoiceTurnSession:
                     "reply streaming circuit opened session=%s reason=pipeline_error",
                     self.sessionid,
                 )
-        if self._pipeline_mode == "streaming":
-            self._commit_history("pipeline_error", turn_id=turn_id)
+        self._commit_history("pipeline_error", turn_id=turn_id)
         self._emit_turn_metrics("pipeline_error", turn_id=turn_id)
         logger.error("Voice turn failed reason=pipeline_error type=%s", type(exc).__name__)
         self._emit("state", state="error", error="pipeline_error", turn_id=turn_id)
@@ -920,7 +999,8 @@ class VoiceTurnSession:
     @property
     def played_assistant_text(self) -> str:
         with self._fragment_lock:
-            return "".join(self._played_fragments)
+            from src.llm.text_normalizer import join_spoken_fragments
+            return join_spoken_fragments(self._played_fragments)
 
     def _all_registered_fragments_ended(self) -> bool:
         with self._fragment_lock:
@@ -981,8 +1061,7 @@ class VoiceTurnSession:
 
     async def _finish_tail_guard(self) -> None:
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
-        if self._pipeline_mode in {"streaming", "read_aloud"}:
-            self._commit_history("completed")
+        self._commit_history("completed")
         self._emit_turn_metrics("completed")
         if self._pipeline_mode == "streaming":
             self._circuit_breaker.record_turn_success()
@@ -1289,6 +1368,7 @@ class VoiceTurnSession:
     def _is_conversation_idle(self) -> bool:
         return (
             not self._closed
+            and not self._settings_switching
             and self._turn_id is None
             and self._turn_task is None
             and self._finalize_task is None
@@ -1358,9 +1438,19 @@ class VoiceTurnSession:
         self._segmenter_reset_pending = True
 
     def _refresh_gate(self) -> None:
+        if (self._pending_history_limit is not None and self._turn_id is None
+                and self._turn_task is None and not self._output_active):
+            from src.llm.service import set_session_history_limit
+            limit = self._pending_history_limit
+            self._pending_history_limit = None
+            self._conversation['history_max_messages'] = limit
+            set_session_history_limit(self.sessionid, limit)
+            from src.server.conversations import configure_avatar
+            configure_avatar(self.avatar, self._conversation)
         was_open = self._gate_open
         allowed = (
             not self._closed
+            and not self._settings_switching
             and bool(getattr(self.config.vad, "enabled", True))
             and not self._prepare_error
             and not self._preparing

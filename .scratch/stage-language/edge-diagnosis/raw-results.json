@@ -1,0 +1,26 @@
+[
+  {
+    "variant": "raw",
+    "language": "en",
+    "voice": "en-US-JennyNeural",
+    "ok": false,
+    "error": "WSServerHandshakeError",
+    "status": 403,
+    "response_headers": {
+      "Date": "Tue, 27 Oct 2026 04:02:24 GMT"
+    },
+    "seconds": 0.69
+  },
+  {
+    "variant": "raw",
+    "language": "zh",
+    "voice": "zh-TW-HsiaoChenNeural",
+    "ok": false,
+    "error": "WSServerHandshakeError",
+    "status": 403,
+    "response_headers": {
+      "Date": "Tue, 27 Oct 2026 04:02:25 GMT"
+    },
+    "seconds": 0.647
+  }
+]

@@ -13,7 +13,7 @@ from .schema import (
     Config, AppConfig, ModelConfig, TTSConfig, ASRConfig, VADConfig, LLMConfig,
     AudioConfig, VideoConfig, CustomVideoConfig, ERNeRfConfig, TalkingGaussianConfig,
     MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
-    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig,
+    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig, ConversationConfig,
 )
 
 
@@ -168,6 +168,7 @@ def dict_to_config(config_dict: Dict) -> Config:
         custom_video=custom_video_config,
         reply_streaming=reply_streaming_config,
         stage=stage_config,
+        conversation=ConversationConfig(**config_dict.get('conversation', {})),
     )
 
 

@@ -1,0 +1,51 @@
+START official download openai/whisper-small@973afd24965f72e36ca33b3055d56a652f456b4d
+START official download openai/whisper-large-v3-turbo@41f01f3fe87f28c78e2fbf8b568835947dd65ed9
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 134 MB
+DOWNLOAD whisper-small/model.safetensors: 134 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 268 MB
+DOWNLOAD whisper-small/model.safetensors: 268 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 403 MB
+DOWNLOAD whisper-small/model.safetensors: 403 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 537 MB
+DOWNLOAD whisper-small/model.safetensors: 537 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 671 MB
+DOWNLOAD whisper-small/model.safetensors: 671 MB
+DOWNLOAD whisper-small/model.safetensors: 805 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 805 MB
+DOWNLOAD whisper-small/model.safetensors: 940 MB
+DOWNLOADED and verified small
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 940 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 1074 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 1208 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 1342 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 1476 MB
+DOWNLOAD whisper-large-v3-turbo/model.safetensors: 1611 MB
+DOWNLOADED and verified large-v3-turbo
+Traceback (most recent call last):
+  File "/home/oliver/nova-avatar/.scratch/stage-language/asr-benchmark/prepare_assets.py", line 140, in <module>
+    main()
+  File "/home/oliver/nova-avatar/.scratch/stage-language/asr-benchmark/prepare_assets.py", line 106, in main
+    TransformersConverter(str(dest / "source-openai"), copy_files=["tokenizer.json", "preprocessor_config.json"], load_as_float16=True, low_cpu_mem_usage=True).convert(str(converted), quantization="float16", force=False)
+  File "/home/oliver/nova-avatar/.venv/lib/python3.11/site-packages/ctranslate2/converters/converter.py", line 89, in convert
+    model_spec = self._load()
+                 ^^^^^^^^^^^^
+  File "/home/oliver/nova-avatar/.venv/lib/python3.11/site-packages/ctranslate2/converters/transformers.py", line 147, in _load
+    model = self.load_model(
+            ^^^^^^^^^^^^^^^^
+  File "/home/oliver/nova-avatar/.venv/lib/python3.11/site-packages/ctranslate2/converters/transformers.py", line 174, in load_model
+    return model_class.from_pretrained(model_name_or_path, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/oliver/nova-avatar/.venv/lib/python3.11/site-packages/transformers/modeling_utils.py", line 4096, in from_pretrained
+    model = cls(config, *model_args, **model_kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: WhisperForConditionalGeneration.__init__() got an unexpected keyword argument 'dtype'
+Traceback (most recent call last):
+  File "/home/oliver/nova-avatar/.scratch/stage-language/asr-benchmark/prepare_assets.py", line 135, in <module>
+    (OUT / "model-manifest.json").write_text(json.dumps({"models": records, "license_source": json.loads((OUT / "license-source.json").read_text())}, ensure_ascii=False, indent=2) + "\n")
+    ^^^^^^
+  File "/home/oliver/nova-avatar/.scratch/stage-language/asr-benchmark/prepare_assets.py", line 128, in main
+    dest = ROOT / "models" / f"whisper-{label}"
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/oliver/.local/share/uv/python/cpython-3.11.16-linux-aarch64-gnu/lib/python3.11/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/home/oliver/nova-avatar/.venv/bin/python', '/home/oliver/nova-avatar/.scratch/stage-language/asr-benchmark/prepare_assets.py', '--one-conversion', 'small']' returned non-zero exit status 1.

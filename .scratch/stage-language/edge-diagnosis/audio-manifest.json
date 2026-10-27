@@ -1,0 +1,34 @@
+[
+  {
+    "artifact": "nova-adapter-en.mp3",
+    "bytes": 27072,
+    "decoded_frames": 188,
+    "samples": 108288,
+    "sample_rate": 24000,
+    "duration_seconds": 4.512
+  },
+  {
+    "artifact": "nova-adapter-zh.mp3",
+    "bytes": 22752,
+    "decoded_frames": 158,
+    "samples": 91008,
+    "sample_rate": 24000,
+    "duration_seconds": 3.792
+  },
+  {
+    "artifact": "persistent-pool-en.mp3",
+    "bytes": 27072,
+    "decoded_frames": 188,
+    "samples": 108288,
+    "sample_rate": 24000,
+    "duration_seconds": 4.512
+  },
+  {
+    "artifact": "persistent-pool-zh.mp3",
+    "bytes": 22752,
+    "decoded_frames": 158,
+    "samples": 91008,
+    "sample_rate": 24000,
+    "duration_seconds": 3.792
+  }
+]

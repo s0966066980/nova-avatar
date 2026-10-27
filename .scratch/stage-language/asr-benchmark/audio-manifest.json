@@ -1,0 +1,120 @@
+{
+  "mode": "official_fallback_after_edge_403",
+  "fixture_search": "Found Chinese synthetic playback source WAVs and saved exact synthesis text under .scratch; no verified English/mixed fixtures found in bounded search.",
+  "edge_failure": {
+    "installed": "edge-tts 7.2.8",
+    "baseline": "HTTP 403 websocket handshake with SEC_MS_GEC_VERSION=1-143.0.3650.75",
+    "one_process_probe": "HTTP 403 also with protocol version 2 matching official edge-tts master bd44c1d; package/config untouched",
+    "cause": "unresolved server rejection; protocol version change alone did not resolve"
+  },
+  "limitations": [
+    "only four distinct underlying recordings",
+    "two Chinese sources are clean synthetic speech; not human-accent validation",
+    "English fixtures are familiar public test content and not independent held-out evaluation",
+    "mixed fixtures concatenate utterances and do not validate natural within-sentence code-switching",
+    "reference text normalization is approximate; not a broad quality ranking"
+  ],
+  "fixtures": [
+    {
+      "id": "zh_fixture_01",
+      "category": "zh",
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "audio": "audio/zh_fixture_01.wav",
+      "seconds": 10.992,
+      "sha256": "f008cc5816d02a9ac8893cfdee51f14bd41ed8862a73fec29a8f98cb85192377",
+      "provenance": {
+        "type": "existing synthetic Edge playback source; not a microphone capture",
+        "source_audio": ".scratch/recording-stutter/audio-source.wav",
+        "source_audio_sha256": "f6dee6a7f8d0b9b257c08ff2e6ceb53c4a02a92d40f74a5cd879d0730c8dd09a",
+        "transcript_evidence": ".scratch/recording-stutter/audio-after.json",
+        "human_accent_validation": false
+      }
+    },
+    {
+      "id": "zh_fixture_02",
+      "category": "zh",
+      "expected": "臺灣是位於西太平洋的島國，以多元文化、精緻飲食和優美的自然景觀聞名。這裡擁有從高山到海岸的豐富地質景觀，以及豐富的原住民文化和漢文化交融的特色。臺灣也是科技產業與農業並重的經濟體，生活節奏快且充滿活力。",
+      "audio": "audio/zh_fixture_02.wav",
+      "seconds": 22.272,
+      "sha256": "3001bf670b7c4a65a9f8523962a19ec2a35117784dcfcb9476295349c424d3ba",
+      "provenance": {
+        "type": "existing synthetic Edge playback source; not a microphone capture",
+        "source_audio": ".scratch/recording-stutter/audio-final-chat-source.wav",
+        "source_audio_sha256": "cfd9c71530ac9a51ba3c109b865dcad3e5923d946bf7f1fb2742f1526f7fece7",
+        "transcript_evidence": ".scratch/recording-stutter/audio-final-chat.json",
+        "human_accent_validation": false
+      }
+    },
+    {
+      "id": "en_openai_jfk",
+      "category": "en",
+      "expected": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "audio": "audio/en_openai_jfk.wav",
+      "seconds": 11.0,
+      "sha256": "d7d4e74b8a333ed02186008bc109a1b1a19d16da668bd56e785d80d69a16a72f",
+      "provenance": {
+        "type": "official OpenAI Whisper test fixture; historical public speech, not modern conversation validation",
+        "repo": "openai/whisper",
+        "revision": "86098128c0b4f24f0e2aa2994de830614b474227",
+        "source_url": "https://raw.githubusercontent.com/openai/whisper/86098128c0b4f24f0e2aa2994de830614b474227/tests/jfk.flac",
+        "source_audio_sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
+        "transcript_note": "predeclared familiar speech wording, not generated from benchmark hypotheses"
+      }
+    },
+    {
+      "id": "en_hf_librispeech",
+      "category": "en",
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
+      "audio": "audio/en_hf_librispeech.wav",
+      "seconds": 5.855,
+      "sha256": "799f78ed4beb4de7ceae3a809262d4ce242394342ccd1d58cef7d49dbc2def46",
+      "provenance": {
+        "type": "official Hugging Face public ASR test fixture",
+        "repo": "hf-internal-testing/librispeech_asr_dummy",
+        "revision": "5be91486e11a2d616f4ec5db8d3fd248585ac07a",
+        "sample_id": "1272-128104-0000",
+        "rows_api": "https://datasets-server.huggingface.co/rows?dataset=hf-internal-testing/librispeech_asr_dummy&config=clean&split=validation&offset=0&length=1",
+        "source_audio_url": "https://datasets-server.huggingface.co/cached-assets/hf-internal-testing/librispeech_asr_dummy/--/5be91486e11a2d616f4ec5db8d3fd248585ac07a/--/clean/validation/0/audio/audio.flac",
+        "source_audio_sha256": "4e25e22555cd16e90edb0a3b49fdcf1fe652b2a1250ab643634db33895c75b41",
+        "original_corpus": "LibriSpeech dev-clean, derived from public LibriVox readings; corpus CC-BY-4.0",
+        "corpus_license_url": "https://www.openslr.org/12"
+      }
+    },
+    {
+      "id": "mixed_splice_zh_en",
+      "category": "mixed",
+      "expected": "今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。 And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "audio": "audio/mixed_splice_zh_en.wav",
+      "seconds": 22.342,
+      "sha256": "84658bfd325a4d36529151ca25f3621618c7e2ce7e1dc5462a18f78cf157579b",
+      "provenance": {
+        "type": "constructed cross-language splice",
+        "components": [
+          "zh_fixture_01",
+          "en_openai_jfk"
+        ],
+        "gap_seconds": 0.35,
+        "independent_sample": false,
+        "human_code_switching_validation": false
+      }
+    },
+    {
+      "id": "mixed_splice_en_zh",
+      "category": "mixed",
+      "expected": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL 今天的測試會先確認聲音是否連續。接著比較嘴型推理造成的等待。最後記錄整段語音的播放時間。",
+      "audio": "audio/mixed_splice_en_zh.wav",
+      "seconds": 17.197,
+      "sha256": "bf574c687a3edddf6bb65a388b9611c2214cada61cdd9fffe3df31634afa9b5a",
+      "provenance": {
+        "type": "constructed cross-language splice",
+        "components": [
+          "en_hf_librispeech",
+          "zh_fixture_01"
+        ],
+        "gap_seconds": 0.35,
+        "independent_sample": false,
+        "human_code_switching_validation": false
+      }
+    }
+  ]
+}

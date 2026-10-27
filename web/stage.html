@@ -63,6 +63,11 @@ See LICENSE and NOTICE.
     display:block;
     background:#000;
   }
+  .stage-language{position:absolute;right:12px;top:12px;z-index:4;max-width:48%;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .stage-language select{min-height:44px;max-width:100%;padding:8px 12px;border:1px solid #697386;border-radius:12px;color:var(--ink);background:#151b27;font:inherit}
+  .stage-language select:focus-visible,.entry-languages button:focus-visible{outline:2px solid #9eb9ff;outline-offset:3px}
+  .stage-language-status{max-width:180px;font-size:12px;line-height:1.4;color:var(--ink);background:#151b27;border-radius:8px}
+  .entry-languages{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}.entry-languages button{min-width:112px;min-height:48px}
   /* 下緣微淡漸層，配合半透明毛玻璃回覆框，兼顧透視感與清晰度 */
   .stage::after{
     content:""; position:absolute; inset:auto 0 0 0; height:32%;
@@ -334,6 +339,7 @@ See LICENSE and NOTICE.
 <div class="room">
   <main class="stage" id="stage" data-voice="idle">
     <video id="video" autoplay playsinline></video>
+    <div class="stage-language"><select id="stageLocale" aria-label="舞台語系"><option value="zh-TW">繁體中文</option><option value="en-US">English</option></select><span id="languageStatus" class="stage-language-status" role="status" aria-live="polite"></span></div>
 
     <div class="mode" id="mode"><span class="dot"></span><span id="modeText">連線中</span></div>
 
@@ -358,7 +364,7 @@ See LICENSE and NOTICE.
 
     <section class="float-board" id="board" hidden aria-label="回答看板">
       <div class="board-head">
-        <span>回答看板</span>
+        <span id="boardLabel">回答看板</span>
         <span style="display:flex;align-items:center;gap:6px">
           <span class="count-pill" id="boardBadge">0 項</span>
           <button class="board-close" id="hideBoard" type="button" aria-label="關閉看板">✕</button>
@@ -377,14 +383,16 @@ See LICENSE and NOTICE.
 
     <div class="veil" id="veil">
       <h1 id="veilTitle">數字人舞台</h1>
-      <p id="veilText">點擊進入，瀏覽器會詢問麥克風權限。</p>
-      <button class="btn" id="veilBtn">進入</button>
+      <p id="veilText">選擇語言即可進入，瀏覽器會詢問麥克風權限。</p>
+      <div id="entryLanguages" class="entry-languages"><button class="btn" type="button" data-locale="zh-TW" lang="zh-TW">繁體中文</button><button class="btn" type="button" data-locale="en-US" lang="en">English</button></div>
+      <button class="btn" id="veilBtn" hidden>重試</button>
       <button class="btn ghost" id="veilAlt" hidden>開啟控制台</button>
     </div>
   </main>
 </div>
 
 <script type="module">
+import { stageText, stageItemCount } from '/src/stageLocale.js';
 import {
   DEFAULT_STAGE_CAPTION_MAX_CHARS,
   StageCaptionWindow
@@ -423,6 +431,31 @@ import {
   // ── 連線狀態 ────────────────────────────────
   let pc=null, chan=null, micStream=null;
   let sessionId=0, lastSeq=0;
+  let stageLocale='zh-TW', languageSwitching=false, hasConnected=false;
+  const languageSelect=$('stageLocale'), languageStatus=$('languageStatus'), entryLanguages=$('entryLanguages');
+  const t = text => stageText(text, stageLocale);
+  function applyLocale(locale){
+    stageLocale = locale === 'en-US' ? 'en-US' : 'zh-TW';
+    languageSelect.value = stageLocale;
+    document.documentElement?.setAttribute('lang', stageLocale);
+    document.title = `${t('數字人舞台')} · Nova Avatar`;
+    languageSelect.setAttribute('aria-label', stageLocale === 'en-US' ? 'Stage language' : '舞台語系');
+    mic.setAttribute('aria-label', t('收音'));
+    board.setAttribute('aria-label', t('回答看板'));
+    hideBoardBtn.setAttribute('aria-label', t('關閉看板'));
+    $('boardLabel').textContent=t('回答看板');
+    veilAlt.textContent=t('開啟控制台');
+    document.getElementById('scene-record-controls')?.querySelectorAll?.('button,a').forEach(node => { node.textContent=t(node.textContent); });
+    setMode(); refreshAffordance(); renderBoardItems(); applyBoardLayout();
+  }
+  function finishLanguageSwitch(locale, failed=false){
+    languageSwitching=false;
+    languageSelect.disabled=false;
+    applyLocale(locale);
+    languageStatus.textContent=failed ? t('語系切換失敗，已保留原設定') : '';
+    micStream?.getAudioTracks().forEach(track => { track.enabled=autoMode && !autoPaused; });
+    refreshAffordance();
+  }
   let autoMode=false;        // 後台 VAD 開啟 → 自動收音
   let autoPaused=false;      // 自動模式下使用者主動暫停收音
   let holding=false;         // 按鍵收音進行中
@@ -464,7 +497,7 @@ import {
       return {title:liveBoard.title, items:liveBoard.items, preview:false};
     }
     if(boardLayout.preview){
-      return {title:STAGE_BOARD_PREVIEW_TITLE, items:STAGE_BOARD_PREVIEW_ITEMS, preview:true};
+      return {title:t(STAGE_BOARD_PREVIEW_TITLE), items:STAGE_BOARD_PREVIEW_ITEMS.map(item => ({title:t(item.title), body:t(item.body)})), preview:true};
     }
     return {title:'', items:[], preview:false};
   }
@@ -474,9 +507,9 @@ import {
     boardList.innerHTML=shown.items.map((item,n)=>
       `<li class="board-item"><span class="item-number">${String(n+1).padStart(2,'0')}</span><div><div class="item-title">${item.title}</div><p class="item-body">${item.body||''}</p></div></li>`
     ).join('');
-    if(boardBadge) boardBadge.textContent=shown.preview ? '預覽' : `${shown.items.length} 項`;
+    if(boardBadge) boardBadge.textContent=shown.preview ? t('預覽') : stageItemCount(shown.items.length, stageLocale);
     if(boardTitle) boardTitle.textContent=shown.title;
-    if(boardSource) boardSource.textContent=shown.preview ? '控制台預覽 · 對位置與大小，非本輪回答' : (shown.items.length ? '本輪條列 · 可關閉後再展開' : '');
+    if(boardSource) boardSource.textContent=shown.preview ? t('控制台預覽 · 對位置與大小，非本輪回答') : (shown.items.length ? t('本輪條列 · 可關閉後再展開') : '');
   }
   function clearLiveBoard(){
     liveBoard.title='';
@@ -510,7 +543,7 @@ import {
     if(boardReopen){
       boardReopen.hidden=!hasItems;
       boardReopen.setAttribute('aria-pressed', String(!liveBoard.hidden));
-      if(boardReopenLabel) boardReopenLabel.textContent=liveBoard.hidden ? '展開看板' : '收合看板';
+      if(boardReopenLabel) boardReopenLabel.textContent=liveBoard.hidden ? t('展開看板') : t('收合看板');
     }
     if(!hasItems) return;
     const scale=previewScale(stage.clientWidth, stage.clientHeight);
@@ -545,17 +578,17 @@ import {
   function setVisual(v){ stage.dataset.voice = v; }
 
   function refreshAffordance(){
-    if(!live){ mic.disabled=true; hint.textContent='準備中'; return; }
+    if(!live || languageSwitching){ mic.disabled=true; hint.textContent=t('準備中'); return; }
     mic.disabled=false;
-    if(speaking){ hint.textContent = autoMode ? '點一下插話' : '點一下插話'; return; }
-    if(autoMode){ hint.textContent = autoPaused ? '已暫停收音，點一下恢復' : '直接說話'; return; }
-    hint.textContent = holding ? '放開送出' : '按住說話';
+    if(speaking){ hint.textContent = t('點一下插話'); return; }
+    if(autoMode){ hint.textContent = t(autoPaused ? '已暫停收音，點一下恢復' : '直接說話'); return; }
+    hint.textContent = t(holding ? '放開送出' : '按住說話');
   }
 
   function setMode(){
-    modeText.textContent = !live ? '連線中'
+    modeText.textContent = t(!live ? '連線中'
       : autoMode ? (autoPaused ? '自動收音・已暫停' : '自動收音')
-      : '按鍵收音';
+      : '按鍵收音');
   }
 
   function showReply(text, turnId){
@@ -617,10 +650,10 @@ import {
   }
 
   function showVeil(title, text, {isError=false, btn='重試', onBtn=null, alt=false}={}){
-    veilTitle.textContent = title;
-    veilText.textContent = text;
+    veilTitle.textContent = t(title);
+    veilText.textContent = t(text);
     veilText.classList.toggle('err', isError);
-    veilBtn.textContent = btn;
+    veilBtn.textContent = t(btn);
     veilBtn.hidden = !onBtn;
     veilBtn.onclick = onBtn;
     veilAlt.hidden = !alt;
@@ -704,9 +737,24 @@ import {
 
   // ── 會話事件 ────────────────────────────────
   function onVoiceEvent(ev){
+    if(ev.type === 'conversation_settings_pending'){
+      languageSwitching=true; languageSelect.disabled=true;
+      languageStatus.textContent=t('正在切換語系…');
+      holding=false;
+      micStream?.getAudioTracks().forEach(track => { track.enabled=false; });
+      refreshAffordance(); return;
+    }
+    if(ev.type === 'conversation_settings'){
+      finishLanguageSwitch(ev.locale); return;
+    }
+    if(ev.type === 'conversation_settings_error'){
+      finishLanguageSwitch(ev.locale || stageLocale, true);
+      if(ev.error) languageStatus.textContent=t(ev.error);
+      return;
+    }
     if(ev.type === 'state'){
       if(ev.state === 'error' || ev.state === 'degraded'){
-        if(ev.error) showReply(String(ev.error), null);
+        if(ev.error) showReply(t(String(ev.error)), null);
         fadeReply();
       }
       const v = VISUAL[ev.state];
@@ -798,6 +846,7 @@ import {
 
   async function connectOnce(){
     teardown();
+    entryLanguages.hidden=true;
     const attempt = stageGeneration;
     const checkCurrent = () => { if(attempt !== stageGeneration) throw new DOMException('連線已取消','AbortError'); };
     showVeil('連線中', '正在建立與數字人的即時通道。', {btn:'', onBtn:null});
@@ -854,7 +903,7 @@ import {
       if(attempt !== stageGeneration) return;
       micStream = null;
       pc.addTransceiver('audio', {direction:'recvonly'});
-      showSaid('麥克風無法使用，目前為純觀看');
+      showSaid(t('麥克風無法使用，目前為純觀看'));
     }
     pc.addTransceiver('video', {direction:'recvonly'});
 
@@ -867,6 +916,7 @@ import {
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           client_role:'stage', client_id:stageClientId,
+          locale:stageLocale,
           sdp:peer.localDescription.sdp,
           type:peer.localDescription.type
         })
@@ -887,6 +937,8 @@ import {
       const data = await res.json();
       if(attempt !== stageGeneration) { await releaseSession(data.sessionid, stageClientId); return; }
       sessionId = data.sessionid;
+      if(hasConnected) showSaid(t('已重新連線，已建立新的對話，先前記憶已清空'));
+      hasConnected=true;
       await peer.setRemoteDescription(new RTCSessionDescription({sdp:data.sdp, type:data.type}));
       checkCurrent();
       await mountPresentation(video, data.presentation, (message) => showSaid(message), peer);
@@ -909,6 +961,7 @@ import {
     presentationPlayer(video)?.dispose();
     document.getElementById('scene-record-controls')?.remove();
     live = false; speaking = false; holding = false; interruptedPress = false; lastSeq = 0;
+    languageSwitching=false; languageSelect.disabled=false; languageStatus.textContent='';
     clearReply();
     if(chan){ chan.onopen=null; chan.onmessage=null; chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){} }
     chan = null;
@@ -924,23 +977,23 @@ import {
   function installSceneRecording(){
     const controls = document.createElement('div');
     controls.id = 'scene-record-controls';
-    controls.style.cssText = 'position:fixed;top:12px;right:12px;z-index:30;display:flex;gap:8px';
+    controls.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:30;display:flex;gap:8px';
     const button = document.createElement('button');
-    button.className = 'btn'; button.textContent = '開始錄影';
+    button.className = 'btn'; button.textContent = t('開始錄影');
     button.onclick = () => {
       const player = presentationPlayer(video);
-      if(player?.recorder){ player.stopRecording(); button.disabled=true; button.textContent='正在匯出…'; return; }
+      if(player?.recorder){ player.stopRecording(); button.disabled=true; button.textContent=t('正在匯出…'); return; }
       try {
         player.startRecording(async (blob) => {
-          button.disabled=true; button.textContent='正在匯出…';
+          button.disabled=true; button.textContent=t('正在匯出…');
           let url, filename;
-          try { const result=await exportSceneRecording(blob, job=>{button.textContent=`正在匯出 ${job.progress}%`;}); url=result.url; filename=result.filename; }
-          catch(error){ url=URL.createObjectURL(blob); filename=`scene-original.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`; showSaid(`匯出失敗，保留原始錄影：${error.message}`); }
-          const link=document.createElement('a'); link.className='btn'; link.textContent='下載錄影'; link.href=url; link.download=filename;
-          link.onclick=async event=>{event.preventDefault();link.textContent='正在下載…';try{await downloadMedia(url,filename);}catch(error){showSaid(error.message);}finally{link.textContent='下載錄影';}};
-          controls.append(link); button.disabled=false; button.textContent='開始錄影';
+          try { const result=await exportSceneRecording(blob, job=>{button.textContent=stageLocale === 'en-US' ? `Exporting ${job.progress}%` : `正在匯出 ${job.progress}%`;}); url=result.url; filename=result.filename; }
+          catch(error){ url=URL.createObjectURL(blob); filename=`scene-original.${blob.type.includes('mp4') ? 'mp4' : 'webm'}`; showSaid(stageLocale === 'en-US' ? 'Export failed. The original recording is available.' : `匯出失敗，保留原始錄影：${error.message}`); }
+          const link=document.createElement('a'); link.className='btn'; link.textContent=t('下載錄影'); link.href=url; link.download=filename;
+          link.onclick=async event=>{event.preventDefault();link.textContent=t('正在下載…');try{await downloadMedia(url,filename);}catch(error){showSaid(error.message);}finally{link.textContent=t('下載錄影');}};
+          controls.append(link); button.disabled=false; button.textContent=t('開始錄影');
         });
-        button.textContent='停止錄影'; showSaid('錄影期間請保持這個視窗在前景');
+        button.textContent=t('停止錄影'); showSaid(t('錄影期間請保持這個視窗在前景'));
       } catch(error){ showSaid(error.message); }
     };
     controls.append(button); document.body.append(controls);
@@ -984,6 +1037,7 @@ import {
 
   // 空白鍵 = 同一顆按鈕
   addEventListener('keydown', (e) => {
+    if(e.target?.closest?.('select,input,textarea,a') || (e.target?.closest?.('button') && e.target !== mic)) return;
     if(e.code !== 'Space' || e.repeat || mic.disabled) return;
     e.preventDefault();
     mic.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true}));
@@ -995,12 +1049,35 @@ import {
   });
 
   // ── 開場：需要一次使用者手勢才能自動播放帶聲音的影片 ──
-  veilBtn.onclick = async () => {
+  async function enterStage(locale=stageLocale){
+    applyLocale(locale);
+    entryLanguages.hidden=true;
     veilBtn.hidden = true;
     await syncVadMode();
     await syncStageSettings();
     await connect();
     try{ await video.play(); }catch(_){}
+  }
+  veilBtn.onclick = () => enterStage();
+  entryLanguages.querySelectorAll?.('[data-locale]').forEach(button => {
+    button.onclick=() => enterStage(button.dataset.locale);
+  });
+  languageSelect.onchange=() => {
+    const selected=languageSelect.value;
+    if(!live){
+      applyLocale(selected);
+      veilTitle.textContent=t('數字人舞台');
+      veilText.textContent=t('選擇語言即可進入，瀏覽器會詢問麥克風權限。');
+      return;
+    }
+    languageSelect.value=stageLocale;
+    languageSwitching=true; languageSelect.disabled=true; holding=false;
+    languageStatus.textContent=t('正在切換語系…');
+    micStream?.getAudioTracks().forEach(track => { track.enabled=false; });
+    refreshAffordance();
+    if(!send({type:'conversation_settings', settings:{locale:selected}})){
+      finishLanguageSwitch(stageLocale, true);
+    }
   };
 
   addEventListener('beforeunload', teardown);

@@ -255,8 +255,7 @@
               <div class="field-control-area"><input id="assistant-name" class="std-input" v-model.trim="selectedAssistantName" maxlength="200" placeholder="例如：服務助手" aria-describedby="assistant-name-hint"></div>
             </div>
             <div class="setting-form-row">
-              <div class="field-label-group"><label for="assistant-output-locale" class="field-main-label">輸出語系</label><span id="assistant-output-locale-hint" class="field-sub-hint">決定可見回覆的文字正規化目標；預設為繁體中文（臺灣）。</span></div>
-              <div class="field-control-area"><select id="assistant-output-locale" class="std-select" v-model="selectedOutputLocale" aria-describedby="assistant-output-locale-hint"><option value="zh-TW">繁體中文（臺灣）</option><option value="en-US">English (US)</option></select></div>
+              <div class="field-label-group"><span class="field-main-label">回覆語系與聲音</span><span class="field-sub-hint">請在即時演播控制台的「對話記憶與語系」選擇要控制的場次，或儲存新對話預設。切換語系會保留對話記憶。</span></div>
             </div>
             <div class="setting-form-row">
               <div class="field-label-group"><span class="field-main-label">強制語系正規化</span><span class="field-sub-hint">預設開啟。協定解析後統一轉換 Speech、看板、字幕與 History 的可見文字。</span></div>

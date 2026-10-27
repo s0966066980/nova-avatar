@@ -1,0 +1,30 @@
+[
+  {
+    "voice": "en-US-JennyNeural",
+    "keep_connection": false,
+    "decode_pcm": true,
+    "ready": true,
+    "seconds": 0.34
+  },
+  {
+    "voice": "zh-TW-HsiaoChenNeural",
+    "keep_connection": false,
+    "decode_pcm": true,
+    "ready": true,
+    "seconds": 0.352
+  },
+  {
+    "voice": "en-US-JennyNeural",
+    "keep_connection": true,
+    "decode_pcm": true,
+    "ready": true,
+    "seconds": 0.467
+  },
+  {
+    "voice": "zh-TW-HsiaoChenNeural",
+    "keep_connection": true,
+    "decode_pcm": true,
+    "ready": true,
+    "seconds": 0.194
+  }
+]

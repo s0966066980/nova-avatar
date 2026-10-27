@@ -1,0 +1,9 @@
+{
+  "repo": "https://github.com/openai/whisper",
+  "revision": "86098128c0b4f24f0e2aa2994de830614b474227",
+  "license_url": "https://raw.githubusercontent.com/openai/whisper/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE",
+  "license_sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
+  "license": "MIT",
+  "weight_scope": "OpenAI README license section explicitly covers code and model weights",
+  "small_hub_metadata_note": "The pinned openai/whisper-small card metadata labels apache-2.0, while OpenAI original repo explicitly licenses code and model weights MIT; preserve both statements, do not silently relabel."
+}

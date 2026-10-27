@@ -180,6 +180,21 @@ def remove_session(sessionid: int):
         logger.info(f"Removed LLM instance for session {sessionid}")
 
 
+def session_memory(sessionid: int, limit: int = 20) -> dict:
+    llm = _session_llm_instances.get(sessionid)
+    if llm is None:
+        return {"retained_messages": 0, "max_messages": limit,
+                "pending_max_messages": None, "evicted_messages": 0,
+                "oldest_message": None, "oldest_message_number": None, "context": None}
+    return {**llm._history.info(), "context": llm.context_usage}
+
+
+def set_session_history_limit(sessionid: int, limit: int) -> None:
+    llm = _session_llm_instances.get(sessionid)
+    if llm is not None:
+        llm._history.set_limit(limit)
+
+
 def switch_llm_model(model: str):
     """更新已有會話的 LLM 模型名，保留對話歷史。"""
     switch_llm_endpoint(model=model)

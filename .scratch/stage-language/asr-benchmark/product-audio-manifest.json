@@ -1,0 +1,226 @@
+{
+  "copyright": "Copyright (c) 2026 HongXian0903",
+  "SPDX-License-Identifier": "Apache-2.0",
+  "scope": "research metadata and independently authored text only; not a license grant for Microsoft voices/audio",
+  "voice_support_source": "https://learn.microsoft.com/en-us/azure/cognitive-services/speech-service/speech-synthesis-markup-voice",
+  "mixed_voice": "en-US-EmmaMultilingualNeural",
+  "mixed_voice_support": "Microsoft lists English, Mandarin Chinese and Taiwanese Chinese support for this named multilingual voice; actual Edge availability confirmed by successful nonempty MP3 synthesis",
+  "spoken_content_verification": "No listening/transcription tool available for independent human listening. Use documented multilingual voice plus both ASR candidates' Chinese/English anchor retention as a bounded cross-check; ASR agreement is not independent phonetic ground truth.",
+  "edge_adapter_sha256": "572e8ae2e05d602acc8a65ac4580059a77f5a0ae97528b7d7fdc495ee2ac0ddc",
+  "edge_connection_sha256": "2ac51888c1b57a5b5a364614e03aa2ab566c6cd1c0d64af59135ffa51c6dd590",
+  "actual_endpoint_host": "api.msedgeservices.com",
+  "fixtures": [
+    {
+      "id": "product_zh_01",
+      "category": "zh",
+      "expected": "請問訂單編號一二三的進度？",
+      "voice": "zh-TW-HsiaoChenNeural",
+      "audio": "product-audio/product_zh_01.wav",
+      "seconds": 3.264,
+      "sha256": "3f3b3ef1137f4e84f92119ac8a97b18c37b54fba663aee878c85f0d2b1c9afe1",
+      "source_mp3_sha256": "5ea783fdd8cf42e39bb347bc60674eac52bed75e858d864142f467410d54bbe5",
+      "prepare_seconds": 0.8399602069985121,
+      "expected_zh_anchors": [
+        "訂單",
+        "進度"
+      ],
+      "expected_en_anchors": [],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    },
+    {
+      "id": "product_zh_02",
+      "category": "zh",
+      "expected": "博物館明天幾點開門，星期六需要預約嗎？",
+      "voice": "zh-TW-HsiaoChenNeural",
+      "audio": "product-audio/product_zh_02.wav",
+      "seconds": 4.632,
+      "sha256": "8dc7762aa7c45554745b78cd4ce47b916e50e2a9dd93eff3eda7fc9995e68fb6",
+      "source_mp3_sha256": "a9942a63f341ab1c6dcbcc6fe8030b84c42af282aee66113bb630e9d830804e3",
+      "prepare_seconds": 0.9714488660101779,
+      "expected_zh_anchors": [
+        "博物館",
+        "明天",
+        "預約"
+      ],
+      "expected_en_anchors": [],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    },
+    {
+      "id": "product_en_01",
+      "category": "en",
+      "expected": "What time does the museum open tomorrow?",
+      "voice": "en-US-JennyNeural",
+      "audio": "product-audio/product_en_01.wav",
+      "seconds": 2.904,
+      "sha256": "95fd278f3c40dcee8a5e8d0aa05c0aaf9e2b12648d13c68f4efbab6c4457a830",
+      "source_mp3_sha256": "859326d1b025692fb9e00b568fcf044cc49675c13ca5036b5576c70d90c18146",
+      "prepare_seconds": 0.7847918189945631,
+      "expected_zh_anchors": [],
+      "expected_en_anchors": [
+        "museum",
+        "open",
+        "tomorrow"
+      ],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    },
+    {
+      "id": "product_en_02",
+      "category": "en",
+      "expected": "Could you check the status of my order and explain the return policy?",
+      "voice": "en-US-JennyNeural",
+      "audio": "product-audio/product_en_02.wav",
+      "seconds": 4.296,
+      "sha256": "b64738dc4b01d40bea6d6fc864fd7b3d9817413df40f3b6dd90080ab42a4755b",
+      "source_mp3_sha256": "c4213aa50dad501181660a49aba286f47e81bdd597cc85799233b1afe2fe9084",
+      "prepare_seconds": 0.6968209629994817,
+      "expected_zh_anchors": [],
+      "expected_en_anchors": [
+        "order",
+        "return",
+        "policy"
+      ],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    },
+    {
+      "id": "product_mixed_01",
+      "category": "mixed",
+      "expected": "請幫我查一下 order number A B C one two three 的進度。",
+      "voice": "en-US-EmmaMultilingualNeural",
+      "audio": "product-audio/product_mixed_01.wav",
+      "seconds": 4.56,
+      "sha256": "49e485ead54be4e3da7379cf7649d43e9c150f1f9ab1e31ea351e1d139453f1a",
+      "source_mp3_sha256": "160c0d003f46f00860b13e712f40089bd9b1181265f3ea24ed82de15d8a2433d",
+      "prepare_seconds": 1.3287224280065857,
+      "expected_zh_anchors": [
+        "進度"
+      ],
+      "expected_en_anchors": [
+        "order",
+        "number"
+      ],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    },
+    {
+      "id": "product_mixed_02",
+      "category": "mixed",
+      "expected": "這個 product 有沒有 warranty 和 return policy？",
+      "voice": "en-US-EmmaMultilingualNeural",
+      "audio": "product-audio/product_mixed_02.wav",
+      "seconds": 3.648,
+      "sha256": "5dc05dcfc3aa3c994fad9aa6a37435c23b8f079a61ab13a873ea91662218c41d",
+      "source_mp3_sha256": "40bd57b16d7514bea4edb3e40f0be08c7dfd464ea5ffb98a8054e771e4abb37e",
+      "prepare_seconds": 1.4304726820264477,
+      "expected_zh_anchors": [
+        "這個",
+        "有沒有"
+      ],
+      "expected_en_anchors": [
+        "product",
+        "warranty",
+        "return",
+        "policy"
+      ],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    },
+    {
+      "id": "product_mixed_03",
+      "category": "mixed",
+      "expected": "Can you explain 退貨流程 and tell me how many days it takes?",
+      "voice": "en-US-EmmaMultilingualNeural",
+      "audio": "product-audio/product_mixed_03.wav",
+      "seconds": 3.864,
+      "sha256": "b9ffadae15fae03fec86f6b8d735ec6e822307f936c35c89347aab92f872fa8a",
+      "source_mp3_sha256": "89ba180b53a14ee3995b40af14d116e1bf4bdfe34f4334f830e0dc1b62c177c8",
+      "prepare_seconds": 1.5641029989928938,
+      "expected_zh_anchors": [
+        "退貨",
+        "流程"
+      ],
+      "expected_en_anchors": [
+        "explain",
+        "days",
+        "takes"
+      ],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    },
+    {
+      "id": "product_mixed_04",
+      "category": "mixed",
+      "expected": "我想 book a meeting room，明天 morning 還有空位嗎？",
+      "voice": "en-US-EmmaMultilingualNeural",
+      "audio": "product-audio/product_mixed_04.wav",
+      "seconds": 4.224,
+      "sha256": "1f1f92a8f8bac398179788628382ff42f30d134980e4375a10055ed202442a40",
+      "source_mp3_sha256": "d30a679c16dc1c7ff81d5733fdb483eb3d257e8f5ebec8697c2c31bf2ec75c6b",
+      "prepare_seconds": 1.1444145669811405,
+      "expected_zh_anchors": [
+        "我想",
+        "明天",
+        "空位"
+      ],
+      "expected_en_anchors": [
+        "book",
+        "meeting",
+        "room",
+        "morning"
+      ],
+      "provenance": {
+        "type": "independently authored question; single unspliced product-adapter TTS request",
+        "text_copyright": "Copyright (c) 2026 HongXian0903",
+        "text_spdx": "Apache-2.0",
+        "adapter": "src.tts.engines.edge._edge_communicate(...).save",
+        "human_speech": false,
+        "independent_listening_completed": false
+      }
+    }
+  ]
+}

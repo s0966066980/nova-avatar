@@ -33,8 +33,14 @@ def persist_runtime_overrides(config) -> None:
     # actually needed, rather than making every configuration read import it.
     from src.avatars.mouth_quality import quality_from_model
     from src.llm.rules import rules_from_config
+    from src.config.schema import ConversationConfig
+    conversation = getattr(config, 'conversation', ConversationConfig())
 
     payload = {
+        "conversation": {
+            key: getattr(conversation, key)
+            for key in ("locale", "history_max_messages", "voice_zh_tw", "voice_en_us")
+        },
         "llm": {
             "model": config.llm.model,
             "provider": getattr(config.llm, "provider", "ollama"),

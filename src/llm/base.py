@@ -23,6 +23,7 @@ from src.llm.response_protocol import (
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
 from src.llm.text_normalizer import (
+    join_spoken_fragments,
     normalize_assistant_identity,
     normalize_output_text,
     strip_unsolicited_self_introduction,
@@ -249,6 +250,18 @@ class BaseLLM(ABC):
             # Keep existing reply rules last; retrieved text is reference data,
             # not an instruction channel with authority over those rules.
             composed_system_prompt = rag_context + "\n\n" + composed_system_prompt
+        output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
+        composed_system_prompt += (
+            "\n\n[Required session language override]\n"
+            "The visitor selected English (US). Reply exclusively in English in all spoken text "
+            "and board titles/items, even when the visitor speaks Chinese. This session language "
+            "overrides language preferences in earlier persona instructions, examples, rules and "
+            "history. Follow their other requirements. Never copy the Chinese wording of format "
+            "examples. Keep protocol markers unchanged. Preserve necessary quoted source text."
+            if output_locale == 'en-US' else
+            "\n\n本輪互動語系：臺灣繁體中文。無論使用者使用中文或英文，口語回覆與看板"
+            "標題、項目均使用繁體中文；保持回覆協定標記不變，必要的引文保留原文。"
+        )
 
         semantic_stream = bool(
             stream_to_avatar
@@ -329,7 +342,7 @@ class BaseLLM(ABC):
             if not callable(on_board) or fenced:
                 return
             if not incremental_started:
-                on_board({"kind": "begin", "title": "看板回覆", "turn_id": turn_id})
+                on_board({"kind": "begin", "title": "Answer details" if output_locale == 'en-US' else "看板回覆", "turn_id": turn_id})
                 incremental_started = True
             on_board({
                 "kind": "item",
@@ -356,7 +369,7 @@ class BaseLLM(ABC):
             nonlocal fragment_sequence, spoken_response
             if not text:
                 return
-            spoken_response += text
+            spoken_response = join_spoken_fragments((spoken_response, text))
             if target_avatar:
                 fragment_info = dict(datainfo or {})
                 fragment_info.pop("on_board", None)
@@ -561,10 +574,12 @@ class BaseLLM(ABC):
             return clean_spoken or clean_full
             
         except Exception as e:
+            from src.llm.context_usage import ContextCapacityError
             if (
                 history_transaction is not None
                 and not history_committed
                 and not defer_history_commit
+                and not isinstance(e, ContextCapacityError)
             ):
                 try:
                     self.commit_history_turn(

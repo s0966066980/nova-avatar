@@ -1,0 +1,13 @@
+{
+  "file": "/Users/sanchitgandhi/.cache/huggingface/datasets/downloads/extracted/aad76e6f21870761d7a8b9b34436f6f8db846546c68cb2d9388598d7a164fa4b/dev_clean/1272/128104/1272-128104-0000.flac",
+  "audio": [
+    {
+      "src": "https://datasets-server.huggingface.co/cached-assets/hf-internal-testing/librispeech_asr_dummy/--/5be91486e11a2d616f4ec5db8d3fd248585ac07a/--/clean/validation/0/audio/audio.flac",
+      "type": "audio/flac"
+    }
+  ],
+  "text": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
+  "speaker_id": 1272,
+  "chapter_id": 128104,
+  "id": "1272-128104-0000"
+}

@@ -29,12 +29,14 @@ export class StageCaptionWindow {
   }
 
   append(text, turnId, maxChars = this.maxChars) {
-    const normalizedText = String(text ?? '')
+    let normalizedText = String(text ?? '')
     const normalizedTurnId = turnId || null
     const newTurn = normalizedTurnId !== this.turnId
     if (newTurn) this.beginTurn(normalizedTurnId, maxChars)
 
     if (!normalizedText) return { newTurn, added: null, removed: [] }
+    const previous = this.fragments.at(-1)?.text || ''
+    if (/[.!?,;:]$/.test(previous) && /^[A-Za-z0-9]/.test(normalizedText)) normalizedText = ' ' + normalizedText
 
     const added = { id: this.nextId++, text: normalizedText }
     this.fragments.push(added)

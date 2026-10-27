@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "session": {
+    "sessionid": 296043,
+    "role": "stage",
+    "locale": "en-US",
+    "history_max_messages": 20,
+    "voice_zh_tw": "zh-TW-HsiaoChenNeural",
+    "voice_en_us": "en-US-AriaNeural",
+    "switching": false,
+    "pending_history_max_messages": null,
+    "idle_reset_seconds": 3.0,
+    "memory": {
+      "retained_messages": 0,
+      "max_messages": 20,
+      "pending_max_messages": null,
+      "evicted_messages": 0,
+      "oldest_message_number": null,
+      "oldest_message": null,
+      "context": null
+    }
+  }
+}

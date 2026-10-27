@@ -1,0 +1,6 @@
+# Local configuration backups may contain credentials.
+runtime-before.yaml
+asr-benchmark/cache/
+asr-benchmark/audio/
+edge-diagnosis/*.mp3
+edge-diagnosis/*.wav

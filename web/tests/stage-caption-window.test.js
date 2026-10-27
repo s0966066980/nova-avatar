@@ -11,6 +11,14 @@ test('舞台字幕以使用者感知字元計算', () => {
   assert.equal(countGraphemes('A你🙂́'), 3)
 })
 
+test('英文字幕在完整片段之間保留句子空白', () => {
+  const window = new StageCaptionWindow(100)
+  window.append('Hello.', 'turn')
+  window.append('How are you?', 'turn')
+  assert.equal(window.text, 'Hello. How are you?')
+  assert.equal(window.totalChars, countGraphemes(window.text))
+})
+
 test('舞台字幕超限時淘汰最早的完整片段', () => {
   const window = new StageCaptionWindow(4)
   window.append('你好', 'turn-1')
