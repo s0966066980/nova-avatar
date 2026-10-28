@@ -195,6 +195,13 @@ async def set_stage_settings(request):
     try:
         params = await request.json()
         result = apply_stage_settings(state.config, params)
+        if not result['composer_enabled']:
+            for session in list(state.voice_sessions.values()):
+                if session._presenter == 'stage':
+                    session.attachments.clear(drafts_only=True)
+                    session._composer_editing = False
+                    session._emit('composer_disabled')
+                    session._refresh_gate()
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)

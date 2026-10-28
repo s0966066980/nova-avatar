@@ -9,6 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.config.stage_composer import DEFAULTS as COMPOSER_DEFAULTS
 from src.avatars.builder import slugify_name, suggest_avatar_id
 from src.llm.llamacpp import list_gguf_models, resolve_gguf
 from src.avatars.catalog import (
@@ -218,6 +219,7 @@ class OverridePersistTests(unittest.TestCase):
                     "background_id": "",
                     "caption_max_chars": 120,
                     "idle_reset_seconds": 10,
+                    **COMPOSER_DEFAULTS,
                     "caption_x": 50,
                     "caption_y": 90,
                     "caption_width": 100,
@@ -398,9 +400,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         with self.assertRaises(SettingsError):
             apply_stage_settings(Config(), {"caption_width": 39})
 
-    def test_idle_reset_seconds_defaults_to_ten_and_persists_when_changed(self):
+    def test_answer_clear_seconds_defaults_to_three_and_persists_when_changed(self):
         config = Config()
-        self.assertEqual(stage_snapshot(config)["idle_reset_seconds"], 10)
+        self.assertEqual(stage_snapshot(config)["idle_reset_seconds"], 3)
 
         with patch("src.server.runtime_settings.persist_runtime_overrides") as persist:
             result = apply_stage_settings(config, {"idle_reset_seconds": 45})
@@ -897,6 +899,27 @@ class LlamaCppCatalogTests(unittest.TestCase):
 
         self.assertEqual(config.model.type, "musetalk")
         self.assertEqual(config.model.avatar_id, "musetalk_avatar1")
+
+
+class ComposerHeightTests(unittest.TestCase):
+    def test_height_is_validated_and_survives_saved_overrides(self):
+        from src.config.loader import load_config
+        config = Config()
+        self.assertEqual(stage_snapshot(config)['composer_height'], 220)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'overrides.yaml'
+            with patch('src.config.overrides.RUNTIME_OVERRIDES_FILE', path):
+                apply_stage_settings(config, {'composer_height': 180})
+                self.assertEqual(load_runtime_overrides()['stage']['composer_height'], 180)
+                restored = load_config(config_file='config/config_jetson.yaml')
+                self.assertEqual(restored.stage.composer_height, 180)
+                for invalid in (119, 481, True, '220', 220.5):
+                    with self.subTest(height=invalid):
+                        with self.assertRaises(SettingsError):
+                            apply_stage_settings(config, {'composer_height': invalid})
+                        self.assertEqual(config.stage.composer_height, 180)
+                for valid in (120, 480):
+                    self.assertEqual(apply_stage_settings(config, {'composer_height': valid})['composer_height'], valid)
 
 
 if __name__ == "__main__":

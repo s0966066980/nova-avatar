@@ -256,7 +256,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
     def test_rate_limit_wait_can_be_cancelled_without_another_request(self):
         from aiohttp import WSServerHandshakeError
 
-        rejected = Event()
+        waiting = Event()
         requests, failures = [], []
 
         class Parent:
@@ -266,24 +266,32 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         class RateLimitedCommunicate:
             async def stream(self):
                 requests.append(1)
-                rejected.set()
                 raise WSServerHandshakeError(
                     SimpleNamespace(real_url="https://example.invalid/tts"),
-                    (), status=429, headers={"Retry-After": "5"},
+                    # Fit the real two-second shared retry budget so this
+                    # exercises cancellation during cooldown, not exhaustion.
+                    (), status=429, headers={"Retry-After": "1"},
                 )
                 yield  # Make this a stream even though it fails before audio.
 
         tts = self._make_tts(Parent())
+        wait_for_rate_limit = tts._wait_for_rate_limit
+
+        async def observe_wait(max_wait_seconds):
+            if tts._rate_limit_until > time.monotonic():
+                waiting.set()
+            return await wait_for_rate_limit(max_wait_seconds)
+
         worker = Thread(target=tts.txt_to_audio, args=(("取消等待。", {
             "turn_id": "turn-1", "generation": 1, "fragment_sequence": 0,
         }),))
         with patch(
             "src.tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: RateLimitedCommunicate(),
-        ):
+        ), patch.object(tts, '_wait_for_rate_limit', side_effect=observe_wait):
             worker.start()
             try:
-                self.assertTrue(rejected.wait(timeout=1))
+                self.assertTrue(waiting.wait(timeout=1))
                 tts.flush_talk()
                 worker.join(timeout=0.5)
                 self.assertFalse(worker.is_alive())

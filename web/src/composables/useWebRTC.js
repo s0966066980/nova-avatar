@@ -344,6 +344,7 @@ export function useWebRTC(options = {}) {
     stopPlay,
     resumePlayback,
     setCaptureEnabled,
+    getCaptureRequested: () => captureRequested,
     interruptVoice,
     acknowledgeBoardDisplay,
   }

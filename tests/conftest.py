@@ -12,6 +12,7 @@ import pytest
 
 AREA_BY_FILE = {
     "test_conversation_settings.py": "conversation",
+    "test_conversation_attachments.py": "conversation",
     "test_answer_board.py": "conversation",
     "test_assistant_profile.py": "llm",
     "test_auto_response_protocol.py": "conversation",

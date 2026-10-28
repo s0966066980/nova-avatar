@@ -378,7 +378,16 @@ class StageConfig:
     """數字人舞台顯示配置。"""
     background_id: str = ""
     caption_max_chars: int = 120
-    idle_reset_seconds: int = 10
+    idle_reset_seconds: int = 3
+    composer_enabled: bool = False
+    composer_x: int = 50
+    composer_y: int = 78
+    composer_width: int = 90
+    composer_height: int = 220
+    composer_font_size: int = 16
+    composer_opacity: int = 92
+    composer_placeholder_zh: str = '輸入問題，或附上 PDF／圖片'
+    composer_placeholder_en: str = 'Ask a question or attach a PDF / image'
     caption_x: int = 50
     caption_y: int = 90
     caption_width: int = 100

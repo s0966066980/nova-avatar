@@ -112,7 +112,7 @@ class TransactionalHistory:
             raise ValueError("terminal reason is required")
         with self._lock:
             self._require_pending(transaction)
-            self._messages.append({"role": "user", "content": transaction.user_text})
+            self._messages.append({"role": "user", "content": str(transaction.user_text)})
             if assistant_text:
                 self._messages.append({"role": "assistant", "content": assistant_text})
             transaction.state = HistoryTurnState.COMMITTED

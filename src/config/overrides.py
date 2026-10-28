@@ -12,6 +12,7 @@ import yaml
 
 from src.utils.logging import logger
 from src.utils.paths import get_config_dir
+from src.config.stage_composer import snapshot as composer_snapshot
 
 RUNTIME_OVERRIDES_FILE = get_config_dir() / "runtime_overrides.yaml"
 
@@ -93,6 +94,7 @@ def persist_runtime_overrides(config) -> None:
             ),
         },
         "stage": {
+            **composer_snapshot(getattr(config, 'stage', None)),
             "background_id": str(getattr(getattr(config, "stage", None), "background_id", "") or ""),
             "caption_max_chars": int(
                 getattr(getattr(config, "stage", None), "caption_max_chars", 120)

@@ -10,6 +10,7 @@ remain private so routes and UI cannot accidentally create competing pipelines.
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 from functools import partial
 import json
 import time
@@ -126,6 +127,7 @@ class VoiceTurnSession:
         self._metrics: Optional[TurnMetrics] = None
         self._turn_context: Optional[TurnContext] = None
         self._rules_snapshot = None
+        self._assistant_profile_snapshot = None
         self._rag_snapshot = {"enabled": False, "dataset_ids": []}
         self._circuit_breaker = ReplyCircuitBreaker(clock=clock)
         self._pipeline_mode = "legacy"
@@ -139,6 +141,12 @@ class VoiceTurnSession:
         self._board_display_receipts: set[tuple[str, str, int, str]] = set()
         self._conversation_dirty = False
         self._idle_reset_task: Optional[asyncio.Task] = None
+        from src.server.attachments import AttachmentStore
+        self.attachments = AttachmentStore()
+        self._attachment_busy = 0
+        self._composer_editing = False
+        self._client_request_id = None
+        self._cancelled_text_requests: set[str] = set()
         self._llm_finished = False
         self._media_player = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -436,13 +444,17 @@ class VoiceTurnSession:
             )
         )
 
-    async def start_text_turn(self, text: str, *, interrupt: bool = True) -> dict:
+    async def start_text_turn(self, text: str, *, interrupt: bool = True, attachments=None, request_id=None) -> dict:
         """Start a typed turn through the same reply pipeline as speech."""
         text = str(text or "").strip()
-        if not text:
+        selected = self.attachments.selection if attachments is None else attachments
+        self.attachments.validate_selection(selected)
+        if not text and not selected:
             raise ValueError("文字訊息不可為空")
         if self._closed:
             raise RuntimeError("語音工作階段已關閉")
+        if request_id and request_id in self._cancelled_text_requests:
+            raise ValueError('cancelled')
         if interrupt and (
             self._turn_id is not None
             or self._turn_task is not None
@@ -451,8 +463,12 @@ class VoiceTurnSession:
             await self.interrupt()
         if self._turn_id is not None or self._turn_task is not None:
             raise RuntimeError("上一個對話輪次尚未結束")
+        if request_id and request_id in self._cancelled_text_requests:
+            raise ValueError('cancelled')
+        self.attachments.select(selected, submitted=True)
         self._turn_id = uuid4().hex
         self._start_turn_context(self._turn_id)
+        self._client_request_id = request_id
         # Text and console-test turns own the same single-turn session as
         # microphone turns. Pause capture before yielding to the LLM task so
         # VAD cannot replace this turn ID while it is waiting for first audio.
@@ -499,6 +515,15 @@ class VoiceTurnSession:
         self._emit("state", state="tts_ready", turn_id=self._turn_id)
         self.avatar.put_msg_txt(text, envelope)
         return {"turn_id": self._turn_id, "reply_mode": "read_aloud", "delivery": "events"}
+
+    async def cancel_text_request(self, request_id: str) -> None:
+        if not isinstance(request_id, str) or not 1 <= len(request_id) <= 64:
+            raise ValueError('invalid_request')
+        if len(self._cancelled_text_requests) >= 128:
+            self._cancelled_text_requests.pop()
+        self._cancelled_text_requests.add(request_id)
+        if request_id == self._client_request_id:
+            await self.interrupt()
 
     def _segment_pcm_sync(self, pcm: np.ndarray):
         if self._segmenter_reset_pending:
@@ -634,6 +659,21 @@ class VoiceTurnSession:
         if not self._is_current(turn_id, generation):
             return
         self._emit("board_clear", turn_id=turn_id)
+        resolved = self.attachments.validate_selection(self.attachments.selection)
+        if resolved:
+            from src.server.attachments import vision_ready
+            if not await asyncio.to_thread(vision_ready, self.config):
+                raise ValueError('vision_unavailable')
+            self._emit('attachment_status', turn_id=turn_id, state='reading', total=sum(len(p) for _, p in resolved))
+            def progress(index, total, source):
+                loop.call_soon_threadsafe(lambda: self._emit('attachment_status', turn_id=turn_id,
+                    state='analyzing', index=index, total=total, source=source)
+                    if self._is_current(turn_id, generation) else None)
+            text = await asyncio.to_thread(self.attachments.prepare_question, text, resolved,
+                self.avatar.config if getattr(self.avatar, 'config', None) else self.config,
+                progress, lambda: self._is_current(turn_id, generation))
+            if not self._is_current(turn_id, generation):
+                return
         rag_result = None
         rag_selection = self._rag_snapshot
         if rag_selection["enabled"] and rag_selection["dataset_ids"]:
@@ -682,6 +722,7 @@ class VoiceTurnSession:
         # test doubles and TTS metadata do not receive internal rule text.
         try:
             self.avatar._reply_rules_snapshot = self._rules_snapshot
+            self.avatar._assistant_profile_snapshot = self._assistant_profile_snapshot
             self.avatar._reply_mode_callback = lambda mode: self._on_mode_event(turn_id, mode)
             self.avatar._incremental_board = True
         except Exception:
@@ -743,6 +784,17 @@ class VoiceTurnSession:
         if not self._is_current(turn_id, generation):
             return
         from src.llm.context_usage import ContextCapacityError
+        from src.server.attachments import AttachmentError
+        if isinstance(exc, AttachmentError):
+            if self._turn_context is not None:
+                self._turn_context.fail('attachment_error')
+            self._history_finalized_turns.add(turn_id)
+            self._emit('state', state='error', error=str(exc), turn_id=turn_id)
+            self._emit_turn_metrics('attachment_error', turn_id=turn_id)
+            self._turn_id = None
+            self._turn_task = None
+            self._refresh_gate()
+            return
         if isinstance(exc, ContextCapacityError):
             self._history_finalized_turns.add(turn_id)
             self._emit('state', state='error', error='context_capacity', turn_id=turn_id)
@@ -1104,6 +1156,7 @@ class VoiceTurnSession:
         self._commit_history("disconnect")
         self._emit_turn_metrics("disconnect")
         self._closed = True
+        self.attachments.close()
         if self._turn_context is not None:
             self._turn_context.cancel("disconnect")
         self._generation += 1
@@ -1305,9 +1358,13 @@ class VoiceTurnSession:
                 turn_id=turn_id,
                 generation=self._generation,
             )
+            self._client_request_id = None
             # Capture once at turn acceptance. A later control-panel save only
             # affects the next turn, even while this one is still generating.
             self._rules_snapshot = snapshot_from_config(self.config)
+            self._assistant_profile_snapshot = deepcopy(
+                getattr(getattr(self.config, 'llm', None), 'assistant_profile', None)
+            )
             self._rag_snapshot = avatar_settings(
                 str(getattr(getattr(self.config, "model", None), "avatar_id", "") or "")
             )
@@ -1373,6 +1430,7 @@ class VoiceTurnSession:
             and self._turn_task is None
             and self._finalize_task is None
             and not self._output_active
+            and not self._attachment_busy
         )
 
     def _idle_reset_delay(self) -> float:
@@ -1381,6 +1439,9 @@ class VoiceTurnSession:
             return float(getattr(stage, "idle_reset_seconds", 10))
         except (TypeError, ValueError):
             return 10.0
+
+    def _full_reset_delay(self) -> float:
+        return 120.0
 
     def _cancel_idle_reset(self) -> None:
         task = self._idle_reset_task
@@ -1413,9 +1474,21 @@ class VoiceTurnSession:
             return
         self._idle_reset_task = loop.create_task(self._reset_after_idle(delay))
 
+    def note_interaction(self) -> None:
+        """Restart both idle deadlines without changing capture preferences."""
+        self._conversation_dirty = True
+        self._cancel_idle_reset()
+        self._schedule_idle_reset()
+
     async def _reset_after_idle(self, delay: float) -> None:
         try:
-            await asyncio.sleep(delay)
+            full_delay = self._full_reset_delay()
+            short_delay = min(delay, full_delay)
+            await asyncio.sleep(short_delay)
+            if self._conversation_dirty and self._is_conversation_idle():
+                self._emit('board_clear')
+                self._emit('answer_clear')
+            await asyncio.sleep(max(0.0, full_delay - short_delay))
         except asyncio.CancelledError:
             return
         self._idle_reset_task = None
@@ -1426,6 +1499,8 @@ class VoiceTurnSession:
     def reset_conversation(self) -> None:
         """Forget the previous visitor: history, shown board items and stage content."""
         clear_session_history(self.sessionid)
+        self.attachments.clear()
+        self._composer_editing = False
         self._board_display_receipts.clear()
         self._conversation_dirty = False
         self._emit("board_clear")
@@ -1457,6 +1532,7 @@ class VoiceTurnSession:
             and self._event_sink is not None
             and self._capture_requested
             and not self._manual_pause
+            and not self._composer_editing
             and not self._output_active
             and self._turn_task is None
             and self._finalize_task is None

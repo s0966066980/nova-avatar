@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HongXian0903
 // SPDX-License-Identifier: Apache-2.0
 
+import { composerDefaults, composerSettings } from '../conversationAttachments.js'
 import { computed, reactive, ref, watch } from 'vue'
 
 const runtime = reactive({
@@ -229,7 +230,8 @@ const rulesDirty = computed(() => JSON.stringify(rulesDraft) !== JSON.stringify(
   board: rulesApplied.board
 }))
 const selectedStageCaptionMaxChars = ref(120)
-const selectedStageIdleResetSeconds = ref(10)
+const selectedStageIdleResetSeconds = ref(3)
+const composerDraft = reactive({ ...composerDefaults })
 const selectedCaptionX = ref(50)
 const selectedCaptionY = ref(90)
 const selectedCaptionWidth = ref(100)
@@ -331,6 +333,7 @@ const boardSizeError = computed(() => {
 })
 
 const stageDirty = computed(() => (
+    Object.keys(composerDefaults).some(key => composerDraft[key] !== (runtime.stage[key] ?? composerDefaults[key])) ||
   !stageCaptionLengthError.value &&
   !stageIdleResetError.value &&
   !boardSizeError.value &&
@@ -766,7 +769,9 @@ function applySnapshot(data) {
       board: snapshotRules.board || ''
     })
   }
+  Object.assign(composerDraft, composerSettings(data.stage))
   runtime.stage = {
+    ...composerSettings(data.stage),
     background_id: data.stage?.background_id || '',
     caption_max_chars: Number(data.stage?.caption_max_chars || 120),
     idle_reset_seconds: Number(data.stage?.idle_reset_seconds || 10),
@@ -1071,6 +1076,7 @@ async function applyStageSettings(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        ...composerDraft,
         caption_max_chars: Number(captionMaxChars),
         idle_reset_seconds: Number(selectedStageIdleResetSeconds.value),
         caption_x: Number(selectedCaptionX.value),
@@ -1091,6 +1097,8 @@ async function applyStageSettings(
         mic_preset: selectedMicPreset.value
       })
     }))
+    Object.assign(runtime.stage, composerSettings(data))
+    Object.assign(composerDraft, composerSettings(data))
     runtime.stage.caption_max_chars = Number(data.caption_max_chars)
     runtime.stage.idle_reset_seconds = Number(data.idle_reset_seconds ?? selectedStageIdleResetSeconds.value)
     runtime.stage.caption_x = Number(data.caption_x ?? selectedCaptionX.value)
@@ -1445,6 +1453,7 @@ export function useRuntimeSettings() {
     filteredCharacters,
     llmDirty,
     stageDirty,
+    composerDraft,
     avatarDirty,
     selectedEngineInfo,
     loadRuntimeSettings,

@@ -15,13 +15,14 @@
     <div v-if="selected" class="memory-summary" aria-live="polite">
       <div><span class="metric-label">目前保留的歷史訊息</span><strong>{{ memory.retained_messages }} / {{ memory.max_messages }} <small>則</small></strong></div>
       <div><span class="metric-label">較早已移出記憶</span><strong>{{ memory.evicted_messages }} <small>則</small></strong></div>
-      <p class="memory-note">{{ selected.idle_reset_seconds > 0 ? `舞台閒置 ${selected.idle_reset_seconds} 秒後自動清空記憶與看板` : '此場次不套用舞台閒置清空' }}</p>
+      <p class="memory-note">{{ selected.idle_reset_seconds > 0 ? `舞台閒置 ${selected.idle_reset_seconds} 秒清字幕與看板；${selected.full_reset_seconds || 120} 秒才清空記憶、附件與草稿` : '控制台對話維持手動清空' }}</p>
       <p v-if="selected.pending_history_max_messages" class="memory-note">目前輪次結束後，保留上限改為 {{ selected.pending_history_max_messages }} 則。</p>
       <p v-if="memory.oldest_message" class="oldest-message">最早仍保留：第 {{ memory.oldest_message_number }} 則 · {{ memory.oldest_message.role === 'user' ? '使用者' : '助手' }}：{{ memory.oldest_message.content }}</p>
       <div class="context-meter">
         <div><span>最近一次請求的 Context{{ context?.estimated ? '（估算）' : '' }}</span><b>{{ context?.capacity ? `${context.input_tokens} + ${context.reserved_output_tokens} / ${context.capacity} tokens` : deployment.capacity ? `上限 ${deployment.capacity} tokens；尚未量測用量` : '實際容量未知' }}</b></div>
-        <progress v-if="context?.capacity" :value="Math.min(100, context.usage_percent)" max="100" aria-label="輸入與預留回答占用的 Context 百分比"></progress>
-        <p v-if="context" class="memory-note">聊天歷史約 {{ context.history_tokens }} · 其他輸入約 {{ context.other_input_tokens }} · 預留回答 {{ context.reserved_output_tokens }} tokens<span v-if="context.capacity"> · 剩餘 {{ context.remaining_tokens }}（已占用 {{ context.usage_percent }}%）</span></p>
+        <progress v-if="context?.capacity && !context.visual_tokens_unknown" :value="Math.min(100, context.usage_percent)" max="100" aria-label="輸入與預留回答占用的 Context 百分比"></progress>
+        <p v-if="context" class="memory-note">聊天歷史約 {{ context.history_tokens }} · 其他輸入約 {{ context.other_input_tokens }} · 預留回答 {{ context.reserved_output_tokens }} tokens<span v-if="context.capacity && !context.visual_tokens_unknown"> · 剩餘 {{ context.remaining_tokens }}（已占用 {{ context.usage_percent }}%）</span></p>
+        <p v-if="context?.visual_tokens_unknown" class="memory-note">圖片占用尚待模型回報，目前只顯示文字估算，無法確定剩餘空間。</p>
         <p v-if="context" class="memory-note">{{ context.model }} · {{ context.estimated ? '用量估算' : context.source }} · {{ new Date(context.observed_at * 1000).toLocaleTimeString('zh-TW') }}</p>
         <p v-else class="memory-note">尚無 LLM 請求用量；歷史訊息數與模型 Context 容量分開計算。</p>
         <p v-if="context?.over_capacity" class="conversation-error">Context 容量不足，請降低保留上限、縮短問題或清空對話。</p>

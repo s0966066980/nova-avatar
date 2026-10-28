@@ -33,10 +33,34 @@ class StageIdleResetTests(unittest.IsolatedAsyncioTestCase):
         session = VoiceTurnSession(7, config, FakeAvatar(), presenter=presenter)
         session._segmenter = FakeSegmenter(segment)
         session._asr = FakeASR()
+        session._full_reset_delay = Mock(return_value=max(seconds * 2, DELAY * 2))
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         self.addAsyncCleanup(session.close)
         return session, events
+
+    async def test_short_idle_only_clears_visible_answers(self):
+        session, events = self.make_session()
+        session._full_reset_delay.return_value = 1
+        with patch('src.server.voice_session.clear_session_history') as clear:
+            await self.finish_one_turn(session)
+            await asyncio.sleep(DELAY * 1.5)
+            self.assertIn('answer_clear', [event['type'] for event in events])
+            self.assertNotIn('conversation_reset', [event['type'] for event in events])
+            clear.assert_not_called()
+            self.assertTrue(session._conversation_dirty)
+
+    async def test_upload_busy_pauses_both_deadlines(self):
+        session, events = self.make_session()
+        session._attachment_busy = 1
+        session.note_interaction()
+        await self.settle()
+        self.assertNotIn('answer_clear', [event['type'] for event in events])
+        self.assertNotIn('conversation_reset', [event['type'] for event in events])
+        session._attachment_busy = 0
+        session.note_interaction()
+        await self.settle()
+        self.assertIn('conversation_reset', [event['type'] for event in events])
 
     async def finish_one_turn(self, session):
         with patch("src.server.voice_session.llm_response", return_value=REPLY):

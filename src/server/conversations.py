@@ -85,6 +85,7 @@ def snapshot(session) -> dict:
         **settings, 'switching': session._settings_switching,
         'pending_history_max_messages': session._pending_history_limit,
         'idle_reset_seconds': session._idle_reset_delay() if session._presenter == 'stage' else 0,
+        'full_reset_seconds': 120 if session._presenter == 'stage' else 0,
         'memory': session_memory(session.sessionid, settings['history_max_messages']),
     }
 

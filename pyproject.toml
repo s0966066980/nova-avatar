@@ -48,6 +48,7 @@ dependencies = [
     # mmengine/mmpose still import pkg_resources; setuptools>=82 removed it.
     "setuptools==69.5.1",
     "transformers==4.46.0",
+    "pypdfium2>=5.14,<6",
 ]
 
 # 服務端 VAD 依賴（按需安裝：uv pip install -e ".[vad]"）

@@ -44,6 +44,18 @@ class TextNormalizerTests(unittest.TestCase):
             reply,
         )
 
+    def test_english_identity_questions_preserve_chinese_role_name(self):
+        reply = '我是 Museum guide。歡迎參觀。'
+        self.assertEqual(strip_unsolicited_self_introduction(
+            reply, user_message='Please introduce yourself.', assistant_name='Museum guide'
+        ), reply)
+
+    def test_english_forbidden_self_name_does_not_replace_third_party_mentions(self):
+        self.assertEqual(normalize_assistant_identity(
+            'I am OldBot. OldBot is also a project name.',
+            assistant_name='Museum guide', forbidden_names=['OldBot']
+        ), 'I am Museum guide. OldBot is also a project name.')
+
     def test_response_pipeline_normalizes_speech_board_and_history(self):
         class FakeLLM(BaseLLM):
             def __init__(self, config):

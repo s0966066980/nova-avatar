@@ -8,6 +8,7 @@
 
 """伺服器啟動和配置"""
 import asyncio
+from pathlib import Path
 from aiohttp import web
 import aiohttp_cors
 
@@ -37,6 +38,8 @@ def create_app():
     app = web.Application(client_max_size=1024**2*513)
     from src.server.routes.presentation import register as register_presentation
     register_presentation(app)
+    from src.server.routes.attachments import register as register_attachments
+    register_attachments(app)
     app.on_shutdown.append(on_shutdown)
     
     # 路由集中註冊，避免分散難維護
@@ -98,7 +101,8 @@ def create_app():
     app.router.add_post("/api/voice-tests/run", routes.run_voice_test)
     app.router.add_delete("/api/voice-tests", routes.clear_voice_tests)
     # 前端靜態資源託管
-    app.router.add_static('/', path='web')
+    frontend = Path('web/dist')
+    app.router.add_static('/', path=frontend if (frontend / 'index.html').is_file() else Path('web'))
     
     # 寬鬆 CORS 方便本地除錯和跨域訪問
     cors = aiohttp_cors.setup(app, defaults={

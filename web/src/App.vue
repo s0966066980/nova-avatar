@@ -230,18 +230,9 @@ See LICENSE and NOTICE.
             </div>
 
             <!-- 底部輸入操作塢 -->
-            <div class="studio-input-dock" v-if="activeMode === 'chat'">
-              <div class="input-box-row">
-                <textarea
-                  id="chatInputText"
-                  class="chat-text-entry"
-                  rows="1"
-                  v-model="chatInput"
-                  :placeholder="isConnected ? '輸入訊息，按 Enter 送出，Shift+Enter 換行...' : t('chat.inputPlaceholderDisconnected')"
-                  :disabled="!isConnected"
-                  @keydown.enter.exact.prevent="sendChatMessage"
-                ></textarea>
-              </div>
+            <div class="studio-input-dock" v-show="activeMode === 'chat'">
+              <ConversationComposer ref="composerRef" v-model="chatInput" :session-id="sessionId" :connected="isConnected"
+                @accepted="onComposerAccepted" @editing="onComposerEditing" />
               <div class="input-actions-bar">
                 <div class="vad-status-label">
                   <i class="bi bi-check-circle-fill" :style="{ color: isConnected ? 'var(--success)' : 'var(--text-muted)' }"></i>
@@ -261,14 +252,6 @@ See LICENSE and NOTICE.
                   >
                     <i class="bi bi-mic-fill"></i>
                     <span id="voicePushText">{{ voiceButtonLabel }}</span>
-                  </button>
-                  <button
-                    class="btn-send-main"
-                    @click="sendChatMessage"
-                    :disabled="!isConnected || !chatInput.trim()"
-                  >
-                    <i class="bi bi-send-fill"></i>
-                    <span>送出</span>
                   </button>
                 </div>
               </div>
@@ -460,6 +443,7 @@ import DebugPanel from './components/DebugPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import VoiceTestPanel from './components/VoiceTestPanel.vue'
 import ConversationPanel from './components/ConversationPanel.vue'
+import ConversationComposer from './components/ConversationComposer.vue'
 import { useWebRTC } from './composables/useWebRTC'
 import { useI18n } from './composables/useI18n'
 import { useRuntimeSettings } from './composables/useRuntimeSettings'
@@ -556,6 +540,18 @@ const isRecording = ref(false)
 const recordExportProgress = ref(null)
 const activeMode = ref('chat')
 const chatInput = ref('')
+const composerRef = ref(null)
+const onComposerAccepted = ({ text }) => { addMessage(text, 'user'); isThinking.value = true }
+let composerCaptureBefore = null
+const onComposerEditing = (editing) => {
+  if (editing) {
+    if (composerCaptureBefore === null) composerCaptureBefore = getCaptureRequested()
+    setCaptureEnabled(false)
+  } else if (composerCaptureBefore !== null) {
+    if (isConnected.value) setCaptureEnabled(composerCaptureBefore)
+    composerCaptureBefore = null
+  }
+}
 const ttsInput = ref('')
 const isThinking = ref(false)
 const isRecordingVoice = ref(false)
@@ -848,6 +844,7 @@ const getNotificationIcon = (type) => {
 }
 
 const handleVoiceEvent = (event) => {
+  composerRef.value?.receive(event)
   voiceTestPanelRef.value?.handleVoiceEvent(event)
   if (event.type === 'state') {
     voiceState.value = event.state
@@ -1000,6 +997,7 @@ const {
   stopPlay,
   resumePlayback,
   setCaptureEnabled,
+  getCaptureRequested,
   interruptVoice,
   acknowledgeBoardDisplay,
 } = useWebRTC({
@@ -1391,45 +1389,8 @@ const clearInput = () => {
 }
 
 const sendChatMessage = async () => {
-  if (!chatInput.value.trim()) return
-  
-  // 檢查是否已連線
-  if (!isConnected.value) {
-    showNotification(t('notifications.connectFirst'), 'warning')
-    return
-  }
-  
-  const message = chatInput.value
-  addMessage(message, 'user')
-  chatInput.value = ''
-  
-  isThinking.value = true
-  
-  try {
-    const response = await fetch('/human', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: message,
-        type: 'chat',
-        interrupt: true,
-        sessionid: sessionId.value
-      })
-    })
-    
-    const data = await response.json().catch(() => ({}))
-    console.log('回覆輪次已接受:', data)
-    if (!response.ok || data.code === -1) {
-      throw new Error(data.msg || `HTTP ${response.status}`)
-    }
-  } catch (error) {
-    console.error('Failed to send message:', error)
-    const detail = error && error.message ? String(error.message) : ''
-    showNotification(
-      detail ? `${t('notifications.messageFailed')}：${detail}` : t('notifications.messageFailed'),
-      'error'
-    )
-  }
+  await nextTick()
+  return composerRef.value?.send()
 }
 
 const sendTTSMessage = async () => {

@@ -61,7 +61,7 @@ _RULES_LOCK = threading.RLock()
 DEFAULT_STAGE_CAPTION_MAX_CHARS = 120
 MIN_STAGE_CAPTION_MAX_CHARS = 20
 MAX_STAGE_CAPTION_MAX_CHARS = 2000
-DEFAULT_STAGE_IDLE_RESET_SECONDS = 10
+DEFAULT_STAGE_IDLE_RESET_SECONDS = 3
 MIN_STAGE_IDLE_RESET_SECONDS = 3
 MAX_STAGE_IDLE_RESET_SECONDS = 300
 DEFAULT_CAPTION_X = 50
@@ -435,9 +435,12 @@ def validate_board_preset(value) -> str:
 
 
 def stage_snapshot(config) -> Dict[str, Any]:
+    from src.config.stage_composer import snapshot as composer_snapshot
     stage = getattr(config, "stage", None)
     caption = getattr(stage, "caption_max_chars", DEFAULT_STAGE_CAPTION_MAX_CHARS)
     return {
+        **composer_snapshot(stage),
+        "full_reset_seconds": 120,
         "background_id": str(getattr(stage, "background_id", "") or ""),
         "caption_max_chars": validate_stage_caption_max_chars(caption),
         "idle_reset_seconds": _validate_int_range(
@@ -533,11 +536,13 @@ def stage_snapshot(config) -> Dict[str, Any]:
 
 def apply_stage_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
     """更新並持久化數字人舞台顯示設定。"""
+    from src.config.stage_composer import validate as validate_composer
     stage = getattr(config, "stage", None)
     if stage is None:
         raise SettingsError("當前配置不支援舞台設定，請更新 config.yaml", status=400)
     payload = params or {}
     try:
+        composer_values = validate_composer(payload, stage)
         if "caption_max_chars" in payload:
             stage.caption_max_chars = validate_stage_caption_max_chars(
                 payload["caption_max_chars"]
@@ -643,6 +648,8 @@ def apply_stage_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
             stage.mic_preset = validate_board_preset(payload["mic_preset"])
     except ValueError as exc:
         raise SettingsError(str(exc)) from exc
+    for key, value in composer_values.items():
+        setattr(stage, key, value)
     persist_runtime_overrides(config)
     return stage_snapshot(config)
 

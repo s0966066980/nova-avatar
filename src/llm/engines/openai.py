@@ -167,12 +167,17 @@ class OpenAILLM(BaseLLM):
                 messages.extend(self._history.preview_messages(message))
             else:
                 messages.extend(self._history.request_messages(history_transaction))
+            request_message = history_transaction.user_text if history_transaction is not None else message
+            if hasattr(request_message, 'parts'):
+                messages[-1] = {**messages[-1], 'content': list(request_message.parts)}
             profile = getattr(llm_cfg, 'assistant_profile', None)
             if getattr(profile, 'output_locale', 'zh-TW') == 'en-US':
                 # Reinforce the session policy beside the current question. This
                 # is a request-only copy; never rewrite retained user messages.
-                messages[-1] = {**messages[-1], 'content': messages[-1]['content'] +
-                                '\n\n[Session language: English. Answer in English.]'}
+                content = messages[-1]['content']
+                hint = '\n\n[Session language: English. Answer in English.]'
+                messages[-1] = {**messages[-1], 'content': (
+                    [*content, {'type': 'text', 'text': hint}] if isinstance(content, list) else content + hint)}
             
             logger.info(f"Sending {len(messages)} messages to LLM (including system prompt and history)")
             if self.observe_context:
@@ -205,7 +210,7 @@ class OpenAILLM(BaseLLM):
                 usage = getattr(chunk, 'usage', None)
                 if self.context_usage is not None and usage is not None and isinstance(getattr(usage, 'prompt_tokens', None), int):
                     self.context_usage.update(input_tokens=usage.prompt_tokens, estimated=False,
-                                              source='provider usage')
+                                              source='provider usage', visual_tokens_unknown=False)
                     capacity = self.context_usage.get('capacity')
                     used = usage.prompt_tokens + self.max_tokens
                     self.context_usage.update(

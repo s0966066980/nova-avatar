@@ -660,17 +660,11 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
             async def enqueue(self, frame, eventpoint=None):
                 self.items.append((frame, eventpoint))
                 if (
-                    self.kind == "audio"
-                    and eventpoint
-                    and eventpoint["generation"] == 2
-                    and len(
-                        [
-                            item
-                            for item in self.items
-                            if item[1] and item[1]["generation"] == 2
-                        ]
-                    ) == 2
+                    len(audio_track.items) == 2
+                    and len(video_track.items) == 1
                 ):
+                    # Stop only after the complete audio/video pair arrived;
+                    # stopping on audio alone may correctly fence out video.
                     quit_event.set()
                 return True
 

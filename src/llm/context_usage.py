@@ -49,17 +49,29 @@ def _estimate(text: str) -> int:
 
 def measure_request(base_url: str, messages: list[dict], output_budget: int,
                     *, local: bool, model: str, template_options: dict | None = None) -> dict:
-    history_text = '\n'.join(str(m.get('content', '')) for m in messages[1:-1])
-    total_text = '\n'.join(str(m.get('content', '')) for m in messages)
+    def text_content(message):
+        content = message.get('content', '')
+        return ('\n'.join(p.get('text', '') for p in content if p.get('type') == 'text')
+                if isinstance(content, list) else str(content))
+    images = sum(1 for m in messages if isinstance(m.get('content'), list)
+                 for part in m['content'] if part.get('type') == 'image_url')
+    history_text = '\n'.join(text_content(m) for m in messages[1:-1])
+    total_text = '\n'.join(text_content(m) for m in messages)
     result = {
         'model': model, 'capacity': None, 'input_tokens': _estimate(total_text) + 4 * len(messages),
         'history_tokens': _estimate(history_text), 'history_estimated': True,
         'reserved_output_tokens': output_budget, 'estimated': True,
         'source': 'estimate', 'observed_at': time.time(),
+        'image_count': images, 'visual_tokens_unknown': bool(images),
     }
     if local:
         result['capacity'] = deployed_capacity(base_url)
         try:
+            if images:
+                # The text tokenizer cannot measure mtmd image embeddings.
+                # Provider prompt_tokens will replace this lower bound later.
+                result['source'] = 'text estimate; visual tokens pending provider usage'
+                raise ValueError('visual token preflight unavailable')
             root = _root(base_url)
             templated = requests.post(root + '/apply-template', json={
                 **(template_options or {}), 'messages': messages,

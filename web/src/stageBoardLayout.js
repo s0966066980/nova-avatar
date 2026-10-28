@@ -89,6 +89,32 @@ export function captionStyle(x, y, width) {
   }
 }
 
+/** Keep the complete reply region clear of the fixed composer rectangle. */
+export function placeStageCaption({ stageW, stageH, x, y, width, captionH, composer }) {
+  const style = { ...captionStyle(x, y, width), maxHeight: '', overflow: '' }
+  if (!composer || !captionH) return style
+  const pad = Math.max(4, 12 * previewScale(stageW, stageH))
+  const gap = Math.max(8, 8 * previewScale(stageW, stageH))
+  const w = stageW * parseFloat(style.width) / 100
+  const left = stageW * parseFloat(style.left) / 100 - w / 2
+  const desired = stageH * clampPercent(y) / 100 - captionH / 2
+  if (left + w <= composer.left || left >= composer.left + composer.width ||
+      desired + captionH + gap <= composer.top || desired >= composer.top + composer.height + gap) return style
+  const candidates = [composer.top - gap - captionH, composer.top + composer.height + gap]
+    .filter(top => top >= pad && top + captionH <= stageH - pad)
+  let top
+  if (candidates.length) top = candidates.sort((a, b) => Math.abs(a - desired) - Math.abs(b - desired))[0]
+  else {
+    const above = Math.max(0, composer.top - gap - pad)
+    const below = Math.max(0, stageH - pad - composer.top - composer.height - gap)
+    const room = Math.max(above, below)
+    top = above >= below ? pad : composer.top + composer.height + gap
+    style.maxHeight = `${room}px`
+    style.overflow = 'hidden'
+  }
+  return { ...style, top: `${top}px`, transform: 'translate(-50%, 0)' }
+}
+
 function clampPercent(value) {
   const n = Number(value)
   if (!Number.isFinite(n)) return 0

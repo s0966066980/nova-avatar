@@ -132,7 +132,7 @@ def list_gguf_models(extra_dir: str = "") -> List[Dict[str, Any]]:
         if not folder.is_dir():
             continue
         for gguf in sorted(folder.glob("*.gguf")):
-            if not gguf.is_file():
+            if not gguf.is_file() or 'mmproj' in gguf.name.lower():
                 continue
             key = str(gguf.resolve())
             if key in seen:
@@ -356,6 +356,13 @@ def ensure_server(
         same = (status["owned"] and _loaded_model == gguf.stem) or (
             (not status["owned"]) and _same_external_model(host, port, gguf.stem)
         )
+        if same and gguf.name == 'gemma-4-E2B_q4_0-it.gguf' and (gguf.parent / 'gemma-4-E2B-it-mmproj.gguf').is_file():
+            import requests
+            try:
+                props = requests.get(f'http://{host}:{int(port)}/props', timeout=2).json()
+                same = props.get('modalities', {}).get('vision') is True
+            except (requests.RequestException, ValueError):
+                same = False
         if same:
             return openai_base_url(host, port)
         if status["owned"]:
@@ -402,6 +409,12 @@ def ensure_server(
         "--reasoning-budget",
         str(LFM_REASONING_BUDGET) if is_lfm25_reasoning(gguf.stem) else "0",
     ]
+    # Only the tested model/projector pairing is automatic. Never attach an
+    # arbitrary GGUF from the model directory to another language model.
+    if gguf.name == 'gemma-4-E2B_q4_0-it.gguf':
+        projector = gguf.parent / 'gemma-4-E2B-it-mmproj.gguf'
+        if projector.is_file():
+            base_cmd.extend(['--mmproj', str(projector)])
     n_layers = gguf_block_count(gguf) or 64
     if has_cuda_backend(binary):
         ngl = suggest_gpu_layers(gguf.stat().st_size, cuda_free_mb(), n_layers)

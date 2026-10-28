@@ -773,8 +773,8 @@
 
             <div class="setting-form-row">
               <div class="field-label-group">
-                <label for="stage-idle-reset-seconds" class="field-main-label">訪客對話重置時間</label>
-                <span id="stage-idle-reset-hint" class="field-sub-hint">舞台上一輪回答播放結束後，閒置多久清除畫面與對話上下文；保持連線與收音設定 (3–300 秒)</span>
+                <label for="stage-idle-reset-seconds" class="field-main-label">舞台回答清除時間</label>
+                <span id="stage-idle-reset-hint" class="field-sub-hint">閒置後只清字幕與看板，保留對話記憶及附件；閒置 120 秒才完整清空。處理及回答期間暫停計時。</span>
               </div>
               <div class="field-control-area flex-col">
                 <input
@@ -809,6 +809,20 @@
               </div>
             </div>
 
+            <div class="stage-composer-controls" style="border-top:1px solid var(--border-subtle);padding-top:14px">
+              <label class="field-main-label"><input type="checkbox" v-model="composerDraft.composer_enabled"> 開啟舞台文字與附件輸入</label>
+              <p class="field-sub-hint">套用所有舞台；各場對話與附件互相獨立。高度隨舞台等比縮放，內容較多時在框內捲動；預覽與舞台都會避開回覆文字區。</p>
+              <div class="stage-position-sliders">
+                <template v-for="field in composerFields" :key="field.key">
+                  <label :for="field.key">{{ field.label }} {{ composerDraft[field.key] }}{{ field.unit }}</label>
+                  <input :id="field.key" type="range" class="std-range" :min="field.min" :max="field.max" step="1" v-model.number="composerDraft[field.key]">
+                </template>
+              </div>
+              <label for="composer-placeholder-zh" class="field-main-label">中文輸入提示</label>
+              <input id="composer-placeholder-zh" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_zh">
+              <label for="composer-placeholder-en" class="field-main-label">英文輸入提示</label>
+              <input id="composer-placeholder-en" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_en">
+            </div>
             <div class="stage-caption-controls" style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
               <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
                 <i class="bi bi-badge-cc-fill" style="color: var(--brand-light);"></i> 即時字幕帶展示區域
@@ -896,7 +910,7 @@
             </span>
             <div
               ref="stagePreviewRef"
-              class="interactive-large-stage stage-direct-editor standalone-stage-preview"
+              class="interactive-large-stage stage-direct-editor standalone-stage-preview" data-composer-canvas
               :data-board-style="selectedBoardStyle"
               @pointermove="moveStageDirectEdit"
               @pointerup="finishStageDirectEdit"
@@ -941,6 +955,11 @@
                 aria-label="拖曳調整展開看板按鈕位置"
                 @pointerdown.stop.prevent="startStageDirectEdit('board-open', $event)"
               ><span class="stage-board-open-icon" aria-hidden="true">{{ stagePreviewBoardOpenPresentation.icon }}</span> 展開看板</button>
+              <ConversationComposer v-if="composerDraft.composer_enabled" class="stage-preview-composer"
+                stage preview :settings="composerDraft" :enabled="composerDraft.composer_enabled"
+                @layout="stagePreviewComposerBox = $event"
+                @pointerdown.stop.prevent="startStageDirectEdit('composer', $event)"
+                tabindex="0" role="img" aria-label="輸入框位置預覽，可使用左側滑桿調整" />
               <div class="stage-preview-mic-wrap" :style="stagePreviewMicStyle">
                 <button
                   type="button"
@@ -954,7 +973,7 @@
                 <span class="stage-preview-mic-hint">直接說話</span>
               </div>
               <div
-                class="stage-preview-captions"
+                class="stage-preview-captions" ref="stagePreviewCaptionRef"
                 :style="stagePreviewCaptionStyle"
                 role="button"
                 tabindex="0"
@@ -966,7 +985,7 @@
               </div>
             </div>
             <span style="font-size: 11.5px; color: var(--text-tertiary);">
-              可直接拖曳看板、麥克風或展開看板按鈕；放開後會套用並保存到數位人舞台。亦可用左側滑桿微調。
+              可直接拖曳輸入框、看板、麥克風或展開看板按鈕；放開後會套用並保存到數位人舞台。亦可用左側滑桿微調。
             </span>
           </section>
         </div>
@@ -1408,12 +1427,14 @@ import RagFlowSettings from './RagFlowSettings.vue'
 import PrerecordedAvatarPanel from './PrerecordedAvatarPanel.vue'
 import {
   boardReopenPresentation,
-  captionStyle,
   micStyle,
   placeStageBoard,
   previewScale,
   STAGE_CAPTION_RATIO
 } from '../stageBoardLayout.js'
+import { composerGeometry } from '../conversationAttachments.js'
+import ConversationComposer from './ConversationComposer.vue'
+import { placeStageCaption } from '../stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
 
 const selectedPresentation = ref('musetalk')
@@ -1451,6 +1472,10 @@ const settingsContentRef = ref(null)
 const confirmKind = ref('')
 const stagePreviewRef = ref(null)
 const stagePreviewSize = ref({ width: 405, height: 720 })
+const stagePreviewCaptionRef = ref(null)
+const stagePreviewCaptionHeight = ref(120)
+const stagePreviewComposerBox = ref(null)
+let composerDragOffset = null
 let stagePreviewObserver = null
 const stageDirectEditTarget = ref('')
 const EDITOR_HEIGHT_STORAGE_KEY = STORAGE_KEYS.editorHeights
@@ -1614,6 +1639,7 @@ const {
   filteredCharacters,
   llmDirty,
   stageDirty,
+  composerDraft,
   avatarDirty,
   loadRuntimeSettings,
   loadOllamaModels,
@@ -1755,16 +1781,19 @@ const stagePreviewBoardOpenPresentation = computed(() => boardReopenPresentation
   selectedBoardOpenX.value,
   selectedBoardOpenY.value
 ))
-const stagePreviewCaptionStyle = computed(() => captionStyle(
-  selectedCaptionX.value,
-  selectedCaptionY.value,
-  selectedCaptionWidth.value
-))
+const stagePreviewCaptionStyle = computed(() => placeStageCaption({
+  stageW: stagePreviewSize.value.width, stageH: stagePreviewSize.value.height,
+  x: selectedCaptionX.value, y: selectedCaptionY.value, width: selectedCaptionWidth.value,
+  captionH: stagePreviewCaptionHeight.value,
+  composer: composerDraft.composer_enabled ? stagePreviewComposerBox.value : null
+}))
 
 const measureStagePreview = () => {
   const stageNode = stagePreviewRef.value
   if (!stageNode?.clientWidth || !stageNode?.clientHeight) return
   stagePreviewSize.value = { width: stageNode.clientWidth, height: stageNode.clientHeight }
+  const captions = stagePreviewCaptionRef.value
+  if (captions) stagePreviewCaptionHeight.value = Math.max(captions.offsetHeight, captions.scrollHeight)
 }
 
 const observeStagePreview = () => {
@@ -1772,13 +1801,26 @@ const observeStagePreview = () => {
   if (!window.ResizeObserver) return
   stagePreviewObserver = new ResizeObserver(measureStagePreview)
   if (stagePreviewRef.value) stagePreviewObserver.observe(stagePreviewRef.value)
+  if (stagePreviewCaptionRef.value) stagePreviewObserver.observe(stagePreviewCaptionRef.value)
   measureStagePreview()
 }
 
+const composerFields = [
+  { key:'composer_x', label:'輸入框水平位置', min:0, max:100, unit:'%' },
+  { key:'composer_y', label:'輸入框垂直位置', min:0, max:100, unit:'%' },
+  { key:'composer_width', label:'輸入框寬度', min:40, max:100, unit:'%' },
+  { key:'composer_height', label:'輸入框高度', min:120, max:480, unit:'px' },
+  { key:'composer_font_size', label:'輸入框字級', min:12, max:28, unit:'px' },
+  { key:'composer_opacity', label:'輸入框背景不透明度', min:0, max:100, unit:'%' }
+]
 const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(value)))
 
 const startStageDirectEdit = (target, event) => {
   stageDirectEditTarget.value = target
+  if (target === 'composer') {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    composerDragOffset = { x: event.clientX - bounds.left, y: event.clientY - bounds.top }
+  }
   event.currentTarget.setPointerCapture?.(event.pointerId)
 }
 
@@ -1789,6 +1831,16 @@ const moveStageDirectEdit = (event) => {
 
   const x = ((event.clientX - rect.left) / rect.width) * 100
   const y = ((event.clientY - rect.top) / rect.height) * 100
+  if (target === 'composer') {
+    const canvas = stagePreviewRef.value
+    const scale = rect.width / (canvas.offsetWidth || rect.width)
+    const box = composerGeometry(composerDraft, canvas.clientWidth, canvas.clientHeight)
+    const left = (event.clientX - rect.left - composerDragOffset.x) / scale - canvas.clientLeft
+    const top = (event.clientY - rect.top - composerDragOffset.y) / scale - canvas.clientTop
+    composerDraft.composer_x = clampPercent((left - box.pad) / Math.max(1, canvas.clientWidth - box.width - box.pad * 2) * 100)
+    composerDraft.composer_y = clampPercent((top - box.pad) / Math.max(1, canvas.clientHeight - box.height - box.pad * 2) * 100)
+    return
+  }
   if (target === 'mic') {
     selectedMicX.value = clampPercent(x)
     selectedMicY.value = clampPercent(y)
@@ -1831,6 +1883,7 @@ const moveStageDirectEdit = (event) => {
 const finishStageDirectEdit = async () => {
   if (!stageDirectEditTarget.value) return
   stageDirectEditTarget.value = ''
+  composerDragOffset = null
   try {
     await applyStageSettings()
     emit('notification', '舞台位置已套用。', 'success')
@@ -2486,4 +2539,9 @@ defineExpose({
     width: 100%;
   }
 }
+</style>
+
+<style scoped>
+.stage-layout-preview .standalone-stage-preview{width:100%;max-width:calc(min(82dvh,760px) * .5625);height:auto;min-height:0;aspect-ratio:9 / 16;margin-inline:auto;border:0;box-shadow:0 0 0 1px var(--border-subtle)}
+.stage-preview-composer{z-index:6;cursor:grab;touch-action:none}
 </style>

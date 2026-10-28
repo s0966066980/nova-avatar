@@ -7,10 +7,13 @@
 from __future__ import annotations
 
 import os
+from copy import deepcopy
 from typing import TYPE_CHECKING, Callable, Optional
 
 from src.avatars.base import BaseAvatar
 from src.llm.engines import OpenAILLM
+from src.llm.base import load_system_prompt
+from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
 from src.utils.logging import logger
 
@@ -36,6 +39,19 @@ def llm_response(
         from src.server.state import state as server_state
 
         config = getattr(avatar_stream, 'config', None) or server_state.config
+        # Avatars own their locale/voice, while role and restrictions remain
+        # console-owned. A copied avatar config must not freeze old behavior.
+        published = server_state.config or config
+        profile = getattr(avatar_stream, '_assistant_profile_snapshot', None)
+        if profile is None:
+            profile = getattr(getattr(published, 'llm', None), 'assistant_profile', None)
+        if profile is not None and config is not None:
+            if config is published:
+                config = deepcopy(config)
+            profile = deepcopy(profile)
+            conversation = getattr(config, 'conversation', None)
+            profile.output_locale = getattr(conversation, 'locale', profile.output_locale)
+            config.llm.assistant_profile = profile
         _ensure_llamacpp_if_needed(config)
         if config is not None and getattr(config, "llm", None) is not None:
             base_url = config.llm.base_url or base_url
@@ -56,6 +72,8 @@ def llm_response(
             )
         
         llm = _session_llm_instances[sessionid]
+        llm.config = config
+        llm.system_prompt = load_system_prompt(config)
         llm.base_url = base_url
         llm.model = model
         if api_key:
@@ -63,8 +81,7 @@ def llm_response(
 
         generation_datainfo = dict(datainfo or {})
         rules_snapshot = getattr(avatar_stream, "_reply_rules_snapshot", None)
-        if rules_snapshot is not None:
-            generation_datainfo["rules_snapshot"] = rules_snapshot
+        generation_datainfo["rules_snapshot"] = rules_snapshot or snapshot_from_config(published)
         mode_callback = getattr(avatar_stream, "_reply_mode_callback", None)
         if callable(mode_callback):
             generation_datainfo["on_mode"] = mode_callback

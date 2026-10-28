@@ -77,6 +77,7 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     rollupOptions: {
+      input: { console: path.resolve(__dirname, 'index.html'), stage: path.resolve(__dirname, 'stage.html') },
       output: {
         manualChunks: {
           'vendor': ['vue'],

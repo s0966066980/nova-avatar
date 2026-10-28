@@ -11,9 +11,13 @@ from opencc import OpenCC
 
 _TW = OpenCC("s2twp")
 _SELF_IDENTITY = re.compile(
-    r"(?P<prefix>(?:我(?:是|叫)|我的名字是)\s*)(?P<name>[^，。！？\n]{1,80})"
+    r"(?P<prefix>(?:我(?:是|叫)|我的名字是|\bI am|\bI'm|\bI’m|\bMy name is)\s*)"
+    r"(?P<name>[^，。！？.!?\n]{1,80})", re.IGNORECASE,
 )
-_IDENTITY_QUESTION = re.compile(r"你是誰|你叫什麼|你的(?:名字|名稱|身份)|自我介紹|介紹你自己")
+_IDENTITY_QUESTION = re.compile(
+    r"你是誰|你叫什麼|你的(?:名字|名稱|身份)|自我介紹|介紹你自己"
+    r"|introduce\s+yourself|who\s+are\s+you|what(?:'s|\s+is)\s+your\s+name", re.IGNORECASE,
+)
 
 
 def join_spoken_fragments(fragments) -> str:
