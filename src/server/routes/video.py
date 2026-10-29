@@ -3,6 +3,7 @@
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
 """影片相關路由"""
+import asyncio
 import os
 import json
 from aiohttp import web
@@ -121,7 +122,7 @@ async def download_record(request):
         
         filepath = str(RECORDS_DIR / filename)
         
-        if not os.path.exists(filepath):
+        if not await asyncio.to_thread(os.path.isfile, filepath):
             logger.warning(f'[下載] 檔案不存在: {filepath}')
             return web.Response(text='檔案不存在', status=404)
         

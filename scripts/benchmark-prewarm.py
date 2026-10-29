@@ -74,8 +74,10 @@ async def trial(http, args, base_url, pcm, enabled):
     env = dict(os.environ, NOVA_AVATAR_PREWARM_ENABLED="1" if enabled else "0")
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="nova-prewarm-") as temporary:
-        with open(Path(temporary) / "backend.log", "wb") as log:
-            process = subprocess.Popen(
+        # No other task runs on this loop while the backend is launched, so the
+        # brief blocking open and fork stall nothing; waits use to_thread below.
+        with open(Path(temporary) / "backend.log", "wb") as log:  # noqa: ASYNC230 -- loop is idle
+            process = subprocess.Popen(  # noqa: ASYNC220 -- loop is idle at launch
                 [sys.executable, "-m", "src.server.app", "--config", args.config],
                 cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
             )

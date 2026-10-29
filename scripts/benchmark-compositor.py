@@ -33,7 +33,9 @@ def main():
         cwd=ROOT, check=True, capture_output=True, text=True,
     ).stdout
     namespace = {"__name__": "_nova_compositor_baseline"}
-    exec(compile(source, "<trusted-git-baseline>", "exec"), namespace)
+    # The baseline is this repository's own committed source at a ref the
+    # operator names, loaded to compare against the working-tree compositor.
+    exec(compile(source, "<trusted-git-baseline>", "exec"), namespace)  # noqa: S102 -- trusted git baseline
     baseline = namespace["chroma_composite"]
     results = []
     for width, height in ((1080, 1920), (720, 1280)):

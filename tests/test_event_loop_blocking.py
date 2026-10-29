@@ -308,7 +308,7 @@ def fake_merge(monkeypatch):
 
     async def create_subprocess_exec(*argv, **kwargs):
         commands.append(argv)
-        Path(argv[-1]).write_bytes(b"merged")
+        Path(argv[-1]).write_bytes(b"merged")  # noqa: ASYNC240 -- test fake for the ffmpeg child
         process = SimpleNamespace(returncode=0, kill=lambda: None)
 
         async def wait():
