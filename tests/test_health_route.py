@@ -10,6 +10,7 @@ from src.server.routes.health import health_check
 from src.server import routes
 from src.server.server import create_app
 from src.server.state import state
+from tests.access_helpers import built_frontend
 
 
 class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
@@ -52,7 +53,7 @@ class ServerRouteRegistrationTests(unittest.TestCase):
         """Creating the app must not fail when registering the path picker."""
         self.assertTrue(callable(routes.pick_speech_path))
 
-        app = create_app()
+        app = create_app(frontend_dir=built_frontend())
         registered = {
             (route.method, route.resource.canonical)
             for route in app.router.routes()
