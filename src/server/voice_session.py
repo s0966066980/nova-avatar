@@ -51,8 +51,9 @@ from src.vad.service import create_segmenter
 EventSink = Callable[[str], None]
 TestResultSink = Callable[[dict], object]
 OUTPUT_STALL_FRAMES = 50  # one second at the 20 ms audio commit clock
-# The main answer waits at most this long for retrieval (ADR 0022).
-RETRIEVAL_BUDGET_SECONDS = 0.4
+# The main answer waits at most this long for retrieval (ADR 0022). 700 ms is
+# interim (Q25): RAGFlow's query embedding dominates retrieval (issue 15).
+RETRIEVAL_BUDGET_SECONDS = 0.7
 # Answer content a held turn keeps from clients until routing releases it.
 _HELD_EVENT_TYPES = frozenset({
     "rag_retrieval",

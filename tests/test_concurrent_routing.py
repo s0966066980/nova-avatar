@@ -421,6 +421,22 @@ class RetrievalBudgetTests(_SessionCase):
         self.assertEqual(statuses, ["timeout"])
         self.assertIsNotNone(self.session.metrics_snapshot()["stage_seconds"]["retrieval"])
 
+    async def test_retrieval_slower_than_old_400ms_cap_is_used(self):
+        # Q25: the cap is 700 ms while RAGFlow's own retrieval is ~0.5-0.6 s.
+        async def typical(_client, _question, _dataset_ids, **_kwargs):
+            await asyncio.sleep(0.5)
+            return {"status": "matched", "sources": [{
+                "content": "一般速度的事實", "document_name": "手冊",
+                "document_id": "d", "dataset_id": "a" * 32}]}
+
+        answer = _Answer(self.session)
+        with patch("src.server.voice_session.RagFlowClient.retrieve", typical):
+            await self._start(None, answer)
+            await asyncio.wait_for(self.session._turn_task, 3)
+        self.assertIn("一般速度的事實", answer.calls[0]["rag_context"])
+        statuses = [e["status"] for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual(statuses, ["matched"])
+
     async def test_retrieval_within_budget_is_used(self):
         async def fast(_client, _question, _dataset_ids, **_kwargs):
             return {"status": "matched", "sources": [{
