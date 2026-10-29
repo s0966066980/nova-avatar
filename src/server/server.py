@@ -24,6 +24,7 @@ from src.scene.service import scene_service
 from src.profiles.coordinator import initialize_roles
 from src.server.routes.profiles import register_profile_routes
 from src.server.access import access_guard, install_access
+from src.utils.paths import WEB_DIR
 
 
 # Upper bound for an orderly stop after SIGTERM/SIGINT. Closing WebRTC peers
@@ -32,6 +33,24 @@ from src.server.access import access_guard, install_access
 SHUTDOWN_DEADLINE_SECONDS = 15.0
 # How long aiohttp waits for open HTTP connections while cleaning up.
 HTTP_SHUTDOWN_TIMEOUT_SECONDS = 5.0
+# The Vite build (`npm run build`). Only this directory is public; the web/
+# source tree (configs, logs, prototypes) is never served.
+FRONTEND_DIST = WEB_DIR / "dist"
+
+
+class FrontendNotBuilt(RuntimeError):
+    """``web/dist`` has no console page: the frontend was never built."""
+
+
+def require_frontend(frontend_dir: Path | None = None) -> Path:
+    """The built frontend directory, or ``FrontendNotBuilt`` with a build hint."""
+    root = Path(frontend_dir) if frontend_dir is not None else FRONTEND_DIST
+    if not (root / "index.html").is_file():
+        raise FrontendNotBuilt(
+            f"找不到前端建置 {root / 'index.html'}；請先執行 `cd web && npm run build`"
+            "（scripts/start-all.sh 與 scripts/start-frontend.sh 會自動建置）"
+        )
+    return root
 
 
 @web.middleware
@@ -72,11 +91,13 @@ async def on_shutdown(app):
     scene_service.close()
 
 
-def create_app(*, admin_env_path: Path | None = None):
+def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None = None):
     """建立並配置 aiohttp 應用
 
-    ``admin_env_path`` overrides config/admin.env (the admin password hash).
+    ``admin_env_path`` overrides config/admin.env (the admin password hash);
+    ``frontend_dir`` overrides the built frontend directory (``web/dist``).
     """
+    frontend = require_frontend(frontend_dir)
     state.shutting_down = False
     # 單獨設定較大的請求體上限，方便上傳音影片
     # Leave space for multipart headers around the 100 MB background asset.
@@ -152,9 +173,14 @@ def create_app(*, admin_env_path: Path | None = None):
     app.router.add_get("/api/voice-tests", routes.list_voice_tests)
     app.router.add_post("/api/voice-tests/run", routes.run_voice_test)
     app.router.add_delete("/api/voice-tests", routes.clear_voice_tests)
-    # 前端靜態資源託管
-    frontend = Path('web/dist')
-    app.router.add_static('/', path=frontend if (frontend / 'index.html').is_file() else Path('web'))
+    # 前端靜態資源託管：控制台在 /，舞台在 /stage.html，與 API 同源
+    console_page = frontend / "index.html"
+
+    async def console_index(request):
+        return web.FileResponse(console_page)
+
+    app.router.add_get("/", console_index)
+    app.router.add_static('/', path=frontend)
     # No CORS: the console and stage are same-origin pages of this server.
     return app
 

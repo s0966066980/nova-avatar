@@ -14,9 +14,12 @@ app built with ``install_access``) over HTTP::
 
 from __future__ import annotations
 
+import atexit
+import shutil
 import tempfile
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from functools import cache
 from pathlib import Path
 
 from aiohttp import CookieJar, web
@@ -46,10 +49,20 @@ def appear_from(remote: str):
     return middleware
 
 
+@cache
+def built_frontend() -> Path:
+    """A stand-in for ``web/dist``: create_app() refuses to start without a build."""
+    root = Path(tempfile.mkdtemp(prefix="nova-avatar-dist-"))
+    atexit.register(shutil.rmtree, root, ignore_errors=True)
+    (root / "index.html").write_text('<div id="nova-console"></div>\n', encoding="utf-8")
+    (root / "stage.html").write_text('<div id="nova-stage"></div>\n', encoding="utf-8")
+    return root
+
+
 def default_app_factory(admin_env_path: Path) -> web.Application:
     from src.server.server import create_app
 
-    return create_app(admin_env_path=admin_env_path)
+    return create_app(admin_env_path=admin_env_path, frontend_dir=built_frontend())
 
 
 @asynccontextmanager

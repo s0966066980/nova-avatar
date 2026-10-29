@@ -21,21 +21,22 @@ test('控制台與舞台 offer 帶有不同 client role', () => {
   assert.match(stage, /client_role:\s*['"]stage['"]/) // stage offer
 })
 
-test('啟動資訊分別顯示兩頁的 Local 與 Network 網址', () => {
+test('啟動資訊只把控制台列為區網網址，舞台僅限本機', () => {
   assert.match(startup, /控制台 Local:/)
   assert.match(startup, /控制台 Network:/)
   assert.match(startup, /數字人舞台 Local:/)
-  assert.match(startup, /數字人舞台 Network:/)
+  assert.doesNotMatch(startup, /舞台 Network:/)
 })
 
-test('整合啟動使用精簡前端輸出，避免重複顯示網址與配置', () => {
+test('整合啟動先建置前端，由後端同源提供，不再啟動 Vite 開發伺服器', () => {
   const viteConfig = readFileSync(
     new URL('../vite.config.js', import.meta.url),
     'utf8'
   )
-  assert.match(startup, /VITE_CONFIG_QUIET=1/)
-  assert.match(startup, /npm --silent run dev -- --logLevel warn/)
+  assert.match(startup, /npm --silent run build/)
+  assert.doesNotMatch(startup, /run dev/)
   assert.match(viteConfig, /process\.env\.VITE_CONFIG_QUIET/)
+  assert.match(viteConfig, /let webHost = '127\.0\.0\.1'/)
 })
 
 test('舞台字幕只接受播放提交事件並取消舊淡出計時', () => {
