@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 發話結束判定與用戶端偏移
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 依[規格](../spec.md)。E2B 切換後（`after-e2b-2026-10-30.json`）一般輪次感知首音延遲 P50 2.03 s，其中約 0.71 s 不在伺服器各階段內：`vad_endpoint` 固定 0.32 s，用戶端偏移（感知 − 伺服器估算）P50 0.39 s、P95 0.50 s。第一階段目標 1.2 s 下，這兩段就占六成。
@@ -70,3 +70,10 @@ Blocked by: 01
    - 若 `uplink` 明顯大於 0.12 s，代表伺服器上行處理有積壓，再查 `_consume_track`。
 4. 選做：在舞台 Chrome 開 `chrome://webrtc-internals`，讀音訊 inbound-rtp 的 `jitterBufferDelay / jitterBufferEmittedCount`，作為瀏覽器下行的參考值（不計入感知首音延遲）。
 5. 把各段 P50／P95 摘要補在這裡，再設 `Status: resolved`。
+
+### 2026-10-30 實機拆解（orchestrator）
+`offset-split-2026-10-30.json`（整合分支 3f7dc45，E2B、中英偵測、檢索上限 0.7 s、Edge TTS，32 輪全對齊）：
+- 用戶端偏移 P50 0.388 s ＝ Silero 拖尾 0.076＋上行 0.092＋VAD 處理 0.003＋Edge 開頭無聲段 0.100＋下行（量測工具專有）0.103 s，與離線估計一致。
+- 依新定義（伺服器送出第一個可聽幀）感知首音延遲 P50／P95：一般 1.99／2.22 s、RAG 2.05／2.17 s、交接 1.57／1.92 s；舊定義（用戶端收到）一般 2.12 s。
+- 一般輪次 P50 組成：拖尾 0.07＋靜音等待 0.32＋上行 0.09＋辨識 0.08＋檢索等待 0.57＋首片段 0.43＋片段到送出 0.36＋可聽起點 0.10 s。
+可再節省的選項（靜音等待、抖動緩衝、Edge 開頭無聲段、推測式端點）列於上方，交使用者決定，預設未變。
