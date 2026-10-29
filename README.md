@@ -104,6 +104,16 @@ CPU 像素交付，不能視為整體對話或 WebRTC 加速倍率。
 
 ## 啟動與使用
 
+首次啟動前，先在場域主機設定控制台管理者密碼（隱藏輸入，只保存 scrypt
+hash 於已排除 Git、權限 0600 的 `config/admin.env`；重新執行即更換密碼並
+登出所有人）：
+
+```bash
+uv run python scripts/configure-admin.py
+```
+
+未設定密碼時，控制台的管理 API 一律回 503，後端日誌會提示執行上述腳本。
+
 在專案根目錄執行：
 
 ```bash
@@ -131,6 +141,12 @@ bash ./scripts/start-all.sh
 上表依預設 YAML 的 `app.ssl: true` 顯示 HTTPS；若關閉 SSL，Nova
 控制台和後端網址改用 HTTP。RAGFlow 管理頁只綁定主機 loopback，從另一
 台電腦無法直接連線。後端日誌在 `logs/start-all-backend.log`。
+
+存取規則（路由分類集中在 `src/server/access.py`）：控制台需以管理者密碼
+登入，本機也不例外；登入 cookie 為 `Secure`，區網連入請使用 HTTPS。
+數位人舞台只在場域主機本機（loopback）開啟，其他電腦開啟會被拒絕（403）。
+`/health` 與前端靜態檔不需登入。後端不提供 CORS，跨來源的變更請求一律
+拒絕。
 
 啟動後，在控制台選擇數位人與模型，使用文字訊息或啟用麥克風開始對話。
 需要文件檢索時，到「設定 → 數位人、AI 與知識設定」選定數位人，
