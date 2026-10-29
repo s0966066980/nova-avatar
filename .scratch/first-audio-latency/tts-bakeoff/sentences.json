@@ -1,0 +1,980 @@
+{
+  "description": "Issue 10 TTS bake-off sentence sets (Nova Avatar). first_fragments: opening fragments of about 15 characters, timed for first-audio latency. zh-TW: 100 Traditional Chinese sentences (Taiwan readings, place names, NT$ amounts and dates, zh-en code switching, general). en-US: English sentences. 'focus' marks words whose Taiwan reading listeners check on the listening page; 'alternatives' are other acceptable transcripts (numbers spoken vs written) for ASR scoring. All text is original and synthetic.",
+  "first_fragments": [
+    {
+      "id": "fragment-01",
+      "text": "歡迎來到臺北，我是你的數位助理。"
+    },
+    {
+      "id": "fragment-02",
+      "text": "您好，今天想了解哪一項服務呢？"
+    },
+    {
+      "id": "fragment-03",
+      "text": "好的，我馬上幫您查詢相關資料。"
+    },
+    {
+      "id": "fragment-04",
+      "text": "明天臺北多雲，午後可能有陣雨。"
+    },
+    {
+      "id": "fragment-05",
+      "text": "這個問題很好，我先簡單說明一下。"
+    },
+    {
+      "id": "fragment-06",
+      "text": "展覽在三樓，搭電梯上去就到了。"
+    },
+    {
+      "id": "fragment-07",
+      "text": "垃圾分類請依照回收桶上的標示。"
+    },
+    {
+      "id": "fragment-08",
+      "text": "星期一到星期五早上九點開放。"
+    },
+    {
+      "id": "fragment-09",
+      "text": "門票全票新台幣三百五十元喔。"
+    },
+    {
+      "id": "fragment-10",
+      "text": "我來介紹一下這家企業的歷史。"
+    },
+    {
+      "id": "fragment-11",
+      "text": "您可以用LINE掃描這個QR code。"
+    },
+    {
+      "id": "fragment-12",
+      "text": "抱歉，我沒有聽清楚，請再說一次。"
+    },
+    {
+      "id": "fragment-13",
+      "text": "我和你一起看看附近的景點吧。"
+    },
+    {
+      "id": "fragment-14",
+      "text": "從這裡走到捷運站大約五分鐘。"
+    },
+    {
+      "id": "fragment-15",
+      "text": "研究團隊今年完成了三項新計畫。"
+    },
+    {
+      "id": "fragment-16",
+      "text": "新竹今天風比較大，出門記得加外套。"
+    },
+    {
+      "id": "fragment-17",
+      "text": "請稍等一下，資料正在整理中。"
+    },
+    {
+      "id": "fragment-18",
+      "text": "這份文件我已經幫您整理好了。"
+    },
+    {
+      "id": "fragment-19",
+      "text": "基隆廟口夜市晚上五點開始營業。"
+    },
+    {
+      "id": "fragment-20",
+      "text": "謝謝您的耐心，祝您有美好的一天。"
+    }
+  ],
+  "zh-TW": [
+    {
+      "id": "tw-reading-01",
+      "category": "taiwan-reading",
+      "text": "請把垃圾丟進分類回收桶。",
+      "focus": [
+        "垃圾"
+      ]
+    },
+    {
+      "id": "tw-reading-02",
+      "category": "taiwan-reading",
+      "text": "垃圾車每天晚上七點經過這條巷子。",
+      "focus": [
+        "垃圾"
+      ]
+    },
+    {
+      "id": "tw-reading-03",
+      "category": "taiwan-reading",
+      "text": "廚餘和一般垃圾要分開處理。",
+      "focus": [
+        "和",
+        "垃圾"
+      ]
+    },
+    {
+      "id": "tw-reading-04",
+      "category": "taiwan-reading",
+      "text": "我和朋友下午要去看展覽。",
+      "focus": [
+        "和"
+      ]
+    },
+    {
+      "id": "tw-reading-05",
+      "category": "taiwan-reading",
+      "text": "你和他是同一個部門的同事嗎？",
+      "focus": [
+        "和"
+      ]
+    },
+    {
+      "id": "tw-reading-06",
+      "category": "taiwan-reading",
+      "text": "老師和學生一起完成了這次活動。",
+      "focus": [
+        "和"
+      ]
+    },
+    {
+      "id": "tw-reading-07",
+      "category": "taiwan-reading",
+      "text": "下星期三的會議改到下午舉行。",
+      "focus": [
+        "星期"
+      ]
+    },
+    {
+      "id": "tw-reading-08",
+      "category": "taiwan-reading",
+      "text": "星期天的導覽名額已經額滿了。",
+      "focus": [
+        "星期"
+      ]
+    },
+    {
+      "id": "tw-reading-09",
+      "category": "taiwan-reading",
+      "text": "每個星期都有新的展品上架。",
+      "focus": [
+        "星期"
+      ]
+    },
+    {
+      "id": "tw-reading-10",
+      "category": "taiwan-reading",
+      "text": "這家企業在臺灣已經經營三十年。",
+      "focus": [
+        "企業"
+      ]
+    },
+    {
+      "id": "tw-reading-11",
+      "category": "taiwan-reading",
+      "text": "中小企業可以申請這項補助。",
+      "focus": [
+        "企業"
+      ]
+    },
+    {
+      "id": "tw-reading-12",
+      "category": "taiwan-reading",
+      "text": "企業參訪團預計明天早上抵達。",
+      "focus": [
+        "企業"
+      ]
+    },
+    {
+      "id": "tw-reading-13",
+      "category": "taiwan-reading",
+      "text": "研究人員正在分析這批資料。",
+      "focus": [
+        "研究"
+      ]
+    },
+    {
+      "id": "tw-reading-14",
+      "category": "taiwan-reading",
+      "text": "施工區域很危險，請不要靠近。",
+      "focus": [
+        "危險"
+      ]
+    },
+    {
+      "id": "tw-reading-15",
+      "category": "taiwan-reading",
+      "text": "她剛剪了頭髮，看起來很有精神。",
+      "focus": [
+        "頭髮"
+      ]
+    },
+    {
+      "id": "tw-reading-16",
+      "category": "taiwan-reading",
+      "text": "這瓶液體不能帶上飛機。",
+      "focus": [
+        "液體"
+      ]
+    },
+    {
+      "id": "tw-reading-17",
+      "category": "taiwan-reading",
+      "text": "我們下個月要去法國旅行。",
+      "focus": [
+        "法國"
+      ]
+    },
+    {
+      "id": "tw-reading-18",
+      "category": "taiwan-reading",
+      "text": "這件衣服的品質很好。",
+      "focus": [
+        "品質"
+      ]
+    },
+    {
+      "id": "tw-reading-19",
+      "category": "taiwan-reading",
+      "text": "我很期待下次再見面。",
+      "focus": [
+        "期待"
+      ]
+    },
+    {
+      "id": "tw-reading-20",
+      "category": "taiwan-reading",
+      "text": "這是一份綜合報告。",
+      "focus": [
+        "綜合"
+      ]
+    },
+    {
+      "id": "tw-reading-21",
+      "category": "taiwan-reading",
+      "text": "便當可以用微波爐加熱。",
+      "focus": [
+        "微波"
+      ]
+    },
+    {
+      "id": "tw-reading-22",
+      "category": "taiwan-reading",
+      "text": "這張照片曝光過度了。",
+      "focus": [
+        "曝光"
+      ]
+    },
+    {
+      "id": "tw-reading-23",
+      "category": "taiwan-reading",
+      "text": "請擲骰子決定順序。",
+      "focus": [
+        "骰子"
+      ]
+    },
+    {
+      "id": "tw-reading-24",
+      "category": "taiwan-reading",
+      "text": "麵糰需要發酵一個小時。",
+      "focus": [
+        "發酵"
+      ]
+    },
+    {
+      "id": "tw-reading-25",
+      "category": "taiwan-reading",
+      "text": "雨後花園裡出現了很多蝸牛。",
+      "focus": [
+        "蝸牛"
+      ]
+    },
+    {
+      "id": "place-01",
+      "category": "place-name",
+      "text": "歡迎來到臺北市信義區。",
+      "focus": [
+        "臺北",
+        "信義"
+      ]
+    },
+    {
+      "id": "place-02",
+      "category": "place-name",
+      "text": "我們搭火車從基隆到新竹。",
+      "focus": [
+        "基隆",
+        "新竹"
+      ]
+    },
+    {
+      "id": "place-03",
+      "category": "place-name",
+      "text": "苗栗的客家小鎮很適合散步。",
+      "focus": [
+        "苗栗"
+      ]
+    },
+    {
+      "id": "place-04",
+      "category": "place-name",
+      "text": "彰化鹿港有很多百年老街。",
+      "focus": [
+        "彰化",
+        "鹿港"
+      ]
+    },
+    {
+      "id": "place-05",
+      "category": "place-name",
+      "text": "嘉義的阿里山以日出聞名。",
+      "focus": [
+        "嘉義",
+        "阿里山"
+      ]
+    },
+    {
+      "id": "place-06",
+      "category": "place-name",
+      "text": "屏東墾丁夏天遊客很多。",
+      "focus": [
+        "屏東",
+        "墾丁"
+      ]
+    },
+    {
+      "id": "place-07",
+      "category": "place-name",
+      "text": "花蓮太魯閣的峽谷非常壯觀。",
+      "focus": [
+        "花蓮",
+        "太魯閣"
+      ]
+    },
+    {
+      "id": "place-08",
+      "category": "place-name",
+      "text": "臺東池上的稻田很漂亮。",
+      "focus": [
+        "臺東",
+        "池上"
+      ]
+    },
+    {
+      "id": "place-09",
+      "category": "place-name",
+      "text": "宜蘭礁溪以溫泉出名。",
+      "focus": [
+        "宜蘭",
+        "礁溪"
+      ]
+    },
+    {
+      "id": "place-10",
+      "category": "place-name",
+      "text": "澎湖的花火節每年都很熱鬧。",
+      "focus": [
+        "澎湖"
+      ]
+    },
+    {
+      "id": "place-11",
+      "category": "place-name",
+      "text": "金門和馬祖都有特別的戰地文化。",
+      "focus": [
+        "金門",
+        "馬祖"
+      ]
+    },
+    {
+      "id": "place-12",
+      "category": "place-name",
+      "text": "淡水老街傍晚可以看夕陽。",
+      "focus": [
+        "淡水"
+      ]
+    },
+    {
+      "id": "place-13",
+      "category": "place-name",
+      "text": "九份山城在新北市瑞芳區。",
+      "focus": [
+        "九份",
+        "瑞芳"
+      ]
+    },
+    {
+      "id": "place-14",
+      "category": "place-name",
+      "text": "南投日月潭可以搭船遊湖。",
+      "focus": [
+        "南投",
+        "日月潭"
+      ]
+    },
+    {
+      "id": "place-15",
+      "category": "place-name",
+      "text": "臺中逢甲夜市有很多小吃。",
+      "focus": [
+        "臺中",
+        "逢甲"
+      ]
+    },
+    {
+      "id": "place-16",
+      "category": "place-name",
+      "text": "臺南安平古堡很有歷史。",
+      "focus": [
+        "臺南",
+        "安平"
+      ]
+    },
+    {
+      "id": "place-17",
+      "category": "place-name",
+      "text": "高雄駁二藝術特區就在港邊。",
+      "focus": [
+        "高雄",
+        "駁二"
+      ]
+    },
+    {
+      "id": "place-18",
+      "category": "place-name",
+      "text": "桃園機場有捷運可以直達臺北。",
+      "focus": [
+        "桃園"
+      ]
+    },
+    {
+      "id": "place-19",
+      "category": "place-name",
+      "text": "北投的地熱谷冒著白色蒸氣。",
+      "focus": [
+        "北投"
+      ]
+    },
+    {
+      "id": "place-20",
+      "category": "place-name",
+      "text": "汐止和內湖之間有很多科技公司。",
+      "focus": [
+        "汐止",
+        "內湖"
+      ]
+    },
+    {
+      "id": "number-01",
+      "category": "number",
+      "text": "門票全票NT$350，半票NT$175。",
+      "alternatives": [
+        "門票全票新台幣三百五十元，半票新台幣一百七十五元。"
+      ]
+    },
+    {
+      "id": "number-02",
+      "category": "number",
+      "text": "這台筆電售價新台幣32,900元。",
+      "alternatives": [
+        "這台筆電售價新台幣三萬兩千九百元。"
+      ]
+    },
+    {
+      "id": "number-03",
+      "category": "number",
+      "text": "活動日期是2026年11月15日。",
+      "alternatives": [
+        "活動日期是二零二六年十一月十五日。"
+      ]
+    },
+    {
+      "id": "number-04",
+      "category": "number",
+      "text": "報名截止日是12月1日下午5點。",
+      "alternatives": [
+        "報名截止日是十二月一日下午五點。"
+      ]
+    },
+    {
+      "id": "number-05",
+      "category": "number",
+      "text": "停車費每小時新台幣40元。",
+      "alternatives": [
+        "停車費每小時新台幣四十元。"
+      ]
+    },
+    {
+      "id": "number-06",
+      "category": "number",
+      "text": "會員卡年費NT$1,200，可分期付款。",
+      "alternatives": [
+        "會員卡年費新台幣一千兩百元，可分期付款。"
+      ]
+    },
+    {
+      "id": "number-07",
+      "category": "number",
+      "text": "本館開放時間為上午9點到下午5點。",
+      "alternatives": [
+        "本館開放時間為上午九點到下午五點。"
+      ]
+    },
+    {
+      "id": "number-08",
+      "category": "number",
+      "text": "2026年10月30日是星期五。",
+      "alternatives": [
+        "二零二六年十月三十日是星期五。"
+      ]
+    },
+    {
+      "id": "number-09",
+      "category": "number",
+      "text": "兩人套餐新台幣888元。",
+      "alternatives": [
+        "兩人套餐新台幣八百八十八元。"
+      ]
+    },
+    {
+      "id": "number-10",
+      "category": "number",
+      "text": "退款將在7到14個工作天內入帳。",
+      "alternatives": [
+        "退款將在七到十四個工作天內入帳。"
+      ]
+    },
+    {
+      "id": "number-11",
+      "category": "number",
+      "text": "今天氣溫介於18到24度。",
+      "alternatives": [
+        "今天氣溫介於十八到二十四度。"
+      ]
+    },
+    {
+      "id": "number-12",
+      "category": "number",
+      "text": "這筆訂單總金額是NT$2,450。",
+      "alternatives": [
+        "這筆訂單總金額是新台幣兩千四百五十元。"
+      ]
+    },
+    {
+      "id": "number-13",
+      "category": "number",
+      "text": "請在3月8日前完成繳費。",
+      "alternatives": [
+        "請在三月八日前完成繳費。"
+      ]
+    },
+    {
+      "id": "number-14",
+      "category": "number",
+      "text": "民國115年1月1日起實施新制。",
+      "alternatives": [
+        "民國一百一十五年一月一日起實施新制。"
+      ]
+    },
+    {
+      "id": "number-15",
+      "category": "number",
+      "text": "單程車票新台幣25元。",
+      "alternatives": [
+        "單程車票新台幣二十五元。"
+      ]
+    },
+    {
+      "id": "number-16",
+      "category": "number",
+      "text": "您的號碼牌是第36號。",
+      "alternatives": [
+        "您的號碼牌是第三十六號。"
+      ]
+    },
+    {
+      "id": "number-17",
+      "category": "number",
+      "text": "講座在下午2點30分開始。",
+      "alternatives": [
+        "講座在下午兩點三十分開始。"
+      ]
+    },
+    {
+      "id": "number-18",
+      "category": "number",
+      "text": "這次募款共募得新台幣150萬元。",
+      "alternatives": [
+        "這次募款共募得新台幣一百五十萬元。"
+      ]
+    },
+    {
+      "id": "number-19",
+      "category": "number",
+      "text": "電話分機是1234。",
+      "alternatives": [
+        "電話分機是一二三四。"
+      ]
+    },
+    {
+      "id": "number-20",
+      "category": "number",
+      "text": "預購優惠到2027年1月31日為止。",
+      "alternatives": [
+        "預購優惠到二零二七年一月三十一日為止。"
+      ]
+    },
+    {
+      "id": "zh-en-01",
+      "category": "zh-en",
+      "text": "請用LINE加入我們的官方帳號。"
+    },
+    {
+      "id": "zh-en-02",
+      "category": "zh-en",
+      "text": "這裡的Wi-Fi密碼貼在櫃台旁邊。"
+    },
+    {
+      "id": "zh-en-03",
+      "category": "zh-en",
+      "text": "您可以用Google Maps查詢路線。"
+    },
+    {
+      "id": "zh-en-04",
+      "category": "zh-en",
+      "text": "我們的App支援iPhone和Android手機。"
+    },
+    {
+      "id": "zh-en-05",
+      "category": "zh-en",
+      "text": "簡報檔請轉成PDF再寄給我。"
+    },
+    {
+      "id": "zh-en-06",
+      "category": "zh-en",
+      "text": "這款耳機使用USB-C充電。"
+    },
+    {
+      "id": "zh-en-07",
+      "category": "zh-en",
+      "text": "請掃描QR code完成報到。"
+    },
+    {
+      "id": "zh-en-08",
+      "category": "zh-en",
+      "text": "我是Nova Avatar，很高興認識你。"
+    },
+    {
+      "id": "zh-en-09",
+      "category": "zh-en",
+      "text": "附近的7-Eleven有賣熱咖啡。"
+    },
+    {
+      "id": "zh-en-10",
+      "category": "zh-en",
+      "text": "我們可以騎YouBike去河濱公園。"
+    },
+    {
+      "id": "zh-en-11",
+      "category": "zh-en",
+      "text": "這次會議改成線上的Teams會議。"
+    },
+    {
+      "id": "zh-en-12",
+      "category": "zh-en",
+      "text": "他在一家AI新創公司當工程師。"
+    },
+    {
+      "id": "zh-en-13",
+      "category": "zh-en",
+      "text": "請把Email地址再確認一次。"
+    },
+    {
+      "id": "zh-en-14",
+      "category": "zh-en",
+      "text": "晚餐可以用Uber Eats訂外送。"
+    },
+    {
+      "id": "zh-en-15",
+      "category": "zh-en",
+      "text": "這部電影在Netflix上就看得到。"
+    },
+    {
+      "id": "zh-en-16",
+      "category": "zh-en",
+      "text": "我的Instagram帳號已經更新了。"
+    },
+    {
+      "id": "zh-en-17",
+      "category": "zh-en",
+      "text": "請按下OK鍵確認您的選擇。"
+    },
+    {
+      "id": "zh-en-18",
+      "category": "zh-en",
+      "text": "會議記錄已經上傳到Google Drive。"
+    },
+    {
+      "id": "zh-en-19",
+      "category": "zh-en",
+      "text": "這個Bug工程師下午會修好。"
+    },
+    {
+      "id": "zh-en-20",
+      "category": "zh-en",
+      "text": "我們用Excel整理了報名名單。"
+    },
+    {
+      "id": "general-01",
+      "category": "general",
+      "text": "銀行在這條街的轉角。"
+    },
+    {
+      "id": "general-02",
+      "category": "general",
+      "text": "他長得很高，頭髮也很長。"
+    },
+    {
+      "id": "general-03",
+      "category": "general",
+      "text": "這個箱子很重，請重新包裝。"
+    },
+    {
+      "id": "general-04",
+      "category": "general",
+      "text": "音樂會讓大家都很快樂。"
+    },
+    {
+      "id": "general-05",
+      "category": "general",
+      "text": "我還沒有把書還給圖書館。"
+    },
+    {
+      "id": "general-06",
+      "category": "general",
+      "text": "他得了第一名，表現得很好。"
+    },
+    {
+      "id": "general-07",
+      "category": "general",
+      "text": "請朝這個方向一直走。"
+    },
+    {
+      "id": "general-08",
+      "category": "general",
+      "text": "這部影片的長度大約十分鐘。"
+    },
+    {
+      "id": "general-09",
+      "category": "general",
+      "text": "謝謝光臨，歡迎下次再來。"
+    },
+    {
+      "id": "general-10",
+      "category": "general",
+      "text": "如果有任何問題，請隨時告訴我。"
+    },
+    {
+      "id": "general-11",
+      "category": "general",
+      "text": "今天的天氣適合出門走走。"
+    },
+    {
+      "id": "general-12",
+      "category": "general",
+      "text": "請排隊依序入場，不要推擠。"
+    },
+    {
+      "id": "general-13",
+      "category": "general",
+      "text": "博物館的導覽每一個小時一場。"
+    },
+    {
+      "id": "general-14",
+      "category": "general",
+      "text": "這道菜有一點辣，小朋友要注意。"
+    },
+    {
+      "id": "general-15",
+      "category": "general",
+      "text": "他把會議的重點整理成一張表。"
+    }
+  ],
+  "en-US": [
+    {
+      "id": "en-01",
+      "category": "english",
+      "text": "Welcome to Taipei, how can I help you today?"
+    },
+    {
+      "id": "en-02",
+      "category": "english",
+      "text": "The museum opens at nine in the morning.",
+      "alternatives": [
+        "The museum opens at 9 in the morning."
+      ]
+    },
+    {
+      "id": "en-03",
+      "category": "english",
+      "text": "Please scan the QR code to check in."
+    },
+    {
+      "id": "en-04",
+      "category": "english",
+      "text": "The exhibition is on the third floor.",
+      "alternatives": [
+        "The exhibition is on the 3rd floor."
+      ]
+    },
+    {
+      "id": "en-05",
+      "category": "english",
+      "text": "Could you repeat that a little more slowly?"
+    },
+    {
+      "id": "en-06",
+      "category": "english",
+      "text": "Our office is next to the train station."
+    },
+    {
+      "id": "en-07",
+      "category": "english",
+      "text": "The weather will be cloudy with afternoon showers."
+    },
+    {
+      "id": "en-08",
+      "category": "english",
+      "text": "You can take the MRT to the airport."
+    },
+    {
+      "id": "en-09",
+      "category": "english",
+      "text": "Tickets are available at the front desk."
+    },
+    {
+      "id": "en-10",
+      "category": "english",
+      "text": "Please keep your belongings with you at all times."
+    },
+    {
+      "id": "en-11",
+      "category": "english",
+      "text": "The tour lasts about forty five minutes.",
+      "alternatives": [
+        "The tour lasts about 45 minutes."
+      ]
+    },
+    {
+      "id": "en-12",
+      "category": "english",
+      "text": "I am a digital assistant built with Nova Avatar."
+    },
+    {
+      "id": "en-13",
+      "category": "english",
+      "text": "Recycling bins are located near the main entrance."
+    },
+    {
+      "id": "en-14",
+      "category": "english",
+      "text": "The restaurant on the second floor serves local food.",
+      "alternatives": [
+        "The restaurant on the 2nd floor serves local food."
+      ]
+    },
+    {
+      "id": "en-15",
+      "category": "english",
+      "text": "Would you like me to send the map to your phone?"
+    },
+    {
+      "id": "en-16",
+      "category": "english",
+      "text": "The lecture starts at half past two.",
+      "alternatives": [
+        "The lecture starts at half past 2."
+      ]
+    },
+    {
+      "id": "en-17",
+      "category": "english",
+      "text": "Please wait a moment while I look that up."
+    },
+    {
+      "id": "en-18",
+      "category": "english",
+      "text": "Taroko Gorge is one of the most famous parks in Taiwan.",
+      "alternatives": [
+        "Taroko Gorge is 1 of the most famous parks in Taiwan."
+      ]
+    },
+    {
+      "id": "en-19",
+      "category": "english",
+      "text": "Night markets usually open after five in the evening.",
+      "alternatives": [
+        "Night markets usually open after 5 in the evening."
+      ]
+    },
+    {
+      "id": "en-20",
+      "category": "english",
+      "text": "Free Wi-Fi is available throughout the building."
+    },
+    {
+      "id": "en-21",
+      "category": "english",
+      "text": "The shuttle bus leaves every twenty minutes.",
+      "alternatives": [
+        "The shuttle bus leaves every 20 minutes."
+      ]
+    },
+    {
+      "id": "en-22",
+      "category": "english",
+      "text": "Thank you for your patience, have a wonderful day."
+    },
+    {
+      "id": "en-23",
+      "category": "english",
+      "text": "The research team published three new papers this year.",
+      "alternatives": [
+        "The research team published 3 new papers this year."
+      ]
+    },
+    {
+      "id": "en-24",
+      "category": "english",
+      "text": "Please do not touch the artwork on display."
+    },
+    {
+      "id": "en-25",
+      "category": "english",
+      "text": "Our customer service line is open on weekdays."
+    },
+    {
+      "id": "en-26",
+      "category": "english",
+      "text": "Children under six can enter for free.",
+      "alternatives": [
+        "Children under 6 can enter for free."
+      ]
+    },
+    {
+      "id": "en-27",
+      "category": "english",
+      "text": "The meeting has been moved to Friday afternoon."
+    },
+    {
+      "id": "en-28",
+      "category": "english",
+      "text": "Let me introduce the history of this company."
+    },
+    {
+      "id": "en-29",
+      "category": "english",
+      "text": "You can pay by credit card or mobile payment."
+    },
+    {
+      "id": "en-30",
+      "category": "english",
+      "text": "Sorry, I did not catch that. Could you say it again?"
+    }
+  ]
+}
