@@ -23,6 +23,7 @@ from src.llm.history import HistoryTransaction, TransactionalHistory
 from src.llm.llamacpp_protocol import is_lfm25_reasoning
 from src.llm.reply_contract import auto_reply_grammar
 from src.llm.context_usage import ContextCapacityError, measure_request
+from src.server.reply_streaming.metrics import timed_stage
 
 
 class OpenAILLM(BaseLLM):
@@ -181,11 +182,12 @@ class OpenAILLM(BaseLLM):
             
             logger.info(f"Sending {len(messages)} messages to LLM (including system prompt and history)")
             if self.observe_context:
-                self.context_usage = measure_request(
-                    self.base_url, messages, self.max_tokens,
-                    local=getattr(llm_cfg, 'provider', '') == 'llamacpp', model=self.model,
-                    template_options=extra_body,
-                )
+                with timed_stage("model_info"):
+                    self.context_usage = measure_request(
+                        self.base_url, messages, self.max_tokens,
+                        local=getattr(llm_cfg, 'provider', '') == 'llamacpp', model=self.model,
+                        template_options=extra_body,
+                    )
                 if self.context_usage['over_capacity'] and not self.context_usage['estimated']:
                     if history_transaction is not None:
                         self._history.abort(history_transaction)
