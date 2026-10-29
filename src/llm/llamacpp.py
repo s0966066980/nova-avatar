@@ -28,6 +28,9 @@ _loaded_model: str = ""
 _gpu_offload: Optional[Dict[str, Any]] = None
 # VRAM kept free beyond the weights for KV cache and compute buffers.
 GPU_RESERVE_MB = 2048
+# ``-ngl`` value that offloads every layer; llama.cpp clamps it to the model.
+# An external server started with ``-ngl all`` reads as this value too.
+ALL_GPU_LAYERS = 99
 NO_USABLE_GPU = "no usable GPU found"
 
 
@@ -344,7 +347,7 @@ def _external_gpu_layers(port: int) -> Optional[int]:
             if arg in {"-ngl", "--gpu-layers", "--n-gpu-layers"}:
                 value = args[index + 1]
                 if value == "all":
-                    return 1 << 30
+                    return ALL_GPU_LAYERS
                 if value.isdigit():
                     return int(value)
     return None
@@ -369,9 +372,14 @@ def suggest_gpu_layers(model_bytes: int, free_mb: int, n_layers: int) -> int:
         return 0
     model_mb = model_bytes / (1024 * 1024)
     if usable_mb >= model_mb:
-        return 99
+        return ALL_GPU_LAYERS
     per_layer = max(1.0, model_mb / layers)
     return max(0, min(layers, int(usable_mb / per_layer)))
+
+
+def _offloaded_layers(ngl: int, n_layers: int) -> int:
+    """Layers on the GPU for an ``-ngl`` value."""
+    return n_layers if ngl >= ALL_GPU_LAYERS else min(ngl, n_layers)
 
 
 def _pids_listening_on(port: int) -> List[int]:
@@ -481,7 +489,8 @@ def ensure_server(
                 n_layers = gguf_block_count(gguf) or 64
                 external = _external_gpu_layers(port)
                 if external is not None:
-                    _record_offload(external >= n_layers, min(external, n_layers), n_layers)
+                    gpu_layers = _offloaded_layers(external, n_layers)
+                    _record_offload(gpu_layers == n_layers, gpu_layers, n_layers)
             return openai_base_url(host, port)
         if status["owned"]:
             _stop_owned_server()
@@ -537,7 +546,7 @@ def ensure_server(
     if has_cuda_backend(binary):
         free_mb = cuda_free_mb()
         ngl = suggest_gpu_layers(gguf.stat().st_size, free_mb, n_layers)
-        if ngl < 99 and ngl < n_layers:
+        if _offloaded_layers(ngl, n_layers) < n_layers:
             message = _shortfall_message(gguf, n_layers, free_mb, ngl)
             if not allow_partial_offload:
                 _record_offload(False, 0, n_layers, message)
@@ -607,7 +616,7 @@ def ensure_server(
                 _record_offload(False, 0, n_layers, message)
                 raise GpuOffloadError(message) from exc
             raise
-        gpu_layers = n_layers if ngl >= 99 else min(ngl, n_layers)
+        gpu_layers = _offloaded_layers(ngl, n_layers)
         if ngl > 0 and NO_USABLE_GPU in _read_from(log_path, run_offset):
             message = (
                 f"llama-server 回報「{NO_USABLE_GPU}」，-ngl 被忽略、全部在 CPU 執行。"

@@ -48,17 +48,37 @@ _session: aiohttp.ClientSession | None = None
 _session_loop: asyncio.AbstractEventLoop | None = None
 
 
-def _shared_session() -> aiohttp.ClientSession:
+async def _shared_session() -> aiohttp.ClientSession:
     """One pooled session per event loop; concurrent requests share it.
 
     Keys and timeouts are set per request, so a changed connection or a
-    request with another timeout reuses the same pool.
+    request with another timeout reuses the same pool. A pool left by
+    another loop is closed rather than dropped.
     """
     global _session, _session_loop
     loop = asyncio.get_running_loop()
-    if _session is None or _session.closed or _session_loop is not loop:
-        _session, _session_loop = aiohttp.ClientSession(), loop
+    if _session is not None and not _session.closed and _session_loop is loop:
+        return _session
+    stale, stale_loop = _session, _session_loop
+    _session, _session_loop = aiohttp.ClientSession(), loop
+    if stale is not None and stale_loop is not None:
+        await _close_session(stale, stale_loop)
     return _session
+
+
+async def _close_session(session: aiohttp.ClientSession, owner: asyncio.AbstractEventLoop) -> None:
+    """Close a pool on the loop that owns it, without waiting on another loop."""
+    if session.closed:
+        return
+    if owner is not asyncio.get_running_loop() and not owner.is_closed():
+        try:
+            asyncio.run_coroutine_threadsafe(session.close(), owner)
+            return
+        except RuntimeError:  # the owner closed after the check
+            pass
+    # On a closed owner, aiohttp only marks the pool closed: its sockets
+    # went with that loop.
+    await session.close()
 
 
 async def close_shared_session() -> None:
@@ -66,8 +86,8 @@ async def close_shared_session() -> None:
     global _session, _session_loop
     session, loop = _session, _session_loop
     _session = _session_loop = None
-    if session is not None and loop is asyncio.get_running_loop():
-        await session.close()
+    if session is not None and loop is not None:
+        await _close_session(session, loop)
 
 
 def _bounded_text(value: Any, limit: int) -> str:
@@ -101,7 +121,7 @@ class RagFlowClient:
         headers = {"Authorization": f"Bearer {self.connection.api_key}"}
         request_timeout = aiohttp.ClientTimeout(total=timeout, connect=min(timeout, 1.0))
         try:
-            async with _shared_session().request(
+            async with (await _shared_session()).request(
                 method,
                 f"{self.connection.base_url}{path}",
                 params=params,

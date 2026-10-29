@@ -370,6 +370,50 @@ class CancellationTests(_SessionCase):
         self.assertFalse(self.session.register_fragment("殘留。", stale))
         self.assertFalse(roles.returned)
 
+    async def test_interrupt_during_routing_settles_the_worker_and_its_history(self):
+        roles = _Roles(SPECULATIVE)
+        answer = _Answer(self.session)
+        answer.proceed.clear()
+        self.discard_history.side_effect = lambda *_args: answer.order.append("discard")
+        turn_id, _ = await self._start(roles, answer)
+        await asyncio.to_thread(answer.started.wait, 2)
+        turn_task = self.session._turn_task
+
+        await self.session.interrupt()
+        answer.proceed.set()
+        await asyncio.gather(turn_task, return_exceptions=True)
+
+        # The held answer never played: its pending history goes once the worker stopped.
+        self.discard_history.assert_called_once_with(self.avatar, turn_id)
+        self.assertEqual(answer.order, ["worker_done", "discard"])
+
+    async def test_routing_failure_drops_the_held_answer_and_ends_the_turn(self):
+        roles = _Roles(SPECULATIVE)
+
+        async def failing_route(*_args):
+            await roles.gate.wait()
+            raise RuntimeError("router down")
+
+        roles.before_generate = failing_route
+        answer = _Answer(self.session)
+        answer.proceed.clear()
+        self.discard_history.side_effect = lambda *_args: answer.order.append("discard")
+        turn_id, generation = await self._start(roles, answer)
+        turn_task = self.session._turn_task
+        await asyncio.to_thread(answer.started.wait, 2)
+        thread, results = self._gate_audio(turn_id, generation)
+
+        roles.gate.set()
+        await asyncio.sleep(0.05)
+        answer.proceed.set()
+        await asyncio.wait_for(turn_task, 2)
+        await asyncio.to_thread(thread.join, 2)
+
+        self.assertEqual(results, [False], "held audio of a failed routing is dropped")
+        self.assertEqual(answer.order, ["worker_done", "discard"])
+        self.assertIsNone(self.session._turn_id)
+        errors = [e for e in self.events if e["type"] == "state" and e.get("state") == "error"]
+        self.assertEqual([e["turn_id"] for e in errors], [turn_id])
 
     async def test_cancelled_plan_drops_the_held_answer(self):
         roles = _Roles({"cancelled": True})

@@ -103,14 +103,20 @@ def first_sentence(speech: str) -> str:
     return fragments[0] if fragments else ""
 
 
-def first_sentence_check(speech: str) -> dict:
-    """Issue 08 rule: a complete first sentence of at most 15 content characters."""
-    from src.llm.reply_contract import FIRST_SENTENCE_MAX_CHARS
-    from src.server.reply_streaming.fragmenter import content_length
+def first_sentence_check(speech: str, *, locale: str = "zh-TW") -> dict:
+    """Issue 08 rule: a complete first sentence of at most 15 content characters.
+
+    English counts words (at most 12), as the first-fragment exception does.
+    """
+    from src.llm.reply_contract import FIRST_SENTENCE_MAX_CHARS, FIRST_SENTENCE_MAX_WORDS
+    from src.server.reply_streaming.fragmenter import content_length, speech_units
 
     first = first_sentence(speech)
-    return {"passed": bool(first) and content_length(first) <= FIRST_SENTENCE_MAX_CHARS,
-            "value": first}
+    if locale == "en-US":
+        within = speech_units(first) <= FIRST_SENTENCE_MAX_WORDS
+    else:
+        within = content_length(first) <= FIRST_SENTENCE_MAX_CHARS
+    return {"passed": bool(first) and within, "value": first}
 
 
 def first_fragment(chunks, *, semantic_wait_seconds: float = 0.5,
@@ -204,7 +210,7 @@ def compare_first_fragment(answer: dict, *, semantic_wait_seconds: float = 0.5) 
 
 
 def check_answer(raw: str, *, max_chars: int, expected_mode: str | None = None,
-                 expected_terms=()) -> dict:
+                 expected_terms=(), locale: str = "zh-TW") -> dict:
     """Automatic checks of one raw reply; each is ``{"passed", "value"}``.
 
     Length counts the visible (non-whitespace) characters of the spoken part,
@@ -217,7 +223,7 @@ def check_answer(raw: str, *, max_chars: int, expected_mode: str | None = None,
         "format": {"passed": not reply["error"], "value": reply["error"]},
         "simplified": {"passed": not simplified, "value": simplified},
         "length": {"passed": spoken <= max_chars, "value": spoken},
-        "first_sentence": first_sentence_check(reply["speech"]),
+        "first_sentence": first_sentence_check(reply["speech"], locale=locale),
     }
     if expected_mode:
         checks["mode"] = {"passed": reply["mode"] == expected_mode, "value": reply["mode"]}
@@ -307,7 +313,8 @@ def _answer(question: dict, data: dict, config, profile) -> dict:
         "board": reply["board"], "error": error,
         "checks": check_answer(engine.raw, max_chars=config.llm.response_max_chars,
                                expected_mode=question.get("expected_mode"),
-                               expected_terms=question.get("expected_terms", ())),
+                               expected_terms=question.get("expected_terms", ()),
+                               locale=config.llm.assistant_profile.output_locale),
         "max_chars": config.llm.response_max_chars,
         "first_token_seconds": _rounded(engine.first_token),
         "first_speech_seconds": _rounded(engine.first_speech),

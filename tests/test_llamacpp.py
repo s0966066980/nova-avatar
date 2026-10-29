@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.llm.llamacpp import (
+    ALL_GPU_LAYERS,
     build_server_env,
     cuda_library_dirs,
     find_llama_server,
@@ -56,7 +57,13 @@ class CudaLibraryDiscoveryTests(unittest.TestCase):
 
 class GpuLayerPlanningTests(unittest.TestCase):
     def test_fits_all_layers_when_vram_is_enough(self):
-        self.assertEqual(suggest_gpu_layers(2 * 1024**3, 12000, 32), 99)
+        self.assertEqual(suggest_gpu_layers(2 * 1024**3, 12000, 32), ALL_GPU_LAYERS)
+
+    def test_external_server_offloading_all_layers_uses_the_same_sentinel(self):
+        from src.llm.llamacpp import _external_gpu_layers
+        with patch("src.llm.llamacpp._pids_listening_on", return_value=[4242]), patch(
+                "src.llm.llamacpp._process_cmdline", return_value="llama-server -ngl all"):
+            self.assertEqual(_external_gpu_layers(8080), ALL_GPU_LAYERS)
 
     def test_partial_offload_when_vram_is_tight(self):
         layers = suggest_gpu_layers(16 * 1024**3, 10000, 65)
@@ -300,7 +307,7 @@ class FullGpuStartupTests(unittest.TestCase):
     def test_full_gpu_launch_uses_all_layers(self):
         with patch.object(self.llamacpp, "cuda_free_mb", return_value=20000):
             self.llamacpp.ensure_server(str(self.model), port=18080)
-        self.assertEqual(self._ngl(self.launched[-1]), 99)
+        self.assertEqual(self._ngl(self.launched[-1]), ALL_GPU_LAYERS)
         self.assertEqual(self.llamacpp.gpu_offload_status(),
                          {"full": True, "gpu_layers": 32, "total_layers": 32, "error": ""})
 
@@ -336,14 +343,14 @@ class FullGpuStartupTests(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--reasoning") + 1], "off")
         self.assertEqual(cmd[cmd.index("--reasoning-budget") + 1], "0")
         self.assertEqual(cmd[cmd.index("--mmproj") + 1], str(projector))
-        self.assertEqual(self._ngl(cmd), 99)
+        self.assertEqual(self._ngl(cmd), ALL_GPU_LAYERS)
 
     def test_each_launch_is_marked_in_the_shared_log(self):
         with patch.object(self.llamacpp, "cuda_free_mb", return_value=20000):
             self.llamacpp.ensure_server(str(self.model), port=18080)
         log = (Path(self.tmp.name) / "logs" / "llama-server.log").read_text()
         self.assertIn("nova-avatar 啟動 llama-server", log)
-        self.assertIn("-ngl 99", log)
+        self.assertIn(f"-ngl {ALL_GPU_LAYERS}", log)
 
     def test_cpu_only_build_is_refused_by_default(self):
         (self.binary.parent / "libggml-cuda.so").unlink()

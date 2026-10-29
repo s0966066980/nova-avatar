@@ -28,6 +28,7 @@ from src.server.reply_streaming.latency_baseline import (
     voiced_end_sample,
 )
 from src.server.reply_streaming.metrics import (
+    ANSWER_STAGES,
     STAGE_NAMES,
     TurnMetrics,
     observe_stages,
@@ -51,6 +52,20 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
     def test_pre_answer_stages_are_fixed_names(self):
         for stage in ("pre_answer", "routing", "retrieval", "model_info"):
             self.assertIn(stage, STAGE_NAMES)
+
+    def test_a_discarded_answer_forgets_its_stages_and_keeps_the_turns(self):
+        clock = FakeClock()
+        metrics = TurnMetrics("turn", clock=clock)
+        for stage in ("asr", "routing", "retrieval", "model_info", "llm_first_token",
+                      "first_fragment", "webrtc_audible_onset"):
+            metrics.record_stage_duration(stage, 0.1)
+        metrics.discard_answer_stages()
+
+        stages = metrics.snapshot()["stage_seconds"]
+        self.assertEqual([s for s in ("asr", "routing", "retrieval") if stages[s] is None], [])
+        for stage in ("model_info", "llm_first_token", "first_fragment", "webrtc_audible_onset"):
+            self.assertIsNone(stages[stage], stage)
+        self.assertLessEqual(set(ANSWER_STAGES), set(STAGE_NAMES))
 
     def test_prompt_accepted_latency_is_reported_beside_first_audio(self):
         clock = FakeClock()
@@ -419,14 +434,19 @@ class VideoEnqueueStageTests(unittest.TestCase):
 
     def _run(self, avatar, batches):
         quit_event = threading.Event()
-        seen = []
+        recorded = []
+
+        def record_video_data(frame):
+            # Runs after the stage for this frame is marked. Quitting from
+            # inside enqueue raced the renderer's wait for that enqueue.
+            recorded.append(frame)
+            if len(recorded) == len(batches):
+                quit_event.set()
+
+        avatar.record_video_data = record_video_data
 
         class Track:
             async def enqueue(self, frame, eventpoint=None):
-                if hasattr(frame, "width"):  # video frames only
-                    seen.append(eventpoint)
-                    if len(seen) == len(batches):
-                        quit_event.set()
                 return True
 
         for batch in batches:

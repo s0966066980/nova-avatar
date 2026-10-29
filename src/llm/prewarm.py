@@ -38,6 +38,7 @@ def prewarm_local_llm(config, *, timeout_seconds: float = 25.0) -> bool:
             rules=snapshot_from_config(config),
             assistant_name=profile.assistant_name,
             restriction_prompt=profile.restriction_prompt,
+            output_locale=profile.output_locale,
         )
         engine._client = engine.client.with_options(
             timeout=timeout_seconds, max_retries=0,

@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,6 +17,7 @@ from aiohttp import web
 
 from src.config.schema import Config
 from src.llm.base import BaseLLM
+from src.ragflow import client as ragflow_client
 from src.ragflow import settings
 from src.ragflow.client import (
     RagFlowClient, RagFlowConnection, RagFlowError, close_shared_session, retrieval_prompt,
@@ -162,6 +164,40 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
             await server.on_shutdown(None)
         await self.client.retrieve("問題", [DATASET_A])
         self.assertNotEqual(self.client_ports[0], self.client_ports[1])
+
+    async def _session_from_finished_loop(self):
+        await asyncio.to_thread(asyncio.run, self.client.retrieve("問題", [DATASET_A]))
+        return ragflow_client._session
+
+    async def test_new_loop_closes_pool_left_by_a_finished_loop(self):
+        stale = await self._session_from_finished_loop()
+        await self.client.retrieve("問題", [DATASET_A])
+        self.assertIsNot(ragflow_client._session, stale)
+        self.assertTrue(stale.closed)
+
+    async def test_shutdown_closes_pool_left_by_a_finished_loop(self):
+        stale = await self._session_from_finished_loop()
+        await close_shared_session()
+        self.assertTrue(stale.closed)
+
+    async def test_pool_of_a_running_loop_is_closed_on_that_loop(self):
+        other = asyncio.new_event_loop()
+        thread = threading.Thread(target=other.run_forever, daemon=True)
+        thread.start()
+        try:
+            await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
+                self.client.retrieve("問題", [DATASET_A]), other))
+            stale = ragflow_client._session
+            await self.client.retrieve("問題", [DATASET_A])
+            for _ in range(100):
+                if stale.closed:
+                    break
+                await asyncio.sleep(0.01)
+            self.assertTrue(stale.closed)
+        finally:
+            other.call_soon_threadsafe(other.stop)
+            await asyncio.to_thread(thread.join, 5)
+            other.close()
 
     async def test_lists_and_bounds_retrieval_without_exposing_key(self):
         datasets = await self.client.list_datasets()

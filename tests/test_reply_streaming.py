@@ -8,6 +8,7 @@ import json
 import subprocess
 import sys
 import os
+import threading
 import time
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -607,6 +608,31 @@ class LLMGenerationFenceTests(unittest.TestCase):
             chunk_guard=lambda sequence: sequence == 0,
         )
         time.sleep(0.3)
+
+        self.assertEqual([event["text"] for event in avatar.events], ["好。"])
+
+    def test_turn_fenced_while_the_model_stalls_releases_nothing(self):
+        # No next chunk arrives to notice the fence: the timer must check it.
+        live = threading.Event()
+        live.set()
+        resumed = threading.Event()
+
+        class StalledAfterFenceLLM(BaseLLM):
+            def chat_stream(self, message, system_prompt=None):
+                del message, system_prompt
+                yield "好。" + "一二三四五六七八九十" * 3 + "，"
+                live.clear()  # interrupted while the model is silent
+                resumed.wait(0.4)
+                yield "舊輪次的後半句。"
+
+        avatar = RecordingAvatar()
+        config = Config()
+        config.reply_streaming.semantic_wait_seconds = 0.1
+        StalledAfterFenceLLM(config).generate_response(
+            "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+            chunk_guard=lambda _sequence: live.is_set(),
+        )
+        time.sleep(0.2)
 
         self.assertEqual([event["text"] for event in avatar.events], ["好。"])
 
