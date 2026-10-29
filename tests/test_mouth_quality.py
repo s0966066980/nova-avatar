@@ -179,7 +179,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
             video.write_bytes(b"clip")
             seen = {}
 
-            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None, green_screen=False):
+            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None, green_screen=False, replace_guard=None):
                 seen["quality"] = quality
                 seen["avatar_id"] = avatar_id
                 seen["green_screen"] = green_screen
@@ -200,7 +200,8 @@ class BuildQualityForwardingTests(unittest.TestCase):
                 )
                 job_thread_done = False
                 for _ in range(50):
-                    if job.status in {"done", "failed"}:
+                    # The worker releases the (patched) lock last, after cleaning up.
+                    if job.status in {"done", "failed"} and lock.release.called:
                         job_thread_done = True
                         break
                     import time
