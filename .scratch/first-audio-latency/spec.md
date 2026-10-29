@@ -2,7 +2,7 @@
 
 # 首音延遲改善
 
-Status: ready-for-agent
+Status: resolved
 
 使用者已確認 Q1–Q23 與本規格（2026-10-30）。
 

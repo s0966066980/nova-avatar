@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 文件更新與最終驗收
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 15, 16, 17
 
 依[規格](../spec.md)。
@@ -33,3 +33,8 @@ Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 15, 16, 17
 - 驗證：ruff、pyright、`check-integration.py` 通過；pytest 1305 passed、3 skipped（另 2 項為已知 worktree 基準失敗）；web lint、210 passed、build 通過。
 
 仍待使用者決定或確認，`Status` 不設為 resolved：TTS 方向與 8 小時穩定性（issue 10）、嵌入服務與最終檢索上限（issue 15）、靜音等待／抖動緩衝／Edge 前導等選項（issue 16）、每輪啟動批次的嘴型同步目視確認（issue 13）、首片段後停頓試聽與看板口語 15 字限制（issue 08）、停用 11434 Ollama（issue 12）；英文交接路由修正後需重跑最終量測（issue 17）。
+
+### 2026-10-30 最終驗收（orchestrator）
+最終驗證 `final-validation-2026-10-30.json`（整合分支 8479114，3 輪 96 句，0 失敗）。感知首音延遲 P50／P95：一般 1.99／2.37 s、RAG 2.06／2.30 s、交接 1.20／1.94 s；基準線 4.09／4.43、3.93／4.22、2.48／2.69 s（用戶端收到定義，最終同定義 2.09／2.47、2.16／2.41、1.30／2.04 s）。
+第一階段：三類 P95 達標；交接 P50 達標；一般與 RAG 的 P50 未達（差約 0.8 s／0.46 s）。第二階段未達。文件已改為此次數字。
+剩餘瓶頸與待使用者決定的事項：檢索等待（issue 15）、TTS 方向（issue 10）、靜音等待與其他選項（issue 16）、看板口語 15 字上限（issue 08）、issue 13 改動 A／C 的保留。

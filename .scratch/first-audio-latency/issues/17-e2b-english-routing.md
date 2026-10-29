@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # E2B 英文交接路由
-Status: ready-for-agent
+Status: resolved
 Blocked by: 04
 
 依[規格](../spec.md)「路由正確率明顯低於 9B 時，加關鍵字初篩，不回頭用 9B」。最終量測（`final-2026-10-30.json`，3 輪）交接 30 輪只成功 18 輪，失敗的 12 輪全是英文（en-01～04；en-02、en-04 是前一句未交接造成的連鎖）。9B 基準線 10/10。各次量測的英文交接失敗並不一致（`after-followups`：en-03/04；`ablation-a-only`：en-01/02；`offset-split`：全部）。
@@ -34,3 +34,6 @@ Blocked by: 04
 1. 讓 8010 跑本分支（或合併後的 `first-audio-latency`），維持 E2B 設定。
 2. `scripts/measure_first_audio.py`（照 final 量測參數，3 輪）→ 預期 handoff 30/30 `handoff_observed=true`，且 en-01、en-03 有 `specialist_first_audio_seconds`。
 3. 預期交接輪的 `routing` 階段在初篩命中時接近 0 s。
+
+### 2026-10-30 實機驗證（orchestrator）
+`final-validation-2026-10-30.json`（整合分支 8479114，3 輪）：交接 30／30 實際交接（修正前 18／30）；交接輪次感知首音 P50／P95 1.20／1.94 s。
