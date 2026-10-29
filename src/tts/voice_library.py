@@ -35,13 +35,15 @@ MIGRATION_ROOTS = (get_project_root() / "data", Path.home() / "CosyVoice" / "ass
 VOICE_ID = re.compile(r"[0-9a-f]{16}")
 # Edge voice names and Fish Speech reference IDs name voices on the server side.
 SERVER_SIDE_REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}")
-REFERENCE_AUDIO_ENGINES = frozenset({"gpt-sovits", "xtts", "indextts2", "cosyvoice", "fun-cosyvoice3"})
+REFERENCE_AUDIO_ENGINES = frozenset({"gpt-sovits", "xtts", "indextts2", "cosyvoice", "fun-cosyvoice3", "breezyvoice"})
 DEFAULT_EDGE_VOICE = "zh-TW-HsiaoChenNeural"
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_SECONDS = 60.0
 MIN_SECONDS = 0.5
 MAX_NAME_CHARS = 80
+# What the reference recording says, for engines that clone from audio + text.
+MAX_TRANSCRIPT_CHARS = 500
 SUPPORTED_FORMATS = "WAV、MP3、FLAC、OGG、M4A、WebM"
 
 
@@ -93,11 +95,21 @@ def _read_record(voice_id: str) -> dict:
         record = {}
     name = record.get("name")
     seconds = record.get("seconds")
+    transcript = record.get("transcript")
     return {
         "id": voice_id,
         "name": name if isinstance(name, str) and name else voice_id,
         "seconds": float(seconds) if isinstance(seconds, (int, float)) else 0.0,
+        "transcript": transcript if isinstance(transcript, str) else "",
     }
+
+
+def voice_transcript(voice_id: Any) -> str:
+    """The stored transcript of a library voice; "" when none is selected or recorded."""
+    if voice_id is None or (isinstance(voice_id, str) and not voice_id.strip()):
+        return ""
+    voice_path(voice_id)
+    return _read_record(voice_id)["transcript"]
 
 
 def list_voices() -> list[dict]:
@@ -117,6 +129,14 @@ def _clean_name(name: Any, fallback: str) -> str:
     text = name if isinstance(name, str) else ""
     text = "".join(char for char in text if char.isprintable()).strip()
     return text[:MAX_NAME_CHARS] or fallback
+
+
+def _clean_transcript(transcript: Any) -> str:
+    text = transcript if isinstance(transcript, str) else ""
+    text = "".join(char for char in text if char.isprintable()).strip()
+    if len(text) > MAX_TRANSCRIPT_CHARS:
+        raise VoiceLibraryError(f"參考音訊逐字稿不可超過 {MAX_TRANSCRIPT_CHARS} 字")
+    return text
 
 
 def _sniff_format(path: Path) -> str:
@@ -182,14 +202,15 @@ def _decode(path: Path):
     return np.concatenate(chunks)[:limit], rate
 
 
-def add_voice(source: Path, name: Any = "") -> dict:
+def add_voice(source: Path, name: Any = "", transcript: Any = "") -> dict:
     """Validate ``source`` as audio, store it as a mono WAV and return its record.
 
     The ID is derived from the stored audio, so adding the same audio again
-    returns the existing voice.
+    returns the existing voice. ``transcript`` is what the recording says.
     """
     import soundfile as sf
 
+    spoken = _clean_transcript(transcript)
     samples, rate = _decode(Path(source))
     root = voices_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -203,7 +224,7 @@ def add_voice(source: Path, name: Any = "") -> dict:
         if target.is_file() and _record_path(voice_id).is_file():
             return _read_record(voice_id)
         record = {"id": voice_id, "name": _clean_name(name, voice_id),
-                  "seconds": round(samples.size / rate, 2)}
+                  "seconds": round(samples.size / rate, 2), "transcript": spoken}
         _write_text(_record_path(voice_id), json.dumps(record, ensure_ascii=False))
         os.replace(temporary, target)
     finally:

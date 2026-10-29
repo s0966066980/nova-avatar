@@ -77,6 +77,16 @@ test('CosyVoice 設定提供合成語言與額外指令', () => {
   assert.match(settings, /type === 'fun-cosyvoice3'/)
 })
 
+test('BreezyVoice 可選，逐字稿與音訊庫錄音一起保存與帶入', () => {
+  assert.match(panel, /<option value="breezyvoice">/)
+  assert.match(panel, /id="tts-breezyvoice-ref-text"/)
+  assert.match(panel, /uploadTtsVoice\(file, '', ttsDraft\.type === 'breezyvoice' \? ttsDraft\.ref_text : ''\)/)
+  assert.match(settings, /form\.append\('transcript', transcript\)/)
+  assert.match(settings, /breezyvoice: 'breezyvoice'/)
+  assert.match(settings, /if \(voice\?\.transcript\) ttsDraft\.ref_text = voice\.transcript/)
+  assert.match(editor, /'fun-cosyvoice3', 'breezyvoice'\]/)
+})
+
 test('Zero-shot 顯示並檢核參考語音逐字稿', () => {
   assert.match(panel, /參考語音逐字稿/)
   assert.match(panel, /ttsDraft\.ref_text/)

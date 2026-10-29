@@ -1,7 +1,11 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Start and stop an owned local CosyVoice FastAPI process."""
+"""Start and stop an owned local CosyVoice FastAPI process.
+
+The same process serves CosyVoice 2, Fun-CosyVoice 3 and BreezyVoice (a
+CosyVoice-v1 model with its own text frontend); the model folder decides.
+"""
 from __future__ import annotations
 
 import atexit
@@ -28,9 +32,23 @@ DEFAULT_COSYVOICE3_MODEL_DIRS = (
 )
 DEFAULT_PROMPT_WAV = get_project_root() / "data" / "tts" / "cosyvoice_prompt.wav"
 MODELS_ROOT = get_project_root() / "models"
-MODEL_FAMILY_MARKERS = (("cosyvoice3.yaml", "cosyvoice3"), ("cosyvoice2.yaml", "cosyvoice2"))
+# Every listed file must exist. BreezyVoice ships the CosyVoice v1 YAML plus
+# its reading tables; a plain CosyVoice v1 folder is not served.
+MODEL_FAMILY_MARKERS = (
+    (("cosyvoice3.yaml",), "cosyvoice3"),
+    (("cosyvoice2.yaml",), "cosyvoice2"),
+    (("cosyvoice.yaml", "word_utils.py"), "breezyvoice"),
+)
+# Where scripts/breezyvoice_weights.py puts the weights, relative to models/.
+DEFAULT_BREEZYVOICE_MODEL_ID = "BreezyVoice"
+FAMILY_LABELS = {
+    "cosyvoice2": "CosyVoice 2",
+    "cosyvoice3": "Fun-CosyVoice 3.0",
+    "breezyvoice": "BreezyVoice",
+}
 DEFAULT_PROMPT_TEXT = "你好，我是數字人助手。"
-COSYVOICE_ENGINES = frozenset({"cosyvoice", "fun-cosyvoice3"})
+COSYVOICE_ENGINES = frozenset({"cosyvoice", "fun-cosyvoice3", "breezyvoice"})
+ENGINE_FAMILIES = {"fun-cosyvoice3": "cosyvoice3", "breezyvoice": "breezyvoice"}
 COSYVOICE_LANGUAGE_INSTRUCT = {
     "zh": "用中文说这句话",
     "chinese": "用中文说这句话",
@@ -68,6 +86,8 @@ COSYVOICE_LANGUAGES = (
     ("yue", "粵語"),
     ("auto", "自動"),
 )
+# BreezyVoice is trained for Taiwanese Mandarin (with English code-switching).
+BREEZYVOICE_LANGUAGES = (("zh", "台灣華語"),)
 COSYVOICE3_LANGUAGES = (
     ("zh", "中文"),
     ("en", "English"),
@@ -121,20 +141,24 @@ def is_cosyvoice_engine(engine: str) -> bool:
 
 
 def cosyvoice_family(engine: str) -> str:
-    if str(engine or "").strip().lower() == "fun-cosyvoice3":
-        return "cosyvoice3"
-    return "cosyvoice2"
+    return ENGINE_FAMILIES.get(str(engine or "").strip().lower(), "cosyvoice2")
+
+
+def family_label(family: str) -> str:
+    return FAMILY_LABELS.get(family, FAMILY_LABELS["cosyvoice2"])
 
 
 def languages_for_family(family: str):
     if family == "cosyvoice3":
         return COSYVOICE3_LANGUAGES
+    if family == "breezyvoice":
+        return BREEZYVOICE_LANGUAGES
     return COSYVOICE_LANGUAGES
 
 
 def _model_family(directory: Path) -> str:
-    for marker, family in MODEL_FAMILY_MARKERS:
-        if (directory / marker).is_file():
+    for markers, family in MODEL_FAMILY_MARKERS:
+        if all((directory / marker).is_file() for marker in markers):
             return family
     return ""
 
@@ -172,9 +196,16 @@ def resolve_model_dir(model: str = "", family: str = "cosyvoice2") -> Path:
         if match is None:
             raise FileNotFoundError(f"TTS 模型「{model}」不在 models/ 清單中")
         if match["family"] != family:
-            label = "Fun-CosyVoice 3.0" if family == "cosyvoice3" else "CosyVoice 2"
-            raise FileNotFoundError(f"TTS 模型「{model}」不是 {label} 模型")
+            raise FileNotFoundError(f"TTS 模型「{model}」不是 {family_label(family)} 模型")
         return MODELS_ROOT / match["id"]
+    if family == "breezyvoice":
+        default = MODELS_ROOT / DEFAULT_BREEZYVOICE_MODEL_ID
+        if _model_family(default) == "breezyvoice":
+            return default
+        raise FileNotFoundError(
+            f"找不到 BreezyVoice 模型：{default}。"
+            "請執行 uv run --no-sync python scripts/breezyvoice_weights.py 下載權重"
+        )
     candidates = (
         DEFAULT_COSYVOICE3_MODEL_DIRS
         if family == "cosyvoice3"
@@ -223,6 +254,8 @@ def normalize_language(value: str, family: str = "cosyvoice2") -> str:
         "korean": "ko",
     }
     raw = mapping.get(raw, raw)
+    if family == "breezyvoice":
+        return "zh"
     table = (
         COSYVOICE3_LANGUAGE_INSTRUCT
         if family == "cosyvoice3"

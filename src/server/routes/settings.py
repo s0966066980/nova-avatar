@@ -428,10 +428,12 @@ async def upload_tts_voice(request):
     try:
         root.mkdir(parents=True, exist_ok=True)
         reader = await request.multipart()
-        name, stem, received = "", "", False
+        name, transcript, stem, received = "", "", "", False
         while (part := await reader.next()) is not None:
             if part.name == "name":
                 name = (await _read_field(part)).strip()
+            elif part.name == "transcript":
+                transcript = (await _read_field(part, limit=4096)).strip()
             elif part.name == "voice" and part.filename and not received:
                 stem = Path(part.filename).stem
                 size = 0
@@ -447,7 +449,7 @@ async def upload_tts_voice(request):
                 return _json({"code": -1, "msg": "上傳欄位不正確"}, status=400)
         if not received:
             return _json({"code": -1, "msg": "請選擇參考音訊檔"}, status=400)
-        voice = await asyncio.to_thread(voice_library.add_voice, temporary, name or stem)
+        voice = await asyncio.to_thread(voice_library.add_voice, temporary, name or stem, transcript)
         return _json({"code": 0, "msg": "ok", "data": voice})
     except voice_library.VoiceLibraryError as exc:
         return _json({"code": -1, "msg": exc.message}, status=exc.status)
