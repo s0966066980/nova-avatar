@@ -68,7 +68,10 @@ export default defineConfig(({ command }) => ({
       // 與後端 aiohttp 路由對齊；漏掉任一路徑會讓前端打到 Vite 自己並 404
       '^/(health|human|humanaudio|asr|record|offer|interrupt_talk|is_speaking|set_audiotype|download|clear_history|api)(/|$)': {
         target: backendTarget,
-        changeOrigin: true,
+        // Keep the browser's Host so the backend's Origin check sees one origin,
+        // and name the real client so LAN requests are not treated as loopback.
+        changeOrigin: false,
+        xfwd: true,
         secure: false
       }
     }

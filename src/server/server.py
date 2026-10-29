@@ -14,7 +14,6 @@ import threading
 
 from pathlib import Path
 from aiohttp import web
-import aiohttp_cors
 
 from src.utils.logging import logger
 from src.server.state import state
@@ -24,6 +23,7 @@ from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
 from src.profiles.coordinator import initialize_roles
 from src.server.routes.profiles import register_profile_routes
+from src.server.access import access_guard, install_access
 
 
 # Upper bound for an orderly stop after SIGTERM/SIGINT. Closing WebRTC peers
@@ -72,12 +72,17 @@ async def on_shutdown(app):
     scene_service.close()
 
 
-def create_app():
-    """建立並配置 aiohttp 應用"""
+def create_app(*, admin_env_path: Path | None = None):
+    """建立並配置 aiohttp 應用
+
+    ``admin_env_path`` overrides config/admin.env (the admin password hash).
+    """
     state.shutting_down = False
     # 單獨設定較大的請求體上限，方便上傳音影片
     # Leave space for multipart headers around the 100 MB background asset.
-    app = web.Application(client_max_size=1024**2*101, middlewares=[profile_settings_guard])
+    # access_guard runs first: every route's class lives in src/server/access.py.
+    app = web.Application(client_max_size=1024**2*101, middlewares=[access_guard, profile_settings_guard])
+    install_access(app, admin_env_path)
     from src.server.routes.attachments import register as register_attachments
     register_attachments(app)
     from src.server import conversations
@@ -150,19 +155,7 @@ def create_app():
     # 前端靜態資源託管
     frontend = Path('web/dist')
     app.router.add_static('/', path=frontend if (frontend / 'index.html').is_file() else Path('web'))
-    
-    # 寬鬆 CORS 方便本地除錯和跨域訪問
-    cors = aiohttp_cors.setup(app, defaults={
-        "*": aiohttp_cors.ResourceOptions(
-            allow_credentials=True,
-            expose_headers="*",
-            allow_headers="*",
-        )
-    })
-    
-    for route in list(app.router.routes()):
-        cors.add(route)
-    
+    # No CORS: the console and stage are same-origin pages of this server.
     return app
 
 
