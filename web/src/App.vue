@@ -180,6 +180,7 @@ See LICENSE and NOTICE.
                 <div class="bubble-card">
                   <div v-if="msg.profileId" class="role-message-label">{{ profileName(msg.profileId) }}<span v-if="msg.handoffId"> · 交接 {{ msg.handoffId.slice(0, 8) }}</span></div>
                   <div v-if="appSettings.showTimestamp && msg.time" style="font-size: 10.5px; opacity: 0.6; margin-bottom: 4px; font-family: var(--font-mono);">{{ msg.time }}</div>
+                  <!-- eslint-disable-next-line vue/no-v-html -- renderMarkdown drops raw HTML and runs DOMPurify -->
                   <div v-html="renderMarkdown(msg.text)"></div>
                   <div v-if="msg.pending" role="status" aria-live="polite" style="font-size: 12px; color: var(--text-muted);">傳送中…</div>
                   <div
@@ -481,24 +482,7 @@ import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from './storageKeys.js'
-import { marked } from 'marked'
-import hljs from 'highlight.js'
-
-// 配置 marked
-marked.setOptions({
-  highlight: function(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(code, { language: lang }).value
-      } catch (err) {
-        console.error('程式碼高亮失敗:', err)
-      }
-    }
-    return hljs.highlightAuto(code).value
-  },
-  breaks: true,
-  gfm: true
-})
+import { renderMarkdown, stripProtocolMarkers } from './markdown.js'
 
 const { t, setLocale, loadLocale } = useI18n()
 const { roleRuntime, roleLibrary, roleRequest, roleEvent } = useRoles()
@@ -515,63 +499,6 @@ async function roleAction(path, body) {
 }
 const { vad, vadDraft, loadVadSettings, applyVadSettings, runtime, isStageConfiguring, selectedBoardPreview } = useRuntimeSettings()
 const handsFreeTalk = computed(() => Boolean(vad.enabled))
-
-// 對話文字清理函式：過濾協定標記與 JSON 格式，避免 [speech 等符號洩漏到介面
-const sanitizeChatText = (text) => {
-  if (!text) return ''
-  let clean = String(text)
-  // Strip tool-call tags and reasoning
-  clean = clean.replace(/<\|tool_call_start\|>[\s\S]*?<\|tool_call_end\|>/g, '')
-  clean = clean.replace(/<\|tool_call_start\|>[\s\S]*/g, '')
-  clean = clean.replace(/<\|tool_call_end\|>/g, '')
-  clean = clean.replace(/\[(?:BOARD|think|thought|speech)\([\s\S]*?\)?\]/g, '')
-
-  // Strip mode markers
-  clean = clean.replace(/\[{1,2}\s*MODE:\s*(?:SIMPLE|BOARD)\s*\]{1,2}/gi, '')
-  clean = clean.replace(/模式\s*[:：]\s*(?:簡答|看板)/g, '')
-
-  // Strip speech markers
-  clean = clean.replace(/\[{1,2}\s*\/?\s*(?:SPEECH|speech)(?::\s*)?\]{1,2}/gi, '')
-  clean = clean.replace(/\[{1,2}\s*(?:SPEECH|speech)\s*:\s*/gi, '')
-  clean = clean.replace(/(?:^|[\r\n]+)\s*SPEECH\s*:\s*/gi, '\n')
-  clean = clean.replace(/(?:^|[\r\n]+)\s*口語\s*[:：]\s*/g, '\n')
-
-  // Strip board markers
-  clean = clean.replace(/\[{1,2}\s*\/?\s*BOARD(?:_JSON)?(?::\s*)?\]{1,2}/gi, '')
-  clean = clean.replace(/\[{1,2}\s*BOARD(?:_JSON)?\s*:\s*/gi, '')
-  clean = clean.replace(/(?:^|[\r\n]+)\s*BOARD(?:_JSON)?\s*:\s*/gi, '\n')
-  clean = clean.replace(/看板(?:資料)?\s*[:：]/g, '')
-  clean = clean.replace(/資料\s*[:：]/g, '')
-
-  // Strip end markers
-  clean = clean.replace(/\[{1,2}\s*\/?\s*END\s*\]{1,2}/gi, '')
-
-  // Cut off before raw JSON or markdown JSON fence
-  const jsonMatch = clean.match(/(?:```(?:json)?\s*)?[\r\n]+\s*\{(?:\s*"title"|\s*"items"|\s*"summary")/i)
-  if (jsonMatch && jsonMatch.index !== undefined) {
-    clean = clean.slice(0, jsonMatch.index)
-  }
-
-  // Strip trailing unclosed bracket if [speech: was stripped
-  if (clean.endsWith(']') && clean.split(']').length > clean.split('[').length) {
-    clean = clean.slice(0, -1)
-  }
-
-  return clean.trim()
-}
-
-// Markdown 渲染函式
-const renderMarkdown = (text) => {
-  if (!text) return ''
-  const clean = sanitizeChatText(text)
-  if (!clean) return ''
-  try {
-    return marked.parse(clean)
-  } catch (error) {
-    console.error('Markdown 解析錯誤:', error)
-    return clean
-  }
-}
 
 const sessionId = ref(0)
 const connectionStatus = ref('disconnected')
@@ -670,7 +597,7 @@ const setDesignSample = (sampleKey) => {
 const stageCaptionText = computed(() => {
   const lastAi = [...chatMessages.value].reverse().find(m => m.type === 'ai' && m.captionEpoch === captionEpoch.value)
   if (!lastAi || !lastAi.text) return ''
-  const clean = sanitizeChatText(lastAi.text)
+  const clean = stripProtocolMarkers(lastAi.text)
   return clean.length > 80 ? clean.slice(-80) : clean
 })
 
@@ -1661,8 +1588,6 @@ onMounted(async () => {
 </script>
 
 <style>
-@import 'highlight.js/styles/atom-one-dark.css';
-
 .role-console-controls {
   flex-shrink: 0;
   display: flex;

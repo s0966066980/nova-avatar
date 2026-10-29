@@ -21,6 +21,9 @@ export default [
   {
     files: ['src/**/*.{js,vue}'],
     languageOptions: { globals: globals.browser },
+    // Raw HTML sinks must go through src/markdown.js and carry a reviewed
+    // single-line disable comment.
+    rules: { 'vue/no-v-html': 'error' },
   },
   {
     files: ['tests/**/*.js', '*.config.js'],
