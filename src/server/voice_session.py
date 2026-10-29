@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 from collections import OrderedDict
 from copy import deepcopy
+from dataclasses import dataclass
 from functools import partial
 import json
 import time
@@ -101,6 +102,28 @@ def speech_input_rejection_reason(
         except (TypeError, ValueError):
             return "transcript_invalid_confidence"
     return None
+
+
+@dataclass(frozen=True)
+class AnswerInputs:
+    """What the main answer is generated from: the question and its retrieval."""
+
+    text: str
+    rag_result: Optional[dict]
+
+
+@dataclass
+class HeldAnswer:
+    """The main answer generated while routing decides (ADR 0022).
+
+    Its LLM ``worker`` is shielded from cancelling ``answer``, so whoever
+    drops the answer waits for the worker before discarding the turn's
+    pending history.
+    """
+
+    inputs: "asyncio.Task[Optional[AnswerInputs]]"
+    answer: "Optional[asyncio.Task[Optional[str]]]" = None
+    worker: "Optional[asyncio.Future]" = None
 
 
 class RecentKeys:
@@ -896,78 +919,98 @@ class VoiceTurnSession:
         returns when it keeps the current role, and its audio is held at the
         TTS boundary. An equal routed plan releases it; any other plan fences
         it by generation and the turn follows the routed plan (ADR 0022).
+        Every path that drops the held answer settles its worker and pending
+        history.
         """
-        speculative = roles.speculative_plan()
+        speculative_plan = roles.speculative_plan()
         self._hold_playback(turn_id, generation)
         self.mark_stage_start("routing")
         routing = asyncio.create_task(roles.before_generate(self, text, turn_id, generation))
-        inputs = asyncio.create_task(self._answer_inputs(text, turn_id, generation))
-        worker: list[asyncio.Future] = []
-        answer = asyncio.create_task(self._speculate(
-            inputs, turn_id, generation, input_source, speculative, worker))
+        held = HeldAnswer(inputs=asyncio.create_task(
+            self._answer_inputs(text, turn_id, generation)))
+        held.answer = asyncio.create_task(self._speculate(
+            held, turn_id, generation, input_source, speculative_plan))
         try:
             plan = await routing
-        except BaseException:
-            inputs.cancel()
-            answer.cancel()
+        except asyncio.CancelledError:
+            await self._settle_speculation(turn_id, held)
             raise
+        except Exception as exc:
+            if not self._is_current(turn_id, generation):
+                await self._settle_speculation(turn_id, held)
+                raise
+            # Fence first: the held worker and its TTS stop only once fenced.
+            generation = await self._discard_speculation(turn_id, held)
+            self._handle_turn_error(exc, turn_id, generation)
+            return
         self.mark_stage_end("routing")
         if not self._is_current(turn_id, generation):
-            inputs.cancel()
-            answer.cancel()
+            await self._settle_speculation(turn_id, held)
             return
         if plan.get("cancelled"):
-            inputs.cancel()
-            await self._discard_speculation(turn_id, answer, worker)
+            await self._discard_speculation(turn_id, held)
             return
-        if plan == speculative:
+        if plan == speculative_plan:
             self._release_playback(turn_id, generation)
-            response = await answer
+            try:
+                response = await held.answer
+            except asyncio.CancelledError:
+                await self._settle_speculation(turn_id, held)
+                raise
             if response is not None:
                 self._finish_answer(response, turn_id, generation, input_source)
             return
-        prepared = None
-        if "fixed" in plan:
-            inputs.cancel()
-        else:
+        routed_inputs: Optional[AnswerInputs] = None
+        input_error: Optional[Exception] = None
+        if "fixed" not in plan:
             try:
                 # Reuse this turn's attachments and retrieval for the new answer.
-                prepared = await inputs
+                routed_inputs = await held.inputs
             except asyncio.CancelledError:
-                answer.cancel()
+                await self._settle_speculation(turn_id, held)
                 raise
             except Exception as exc:
-                prepared = exc
-        generation = await self._discard_speculation(turn_id, answer, worker)
+                input_error = exc
+        generation = await self._discard_speculation(turn_id, held)
         try:
-            if isinstance(prepared, Exception):
-                raise prepared
-            await self._follow_role_plan(text, turn_id, generation, input_source, plan, prepared)
+            if input_error is not None:
+                raise input_error
+            await self._follow_role_plan(
+                text, turn_id, generation, input_source, plan, routed_inputs)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
             # The caller's generation was fenced with the discarded answer.
             self._handle_turn_error(exc, turn_id, generation)
 
-    async def _speculate(self, inputs, turn_id, generation, input_source, plan, worker):
-        prepared = await inputs
-        if prepared is None:
+    async def _speculate(self, held: HeldAnswer, turn_id, generation, input_source, plan):
+        inputs = await held.inputs
+        if inputs is None:
             return None
         return await self._stream_answer(
-            prepared, turn_id, generation, input_source, plan, worker=worker)
+            inputs, turn_id, generation, input_source, plan, held=held)
 
-    async def _discard_speculation(self, turn_id, answer, worker) -> int:
+    async def _settle_speculation(self, turn_id: str, held: HeldAnswer) -> None:
+        """Stop a held answer, wait out its LLM worker, drop its pending history.
+
+        The worker stops at its next chunk once its turn is fenced; its
+        pending history must be gone before the turn's next reply opens one.
+        """
+        held.inputs.cancel()
+        if held.answer is not None:
+            held.answer.cancel()
+            await asyncio.gather(held.answer, return_exceptions=True)
+        if held.worker is not None:
+            await asyncio.wait([held.worker])
+        discard_pending_history(self.avatar, turn_id)
+
+    async def _discard_speculation(self, turn_id: str, held: HeldAnswer) -> int:
         """Fence an answer routing did not keep; return the turn's new generation."""
         generation = self._fence_held_answer(turn_id)
-        answer.cancel()
-        await asyncio.gather(answer, return_exceptions=True)
-        if worker:
-            # The fenced worker stops at its next chunk. Its pending history
-            # must be gone before the routed reply opens the same turn's, and
-            # a fragment it queued meanwhile must not delay that reply's TTS.
-            await asyncio.gather(worker[0], return_exceptions=True)
-            self.avatar.flush_talk()
-        discard_pending_history(self.avatar, turn_id)
+        await self._settle_speculation(turn_id, held)
+        # A fragment the fenced worker queued meanwhile must not delay the
+        # routed reply's TTS.
+        self.avatar.flush_talk()
         return generation
 
     def _fence_held_answer(self, turn_id: str) -> int:
@@ -989,7 +1032,7 @@ class VoiceTurnSession:
         return self._generation
 
     async def _follow_role_plan(self, text, turn_id, generation, input_source, role_plan,
-                                prepared=None):
+                                inputs: Optional[AnswerInputs] = None):
         if not self._is_current(turn_id, generation) or role_plan.get("cancelled"):
             return
         if "fixed" in role_plan:
@@ -1006,20 +1049,20 @@ class VoiceTurnSession:
                 return
             # Facts join this role's own Prompt/RAG/rules below. A successful
             # tool result must not bypass the specialist's answer pipeline.
-        await self._answer_turn(text, turn_id, generation, input_source, role_plan, prepared)
+        await self._answer_turn(text, turn_id, generation, input_source, role_plan, inputs)
 
     async def _answer_turn(self, text, turn_id, generation, input_source, role_plan,
-                           prepared=None):
-        if prepared is None:
-            prepared = await self._answer_inputs(text, turn_id, generation)
-            if prepared is None:
+                           inputs: Optional[AnswerInputs] = None):
+        if inputs is None:
+            inputs = await self._answer_inputs(text, turn_id, generation)
+            if inputs is None:
                 return
         response = await self._stream_answer(
-            prepared, turn_id, generation, input_source, role_plan)
+            inputs, turn_id, generation, input_source, role_plan)
         if response is not None:
             self._finish_answer(response, turn_id, generation, input_source)
 
-    async def _answer_inputs(self, text, turn_id, generation):
+    async def _answer_inputs(self, text, turn_id, generation) -> Optional[AnswerInputs]:
         """Attachments and bounded retrieval; ``None`` once the turn is stale."""
         loop = asyncio.get_running_loop()
         resolved = self.attachments.validate_selection(self.attachments.selection)
@@ -1058,13 +1101,13 @@ class VoiceTurnSession:
             self.mark_stage_end("retrieval")
             if not self._is_current(turn_id, generation):
                 return None
-        return text, rag_result
+        return AnswerInputs(text=text, rag_result=rag_result)
 
-    async def _stream_answer(self, prepared, turn_id, generation, input_source, role_plan,
-                             *, worker=None):
+    async def _stream_answer(self, inputs: AnswerInputs, turn_id, generation, input_source,
+                             role_plan, *, held: Optional[HeldAnswer] = None):
         """Generate the main answer; ``None`` once the turn is stale."""
         loop = asyncio.get_running_loop()
-        text, rag_result = prepared
+        text, rag_result = inputs.text, inputs.rag_result
         if not self._is_current(turn_id, generation):
             return None
         if rag_result is not None:
@@ -1135,10 +1178,10 @@ class VoiceTurnSession:
                 return llm_response(text, self.avatar, **kwargs)
 
         future = loop.run_in_executor(None, _call_llm)
-        if worker is not None:
+        if held is not None:
             # A held answer may be discarded while its worker still runs; its
             # owner awaits the worker, so cancellation must not orphan it.
-            worker.append(future)
+            held.worker = future
             response = await asyncio.shield(future)
         else:
             response = await future

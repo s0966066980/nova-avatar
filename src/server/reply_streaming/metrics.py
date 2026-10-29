@@ -63,7 +63,24 @@ AUDIBLE_PEAK = 64
 
 # Stages a main answer owns. A discarded speculative answer forgets them so the
 # reply that is actually played measures its own.
-ANSWER_STAGES = STAGE_NAMES[STAGE_NAMES.index("model_info"):]
+ANSWER_STAGES = (
+    "model_info",
+    "llm_first_token",
+    "llm_first_speech",
+    "llm_total",
+    "first_fragment",
+    "tts_first_encoded",
+    "tts_pcm_available",
+    "tts_first_pcm",
+    "musetalk_first_batch",
+    "musetalk_inference_first_result",
+    "avatar_pasteback_done",
+    "webrtc_audio_enqueue",
+    "webrtc_video_enqueue",
+    "avatar_to_webrtc_commit",
+    "webrtc_audio_commit",
+    "webrtc_audible_onset",
+)
 
 
 _stage_observer: ContextVar[Optional[StageObserver]] = ContextVar(

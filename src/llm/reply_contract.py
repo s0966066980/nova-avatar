@@ -36,6 +36,17 @@ FIRST_SENTENCE_PROMPT = f"""【口語第一句】
 [[SPEECH]] 必須以一句 {FIRST_SENTENCE_MAX_CHARS} 字以內、可單獨聽懂的完整短句開頭，直接說出結論，並以「。」「！」或「？」結束。
 第一句不要用逗號接成長句；補充說明放在後面的句子。看板模式的口語摘要也遵守這條。
 """
+# English counts words, as the first-fragment exception does (issue 08b).
+FIRST_SENTENCE_MAX_WORDS = 12
+FIRST_SENTENCE_PROMPT_EN = f"""[First spoken sentence]
+[[SPEECH]] must open with one complete short sentence of at most {FIRST_SENTENCE_MAX_WORDS} words that makes sense on its own, states the conclusion directly, and ends with ".", "!" or "?".
+Do not chain the first sentence into a long one with commas; put further detail in later sentences. The spoken summary in board mode follows this rule too.
+"""
+
+
+def first_sentence_prompt(locale: str) -> str:
+    """The first-sentence rule in the unit the session's language is counted in."""
+    return FIRST_SENTENCE_PROMPT_EN if locale == "en-US" else FIRST_SENTENCE_PROMPT
 
 AUTO_BOARD_SCHEMA_PROMPT = """For BOARD, BOARD_JSON has this required schema in words:
 the top level has title (string) and items (array).

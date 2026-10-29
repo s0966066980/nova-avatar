@@ -238,6 +238,7 @@ class BaseLLM(ABC):
         rules_snapshot = (datainfo or {}).get("rules_snapshot")
         if rules_snapshot is None:
             rules_snapshot = snapshot_from_config(self.config)
+        output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
         composed_system_prompt = compose_system_prompt(
             self.system_prompt,
             reply_mode=norm_mode,
@@ -247,6 +248,7 @@ class BaseLLM(ABC):
             displayed_board=self.get_last_board(),
             assistant_name=str(getattr(profile, "assistant_name", "") or ""),
             restriction_prompt=str(getattr(profile, "restriction_prompt", "") or ""),
+            output_locale=output_locale,
         )
         if rag_context:
             # Keep existing reply rules last; retrieved text is reference data,
@@ -261,7 +263,6 @@ class BaseLLM(ABC):
                 'conflicting model observations and verify calculations before reporting totals; '
                 'unreadable details and inference from facts. Never claim to have read other pages.'
             )
-        output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
         composed_system_prompt += (
             "\n\n[Session language: wording only]\n"
             "The visitor selected English (US). Reply exclusively in English in all spoken text "
@@ -407,6 +408,13 @@ class BaseLLM(ABC):
                 target_avatar.put_msg_txt(text, fragment_info)
                 fragment_sequence += 1
 
+        sequence = -1
+
+        def turn_live() -> bool:
+            """The turn's live state: the timer may fire while the model is silent,
+            so a fence must be seen without waiting for the next chunk."""
+            return not fenced and (chunk_guard is None or chunk_guard(max(sequence, 0)))
+
         # The semantic wait releases a long clause by timer even while the
         # model is silent; feeding, flushing and timed releases share one lock.
         semantic_fragments = (
@@ -419,7 +427,7 @@ class BaseLLM(ABC):
                     semantic_wait_seconds=semantic_wait_seconds,
                 ),
                 send_to_avatar,
-                active=lambda: not fenced,
+                active=turn_live,
             )
             if semantic_stream and target_avatar
             else None
@@ -491,7 +499,6 @@ class BaseLLM(ABC):
         try:
             # 記錄首包延遲，方便定位 LLM 響應瓶頸
             first_chunk = True
-            sequence = -1
             if identity_policy.refuse_request:
                 # A prohibited self-disclosure has a known answer. Do not ask
                 # a model to reveal it and hope a later prompt wins over its

@@ -53,3 +53,13 @@ def test_the_board_speech_example_obeys_the_rule():
 def test_the_default_speech_rule_does_not_ask_for_a_longer_first_sentence():
     assert "10–20" not in default_rules()["speech"]
     assert "實質答案" in default_rules()["speech"]
+
+
+def test_english_sessions_get_the_limit_in_words():
+    # English counts words, as the first-fragment exception does (issue 08b).
+    prompt = compose_system_prompt("role", reply_mode=ReplyMode.AUTO, output_locale="en-US")
+
+    assert "12 words" in prompt
+    assert f"{FIRST_SENTENCE_MAX_CHARS} 字" not in prompt
+    assert FIRST_SENTENCE_PROMPT in compose_system_prompt("角色", reply_mode=ReplyMode.AUTO,
+                                                          output_locale="zh-TW")

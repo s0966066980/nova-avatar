@@ -257,6 +257,17 @@ def test_first_sentence_must_be_complete_and_at_most_fifteen_characters():
     assert unfinished["first_sentence"] == {"passed": False, "value": ""}
 
 
+def test_english_first_sentence_counts_words():
+    # 8 words but 29 letters and digits: within the English limit of 12 words.
+    eight = "Sure, the M87 galaxy is very far away."
+    passed = check_answer(_speech(eight + " More detail follows here."), max_chars=200,
+                          locale="en-US")
+    assert passed["first_sentence"] == {"passed": True, "value": eight}
+    thirteen = "The museum opens at nine and closes at five every day except Monday."
+    assert check_answer(_speech(thirteen), max_chars=200,
+                        locale="en-US")["first_sentence"]["passed"] is False
+
+
 def test_first_fragment_replays_the_stream_through_the_production_fragmenter():
     header = "[[MODE:SIMPLE]]\n[[SPEECH]]\n"
     assert first_fragment([(0.1, header), (0.2, "好的，"), (0.25, "在 M87。"),
