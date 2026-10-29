@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # 安全強化與場域穩定性
 
-Status: implementing
+Status: resolved
 
 2026-10-29 全專案審查發現：後端無存取控制、可外洩任意檔案、控制台 XSS、
 多個卡死 event loop 與讓 kiosk 失聰的路徑，且既有 CI（ruff、pytest、ESLint）
