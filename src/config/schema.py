@@ -297,8 +297,14 @@ class LLMConfig:
     api_key: str = ""
     base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     model: str = "qwen-plus"
-    # ollama | llamacpp
+    # llamacpp | ollama | openai; set from the selected endpoint.
     provider: str = "ollama"
+    # Allowlisted endpoints, editable only in the configuration file:
+    # {name: {provider, base_url, api_key}}. Empty keeps the legacy single
+    # endpoint built from provider/base_url/api_key above.
+    endpoints: Dict[str, Dict[str, str]] = field(default_factory=dict)
+    # Name of the endpoint used outside avatar profiles.
+    endpoint: str = ""
     llamacpp_dir: str = ""
     llamacpp_host: str = "127.0.0.1"
     llamacpp_port: int = 8080

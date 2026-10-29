@@ -79,12 +79,13 @@ def greeting_messages(config, settings: dict) -> list[dict]:
             {"role": "user", "content": settings["prompt"]}]
 
 
-async def _generate(config, messages, *, client_factory=AsyncOpenAI) -> str:
+async def _generate(config, messages, *, client_factory=None) -> str:
     extra = dict(config.llm.extra_body or {})
     if config.llm.provider == "llamacpp":
         for key in ("reasoning_effort", "think", "keep_alive", "options"):
             extra.pop(key, None)
-    async with client_factory(api_key=config.llm.api_key or "nova-avatar-local",
+    # config.llm URL and key were set together from one allowlisted endpoint.
+    async with (client_factory or AsyncOpenAI)(api_key=config.llm.api_key or "nova-avatar-local",
                               base_url=config.llm.base_url, timeout=15., max_retries=0) as client:
         response = await client.chat.completions.create(
             model=config.llm.model, messages=messages, stream=False,

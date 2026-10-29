@@ -144,6 +144,8 @@ def dict_to_config(config_dict: Dict) -> Config:
             system_prompt=str(llm_dict['system_prompt']).strip()
         )
     llm_config = LLMConfig(**llm_dict)
+    from src.llm.endpoints import freeze_endpoints
+    freeze_endpoints(llm_config)
     audio_config = AudioConfig(**config_dict.get('audio', {}))
     video_config = VideoConfig(**config_dict.get('video', {}))
     custom_video_config = CustomVideoConfig(**config_dict.get('custom_video', {}))

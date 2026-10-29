@@ -46,6 +46,9 @@ def persist_runtime_overrides(config) -> None:
         "llm": {
             "model": config.llm.model,
             "provider": getattr(config.llm, "provider", "ollama"),
+            # Only the selection is runtime state; llm.endpoints lives in the
+            # configuration file and is never written from the console.
+            "endpoint": getattr(config.llm, "endpoint", ""),
             "base_url": getattr(config.llm, "base_url", ""),
             "api_key": getattr(config.llm, "api_key", ""),
             "max_tokens": getattr(config.llm, "max_tokens", 128),

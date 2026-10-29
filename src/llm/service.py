@@ -122,7 +122,9 @@ def llm_response(
         if config is not None and getattr(config, "llm", None) is not None:
             base_url = config.llm.base_url or base_url
             model = config.llm.model or model
-            api_key = config.llm.api_key or api_key
+            # The key belongs to the same allowlisted endpoint as base_url;
+            # never fall back to another provider's key for a keyless endpoint.
+            api_key = config.llm.api_key or "nova-avatar-local"
         sessionid = getattr(avatar_stream, 'sessionid', 0)
         
         # 為每個 session 維護獨立的 LLM 例項(保留對話歷史)

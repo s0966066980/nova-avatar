@@ -9,6 +9,7 @@ const runtime = reactive({
   llm: {
     model: '',
     base_url: '',
+    endpoint: '',
     provider: 'ollama',
     system_prompt: '',
     assistant_profile: { assistant_name: '', system_prompt: '', restriction_prompt: '', output_locale: 'zh-TW', enforce_output_locale: true, forbidden_self_names: [] },
@@ -1043,7 +1044,7 @@ async function applyLlmModel(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        provider,
+        endpoint: runtime.llm.endpoint || '',
         system_prompt: systemPrompt,
         response_max_chars: Number(responseMaxChars),
         reply_mode: replyMode,
@@ -1061,6 +1062,7 @@ async function applyLlmModel(
     }))
     if (data.pending) return data
     runtime.llm.model = data.model
+    runtime.llm.endpoint = data.endpoint || runtime.llm.endpoint
     runtime.llm.provider = data.provider || provider
     runtime.llm.base_url = data.base_url || runtime.llm.base_url
     runtime.llm.system_prompt = data.system_prompt || systemPrompt
