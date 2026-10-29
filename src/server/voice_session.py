@@ -25,7 +25,6 @@ import numpy as np
 import soundfile as sf
 from av.audio.resampler import AudioResampler
 
-from src.asr.base import asr_language
 from src.asr.factory import get_asr_engine
 from src.greetings.controller import IdleGreetingController
 from src.greetings.content import GreetingError
@@ -52,8 +51,9 @@ from src.vad.service import create_segmenter
 EventSink = Callable[[str], None]
 TestResultSink = Callable[[dict], object]
 OUTPUT_STALL_FRAMES = 50  # one second at the 20 ms audio commit clock
-# The main answer waits at most this long for retrieval (ADR 0022).
-RETRIEVAL_BUDGET_SECONDS = 0.4
+# The main answer waits at most this long for retrieval (ADR 0022). 700 ms is
+# interim (Q25): RAGFlow's query embedding dominates retrieval (issue 15).
+RETRIEVAL_BUDGET_SECONDS = 0.7
 # Answer content a held turn keeps from clients until routing releases it.
 _HELD_EVENT_TYPES = frozenset({
     "rag_retrieval",
@@ -805,9 +805,10 @@ class VoiceTurnSession:
             sf.write(wav, audio, sample_rate, format="WAV", subtype="PCM_16")
             self.mark_stage_start("asr")
             if getattr(self._asr, 'supports_language_options', False) is True:
-                language = asr_language(self._conversation['locale'])
+                # Detect Chinese or English per turn rather than follow the
+                # conversation locale: visitors switch language mid-conversation (Q24).
                 result = await loop.run_in_executor(None, partial(
-                    self._asr.transcribe, wav.getvalue(), language=language))
+                    self._asr.transcribe, wav.getvalue(), language="auto"))
             else:
                 result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
             self.mark_stage_end("asr")

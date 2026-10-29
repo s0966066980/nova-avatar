@@ -562,13 +562,15 @@ class LLMGenerationFenceTests(unittest.TestCase):
 
 
     def test_comma_clause_is_released_when_the_semantic_wait_ends_without_a_new_token(self):
+        # The opening sentence uses up the first-fragment exception, so the
+        # comma clause after it can only be released by the semantic wait.
         clause = "一二三四五六七八九十" * 3 + "，"
         second_token_at = []
 
         class StallingLLM(BaseLLM):
             def chat_stream(self, message, system_prompt=None):
                 del message, system_prompt
-                yield clause
+                yield "好。" + clause
                 time.sleep(0.6)
                 second_token_at.append(time.perf_counter())
                 yield "後半句。"
@@ -581,18 +583,20 @@ class LLMGenerationFenceTests(unittest.TestCase):
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
         )
 
-        self.assertEqual([event["text"] for event in avatar.events], [clause, "後半句。"])
-        self.assertLess(avatar.events[0]["at"], second_token_at[0])
-        self.assertLess(avatar.events[0]["at"] - started, 0.45)
         self.assertEqual(
-            [event["datainfo"]["fragment_sequence"] for event in avatar.events], [0, 1]
+            [event["text"] for event in avatar.events], ["好。", clause, "後半句。"]
+        )
+        self.assertLess(avatar.events[1]["at"], second_token_at[0])
+        self.assertLess(avatar.events[1]["at"] - started, 0.45)
+        self.assertEqual(
+            [event["datainfo"]["fragment_sequence"] for event in avatar.events], [0, 1, 2]
         )
 
     def test_fenced_turn_never_releases_a_waiting_clause(self):
         class FencedLLM(BaseLLM):
             def chat_stream(self, message, system_prompt=None):
                 del message, system_prompt
-                yield "一二三四五六七八九十" * 3 + "，"
+                yield "好。" + "一二三四五六七八九十" * 3 + "，"
                 yield "舊輪次的後半句。"
 
         avatar = RecordingAvatar()
@@ -604,7 +608,7 @@ class LLMGenerationFenceTests(unittest.TestCase):
         )
         time.sleep(0.3)
 
-        self.assertEqual(avatar.events, [])
+        self.assertEqual([event["text"] for event in avatar.events], ["好。"])
 
 
 class LLMHistoryTransactionTests(unittest.TestCase):
@@ -767,10 +771,11 @@ class SemanticFragmenterTests(unittest.TestCase):
         text = "串流模式需要保留完整語意，否則語音會在不自然的位置停頓，而且下一段的語氣也會重新起頭。"
         fragmenter = SemanticFragmenter()
 
-        self.assertEqual(fragmenter.feed(text), [text])
+        # Only a turn's first fragment may end at a comma.
+        self.assertEqual(fragmenter.feed("好。" + text), ["好。", text])
 
     def test_commas_do_not_cut_a_sentence_while_tokens_are_still_arriving(self):
-        fragmenter = SemanticFragmenter()
+        fragmenter = SemanticFragmenter(first_fragment_min_units=None)
         clause = "一二三四五六七八九十" * 4
         incoming = clause + "，後半句也還沒結束"
         actual = []

@@ -25,3 +25,12 @@ status: accepted
   失效）；維持串行（無法達到首音目標）。
 
 細節與驗收見[首音延遲規格](../../.scratch/first-audio-latency/spec.md)。
+
+## 2026-10-30 補記：檢索上限暫調為 700 ms
+
+400 ms 上限實測 24 輪中 22 輪逾時，等於關閉 RAG。使用者決定（Q25）先把上限調為
+700 ms，再加速 RAGFlow 檢索，最終上限依加速後實測另定；本文上方的 400 ms 為原始
+決定，保留不改。拆解（issue 15）：RAGFlow 檢索 P50 約 0.55 s，其中約 0.47 s 是
+bge-m3 查詢嵌入（Ollama，與其他模型共用 GPU）；Elasticsearch 約 20 ms，其餘處理
+約 30 ms。RAGFlow API 不接受用戶端提供的查詢向量，`page_size`、相似度門檻、
+候選數等選項在量測誤差內，因此加速要在嵌入服務端進行。

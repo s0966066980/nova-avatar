@@ -14,7 +14,7 @@ import numpy as np
 import soundfile as sf
 
 from src.utils.logging import logger
-from src.asr.base import BaseASR
+from src.asr.base import SPEECH_LANGUAGES, BaseASR
 
 WHISPER_SAMPLE_RATE = 16000
 
@@ -88,6 +88,13 @@ class WhisperASR(BaseASR):
         self.model_type = "faster-whisper"
         logger.info('[Whisper] faster-whisper 模型載入成功')
     
+    def _warm_up(self) -> None:
+        # Speech turns detect the language, so the warmup runs detection too.
+        wav = BytesIO()
+        sf.write(wav, np.zeros(WHISPER_SAMPLE_RATE, dtype=np.float32), WHISPER_SAMPLE_RATE,
+                 format="WAV", subtype="PCM_16")
+        self.transcribe(wav.getvalue(), language="auto")
+
     def _transcribe_bytes(self, audio_bytes: bytes, **options) -> Dict[str, Any]:
         """Decode in memory; a per-turn temp file costs latency and touches disk."""
         return self._transcribe(_decoded_audio(audio_bytes), **options)
@@ -98,21 +105,29 @@ class WhisperASR(BaseASR):
         *,
         language: str | None = None,
     ) -> Dict[str, Any]:
-        """Recognize a path, file-like object or 16 kHz mono float32 waveform."""
+        """Recognize a path, file-like object or 16 kHz mono float32 waveform.
+
+        ``"auto"`` detects Chinese or English only (``SPEECH_LANGUAGES``).
+        """
         selected_language = self.language if language is None else language
-        language = None if selected_language == "auto" else selected_language
-        segments, info = self.model.transcribe(
-            audio,
-            language=language,
-            vad_filter=False,
-            # Greedy decoding: utterances are one short sentence, where beam
-            # search adds latency without a measurable accuracy gain.
-            beam_size=1,
-        )
+        detect = selected_language == "auto"
+        segments, info = self._model_transcribe(audio, None if detect else selected_language)
+        probability = getattr(info, "language_probability", None)
+        detected = getattr(info, "language", None) if detect else selected_language
+        if detect and detected not in SPEECH_LANGUAGES:
+            # faster-whisper decodes lazily, so the segments in the wrong
+            # language are never generated; only the features are recomputed.
+            scores = dict(getattr(info, "all_language_probs", None) or ())
+            detected = max(SPEECH_LANGUAGES, key=lambda code: scores.get(code, 0.0))
+            probability = scores.get(detected)
+            if hasattr(audio, "seek"):
+                audio.seek(0)
+            segments, _ = self._model_transcribe(audio, detected)
         segment_list = list(segments)
         response = {
             "text": "".join(segment.text for segment in segment_list).strip(),
-            "language": getattr(info, "language", self.language),
+            "language": detected,
+            "language_probability": probability,
             "segments": [
                 {"start": segment.start, "end": segment.end, "text": segment.text}
                 for segment in segment_list
@@ -127,7 +142,18 @@ class WhisperASR(BaseASR):
             # Convert average token log-probability to a bounded confidence.
             response["confidence"] = math.exp(min(0.0, sum(logprobs) / len(logprobs)))
         return response
-    
+
+    def _model_transcribe(self, audio: str | BinaryIO | np.ndarray, language: str | None):
+        """Start decoding; ``language=None`` detects it from the first 30 s window."""
+        return self.model.transcribe(
+            audio,
+            language=language,
+            vad_filter=False,
+            # Greedy decoding: utterances are one short sentence, where beam
+            # search adds latency without a measurable accuracy gain.
+            beam_size=1,
+        )
+
     def get_info(self) -> Dict[str, Any]:
         """獲取引擎資訊"""
         info = super().get_info()

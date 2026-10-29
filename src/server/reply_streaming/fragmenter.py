@@ -12,6 +12,9 @@ from typing import Callable
 
 STRONG_PUNCTUATION = frozenset("。！？.!?…")
 WEAK_PUNCTUATION = frozenset("，、：,:；;")
+# The first fragment of a turn may end at a clause mark (not the list comma 、).
+FIRST_CLAUSE_PUNCTUATION = frozenset("，：；,:;")
+FIRST_FRAGMENT_MIN_UNITS = 8
 CLOSING_PUNCTUATION = frozenset("\"'”’」』）》】〕〉>)]}")
 OPENING_DELIMITERS = {
     "「": "」",
@@ -61,6 +64,33 @@ def _starts_new_grapheme(previous: str, character: str) -> bool:
     return True
 
 
+def _is_wide(character: str) -> bool:
+    return unicodedata.east_asian_width(character) in ("W", "F")
+
+
+def speech_units(text: str) -> int:
+    """Count spoken units: one per CJK character and one per Latin word or number.
+
+    ``content_length`` counts every letter, so eight units would be two short
+    English words; a word is closer to what one Chinese character says.
+    """
+    units = 0
+    in_word = False
+    for start, end in _grapheme_spans(text):
+        grapheme = text[start:end]
+        if in_word and grapheme in ("'", "’", "-"):
+            continue
+        if not any(character.isalnum() for character in grapheme):
+            in_word = False
+        elif _is_wide(grapheme[0]):
+            units += 1
+            in_word = False
+        elif not in_word:
+            units += 1
+            in_word = True
+    return units
+
+
 def content_length(text: str) -> int:
     """Count the letters, digits and CJK characters the fragment thresholds use."""
     return sum(
@@ -70,7 +100,13 @@ def content_length(text: str) -> int:
 
 
 class SemanticFragmenter:
-    """Turn arbitrary LLM token boundaries into playable text fragments."""
+    """Turn arbitrary LLM token boundaries into playable text fragments.
+
+    Fragments end at a complete semantic boundary, except the first one: it
+    may end at a comma, colon or semicolon once the clause before it has
+    ``first_fragment_min_units`` spoken units, without the semantic wait.
+    ``None`` turns that exception off.
+    """
 
     def __init__(
         self,
@@ -80,6 +116,7 @@ class SemanticFragmenter:
         hard_limit_chars: int = 120,
         strong_min_chars: int = 1,
         semantic_wait_seconds: float = 0.5,
+        first_fragment_min_units: int | None = FIRST_FRAGMENT_MIN_UNITS,
         clock=time.monotonic,
     ) -> None:
         if weak_min_chars < 1:
@@ -94,6 +131,8 @@ class SemanticFragmenter:
             raise ValueError("strong punctuation threshold cannot exceed hard limit")
         if semantic_wait_seconds <= 0:
             raise ValueError("semantic wait must be positive")
+        if first_fragment_min_units is not None and first_fragment_min_units < 1:
+            raise ValueError("first fragment threshold must be positive")
         self._weak_min_chars = weak_min_chars
         self._soft_limit_chars = soft_limit_chars
         self._hard_limit_chars = hard_limit_chars
@@ -102,6 +141,8 @@ class SemanticFragmenter:
         self._semantic_wait_seconds = float(semantic_wait_seconds)
         self._clock = clock
         self._buffer_started_at: float | None = None
+        self._first_fragment_min_units = first_fragment_min_units
+        self._emitted = False
 
     @property
     def buffered_text(self) -> str:
@@ -115,6 +156,9 @@ class SemanticFragmenter:
         fragments: list[str] = []
         while self._buffer:
             split_at = self._strong_boundary()
+            first_clause = self._first_clause_boundary()
+            if first_clause is not None and (split_at is None or first_clause < split_at):
+                split_at = first_clause
             if split_at is None and self._semantic_wait_expired():
                 split_at = self._weak_boundary()
             if split_at is None:
@@ -124,13 +168,17 @@ class SemanticFragmenter:
             self._buffer_started_at = self._clock() if self._buffer else None
             if fragment:
                 fragments.append(fragment)
+                self._emitted = True
         return fragments
 
     def flush(self) -> list[str]:
         fragment = self._buffer.strip()
         self._buffer = ""
         self._buffer_started_at = None
-        return [fragment] if fragment else []
+        if not fragment:
+            return []
+        self._emitted = True
+        return [fragment]
 
     def semantic_wait_remaining(self) -> float | None:
         """Seconds until ``feed("")`` releases a clause at weak punctuation.
@@ -164,6 +212,34 @@ class SemanticFragmenter:
                     boundary += 1
                     continue
                 break
+            return boundary
+        return None
+
+    def _first_clause_boundary(self) -> int | None:
+        """End of the first fragment's opening clause, or ``None``.
+
+        A Latin mark (``,`` ``:`` ``;``) counts only once the next character
+        shows it is not inside a number, time or URL: a space or CJK text.
+        """
+        if self._emitted or self._first_fragment_min_units is None:
+            return None
+        for index, character in enumerate(self._buffer):
+            if (
+                character not in FIRST_CLAUSE_PUNCTUATION
+                or self._is_protected_punctuation(index)
+            ):
+                continue
+            boundary = index + 1
+            if not _is_wide(character):
+                if boundary >= len(self._buffer):
+                    return None
+                following = self._buffer[boundary]
+                if not (following.isspace() or _is_wide(following)):
+                    continue
+            if speech_units(self._buffer[:boundary]) < self._first_fragment_min_units:
+                continue
+            if self._has_unclosed_delimiter(boundary):
+                continue
             return boundary
         return None
 
