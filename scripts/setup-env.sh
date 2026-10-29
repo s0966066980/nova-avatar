@@ -23,6 +23,12 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_VERSION="3.10.19"
 # 預設 Avatar
 DEFAULT_AVATAR="${1:-musetalk}"
+# uv 固定版本與官方 release 壓縮檔 SHA-256（與 CI 相同版本）
+UV_VERSION_PIN="0.11.21"
+declare -A UV_SHA256=(
+    [x86_64-unknown-linux-gnu]=8c88519b0ef0af9801fcdee419bbb12116bd9e6b18e162ae093c932d8b264050
+    [aarch64-unknown-linux-gnu]=88e800834007cc5efd4675f166eb2a51e7e3ad19876d85fa8805a6fb5c922397
+)
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}🚀 Nova Avatar - 環境安裝指令碼${NC}"
@@ -62,6 +68,39 @@ check_avatar() {
     esac
 }
 
+# 下載固定版本的 uv release，驗證 SHA-256 後才安裝到 ~/.local/bin
+install_uv() {
+    local target
+    case "$(uname -m)" in
+        x86_64|amd64) target="x86_64-unknown-linux-gnu" ;;
+        aarch64|arm64) target="aarch64-unknown-linux-gnu" ;;
+        *)
+            echo -e "${RED}❌ 沒有此架構的固定 uv 版本: $(uname -m)${NC}" >&2
+            return 1
+            ;;
+    esac
+    local expected="${UV_SHA256[$target]}"
+    local workdir archive actual
+    workdir="$(mktemp -d)"
+    archive="$workdir/uv-$target.tar.gz"
+    if ! curl --proto '=https' --tlsv1.2 -fLsS -o "$archive" \
+        "https://github.com/astral-sh/uv/releases/download/$UV_VERSION_PIN/uv-$target.tar.gz"; then
+        rm -rf "$workdir"
+        echo -e "${RED}❌ 下載 uv $UV_VERSION_PIN 失敗${NC}" >&2
+        return 1
+    fi
+    actual="$(sha256sum "$archive" | cut -d ' ' -f 1)"
+    if [ "$actual" != "$expected" ]; then
+        rm -rf "$workdir"
+        echo -e "${RED}❌ uv $UV_VERSION_PIN sha256 不符（預期 $expected，實際 $actual），已中止${NC}" >&2
+        return 1
+    fi
+    tar -xzf "$archive" -C "$workdir"
+    mkdir -p "$HOME/.local/bin"
+    install -m 0755 "$workdir/uv-$target/uv" "$workdir/uv-$target/uvx" "$HOME/.local/bin/"
+    rm -rf "$workdir"
+}
+
 # 檢查 uv 是否安裝
 check_uv() {
     echo -e "${BLUE}📋 檢查 uv 包管理工具...${NC}"
@@ -70,11 +109,9 @@ check_uv() {
         echo -e "${RED}❌ 錯誤: 未檢測到 uv${NC}"
         echo -e "${YELLOW}正在安裝 uv...${NC}"
         
-        # 自動安裝 uv
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        
-        # Current uv installer uses ~/.local/bin.
-        export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+        # 自動安裝固定版本的 uv（驗證 checksum，不執行遠端安裝腳本）
+        install_uv || exit 1
+        export PATH="$HOME/.local/bin:$PATH"
         
         if ! command -v uv &> /dev/null; then
             echo -e "${RED}❌ uv 安裝失敗${NC}"
@@ -214,9 +251,9 @@ install_avatar() {
         echo -e "${YELLOW}📦 安裝 MuseTalk 依賴...${NC}"
         setup_cuda_home
         uv pip install chumpy==0.70 --no-build-isolation
-        uv pip install ninja
+        uv pip install ninja==1.13.0
         uv pip install -e "$AVATAR_PATH"
-        uv run mim install mmengine
+        uv run mim install mmengine==0.10.7
         FORCE_CUDA=1 MMCV_WITH_OPS=1 uv run mim install mmcv==2.2.0 --no-build-isolation
         uv run mim install mmdet==3.1.0
         uv run mim install mmpose==1.3.2
@@ -332,13 +369,13 @@ show_next_steps() {
     echo -e "${GREEN}   bash scripts/start-all.sh config/config.yaml${NC}"
     echo ""
     echo -e "${YELLOW}3. 或者分步啟動:${NC}"
-    echo -e "${GREEN}   # 啟動後端${NC}"
-    echo -e "${GREEN}   bash scripts/start-backend.sh config/config.yaml${NC}"
-    echo -e "${GREEN}   # 啟動前端（新終端）${NC}"
+    echo -e "${GREEN}   # 建置前端（web/dist）${NC}"
     echo -e "${GREEN}   bash scripts/start-frontend.sh config/config.yaml${NC}"
+    echo -e "${GREEN}   # 啟動後端（同源提供控制台與舞台）${NC}"
+    echo -e "${GREEN}   bash scripts/start-backend.sh config/config.yaml${NC}"
     echo ""
     echo -e "${YELLOW}4. 訪問應用:${NC}"
-    echo -e "${GREEN}   https://localhost:3000${NC}"
+    echo -e "${GREEN}   https://localhost:8010${NC}"
     echo ""
 }
 
@@ -355,8 +392,9 @@ main() {
     show_next_steps
 }
 
-# 捕獲中斷訊號
-trap 'echo -e "\n${YELLOW}🛑 安裝被中斷${NC}"; exit 1' INT TERM
-
-# 執行主流程
-main
+# 僅在直接執行時啟動主流程；測試可 source 後呼叫個別函式
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    # 捕獲中斷訊號
+    trap 'echo -e "\n${YELLOW}🛑 安裝被中斷${NC}"; exit 1' INT TERM
+    main
+fi

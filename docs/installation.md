@@ -52,8 +52,10 @@ bash scripts/create_ssl_certs.sh
 ```
 
 權重腳本使用目前環境的 `huggingface-hub` Python API，可重跑；預設從
-官方 Hugging Face 下載，只有自行設定 `HF_ENDPOINT` 才使用鏡像。
-`--check` 不下載，檢查 UNet、完整 SD VAE、Whisper、DWPose 與臉部分割
+官方 Hugging Face 下載，只有自行設定 `HF_ENDPOINT` 才使用鏡像。每個
+來源固定在 `scripts/musetalk_weights.py` 記錄的 commit，每個檔案都以
+SHA-256 驗證，不符即失敗（鏡像也無法替換權重）。`--check` 不下載，
+同樣以 SHA-256 檢查 UNet、完整 SD VAE、Whisper、DWPose 與臉部分割
 必要檔案。權重與來源影片的授權需另行核對，見
 [第三方聲明](../THIRD_PARTY_NOTICES.md)。
 
@@ -69,9 +71,10 @@ uv run python src/avatars/musetalk/genavatar_musetalk.py \
 影音會話。TensorRT 引擎與角色快取是不同產物；更換同一模型下的角色
 通常可共用引擎。
 
-SSL 腳本會產生 localhost 自簽憑證，且保留既有完整憑證。瀏覽器首次
-使用需信任該憑證；跨機部署應改用涵蓋實際主機名稱、受瀏覽器信任的
-憑證。預設 HTTPS 入口為後端的 `https://localhost:8010`。正式前端建置本身
+SSL 腳本保留既有完整憑證。偵測到 mkcert 時優先以本機 CA 簽發涵蓋
+`localhost`、主機名稱與區網 IP 的憑證，管理者裝置匯入一次
+`rootCA.pem` 即可信任（步驟見 README「管理者裝置信任本機 CA」）；
+否則產生自簽憑證，瀏覽器首次使用需手動信任。預設 HTTPS 入口為後端的 `https://localhost:8010`。正式前端建置本身
 不需要 SSL 私鑰；實際 HTTPS 開發服務與後端才需要。
 
 ## TensorRT 安裝與驗證

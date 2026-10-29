@@ -168,7 +168,9 @@ class VoiceTurnSession:
         self._composer_editing = False
         self._client_request_id = None
         self._cancelled_text_requests: set[str] = set()
-        self._text_turn_lock = asyncio.Lock()
+        # Serializes every interrupt source with turn acceptance, so a tail
+        # guard can never clear a turn accepted while it was sleeping.
+        self._turn_lock = asyncio.Lock()
         self._llm_finished = False
         self._media_player = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -222,6 +224,9 @@ class VoiceTurnSession:
 
     async def prepare(self) -> None:
         """Prewarm Silero and STT before the session may announce listening."""
+        # Record the owning loop before any turn exists: idle greetings and
+        # other worker-thread callbacks must marshal back onto it.
+        self._event_loop = asyncio.get_running_loop()
         if not bool(getattr(self.config.vad, "enabled", True)):
             self._preparing = False
             self._close_gate()
@@ -551,7 +556,7 @@ class VoiceTurnSession:
         # A replacement and cancellation may arrive together. Serialize their
         # interrupt/accept steps, and reject stale validation before it can
         # interrupt the replacement's answer.
-        async with self._text_turn_lock:
+        async with self._turn_lock:
             if _handoff_id is not None and (not accepted_handoff
                     or roles.continuations.get(self.sessionid) is not continuation):
                 raise ValueError('cancelled')
@@ -562,7 +567,7 @@ class VoiceTurnSession:
                 or self._turn_task is not None
                 or self._output_active
             ):
-                await self.interrupt()
+                await self._interrupt_locked()
             if self._turn_id is not None or self._turn_task is not None:
                 raise RuntimeError("上一個對話輪次尚未結束")
             if request_id and request_id in self._cancelled_text_requests:
@@ -598,12 +603,16 @@ class VoiceTurnSession:
             raise ValueError("朗讀文字不可為空")
         if self._closed:
             raise RuntimeError("語音工作階段已關閉")
+        async with self._turn_lock:
+            return await self._start_read_aloud_locked(text, interrupt=interrupt)
+
+    async def _start_read_aloud_locked(self, text: str, *, interrupt: bool) -> dict:
         if interrupt and (
             self._turn_id is not None
             or self._turn_task is not None
             or self._output_active
         ):
-            await self.interrupt()
+            await self._interrupt_locked()
         if self._turn_id is not None or self._turn_task is not None:
             raise RuntimeError("上一個對話輪次尚未結束")
         self._turn_id = uuid4().hex
@@ -628,9 +637,9 @@ class VoiceTurnSession:
         if len(self._cancelled_text_requests) >= 128:
             self._cancelled_text_requests.pop()
         self._cancelled_text_requests.add(request_id)
-        async with self._text_turn_lock:
+        async with self._turn_lock:
             if request_id == self._client_request_id:
-                await self.interrupt()
+                await self._interrupt_locked()
 
     def _segment_pcm_sync(self, pcm: np.ndarray):
         if self._segmenter_reset_pending:
@@ -1117,14 +1126,23 @@ class VoiceTurnSession:
             )
             return
         loop = self._event_loop
-        if loop is not None and loop.is_running():
+        if loop is None or not loop.is_running():
+            # Handling inline would touch loop-bound state (the data channel)
+            # from the TTS thread; without a loop there is nobody to notify.
+            logger.warning(
+                "TTS fragment failure dropped without event loop turn=%s reason=%s",
+                failed_event.get("turn_id"),
+                reason,
+            )
+            return
+        try:
             loop.call_soon_threadsafe(
                 self._handle_fragment_synthesis_failure,
                 failed_event,
                 str(reason),
             )
-            return
-        self._handle_fragment_synthesis_failure(failed_event, str(reason))
+        except RuntimeError:
+            logger.warning("TTS fragment failure dropped: event loop closed")
 
     def _handle_fragment_synthesis_failure(
         self,
@@ -1308,6 +1326,11 @@ class VoiceTurnSession:
 
     async def interrupt(self) -> None:
         """Cancel the old turn, flush all queued speech, then reopen after a tail guard."""
+        async with self._turn_lock:
+            await self._interrupt_locked()
+
+    async def _interrupt_locked(self) -> None:
+        """Interrupt body; the caller must hold ``_turn_lock``."""
         self.greetings.reset()
         interrupted_turn_id = self._turn_id
         if self._role_coordinator is not None:
@@ -1318,6 +1341,7 @@ class VoiceTurnSession:
             self._turn_context.cancel("interrupt")
         self._commit_history("interrupt")
         self._generation += 1
+        generation = self._generation
         self._close_gate()
         if self._turn_task:
             self._turn_task.cancel()
@@ -1333,6 +1357,12 @@ class VoiceTurnSession:
         self._emit("turn_cancelled", turn_id=self._turn_id)
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
         await asyncio.sleep(0.3)
+        if self._generation != generation:
+            # Another fence (failure, greeting, handoff, close) owns the
+            # session now; reopening here would clobber its turn.
+            if interrupted_turn_id:
+                self._emit_turn_metrics("interrupt", turn_id=interrupted_turn_id)
+            return
         self._turn_id = None
         self._restore_greeting_voice()
         self._manual_pause = False
@@ -1957,10 +1987,28 @@ class VoiceTurnSession:
     def _send_event(self, event):
         if self._event_sink is None:
             return
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        loop = self._event_loop
+        if loop is not None and running is not loop and loop.is_running():
+            # The data channel is bound to the session loop; never send on it
+            # from a TTS/LLM worker thread (or a worker's private loop).
+            try:
+                loop.call_soon_threadsafe(self._send_event, event)
+            except RuntimeError:
+                logger.warning("Voice event dropped: event loop closed")
+            return
         self._sequence += 1
         try:
             self._event_sink(json.dumps({**event, "seq": self._sequence}, ensure_ascii=False))
         except Exception as exc:
+            if running is None or (loop is not None and running is not loop):
+                # A failure off the session loop says nothing about the
+                # channel itself; keep it open for later loop-side events.
+                logger.warning(f"Voice event dropped outside the event loop: {exc}")
+                return
             logger.warning(f"Voice event channel failed closed: {exc}")
             self._event_sink = None
             self._close_gate()
