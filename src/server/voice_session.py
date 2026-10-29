@@ -624,7 +624,7 @@ class VoiceTurnSession:
                 or self._turn_task is not None
                 or self._output_active
             ):
-                await self._interrupt_locked()
+                await self._interrupt_locked(tail_guard=False)
             if self._turn_id is not None or self._turn_task is not None:
                 raise RuntimeError("上一個對話輪次尚未結束")
             if request_id and request_id in self._cancelled_text_requests:
@@ -669,7 +669,7 @@ class VoiceTurnSession:
             or self._turn_task is not None
             or self._output_active
         ):
-            await self._interrupt_locked()
+            await self._interrupt_locked(tail_guard=False)
         if self._turn_id is not None or self._turn_task is not None:
             raise RuntimeError("上一個對話輪次尚未結束")
         self._turn_id = uuid4().hex
@@ -1422,8 +1422,12 @@ class VoiceTurnSession:
         async with self._turn_lock:
             await self._interrupt_locked()
 
-    async def _interrupt_locked(self) -> None:
-        """Interrupt body; the caller must hold ``_turn_lock``."""
+    async def _interrupt_locked(self, *, tail_guard: bool = True) -> None:
+        """Interrupt body; the caller must hold ``_turn_lock``.
+
+        ``tail_guard=False`` is for a replacement turn that closes capture
+        itself right away: the 0.3 s guard would only delay its first audio.
+        """
         self.greetings.reset()
         interrupted_turn_id = self._turn_id
         if self._role_coordinator is not None:
@@ -1449,7 +1453,8 @@ class VoiceTurnSession:
             self._metrics.mark_output_stopped()
         self._emit("turn_cancelled", turn_id=self._turn_id)
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
-        await asyncio.sleep(0.3)
+        if tail_guard:
+            await asyncio.sleep(0.3)
         if self._generation != generation:
             # Another fence (failure, greeting, handoff, close) owns the
             # session now; reopening here would clobber its turn.
