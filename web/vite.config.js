@@ -6,15 +6,16 @@ import yaml from 'js-yaml'
 
 // 讀取配置檔案，前後端使用統一配置
 // 埠 / SSL 讀預設服務配置；數字人引擎不依賴這份 yaml
+// CONFIG_FILE 可為絕對路徑（啟動腳本傳入）或 config/ 下的檔名
+// 正式使用由後端同源提供 web/dist；此開發伺服器預設只綁本機，僅供開發
 const configFile = process.env.CONFIG_FILE || 'config.yaml'
 const quietConfig = process.env.VITE_CONFIG_QUIET === '1'
 const configPath = path.resolve(__dirname, '../config', configFile)
 let config = null
 let useSSL = false
 let backendPort = 8010
-let backendHost = 'localhost'
 let webPort = 3000
-let webHost = '0.0.0.0'
+let webHost = '127.0.0.1'
 
 try {
   if (fs.existsSync(configPath)) {
@@ -24,20 +25,19 @@ try {
     // 讀取後端配置
     useSSL = config?.app?.ssl === true
     backendPort = config?.app?.listenport || 8010
-    backendHost = config?.app?.listenhost || '0.0.0.0'
-    
-    // 讀取前端配置
+
+    // 讀取開發伺服器配置
     webPort = config?.app?.web?.port || 3000
-    webHost = config?.app?.web?.host || '0.0.0.0'
+    webHost = config?.app?.web?.host || webHost
     
     if (!quietConfig) {
       console.log('┌─────────────────────────────────────────────┐')
       console.log('│  📡 Nova Avatar 配置載入成功                │')
       console.log('├─────────────────────────────────────────────┤')
-      console.log(`│  配置檔案:  ${configFile.padEnd(27)} │`)
+      console.log(`│  配置檔案:  ${path.basename(configPath).padEnd(27)} │`)
       console.log(`│  SSL/HTTPS: ${useSSL ? '✅ 已啟用' : '❌ 未啟用'}                        │`)
-      console.log(`│  後端地址:  ${useSSL ? 'https' : 'http'}://${backendHost === '0.0.0.0' ? 'localhost' : backendHost}:${backendPort}${backendPort < 10000 ? '    ' : '   '}│`)
-      console.log(`│  前端地址:  ${useSSL ? 'https' : 'http'}://${webHost === '0.0.0.0' ? 'localhost' : webHost}:${webPort}${webPort < 10000 ? '    ' : '   '}│`)
+      console.log(`│  後端地址:  ${useSSL ? 'https' : 'http'}://localhost:${backendPort}${backendPort < 10000 ? '    ' : '   '}│`)
+      console.log(`│  開發伺服器: ${useSSL ? 'https' : 'http'}://${webHost}:${webPort}${webPort < 10000 ? '   ' : '  '}│`)
       console.log('└─────────────────────────────────────────────┘')
     }
   } else {

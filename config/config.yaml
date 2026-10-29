@@ -10,9 +10,9 @@ app:
   ssl_cert: ssl_certs/localhost.crt 
   ssl_key: ssl_certs/localhost.key
 
-  web:
+  web:  # 僅 Vite 開發伺服器（npm run dev）；正式由後端 listenport 同源提供
     port: 3000
-    host: 0.0.0.0
+    host: 127.0.0.1
 
 model:
   # 啟動時若該角色素材齊全會預載；否則服務仍會啟動，到設定裡再選
@@ -103,9 +103,16 @@ asr:
   min_audio_rms: 0.003
   min_confidence: 0.35
 
-# LLM：Ollama 或 llama.cpp，也可在網頁設定裡切換
+# LLM：Ollama 或 llama.cpp；數位人設定檔與控制台只能選擇下列端點名稱
 llm:
-  provider: ollama  # ollama | llamacpp
+  # 未設定 endpoints 時，由下方 provider / base_url / api_key 產生單一端點
+  # （名稱即 provider）。端點、網址與金鑰只能在此設定檔編輯，金鑰只送往
+  # 該端點自己的 base_url。provider 必須明確指定：llamacpp | ollama | openai。
+  # endpoints:
+  #   llamacpp: {provider: llamacpp, base_url: http://127.0.0.1:8080/v1}
+  #   ollama: {provider: ollama, base_url: http://localhost:11434/v1}
+  #   remote: {provider: openai, base_url: https://llm.example/v1, api_key: ${REMOTE_LLM_KEY}}
+  provider: ollama  # llamacpp | ollama | openai
   api_key: ollama  # Ollama / llama-server 都不驗證，但不可為空
   base_url: http://localhost:11434/v1
   model: qwen3.5:4b

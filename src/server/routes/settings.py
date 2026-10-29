@@ -144,7 +144,7 @@ async def set_llm_model(request):
             lambda: apply_llm_model(
                 state.config,
                 params.get("model", ""),
-                params.get("provider", ""),
+                params.get("endpoint", ""),
                 params.get("system_prompt"),
                 params.get("response_max_chars"),
                 params.get("reply_mode"),

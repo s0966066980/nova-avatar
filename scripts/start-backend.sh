@@ -19,8 +19,8 @@ NC='\033[0m' # No Color
 
 # 專案路徑
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# 配置檔案
-CONFIG_FILE="${1:-config/config.yaml}"
+# 配置檔案：相對路徑以呼叫者目錄為準，轉成絕對路徑後再切換目錄
+CONFIG_FILE="$(realpath -m -- "${1:-$PROJECT_ROOT/config/config.yaml}")"
 
 if [ -f "$PROJECT_ROOT/config/ragflow.env" ]; then
     set -a
@@ -62,7 +62,7 @@ check_uv() {
 # 檢查 uv 虛擬環境
 setup_uv_env() {
     # 檢查 .venv 目錄是否存在
-    if [ ! -d ".venv" ]; then
+    if [ ! -d "$PROJECT_ROOT/.venv" ]; then
         echo -e "${RED}❌ 錯誤: 虛擬環境 '.venv' 不存在${NC}"
         echo -e "${YELLOW}請先執行: uv venv --python 3.10.19${NC}"
         exit 1
@@ -71,7 +71,7 @@ setup_uv_env() {
     echo -e "${GREEN}✓${NC} uv 虛擬環境 '.venv' 已找到"
 
     # 檢查 Python 版本
-    PYTHON_VERSION=$(uv run python --version)
+    PYTHON_VERSION=$(cd "$PROJECT_ROOT" && uv run python --version)
     echo -e "${GREEN}✓${NC} Python 環境: $PYTHON_VERSION"
 }
 
@@ -148,10 +148,11 @@ start_backend() {
     check_and_kill_port
 
     if grep -Eq '^[[:space:]]*ssl:[[:space:]]*true([[:space:]]|$)' "$CONFIG_FILE"; then
-        echo -e "${GREEN}📡 後端服務地址: ${NC}https://localhost:8010"
+        echo -e "${GREEN}🌐 控制台: ${NC}https://localhost:8010（舞台 /stage.html 僅限本機）"
     else
-        echo -e "${GREEN}📡 後端服務地址: ${NC}http://localhost:8010"
+        echo -e "${GREEN}🌐 控制台: ${NC}http://localhost:8010（舞台 /stage.html 僅限本機）"
     fi
+    echo -e "${YELLOW}   前端由後端提供 web/dist；未建置時請先執行 bash scripts/start-frontend.sh${NC}"
     echo -e "${YELLOW}💡 按 Ctrl+C 停止服務${NC}"
     echo ""
 

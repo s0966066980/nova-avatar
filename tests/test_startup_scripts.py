@@ -25,7 +25,7 @@ def launcher(tmp_path):
         ".local/ragflow/upstream/.git", "integrations/ragflow",
     ):
         (project / directory).mkdir(parents=True)
-    for name in ("start-all.sh", "ragflow.sh"):
+    for name in ("start-all.sh", "start-backend.sh", "start-frontend.sh", "ragflow.sh"):
         shutil.copy2(ROOT / "scripts" / name, project / "scripts" / name)
     (project / "config/config.yaml").write_text("app:\n  ssl: false\n")
     (project / "config/ragflow.env").write_text("NOVA_RAGFLOW_API_KEY=test-private-key\n")
@@ -115,11 +115,16 @@ def launcher(tmp_path):
             else:
                 print("{}")
         elif command == "uv":
+            if "--version" in args:
+                print("Python 3.10.19")
+                sys.exit(0)
             assert os.environ.get("NOVA_RAGFLOW_API_KEY") == "test-private-key"
             mark("backend")
-            os.execl("/bin/sleep", "sleep", "60")
+            # A short-lived backend: the launcher stays until its backend exits.
+            os.execl("/bin/sleep", "sleep", "3")
         elif command == "npm":
             assert "NOVA_RAGFLOW_API_KEY" not in os.environ
+            (state / "npm-config").write_text(os.environ.get("CONFIG_FILE", ""))
             mark("frontend")
         elif command == "lsof":
             fail()
@@ -128,10 +133,10 @@ def launcher(tmp_path):
     for command in ("docker", "systemctl", "sudo", "id", "git", "curl", "uv", "npm", "node", "lsof"):
         (bin_dir / command).symlink_to(fake)
 
-    def run(script="start-all.sh", *args, **env):
+    def run(script="start-all.sh", *args, cwd=project, **env):
         result = subprocess.run(
             ["bash", str(project / "scripts" / script), *args],
-            cwd=project,
+            cwd=cwd,
             env={
                 **{key: value for key, value in os.environ.items()
                    if not key.startswith(("NOVA_", "DOCKER_"))},
@@ -145,7 +150,64 @@ def launcher(tmp_path):
         events = (state / "events").read_text() if (state / "events").exists() else ""
         return result, events
 
+    run.project = project
     return state, run
+
+
+def _backend_config(events: str) -> str:
+    line = next(line for line in events.splitlines() if line.startswith("uv run python src/server/app.py"))
+    return line.split("--config ", 1)[1]
+
+
+def test_start_all_builds_the_frontend_and_serves_it_from_the_backend(launcher):
+    state, run = launcher
+    result, events = run(NOVA_START_RAGFLOW="0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert " run build" in events
+    assert " run dev" not in events
+    assert events.index(" run build") < events.index("uv run python src/server/app.py")
+    output = result.stdout
+    assert "控制台 Local: \x1b[0mhttp://localhost:8010" in output
+    assert "數字人舞台 Local: \x1b[0mhttp://localhost:8010/stage.html" in output
+    assert ":3000" not in output
+    # The stage is loopback-only (docs/adr/0021): a LAN address would answer 403.
+    assert "舞台 Network" not in output
+
+
+def test_start_all_passes_an_absolute_config_resolved_from_the_callers_directory(launcher):
+    state, run = launcher
+    result, events = run("start-all.sh", "../config/config.yaml",
+                         cwd=run.project / "scripts", NOVA_START_RAGFLOW="0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _backend_config(events) == str(run.project / "config/config.yaml")
+    assert (state / "npm-config").read_text() == str(run.project / "config/config.yaml")
+
+
+def test_start_backend_resolves_the_config_before_changing_directory(launcher):
+    state, run = launcher
+    result, events = run("start-backend.sh", "../config/config.yaml", cwd=run.project / "scripts")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _backend_config(events) == str(run.project / "config/config.yaml")
+
+
+def test_start_frontend_builds_by_default_and_points_at_the_backend(launcher):
+    state, run = launcher
+    result, events = run("start-frontend.sh")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert " run build" in events
+    assert " run dev" not in events
+    assert "http://localhost:8010" in result.stdout
+    assert ":3000" not in result.stdout
+
+
+def test_start_frontend_dev_server_is_loopback_only_and_reads_the_given_config(launcher):
+    state, run = launcher
+    result, events = run("start-frontend.sh", "--dev", "config/config.yaml")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert " run dev" in events
+    assert " run build" not in events
+    assert (state / "npm-config").read_text() == str(run.project / "config/config.yaml")
+    assert "http://127.0.0.1:3000" in result.stdout
 
 
 def test_start_all_starts_docker_and_all_services_then_cleans_up(launcher):

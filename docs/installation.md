@@ -74,7 +74,7 @@ uv run python src/avatars/musetalk/genavatar_musetalk.py \
 SSL 腳本保留既有完整憑證。偵測到 mkcert 時優先以本機 CA 簽發涵蓋
 `localhost`、主機名稱與區網 IP 的憑證，管理者裝置匯入一次
 `rootCA.pem` 即可信任（步驟見 README「管理者裝置信任本機 CA」）；
-否則產生自簽憑證，瀏覽器首次使用需手動信任。預設 HTTPS 入口為 `https://localhost:3000`。正式前端建置本身
+否則產生自簽憑證，瀏覽器首次使用需手動信任。預設 HTTPS 入口為後端的 `https://localhost:8010`。正式前端建置本身
 不需要 SSL 私鑰；實際 HTTPS 開發服務與後端才需要。
 
 ## TensorRT 安裝與驗證
@@ -157,8 +157,9 @@ model:
 bash scripts/start-all.sh config/config.yaml
 ```
 
-控制台 `https://localhost:3000`，舞台 `/stage.html`，健康檢查
-`https://localhost:8010/health`。本機設定覆蓋主 YAML；變更設定前留意
+腳本先建置 `web/dist`，再由後端同源提供：控制台
+`https://localhost:8010`，舞台 `https://localhost:8010/stage.html`（僅限本機），
+健康檢查 `https://localhost:8010/health`。本機設定覆蓋主 YAML；變更設定前留意
 `config/runtime_overrides.yaml` 的有效值。
 
 更新已啟用 TensorRT 的環境：

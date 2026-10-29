@@ -481,12 +481,11 @@ class RoleCoordinator:
                     self.media.get(edge["asset_id"])
             if config.llm.provider == "llamacpp" and not self.state.avatar_streams:
                 from src.llm.llamacpp import ensure_server
-                base_url = await asyncio.to_thread(ensure_server, config.llm.model,
+                # The endpoint already fixed host and port; requests use its URL.
+                await asyncio.to_thread(ensure_server, config.llm.model,
                     extra_dir=config.llm.llamacpp_dir, host=config.llm.llamacpp_host,
                     port=config.llm.llamacpp_port, ctx=config.llm.llamacpp_ctx,
                     threads=config.llm.llamacpp_threads)
-                for profile in selected:
-                    profile["llm"]["base_url"] = base_url
             self.assets, self.library = cache, target
             self.profiles_applied = True
             self.phase = "ready" if target["enabled"] else "disabled"

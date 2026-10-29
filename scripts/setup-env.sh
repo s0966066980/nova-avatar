@@ -369,13 +369,13 @@ show_next_steps() {
     echo -e "${GREEN}   bash scripts/start-all.sh config/config.yaml${NC}"
     echo ""
     echo -e "${YELLOW}3. 或者分步啟動:${NC}"
-    echo -e "${GREEN}   # 啟動後端${NC}"
-    echo -e "${GREEN}   bash scripts/start-backend.sh config/config.yaml${NC}"
-    echo -e "${GREEN}   # 啟動前端（新終端）${NC}"
+    echo -e "${GREEN}   # 建置前端（web/dist）${NC}"
     echo -e "${GREEN}   bash scripts/start-frontend.sh config/config.yaml${NC}"
+    echo -e "${GREEN}   # 啟動後端（同源提供控制台與舞台）${NC}"
+    echo -e "${GREEN}   bash scripts/start-backend.sh config/config.yaml${NC}"
     echo ""
     echo -e "${YELLOW}4. 訪問應用:${NC}"
-    echo -e "${GREEN}   https://localhost:3000${NC}"
+    echo -e "${GREEN}   https://localhost:8010${NC}"
     echo ""
 }
 

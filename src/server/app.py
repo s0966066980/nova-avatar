@@ -21,7 +21,7 @@ from src.utils.logging import logger
 from src.config.loader import load_config
 from src.avatars.factory import prepare_avatar_model
 from src.server.state import state
-from src.server.server import create_app, run_server
+from src.server.server import FrontendNotBuilt, create_app, require_frontend, run_server
 
 
 EDGE_PREWARM_MAX_ATTEMPTS = 3
@@ -84,6 +84,11 @@ def main():
         help="path to config file (e.g., config/config.yaml)"
     )
     args = parser.parse_args()
+    # Fail before loading models: without web/dist there is no console or stage.
+    try:
+        frontend_dir = require_frontend()
+    except FrontendNotBuilt as exc:
+        raise SystemExit(str(exc)) from None
     
     # 載入配置
     state.config_path = args.config
@@ -197,7 +202,7 @@ def main():
     logger.info("Startup prewarm: %s", state.prewarm_status)
 
     # 建立並執行應用
-    app = create_app()
+    app = create_app(frontend_dir=frontend_dir)
     run_server(app, state.config)
 
 
