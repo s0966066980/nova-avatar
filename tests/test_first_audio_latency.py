@@ -132,6 +132,8 @@ class _Avatar:
 
 
 class _Roles:
+    """Routing that decides once the test opens ``gate`` (ADR 0022: concurrent)."""
+
     enabled = True
 
     def __init__(self, clock: FakeClock, seconds: float, plan: dict) -> None:
@@ -139,8 +141,16 @@ class _Roles:
         self.seconds = seconds
         self.plan = plan
         self.continuations: dict = {}
+        self.gate = asyncio.Event()
+
+    def continues(self, _voice, _turn_id):
+        return False
+
+    def speculative_plan(self):
+        return {"context": ""}
 
     async def before_generate(self, _voice, _text, _turn_id, _generation):
+        await self.gate.wait()
         self.clock.advance(self.seconds)
         return dict(self.plan)
 
@@ -173,12 +183,14 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.session.close()
 
-    async def test_routing_retrieval_and_model_info_are_separate_stages(self):
-        self.session._role_coordinator = _Roles(self.clock, 0.4, {"context": ""})
+    async def _run_turn(self, roles, text):
+        """Retrieval 0.1 s, answer preflight 0.2 s, then routing decides."""
+        self.session._role_coordinator = roles
         clock = self.clock
+        llm_started = threading.Event()
 
         async def retrieve(_client, _question, _dataset_ids, **_kwargs):
-            clock.advance(0.3)
+            clock.advance(0.1)
             return {"status": "empty", "sources": []}
 
         def fake_llm(_text, _avatar, **_kwargs):
@@ -186,42 +198,44 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
             clock.advance(0.2)
             with timed_stage("model_info"):
                 pass
+            llm_started.set()
             return "回答。"
 
         with patch("src.server.voice_session.llm_response", side_effect=fake_llm), patch(
             "src.server.voice_session.RagFlowClient.retrieve", retrieve
-        ):
-            await self.session.start_text_turn("問題", interrupt=False)
-            self.clock.advance(0.05)
-            await self.session._turn_task
+        ), patch("src.server.voice_session.prepare_spoken_history"):
+            await self.session.start_text_turn(text, interrupt=False)
+            self.assertTrue(await asyncio.to_thread(llm_started.wait, 2))
             await asyncio.sleep(0)  # deliver the thread-safe model_info callback
+            roles.gate.set()
+            await self.session._turn_task
+            await asyncio.sleep(0)
+
+    async def test_routing_runs_beside_retrieval_and_the_answer(self):
+        await self._run_turn(_Roles(self.clock, 0.4, {"context": ""}), "問題")
+        self.clock.advance(0.05)
         self.session.on_output_audio(True)
 
         snapshot = self.session.metrics_snapshot()
         stages = snapshot["stage_seconds"]
-        self.assertEqual(stages["routing"], 0.4)
-        self.assertEqual(stages["retrieval"], 0.3)
-        self.assertEqual(stages["pre_answer"], 0.7)
+        self.assertEqual(stages["retrieval"], 0.1)
+        self.assertEqual(stages["pre_answer"], 0.1, "the answer does not wait for routing")
+        self.assertEqual(stages["routing"], 0.7)
+        self.assertEqual(stages["routing_hold"], 0.0)
         self.assertIsNotNone(stages["model_info"])
-        self.assertEqual(snapshot["prompt_first_audio_seconds"], 0.9)
-        self.assertEqual(snapshot["first_audio_seconds"], 0.95)
+        self.assertEqual(snapshot["prompt_first_audio_seconds"], 0.75)
+        self.assertEqual(snapshot["first_audio_seconds"], 0.75)
 
-    async def test_fixed_reply_ends_pre_answer_without_an_answer_llm(self):
-        self.session._role_coordinator = _Roles(
-            self.clock, 0.6, {"fixed": "接下來請天氣助手為您說明。"})
-
-        with patch("src.server.voice_session.llm_response") as llm, patch(
-            "src.server.voice_session.RagFlowClient.retrieve"
-        ) as retrieve, patch("src.server.voice_session.prepare_spoken_history"):
-            await self.session.start_text_turn("明天會下雨嗎", interrupt=False)
-            await self.session._turn_task
-        llm.assert_not_called()
-        retrieve.assert_not_called()
+    async def test_fixed_reply_ends_pre_answer_and_forgets_the_discarded_answer(self):
+        await self._run_turn(
+            _Roles(self.clock, 0.3, {"fixed": "接下來請天氣助手為您說明。"}), "明天會下雨嗎")
         self.assertEqual([text for text, _ in self.avatar.messages], ["接下來請天氣助手為您說明。"])
         stages = self.session.metrics_snapshot()["stage_seconds"]
         self.assertEqual(stages["routing"], 0.6)
         self.assertEqual(stages["pre_answer"], 0.6)
-        self.assertIsNone(stages["retrieval"])
+        self.assertEqual(stages["retrieval"], 0.1)
+        self.assertIsNone(stages["model_info"])
+        self.assertIsNone(stages["llm_first_token"])
 
 
 class VideoEnqueueStageTests(unittest.TestCase):

@@ -20,6 +20,10 @@ from src.profiles.store import RETURN_ANNOUNCEMENTS, ProfileError, ProfileStore,
 from src.profiles.weather import CwaWeather, WeatherQuery
 from src.utils.logging import logger
 
+# The plan of a turn the current main role answers itself. It is also the
+# plan a concurrently started main answer assumes before routing decides.
+ANSWER_CONTEXT = "本輪未取得即時氣象資料，不可提供實際即時天氣數值。"
+
 
 async def _bind_avatar(avatar, config, data):
     # Cancellation must settle the worker before cleanup releases the avatar.
@@ -107,6 +111,23 @@ class ConversationRoles:
         if voice._media_player is not None:
             voice._media_player.discard_stale_media()
 
+    def continues(self, voice, turn_id):
+        """True when this turn answers a handoff; its plan needs no routing."""
+        continuation = self.continuations.get(voice.sessionid)
+        return bool(continuation
+                    and continuation.get('target_profile_id') == self.current_id
+                    and continuation.get('target_turn') == turn_id)
+
+    def speculative_plan(self):
+        """The plan of a turn routing keeps with the current role, adding no facts.
+
+        A main answer started before routing decides uses this plan; a routed
+        plan equal to it releases that answer, any other plan replaces it.
+        """
+        if self.current_id == self.library["pair"]["main"]:
+            return {"context": ANSWER_CONTEXT}
+        return {"weather": None, "context": ""}
+
     async def before_generate(self, voice, text, turn_id, generation):
         if not self.enabled:
             return None
@@ -139,7 +160,7 @@ class ConversationRoles:
         specialist_id = self.library["pair"]["specialist"]
         target_id = specialist_id if route['route'] == 'specialist' else self.library['pair']['main']
         if target_id == self.current_id and route['route'] == 'answer':
-            return {"context": "本輪未取得即時氣象資料，不可提供實際即時天氣數值。"}
+            return {"context": ANSWER_CONTEXT}
         target = self.profiles[target_id]
         if getattr(voice, 'attachments', None) and voice.attachments.selection:
             from src.server.attachments import vision_ready

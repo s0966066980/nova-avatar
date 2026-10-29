@@ -76,6 +76,17 @@ class TransactionalHistory:
             self._pending_limit = None
         self._trim()
 
+    def discard_pending(self, turn_id: str) -> bool:
+        """Forget a pending turn whose generated answer was never played."""
+        with self._lock:
+            transaction = self._pending.pop(turn_id, None)
+            if transaction is None:
+                return False
+            transaction.state = HistoryTurnState.COMMITTED
+            transaction.terminal_reason = "discarded"
+            self._apply_pending_limit()
+            return True
+
     def begin(self, user_text: str, *, turn_id: str) -> HistoryTransaction:
         if not turn_id:
             raise ValueError("turn id is required")
