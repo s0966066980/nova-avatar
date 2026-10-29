@@ -66,6 +66,7 @@ AREA_BY_FILE = {
     "test_stage_idle_reset.py": "conversation",
     "test_stage_presentation.py": "conversation",
     "test_startup_scripts.py": "runtime",
+    "test_turn_lifecycle.py": "conversation",
     "test_vad.py": "speech",
     "test_voice_session.py": "conversation",
     "test_webrtc_lifecycle.py": "conversation",

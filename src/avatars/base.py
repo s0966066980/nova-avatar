@@ -346,7 +346,13 @@ class BaseAvatar:
         ):
             key = (eventpoint["turn_id"], int(eventpoint["generation"]))
             with self._media_sequence_lock:
-                sequence = self._media_sequences.get(key, 0)
+                sequence = self._media_sequences.get(key)
+                if sequence is None:
+                    # Only the current turn's media is accepted; forget old
+                    # turns so a long-running session does not grow per turn.
+                    sequence = 0
+                    while len(self._media_sequences) >= 8:
+                        del self._media_sequences[next(iter(self._media_sequences))]
                 self._media_sequences[key] = sequence + 1
             eventpoint["fragment_media_sequence"] = int(
                 eventpoint.get("media_sequence", 0)
