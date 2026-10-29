@@ -16,7 +16,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from src.utils.logging import logger
-from src.vad.audio import decode_audio, pcm16_to_wav_bytes
+from src.vad.audio import decode_audio, pcm16_to_wav_bytes, resample_int16
 from src.vad.factory import create_vad_from_config, get_vad_engine_from_config
 from src.vad.segmenter import detect_speech_segments
 
@@ -62,11 +62,48 @@ def preprocess_audio_bytes(audio_bytes: bytes, vad_config=None, config=None) -> 
     """
     if vad_config is None or not getattr(vad_config, "enabled", False):
         return VADOutcome(audio_bytes=audio_bytes, enabled=False)
-
-    engine_type = getattr(vad_config, "type", "silero")
     try:
         sample_rate = int(getattr(vad_config, "sample_rate", 16000))
         pcm = decode_audio(audio_bytes, sample_rate)
+    except Exception as e:
+        return _vad_failed(audio_bytes, vad_config, e)
+    return _detect(pcm, sample_rate, vad_config, config, original=audio_bytes)
+
+
+def preprocess_pcm(pcm: np.ndarray, sample_rate: int, vad_config=None, config=None) -> VADOutcome:
+    """VAD on audio that is already decoded to mono int16 PCM.
+
+    ``audio_bytes`` is always a WAV of the (trimmed) PCM, so the recognizer
+    never decodes the original upload again.
+    """
+    original = pcm16_to_wav_bytes(pcm, sample_rate)
+    if vad_config is None or not getattr(vad_config, "enabled", False):
+        return VADOutcome(audio_bytes=original, enabled=False)
+    try:
+        vad_rate = int(getattr(vad_config, "sample_rate", 16000))
+        pcm = resample_int16(pcm, sample_rate, vad_rate)
+    except Exception as e:
+        return _vad_failed(original, vad_config, e)
+    return _detect(pcm, vad_rate, vad_config, config, original=original)
+
+
+def _vad_failed(audio_bytes: bytes, vad_config, error: Exception) -> VADOutcome:
+    # VAD 只是前置最佳化，壞了也不能擋住語音識別，這裡降級並把原因帶出去
+    engine_type = getattr(vad_config, "type", "silero")
+    logger.warning(f'[VAD] {engine_type} 預處理失敗，退回原始音訊: {error}')
+    return VADOutcome(
+        audio_bytes=audio_bytes,
+        has_speech=True,
+        enabled=False,
+        engine=engine_type,
+        error=str(error),
+    )
+
+
+def _detect(pcm: np.ndarray, sample_rate: int, vad_config, config, *, original: bytes) -> VADOutcome:
+    """Run VAD on ``pcm``; ``original`` is handed on when nothing is trimmed."""
+    engine_type = getattr(vad_config, "type", "silero")
+    try:
         total_ms = int(len(pcm) * 1000 / sample_rate)
 
         vad = get_vad_engine_from_config(vad_config, config=config)
@@ -76,7 +113,7 @@ def preprocess_audio_bytes(audio_bytes: bytes, vad_config=None, config=None) -> 
         if not segments:
             logger.info(f'[VAD] {engine_type}: {total_ms}ms 音訊中未檢測到語音')
             return VADOutcome(
-                audio_bytes=audio_bytes,
+                audio_bytes=original,
                 has_speech=False,
                 enabled=True,
                 engine=engine_type,
@@ -100,15 +137,7 @@ def preprocess_audio_bytes(audio_bytes: bytes, vad_config=None, config=None) -> 
         )
 
     except Exception as e:
-        # VAD 只是前置最佳化，壞了也不能擋住語音識別，這裡降級並把原因帶出去
-        logger.warning(f'[VAD] {engine_type} 預處理失敗，退回原始音訊: {e}')
-        return VADOutcome(
-            audio_bytes=audio_bytes,
-            has_speech=True,
-            enabled=False,
-            engine=engine_type,
-            error=str(e),
-        )
+        return _vad_failed(original, vad_config, e)
 
 
 def create_segmenter(vad_config, config=None):
@@ -129,4 +158,4 @@ def create_segmenter(vad_config, config=None):
     return VADSegmenter(vad, **_segmenter_kwargs(vad_config))
 
 
-__all__ = ["VADOutcome", "preprocess_audio_bytes", "create_segmenter"]
+__all__ = ["VADOutcome", "preprocess_audio_bytes", "preprocess_pcm", "create_segmenter"]

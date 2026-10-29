@@ -103,7 +103,7 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
     # Leave space for multipart headers around the 100 MB background asset.
     # access_guard runs first: every route's class lives in src/server/access.py.
     app = web.Application(client_max_size=1024**2*101, middlewares=[access_guard, profile_settings_guard])
-    install_access(app, admin_env_path)
+    install_access(app, admin_env_path, getattr(getattr(state.config, "app", None), "allowed_hosts", ()))
     from src.server.routes.attachments import register as register_attachments
     register_attachments(app)
     from src.server import conversations

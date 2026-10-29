@@ -286,21 +286,18 @@ class ProfileStore:
         return self.endpoints() if self.endpoints else None
 
     def load(self) -> dict:
-        return self._read()[0]
-
-    def _read(self) -> tuple[dict, bool]:
-        """The saved library, and whether saved voice settings had to be migrated."""
         with self._lock:
-            if self.path.is_symlink():
-                raise ProfileError("角色設定不可使用符號連結")
-            try:
-                raw = yaml.safe_load(self.path.read_text("utf-8"))
-            except OSError as exc:
-                raise ProfileError("無法讀取角色設定", 503) from exc
-            except yaml.YAMLError as exc:
-                raise ProfileError("角色設定 YAML 無法解析") from exc
-            migrated = _migrate_voice_settings(raw)
-            return validate_library(raw, self._endpoints()), migrated
+            return validate_library(self._read_raw(), self._endpoints())
+
+    def _read_raw(self):
+        if self.path.is_symlink():
+            raise ProfileError("角色設定不可使用符號連結")
+        try:
+            return yaml.safe_load(self.path.read_text("utf-8"))
+        except OSError as exc:
+            raise ProfileError("無法讀取角色設定", 503) from exc
+        except yaml.YAMLError as exc:
+            raise ProfileError("角色設定 YAML 無法解析") from exc
 
     def initialize(self, config, *, defaults_path: Path | None = None) -> dict:
         """Migrate missing settings once, preserving every explicit role choice."""
@@ -308,9 +305,13 @@ class ProfileStore:
             if self.endpoints is None:
                 self.endpoints = lambda: configured_endpoints(config.llm)
             if self.path.exists() or self.path.is_symlink():
-                library, changed = self._read()
-                raw = yaml.safe_load(self.path.read_text("utf-8"))
-                changed = changed or any(key not in raw['handoff'] for key in RETURN_ANNOUNCEMENTS)
+                raw = self._read_raw()
+                # Voice migration decodes and hashes audio: done once here and
+                # saved as is, even while a legacy endpoint keeps the rest unsaved.
+                if _migrate_voice_settings(raw):
+                    self._write(raw)
+                library = validate_library(deepcopy(raw), self._endpoints())
+                changed = any(key not in raw['handoff'] for key in RETURN_ANNOUNCEMENTS)
                 legacy = [p for p, original in zip(library["profiles"], raw["profiles"])
                           if "endpoint" not in original["llm"]]
                 # An unlisted legacy URL stays on disk until an admin picks an

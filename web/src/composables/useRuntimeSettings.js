@@ -87,7 +87,8 @@ const ollama = reactive({
   reachable: false,
   error: '',
   current: '',
-  base_url: ''
+  base_url: '',
+  endpoint: ''
 })
 
 const llamacpp = reactive({
@@ -95,6 +96,7 @@ const llamacpp = reactive({
   reachable: false,
   error: '',
   base_url: '',
+  endpoint: '',
   server_running: false,
   binary: ''
 })
@@ -1038,6 +1040,19 @@ function applyProviderBlock(target, block) {
   target.reachable = Boolean(block.reachable)
   target.error = block.error || ''
   target.base_url = block.base_url || ''
+  target.endpoint = block.name || ''
+}
+
+const PROVIDER_LABELS = { ollama: 'Ollama', llamacpp: 'llama.cpp' }
+
+// The console picks a provider; the server only accepts a configured endpoint name.
+function endpointForProvider(provider) {
+  if (provider === runtime.llm.provider && runtime.llm.endpoint) return runtime.llm.endpoint
+  const endpoint = (provider === 'llamacpp' ? llamacpp : ollama).endpoint
+  if (!endpoint) {
+    throw new Error(`伺服器設定檔 llm.endpoints 沒有 ${PROVIDER_LABELS[provider] || provider} 端點`)
+  }
+  return endpoint
 }
 
 async function loadOllamaModels() {
@@ -1091,12 +1106,13 @@ async function applyLlmModel(
 ) {
   applyingLlm.value = true
   try {
+    const endpoint = endpointForProvider(provider)
     const data = await parseJson(await fetch('/api/llm/model', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        endpoint: runtime.llm.endpoint || '',
+        endpoint,
         system_prompt: systemPrompt,
         response_max_chars: Number(responseMaxChars),
         reply_mode: replyMode,

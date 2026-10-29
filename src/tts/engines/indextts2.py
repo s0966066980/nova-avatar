@@ -12,7 +12,7 @@ import resampy
 import soundfile as sf
 
 from src.tts.base import BaseTTS, State
-from src.tts.voice_library import voice_path
+from src.tts.voice_library import reference_path
 from src.utils.logging import logger
 
 # Seconds for each HTTP call and for one Gradio prediction.
@@ -25,7 +25,7 @@ class IndexTTS2(BaseTTS):
         super().__init__(config, parent)
         # IndexTTS2 配置引數
         self.server_url = config.tts.tts_server  # Gradio伺服器地址
-        self.ref_audio_path = str(voice_path(config.tts.ref_file))  # 音訊庫中的參考音訊
+        self.ref_audio_path = reference_path(config.tts.ref_file)  # 音訊庫中的參考音訊；空值表示未選擇
         self.max_tokens = getattr(config.tts, "max_tokens", 120)  # 最大token數
 
         # 初始化Gradio客戶端
@@ -109,6 +109,9 @@ class IndexTTS2(BaseTTS):
 
     def indextts2_generate(self, text):
         """呼叫 IndexTTS2 Gradio API 生成語音"""
+        if not self.ref_audio_path:
+            logger.error("IndexTTS2 未選擇參考音訊，請從音訊庫選擇")
+            return None
         start = time.perf_counter()
 
         try:

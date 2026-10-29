@@ -486,35 +486,50 @@ class VoiceTurnSession:
             self._emit('conversation_settings', **self._conversation)
 
     async def _consume_track(self, track, on_lost=None) -> None:
-        try:
-            while not self._closed:
+        while not self._closed:
+            try:
                 frame = await track.recv()
-                # Keep draining paused uplink audio without scheduling work
-                # whose PCM the closed capture gate would immediately discard.
-                if not self._gate_open or self._segmenter is None or self._closed:
-                    continue
-                loop = asyncio.get_running_loop()
-                generation = self._generation
-                pcm_chunks = await loop.run_in_executor(
-                    self._voice_executor,
-                    self._resample_frame_sync,
-                    frame,
-                )
-                if generation != self._generation:
-                    continue
-                for pcm in pcm_chunks:
-                    await self.feed_pcm(pcm)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            if not self._closed:
-                logger.warning(f"Microphone track ended: {exc}")
-                self._emit("state", state="reconnecting", error="microphone_track_lost")
-                self._stage_ready = False
-                self.greetings.reset(stop_playing=True)
-                self._close_gate()
-                if on_lost is not None:
-                    on_lost()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                # Only the track itself ending or failing to deliver audio is a loss.
+                self._track_lost(exc, on_lost)
+                return
+            # Keep draining paused uplink audio without scheduling work
+            # whose PCM the closed capture gate would immediately discard.
+            if not self._gate_open or self._segmenter is None or self._closed:
+                continue
+            try:
+                await self._process_frame(frame)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                # One bad frame or a failed turn start must not hang up the peer.
+                logger.exception("Microphone frame processing failed; continuing")
+
+    async def _process_frame(self, frame) -> None:
+        loop = asyncio.get_running_loop()
+        generation = self._generation
+        pcm_chunks = await loop.run_in_executor(
+            self._voice_executor,
+            self._resample_frame_sync,
+            frame,
+        )
+        if generation != self._generation:
+            return
+        for pcm in pcm_chunks:
+            await self.feed_pcm(pcm)
+
+    def _track_lost(self, exc: Exception, on_lost) -> None:
+        if self._closed:
+            return
+        logger.warning(f"Microphone track ended: {exc}")
+        self._emit("state", state="reconnecting", error="microphone_track_lost")
+        self._stage_ready = False
+        self.greetings.reset(stop_playing=True)
+        self._close_gate()
+        if on_lost is not None:
+            on_lost()
 
     def _resample_frame_sync(self, frame) -> list[np.ndarray]:
         return [

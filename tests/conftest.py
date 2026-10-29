@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from pathlib import Path
 
 import pytest
 
@@ -66,6 +67,7 @@ AREA_BY_FILE = {
     "test_scene_background.py": "avatar",
     "test_server_shutdown.py": "runtime",
     "test_sovits_tts.py": "speech",
+    "test_tts_empty_reference.py": "speech",
     "test_speech_timing.py": "conversation",
     "test_idle_greetings.py": "conversation",
     "test_stage_idle_reset.py": "conversation",
@@ -120,3 +122,33 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         raise pytest.UsageError(
             f"Unclassified test modules: {names}. Add them to tests/conftest.py."
         )
+
+
+# Tests write under tmp_path; the repository's data/ holds the venue's real
+# avatars, voices and imports. A run that adds entries there fails.
+REPO_DATA = Path(__file__).resolve().parents[1] / "data"
+_DATA_BEFORE = pytest.StashKey[frozenset]()
+
+
+def repo_data_entries(root: Path = REPO_DATA) -> frozenset[str]:
+    """``root`` itself plus its entries two levels deep (cheap even with real assets)."""
+    if not root.is_dir():
+        return frozenset()
+    entries = {"."}
+    for child in root.iterdir():
+        entries.add(child.name)
+        if child.is_dir() and not child.is_symlink():
+            entries.update(f"{child.name}/{grandchild.name}" for grandchild in child.iterdir())
+    return frozenset(entries)
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    session.config.stash[_DATA_BEFORE] = repo_data_entries()
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    added = sorted(repo_data_entries() - session.config.stash[_DATA_BEFORE])
+    if added:
+        session.config.get_terminal_writer().line(
+            f"\nTests wrote to the repository's data/ (use tmp_path): {', '.join(added)}", red=True)
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED

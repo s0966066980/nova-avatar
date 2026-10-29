@@ -16,7 +16,7 @@ class RecordingParent:
 class SovitsTTSFailureTests(unittest.TestCase):
     def _make_tts(self):
         # ref_file names a voice-library entry; the server reads the stored WAV.
-        patcher = patch("src.tts.engines.sovits.voice_path", return_value="/tmp/ref.wav")
+        patcher = patch("src.tts.engines.sovits.reference_path", return_value="/tmp/ref.wav")
         patcher.start()
         self.addCleanup(patcher.stop)
         parent = RecordingParent()

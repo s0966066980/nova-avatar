@@ -188,6 +188,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
                 return {"type": engine, "avatar_id": avatar_id, "frames": 1}
 
             with patch("src.server.import_jobs.build_character", side_effect=fake_build), \
+                 patch("src.avatars.builder.get_data_dir", return_value=Path(tmp)), \
                  patch("src.server.import_jobs._WORKER_LOCK") as lock:
                 lock.locked.return_value = False
                 lock.acquire.return_value = True

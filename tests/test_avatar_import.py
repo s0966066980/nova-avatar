@@ -140,7 +140,7 @@ def wait_for(job, timeout=2.0):
     return job
 
 
-def test_unexpected_job_error_does_not_leak_absolute_paths(tmp_path):
+def test_unexpected_job_error_does_not_leak_absolute_paths(tmp_path, data_dir):
     video = tmp_path / "upload" / "source.mp4"
     video.parent.mkdir()
     video.write_bytes(b"clip")
@@ -158,7 +158,7 @@ def test_unexpected_job_error_does_not_leak_absolute_paths(tmp_path):
     assert not video.exists()
 
 
-def test_finished_jobs_are_pruned(tmp_path, monkeypatch):
+def test_finished_jobs_are_pruned(tmp_path, monkeypatch, data_dir):
     monkeypatch.setattr(import_jobs, "_JOBS", {})
     jobs = []
     with patch("src.server.import_jobs.build_character", return_value={}):
@@ -236,6 +236,31 @@ def test_avatars_referenced_by_a_profile_cannot_be_replaced(import_server, monke
     assert "設定檔" in settings_routes._avatar_replace_conflict("wav2lip_guest")
     assert "使用" in settings_routes._avatar_replace_conflict("wav2lip_live")
     assert settings_routes._avatar_replace_conflict("wav2lip_spare") is None
+
+
+def test_unreadable_profiles_refuse_overwrite_before_the_build(import_server, monkeypatch):
+    from src.profiles.store import ProfileError
+
+    def broken():
+        raise ProfileError("角色設定 YAML 無法解析")
+
+    class Roles:
+        library = {"profiles": []}
+        store = SimpleNamespace(load=broken)
+        enabled = profiles_applied = False
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(state, "roles", Roles())
+    make_wav2lip_avatar(import_server.root, "wav2lip_spare")
+    status, body = post_import(import_form({"type": "wav2lip", "avatar_id": "wav2lip_spare", "overwrite": "true"}))
+    assert status == 409, body
+    assert "角色設定" in body["msg"]
+    assert import_server.started == []
+    assert leftover_uploads(import_server.root) == []
+    # The builder thread asks the same guard again before installing.
+    assert "角色設定" in settings_routes._avatar_replace_conflict("wav2lip_spare")
 
 
 def test_import_refuses_existing_avatar_without_overwrite_before_upload(import_server):

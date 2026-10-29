@@ -19,6 +19,8 @@ class AppConfig:
     """應用配置"""
     listenport: int = 8010
     listenhost: str = "0.0.0.0"  # 監聽地址：0.0.0.0 允許外部訪問，127.0.0.1 僅本地
+    # 除 localhost 與 IP 外，瀏覽器可用來連線的主機名稱（防 DNS rebinding）
+    allowed_hosts: List[str] = field(default_factory=list)
     max_session: int = 1
     prewarm: bool = True
     

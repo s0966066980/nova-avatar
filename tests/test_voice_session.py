@@ -313,6 +313,39 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(heartbeat_delay, 0.05)
         await session.close()
 
+    async def test_frame_processing_error_keeps_the_microphone_connected(self):
+        resampled = Event()  # Set from the voice executor thread.
+        keep_track_open = asyncio.Event()
+        lost = []
+
+        class FlakyResampler:
+            calls = 0
+
+            def resample(self, _frame):
+                FlakyResampler.calls += 1
+                if FlakyResampler.calls == 1:
+                    raise ValueError("bad frame")
+                resampled.set()
+                return []
+
+        class TwoFrameTrack:
+            calls = 0
+
+            async def recv(self):
+                TwoFrameTrack.calls += 1
+                if TwoFrameTrack.calls <= 2:
+                    return object()
+                await keep_track_open.wait()
+
+        session, _, _ = self.make_session()
+        session._resampler = FlakyResampler()
+        session.start_track(TwoFrameTrack(), on_lost=lambda: lost.append(True))
+        self.assertTrue(await asyncio.to_thread(resampled.wait, 1))
+
+        self.assertEqual(lost, [])
+        self.assertFalse(session._track_task.done())
+        await session.close()
+
     async def test_push_to_talk_finalize_does_not_block_the_media_event_loop(self):
         started = Event()
         release = Event()

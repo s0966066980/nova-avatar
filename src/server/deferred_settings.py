@@ -4,6 +4,7 @@
 """Persist resource changes and apply them only after every peer disconnects."""
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from functools import wraps
 import json
@@ -101,7 +102,9 @@ def defer_when_connected(label, current_snapshot):
                 pending.error = ''
                 return web.json_response({'code': 0, 'pending': True,
                     'msg': '設定已儲存，待控制台與舞台皆斷線後套用',
-                    'pending_settings': snapshot(), 'data': current_snapshot(state.config)}, status=202)
+                    'pending_settings': snapshot(),
+                    # Snapshots may scan files (voices, models, avatars).
+                    'data': await asyncio.to_thread(current_snapshot, state.config)}, status=202)
             state.settings_applying = True
             try:
                 response = await handler(request)

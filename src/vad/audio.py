@@ -15,6 +15,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
+from src.utils.audio_container import HEADER_BYTES, demuxer_for
 from src.utils.logging import logger
 
 
@@ -83,10 +84,14 @@ def _decode_with_av(
         import av
         from av.audio.resampler import AudioResampler
 
+        fmt = demuxer_for(data[:HEADER_BYTES])
+        if fmt is None:
+            logger.warning('[VAD] 不支援的音訊容器，拒絕交給 FFmpeg 探測')
+            return None
         limit = None if max_seconds is None else int(max_seconds * target_sr)
         chunks = []
         decoded = 0
-        with av.open(BytesIO(data)) as container:
+        with av.open(BytesIO(data), format=fmt) as container:
             # Container duration is in microseconds; browser webm often omits it.
             if limit is not None and container.duration and container.duration / 1e6 > max_seconds:
                 raise AudioTooLongError(max_seconds)
@@ -151,20 +156,6 @@ def decode_audio(
     return resample_int16(pcm, sr, target_sr)
 
 
-def ensure_audio_within(data: bytes, max_seconds: float) -> None:
-    """Reject audio longer than ``max_seconds``, decoding at most that much of it.
-
-    A blocking call: run it with ``asyncio.to_thread``.
-
-    Raises:
-        AudioTooLongError: the header or the decoded length exceeds the limit
-        ValueError: neither soundfile nor PyAV can read the audio
-    """
-    if _decode_with_soundfile(data, max_seconds) is None:
-        if _decode_with_av(data, 16000, max_seconds) is None:
-            raise ValueError('無法讀取音訊檔案')
-
-
 def pcm16_to_wav_bytes(pcm: np.ndarray, sample_rate: int = 16000) -> bytes:
     """int16 PCM → wav 檔案位元組（供 ASR 引擎直接讀取）"""
     import soundfile as sf
@@ -177,7 +168,6 @@ def pcm16_to_wav_bytes(pcm: np.ndarray, sample_rate: int = 16000) -> bytes:
 __all__ = [
     "AudioTooLongError",
     "decode_audio",
-    "ensure_audio_within",
     "pcm16_to_wav_bytes",
     "resample_int16",
     "to_mono_int16",

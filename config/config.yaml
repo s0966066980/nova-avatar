@@ -4,7 +4,10 @@ app:
   prewarm: true  # 啟動時預熱本機模型與語音鏈路
   listenport: 8010
   max_session: 1
-  
+  # 除 localhost 與 IP 外，管理者瀏覽器可用來連線的主機名稱；其他 Host 一律
+  # 拒絕，以防 DNS rebinding 把外部網頁當成本機舞台。例：[venue-pc.lan]
+  allowed_hosts: []
+
   # SSL/HTTPS 配置（可選，啟用後支援遠端錄音功能）
   ssl: true
   ssl_cert: ssl_certs/localhost.crt 
@@ -105,13 +108,14 @@ asr:
 
 # LLM：Ollama 或 llama.cpp；數位人設定檔與控制台只能選擇下列端點名稱
 llm:
-  # 未設定 endpoints 時，由下方 provider / base_url / api_key 產生單一端點
-  # （名稱即 provider）。端點、網址與金鑰只能在此設定檔編輯，金鑰只送往
-  # 該端點自己的 base_url。provider 必須明確指定：llamacpp | ollama | openai。
-  # endpoints:
-  #   llamacpp: {provider: llamacpp, base_url: http://127.0.0.1:8080/v1}
-  #   ollama: {provider: ollama, base_url: http://localhost:11434/v1}
-  #   remote: {provider: openai, base_url: https://llm.example/v1, api_key: ${REMOTE_LLM_KEY}}
+  # 端點、網址與金鑰只能在此設定檔編輯，金鑰只送往該端點自己的 base_url。
+  # provider 必須明確指定：llamacpp | ollama | openai。控制台切換 Ollama／
+  # llama.cpp 時選的就是下列端點；未設定 endpoints 時，只由下方
+  # provider / base_url / api_key 產生單一端點（名稱即 provider）。
+  # 遠端範例：remote: {provider: openai, base_url: https://llm.example/v1, api_key: ${REMOTE_LLM_KEY}}
+  endpoints:
+    llamacpp: {provider: llamacpp, base_url: http://127.0.0.1:8080/v1}
+    ollama: {provider: ollama, base_url: http://localhost:11434/v1, api_key: ollama}
   provider: ollama  # llamacpp | ollama | openai
   api_key: ollama  # Ollama / llama-server 都不驗證，但不可為空
   base_url: http://localhost:11434/v1

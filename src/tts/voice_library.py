@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from src.utils.audio_container import HEADER_BYTES, demuxer_for
 from src.utils.logging import logger
 from src.utils.paths import get_project_root
 
@@ -72,6 +73,17 @@ def voice_path(voice_id: Any) -> Path:
     return path
 
 
+def reference_path(voice_id: Any) -> str:
+    """The stored WAV of ``voice_id``, or "" when no reference is selected.
+
+    check_reference accepts an empty reference and migration may leave one;
+    engines then fall back to their server's default instead of failing.
+    """
+    if voice_id is None or (isinstance(voice_id, str) and not voice_id.strip()):
+        return ""
+    return str(voice_path(voice_id))
+
+
 def _read_record(voice_id: str) -> dict:
     try:
         record = json.loads(_record_path(voice_id).read_text("utf-8"))
@@ -108,29 +120,16 @@ def _clean_name(name: Any, fallback: str) -> str:
 
 
 def _sniff_format(path: Path) -> str:
-    """The FFmpeg demuxer for a supported audio container, from its magic bytes.
-
-    Passing the demuxer explicitly keeps FFmpeg from probing playlist or concat
-    formats, which could make it read other files on the host.
-    """
+    """The FFmpeg demuxer for ``path`` (see src.utils.audio_container)."""
     try:
         with path.open("rb") as handle:
-            head = handle.read(12)
+            head = handle.read(HEADER_BYTES)
     except OSError as exc:
         raise VoiceLibraryError("無法讀取上傳的音訊") from exc
-    if head[:4] == b"RIFF" and head[8:12] == b"WAVE":
-        return "wav"
-    if head[:4] == b"fLaC":
-        return "flac"
-    if head[:4] == b"OggS":
-        return "ogg"
-    if head[4:8] == b"ftyp":
-        return "mp4"
-    if head[:4] == b"\x1aE\xdf\xa3":
-        return "matroska"
-    if head[:3] == b"ID3" or (len(head) >= 2 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0):
-        return "mp3"
-    raise VoiceLibraryError(f"不是支援的音訊檔，請上傳 {SUPPORTED_FORMATS}")
+    fmt = demuxer_for(head)
+    if fmt is None:
+        raise VoiceLibraryError(f"不是支援的音訊檔，請上傳 {SUPPORTED_FORMATS}")
+    return fmt
 
 
 def _decode(path: Path):

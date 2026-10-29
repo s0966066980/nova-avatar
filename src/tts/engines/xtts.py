@@ -12,7 +12,7 @@ import requests
 import resampy
 
 from src.tts.base import BaseTTS
-from src.tts.voice_library import voice_path
+from src.tts.voice_library import reference_path
 from src.utils.logging import logger
 
 # (connect, read) seconds: a stalled local service must not hang a TTS thread.
@@ -23,10 +23,15 @@ class XTTS(BaseTTS):
     def __init__(self, config, parent):
         super().__init__(config, parent)
         # ref_file is a voice-library ID; only library audio is ever uploaded.
-        self.speaker = self.get_speaker(voice_path(config.tts.ref_file), config.tts.tts_server)
+        # XTTS has no server default voice: without a reference the avatar still
+        # starts and each utterance reports the missing reference instead.
+        reference = reference_path(config.tts.ref_file)
+        self.speaker = self.get_speaker(reference, config.tts.tts_server) if reference else None
 
     def txt_to_audio(self, msg: tuple[str, dict]):
         text, textevent = msg
+        if self.speaker is None:
+            raise RuntimeError("XTTS 未選擇參考音訊，請從音訊庫選擇")
         self.stream_tts(
             self.xtts(
                 text,

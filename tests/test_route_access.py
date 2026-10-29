@@ -274,6 +274,51 @@ def test_password_hash_round_trip_and_admin_env_permissions(tmp_path):
     assert read_password_hash(tmp_path / "missing.env") is None
 
 
+def test_new_password_after_admin_env_removal_signs_everyone_out(tmp_path):
+    path = configure_admin(tmp_path / "admin.env")
+    auth = AdminAuth(path)
+    token = asyncio.run(auth.login(TEST_ADMIN_PASSWORD, "127.0.0.1"))
+    assert auth.session_valid(token)
+    path.unlink()
+    assert not auth.configured()
+    configure_admin(path, "a different password")
+    assert auth.configured()
+    assert not auth.session_valid(token)
+
+
+@pytest.fixture
+def allowed_hosts():
+    from src.config.schema import Config
+
+    previous = state.config
+    state.config = Config()
+    state.config.app.allowed_hosts = ["Venue-PC.lan"]
+    yield
+    state.config = previous
+
+
+def test_stage_routes_reject_dns_rebinding_hosts(allowed_hosts, session_roles):
+    """A page on evil.example re-resolved to 127.0.0.1 is same-origin with itself and loopback."""
+    async def run():
+        async with access_client(admin=False) as client:
+            for host in ("evil.example", "localhost.evil.example", "127.0.0.1.nip.io", ""):
+                rebound = {"Host": f"{host}:{client.port}" if host else "",
+                           "Origin": f"http://{host}:{client.port}"}
+                response = await client.get("/api/stage", headers={"Host": rebound["Host"]})
+                assert response.status == 403, host
+                assert await guard_denial(response) == "host_not_allowed"
+                response = await client.post("/human", json={"sessionid": STAGE_SESSION, "text": "hi"},
+                                             headers=rebound)
+                assert response.status == 403, host
+            for host in ("localhost", "127.0.0.1", "[::1]", "venue-pc.lan", "VENUE-PC.LAN.", LAN_ADDRESS, "[fe80::1]"):
+                response = await client.get("/api/stage", headers={"Host": f"{host}:{client.port}"})
+                assert await guard_denial(response) is None, host
+                response = await client.post("/human", json={"sessionid": STAGE_SESSION, "text": "hi"},
+                                             headers={"Host": host, "Origin": f"https://{host}"})
+                assert await guard_denial(response) is None, host
+    asyncio.run(run())
+
+
 def test_admin_env_is_gitignored():
     ignored = (Path(__file__).resolve().parents[1] / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "config/admin.env" in ignored
