@@ -51,6 +51,22 @@ bash scripts/create_ssl_certs.sh
 安裝腳本會準備 Python、MuseTalk／OpenMMLab 與前端依賴；重跑保留既有
 環境。權重下載沿用專案固定的套件，不會升級系統 pip 或強制切換鏡像。
 SSL 腳本不再要求互動輸入，已有憑證時會保留；預設服務使用 HTTPS。
+uv、MuseTalk 權重、RAGFlow 映像與 BGE-M3 均固定版本並驗證 checksum／digest，
+不符即中止；控制台的 Bootstrap 與圖示由 npm 套件打包，場域斷網時仍可顯示。
+
+### 管理者裝置信任本機 CA（只需一次）
+
+主機已安裝 [mkcert](https://github.com/FiloSottile/mkcert) 時，SSL 腳本優先
+以它建立本機 CA 簽發的憑證，涵蓋 `localhost`、主機名稱與區網 IP（可在指令後
+追加其他名稱，例如 `bash scripts/create_ssl_certs.sh nova.lan`）：
+
+1. 在主機執行 `mkcert -install`，讓本機舞台瀏覽器信任此 CA。
+2. 將 `$(mkcert -CAROOT)/rootCA.pem` 複製到每台管理者裝置，匯入系統或瀏覽器的
+   「受信任的根憑證」。之後重新簽發憑證不必再匯入。
+3. 切勿複製 `rootCA-key.pem`；它只留在主機上。
+
+未安裝 mkcert（或設定 `NOVA_SSL_SELF_SIGNED=1`）時改產生自簽憑證，瀏覽器
+首次連線需手動接受警告。
 
 接著備妥角色素材：可在控制台匯入正面閉嘴影片，或執行：
 

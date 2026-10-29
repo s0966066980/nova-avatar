@@ -45,6 +45,7 @@ AREA_BY_FILE = {
     "test_musetalk_preprocessing.py": "avatar",
     "test_musetalk_acceleration.py": "avatar",
     "test_optional_runtime_extras.py": "runtime",
+    "test_pinned_resources.py": "runtime",
     "test_playback_commit.py": "conversation",
     "test_ragflow_integration.py": "ragflow",
     "test_reply_streaming.py": "conversation",

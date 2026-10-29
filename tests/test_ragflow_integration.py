@@ -20,7 +20,7 @@ from src.ragflow import settings
 from src.ragflow.client import RagFlowClient, RagFlowConnection, RagFlowError, retrieval_prompt
 from src.server.routes.ragflow import get_ragflow_settings
 from src.server.voice_session import VoiceTurnSession
-from scripts.ragflow_validate import EXPECTED_SERVICES, validate
+from scripts.ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
 
 DATASET_A = "a" * 32
 DATASET_B = "b" * 32
@@ -32,7 +32,7 @@ class RagFlowDeploymentTests(unittest.TestCase):
             name: {"networks": {"ragflow": None}, "mem_limit": "1024", "cpus": 1}
             for name in EXPECTED_SERVICES
         }
-        services["ragflow-cpu"]["image"] = "infiniflow/ragflow:v0.27.2"
+        services["ragflow-cpu"]["image"] = RAGFLOW_IMAGE
         services["ragflow-cpu"]["ports"] = [
             {"host_ip": "127.0.0.1", "published": "8088", "target": 80},
             {"host_ip": "127.0.0.1", "published": "9380", "target": 9380},
