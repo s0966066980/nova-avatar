@@ -27,12 +27,13 @@ the root Apache-2.0 grant.
 
 | Layer | Engine | Project status | Distribution boundary |
 | --- | --- | --- | --- |
-| STT | faster-whisper | Supported | Review the selected Whisper model artifacts. |
-| STT | FunASR | Optional | Review the exact code release and model. |
-| LLM | Ollama / llama.cpp | Supported local OpenAI-compatible endpoints | Review the selected model and endpoint terms. |
-| TTS | Edge TTS | **Development only** | Non-public Microsoft endpoint with no formal commercial license; needs Internet access. Do not use it in a commercial deployment. |
+| STT | faster-whisper | Supported, default: `small`; voice turns auto-detect between Chinese and English only, beam 1, in-memory audio | Review the selected Whisper model artifacts. |
+| STT | FunASR | Optional, Mandarin only (English turns need Whisper) | Review the exact code release and model. |
+| LLM | llama.cpp | Supported, default: Gemma 4 E2B (`gemma-4-E2B_q4_0-it`, with its mmproj for attachments), all layers on the GPU; Qwen3.5-9B optional | Gemma 4 is Apache-2.0 (see [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)); review any other selected model. |
+| LLM | Ollama | Optional local OpenAI-compatible endpoint; not needed by default | Review the selected model and endpoint terms. |
+| TTS | Edge TTS | **Development only** | Still the checked-in runtime default for development. Non-public Microsoft endpoint with no formal commercial license; needs Internet access. Do not use it in a commercial deployment. |
 | TTS | GPT-SoVITS, CosyVoice, Fun-CosyVoice | Optional | Review code, model, voice, and checkpoint terms individually. |
-| TTS | BreezyVoice (MediaTek Research) with g2pW | Optional, local Taiwanese Mandarin; whole-fragment synthesis in the owned CosyVoice process | Code and weights Apache-2.0 (pinned in `scripts/breezyvoice_weights.py`); the reference voice needs its own consent. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
+| TTS | BreezyVoice (MediaTek Research) with g2pW | Optional, local Taiwanese Mandarin; whole-fragment synthesis in the owned CosyVoice process. On an RTX 4090 shared with MuseTalk and the LLM, the first fragment takes about 2.5 s (P50), so it is not the default yet | Code and weights Apache-2.0 (pinned in `scripts/breezyvoice_weights.py`); the reference voice needs its own consent. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 | TTS | Fish TTS | **Community License / Revenue < USD 500k** | Commercial use only below USD 500k annual revenue, customers included; no hosted service. |
 | TTS | IndexTTS2 | **bilibili Model License / Usage thresholds** | Separate license above 100M MAU or RMB 1B revenue; must not be used to improve other models. |
 | TTS | XTTS | **Research / Non-commercial** | Coqui Public Model License; no commercial license is available. |
@@ -41,6 +42,14 @@ the root Apache-2.0 grant.
 | Avatar | ER-NeRF, TalkingGaussian, UltraLight | Optional, license review required | Do not infer commercial rights from the root license. |
 | Scene | Server-side green-screen compositor (`src/scene/`) | Supported for MuseTalk green-screen avatars | Background images, videos, GIFs, and source footage need their own rights review. |
 | Retrieval | RAGFlow `v0.27.2` with BGE-M3 via a dedicated Ollama process | Optional, disabled by default | Separate Docker Compose project; review RAGFlow, BGE-M3, and document rights. See [ragflow.md](ragflow.md). |
+
+Qwen3-TTS was evaluated and removed on 2026-10-30 (voice cloning produced
+runaway audio); it is neither supported nor bundled.
+
+Measured first-audio latency for this stack (Edge TTS, 2026-10-30): general
+voice turns P50 2.00 s, P95 2.22 s, from the end of speech to the first audible
+WebRTC reply frame sent. See [project-status.md](project-status.md) for the
+definitions, the stage breakdown, and the remaining bottlenecks.
 
 ## External runtime requirements
 
@@ -51,7 +60,9 @@ the root Apache-2.0 grant.
   secure origin.
 - NVIDIA driver/CUDA-compatible runtime where the selected Avatar or ML engine
   needs it. CUDA requirements differ by engine.
-- An Ollama or llama.cpp endpoint when the configured LLM uses one.
+- llama.cpp (`llama-server` with CUDA) for the default LLM; the backend starts
+  it and fails with an explanation when the model does not fit fully on the GPU.
+  Ollama only when an Ollama endpoint is selected.
 - Docker with Compose only when the optional RAGFlow retrieval is enabled.
 
 ## Commercial review profile
