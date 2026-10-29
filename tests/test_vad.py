@@ -128,6 +128,35 @@ class SegmenterTests(unittest.TestCase):
         self.assertAlmostEqual(seg.speech_ms, 600, delta=60)
         self.assertLess(seg.speech_ms, seg.duration_ms)
 
+    def test_endpoint_reports_how_long_vad_held_speech_after_the_voice_ended(self):
+        # Clicks keep the VAD in speech while the audio is already below the
+        # -40 dBFS voiced level: that is the post-speech tail before the
+        # silence wait starts counting.
+        click = np.zeros(320, dtype=np.int16)
+        click[0] = 2000
+        audio = np.concatenate([silence(300), tone(600), np.tile(click, 3), silence(700)])
+        seg = list(self._segmenter().process(audio))[0]
+        self.assertEqual(seg.endpoint_wait_ms, 300)
+        self.assertEqual(seg.speech_tail_ms, 60)
+
+        plain = list(self._segmenter().process(
+            np.concatenate([silence(300), tone(600), silence(700)])))[0]
+        self.assertEqual(plain.speech_tail_ms, 0)
+
+    def test_only_an_endpoint_measures_the_speech_tail(self):
+        segmenter = self._segmenter()
+        self.assertEqual(list(segmenter.process(np.concatenate([silence(300), tone(800)]))), [])
+        self.assertIsNone(list(segmenter.flush())[0].speech_tail_ms)
+
+    def test_voiced_end_ignores_leading_and_trailing_silence(self):
+        from src.vad.audio import voiced_end_sample
+
+        audio = np.concatenate([silence(200), tone(500), silence(900)])
+        self.assertAlmostEqual(voiced_end_sample(audio) / SR, 0.7, delta=0.021)
+        self.assertIsNone(voiced_end_sample(silence(1000), missing=None))
+        with self.assertRaises(ValueError):
+            voiced_end_sample(silence(1000))
+
     def test_max_speech_forces_cut(self):
         audio = np.concatenate([silence(200), tone(3000), silence(600)])
         segments = list(self._segmenter(max_speech_ms=1000).process(audio))

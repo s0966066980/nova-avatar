@@ -156,6 +156,36 @@ def decode_audio(
     return resample_int16(pcm, sr, target_sr)
 
 
+VOICED_FRAME_SAMPLES = 320   # 20 ms at 16 kHz
+VOICED_RMS_THRESHOLD = 0.01  # -40 dBFS
+
+_RAISE = object()
+
+
+def voiced_end_sample(
+    samples: np.ndarray,
+    *,
+    frame: int = VOICED_FRAME_SAMPLES,
+    threshold: float = VOICED_RMS_THRESHOLD,
+    missing=_RAISE,
+):
+    """Sample index just after the last 20 ms frame at or above -40 dBFS RMS.
+
+    This is where a voice audibly ends, independent of any VAD model. Without a
+    voiced frame it raises ``ValueError``, or returns ``missing`` when given.
+    """
+    pcm = np.asarray(samples).reshape(-1).astype(np.float64) / 32768.0
+    frames = pcm.size // frame + (1 if pcm.size % frame else 0)
+    padded = np.pad(pcm, (0, frames * frame - pcm.size))
+    rms = np.sqrt(np.mean(padded.reshape(frames, frame) ** 2, axis=1))
+    voiced = np.flatnonzero(rms >= threshold)
+    if voiced.size == 0:
+        if missing is _RAISE:
+            raise ValueError("recording contains no voiced frame")
+        return missing
+    return int(min(pcm.size, (voiced[-1] + 1) * frame))
+
+
 def pcm16_to_wav_bytes(pcm: np.ndarray, sample_rate: int = 16000) -> bytes:
     """int16 PCM → wav 檔案位元組（供 ASR 引擎直接讀取）"""
     import soundfile as sf
@@ -171,4 +201,5 @@ __all__ = [
     "pcm16_to_wav_bytes",
     "resample_int16",
     "to_mono_int16",
+    "voiced_end_sample",
 ]

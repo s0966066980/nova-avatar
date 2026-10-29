@@ -385,13 +385,14 @@ class PlayerStreamTrack(MediaStreamTrack):
         if self.kind == 'audio' and self._player is not None:
             try:
                 samples = frame.to_ndarray().astype(np.float32, copy=False)
-                active = bool(np.max(np.abs(samples))) if samples.size else False
+                peak = float(np.max(np.abs(samples))) if samples.size else 0.0
             except Exception:
-                active = False
+                peak = 0.0
+            active = peak > 0.0
             notify_audio_frame = getattr(self._player, "notify_audio_frame", None)
             if callable(notify_audio_frame):
                 notify_audio_frame(eventpoint, active)
-            self._player.notify_audio_activity(active)
+            self._player.notify_audio_activity(active, peak)
         if self.kind == 'video':
             notify_video_frame = getattr(self._player, "notify_video_frame", None)
             if callable(notify_video_frame):
@@ -526,9 +527,10 @@ class HumanPlayer:
             catch_up_burst_count=catch_up_burst_count,
         )
 
-    def notify_audio_activity(self, active: bool):
+    def notify_audio_activity(self, active: bool, peak: Optional[float] = None):
+        """Report each sent audio frame; ``peak`` is its int16 peak magnitude."""
         if self.__on_audio_activity is not None:
-            self.__on_audio_activity(active)
+            self.__on_audio_activity(active, peak)
 
     def notify_audio_frame(self, eventpoint, active: bool) -> None:
         if self.__on_audio_frame is not None:

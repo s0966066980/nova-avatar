@@ -238,6 +238,164 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(stages["llm_first_token"])
 
 
+class ClientOffsetMetricTests(unittest.TestCase):
+    def test_offset_stages_are_fixed_names(self):
+        for stage in ("vad_speech_tail", "vad_processing", "webrtc_audible_onset"):
+            self.assertIn(stage, STAGE_NAMES)
+
+    def test_clock_marks_expose_the_session_clock_for_same_host_clients(self):
+        clock = FakeClock()
+        metrics = TurnMetrics("turn", clock=clock)
+        self.assertEqual(metrics.snapshot()["clock_marks"],
+                         {"speech_end": None, "first_audio": None, "first_audible": None})
+        metrics.mark_speech_end()
+        clock.advance(1.0)
+        metrics.mark_first_audio()
+        clock.advance(0.125)
+        metrics.mark_first_audible()
+        clock.advance(0.5)
+        metrics.mark_first_audible()
+        self.assertEqual(metrics.snapshot()["clock_marks"],
+                         {"speech_end": 100.0, "first_audio": 101.0, "first_audible": 101.125})
+
+
+class VoiceSessionClientOffsetTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.clock = FakeClock()
+        config = SimpleNamespace(
+            model=SimpleNamespace(avatar_id="alpha"),
+            asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
+            vad=SimpleNamespace(),
+            reply_streaming=SimpleNamespace(enabled=False),
+        )
+        self.session = VoiceTurnSession(95, config, _Avatar(), clock=self.clock)
+
+    async def asyncTearDown(self):
+        await self.session.close()
+
+    async def test_endpoint_records_the_speech_tail_and_vad_processing(self):
+        from src.vad.segmenter import SpeechSegment
+
+        segment = SpeechSegment(start_ms=0, end_ms=900, audio=np.zeros(160, np.int16),
+                                speech_ms=600, endpoint_wait_ms=320, speech_tail_ms=64)
+
+        class Segmenter:
+            is_speaking = True
+
+            def reset(self):
+                pass
+
+            def process(self, _pcm):
+                self.is_speaking = False
+                return iter([segment])
+
+        self.session._segmenter = Segmenter()
+        self.session._gate_open = True
+        with patch.object(self.session, "_process_turn", new=MagicMock(
+                return_value=asyncio.sleep(0))):
+            await self.session.feed_pcm(np.zeros(320, np.int16), received_at=self.clock() - 0.012)
+            await self.session._turn_task
+        snapshot = self.session.metrics_snapshot()
+        stages = snapshot["stage_seconds"]
+        self.assertEqual(stages["vad_endpoint"], 0.32)
+        self.assertEqual(stages["vad_speech_tail"], 0.064)
+        self.assertEqual(stages["vad_processing"], 0.012)
+        self.assertEqual(snapshot["clock_marks"]["speech_end"], 100.0)
+
+    async def test_uplink_frames_carry_their_arrival_time(self):
+        seen = []
+
+        async def process(frame, received_at=None):
+            seen.append((frame, received_at))
+
+        class Track:
+            sent = False
+
+            async def recv(self):
+                if self.sent:
+                    raise RuntimeError("track ended")
+                self.sent = True
+                return "frame"
+
+        self.session._process_frame = process
+        self.session._segmenter = SimpleNamespace(reset=lambda: None, is_speaking=False)
+        self.session._gate_open = True
+        await self.session._consume_track(Track())
+        self.assertEqual(seen, [("frame", 100.0)])
+
+    def _turn(self):
+        self.session._turn_id = "turn"
+        self.session._start_turn_context("turn")
+        self.session._metrics.mark_speech_end()
+
+    async def test_first_audible_frame_ends_the_audible_onset(self):
+        self._turn()
+        self.clock.advance(1.0)
+        self.session.on_output_audio(True, peak=12.0)  # Edge TTS lead-in, inaudible
+        self.clock.advance(0.1)
+        self.session.on_output_audio(True, peak=900.0)
+        self.clock.advance(0.1)
+        self.session.on_output_audio(True, peak=900.0)
+        snapshot = self.session.metrics_snapshot()
+        self.assertEqual(snapshot["first_audio_seconds"], 1.0)
+        self.assertEqual(snapshot["stage_seconds"]["webrtc_audible_onset"], 0.1)
+        self.assertEqual(snapshot["clock_marks"]["first_audible"], 101.1)
+
+    async def test_activity_without_a_peak_counts_as_audible(self):
+        self._turn()
+        self.clock.advance(0.5)
+        self.session.on_output_audio(True)
+        snapshot = self.session.metrics_snapshot()
+        self.assertEqual(snapshot["stage_seconds"]["webrtc_audible_onset"], 0.0)
+        self.assertEqual(snapshot["clock_marks"]["first_audible"], 100.5)
+
+
+class OutboundAudioPeakTests(unittest.IsolatedAsyncioTestCase):
+    async def test_outbound_track_reports_each_frame_peak(self):
+        from av import AudioFrame
+
+        from src.utils.webrtc import HumanPlayer, PlayerStreamTrack
+
+        reported = []
+
+        class Player:
+            @staticmethod
+            def _start(_track):
+                return None
+
+            @staticmethod
+            def notify(_eventpoint):
+                return None
+
+            @staticmethod
+            def notify_media_timing(_kind, _seconds, _eventpoint=None):
+                return None
+
+            @staticmethod
+            def _stop(_track):
+                return None
+
+            @staticmethod
+            def notify_audio_activity(active, peak=None):
+                reported.append((active, peak))
+
+        frame = AudioFrame(format="s16", layout="mono", samples=320)
+        frame.planes[0].update(np.full(320, -300, np.int16).tobytes())
+        frame.sample_rate = 16000
+        track = PlayerStreamTrack(Player(), kind="audio")
+        await track.enqueue(frame)
+        await track.recv()
+        track.stop()
+        self.assertEqual(reported, [(True, 300.0)])
+
+        forwarded = []
+        player = HumanPlayer(None, on_audio_activity=lambda *args: forwarded.append(args))
+        player.notify_audio_activity(True, 300.0)
+        self.assertEqual(forwarded, [(True, 300.0)])
+        player.audio.stop()
+        player.video.stop()
+
+
 class VideoEnqueueStageTests(unittest.TestCase):
     """Idle frames carry an avatar_epoch eventpoint; they are not reply video."""
 
@@ -359,18 +517,21 @@ class RecordingSignalTests(unittest.TestCase):
         self.assertTrue(is_active_audio(np.full((1, 1920), 900, np.int16)))
 
 
-def _server(first_audio=1.5, **stages):
+def _server(first_audio=1.5, clock_marks=None, **stages):
     base = {name: None for name in STAGE_NAMES}
     base.update({"vad_endpoint": 0.32, "asr": 0.4, "pre_answer": 0.5,
                  "first_fragment": 0.3, "avatar_to_webrtc_commit": 0.25})
     base.update(stages)
-    return {"first_audio_seconds": first_audio, "prompt_first_audio_seconds": first_audio - 0.42,
-            "stage_seconds": base}
+    server = {"first_audio_seconds": first_audio,
+              "prompt_first_audio_seconds": first_audio - 0.42, "stage_seconds": base}
+    if clock_marks is not None:
+        server["clock_marks"] = clock_marks
+    return server
 
 
 class AlignmentTests(unittest.TestCase):
     def test_sequential_chain_explains_first_audio(self):
-        aligned = align_turn(_server(1.5), perceived_first_audio_seconds=1.92)
+        aligned = align_turn(_server(1.5), client_received_first_audio_seconds=1.92)
         self.assertEqual(aligned["chain_seconds"], 1.45)
         self.assertEqual(aligned["server_residual_seconds"], 0.05)
         self.assertEqual(aligned["server_perceived_first_audio_seconds"], 1.82)
@@ -378,24 +539,24 @@ class AlignmentTests(unittest.TestCase):
         self.assertTrue(aligned["aligned"])
 
     def test_fixed_reply_has_no_fragment_stage(self):
-        aligned = align_turn(_server(1.2, first_fragment=None), perceived_first_audio_seconds=1.6)
+        aligned = align_turn(_server(1.2, first_fragment=None), client_received_first_audio_seconds=1.6)
         self.assertEqual(aligned["chain_seconds"], 1.15)
         self.assertTrue(aligned["aligned"])
 
     def test_text_turn_has_no_asr_or_vad_stage(self):
         aligned = align_turn(_server(1.1, asr=None, vad_endpoint=None),
-                             perceived_first_audio_seconds=None)
+                             client_received_first_audio_seconds=None)
         self.assertEqual(aligned["chain_seconds"], 1.05)
         self.assertIsNone(aligned["server_perceived_first_audio_seconds"])
         self.assertFalse(aligned["aligned"])
 
     def test_audio_heard_before_the_server_could_answer_is_misattributed(self):
         # e.g. an idle greeting still in flight when the recording ended
-        aligned = align_turn(_server(1.5), perceived_first_audio_seconds=0.4)
+        aligned = align_turn(_server(1.5), client_received_first_audio_seconds=0.4)
         self.assertFalse(aligned["aligned"])
 
     def test_audio_far_later_than_the_server_commit_is_misaligned(self):
-        aligned = align_turn(_server(1.5), perceived_first_audio_seconds=3.5)
+        aligned = align_turn(_server(1.5), client_received_first_audio_seconds=3.5)
         self.assertFalse(aligned["aligned"])
 
 
@@ -403,9 +564,10 @@ def _turn(category, perceived, first_audio, **extra):
     record = {
         "fixture_id": f"{category}-{perceived}", "category": category, "language": "zh-TW",
         "status": "completed", "perceived_first_audio_seconds": perceived,
+        "client_received_first_audio_seconds": perceived,
         **_server(first_audio), **extra,
     }
-    record["alignment"] = align_turn(record, perceived_first_audio_seconds=perceived)
+    record["alignment"] = align_turn(record, client_received_first_audio_seconds=perceived)
     return record
 
 
@@ -457,10 +619,12 @@ class TurnRecordTests(unittest.TestCase):
         fixture = FIXTURES[0]
         event = {"turn_id": "abc123", "terminal_reason": "completed",
                  "metrics": {"turn_id": "abc123", **_server(1.5)}}
-        record = build_turn_record(fixture, event, perceived_first_audio_seconds=1.9200001,
-                                   rag_status="empty")
+        record = build_turn_record(fixture, event, voice_ended_at=10.0,
+                                   first_reply_audio_at=11.9200001, rag_status="empty")
         self.assertEqual(record["status"], "completed")
+        self.assertEqual(record["client_received_first_audio_seconds"], 1.92)
         self.assertEqual(record["perceived_first_audio_seconds"], 1.92)
+        self.assertEqual(record["perceived_basis"], "client_receive")
         self.assertTrue(record["alignment"]["aligned"])
         self.assertNotIn("abc123", json.dumps(record))
 
@@ -469,6 +633,63 @@ class TurnRecordTests(unittest.TestCase):
         self.assertEqual(record["status"], "timeout")
         report = build_latency_report([record], environment={})
         self.assertEqual(report["failed_turns"], 1)
+
+
+class ClientOffsetSplitTests(unittest.TestCase):
+    """client offset = speech tail + VAD work + uplink + audible onset + downlink."""
+
+    def _record(self, clock_marks, *, voice_end=50.0, reply=52.2):
+        server = _server(1.5, clock_marks=clock_marks, vad_speech_tail=0.08,
+                         vad_processing=0.01, webrtc_audible_onset=0.1)
+        event = {"turn_id": "t", "terminal_reason": "completed", "metrics": server}
+        return build_turn_record(FIXTURES[0], event, voice_ended_at=voice_end,
+                                 first_reply_audio_at=reply)
+
+    def test_shared_clock_splits_the_offset_and_ends_perceived_at_the_audible_send(self):
+        record = self._record({"speech_end": 50.5, "first_audio": 52.0, "first_audible": 52.1})
+        split = record["offset_split"]
+        self.assertEqual(split, {"vad_speech_tail": 0.08, "vad_processing": 0.01,
+                                 "uplink": 0.09, "audible_onset": 0.1, "downlink": 0.1})
+        self.assertEqual(record["alignment"]["client_offset_seconds"], 0.38)
+        self.assertAlmostEqual(sum(split.values()), 0.38, places=6)
+        self.assertEqual(record["client_received_first_audio_seconds"], 2.2)
+        self.assertEqual(record["perceived_first_audio_seconds"], 2.1)
+        self.assertEqual(record["perceived_basis"], "server_send")
+
+    def test_without_server_clock_marks_perceived_is_the_client_receipt(self):
+        record = self._record(None)
+        self.assertEqual(record["perceived_first_audio_seconds"], 2.2)
+        self.assertEqual(record["perceived_basis"], "client_receive")
+        self.assertIsNone(record["offset_split"]["uplink"])
+        self.assertIsNone(record["offset_split"]["downlink"])
+        self.assertEqual(record["offset_split"]["vad_speech_tail"], 0.08)
+
+    def test_uplink_needs_the_measured_speech_tail(self):
+        server = _server(1.5, clock_marks={"speech_end": 50.5, "first_audio": 52.0,
+                                           "first_audible": 52.1})
+        event = {"turn_id": "t", "terminal_reason": "completed", "metrics": server}
+        record = build_turn_record(FIXTURES[0], event, voice_ended_at=50.0,
+                                   first_reply_audio_at=52.2)
+        self.assertIsNone(record["offset_split"]["uplink"])
+        self.assertEqual(record["offset_split"]["downlink"], 0.1)
+
+    def test_marks_from_another_clock_are_not_trusted(self):
+        record = self._record({"speech_end": 9000.0, "first_audio": 9001.5,
+                               "first_audible": 9001.6})
+        self.assertEqual(record["perceived_basis"], "client_receive")
+        self.assertIsNone(record["offset_split"]["uplink"])
+
+    def test_report_summarizes_the_split_and_the_client_receipt(self):
+        turns = [self._record({"speech_end": 50.5, "first_audio": 52.0, "first_audible": 52.1}),
+                 self._record(None, reply=52.4)]
+        report = build_latency_report(turns, environment={})
+        self.assertEqual(report["schema_version"], 2)
+        summary = report["categories"]["general"]
+        self.assertEqual(summary["offset_split"]["uplink"], {"p50": 0.09, "p95": 0.09})
+        self.assertEqual(summary["offset_split"]["vad_speech_tail"], {"p50": 0.08, "p95": 0.08})
+        self.assertEqual(summary["client_received_first_audio_seconds"]["p50"], 2.3)
+        self.assertEqual(summary["perceived_basis"], {"server_send": 1, "client_receive": 1})
+        self.assertIn("offset_split", report["turn_records"][0])
 
 
 class PushTrackMarkerTests(unittest.TestCase):
