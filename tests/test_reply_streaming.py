@@ -23,7 +23,7 @@ from src.server.reply_streaming.media_debt import MediaDebtBudget
 from src.server.reply_streaming.turn import TurnContext, TurnState
 from src.llm.base import BaseLLM
 from src.llm.engines.openai import OpenAILLM
-from src.server.reply_streaming.fragmenter import SemanticFragmenter
+from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
 from src.server.reply_streaming.channel import (
     BackpressureTruncated,
     BoundedFragmentChannel,
@@ -556,6 +556,52 @@ class LLMGenerationFenceTests(unittest.TestCase):
         )
 
 
+    def test_comma_clause_is_released_when_the_semantic_wait_ends_without_a_new_token(self):
+        clause = "一二三四五六七八九十" * 3 + "，"
+        second_token_at = []
+
+        class StallingLLM(BaseLLM):
+            def chat_stream(self, message, system_prompt=None):
+                del message, system_prompt
+                yield clause
+                time.sleep(0.6)
+                second_token_at.append(time.perf_counter())
+                yield "後半句。"
+
+        avatar = RecordingAvatar()
+        config = Config()
+        config.reply_streaming.semantic_wait_seconds = 0.1
+        started = time.perf_counter()
+        StallingLLM(config).generate_response(
+            "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+        )
+
+        self.assertEqual([event["text"] for event in avatar.events], [clause, "後半句。"])
+        self.assertLess(avatar.events[0]["at"], second_token_at[0])
+        self.assertLess(avatar.events[0]["at"] - started, 0.45)
+        self.assertEqual(
+            [event["datainfo"]["fragment_sequence"] for event in avatar.events], [0, 1]
+        )
+
+    def test_fenced_turn_never_releases_a_waiting_clause(self):
+        class FencedLLM(BaseLLM):
+            def chat_stream(self, message, system_prompt=None):
+                del message, system_prompt
+                yield "一二三四五六七八九十" * 3 + "，"
+                yield "舊輪次的後半句。"
+
+        avatar = RecordingAvatar()
+        config = Config()
+        config.reply_streaming.semantic_wait_seconds = 0.1
+        FencedLLM(config).generate_response(
+            "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+            chunk_guard=lambda sequence: sequence == 0,
+        )
+        time.sleep(0.3)
+
+        self.assertEqual(avatar.events, [])
+
+
 class LLMHistoryTransactionTests(unittest.TestCase):
     def test_deferred_voice_history_commits_only_played_text_by_turn_id(self):
         llm = OpenAILLM(config=Config(), api_key="fixture")
@@ -781,6 +827,63 @@ class SemanticFragmenterTests(unittest.TestCase):
             fragmenter.feed("補充"),
             ["這段話尚未結束，"],
         )
+
+    def test_semantic_wait_remaining_counts_down_only_for_a_releasable_clause(self):
+        clock = FakeClock()
+        fragmenter = SemanticFragmenter(weak_min_chars=4, clock=clock)
+
+        self.assertIsNone(fragmenter.semantic_wait_remaining())
+        fragmenter.feed("一二，")
+        self.assertIsNone(fragmenter.semantic_wait_remaining())
+        fragmenter.feed("三四五，")
+        self.assertAlmostEqual(fragmenter.semantic_wait_remaining(), 0.5)
+        clock.advance(0.2)
+        self.assertAlmostEqual(fragmenter.semantic_wait_remaining(), 0.3)
+        clock.advance(0.4)
+        self.assertEqual(fragmenter.semantic_wait_remaining(), 0.0)
+        self.assertEqual(fragmenter.feed(""), ["一二，三四五，"])
+        self.assertIsNone(fragmenter.semantic_wait_remaining())
+
+    def test_wait_timer_releases_a_clause_when_no_further_token_arrives(self):
+        emitted = []
+        timer = SemanticWaitTimer(
+            SemanticFragmenter(weak_min_chars=1, semantic_wait_seconds=0.05), emitted.append
+        )
+        timer.feed("這段話尚未結束，接著")
+        deadline = time.monotonic() + 2.0
+        while not emitted and time.monotonic() < deadline:
+            time.sleep(0.01)
+        released = list(emitted)
+        timer.flush()
+        timer.close()
+
+        self.assertEqual(released, ["這段話尚未結束，"])
+        self.assertEqual(emitted, ["這段話尚未結束，", "接著"])
+
+    def test_wait_timer_emits_strong_sentences_at_once_and_stops_after_close(self):
+        emitted = []
+        timer = SemanticWaitTimer(
+            SemanticFragmenter(weak_min_chars=1, semantic_wait_seconds=0.05), emitted.append
+        )
+        timer.feed("好。尚未結束，")
+        self.assertEqual(emitted, ["好。"])
+        timer.close()
+        time.sleep(0.15)
+
+        self.assertEqual(emitted, ["好。"])
+
+    def test_wait_timer_skips_release_while_the_turn_is_inactive(self):
+        emitted = []
+        timer = SemanticWaitTimer(
+            SemanticFragmenter(weak_min_chars=1, semantic_wait_seconds=0.05),
+            emitted.append,
+            active=lambda: False,
+        )
+        timer.feed("尚未結束，")
+        time.sleep(0.15)
+        timer.close()
+
+        self.assertEqual(emitted, [])
 
     def test_number_sequences_and_decimal_points_stay_intact(self):
         fragmenter = SemanticFragmenter(soft_limit_chars=24, hard_limit_chars=32)
