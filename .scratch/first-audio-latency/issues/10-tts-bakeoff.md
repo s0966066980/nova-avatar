@@ -3,7 +3,7 @@
 Status: ready-for-agent
 Blocked by: 01, 04, 09
 
-依[規格](../spec.md)。主角 BreezyVoice；對照 Qwen3-TTS 0.6B（`faster-qwen3-tts`，權重已在本機 HF 快取、`.venv-qwen-speech` 已裝 `qwen_tts`）與 Fun-CosyVoice3 0.5B（已整合）。在 MuseTalk 與 E2B 都載入的實機上量測：
+依[規格](../spec.md)。主角 BreezyVoice；對照 Fun-CosyVoice3 0.5B（已整合）。Qwen3-TTS 已於 2026-10-30 由使用者決定移除，不列入評比（見 Comments）。在 MuseTalk 與 E2B 都載入的實機上量測：
 
 - 第一個片段（約 15 字）合成時間 P50／P95，冷／暖、LLM 串流中；目標 P50 ≤ 0.4 s、P95 ≤ 0.7 s。
 - 額外顯存。
@@ -57,7 +57,7 @@ qwen-tts-hf 0.1.1.post1（Apache-2.0，已查 PyPI metadata），僅評比用、
 ### 待實機驗證（Status 維持 ready-for-agent）
 
 前提：ticket 12 已釋出顯存；MuseTalk 與 E2B 照正式方式載入（每個 TTS 約需 2–4 GB）；ticket 09 第 1 步的
-g2pw 已裝。每次只開一個 TTS 伺服器，埠用 50101–50103，避開應用自管的 50000。在合併後的主 checkout 執行：
+g2pw 已裝。每次只開一個 TTS 伺服器，埠用 50101／50103，避開應用自管的 50000。在合併後的主 checkout 執行：
 
 ```bash
 cd /home/oliver/nova-avatar
@@ -67,31 +67,19 @@ R=.scratch/first-audio-latency/tts-bakeoff/runs
 LLM=http://127.0.0.1:8080/v1   # 會在 llama-server 上持續生成；舞台使用中請改用 18080 的評估實例
 ```
 
-1. Qwen3-TTS 環境（不動 `.venv-qwen-speech`：faster-qwen3-tts 需 torch ≥ 2.5.1、transformers 5，且會取代 qwen-tts）：
-   ```bash
-   uv venv --python 3.11 /home/oliver/.venvs/faster-qwen3-tts
-   uv pip install --python /home/oliver/.venvs/faster-qwen3-tts/bin/python \
-     faster-qwen3-tts==0.5.4 fastapi==0.141.1 uvicorn==0.52.4 python-multipart==0.0.32
-   Q=$(/home/oliver/nova-avatar/.venv-qwen-speech/bin/hf download Qwen/Qwen3-TTS-12Hz-0.6B-Base \
-     --revision 5d83992436eae1d760afd27aff78a71d676296fc | tail -1)
-   ```
-   （本機快取只有 0.6B-CustomVoice 與 1.7B-Base；複製聲線需 0.6B-Base。）
-2. 每個引擎各做一次「基準 → 啟動 → 量測 → 停止」：
+1. 每個引擎各做一次「基準 → 啟動 → 量測 → 停止」：
    ```bash
    B=$(.venv/bin/python scripts/tts_bakeoff.py vram)
    # BreezyVoice
    BREEZYVOICE_G2PW_THREADS=6 /home/oliver/anaconda3/envs/cosyvoice/bin/python scripts/cosyvoice_fastapi_server.py \
      --host 127.0.0.1 --port 50101 --model_dir /home/oliver/nova-avatar/models/BreezyVoice \
      > logs/tts-bakeoff-breezyvoice.log 2>&1 & PID=$!; U=http://127.0.0.1:50101; E=breezyvoice; L=BreezyVoice
-   # Qwen3-TTS 0.6B
-   /home/oliver/.venvs/faster-qwen3-tts/bin/python scripts/qwen3_tts_server.py --model "$Q" --port 50102 \
-     > logs/tts-bakeoff-qwen3-tts.log 2>&1 & PID=$!; U=http://127.0.0.1:50102; E=qwen3-tts; L="Qwen3-TTS 0.6B"
    # Fun-CosyVoice3
    /home/oliver/anaconda3/envs/cosyvoice/bin/python scripts/cosyvoice_fastapi_server.py \
      --host 127.0.0.1 --port 50103 --model_dir /home/oliver/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B-2512 \
      > logs/tts-bakeoff-cosyvoice3.log 2>&1 & PID=$!; U=http://127.0.0.1:50103; E=cosyvoice3; L=Fun-CosyVoice3
    ```
-   每段只執行一個引擎的那行，等 `curl -s $U/health` 回 `family` 分別為 `breezyvoice`／`qwen3-tts`／`cosyvoice3` 後立刻：
+   每段只執行一個引擎的那行，等 `curl -s $U/health` 回 `family` 分別為 `breezyvoice`／`cosyvoice3` 後立刻：
    ```bash
    .venv/bin/python scripts/tts_bakeoff.py run --engine $E --label "$L" --url $U \
      --prompt-wav "$P" --prompt-text "$T" --server-pid $PID --vram-baseline-mib $B \
@@ -101,18 +89,29 @@ LLM=http://127.0.0.1:8080/v1   # 會在 llama-server 上持續生成；舞台使
    預期依序印 `cold 5 done`、`warm 60 done`、`contended 60 done`、`50/500 sentences`…，最後印三個階段的
    `{'n': …, 'first_audio_p50': …, 'first_audio_p95': …}` 與顯存摘要（`delta_peak_mib`）。每個引擎約 15–30 分。
    若印 `LLM produced no tokens`，LLM 中情境無效，檢查 `$LLM` 後重跑。
-3. 三個伺服器都停掉後回辨（Whisper turbo 約 1.6 GB；顯存不足改 `--device cpu --asr-model small`）：
+2. 兩個伺服器都停掉後回辨（Whisper turbo 約 1.6 GB；顯存不足改 `--device cpu --asr-model small`）：
    ```bash
-   .venv/bin/python scripts/tts_bakeoff.py score --runs $R/breezyvoice $R/qwen3-tts $R/cosyvoice3
-   .venv/bin/python scripts/tts_bakeoff.py report --runs $R/breezyvoice $R/qwen3-tts $R/cosyvoice3
+   .venv/bin/python scripts/tts_bakeoff.py score --runs $R/breezyvoice $R/cosyvoice3
+   .venv/bin/python scripts/tts_bakeoff.py report --runs $R/breezyvoice $R/cosyvoice3
    ```
    每個 run 印 `scored 500 clips`；`report` 每引擎印一行 warm／target／zh／en／stability／vram，
    並寫出 `.scratch/first-audio-latency/tts-bakeoff/{bakeoff.json,index.html}`。
-4. 8 小時穩定性（選定的引擎，預設 BreezyVoice；依第 2 步重新啟動該伺服器）：
+3. 8 小時穩定性（選定的引擎，預設 BreezyVoice；依第 1 步重新啟動該伺服器）：
    ```bash
    nohup .venv/bin/python scripts/tts_bakeoff.py soak --engine breezyvoice --url http://127.0.0.1:50101 \
      --prompt-wav "$P" --prompt-text "$T" --server-pid $PID --hours 8 > logs/tts-bakeoff-soak.log 2>&1 &
    ```
-   結束寫 `$R/breezyvoice/soak-summary.json`（印 requests／failures／延遲漂移／顯存）；之後重跑第 3 步的 `report`。
-5. 把 `index.html` 交給使用者試聽評分（以瀏覽器開本機檔），把延遲、顯存、字錯率、截斷／幻覺率、8 小時結果與
+   結束寫 `$R/breezyvoice/soak-summary.json`（印 requests／failures／延遲漂移／顯存）；之後重跑第 2 步的 `report`。
+4. 把 `index.html` 交給使用者試聽評分（以瀏覽器開本機檔），把延遲、顯存、字錯率、截斷／幻覺率、8 小時結果與
    使用者決定寫回本 Comments；未達 0.4／0.7 s 依規格順序處理後再設 `Status: resolved`。
+
+### 2026-10-30 移除 Qwen3-TTS（分支 `fal/10b-drop-qwen3-tts`）
+
+2026-10-30 使用者決定移除 Qwen3-TTS，不再評估或使用。實測原因：聲線複製生成失控，約 15 字的句子產生
+37–72 s 音訊，共用 GPU 上每筆約 15–20 s；另須釘選 transformers==5.12.0 才能執行。
+
+移除：`scripts/qwen3_tts_server.py`、`tests/test_qwen3_tts_server.py` 與 `tests/conftest.py` 的對應項目；
+`scripts/tts_bakeoff.py` 只給 Qwen3-TTS 用的 `language` 表單欄位（`SERVER_LANGUAGE`，`ZeroShotClient.synthesize`
+改為只收文字）與說明中的 Qwen3-TTS；`THIRD_PARTY_NOTICES.md` 的 Qwen3-TTS／faster-qwen3-tts／qwen-tts-hf 段落。
+上方「待實機驗證」已改為只比 BreezyVoice 與 Fun-CosyVoice3；上方 2026-10-30 評比工具一節保留為歷史紀錄。
+`tts-bakeoff/runs/` 下的 Qwen3-TTS 測試輸出（gitignored）未動。

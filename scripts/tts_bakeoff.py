@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
-"""TTS bake-off (issue 10): BreezyVoice vs Qwen3-TTS vs Fun-CosyVoice3.
+"""TTS bake-off (issue 10): BreezyVoice vs Fun-CosyVoice3.
 
 Every engine runs behind the owned zero-shot HTTP contract
 (``GET /health`` with ``sample_rate``; ``POST /inference_zero_shot`` taking
 ``tts_text``, ``prompt_text``, ``prompt_wav`` and returning raw PCM16):
-``scripts/cosyvoice_fastapi_server.py`` serves BreezyVoice and Fun-CosyVoice3,
-``scripts/qwen3_tts_server.py`` serves Qwen3-TTS. One server runs at a time.
+``scripts/cosyvoice_fastapi_server.py`` serves both engines. One server runs at
+a time.
 
 Subcommands:
 
@@ -104,10 +104,6 @@ def load_sentence_sets(path: Path) -> SentenceSets:
     return SentenceSets(fragments, sentences)
 
 
-# Language names the Qwen3-TTS server expects; the CosyVoice server ignores the field.
-SERVER_LANGUAGE = {"zh-TW": "Chinese", "en-US": "English"}
-
-
 @dataclasses.dataclass
 class SynthesisResult:
     ok: bool
@@ -156,11 +152,10 @@ class ZeroShotClient:
         # The same prompt text the app sends (Fun-CosyVoice3 needs its prefix).
         return CosyVoiceTTS._zero_shot_request("", self.prompt_text, self.family)[1]["prompt_text"]
 
-    def synthesize(self, text: str, language: str) -> SynthesisResult:
+    def synthesize(self, text: str) -> SynthesisResult:
         if not self.sample_rate:
             self.health()
-        data = {"tts_text": text, "prompt_text": self._prompt_text(),
-                "language": SERVER_LANGUAGE.get(language, "Auto")}
+        data = {"tts_text": text, "prompt_text": self._prompt_text()}
         files = {"prompt_wav": ("prompt.wav", self.prompt_bytes, "application/octet-stream")}
         started = self.clock()
         first: float | None = None
@@ -511,7 +506,7 @@ def _fragment_round(client: ZeroShotClient, fragments: tuple[Sentence, ...], rou
                     save_dir: Path | None = None) -> list[dict]:
     rows = []
     for fragment in fragments:
-        result = client.synthesize(fragment.text, fragment.language)
+        result = client.synthesize(fragment.text)
         rows.append({"sentence_id": fragment.sentence_id, "text": fragment.text,
                      "round": round_number, **_timing(result)})
         if save_dir is not None and result.ok:
@@ -536,7 +531,7 @@ def run_engine(args) -> dict:
             if index:
                 time.sleep(args.idle_seconds)
             fragment = fragments[index % len(fragments)]
-            result = client.synthesize(fragment.text, fragment.language)
+            result = client.synthesize(fragment.text)
             latency["cold"].append({"sentence_id": fragment.sentence_id, "text": fragment.text,
                                     "first_after_load": index == 0,
                                     "idle_before_seconds": args.idle_seconds if index else 0.0,
@@ -544,7 +539,7 @@ def run_engine(args) -> dict:
         print(f"{args.engine}: cold {len(latency['cold'])} done", flush=True)
         for index in range(args.warmup):
             fragment = fragments[index % len(fragments)]
-            client.synthesize(fragment.text, fragment.language)
+            client.synthesize(fragment.text)
         for round_number in range(1, args.warm_rounds + 1):
             save = out_dir / "audio" / "fragments" if round_number == 1 else None
             latency["warm"].extend(_fragment_round(client, fragments, round_number, save))
@@ -562,7 +557,7 @@ def run_engine(args) -> dict:
         for index in range(total):
             sentence = corpus[index % len(corpus)]
             round_number = index // len(corpus) + 1
-            result = client.synthesize(sentence.text, sentence.language)
+            result = client.synthesize(sentence.text)
             relative = f"audio/r{round_number}/{sentence.sentence_id}.wav"
             if result.ok:
                 _write_wav(out_dir / relative, result.samples, result.sample_rate)
@@ -1032,7 +1027,7 @@ def run_soak(args) -> dict:
             while time.monotonic() - started < seconds:
                 sentence = items[index % len(items)]
                 index += 1
-                result = client.synthesize(sentence.text, sentence.language)
+                result = client.synthesize(sentence.text)
                 emit({"type": "synthesis", "t": round(time.monotonic() - started, 3),
                       "sentence_id": sentence.sentence_id, **_timing(result),
                       "flags": duration_flags(sentence, result.samples, result.sample_rate) if result.ok else []})
@@ -1063,7 +1058,7 @@ def run_soak(args) -> dict:
 
 
 def _add_server_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--engine", required=True, help="short name, e.g. breezyvoice, qwen3-tts, cosyvoice3")
+    parser.add_argument("--engine", required=True, help="short name, e.g. breezyvoice, cosyvoice3")
     parser.add_argument("--url", required=True, help="the engine server, e.g. http://127.0.0.1:50000")
     parser.add_argument("--prompt-wav", type=Path, required=True, help="reference voice recording")
     parser.add_argument("--prompt-text", required=True, help="transcript of the reference recording")
