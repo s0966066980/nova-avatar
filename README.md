@@ -11,9 +11,15 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 
 ## 目前版本提供什麼
 
-- **對話鏈路**：服務端 Silero VAD、免按對話、按住說話與插話；faster-whisper／
-  FunASR 辨識；Ollama／llama.cpp 或其他 OpenAI 相容服務回答；Edge TTS 等可選
-  語音引擎。主要數位人引擎是 MuseTalk，其他引擎的支援與授權見文末。
+- **對話鏈路**：服務端 Silero VAD、免按對話、按住說話與插話；faster-whisper small
+  辨識（預設，中英文自動偵測），FunASR 可選（僅中文）；llama.cpp 回答（預設
+  Gemma 4 E2B，Qwen3.5-9B 可選），也可接 Ollama 或其他 OpenAI 相容服務；語音預設
+  Edge TTS（**僅供開發**），本機台灣華語 BreezyVoice 等為可選引擎。主要數位人引擎是
+  MuseTalk，其他引擎的支援與授權見文末。
+- **首音延遲**：角色路由、知識庫檢索與主回答同時開始。2026-10-30 以真實 WebRTC
+  量測（Edge TTS），一般輪次從人聲結束到送出第一個可聽回覆音訊 P50 2.00 s、
+  P95 2.22 s，P95 達第一階段目標、P50 尚未達到；起訖定義、各段組成與下一步見
+  [目前專案基線](docs/project-status.md#首音延遲實測2026-10-30)。
 - **輪次隔離與串流**：語音、字幕和畫面依對話輪次隔離，取消或斷線後不再交付
   舊內容。可選語意片段串流回覆，完整回答產生前即開始合成；預設仍一次交付完整
   回答，Edge TTS＋MuseTalk 串流組合已實機驗證。
@@ -43,7 +49,7 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 | Python | 安裝腳本以 uv 管理 Python 3.10.19，保留既有 `.venv` |
 | 系統工具 | Git、FFmpeg、OpenSSL、Node.js 22+／npm、C++ 編譯工具 |
 | CUDA | PyTorch 固定 cu124；首次編譯 mmcv 需 CUDA Toolkit 12.4／`nvcc` |
-| LLM | 預設 llama.cpp（後端自行啟動 llama-server）；Ollama 為可選端點，可加其他服務 |
+| LLM | 預設 llama.cpp（後端自行啟動 llama-server，Gemma 4 E2B 全部層數放進 GPU，放不下即啟動失敗並說明）；Ollama 為可選端點，可加其他服務 |
 
 在專案根目錄依序執行：
 
@@ -137,7 +143,12 @@ rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 
 `python -m pip install --no-deps g2pw==0.1.1`，再執行
 `uv run --no-sync python scripts/breezyvoice_weights.py` 把權重與 g2pW 下載到
 `models/BreezyVoice`（固定版本並核對 SHA-256）。參考錄音須在 8 秒內，上傳音訊庫時
-一併填寫與錄音逐字相同的逐字稿；BreezyVoice 不串流，每個回覆片段整段合成。
+一併填寫與錄音逐字相同的逐字稿，並須是自錄或有書面授權的聲音；BreezyVoice 不串流，
+每個回覆片段整段合成。與 MuseTalk、LLM 共用 RTX 4090 時第一個片段約需 2.5 s
+（P50），額外顯存峰值約 5.9 GB，因此尚未取代 Edge TTS 成為預設。
+
+**Edge TTS**：設定檔預設的語音引擎，只供開發。它使用非公開的微軟端點，沒有正式
+商用授權，場域斷網時無法發聲；正式部署前須換成本機 TTS。
 
 **天氣工具**：使用中央氣象署 CWA，授權碼只從服務端的 `NOVA_CWA_API_KEY`（亦支援
 `CWA_API_KEY`）或已排除 Git 的 `config/cwa.env` 載入；可執行
@@ -365,8 +376,9 @@ npm run build
 - 測試不得寫入專案的 `data/`。
 
 `check-integration.py` 預設執行離線檢查；備妥設定檔指定的 LLM 與 Edge TTS 後，可用
-`--smoke` 檢查實際服務。真實 WebRTC 語音回合的驗證方式見
-[目前專案基線](docs/project-status.md)；x86 影音排程與效能見
+`--smoke` 檢查實際服務。真實 WebRTC 語音回合的首音延遲以
+`scripts/measure_first_audio.py` 量測（需關閉舞台頁，只在場域主機本機執行），
+驗證方式見[目前專案基線](docs/project-status.md)；x86 影音排程與效能見
 [x86 即時效能優化](docs/x86-performance.md)。審查規則見
 [CODING_STANDARDS.md](CODING_STANDARDS.md)。
 
