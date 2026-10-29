@@ -37,5 +37,5 @@ Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17
 10. 成立（ProfileError 讓匯入回 500）。`_avatar_replace_conflict` 讀不到角色設定時回覆清楚原因（fail closed），上傳前回 409、建置執行緒內也同樣拒絕；上傳前的檢查本來就有，改在 worker 執行緒讀檔。「建置前才檢查」的部分不成立。測試：`test_unreadable_profiles_refuse_overwrite_before_the_build`。
 11. 成立（`data/imports/`）：`test_avatar_import.py` 兩項 import job 測試與 `test_mouth_quality.py::test_import_job_forwards_quality_into_builder` 經 `uploads_dir()` 建立目錄，改用 tmp 目錄。`data/tts/` 在目前分支完整 pytest 中未重現。`tests/conftest.py` 新增守衛：測試期間 repo `data/` 兩層內新增任何項目即令整個 pytest 失敗。
 
-驗證：ruff、pyright（0 errors）、check-integration、npm lint／test（206）／build 通過；pytest 見下方合併後結果。
+驗證：ruff、pyright（0 errors）、check-integration、npm lint／test（206）／build 通過；pytest 1083 passed、3 skipped、2 failed（`test_real_pdf_pages_are_validated_rendered_and_released`、`test_greeting_only_profile_apply_keeps_playing_media_and_avoids_rebinding`，worktree 缺本機資產的已知基準失敗），完整執行後 repo 無 `data/`。合併 security-hardening 無新提交（已是最新）。
 
