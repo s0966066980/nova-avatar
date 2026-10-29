@@ -4,15 +4,22 @@
 """後臺製作數字人角色的任務佇列。"""
 from __future__ import annotations
 
+import shutil
 import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
-from src.avatars.builder import BuildError, build_character, suggest_avatar_id, uploads_dir
-from src.avatars.catalog import IMPORTABLE_ENGINES, is_safe_avatar_id
+from src.avatars.builder import (
+    BuildError,
+    ReplaceGuard,
+    build_character,
+    suggest_avatar_id,
+    uploads_dir,
+)
+from src.avatars.catalog import IMPORTABLE_ENGINES, avatars_root, is_safe_avatar_id
 from src.server.runtime_settings import SettingsError
 from src.utils.logging import logger
 
@@ -46,6 +53,11 @@ class ImportJob:
 _LOCK = threading.Lock()
 _JOBS: Dict[str, ImportJob] = {}
 _WORKER_LOCK = threading.Lock()
+FINISHED_STATUSES = frozenset({"done", "failed"})
+MAX_FINISHED_JOBS = 20
+# Only the first MAX_FRAMES frames are used, so a short clip is all an import needs.
+MAX_IMPORT_VIDEO_BYTES = 500 * 1024 * 1024
+UNEXPECTED_ERROR = "製作角色失敗，請查看伺服器日誌"
 
 
 def import_in_progress() -> bool:
@@ -53,20 +65,19 @@ def import_in_progress() -> bool:
 
 
 def get_job(job_id: str) -> Optional[ImportJob]:
-    return _JOBS.get(job_id)
+    with _LOCK:
+        return _JOBS.get(job_id)
 
 
-def start_import_job(
+def validate_import_request(
     *,
     engine: str,
-    video_path: Path,
+    avatar_id: str,
     original_name: str,
-    avatar_id: str = "",
-    overwrite: bool = False,
-    session_count: int = 0,
-    quality: Optional[Dict[str, Any]] = None,
-    green_screen: bool = False,
-) -> ImportJob:
+    overwrite: bool,
+    session_count: int,
+) -> Tuple[str, str]:
+    """Check an import before its upload is written; return (engine, avatar_id)."""
     engine = (engine or "").strip().lower()
     if engine not in IMPORTABLE_ENGINES:
         raise SettingsError("請先選擇 MuseTalk 或 Wav2Lip，這兩個引擎才能從影片製作角色")
@@ -84,17 +95,62 @@ def start_import_job(
         chosen_id = suggest_avatar_id(engine, original_name)
     if not is_safe_avatar_id(chosen_id):
         raise SettingsError("角色名稱只能使用字母、數字、下劃線和短橫線")
+    destination = avatars_root() / chosen_id
+    if not overwrite and (destination.exists() or destination.is_symlink()):
+        raise SettingsError(f"角色 {chosen_id} 已存在，請換一個名稱", status=409)
+    return engine, chosen_id
 
-    job = ImportJob(id=uuid.uuid4().hex[:12], engine=engine, avatar_id=chosen_id)
-    _JOBS[job.id] = job
-    thread = threading.Thread(
-        target=_run_job,
-        args=(job, video_path, overwrite, quality, green_screen),
-        daemon=True,
-        name=f"avatar-import-{job.id}",
+
+def discard_upload(upload_dir: Path) -> None:
+    """Remove one request's upload directory under data/imports."""
+    if upload_dir.parent == uploads_dir():
+        shutil.rmtree(upload_dir, ignore_errors=True)
+
+
+def start_import_job(
+    *,
+    engine: str,
+    video_path: Path,
+    original_name: str,
+    avatar_id: str = "",
+    overwrite: bool = False,
+    session_count: int = 0,
+    quality: Optional[Dict[str, Any]] = None,
+    green_screen: bool = False,
+    replace_guard: ReplaceGuard = None,
+) -> ImportJob:
+    engine, chosen_id = validate_import_request(
+        engine=engine,
+        avatar_id=avatar_id,
+        original_name=original_name,
+        overwrite=overwrite,
+        session_count=session_count,
     )
-    thread.start()
+    # The job owns the worker lock from here until _run_job finishes.
+    if not _WORKER_LOCK.acquire(blocking=False):
+        raise SettingsError("已有角色正在製作，請稍後再試", status=409)
+    try:
+        job = ImportJob(id=uuid.uuid4().hex[:12], engine=engine, avatar_id=chosen_id)
+        with _LOCK:
+            _prune_finished_jobs()
+            _JOBS[job.id] = job
+        thread = threading.Thread(
+            target=_run_job,
+            args=(job, video_path, overwrite, quality, green_screen, replace_guard),
+            daemon=True,
+            name=f"avatar-import-{job.id}",
+        )
+        thread.start()
+    except BaseException:
+        _WORKER_LOCK.release()
+        raise
     return job
+
+
+def _prune_finished_jobs() -> None:
+    finished = [job_id for job_id, job in _JOBS.items() if job.status in FINISHED_STATUSES]
+    for job_id in finished[: max(0, len(finished) - MAX_FINISHED_JOBS + 1)]:
+        del _JOBS[job_id]
 
 
 def _run_job(
@@ -103,13 +159,8 @@ def _run_job(
     overwrite: bool,
     quality: Optional[Dict[str, Any]] = None,
     green_screen: bool = False,
+    replace_guard: ReplaceGuard = None,
 ) -> None:
-    if not _WORKER_LOCK.acquire(blocking=False):
-        job.status = "failed"
-        job.error = "已有角色正在製作，請稍後再試"
-        job.message = job.error
-        return
-
     def progress(percent: int, message: str) -> None:
         job.progress = max(0, min(100, int(percent)))
         job.message = message
@@ -126,6 +177,7 @@ def _run_job(
             progress=progress,
             quality=quality,
             green_screen=green_screen,
+            replace_guard=replace_guard,
         )
         job.status = "done"
         job.progress = 100
@@ -135,13 +187,13 @@ def _run_job(
         job.error = str(exc)
         job.message = str(exc)
         logger.warning(f"製作角色失敗: {exc}")
-    except Exception as exc:
+    except Exception:
+        # Unexpected errors can carry absolute paths; keep them in the server log.
         job.status = "failed"
-        job.error = f"製作角色失敗: {exc}"
+        job.error = UNEXPECTED_ERROR
         job.message = job.error
         logger.exception("製作角色失敗")
     finally:
-        _WORKER_LOCK.release()
         try:
             if video_path.exists():
                 video_path.unlink()
@@ -150,3 +202,5 @@ def _run_job(
                 parent.rmdir()
         except OSError:
             pass
+        finally:
+            _WORKER_LOCK.release()
