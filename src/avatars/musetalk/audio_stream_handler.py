@@ -17,6 +17,16 @@ from queue import Queue
 from src.avatars.audio_stream_handler import BaseAudioStreamHandler
 from src.avatars.musetalk.whisper.audio2feature import Audio2Feature
 
+# Matches MuseTalkConfig.max_tts_audio_wait_seconds; the parent avatar's
+# configured value takes precedence.
+DEFAULT_SPEECH_RUNWAY_WAIT_SECONDS = 0.35
+
+
+def _turn_key(eventpoint) -> tuple | None:
+    if isinstance(eventpoint, dict) and eventpoint.get("turn_id"):
+        return eventpoint["turn_id"], eventpoint.get("generation")
+    return None
+
 
 @dataclass(frozen=True)
 class MuseInferenceBatch:
@@ -49,10 +59,31 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
         self.startup_batch_size = max(1, min(self.batch_size, 4))
         self._startup_batch_emitted = False
         self._speech_batch_emitted = False
+        # Reply turn of the last emitted speech batch; a new turn's first
+        # batch is startup-sized and gets its own lookahead runway.
+        self._speech_turn = None
+        self._runway_wait_started_at = None
 
     @property
     def startup_batch_emitted(self) -> bool:
         return self._startup_batch_emitted
+
+    def first_speech_batch_pending(self) -> bool:
+        """Whether queued reply PCM starts a turn with no speech batch yet."""
+        with self.queue.mutex:
+            head = self.queue.queue[0][1] if self.queue.queue else None
+        turn = _turn_key(head)
+        return turn is not None and (
+            turn != self._speech_turn or not self._speech_batch_emitted
+        )
+
+    def _runway_wait_expired(self) -> bool:
+        now = time.perf_counter()
+        if self._runway_wait_started_at is None:
+            self._runway_wait_started_at = now
+        limit = getattr(self.parent, "max_tts_audio_wait_seconds",
+                        DEFAULT_SPEECH_RUNWAY_WAIT_SECONDS)
+        return now - self._runway_wait_started_at >= limit
 
     def warm_up(self):
         """Prime silent context without consuming any incoming reply PCM."""
@@ -81,6 +112,8 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
             self._prime_context()
             self._startup_batch_emitted = False
             self._speech_batch_emitted = False
+            self._speech_turn = None
+            self._runway_wait_started_at = None
 
     def _refresh_idle_lookahead(self, effective_batch_size):
         """Replace idle lookahead with ready PCM before the first speech batch.
@@ -122,9 +155,12 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
             pending = getattr(tts, "has_pending_work", None)
             # A streaming first packet may be smaller than the lookahead.
             # Keep it untouched until a full runway is ready. Short completed
-            # utterances and later speech batches must still drain promptly.
+            # utterances and later speech batches must still drain promptly,
+            # and a stalled stream must not freeze idle video.
             return (self._speech_batch_emitted or complete_short_fragment
-                    or not callable(pending) or not pending())
+                    or not callable(pending) or not pending()
+                    or self._runway_wait_expired())
+        self._runway_wait_started_at = None
         with self._paired_audio_lock:
             self._paired_audio_frames.clear()
         self.frames = self.frames[:-right]
@@ -136,9 +172,13 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
 
     def _collect_batch(self):
         """Snapshot PCM and context together; feature extraction may be slow."""
+        first_speech = self.first_speech_batch_pending()
+        if first_speech:
+            self._speech_batch_emitted = False
+        # The first speech batch of each turn does not wait for a full batch.
         effective_batch_size = (
             self.batch_size
-            if self._startup_batch_emitted
+            if self._startup_batch_emitted and not first_speech
             else self.startup_batch_size
         )
         if not self._refresh_idle_lookahead(effective_batch_size):
@@ -207,6 +247,10 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
                     self._startup_batch_emitted = True
                     if any(kind == 0 for _frame, kind, _event in paired_audio_frames):
                         self._speech_batch_emitted = True
+                        self._runway_wait_started_at = None
+                        turns = [_turn_key(event) for _frame, _kind, event in paired_audio_frames]
+                        self._speech_turn = next(
+                            (turn for turn in reversed(turns) if turn is not None), None)
                     break
                 except queue.Full:
                     pass

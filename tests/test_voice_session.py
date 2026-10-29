@@ -405,6 +405,43 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(item["type"] == "turn_cancelled" for item in events))
         await session.close()
 
+    async def test_replacement_turn_skips_the_capture_tail_guard(self):
+        session, avatar, events = self.make_session()
+
+        async def hold_turn(*_args, **_kwargs):
+            await asyncio.Event().wait()
+
+        session._process_text_turn = hold_turn
+        for start in (
+            lambda: session.start_text_turn("新問題", interrupt=True),
+            lambda: session.start_read_aloud_turn("朗讀", interrupt=True),
+        ):
+            session._turn_id = "old-turn"
+            sleep = AsyncMock()
+            with patch("src.server.voice_session.asyncio.sleep", new=sleep):
+                started = await start()
+            # The guard only keeps capture closed while old audio drains; a
+            # replacement turn closes capture itself, so the 0.3 s delayed
+            # its first audio for nothing.
+            sleep.assert_not_awaited()
+            self.assertEqual(session._turn_id, started["turn_id"])
+            self.assertFalse(session._gate_open)
+        self.assertEqual(avatar.flush_count, 2)
+        self.assertEqual(
+            sum(item["type"] == "turn_cancelled" for item in events), 2)
+        if session._turn_task:
+            session._turn_task.cancel()
+        await session.close()
+
+    async def test_plain_interrupt_keeps_the_capture_tail_guard(self):
+        session, _avatar, _events = self.make_session()
+        session._turn_id = "old-turn"
+        sleep = AsyncMock()
+        with patch("src.server.voice_session.asyncio.sleep", new=sleep):
+            await session.interrupt()
+        sleep.assert_awaited_once_with(0.3)
+        await session.close()
+
     async def test_avatar_media_guard_rejects_cancelled_generation(self):
         session, avatar, _ = self.make_session()
         session._turn_id = "turn-1"
