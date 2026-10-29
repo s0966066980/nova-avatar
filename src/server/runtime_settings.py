@@ -864,6 +864,7 @@ def apply_llm_model(
                 port=port,
                 ctx=int(getattr(config.llm, "llamacpp_ctx", 8192) or 8192),
                 threads=int(getattr(config.llm, "llamacpp_threads", 0) or 0),
+                allow_partial_offload=bool(getattr(config.llm, "llamacpp_allow_partial_offload", False)),
             )
         except Exception as exc:
             raise SettingsError(f"無法啟動 llama.cpp：{exc}", status=500) from exc
