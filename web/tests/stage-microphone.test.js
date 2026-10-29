@@ -2,142 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import vm from 'node:vm'
 import test from 'node:test'
-import { stageText, stageItemCount } from '../src/stageLocale.js'
-import { composerSettings } from '../src/conversationAttachments.js'
-import { stageErrorMessage } from '../src/stageErrorMessage.js'
-import { canRoleInput, canRoleReturn } from '../src/roleState.js'
-import { StageCaptionWindow } from '../src/stageCaptionWindow.js'
 import {
-  isKioskMode,
   kioskReconnectDelayMs,
   KIOSK_UNAVAILABLE_TITLE,
   KIOSK_UNAVAILABLE_TEXT
 } from '../src/stageKiosk.js'
-
-const html = readFileSync(new URL('../stage.html', import.meta.url), 'utf8')
-const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
-
-function stageHarness({ search = '', composerEnabled = false, microphoneDenied = false } = {}) {
-  const elements = new Map()
-  const element = (id) => {
-    if (!elements.has(id)) {
-      const handlers = new Map()
-      elements.set(id, {
-        id,
-        hidden: false,
-        disabled: id === 'mic',
-        dataset: {},
-        querySelectorAll: () => [],
-        style: { setProperty() {} },
-        classList: { add() {}, remove() {}, toggle() {} },
-        textContent: '',
-        clientWidth: 360,
-        clientHeight: 640,
-        addEventListener(type, handler) { handlers.set(type, handler) },
-        dispatch(type) { handlers.get(type)?.({ preventDefault() {} }) },
-        setAttribute() {},
-        paused: true, muted: false, volume: 1,
-        async play() { this.paused = false; this.dispatch('playing') },
-      })
-    }
-    return elements.get(id)
-  }
-  const sent = []
-  const fetchCalls = []
-  const offers = []
-  const microphoneRequests = []
-  const timers = []
-  const track = { enabled: false, readyState: 'live', muted: false, stop() {} }
-  let channel
-  let peer
-  class Peer {
-    constructor() { this.connectionState = 'new'; peer = this }
-    createDataChannel() {
-      channel = { readyState: 'open', send(raw) { sent.push(JSON.parse(raw)) }, close() {} }
-      return channel
-    }
-    addTrack() {}
-    addTransceiver() {}
-    async createOffer() { return { sdp: 'offer', type: 'offer' } }
-    async setLocalDescription(value) { this.localDescription = value }
-    async setRemoteDescription() {}
-    close() {}
-  }
-  const context = {
-    stageText, stageItemCount, composerSettings,
-    reactive: value => value, createApp: () => ({ mount() {} }), h: () => null,
-    queueMicrotask,
-    document: { getElementById: element },
-    window: { ResizeObserver: null, location: { search } },
-    navigator: { mediaDevices: { getUserMedia: async options => {
-      microphoneRequests.push(options)
-      if (microphoneDenied) throw new Error('Permission denied')
-      return { getAudioTracks: () => [track], getTracks: () => [track] }
-    } } },
-    RTCPeerConnection: Peer,
-    RTCSessionDescription: class { constructor(value) { Object.assign(this, value) } },
-    MediaStream: class { getTracks() { return [] } addTrack() {} },
-    StageCaptionWindow,
-    StageCaptionView: class {
-      constructor({ container, captionWindow }) { this.container = container; this.window = captionWindow }
-      append(text, turnId) { this.window.append(text, turnId); this.container.textContent = this.window.text }
-      clear() { this.container.textContent = '' }
-      destroy() {}
-    },
-    DEFAULT_STAGE_CAPTION_MAX_CHARS: 200,
-    shouldFadeStageReply: () => false,
-    stageErrorMessage,
-    canRoleInput,
-    canRoleReturn,
-    isKioskMode,
-    kioskReconnectDelayMs,
-    KIOSK_UNAVAILABLE_TITLE,
-    KIOSK_UNAVAILABLE_TEXT,
-    console,
-    boardReopenPresentation: () => ({ style: {}, edge: 'top', icon: '▣' }),
-    captionStyle: () => ({}),
-    previewScale: () => 1,
-    STAGE_CAPTION_RATIO: 0.9,
-    STAGE_BOARD_PREVIEW_ITEMS: [],
-    STAGE_BOARD_PREVIEW_TITLE: '',
-    placeStageBoard: () => ({ width: 200, height: 200, left: 0, top: 0 }),
-    fetch: async (url, options) => {
-      fetchCalls.push(url)
-      if (url === '/offer') offers.push(JSON.parse(options.body))
-      return { ok: true, json: async () => {
-        if (url === '/api/vad') return { data: { enabled: true } }
-        if (url === '/api/stage') return { data: { composer_enabled: composerEnabled } }
-        return { sessionid: 7, sdp: 'answer', type: 'answer' }
-      } }
-    },
-    setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length },
-    clearTimeout() {},
-    setInterval() {},
-    addEventListener() {},
-  }
-  const body = script.replace(/^import[\s\S]*?from '[^']+';\s*/gm, '')
-  vm.runInNewContext(body, context)
-  return {
-    sent,
-    fetchCalls,
-    offers,
-    microphoneRequests,
-    timers,
-    peerState(value) { peer.connectionState = value; peer.onconnectionstatechange() },
-    track,
-    element,
-    async connect() {
-      await element('veilBtn').onclick()
-      peer.connectionState = 'connected'
-      peer.onconnectionstatechange()
-      channel.onopen()
-    },
-    event(data) { channel.onmessage({ data: JSON.stringify(data) }) },
-  }
-}
+import { flush, stageHarness } from './helpers/stageHarness.js'
 
 test('啟用文字附件的舞台進入後也會自動收音，不必再點麥克風', async () => {
   const stage = stageHarness({ composerEnabled: true })
@@ -210,8 +81,6 @@ test('暫停中的舞台插話會同步恢復前後端收音狀態', async () =>
     { type: 'interrupt' },
   ])
 })
-
-const flush = () => new Promise((resolve) => setImmediate(resolve))
 
 test('一般開啟舞台時維持點擊進入，不會自動連線', async () => {
   const stage = stageHarness()

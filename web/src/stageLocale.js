@@ -29,6 +29,7 @@ const english = {
   '重試': 'Retry', '重新連線': 'Reconnect', '開啟控制台': 'Open console',
   '正在建立與數字人的即時通道。': 'Connecting to the avatar.',
   '連線中斷': 'Disconnected', '與數字人的通道已斷開。': 'The connection to the avatar was lost.',
+  '連線逾時': 'Connection timed out', '連線時間過長，正在自動重新連線。': 'Connecting took too long. Reconnecting automatically.',
   '切換呈現方式': 'Updating presentation',
   '正在準備數位人，完成後會自動重新連線。': 'Preparing the avatar. The stage will reconnect automatically.',
   '麥克風無法使用，目前為純觀看': 'Microphone unavailable. You can still watch the avatar.',
