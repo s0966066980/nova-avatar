@@ -41,6 +41,8 @@ jobs:
           uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e '.[funasr,vad]'
       - name: Lint Python
         run: uv run --no-sync ruff check .
+      - name: Type-check server control flow
+        run: uv run --no-sync pyright
       - name: Check branding, notices, and offline integration
         run: uv run --no-sync python scripts/check-integration.py
       - name: Run Python tests
