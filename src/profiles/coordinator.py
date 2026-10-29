@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
+from functools import partial
 from pathlib import Path
 import time
 from uuid import uuid4
@@ -13,7 +14,7 @@ from uuid import uuid4
 from src.avatars.factory import load_avatar_data
 from src.llm.service import select_session_profile, session_history
 from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
-from src.profiles.routing import route_question
+from src.profiles.routing import RoutingClients, route_question
 from src.greetings.content import validate_content
 from src.profiles.store import RETURN_ANNOUNCEMENTS, ProfileError, ProfileStore, compatible_pair, profile_config
 from src.profiles.weather import CwaWeather, WeatherQuery
@@ -375,10 +376,14 @@ class RoleCoordinator:
     """Publish defaults without mutating any connected conversation."""
 
     def __init__(self, state, store, library, *, loader=load_avatar_data,
-                 router=route_question, weather=None, media=None):
+                 router=None, routing_clients=None, weather=None, media=None):
         self.state, self.store = state, store
         self.library = deepcopy(library)
-        self.loader, self.router = loader, router
+        self.loader = loader
+        # Every turn routes through the same pooled clients; worker threads
+        # may route concurrently, and close() releases them on shutdown.
+        self.routing_clients = routing_clients or RoutingClients()
+        self.router = router or partial(route_question, clients=self.routing_clients)
         self.weather = weather or CwaWeather()
         self.media = media or TransitionMedia()
         self.assets, self.sessions = {}, {}
@@ -591,6 +596,7 @@ class RoleCoordinator:
         for roles in list(self.sessions.values()):
             await roles.close()
         self.sessions.clear()
+        self.routing_clients.close()
 
 
 async def initialize_roles(state):

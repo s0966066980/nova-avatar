@@ -22,6 +22,7 @@ from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
 from src.profiles.coordinator import initialize_roles
+from src.ragflow.client import close_shared_session as close_ragflow_session
 from src.server.routes.profiles import register_profile_routes
 from src.server.access import access_guard, install_access
 from src.utils.paths import WEB_DIR
@@ -84,6 +85,8 @@ async def on_shutdown(app):
             await session.close()
         except Exception:
             logger.exception("關閉語音工作階段失敗")
+    # Turns have ended; release the connections retrieval reused across them.
+    await close_ragflow_session()
     from src.tts.engines.edge import shutdown_edge_tts
     await asyncio.to_thread(shutdown_edge_tts)
     shutdown_llama_server()

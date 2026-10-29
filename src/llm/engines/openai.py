@@ -22,7 +22,9 @@ from src.utils.logging import logger
 from src.llm.history import HistoryTransaction, TransactionalHistory
 from src.llm.llamacpp_protocol import is_lfm25_reasoning
 from src.llm.reply_contract import auto_reply_grammar
-from src.llm.context_usage import ContextCapacityError, measure_request
+from src.llm.context_usage import (
+    ContextCapacityError, cached_capacity, measure_request, with_input_tokens,
+)
 
 
 class OpenAILLM(BaseLLM):
@@ -180,16 +182,15 @@ class OpenAILLM(BaseLLM):
                     [*content, {'type': 'text', 'text': hint}] if isinstance(content, list) else content + hint)}
             
             logger.info(f"Sending {len(messages)} messages to LLM (including system prompt and history)")
+            local = getattr(llm_cfg, 'provider', '') == 'llamacpp'
             if self.observe_context:
+                # Never ask the model server before the answer: the size is
+                # cached per model load and provider usage arrives with the
+                # reply. An overflow is the provider's error, handled below.
                 self.context_usage = measure_request(
-                    self.base_url, messages, self.max_tokens,
-                    local=getattr(llm_cfg, 'provider', '') == 'llamacpp', model=self.model,
-                    template_options=extra_body,
+                    messages, self.max_tokens, model=self.model,
+                    capacity=cached_capacity(self.base_url) if local else None,
                 )
-                if self.context_usage['over_capacity'] and not self.context_usage['estimated']:
-                    if history_transaction is not None:
-                        self._history.abort(history_transaction)
-                    raise ContextCapacityError('context_capacity')
             
             # 採用 OpenAI 相容流式介面，逐塊返回內容
             completion = self.client.chat.completions.create(
@@ -209,16 +210,12 @@ class OpenAILLM(BaseLLM):
             for chunk in completion:
                 usage = getattr(chunk, 'usage', None)
                 if self.context_usage is not None and usage is not None and isinstance(getattr(usage, 'prompt_tokens', None), int):
-                    self.context_usage.update(input_tokens=usage.prompt_tokens, estimated=False,
-                                              source='provider usage', visual_tokens_unknown=False)
-                    capacity = self.context_usage.get('capacity')
-                    used = usage.prompt_tokens + self.max_tokens
-                    self.context_usage.update(
-                        other_input_tokens=max(0, usage.prompt_tokens - self.context_usage['history_tokens']),
-                        remaining_tokens=max(0, capacity - used) if capacity else None,
-                        usage_percent=round(used / capacity * 100, 1) if capacity else None,
-                        over_capacity=bool(capacity and used > capacity),
-                    )
+                    self.context_usage.update(estimated=False, source='provider usage',
+                                              visual_tokens_unknown=False)
+                    if local and self.context_usage['capacity'] is None:
+                        # A background refresh may have finished during the reply.
+                        self.context_usage['capacity'] = cached_capacity(self.base_url)
+                    with_input_tokens(self.context_usage, usage.prompt_tokens)
                 if not chunk.choices:
                     continue
                 choice = chunk.choices[0]
@@ -237,7 +234,9 @@ class OpenAILLM(BaseLLM):
             
         except OpenAIError as e:
             code = str(getattr(e, 'code', '') or '')
-            if code in {'context_length_exceeded', 'context_window_exceeded'}:
+            # llama.cpp names the overflow in the error type, with code 400.
+            if (code in {'context_length_exceeded', 'context_window_exceeded'}
+                    or getattr(e, 'type', None) == 'exceed_context_size_error'):
                 if history_transaction is not None:
                     self._history.abort(history_transaction)
                 raise ContextCapacityError('context_capacity') from e

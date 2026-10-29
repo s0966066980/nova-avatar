@@ -77,18 +77,13 @@ def test_today_then_week_fits_without_discarding_history_or_displayed_board(monk
     config.llm.assistant_profile.assistant_name = '天氣助手'
     config.llm.assistant_profile.system_prompt = '依本輪氣象資料回答，說明地點與適用時段。'
     llm = OpenAILLM(config=config, api_key='test', base_url='http://weather-context-test/v1')
-    # A deterministic character-token model drives the real capacity check;
-    # the separate live probe measures the deployed Qwen tokenizer.
+    # The local estimate counts each CJK character as a token, an upper bound
+    # for the deployed tokenizer; the separate live probe measures Qwen's.
     class Response:
-        def __init__(self, value): self.value = value
         def raise_for_status(self): pass
-        def json(self): return self.value
-    def tokenize(url, **kwargs):
-        body = kwargs['json']
-        return Response({'prompt': json.dumps(body['messages'], ensure_ascii=False)}
-                        if url.endswith('/apply-template') else {'tokens': list(range(len(body['content'])))})
-    monkeypatch.setattr(context_usage, 'deployed_capacity', lambda *_: 8192)
-    monkeypatch.setattr(context_usage.requests, 'post', tokenize)
+        def json(self): return {'default_generation_settings': {'n_ctx': 8192}}
+    monkeypatch.setattr(context_usage.requests, 'get', lambda *_, **__: Response())
+    assert context_usage.deployed_capacity(llm.base_url, refresh=True) == 8192
     llm._client = Mock()
     llm._client.chat.completions.create.side_effect = lambda **_: [SimpleNamespace(choices=[
         SimpleNamespace(delta=SimpleNamespace(content='[[MODE:SIMPLE]]\n[[SPEECH]]\n臺北市今天多雲，請留意降雨並攜帶雨具。\n[[END]]'))])]
