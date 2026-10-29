@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 信任邊界 ADR、審查規則與 AGENTS.md
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)的「已確認的部署前提」與「信任邊界」。
 
@@ -16,3 +16,5 @@ Status: ready-for-agent
 完成：三個檔案到位、`scripts/check-integration.py` 與 `tests/test_branding_compliance.py` 通過。
 
 ## Comments
+
+2026-10-29：新增 `docs/adr/0021-stage-local-console-login.md`（含三類路由、捨棄方案，並記錄 `Secure` cookie 使區網控制台需經 HTTPS）與根目錄 `CODING_STANDARDS.md`（五條審查判斷規則）；`AGENTS.md` 新增信任邊界與審查指引，Validation 改指向 `ci.yml` 並註明 `scripts/check-integration.py` 即品牌稽核。`check-integration.py`、`test_branding_compliance.py`、ruff、前端 lint／test（169）／build 通過；完整 pytest 798 通過、2 失敗，皆因 worktree 缺 gitignore 的 `models/musetalk` 與本機 OCR，與本變更無關。
