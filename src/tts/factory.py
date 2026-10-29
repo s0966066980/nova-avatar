@@ -11,6 +11,7 @@ from typing import Type
 
 from .engines import (
     BaseTTS,
+    BreezyVoiceTTS,
     CosyVoiceTTS,
     EdgeTTS,
     FishTTS,
@@ -25,6 +26,7 @@ _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
     "xtts": XTTS,
     "cosyvoice": CosyVoiceTTS,
     "fun-cosyvoice3": CosyVoiceTTS,
+    "breezyvoice": BreezyVoiceTTS,
     "fishtts": FishTTS,
     "indextts2": IndexTTS2,
 }
