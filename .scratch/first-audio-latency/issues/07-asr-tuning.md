@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 語音辨識加速與 FunASR 對照
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 依[規格](../spec.md)。Whisper small 在應用中 0.42–0.59 s（benchmark 暖機中位 0.167 s）：語系 auto、beam 5、經暫存檔。FunASR 10/22 實際輪次 0.04–0.13 s；`docs/project-status.md` 寫場域用 FunASR，實際跑的是 Whisper。
@@ -52,3 +52,9 @@ Blocked by: 01
 1. 合併並重啟後端（由編排者執行）。
 2. GPU 有約 1.5 GB 可用時：`.venv/bin/python scripts/compare_asr.py --rounds 3 --note "whisper small 中英自動偵測 beam1 記憶體直傳 vs paraformer-zh" --output .scratch/first-audio-latency/asr-comparison-2026-10-30.json`。預期 whisper 兩語系 `language_accuracy` 接近 1.000，latency P50 約 0.1 s 以內（固定語言時為 0.065 s）。
 3. 以 `scripts/measure_first_audio.py` 用與 after-06 相同的 builtin 錄音集重跑（英文句在 zh-TW 對話中），確認 `asr` 階段 P50 約 0.1 s、英文不再被辨識成中文，交接不再失敗；`logs/` 中 `transcription completed language=en` 會出現在英文輪次。
+
+### 2026-10-30 GPU 比較結果（orchestrator）
+`asr-comparison-2026-10-30.json`（MuseTalk＋E2B 已載入，3 輪、96 句）：
+- Whisper small（中英自動偵測、beam 1、記憶體直傳）：zh-TW P50 0.059／P95 0.082 s、CER 0.012；en-US P50 0.051／P95 0.073 s、WER 0；語言偵測 100%。
+- FunASR paraformer-zh：zh-TW P50 0.050／P95 0.054 s、CER 0.012；英文 WER 0.069 且應用中不接受英文。
+決定：預設維持 Whisper（中英偵測），速度與 FunASR 同級且支援英文。`docs/project-status.md` 中「場域用 FunASR」的敘述由 issue 14 修正。中英偵測的實際首音量測併入下一次整合量測。
