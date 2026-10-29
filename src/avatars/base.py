@@ -12,11 +12,14 @@ import numpy as np
 
 import subprocess
 import os
+import shutil
+import tempfile
 import time
 import cv2
 import glob
 import resampy
 from datetime import datetime
+from pathlib import Path
 
 import queue
 from queue import Queue
@@ -36,8 +39,32 @@ from src.tts.factory import create_tts_engine
 from src.tts.base import sanitize_speech_text
 from src.utils.logging import logger
 from src.avatars.video_output import limit_video_height
+from src.vad.audio import AudioTooLongError
 
 from tqdm import tqdm
+
+# Audio files sent to /humanaudio are decoded only up to this length.
+MAX_AUDIO_FILE_SECONDS = 300.0
+# Finished recordings; /download serves files from here.
+RECORDS_DIR = Path('data/records')
+RECORD_STOP_TIMEOUT_SECONDS = 30.0
+RECORD_MERGE_TIMEOUT_SECONDS = 120.0
+
+
+async def _run_ffmpeg(*arguments: str, timeout: float = RECORD_MERGE_TIMEOUT_SECONDS) -> int:
+    """Run ffmpeg with an argv list (no shell) and wait without blocking the loop."""
+    process = await asyncio.create_subprocess_exec(
+        'ffmpeg', *arguments,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    try:
+        return await asyncio.wait_for(process.wait(), timeout)
+    except BaseException:
+        # Timed out, or the request was cancelled: do not leave ffmpeg running.
+        if process.returncode is None:
+            process.kill()
+            await process.wait()
+        raise
 
 
 def wait_media_coroutine(coroutine, loop, quit_event) -> bool:
@@ -125,11 +152,9 @@ class BaseAvatar:
         self.speaking = False
 
         # 錄製相關狀態
-        self.recording = False
-        self._record_video_pipe = None
-        self._record_audio_pipe = None
         self.width = self.height = 0
         self.current_record_file = None  # 當前錄製的檔名
+        self._init_recording_state()
 
         # 自定義音影片迴圈播放相關
         self.curr_state=0
@@ -332,8 +357,9 @@ class BaseAvatar:
             return False
         return self._enqueue_direct_audio(audio_chunk, eventpoint)
 
-    def put_audio_file(self,filebyte,datainfo:dict={}): 
-        # 檔案音訊按 chunk 切片後送入音訊流
+    def put_audio_file(self,filebyte,datainfo:dict={}):
+        # 檔案音訊按 chunk 切片後送入音訊流。Blocks while decoding and while
+        # waiting for queue space: call it from a worker thread.
         input_stream = BytesIO(filebyte)
         stream = self.__create_bytes_stream(input_stream)
         streamlen = stream.shape[0]
@@ -344,7 +370,15 @@ class BaseAvatar:
             idx += self.chunk
     
     def __create_bytes_stream(self,byte_stream):
-        stream, sample_rate = sf.read(byte_stream) # [T*sample_rate,] float64
+        with sf.SoundFile(byte_stream) as audio_file:
+            # Check the header's length before decoding; read at most the limit.
+            limit = int(MAX_AUDIO_FILE_SECONDS * audio_file.samplerate)
+            if audio_file.frames > limit:
+                raise AudioTooLongError(MAX_AUDIO_FILE_SECONDS)
+            sample_rate = audio_file.samplerate
+            stream = audio_file.read(frames=limit + 1) # [T*sample_rate,] float64
+        if stream.shape[0] > limit:
+            raise AudioTooLongError(MAX_AUDIO_FILE_SECONDS)
         logger.info(f'[INFO]put audio stream {sample_rate}: {stream.shape}')
         stream = stream.astype(np.float32)
 
@@ -618,32 +652,39 @@ class BaseAvatar:
         logger.info('basereal process_frames thread stop') 
 
 
+    def _init_recording_state(self):
+        self.recording = False
+        self._record_video_pipe = None
+        self._record_audio_pipe = None
+        self._record_dir = None
+        # Render threads write frames while HTTP handlers start and stop.
+        self._record_lock = RLock()
+
+    def _record_paths(self):
+        return self._record_dir / 'video.mp4', self._record_dir / 'audio.aac'
+
     def start_recording(self):
         """開始錄製影片"""
         logger.info(f'[錄製] start_recording 被呼叫, sessionid={self.config.sessionid}')
-        logger.info(f'[錄製] 當前 recording 狀態: {self.recording}')
-        logger.info(f'[錄製] 當前影片尺寸: width={self.width}, height={self.height}')
-        
-        if self.recording:
-            logger.warning(f'[錄製] 已經在錄製中，忽略本次呼叫')
-            return
+        with self._record_lock:
+            if self.recording:
+                logger.warning(f'[錄製] 已經在錄製中，忽略本次呼叫')
+                return
+            self._record_dir = Path(tempfile.mkdtemp(prefix=f'nova-record-{self.config.sessionid}-'))
+            self.recording = True
+            # 等到首幀拿到真實尺寸後再啟動 ffmpeg
+            if self.width == 0 or self.height == 0:
+                logger.info(f'[錄製] 影片尺寸未初始化，將在第一幀資料到達時啟動 ffmpeg 程式')
+                return
+            self._init_recording_pipes()
 
-        # 等到首幀拿到真實尺寸後再啟動 ffmpeg
-        self.recording = True
-        if self.width == 0 or self.height == 0:
-            logger.info(f'[錄製] 影片尺寸未初始化，將在第一幀資料到達時啟動 ffmpeg 程式')
-            return
-        
-        # 如果尺寸已知，立即啟動 ffmpeg 程式
-        self._init_recording_pipes()
-    
     def _init_recording_pipes(self):
-        """初始化錄製管道（需要在 width/height 已知後呼叫）"""
+        """初始化錄製管道（需要在 width/height 已知後、持有 _record_lock 時呼叫）"""
         if self._record_video_pipe is not None:
             return  # 已經初始化過了
-        
+
         logger.info(f'[錄製] 初始化 ffmpeg 程式，影片尺寸: {self.width}x{self.height}')
-        
+        video_file, audio_file = self._record_paths()
         command = ['ffmpeg',
                     '-y', '-an',
                     '-f', 'rawvideo',
@@ -655,10 +696,11 @@ class BaseAvatar:
                     '-pix_fmt', 'yuv420p', 
                     '-vcodec', "h264",
                     #'-f' , 'flv',                  
-                    f'temp{self.config.sessionid}.mp4']
+                    str(video_file)]
         logger.info(f'[錄製] 啟動影片錄製程式: {" ".join(command)}')
-        self._record_video_pipe = subprocess.Popen(command, shell=False, stdin=subprocess.PIPE)
-        logger.info(f'[錄製] 影片錄製程式 PID: {self._record_video_pipe.pid}')
+        self._record_video_pipe = subprocess.Popen(
+            command, shell=False, stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         acommand = ['ffmpeg',
                     '-y', '-vn',
@@ -669,98 +711,114 @@ class BaseAvatar:
                     '-i', '-',
                     '-acodec', 'aac',
                     #'-f' , 'wav',                  
-                    f'temp{self.config.sessionid}.aac']
+                    str(audio_file)]
         logger.info(f'[錄製] 啟動音訊錄製程式: {" ".join(acommand)}')
-        self._record_audio_pipe = subprocess.Popen(acommand, shell=False, stdin=subprocess.PIPE)
-        logger.info(f'[錄製] 音訊錄製程式 PID: {self._record_audio_pipe.pid}')
+        self._record_audio_pipe = subprocess.Popen(
+            acommand, shell=False, stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         logger.info(f'[錄製] ffmpeg 程式初始化完成')
-    
+
+    def _write_recording(self, pipe_name: str, data) -> None:
+        if not self.recording:
+            return
+        with self._record_lock:
+            if not self.recording:
+                return
+            if pipe_name == '_record_video_pipe' and self._record_video_pipe is None:
+                self._init_recording_pipes()
+            pipe = getattr(self, pipe_name)
+            if pipe is None:
+                return
+            try:
+                pipe.stdin.write(data.tobytes())
+            except (OSError, ValueError) as e:
+                logger.warning(f'[錄製] 寫入 ffmpeg 失敗，停止寫入: {e}')
+                setattr(self, pipe_name, None)
+                self._close_recording_pipes((pipe,))
+
     def record_video_data(self,image):
         # 首幀到來時寫入真實尺寸
         if self.width == 0:
-            print("image.shape:",image.shape)
             self.height,self.width,_ = image.shape
-        if self.recording:
-            self._record_video_pipe.stdin.write(image.tostring())
+        self._write_recording('_record_video_pipe', image)
 
     def record_audio_data(self,frame):
-        if self.recording:
-            self._record_audio_pipe.stdin.write(frame.tostring())
-    
-    def stop_recording(self):
-        """停止錄製影片"""
+        self._write_recording('_record_audio_pipe', frame)
+
+    def _detach_recording(self):
+        """End the recording; return its ffmpeg processes and temporary directory."""
+        with self._record_lock:
+            if not self.recording and self._record_dir is None:
+                return None
+            self.recording = False
+            pipes = (self._record_video_pipe, self._record_audio_pipe)
+            self._record_video_pipe = self._record_audio_pipe = None
+            directory, self._record_dir = self._record_dir, None
+            return pipes, directory
+
+    @staticmethod
+    def _close_recording_pipes(pipes, timeout: float = None):
+        """Close ffmpeg's stdin and wait for it to finish (blocking); kill it if it hangs."""
+        timeout = RECORD_STOP_TIMEOUT_SECONDS if timeout is None else timeout
+        for pipe in pipes:
+            if pipe is None:
+                continue
+            try:
+                pipe.stdin.close()
+            except (OSError, ValueError) as e:
+                logger.warning(f'[錄製] 關閉 ffmpeg 輸入失敗: {e}')
+            try:
+                pipe.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                logger.error(f'[錄製] ffmpeg 未在 {timeout:g} 秒內結束，強制終止')
+                pipe.kill()
+                pipe.wait()
+
+    @staticmethod
+    async def _remove_recording_dir(directory) -> None:
+        if directory is not None:
+            await asyncio.to_thread(shutil.rmtree, directory, ignore_errors=True)
+
+    async def stop_recording(self):
+        """停止錄製並合併音影片；回傳輸出檔路徑，失敗時為 None。"""
         logger.info(f'[錄製] stop_recording 被呼叫, sessionid={self.config.sessionid}')
-        logger.info(f'[錄製] 當前 recording 狀態: {self.recording}')
-        
-        if not self.recording:
+        detached = self._detach_recording()
+        if detached is None:
             logger.warning(f'[錄製] 當前未在錄製狀態，忽略停止請求')
+            return None
+        pipes, directory = detached
+        self.current_record_file = None
+        try:
+            await asyncio.to_thread(self._close_recording_pipes, pipes)
+            video_file, audio_file = directory / 'video.mp4', directory / 'audio.aac'
+            if not video_file.is_file() or not audio_file.is_file():
+                logger.error(f'[錄製] ffmpeg 未產生暫存檔（可能尚未收到第一幀資料）')
+                return None
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            await asyncio.to_thread(RECORDS_DIR.mkdir, parents=True, exist_ok=True)
+            output_file = RECORDS_DIR / f'record_{timestamp}_session{self.config.sessionid}.mp4'
+            returncode = await _run_ffmpeg(
+                '-y', '-i', str(audio_file), '-i', str(video_file),
+                '-c:v', 'copy', '-c:a', 'copy', str(output_file),
+            )
+            if returncode != 0 or not output_file.is_file():
+                logger.error(f'[錄製] ✗ 合併失敗 returncode={returncode}: {output_file}')
+                output_file.unlink(missing_ok=True)
+                return None
+            logger.info(f'[錄製] ✓ 錄製完成! 輸出檔案: {output_file}')
+            self.current_record_file = str(output_file)
+            return self.current_record_file
+        finally:
+            await self._remove_recording_dir(directory)
+
+    async def discard_recording(self):
+        """Stop an unfinished recording without keeping it (the session is closing)."""
+        detached = self._detach_recording()
+        if detached is None:
             return
-        
-        self.recording = False
-        
-        # 檢查是否已經初始化了管道
-        if self._record_video_pipe is None or self._record_audio_pipe is None:
-            logger.warning(f'[錄製] ffmpeg 程式未初始化（可能尚未收到第一幀資料），無法停止錄製')
-            return
-        
-        logger.info(f'[錄製] 開始關閉錄製程式...')
-        
+        pipes, directory = detached
+        logger.info(f'[錄製] 工作階段關閉，捨棄未完成的錄製 sessionid={self.config.sessionid}')
         try:
-            self._record_video_pipe.stdin.close()
-            logger.info(f'[錄製] 影片管道已關閉，等待程式結束...')
-            self._record_video_pipe.wait()
-            logger.info(f'[錄製] 影片錄製程式已結束')
-        except Exception as e:
-            logger.error(f'[錄製] 關閉影片錄製程式失敗: {e}')
-        
-        try:
-            self._record_audio_pipe.stdin.close()
-            logger.info(f'[錄製] 音訊管道已關閉，等待程式結束...')
-            self._record_audio_pipe.wait()
-            logger.info(f'[錄製] 音訊錄製程式已結束')
-        except Exception as e:
-            logger.error(f'[錄製] 關閉音訊錄製程式失敗: {e}')
-        
-        # 重置管道
-        self._record_video_pipe = None
-        self._record_audio_pipe = None
-        
-        # 生成唯一檔名（帶時間戳）
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        records_dir = 'data/records'
-        os.makedirs(records_dir, exist_ok=True)
-        
-        video_file = f'temp{self.config.sessionid}.mp4'
-        audio_file = f'temp{self.config.sessionid}.aac'
-        output_file = f'{records_dir}/record_{timestamp}_session{self.config.sessionid}.mp4'
-        
-        logger.info(f'[錄製] 檢查臨時檔案:')
-        logger.info(f'[錄製]   影片檔案: {video_file}, 存在: {os.path.exists(video_file)}')
-        if os.path.exists(video_file):
-            logger.info(f'[錄製]   影片檔案大小: {os.path.getsize(video_file)} bytes')
-        logger.info(f'[錄製]   音訊檔案: {audio_file}, 存在: {os.path.exists(audio_file)}')
-        if os.path.exists(audio_file):
-            logger.info(f'[錄製]   音訊檔案大小: {os.path.getsize(audio_file)} bytes')
-        
-        cmd_combine_audio = f"ffmpeg -y -i {audio_file} -i {video_file} -c:v copy -c:a copy {output_file}"
-        logger.info(f'[錄製] 合併音影片命令: {cmd_combine_audio}')
-        result = os.system(cmd_combine_audio)
-        logger.info(f'[錄製] 合併命令返回值: {result}')
-        
-        if os.path.exists(output_file):
-            logger.info(f'[錄製] ✓ 錄製完成! 輸出檔案: {output_file}, 大小: {os.path.getsize(output_file)} bytes')
-            self.current_record_file = output_file  # 儲存檔案路徑
-        else:
-            logger.error(f'[錄製] ✗ 輸出檔案未生成: {output_file}')
-            self.current_record_file = None
-        
-        # 清理臨時檔案
-        try:
-            if os.path.exists(video_file):
-                os.remove(video_file)
-                logger.info(f'[錄製] 已刪除臨時影片檔案: {video_file}')
-            if os.path.exists(audio_file):
-                os.remove(audio_file)
-                logger.info(f'[錄製] 已刪除臨時音訊檔案: {audio_file}')
-        except Exception as e:
-            logger.warning(f'[錄製] 清理臨時檔案失敗: {e}')
+            await asyncio.to_thread(self._close_recording_pipes, pipes)
+        finally:
+            await self._remove_recording_dir(directory)

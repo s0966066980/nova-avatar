@@ -67,6 +67,10 @@ async def offer(request):
             if presentation is not None:
                 await presentation.unregister(sessionid)
             operations = []
+            # Stop an unfinished recording's ffmpeg and remove its temporary files.
+            discard_recording = getattr(state.avatar_streams.get(sessionid), "discard_recording", None)
+            if callable(discard_recording):
+                operations.append(discard_recording())
             if voice_session is not None:
                 operations.append(voice_session.close())
             if pc is not None:
