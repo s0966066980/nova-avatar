@@ -238,3 +238,72 @@ def test_active_background_cannot_be_deleted(tmp_path, monkeypatch):
     response = asyncio.run(settings_routes.delete_background(request))
     assert response.status == 409
     assert [entry["id"] for entry in service.list_backgrounds()] == [item["id"]]
+
+
+def _png_claiming(width: int, height: int) -> bytes:
+    """A tiny PNG whose header declares ``width``x``height`` pixels."""
+    import io
+    import struct
+    import zlib
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (1, 1)).save(buffer, "PNG")
+    data = bytearray(buffer.getvalue())
+    data[16:24] = struct.pack(">II", width, height)
+    data[29:33] = struct.pack(">I", zlib.crc32(bytes(data[12:29])) & 0xFFFFFFFF)
+    return bytes(data)
+
+
+def _gif_claiming(width: int, height: int) -> bytes:
+    import io
+    import struct
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("P", (1, 1)).save(buffer, "GIF")
+    data = bytearray(buffer.getvalue())
+    data[6:10] = struct.pack("<HH", width, height)
+    return bytes(data)
+
+
+@pytest.mark.parametrize("name, data", [
+    ("huge.png", _png_claiming(5000, 5000)),
+    ("huge.gif", _gif_claiming(5000, 5000)),
+    # Past Pillow's own decompression-bomb limit, which raises on open.
+    ("bomb.png", _png_claiming(30000, 30000)),
+    ("bomb.gif", _gif_claiming(30000, 30000)),
+], ids=["huge-png", "huge-gif", "bomb-png", "bomb-gif"])
+def test_background_pixel_count_is_checked_from_the_header_before_decoding(
+    tmp_path, monkeypatch, name, data,
+):
+    monkeypatch.setattr(service, "backgrounds_root", lambda: tmp_path / "backgrounds")
+    monkeypatch.setattr(service.cv2, "imread", lambda *_a, **_k: pytest.fail("decoded"))
+    monkeypatch.setattr(service.Image.Image, "convert", lambda *_a, **_k: pytest.fail("decoded"))
+    upload = tmp_path / name
+    upload.write_bytes(data)
+    with pytest.raises(service.SceneError, match="解析度過高"):
+        service.add_background(upload, name)
+    assert not (tmp_path / "backgrounds").exists() or not any((tmp_path / "backgrounds").iterdir())
+
+
+def test_background_bomb_upload_answers_400(tmp_path, monkeypatch):
+    monkeypatch.setattr(service, "backgrounds_root", lambda: tmp_path / "backgrounds")
+    monkeypatch.setattr(settings_routes, "backgrounds_root", lambda: tmp_path / "backgrounds")
+    monkeypatch.setattr(settings_routes.state, "config", SimpleNamespace())
+    from aiohttp import FormData
+    from tests.access_helpers import access_client
+
+    async def run():
+        async with access_client() as client:
+            form = FormData()
+            form.add_field("background", _gif_claiming(30000, 30000), filename="bomb.gif",
+                           content_type="image/gif")
+            response = await client.post("/api/backgrounds", data=form)
+            assert response.status == 400, await response.text()
+            # The upload's temporary file has no suffix; the original name picks the decoder.
+            assert "解析度過高" in (await response.json())["msg"]
+    asyncio.run(run())
+    assert not any((tmp_path / "backgrounds").iterdir())

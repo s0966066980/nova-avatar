@@ -33,6 +33,10 @@ export async function loadComponent(url, stubs = {}, { inlineTemplate = true } =
   return new Function('imports', declarations.join('\n') + '\n' + source)(imports)
 }
 
+// v-model compares the root node with these DOM classes; Node has neither.
+globalThis.Document ??= class Document {}
+globalThis.ShadowRoot ??= class ShadowRoot {}
+
 function node(type, text = '') {
   return {
     type, text, children: [], props: {}, style: {}, parent: null, listeners: {},
@@ -41,6 +45,8 @@ function node(type, text = '') {
     removeEventListener(name) { delete this.listeners[name] },
     setAttribute(name, value) { this.props[name] = value },
     removeAttribute(name) { delete this.props[name] },
+    // Newer Vue 3.5 releases check v-model focus through the root node.
+    getRootNode() { return globalThis.document },
     get options() { return this.children.filter(x => x.type === 'option') }
   }
 }

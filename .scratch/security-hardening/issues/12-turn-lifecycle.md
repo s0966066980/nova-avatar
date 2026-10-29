@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 回合生命週期收尾
-Status: ready-for-agent
+Status: resolved
 Blocked by: 11
 
 依[規格](../spec.md)。
@@ -14,3 +14,12 @@ Blocked by: 11
 完成：每項的回歸測試；完整 CI 通過。
 
 ## Comments
+
+### 2026-10-29 實作結果
+
+- 無可唸片段：`_generate_turn`、`_speak_fixed`（非問候）與朗讀在送出後檢查片段數，為 0 即以 `no_audio` 提交並結束回合、重開收音。
+- 熔斷器：`ReplyCircuitBreaker` 加入 60 秒冷卻；冷卻後半開以串流重試，成功即關閉、失敗重新冷卻；legacy 回合成功不會關閉。問候的成敗都不計入（`_counts_toward_circuit`）。
+- 麥克風軌：`start_track(track, on_lost=...)`；非取消例外時 `/offer` 排程 `cleanup()` 關閉 peer connection，前端據此重連。
+- 背景 task：控制訊息啟動的 task 改用 `_spawn` 收進 `_background_tasks`，`close()` 一併取消；finalize 執行中不再接受第二次 finalize，且 `finally` 只清除自己的參照。
+- 有上限的集合：回合去重集合改為 `RecentKeys`（64；看板回執 256）；`BaseAvatar._media_sequences` 最多保留 8 個回合。
+- 測試：新增 `tests/test_turn_lifecycle.py`（13 項）與 `test_webrtc_lifecycle.py` 一項；完整 CI 通過（pytest 847 passed，僅兩項已知的 worktree 基線失敗）。

@@ -10,6 +10,7 @@ remain private so routes and UI cannot accidentally create competing pipelines.
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
 from copy import deepcopy
 from functools import partial
 import json
@@ -87,6 +88,33 @@ def speech_input_rejection_reason(
     return None
 
 
+class RecentKeys:
+    """A set that forgets its oldest members beyond ``limit``.
+
+    Per-turn duplicate guards only ever see the latest few turns, so a
+    long-running kiosk session must not remember every turn it has served.
+    """
+
+    def __init__(self, limit: int) -> None:
+        self._limit = limit
+        self._items: OrderedDict = OrderedDict()
+
+    def __contains__(self, item) -> bool:
+        return item in self._items
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def add(self, item) -> None:
+        self._items[item] = None
+        self._items.move_to_end(item)
+        while len(self._items) > self._limit:
+            self._items.popitem(last=False)
+
+    def clear(self) -> None:
+        self._items.clear()
+
+
 class VoiceTurnSession:
     """Own the complete lifetime of hands-free turns for one peer connection."""
 
@@ -143,6 +171,8 @@ class VoiceTurnSession:
         self._turn_task: Optional[asyncio.Task] = None
         self._tail_task: Optional[asyncio.Task] = None
         self._finalize_task: Optional[asyncio.Task] = None
+        # Fire-and-forget work started by control messages; close() cancels it.
+        self._background_tasks: set[asyncio.Task] = set()
         self._output_active = False
         self._metrics_clock = clock
         self._metrics: Optional[TurnMetrics] = None
@@ -157,9 +187,9 @@ class VoiceTurnSession:
         self._played_fragment_sequences: set[int] = set()
         self._ended_fragment_sequences: set[int] = set()
         self._played_fragments: list[str] = []
-        self._history_finalized_turns: set[str] = set()
-        self._metrics_emitted_turns: set[str] = set()
-        self._board_display_receipts: set[tuple[str, str, int, str]] = set()
+        self._history_finalized_turns = RecentKeys(64)
+        self._metrics_emitted_turns = RecentKeys(64)
+        self._board_display_receipts = RecentKeys(256)
         self._conversation_dirty = False
         self._idle_reset_task: Optional[asyncio.Task] = None
         from src.server.attachments import AttachmentStore
@@ -168,7 +198,9 @@ class VoiceTurnSession:
         self._composer_editing = False
         self._client_request_id = None
         self._cancelled_text_requests: set[str] = set()
-        self._text_turn_lock = asyncio.Lock()
+        # Serializes every interrupt source with turn acceptance, so a tail
+        # guard can never clear a turn accepted while it was sleeping.
+        self._turn_lock = asyncio.Lock()
         self._llm_finished = False
         self._media_player = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -222,6 +254,9 @@ class VoiceTurnSession:
 
     async def prepare(self) -> None:
         """Prewarm Silero and STT before the session may announce listening."""
+        # Record the owning loop before any turn exists: idle greetings and
+        # other worker-thread callbacks must marshal back onto it.
+        self._event_loop = asyncio.get_running_loop()
         if not bool(getattr(self.config.vad, "enabled", True)):
             self._preparing = False
             self._close_gate()
@@ -306,7 +341,7 @@ class VoiceTurnSession:
             return
         kind = message.get("type")
         if kind == 'conversation_settings':
-            asyncio.create_task(self._apply_conversation_control(message.get('settings', {})))
+            self._spawn(self._apply_conversation_control(message.get('settings', {})))
             return
         roles = self._role_coordinator
         if kind in {"role_return", "role_stop"} and roles is not None:
@@ -318,7 +353,7 @@ class VoiceTurnSession:
                         await self.interrupt()
                 except Exception:
                     self._emit("role_error", message="目前無法執行角色操作，請等目前輪次結束後再試。")
-            asyncio.create_task(control_role())
+            self._spawn(control_role())
             return
         if kind == "stage_ready" and self._presenter == "stage":
             self._stage_ready = (message.get('audible') is True and message.get('interaction') is True
@@ -332,6 +367,7 @@ class VoiceTurnSession:
                 and bool(message.get("finalize"))
                 and self._segmenter is not None
                 and self._gate_open
+                and self._finalize_task is None
             )
             self._capture_requested = enabled
             self._manual_pause = bool(message.get("manual_pause", not enabled))
@@ -340,22 +376,26 @@ class VoiceTurnSession:
                 # ordered worker as resampling/VAD.
                 self._gate_open = False
                 self._emit("state", state="paused")
-                self._finalize_task = asyncio.create_task(
-                    self._finalize_capture()
-                )
+                self._finalize_task = self._spawn(self._finalize_capture())
                 return
             if enabled and self._asr is None and not self._preparing:
                 self._preparing = True
-                asyncio.create_task(self.prepare())
+                self._spawn(self.prepare())
             if enabled and self._output_active:
                 return
             self._refresh_gate()
         elif kind == "interrupt":
-            asyncio.create_task(self.interrupt())
+            self._spawn(self.interrupt())
         elif kind == "board_displayed":
             if self._presentation is not None and self._presentation.acknowledge_board(self, message):
                 return
             self._acknowledge_board(message, presenter=self._presenter)
+
+    def _spawn(self, coroutine) -> asyncio.Task:
+        task = asyncio.create_task(coroutine)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
 
     def _acknowledge_board(self, message, *, presenter):
         turn_id = str(message.get("turn_id") or "")
@@ -381,10 +421,15 @@ class VoiceTurnSession:
         ):
             self._board_display_receipts.add(receipt_key)
 
-    def start_track(self, track) -> None:
+    def start_track(self, track, *, on_lost: Optional[Callable[[], None]] = None) -> None:
+        """Consume microphone audio; ``on_lost`` runs if the track fails.
+
+        aiortc keeps buffering a failed track's RTP in an unbounded queue, so
+        the owner must close the peer connection and let the page reconnect.
+        """
         if self._track_task:
             self._track_task.cancel()
-        self._track_task = asyncio.create_task(self._consume_track(track))
+        self._track_task = asyncio.create_task(self._consume_track(track, on_lost))
 
     async def _apply_conversation_control(self, values: dict) -> None:
         try:
@@ -440,7 +485,7 @@ class VoiceTurnSession:
             configure_avatar(self.avatar, candidate)
             self._emit('conversation_settings', **self._conversation)
 
-    async def _consume_track(self, track) -> None:
+    async def _consume_track(self, track, on_lost=None) -> None:
         try:
             while not self._closed:
                 frame = await track.recv()
@@ -468,6 +513,8 @@ class VoiceTurnSession:
                 self._stage_ready = False
                 self.greetings.reset(stop_playing=True)
                 self._close_gate()
+                if on_lost is not None:
+                    on_lost()
 
     def _resample_frame_sync(self, frame) -> list[np.ndarray]:
         return [
@@ -551,7 +598,7 @@ class VoiceTurnSession:
         # A replacement and cancellation may arrive together. Serialize their
         # interrupt/accept steps, and reject stale validation before it can
         # interrupt the replacement's answer.
-        async with self._text_turn_lock:
+        async with self._turn_lock:
             if _handoff_id is not None and (not accepted_handoff
                     or roles.continuations.get(self.sessionid) is not continuation):
                 raise ValueError('cancelled')
@@ -562,7 +609,7 @@ class VoiceTurnSession:
                 or self._turn_task is not None
                 or self._output_active
             ):
-                await self.interrupt()
+                await self._interrupt_locked()
             if self._turn_id is not None or self._turn_task is not None:
                 raise RuntimeError("上一個對話輪次尚未結束")
             if request_id and request_id in self._cancelled_text_requests:
@@ -598,12 +645,16 @@ class VoiceTurnSession:
             raise ValueError("朗讀文字不可為空")
         if self._closed:
             raise RuntimeError("語音工作階段已關閉")
+        async with self._turn_lock:
+            return await self._start_read_aloud_locked(text, interrupt=interrupt)
+
+    async def _start_read_aloud_locked(self, text: str, *, interrupt: bool) -> dict:
         if interrupt and (
             self._turn_id is not None
             or self._turn_task is not None
             or self._output_active
         ):
-            await self.interrupt()
+            await self._interrupt_locked()
         if self._turn_id is not None or self._turn_task is not None:
             raise RuntimeError("上一個對話輪次尚未結束")
         self._turn_id = uuid4().hex
@@ -619,8 +670,10 @@ class VoiceTurnSession:
             "fragment_sequence": 0,
         }
         self._emit("state", state="tts_ready", turn_id=self._turn_id)
+        turn_id = self._turn_id
         self.avatar.put_msg_txt(text, envelope)
-        return {"turn_id": self._turn_id, "reply_mode": "read_aloud", "delivery": "events"}
+        self._end_turn_if_nothing_speakable(turn_id)
+        return {"turn_id": turn_id, "reply_mode": "read_aloud", "delivery": "events"}
 
     async def cancel_text_request(self, request_id: str) -> None:
         if not isinstance(request_id, str) or not 1 <= len(request_id) <= 64:
@@ -628,9 +681,9 @@ class VoiceTurnSession:
         if len(self._cancelled_text_requests) >= 128:
             self._cancelled_text_requests.pop()
         self._cancelled_text_requests.add(request_id)
-        async with self._text_turn_lock:
+        async with self._turn_lock:
             if request_id == self._client_request_id:
-                await self.interrupt()
+                await self._interrupt_locked()
 
     def _segment_pcm_sync(self, pcm: np.ndarray):
         if self._segmenter_reset_pending:
@@ -676,7 +729,8 @@ class VoiceTurnSession:
                 logger.exception("Voice capture finalize failed")
                 self._emit("state", state="error", error=str(exc))
         finally:
-            self._finalize_task = None
+            if self._finalize_task is asyncio.current_task():
+                self._finalize_task = None
             if not self._closed and self._turn_task is None:
                 self._refresh_gate()
 
@@ -888,11 +942,7 @@ class VoiceTurnSession:
         self._llm_finished = True
         self._emit("state", state="tts_ready", turn_id=turn_id)
         if not response:
-            self._commit_history("no_audio", turn_id=turn_id)
-            self._emit_turn_metrics("no_audio", turn_id=turn_id)
-            self._turn_id = None
-            self._turn_task = None
-            self._refresh_gate()
+            self._end_silent_turn(turn_id)
             return
         if self._pipeline_mode == "legacy":
             eventpoint = {
@@ -916,6 +966,25 @@ class VoiceTurnSession:
                 terminal_reason="completed",
             )
         self._turn_task = None
+        self._end_turn_if_nothing_speakable(turn_id)
+
+    def _end_silent_turn(self, turn_id: str) -> None:
+        """Finish a turn that will never produce playback audio."""
+        self._commit_history("no_audio", turn_id=turn_id)
+        self._emit_turn_metrics("no_audio", turn_id=turn_id)
+        self._turn_id = None
+        self._turn_task = None
+        self._refresh_gate()
+
+    def _end_turn_if_nothing_speakable(self, turn_id: str) -> None:
+        """A reply whose text was all stripped (or board-only) has no fragment
+        whose playback could ever end the turn, so end it now."""
+        if self._turn_id != turn_id or self.is_greeting:
+            return
+        with self._fragment_lock:
+            if self._fragment_texts:
+                return
+        self._end_silent_turn(turn_id)
 
     def _speak_fixed(self, question, response, turn_id, generation, input_source):
         """Fixed announcements/failures use the real TTS and played-only history."""
@@ -937,6 +1006,7 @@ class VoiceTurnSession:
         self._emit("state", state="tts_ready", turn_id=turn_id)
         if self._pipeline_mode == "streaming":
             self._emit("assistant_response_done", turn_id=turn_id, mode="streaming", terminal_reason="completed")
+        self._end_turn_if_nothing_speakable(turn_id)
 
     def on_output_video_frame(self, eventpoint):
         if self._role_coordinator is not None:
@@ -970,7 +1040,7 @@ class VoiceTurnSession:
             return
         if self._turn_context is not None:
             self._turn_context.fail("pipeline_error")
-        if self._pipeline_mode == "streaming":
+        if self._counts_toward_circuit():
             if self._circuit_breaker.record_pipeline_error():
                 logger.warning(
                     "reply streaming circuit opened session=%s reason=pipeline_error",
@@ -1117,14 +1187,23 @@ class VoiceTurnSession:
             )
             return
         loop = self._event_loop
-        if loop is not None and loop.is_running():
+        if loop is None or not loop.is_running():
+            # Handling inline would touch loop-bound state (the data channel)
+            # from the TTS thread; without a loop there is nobody to notify.
+            logger.warning(
+                "TTS fragment failure dropped without event loop turn=%s reason=%s",
+                failed_event.get("turn_id"),
+                reason,
+            )
+            return
+        try:
             loop.call_soon_threadsafe(
                 self._handle_fragment_synthesis_failure,
                 failed_event,
                 str(reason),
             )
-            return
-        self._handle_fragment_synthesis_failure(failed_event, str(reason))
+        except RuntimeError:
+            logger.warning("TTS fragment failure dropped: event loop closed")
 
     def _handle_fragment_synthesis_failure(
         self,
@@ -1262,7 +1341,7 @@ class VoiceTurnSession:
         )
         if self._turn_context is not None and not self._turn_context.terminal:
             self._turn_context.fail(reason)
-        if self._pipeline_mode == "streaming":
+        if self._counts_toward_circuit():
             if self._circuit_breaker.record_pipeline_error():
                 logger.warning(
                     "reply streaming circuit opened session=%s reason=%s",
@@ -1288,13 +1367,18 @@ class VoiceTurnSession:
             self.greetings.finished(error="招呼語音播放失敗，已略過本次")
         self._refresh_gate()
 
+    def _counts_toward_circuit(self) -> bool:
+        """Only visitor streaming turns judge the streaming pipeline; greetings
+        always stream regardless of the breaker, so they never count."""
+        return self._pipeline_mode == "streaming" and self._turn_origin != "greeting"
+
     async def _finish_tail_guard(self) -> None:
         completed_turn = self._turn_id
         was_greeting = self.is_greeting
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
         self._commit_history("completed")
         self._emit_turn_metrics("completed")
-        if self._pipeline_mode == "streaming":
+        if self._counts_toward_circuit():
             self._circuit_breaker.record_turn_success()
         await asyncio.sleep(0.3)
         self._turn_id = None
@@ -1308,6 +1392,11 @@ class VoiceTurnSession:
 
     async def interrupt(self) -> None:
         """Cancel the old turn, flush all queued speech, then reopen after a tail guard."""
+        async with self._turn_lock:
+            await self._interrupt_locked()
+
+    async def _interrupt_locked(self) -> None:
+        """Interrupt body; the caller must hold ``_turn_lock``."""
         self.greetings.reset()
         interrupted_turn_id = self._turn_id
         if self._role_coordinator is not None:
@@ -1318,6 +1407,7 @@ class VoiceTurnSession:
             self._turn_context.cancel("interrupt")
         self._commit_history("interrupt")
         self._generation += 1
+        generation = self._generation
         self._close_gate()
         if self._turn_task:
             self._turn_task.cancel()
@@ -1333,6 +1423,12 @@ class VoiceTurnSession:
         self._emit("turn_cancelled", turn_id=self._turn_id)
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
         await asyncio.sleep(0.3)
+        if self._generation != generation:
+            # Another fence (failure, greeting, handoff, close) owns the
+            # session now; reopening here would clobber its turn.
+            if interrupted_turn_id:
+                self._emit_turn_metrics("interrupt", turn_id=interrupted_turn_id)
+            return
         self._turn_id = None
         self._restore_greeting_voice()
         self._manual_pause = False
@@ -1362,6 +1458,7 @@ class VoiceTurnSession:
             self._turn_task,
             self._tail_task,
             self._finalize_task,
+            *self._background_tasks,
         ):
             if task:
                 task.cancel()
@@ -1957,10 +2054,28 @@ class VoiceTurnSession:
     def _send_event(self, event):
         if self._event_sink is None:
             return
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        loop = self._event_loop
+        if loop is not None and running is not loop and loop.is_running():
+            # The data channel is bound to the session loop; never send on it
+            # from a TTS/LLM worker thread (or a worker's private loop).
+            try:
+                loop.call_soon_threadsafe(self._send_event, event)
+            except RuntimeError:
+                logger.warning("Voice event dropped: event loop closed")
+            return
         self._sequence += 1
         try:
             self._event_sink(json.dumps({**event, "seq": self._sequence}, ensure_ascii=False))
         except Exception as exc:
+            if running is None or (loop is not None and running is not loop):
+                # A failure off the session loop says nothing about the
+                # channel itself; keep it open for later loop-side events.
+                logger.warning(f"Voice event dropped outside the event loop: {exc}")
+                return
             logger.warning(f"Voice event channel failed closed: {exc}")
             self._event_sink = None
             self._close_gate()

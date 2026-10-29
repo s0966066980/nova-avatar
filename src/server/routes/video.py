@@ -7,6 +7,7 @@ import os
 import json
 from aiohttp import web
 
+from src.avatars.base import RECORDS_DIR
 from src.utils.logging import logger
 from src.server.state import state
 
@@ -81,7 +82,8 @@ async def record(request):
             )
         elif params['type'] == 'end_record':
             logger.info(f'[錄製API] 停止錄製 sessionid={sessionid}')
-            avatar_stream.stop_recording()
+            # Waits for ffmpeg in worker threads and an argv subprocess.
+            await avatar_stream.stop_recording()
             logger.info(f'[錄製API] stop_recording 呼叫完成')
             
             response_data = {"code": 0, "msg": "ok"}
@@ -117,7 +119,7 @@ async def download_record(request):
         if '..' in filename or '/' in filename or '\\' in filename:
             return web.Response(text='非法檔名', status=400)
         
-        filepath = f'data/records/{filename}'
+        filepath = str(RECORDS_DIR / filename)
         
         if not os.path.exists(filepath):
             logger.warning(f'[下載] 檔案不存在: {filepath}')
