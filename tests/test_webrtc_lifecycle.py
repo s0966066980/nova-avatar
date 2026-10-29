@@ -275,3 +275,23 @@ def test_offer_body_finishing_during_resource_update_does_not_create_peer(rtc, m
         assert not rtc.peers
         assert not rtc.voices
     asyncio.run(run())
+
+
+def test_lost_microphone_track_closes_the_peer_so_the_page_reconnects(rtc):
+    async def run():
+        await webrtc.offer(rtc.request(sdp='microphone'))
+        voice = rtc.voices[0]
+        on_lost = voice.start_track.call_args.kwargs['on_lost']
+
+        on_lost()
+        on_lost()
+        for _ in range(50):
+            if not state.voice_sessions:
+                break
+            await asyncio.sleep(0)
+
+        assert rtc.peers[0].connectionState == 'closed'
+        voice.close.assert_awaited_once()
+        assert not state.voice_sessions and not state.pcs
+        assert state.count_sessions('console') == 0
+    asyncio.run(run())

@@ -52,7 +52,7 @@ async def offer(request):
     # Reserve before the next await so concurrent requests cannot overbook.
     state.add_session(sessionid, None, role=client_role)
     logger.info("WebRTC session %d (%s) reserved", sessionid, client_role)
-    pc = voice_session = prepare_task = player = presentation = None
+    pc = voice_session = prepare_task = player = presentation = lost_cleanup = None
     cleaning = False
 
     async def cleanup():
@@ -158,6 +158,14 @@ async def offer(request):
             if channel.readyState == "open":
                 attach_voice_events()
 
+        def close_after_track_loss():
+            # A failed microphone track leaves aiortc buffering RTP without
+            # bound; drop the whole connection so the page reconnects.
+            nonlocal lost_cleanup
+            if lost_cleanup is None and not cleaning:
+                logger.warning("WebRTC session %d: microphone track lost, closing", sessionid)
+                lost_cleanup = asyncio.ensure_future(cleanup())
+
         @pc.on("track")
         def on_track(track):
             nonlocal prepare_task
@@ -165,7 +173,7 @@ async def offer(request):
                 if prepare_task is None and params.get("has_microphone", True):
                     voice_session._preparing = True
                     prepare_task = asyncio.create_task(voice_session.prepare())
-                voice_session.start_track(track)
+                voice_session.start_track(track, on_lost=close_after_track_loss)
 
         player = HumanPlayer(
             avatar_stream,
