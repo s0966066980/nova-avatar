@@ -1255,12 +1255,13 @@ async function importCharacter({ file, engine, avatarId, overwrite = false, gree
   importJob.value = { status: 'queued', progress: 0, message: '正在上傳影片' }
   try {
     const form = new FormData()
-    form.append('video', file)
     form.append('type', engine)
     form.append('green_screen', engine === 'musetalk' && greenScreen ? 'true' : 'false')
     if (avatarId) form.append('avatar_id', avatarId)
     if (overwrite) form.append('overwrite', 'true')
     form.append('quality', JSON.stringify(mergeQuality(qualityDraft)))
+    // The server validates every field before storing the upload, so the video goes last.
+    form.append('video', file)
 
     const started = await parseJson(await fetch('/api/avatars/import', {
       method: 'POST',

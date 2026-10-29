@@ -57,18 +57,44 @@ def _asset_paths(background_id: str) -> tuple[Path, Path, Path]:
     return asset, metadata, preview
 
 
-def _first_frame(path: Path) -> np.ndarray:
-    if path.suffix.lower() == ".gif":
+_TOO_LARGE = "背景解析度過高，請使用 4096×4096 像素以內的素材"
+
+
+def _check_pixels(width: float, height: float) -> None:
+    if width * height > MAX_BACKGROUND_PIXELS:
+        raise SceneError(_TOO_LARGE)
+
+
+def _check_image_header(path: Path) -> None:
+    """Read only the image header, so oversized images are never decoded."""
+    try:
+        with Image.open(path) as image:
+            size = image.size
+    except Image.DecompressionBombError as exc:
+        raise SceneError(_TOO_LARGE) from exc
+    except (OSError, UnidentifiedImageError, ValueError) as exc:
+        raise SceneError("無法解碼背景，請換一個圖片、GIF 或影片") from exc
+    _check_pixels(*size)
+
+
+def _first_frame(path: Path, extension: str | None = None) -> np.ndarray:
+    """Decode the first frame; ``extension`` names the format when ``path`` has none."""
+    extension = (extension or path.suffix).lower()
+    if extension in GIF_EXTS | IMAGE_EXTS:
+        _check_image_header(path)
+    if extension in GIF_EXTS:
         try:
             with Image.open(path) as image:
                 frame = cv2.cvtColor(np.asarray(image.convert("RGB")), cv2.COLOR_RGB2BGR)
-        except (OSError, UnidentifiedImageError, ValueError) as exc:
+        except (OSError, UnidentifiedImageError, ValueError, Image.DecompressionBombError) as exc:
             raise SceneError("無法讀取 GIF 背景") from exc
-    elif path.suffix.lower() in IMAGE_EXTS:
+    elif extension in IMAGE_EXTS:
         frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
     else:
         cap = cv2.VideoCapture(str(path))
         try:
+            if cap.isOpened():
+                _check_pixels(cap.get(cv2.CAP_PROP_FRAME_WIDTH), cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             ok, frame = cap.read() if cap.isOpened() else (False, None)
             if not ok:
                 frame = None
@@ -76,8 +102,7 @@ def _first_frame(path: Path) -> np.ndarray:
             cap.release()
     if frame is None or frame.ndim != 3 or frame.shape[2] != 3:
         raise SceneError("無法解碼背景，請換一個圖片、GIF 或影片")
-    if frame.shape[0] * frame.shape[1] > MAX_BACKGROUND_PIXELS:
-        raise SceneError("背景解析度過高，請使用 4096×4096 像素以內的素材")
+    _check_pixels(frame.shape[1], frame.shape[0])
     return frame
 
 
@@ -90,7 +115,7 @@ def add_background(path: Path, original_name: str) -> dict[str, Any]:
         raise SceneError("背景檔案是空的")
     if path.stat().st_size > MAX_BACKGROUND_BYTES:
         raise SceneError("背景檔案不可超過 100 MB")
-    frame = _first_frame(path)
+    frame = _first_frame(path, extension)
     background_id = uuid.uuid4().hex[:12]
     root = backgrounds_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -283,7 +308,7 @@ class _BackgroundSource:
                         duration = min(1.0, max(0.02, float(image.info.get("duration", 100)) / 1000))
                         if self._stop.wait(duration):
                             return
-        except (OSError, UnidentifiedImageError, ValueError):
+        except (OSError, UnidentifiedImageError, ValueError, Image.DecompressionBombError):
             return  # Keep the last valid frame visible.
 
     def _run_video(self) -> None:

@@ -16,7 +16,11 @@ from src.avatars.catalog import (
     archive_avatar, delete_archived_avatar, list_archived_avatars,
     resolve_preview_path, restore_avatar,
 )
-from src.server.import_jobs import VIDEO_EXTS, get_job, import_in_progress, start_import_job
+from src.avatars.mouth_quality import QualityError, normalize_quality
+from src.server.import_jobs import (
+    MAX_IMPORT_VIDEO_BYTES, VIDEO_EXTS, discard_upload, get_job, import_in_progress,
+    start_import_job, validate_import_request,
+)
 from src.server.runtime_settings import (
     apply_video_settings,
     SettingsError,
@@ -609,9 +613,31 @@ async def delete_archived_avatar_permanently(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
+def _avatar_replace_conflict(avatar_id: str) -> str | None:
+    """Why an existing avatar must not be replaced by an import, or None."""
+    config = state.config
+    if config is not None and avatar_id == config.model.avatar_id:
+        return "正在使用的數字人無法覆寫，請先切換角色"
+    roles = getattr(state, "roles", None)
+    if roles and any(
+        profile["avatar_id"] == avatar_id
+        for library in (roles.library, roles.store.load())
+        for profile in library["profiles"]
+    ):
+        return "請先解除角色設定檔對此人物素材的引用，再覆寫"
+    return None
+
+
 async def import_avatar(request):
+    """Accept one closed-mouth video and start building an avatar from it.
+
+    Text fields come first; the single ``video`` part must be last so that the
+    request is fully validated before any byte is written to disk.
+    """
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
+    upload_dir = None
+    handed_off = False
     try:
         reader = await request.multipart()
         engine = ""
@@ -621,11 +647,15 @@ async def import_avatar(request):
         quality = None
         video_path = None
         original_name = "upload.mp4"
+        size = 0
 
         while True:
             part = await reader.next()
             if part is None:
                 break
+            if video_path is not None:
+                msg = "只能上傳一部影片" if part.name == "video" else "影片必須是表單最後一個欄位"
+                return _json({"code": -1, "msg": msg}, status=400)
             if part.name == "type":
                 engine = (await part.text()).strip()
             elif part.name == "avatar_id":
@@ -644,29 +674,38 @@ async def import_avatar(request):
                     return _json({"code": -1, "msg": "嘴型參數格式不正確"}, status=400)
                 if not isinstance(parsed, dict):
                     return _json({"code": -1, "msg": "嘴型參數必須是物件"}, status=400)
+                try:
+                    normalize_quality(parsed)
+                except QualityError as exc:
+                    return _json({"code": -1, "msg": str(exc)}, status=400)
                 quality = parsed
             elif part.name == "video":
                 original_name = part.filename or original_name
                 suffix = Path(original_name).suffix.lower() or ".mp4"
                 if suffix not in VIDEO_EXTS:
                     return _json({"code": -1, "msg": "請上傳 mp4 / mov / webm / avi 影片"}, status=400)
-                dest_dir = uploads_dir() / uuid4_name()
-                dest_dir.mkdir(parents=True, exist_ok=True)
-                video_path = dest_dir / f"source{suffix}"
+                engine, avatar_id = validate_import_request(
+                    engine=engine,
+                    avatar_id=avatar_id,
+                    original_name=original_name,
+                    overwrite=overwrite,
+                    session_count=_active_session_count(),
+                )
+                if overwrite and (conflict := _avatar_replace_conflict(avatar_id)):
+                    return _json({"code": -1, "msg": conflict}, status=409)
+                upload_dir = uploads_dir() / uuid4_name()
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                video_path = upload_dir / f"source{suffix}"
                 with video_path.open("wb") as handle:
-                    while True:
-                        chunk = await part.read_chunk()
-                        if not chunk:
-                            break
-                        handle.write(chunk)
+                    while chunk := await part.read_chunk(size=1024 * 1024):
+                        size += len(chunk)
+                        if size > MAX_IMPORT_VIDEO_BYTES:
+                            limit_mb = MAX_IMPORT_VIDEO_BYTES // (1024 * 1024)
+                            return _json({"code": -1, "msg": f"影片不可超過 {limit_mb} MB"}, status=413)
+                        await asyncio.to_thread(handle.write, chunk)
 
-        if video_path is None or not video_path.is_file() or video_path.stat().st_size == 0:
+        if video_path is None or size == 0:
             return _json({"code": -1, "msg": "請選擇要匯入的影片"}, status=400)
-
-        if quality is not None:
-            quality = apply_mouth_quality(state.config, quality)
-        else:
-            quality = quality_from_model(state.config.model)
 
         job = start_import_job(
             engine=engine,
@@ -675,15 +714,26 @@ async def import_avatar(request):
             avatar_id=avatar_id,
             overwrite=overwrite,
             session_count=_active_session_count(),
-            quality=quality,
+            quality=quality if quality is not None else quality_from_model(state.config.model),
             green_screen=green_screen,
+            replace_guard=_avatar_replace_conflict,
         )
+        handed_off = True
+        if quality is not None:
+            # Remember the accepted build settings only once the import has started.
+            try:
+                apply_mouth_quality(state.config, quality)
+            except Exception:
+                logger.exception("儲存匯入用的嘴型參數失敗")
         return _json({"code": 0, "msg": "ok", "data": job.to_dict()})
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
-    except Exception as exc:
+    except Exception:
         logger.exception("匯入數字人失敗")
-        return _json({"code": -1, "msg": str(exc)}, status=500)
+        return _json({"code": -1, "msg": "匯入數字人失敗，請查看伺服器日誌"}, status=500)
+    finally:
+        if upload_dir is not None and not handed_off:
+            await asyncio.to_thread(discard_upload, upload_dir)
 
 
 async def import_avatar_status(request):

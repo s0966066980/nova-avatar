@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 角色匯入覆寫與上傳上限
-Status: ready-for-agent
+Status: resolved
 Blocked by: 03
 
 依[規格](../spec.md)。
@@ -13,3 +13,13 @@ Blocked by: 03
 完成：覆寫使用中角色被拒、建置失敗保留舊角色、超限 413 且無殘留檔的回歸測試；完整 CI 通過。
 
 ## Comments
+
+### 2026-10-29 實作結果（分支 `sh/06-avatar-import`）
+
+- `builder.build_character` 改在 `data/avatars/.building-<uuid>` 建置（目錄以點開頭，目錄掃描與 `/offer` 看不到）；成功後以 `archive_avatar` 把舊角色移入 `.deleted` 再 rename 換上，rename 失敗則把舊角色搬回。失敗只刪暫存目錄。新增 `replace_guard`，建置前與換上前各檢查一次。
+- 匯入端點：`video` 必須是表單最後一個欄位；寫檔前先驗證引擎、ID、session、鎖、同名未覆寫（409），覆寫時拒絕使用中或被設定檔引用的角色（409）。串流累計位元組，超過 `MAX_IMPORT_VIDEO_BYTES`（500 MB）回 413；第二個 `video` 或影片後的欄位回 400；`try/finally` 清除 `data/imports/<id>`。檔案寫入與清除走 `asyncio.to_thread`。
+- `quality` 收到時只驗證，工作啟動後才 `apply_mouth_quality` 全域儲存。
+- `import_jobs`：worker 鎖改在 `start_import_job` 取得、由工作執行緒在清除上傳檔後釋放；完成的工作最多保留 20 筆；非預期例外只回固定訊息，細節留伺服器日誌。500 回應同樣不再回傳例外字串。
+- 前端 `importCharacter` 改為最後才 append `video`。
+- 測試：新增 `tests/test_avatar_import.py`（14 項）；`test_mouth_quality.py` 的假 builder 接受 `replace_guard`，並等鎖釋放後才結束。
+- 驗證：ruff、check-integration、pytest（842 通過，僅既知的 2 項 worktree 基準失敗）、web lint／test／build 全過。

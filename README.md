@@ -51,6 +51,22 @@ bash scripts/create_ssl_certs.sh
 安裝腳本會準備 Python、MuseTalk／OpenMMLab 與前端依賴；重跑保留既有
 環境。權重下載沿用專案固定的套件，不會升級系統 pip 或強制切換鏡像。
 SSL 腳本不再要求互動輸入，已有憑證時會保留；預設服務使用 HTTPS。
+uv、MuseTalk 權重、RAGFlow 映像與 BGE-M3 均固定版本並驗證 checksum／digest，
+不符即中止；控制台的 Bootstrap 與圖示由 npm 套件打包，場域斷網時仍可顯示。
+
+### 管理者裝置信任本機 CA（只需一次）
+
+主機已安裝 [mkcert](https://github.com/FiloSottile/mkcert) 時，SSL 腳本優先
+以它建立本機 CA 簽發的憑證，涵蓋 `localhost`、主機名稱與區網 IP（可在指令後
+追加其他名稱，例如 `bash scripts/create_ssl_certs.sh nova.lan`）：
+
+1. 在主機執行 `mkcert -install`，讓本機舞台瀏覽器信任此 CA。
+2. 將 `$(mkcert -CAROOT)/rootCA.pem` 複製到每台管理者裝置，匯入系統或瀏覽器的
+   「受信任的根憑證」。之後重新簽發憑證不必再匯入。
+3. 切勿複製 `rootCA-key.pem`；它只留在主機上。
+
+未安裝 mkcert（或設定 `NOVA_SSL_SELF_SIGNED=1`）時改產生自簽憑證，瀏覽器
+首次連線需手動接受警告。
 
 接著備妥角色素材：可在控制台匯入正面閉嘴影片，或執行：
 
@@ -104,7 +120,8 @@ uv run python scripts/configure-admin.py
 bash ./scripts/start-all.sh
 ```
 
-此命令啟動後端與 Web 控制台。執行過 `ragflow.sh prepare` 的主機會一併
+此命令先建置前端（`web/dist`），再啟動後端；控制台與舞台都由後端
+（埠 8010）同源提供，不另開前端伺服器。執行過 `ragflow.sh prepare` 的主機會一併
 啟動 RAGFlow；尚未執行 `prepare` 的主機會提示略過 RAGFlow，繼續啟動 Nova。
 若已安裝的 Docker 尚未運行，啟動腳本會自動啟動它；需要管理權限時，
 直接在同一個終端提示輸入 `sudo` 密碼。RAGFlow 的容器、網頁、API 與嵌入
@@ -117,8 +134,8 @@ bash ./scripts/start-all.sh
 
 | 入口 | 預設位址 | 用途 |
 | --- | --- | --- |
-| Web 控制台 | `https://localhost:3000` | 對話、設定、語音驗證 |
-| 數位人舞台 | `https://localhost:3000/stage.html` | 獨立演播畫面 |
+| Web 控制台 | `https://localhost:8010` | 對話、設定、語音驗證；區網以主機 IP 連入 |
+| 數位人舞台 | `https://localhost:8010/stage.html` | 獨立演播畫面，僅限場域主機本機 |
 | 後端健康檢查 | `https://localhost:8010/health` | 確認 Nova 後端就緒 |
 | RAGFlow 管理頁 | `http://127.0.0.1:8088` | 建立知識庫、上傳與解析文件 |
 
@@ -129,8 +146,9 @@ bash ./scripts/start-all.sh
 存取規則（路由分類集中在 `src/server/access.py`）：控制台需以管理者密碼
 登入，本機也不例外；登入 cookie 為 `Secure`，區網連入請使用 HTTPS。
 數位人舞台只在場域主機本機（loopback）開啟，其他電腦開啟會被拒絕（403）。
-`/health` 與前端靜態檔不需登入。後端不提供 CORS，跨來源的變更請求一律
-拒絕。
+`/health` 與前端靜態檔不需登入。後端只提供 `web/dist` 建置結果，缺少時
+啟動失敗並提示先執行 `npm run build`。後端不提供 CORS，跨來源的變更請求
+一律拒絕。
 
 啟動後，在控制台選擇數位人與模型，使用文字訊息或啟用麥克風開始對話。
 需要文件檢索時，到「設定 → 數位人、AI 與知識設定」選定數位人，
@@ -193,23 +211,28 @@ uv run python scripts/run_role_soak.py --turns 50 --output .scratch/live-avatar-
 
 ### 場域 kiosk 啟動
 
-場域主機要讓訪客直接使用數位人舞台時，在後端與前端啟動後執行：
+場域主機要讓訪客直接使用數位人舞台時，在 Nova 啟動後執行：
 
 ```bash
 bash scripts/start-kiosk.sh
 ```
 
-腳本以 Chrome／Chromium 全螢幕開啟 `/stage.html?kiosk=1`，並預先放行聲音播放與
-麥克風，使用獨立的瀏覽器設定檔 `.local/kiosk-profile`。舞台看到 `kiosk=1` 會自動
+腳本以 Chrome／Chromium 全螢幕開啟後端提供的 `https://localhost:8010/stage.html?kiosk=1`，
+預先放行聲音播放，並使用獨立的瀏覽器設定檔 `.local/kiosk-profile`。麥克風只對
+舞台來源（`https://localhost:8010`）放行，其他網站一律封鎖；權限寫在該設定檔，
+不影響主機上其他 Chrome 設定檔。HTTPS 預設使用自簽 localhost 憑證，腳本以
+`--allow-insecure-localhost` 只對 localhost 接受；改用受信任憑證時不再需要。舞台看到 `kiosk=1` 會自動
 連線，連線中斷時依 2、3、5、8、10 秒退避自動重連，訪客只看到「數字人暫時無法使用」
 這類簡短提示。一般瀏覽器開啟 `/stage.html` 不受影響，仍是點一下進入。
 可用 `NOVA_KIOSK_URL`、`NOVA_KIOSK_BROWSER`、`NOVA_KIOSK_PROFILE` 覆寫網址、瀏覽器與
-設定檔位置。
+設定檔位置；麥克風只放行 `NOVA_KIOSK_URL` 的來源。
 
-如需分開啟動 Nova 前後端，可在不同終端執行
-`bash scripts/start-backend.sh config/config.yaml` 和
-`bash scripts/start-frontend.sh config/config.yaml`；RAGFlow 則以
-`bash scripts/ragflow.sh up`／`down` 獨立管理。
+如需分開啟動 Nova，先以 `bash scripts/start-frontend.sh config/config.yaml`
+建置前端，再以 `bash scripts/start-backend.sh config/config.yaml` 啟動後端；
+RAGFlow 則以 `bash scripts/ragflow.sh up`／`down` 獨立管理。開發前端時可執行
+`bash scripts/start-frontend.sh --dev config/config.yaml`（或在 `web/` 執行
+`npm run dev`），Vite 開發伺服器只綁 `127.0.0.1:3000`、API 代理到後端，
+不作正式入口。設定檔路徑可為相對（以目前目錄為準）或絕對路徑。
 
 ## 安裝 RAGFlow 文件檢索（選用）
 

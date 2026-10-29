@@ -104,6 +104,7 @@ CONVERSATION = "/api/conversations/{sessionid}"
 ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     # Public
     ("GET", "/health"): PUBLIC,
+    ("GET", "/"): PUBLIC,
     ("GET", STATIC_FRONTEND): PUBLIC,
     ("GET", "/api/session"): PUBLIC,
     ("POST", "/api/login"): PUBLIC,

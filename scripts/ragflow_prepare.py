@@ -16,6 +16,11 @@ ROOT = Path(__file__).resolve().parents[1]
 UPSTREAM = ROOT / ".local" / "ragflow" / "upstream"
 ENV_FILE = UPSTREAM / "docker" / ".env"
 MANAGED_MARKER = "# NOVA_RAGFLOW_MANAGED=1"
+# Must equal scripts/ragflow_validate.py; a re-pushed tag cannot change the image.
+RAGFLOW_IMAGE = (
+    "infiniflow/ragflow:v0.27.2"
+    "@sha256:e6b3f1a185c0a70abb3a72e1092415df8c5c6a4fae0089545554f2936c4b27ab"
+)
 
 
 def _stock_env() -> str:
@@ -29,10 +34,18 @@ def _stock_env() -> str:
 
 
 def prepare() -> Path:
-    """Preserve an existing managed file; never overwrite manual secrets."""
+    """Preserve an existing managed file; never overwrite manual secrets.
+
+    A managed file only has its image line moved to the pinned digest.
+    """
     stock = _stock_env()
     current = ENV_FILE.read_text(encoding="utf-8")
     if current.startswith(MANAGED_MARKER):
+        pinned, count = re.subn(r"(?m)^RAGFLOW_IMAGE=.*$", lambda _: f"RAGFLOW_IMAGE={RAGFLOW_IMAGE}", current)
+        if count != 1:
+            raise RuntimeError("RAGFlow .env 缺少唯一的 RAGFLOW_IMAGE 欄位")
+        if pinned != current:
+            _write_private(pinned)
         ENV_FILE.chmod(0o600)
         return ENV_FILE
     if current != stock:
@@ -63,19 +76,24 @@ def prepare() -> Path:
         "MEM_LIMIT": "6442450944",
         "DOC_BULK_SIZE": "1",
         "EMBEDDING_BATCH_SIZE": "4",
-        "RAGFLOW_IMAGE": "infiniflow/ragflow:v0.27.2",
+        "RAGFLOW_IMAGE": RAGFLOW_IMAGE,
         "TZ": "Asia/Taipei",
     }
     for key, value in values.items():
         stock, count = re.subn(rf"(?m)^{key}=.*$", lambda _: f"{key}={value}", stock)
         if count != 1:
             raise RuntimeError(f"RAGFlow 上游 .env 缺少唯一的 {key} 欄位")
-    managed = f"{MANAGED_MARKER}\n{stock}"
+    _write_private(f"{MANAGED_MARKER}\n{stock}")
+    return ENV_FILE
+
+
+def _write_private(text: str) -> None:
+    """Atomically replace the .env with a 0600 file."""
     fd, path = tempfile.mkstemp(prefix=".nova-ragflow-", dir=ENV_FILE.parent)
     try:
         os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(managed)
+            handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(path, ENV_FILE)
@@ -83,7 +101,6 @@ def prepare() -> Path:
         if os.path.exists(path):
             os.unlink(path)
         raise
-    return ENV_FILE
 
 
 if __name__ == "__main__":

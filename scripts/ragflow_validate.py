@@ -7,6 +7,11 @@ from __future__ import annotations
 import json
 import sys
 
+# Tag plus registry digest: a re-pushed tag cannot change the running image.
+RAGFLOW_IMAGE = (
+    "infiniflow/ragflow:v0.27.2"
+    "@sha256:e6b3f1a185c0a70abb3a72e1092415df8c5c6a4fae0089545554f2936c4b27ab"
+)
 EXPECTED_SERVICES = {
     "ragflow-cpu", "es01", "mysql", "minio", "redis"
 }
@@ -27,8 +32,8 @@ def validate(plan: dict) -> None:
     }
     if published != EXPECTED_PORTS:
         raise ValueError("對主機開放的連接埠不符合本機隔離規則")
-    if services["ragflow-cpu"].get("image") != "infiniflow/ragflow:v0.27.2":
-        raise ValueError("RAGFlow 映像版本與固定版本不符")
+    if services["ragflow-cpu"].get("image") != RAGFLOW_IMAGE:
+        raise ValueError("RAGFlow 映像版本或 digest 與固定版本不符")
     for name, service in services.items():
         if "ragflow" not in service.get("networks", {}):
             raise ValueError(f"{name} 未在獨立 RAGFlow 網路中")

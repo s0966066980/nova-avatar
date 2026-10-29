@@ -23,6 +23,7 @@ from tests.access_helpers import (
     LAN_ADDRESS,
     TEST_ADMIN_PASSWORD,
     access_client,
+    built_frontend,
     configure_admin,
     guard_denial,
     same_origin,
@@ -35,7 +36,7 @@ CONSOLE_SESSION = 535353
 
 def registered_routes():
     """(method, canonical path) of every route create_app() serves, HEAD folded into GET."""
-    app = create_app(admin_env_path=Path(tempfile.gettempdir()) / "nova-avatar-missing-admin.env")
+    app = create_app(admin_env_path=Path(tempfile.gettempdir()) / "nova-avatar-missing-admin.env", frontend_dir=built_frontend())
     return sorted({route_key(route) for route in app.router.routes()})
 
 
@@ -279,7 +280,7 @@ def test_admin_env_is_gitignored():
 
 
 def test_cors_middleware_is_gone():
-    app = create_app(admin_env_path=Path(tempfile.gettempdir()) / "nova-avatar-missing-admin.env")
+    app = create_app(admin_env_path=Path(tempfile.gettempdir()) / "nova-avatar-missing-admin.env", frontend_dir=built_frontend())
     assert not [route for route in app.router.routes() if route.method == "OPTIONS"]
     pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
     assert "aiohttp-cors" not in pyproject
