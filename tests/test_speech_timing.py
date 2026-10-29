@@ -137,6 +137,54 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         audio.stop()
         video.stop()
 
+    async def test_speech_start_trims_idle_frames_tagged_with_avatar_epoch(self):
+        # Since avatar epochs were added, every idle renderer frame carries
+        # {"avatar_epoch": n}.  That marker is not reply metadata, so it must
+        # not stop the trim (regression: ~0.2 s idle audio before speech).
+        from src.utils.webrtc import HumanPlayer
+
+        player = HumanPlayer(None)
+        audio = player.audio
+        video = player.video
+        for _ in range(audio.max_buffer_frames):
+            await audio.enqueue(object(), {"avatar_epoch": 3})
+        for _ in range(video.max_buffer_frames):
+            await video.enqueue(object(), {"avatar_epoch": 3})
+
+        await player.prepare_speech_start()
+
+        self.assertLessEqual(audio.buffered_duration, 0.06)
+        self.assertLessEqual(video.buffered_duration, 0.06)
+        audio.stop()
+        video.stop()
+
+    async def test_speech_start_keeps_queued_reply_audio(self):
+        from src.utils.webrtc import HumanPlayer
+
+        player = HumanPlayer(None)
+        audio = player.audio
+        video = player.video
+        reply = {
+            "turn_id": "turn-1",
+            "generation": 0,
+            "media_sequence": 0,
+            "avatar_epoch": 3,
+        }
+        await audio.enqueue(object(), {"avatar_epoch": 3})
+        await audio.enqueue(object(), {"avatar_epoch": 3})
+        for _ in range(audio.max_buffer_frames - 2):
+            await audio.enqueue(object(), reply)
+        for _ in range(video.max_buffer_frames):
+            await video.enqueue(object(), {"avatar_epoch": 3})
+
+        await player.prepare_speech_start()
+
+        # Only the leading idle pair is trimmed; reply PCM is never dropped.
+        self.assertEqual(audio._queue.qsize(), audio.max_buffer_frames - 2)
+        self.assertTrue(all(item[1] is reply for item in audio._queue._queue))
+        audio.stop()
+        video.stop()
+
     async def test_audio_and_video_apply_equal_low_latency_backpressure(self):
         from src.utils.webrtc import HumanPlayer
 

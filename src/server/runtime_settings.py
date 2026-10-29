@@ -864,6 +864,7 @@ def apply_llm_model(
                 port=port,
                 ctx=int(getattr(config.llm, "llamacpp_ctx", 8192) or 8192),
                 threads=int(getattr(config.llm, "llamacpp_threads", 0) or 0),
+                allow_partial_offload=bool(getattr(config.llm, "llamacpp_allow_partial_offload", False)),
             )
         except Exception as exc:
             raise SettingsError(f"無法啟動 llama.cpp：{exc}", status=500) from exc
@@ -1269,9 +1270,12 @@ STT_OUTPUT_SCRIPTS = ("traditional-tw", "simplified")
 
 TTS_ENGINE_META = {
     "edgetts": {
-        "label": "Edge TTS",
+        "label": "Edge TTS (Development only)",
         "module": "edge_tts",
-        "description": "免金鑰雲端語音；預設繁體中文女聲",
+        "description": (
+            "開發用：Microsoft Edge 朗讀功能的非公開端點，無正式商用授權，"
+            "場域斷網即無法發聲；預設繁體中文女聲"
+        ),
         "setup": "",
     },
     "gpt-sovits": {
@@ -1281,9 +1285,12 @@ TTS_ENGINE_META = {
         "setup": "需要本機服務與音訊庫中的參考音訊",
     },
     "xtts": {
-        "label": "XTTS",
+        "label": "XTTS (Research / Non-commercial)",
         "module": "requests",
-        "description": "連線本機 XTTS 服務",
+        "description": (
+            "Coqui Public Model License 僅限非商用，Coqui 已停業無法取得商用授權；"
+            "連線本機 XTTS 服務"
+        ),
         "setup": "需要本機服務與音訊庫中的參考音訊",
     },
     "cosyvoice": {
@@ -1299,15 +1306,21 @@ TTS_ENGINE_META = {
         "setup": "需要 conda 環境 cosyvoice、Fun-CosyVoice3-0.5B 與參考音訊",
     },
     "fishtts": {
-        "label": "Fish Speech",
+        "label": "Fish Speech (Community License / Revenue < USD 500k)",
         "module": "requests",
-        "description": "連線本機 Fish Speech 服務",
+        "description": (
+            "Fish Audio Community License：授權方與其客戶年營收皆須低於 50 萬美元才可商用，"
+            "不得作託管服務；連線本機 Fish Speech 服務"
+        ),
         "setup": "需要本機服務",
     },
     "indextts2": {
-        "label": "IndexTTS2",
+        "label": "IndexTTS2 (bilibili Model License / Usage thresholds)",
         "module": "gradio_client",
-        "description": "連線本機 IndexTTS2 Gradio 服務",
+        "description": (
+            "bilibili 模型授權：月活逾 1 億或年營收逾 10 億人民幣需另取授權，"
+            "不得用於改進其他模型，受中國法律管轄；連線本機 IndexTTS2 Gradio 服務"
+        ),
         "setup": "需要 gradio_client、本機服務與音訊庫中的參考音訊",
     },
 }

@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Nova Avatar Software Stack
 
-Updated: 2026-09-25
+Updated: 2026-10-30
 
 Nova Avatar is a real-time conversational digital-human application: browser
 microphone input travels over WebRTC to server-owned turn orchestration, then
@@ -30,8 +30,11 @@ the root Apache-2.0 grant.
 | STT | faster-whisper | Supported | Review the selected Whisper model artifacts. |
 | STT | FunASR | Optional | Review the exact code release and model. |
 | LLM | Ollama / llama.cpp | Supported local OpenAI-compatible endpoints | Review the selected model and endpoint terms. |
-| TTS | Edge TTS | Supported integration and default checked path | Review service and voice terms for the deployment. |
-| TTS | GPT-SoVITS, CosyVoice, Fun-CosyVoice, Fish TTS, XTTS, IndexTTS2 | Optional | Review code, model, voice, and checkpoint terms individually. |
+| TTS | Edge TTS | **Development only** | Non-public Microsoft endpoint with no formal commercial license; needs Internet access. Do not use it in a commercial deployment. |
+| TTS | GPT-SoVITS, CosyVoice, Fun-CosyVoice | Optional | Review code, model, voice, and checkpoint terms individually. |
+| TTS | Fish TTS | **Community License / Revenue < USD 500k** | Commercial use only below USD 500k annual revenue, customers included; no hosted service. |
+| TTS | IndexTTS2 | **bilibili Model License / Usage thresholds** | Separate license above 100M MAU or RMB 1B revenue; must not be used to improve other models. |
+| TTS | XTTS | **Research / Non-commercial** | Coqui Public Model License; no commercial license is available. |
 | Avatar | MuseTalk | Supported, recommended review-profile path | Code is MIT; models and dependencies retain separate terms. |
 | Avatar | Wav2Lip | **Research / Non-commercial** | Do not include its integration or upstream weights in a commercial Nova Avatar distribution. |
 | Avatar | ER-NeRF, TalkingGaussian, UltraLight | Optional, license review required | Do not infer commercial rights from the root license. |
@@ -54,7 +57,8 @@ the root Apache-2.0 grant.
 
 [`config/config_commercial.yaml`](../config/config_commercial.yaml) is a
 complete, selectable configuration starting with MuseTalk, faster-whisper,
-Silero, a local OpenAI-compatible LLM endpoint, and Edge TTS. Start it with:
+Silero, a local OpenAI-compatible LLM endpoint, and Edge TTS. Edge TTS is
+development only; replace it before a commercial deployment. Start it with:
 
 ```bash
 bash scripts/start-all.sh config/config_commercial.yaml

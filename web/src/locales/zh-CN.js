@@ -414,6 +414,7 @@ export default {
     voiceMessageFailed: '語音訊息傳送失敗，請重試',
     connectFirst: '請先啟動連線',
     backendNotReady: '後端尚未完全啟動，請稍候...',
+    llmPartialGpu: '本機 LLM 未全部載入 GPU，回覆會明顯變慢；原因見 logs 中 llama-server 啟動訊息',
     selectAvatarFirst: '請先在設定中選擇並套用數字人引擎與角色',
     historyCleared: '對話歷史已清空',
     historyClearFailed: '清空歷史失敗',
