@@ -271,7 +271,7 @@ def test_render_throttles_only_idle_when_video_queue_is_full(monkeypatch, queued
         def start(self): pass
         def join(self): pass
     monkeypatch.setattr(module, 'Thread', Thread)
-    monkeypatch.setattr(module.time, 'sleep', delays.append)
+    monkeypatch.setattr(module.time, 'sleep', lambda _seconds: pytest.fail('idle throttle must be wakeable'))
     avatar = module.MuseTalkAvatar.__new__(module.MuseTalkAvatar)
     avatar.batch_size = 8
     avatar.max_tts_audio_wait_seconds = .2
@@ -281,11 +281,37 @@ def test_render_throttles_only_idle_when_video_queue_is_full(monkeypatch, queued
         queue=SimpleNamespace(qsize=lambda: queued_audio, empty=lambda: queued_audio == 0),
         startup_batch_emitted=True, startup_batch_size=4,
         feat_queue=None, output_queue=None, run_step=quit_event.set,
+        wait_for_audio=delays.append,
     )
     for name in ('input_latent_list_cycle', 'res_frame_queue', 'vae', 'unet', 'pe', 'timesteps'):
         setattr(avatar, name, None)
     avatar.render(quit_event, video_track=SimpleNamespace(_queue=SimpleNamespace(qsize=lambda: 6)))
     assert delays == pytest.approx(expected_delay)
+
+
+def test_idle_throttle_wakes_as_soon_as_reply_audio_is_queued():
+    import threading
+    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+
+    config = SimpleNamespace(model=SimpleNamespace(batch_size=8),
+                             audio=SimpleNamespace(fps=50, l=10, r=10, av_offset_ms=0))
+    handler = MuseAudioStreamHandler(config, None, None)
+    assert handler.wait_for_audio(.01) is False
+
+    pcm = np.full(320, .1, np.float32)
+    producer = threading.Timer(.02, handler.put_audio_frame, args=(pcm, {'turn_id': 'turn'}))
+    started = time.perf_counter()
+    producer.start()
+    try:
+        # The idle throttle used to sleep ~0.19 s regardless of reply audio.
+        assert handler.wait_for_audio(2.0) is True
+    finally:
+        producer.join()
+    assert time.perf_counter() - started < .5
+    # Already-queued audio never waits.
+    started = time.perf_counter()
+    assert handler.wait_for_audio(2.0) is True
+    assert time.perf_counter() - started < .1
 
 
 def test_renderer_gap_does_not_delay_matching_video_after_audio_resumes():

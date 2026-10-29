@@ -666,7 +666,8 @@ class MuseTalkAvatar(BaseAvatar):
                 if (video_track and self.audio_stream.queue.empty()
                         and video_track._queue.qsize() >= MIN_VIDEO_BUFFER_FRAMES):
                     logger.debug('sleep qsize=%d',video_track._queue.qsize())
-                    time.sleep(0.04*video_track._queue.qsize()*0.8)
+                    # Idle video has headroom; reply PCM ends this wait early.
+                    self.audio_stream.wait_for_audio(0.04*video_track._queue.qsize()*0.8)
                 # if video_track._queue.qsize()>=5:
                 #     print('sleep qsize=',video_track._queue.qsize())
                 #     time.sleep(0.04*video_track._queue.qsize()*0.8)
