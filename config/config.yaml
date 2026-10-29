@@ -1,5 +1,5 @@
 # 預設服務配置：埠 / SSL / TTS / LLM。
-# 數字人引擎、角色、Ollama 模型請在網頁「設定」裡選擇，不必再換 config_musetalk.yaml。
+# 數字人引擎、角色、LLM 端點與模型請在網頁「設定」裡選擇，不必再換 config_musetalk.yaml。
 app:
   prewarm: true  # 啟動時預熱本機模型與語音鏈路
   listenport: 8010
@@ -106,7 +106,8 @@ asr:
   min_audio_rms: 0.003
   min_confidence: 0.35
 
-# LLM：Ollama 或 llama.cpp；數位人設定檔與控制台只能選擇下列端點名稱
+# LLM：預設由後端自行啟動 llama.cpp（llama-server），不需要 11434 的 Ollama；
+# Ollama 仍列為可選端點，數位人設定檔與控制台只能選擇下列端點名稱
 llm:
   # 端點、網址與金鑰只能在此設定檔編輯，金鑰只送往該端點自己的 base_url。
   # provider 必須明確指定：llamacpp | ollama | openai。控制台切換 Ollama／
@@ -116,10 +117,13 @@ llm:
   endpoints:
     llamacpp: {provider: llamacpp, base_url: http://127.0.0.1:8080/v1}
     ollama: {provider: ollama, base_url: http://localhost:11434/v1, api_key: ollama}
-  provider: ollama  # llamacpp | ollama | openai
-  api_key: ollama  # Ollama / llama-server 都不驗證，但不可為空
-  base_url: http://localhost:11434/v1
-  model: qwen3.5:4b
+  # 預設端點由 base_url 對應上方清單決定（此處＝llamacpp）。刻意不寫 llm.endpoint：
+  # 舊版 runtime_overrides.yaml 只存 provider／base_url，仍依其網址選回原端點。
+  # 要改用 Ollama：控制台或數位人設定檔選 ollama 端點，並在 Ollama 拉好模型（例如 qwen3.5:4b）。
+  provider: llamacpp  # llamacpp | ollama | openai
+  api_key: ollama  # Ollama / llama-server 都不驗證；llamacpp 端點實際用清單中的設定
+  base_url: http://127.0.0.1:8080/v1
+  model: Qwen3.5-9B-UD-Q4_K_XL
   # llama.cpp 端點的模型是 llamacpp_dir 內的 GGUF 名稱，由數位人設定檔的 llm.model 選擇：
   #   Qwen3.5-9B-UD-Q4_K_XL  目前主角色使用的模型
   #   gemma-4-E2B_q4_0-it    Gemma 4 E2B（Apache-2.0），同目錄的 gemma-4-E2B-it-mmproj.gguf 會自動

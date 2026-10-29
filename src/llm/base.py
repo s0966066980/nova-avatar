@@ -29,7 +29,7 @@ from src.llm.text_normalizer import (
     normalize_output_text,
     strip_unsolicited_self_introduction,
 )
-from src.server.reply_streaming.fragmenter import SemanticFragmenter
+from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
 from src.utils.logging import logger
 
 if TYPE_CHECKING:
@@ -321,17 +321,7 @@ class BaseLLM(ABC):
             )
             or 0.5
         )
-        text_processor = (
-            SemanticFragmenter(
-                weak_min_chars=weak_min,
-                soft_limit_chars=soft_limit,
-                hard_limit_chars=hard_limit,
-                strong_min_chars=strong_min,
-                semantic_wait_seconds=semantic_wait_seconds,
-            )
-            if semantic_stream
-            else TextStreamProcessor()
-        )
+        text_processor = TextStreamProcessor()
         full_response = ""
         fenced = False
         history_transaction = None
@@ -416,6 +406,24 @@ class BaseLLM(ABC):
                     logger.info("Queueing legacy LLM fragment")
                 target_avatar.put_msg_txt(text, fragment_info)
                 fragment_sequence += 1
+
+        # The semantic wait releases a long clause by timer even while the
+        # model is silent; feeding, flushing and timed releases share one lock.
+        semantic_fragments = (
+            SemanticWaitTimer(
+                SemanticFragmenter(
+                    weak_min_chars=weak_min,
+                    soft_limit_chars=soft_limit,
+                    hard_limit_chars=hard_limit,
+                    strong_min_chars=strong_min,
+                    semantic_wait_seconds=semantic_wait_seconds,
+                ),
+                send_to_avatar,
+                active=lambda: not fenced,
+            )
+            if semantic_stream and target_avatar
+            else None
+        )
 
         output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
         enforce_locale = bool(getattr(profile, "enforce_output_locale", True))
@@ -530,23 +538,20 @@ class BaseLLM(ABC):
                                     "llm_sequence": sequence,
                                 },
                             )
-                    if target_avatar:
-                        if semantic_stream:
-                            for fragment in text_processor.feed(spoken):
-                                send_to_avatar(fragment)
-                        else:
-                            text_processor.process_chunk(spoken, send_to_avatar)
+                    if semantic_fragments is not None:
+                        semantic_fragments.feed(spoken)
+                    elif target_avatar:
+                        text_processor.process_chunk(spoken, send_to_avatar)
                     else:
                         spoken_response += spoken
                 if (
-                    target_avatar and semantic_stream
+                    semantic_fragments is not None
                     and not is_legacy_markup and parser.speech_complete
                 ):
                     # The end of SPEECH is a semantic boundary even if the
                     # model omitted sentence punctuation. Board generation
                     # must not hold an already complete spoken summary.
-                    for fragment in text_processor.flush():
-                        send_to_avatar(fragment)
+                    semantic_fragments.flush()
             
             if not fenced:
                 if is_legacy_markup:
@@ -573,21 +578,17 @@ class BaseLLM(ABC):
                                     "llm_sequence": max(sequence, 0),
                                 },
                             )
-                    if target_avatar:
-                        if semantic_stream:
-                            for fragment in text_processor.feed(delta):
-                                send_to_avatar(fragment)
-                        else:
-                            text_processor.process_chunk(delta, send_to_avatar)
+                    if semantic_fragments is not None:
+                        semantic_fragments.feed(delta)
+                    elif target_avatar:
+                        text_processor.process_chunk(delta, send_to_avatar)
                     else:
                         spoken_response += delta
 
-                if target_avatar:
-                    if semantic_stream:
-                        for fragment in text_processor.flush():
-                            send_to_avatar(fragment)
-                    else:
-                        text_processor.flush(send_to_avatar)
+                if semantic_fragments is not None:
+                    semantic_fragments.flush()
+                elif target_avatar:
+                    text_processor.flush(send_to_avatar)
                 emit_board(board_payload)
             
             total_time = time.perf_counter()
@@ -628,3 +629,6 @@ class BaseLLM(ABC):
                     logger.exception("Failed to commit terminal LLM history transaction")
             logger.error("LLM response generation failed: %s", type(e).__name__)
             raise
+        finally:
+            if semantic_fragments is not None:
+                semantic_fragments.close()

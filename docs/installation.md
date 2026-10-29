@@ -151,7 +151,7 @@ model:
 
 ## 啟動、更新與交付檢查
 
-確認設定中的 Ollama／llama.cpp 服務與模型可用，再執行：
+確認設定中的 llama.cpp（或另選的 Ollama）服務與模型可用，再執行：
 
 ```bash
 bash scripts/start-all.sh config/config.yaml
@@ -161,6 +161,37 @@ bash scripts/start-all.sh config/config.yaml
 `https://localhost:8010`，舞台 `https://localhost:8010/stage.html`（僅限本機），
 健康檢查 `https://localhost:8010/health`。本機設定覆蓋主 YAML；變更設定前留意
 `config/runtime_overrides.yaml` 的有效值。
+
+### 停用預設 Ollama（11434）
+
+預設設定選 `llamacpp` 端點，後端啟動時自行拉起 llama-server（`127.0.0.1:8080`），
+不需要系統的 Ollama 服務（`ollama.service`，`127.0.0.1:11434`）。`ollama` 仍是
+`llm.endpoints` 裡的可選端點；明確選用它的設定（控制台、數位人設定檔或舊的
+`runtime_overrides.yaml`）照舊連 11434。
+
+1. 先確認沒有設定在用 Ollama：`config/runtime_overrides.yaml` 的 `llm.endpoint`
+   ／`base_url` 與 `config/avatar_profiles.yaml` 每個角色的 `llm.endpoint` 都不是
+   `ollama`／`11434`（或在控制台「AI 模型」逐一檢查）。
+2. 停用並關閉服務（在終端自行輸入 `sudo` 密碼）：
+
+   ```bash
+   sudo systemctl disable --now ollama
+   ```
+
+   要恢復：`sudo systemctl enable --now ollama`。
+
+不要移除 Ollama 程式或模型目錄：RAGFlow 的嵌入服務
+（`nova-ragflow-embedding.service`，Docker 橋接位址的 `11435`）是另一個
+`ollama serve` 程序，沿用同一個執行檔與 `/usr/share/ollama/.ollama/models`，
+停用 11434 不影響它；llama-server 也可能從 `/usr/local/lib/ollama/cuda_v12`
+載入 CUDA 函式庫。以下 RAGFlow 指令會連 11434，執行前先
+`sudo systemctl start ollama`，完成後再 `sudo systemctl stop ollama`：
+`ragflow.sh pull-model`（下載並核對 BGE-M3）、`connect-chat`、`unify-models`、
+`sync-models`；已啟用共用模式（`.local/ragflow/shared-ollama` 存在）時不要停用。
+
+顯存：11434 沒有載入模型時幾乎不占 GPU，停用它主要是避免有人選到 Ollama 端點時
+再載入一份模型。`nvidia-smi` 中約 1.6 GB 的 `ollama` 是 11435 的 BGE-M3 嵌入
+（實測持續常駐），屬 `nova-ragflow-embedding.service`，不是 11434。
 
 更新已啟用 TensorRT 的環境：
 

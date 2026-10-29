@@ -9,7 +9,9 @@ from typing import Optional, Any
 
 from src.llm.router import ReplyMode
 from src.llm.rules import default_rules
-from src.llm.reply_contract import AUTO_MODE_PROMPT, AUTO_BOARD_SCHEMA_PROMPT, CHANNEL_SPLIT_PROMPT
+from src.llm.reply_contract import (
+    AUTO_BOARD_SCHEMA_PROMPT, AUTO_MODE_PROMPT, CHANNEL_SPLIT_PROMPT, FIRST_SENTENCE_PROMPT,
+)
 
 DEFAULT_BASE_PROMPT = "You are a helpful assistant."
 
@@ -156,6 +158,8 @@ def compose_system_prompt(
         parts.append(length_instruction)
 
     parts.append(rule_instruction)
+    # Fixed like the speech length: saved Rules predate it and cannot drop it.
+    parts.append(FIRST_SENTENCE_PROMPT)
     # Finish with the actual editable policy and channel boundaries, rather
     # than a template that small models may mistake for a preferred mode.
     if reply_mode == ReplyMode.AUTO or reply_mode is None:

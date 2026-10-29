@@ -16,8 +16,10 @@ Clock = Callable[[], float]
 StageObserver = Callable[[str, float], None]
 
 # Stage durations are measured where the work runs; durations, not clocks,
-# cross threads. Pre-answer stages (``pre_answer`` contains ``routing`` and
-# ``retrieval``) run between the transcript and the main answer;
+# cross threads. ``pre_answer`` runs from the transcript to the main answer
+# (or fixed reply) that is played and contains ``retrieval``. ``routing`` runs
+# concurrently with it; ``routing_hold`` is how long synthesized answer audio
+# waited for the routing decision, inside ``avatar_to_webrtc_commit``.
 # ``model_info`` is the llama-server preflight inside ``llm_first_token``.
 STAGE_NAMES = (
     "vad_endpoint",
@@ -25,6 +27,7 @@ STAGE_NAMES = (
     "pre_answer",
     "routing",
     "retrieval",
+    "routing_hold",
     "model_info",
     "llm_first_token",
     "llm_first_speech",
@@ -41,6 +44,10 @@ STAGE_NAMES = (
     "avatar_to_webrtc_commit",
     "webrtc_audio_commit",
 )
+
+# Stages a main answer owns. A discarded speculative answer forgets them so the
+# reply that is actually played measures its own.
+ANSWER_STAGES = STAGE_NAMES[STAGE_NAMES.index("model_info"):]
 
 
 _stage_observer: ContextVar[Optional[StageObserver]] = ContextVar(
@@ -150,6 +157,15 @@ class TurnMetrics:
         if not math.isfinite(seconds) or seconds < 0:
             raise ValueError("stage duration must be finite and nonnegative")
         self._stage_durations.setdefault(stage, round(float(seconds), 6))
+
+    def discard_answer_stages(self) -> None:
+        """Forget a discarded answer's stages and reopen ``pre_answer``."""
+        for stage in ANSWER_STAGES:
+            self._stage_started_at.pop(stage, None)
+            self._stage_finished_at.pop(stage, None)
+            self._stage_durations.pop(stage, None)
+        self._stage_finished_at.pop("pre_answer", None)
+        self._stage_durations.pop("pre_answer", None)
 
     @staticmethod
     def _validate_stage(stage: str) -> None:

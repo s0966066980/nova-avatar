@@ -5,8 +5,10 @@
 from __future__ import annotations
 
 import re
+import threading
 import time
 import unicodedata
+from typing import Callable
 
 STRONG_PUNCTUATION = frozenset("。！？.!?…")
 WEAK_PUNCTUATION = frozenset("，、：,:；;")
@@ -59,7 +61,8 @@ def _starts_new_grapheme(previous: str, character: str) -> bool:
     return True
 
 
-def _content_length(text: str) -> int:
+def content_length(text: str) -> int:
+    """Count the letters, digits and CJK characters the fragment thresholds use."""
     return sum(
         any(character.isalnum() for character in text[start:end])
         for start, end in _grapheme_spans(text)
@@ -129,6 +132,16 @@ class SemanticFragmenter:
         self._buffer_started_at = None
         return [fragment] if fragment else []
 
+    def semantic_wait_remaining(self) -> float | None:
+        """Seconds until ``feed("")`` releases a clause at weak punctuation.
+
+        ``None`` while no clause is long enough to be released by the wait.
+        """
+        if self._buffer_started_at is None or self._weak_boundary() is None:
+            return None
+        elapsed = self._clock() - self._buffer_started_at
+        return max(0.0, self._semantic_wait_seconds - elapsed)
+
     def _semantic_wait_expired(self) -> bool:
         return (
             self._buffer_started_at is not None
@@ -142,7 +155,7 @@ class SemanticFragmenter:
             if character not in STRONG_PUNCTUATION:
                 continue
             boundary = index + 1
-            if _content_length(self._buffer[:boundary]) < self._strong_min_chars:
+            if content_length(self._buffer[:boundary]) < self._strong_min_chars:
                 continue
             if boundary == len(self._buffer) and self._has_unclosed_delimiter(boundary):
                 continue
@@ -159,7 +172,7 @@ class SemanticFragmenter:
             if self._is_protected_punctuation(index) or character not in WEAK_PUNCTUATION:
                 continue
             boundary = index + 1
-            length = _content_length(self._buffer[:boundary])
+            length = content_length(self._buffer[:boundary])
             if length < self._weak_min_chars:
                 continue
             return boundary
@@ -226,3 +239,77 @@ class SemanticFragmenter:
             return left.isspace()
         right = self._buffer[boundary]
         return left.isspace() or right.isspace()
+
+
+class SemanticWaitTimer:
+    """Release a waiting clause when the semantic wait ends, not when a token arrives.
+
+    Fragments reach ``emit`` from the caller's thread for fed text and from a
+    timer thread when the wait expires; one lock keeps them in order and never
+    concurrent. ``active`` is checked before a timed release so a fenced turn
+    stays silent. ``close`` stops the timer; fragments are never emitted after it.
+    """
+
+    def __init__(
+        self,
+        fragmenter: SemanticFragmenter,
+        emit: Callable[[str], None],
+        *,
+        active: Callable[[], bool] = lambda: True,
+    ) -> None:
+        self._fragmenter = fragmenter
+        self._emit = emit
+        self._active = active
+        self._lock = threading.Lock()
+        self._timer: threading.Timer | None = None
+        self._generation = 0
+        self._closed = False
+
+    def feed(self, token: str) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            self._emit_all(self._fragmenter.feed(token))
+            self._schedule()
+
+    def flush(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            self._cancel()
+            self._emit_all(self._fragmenter.flush())
+
+    def close(self) -> None:
+        with self._lock:
+            self._closed = True
+            self._cancel()
+
+    def _expire(self, generation: int) -> None:
+        with self._lock:
+            # A timer cancelled while waiting for the lock must not fire.
+            if generation != self._generation:
+                return
+            self._timer = None
+            if self._closed or not self._active():
+                return
+            self._emit_all(self._fragmenter.feed(""))
+            self._schedule()
+
+    def _emit_all(self, fragments: list[str]) -> None:
+        for fragment in fragments:
+            self._emit(fragment)
+
+    def _schedule(self) -> None:
+        self._cancel()
+        remaining = self._fragmenter.semantic_wait_remaining()
+        if remaining is None:
+            return
+        self._timer = threading.Timer(remaining, self._expire, args=(self._generation,))
+        self._timer.daemon = True
+        self._timer.start()
+
+    def _cancel(self) -> None:
+        self._generation += 1
+        if self._timer is not None:
+            self._timer.cancel()
+            self._timer = None

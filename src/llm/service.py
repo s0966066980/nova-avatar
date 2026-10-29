@@ -68,6 +68,13 @@ def prepare_spoken_history(message: str, avatar_stream, turn_id: str) -> None:
     llm.begin_history_turn(message, turn_id=turn_id)
 
 
+def discard_pending_history(avatar_stream, turn_id: str) -> bool:
+    """Drop the pending history of an answer that was generated but never played."""
+    llm = _session_llm_instances.get(_session_key(getattr(avatar_stream, "sessionid", 0)))
+    discard = getattr(llm, "discard_pending_history_turn", None)
+    return bool(discard(turn_id)) if callable(discard) else False
+
+
 def session_history(sessionid: int, profile_id=None) -> list:
     llm = _session_llm_instances.get(_session_key(sessionid, profile_id))
     return list(getattr(llm, "conversation_history", [])) if llm else []
