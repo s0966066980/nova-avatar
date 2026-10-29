@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 片段與渲染路徑的等待
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01, 02
 
 依[規格](../spec.md)。片段到 WebRTC 送出 P50 0.62 s：
@@ -39,3 +39,14 @@ Blocked by: 01, 02
    - B：同上兩項加 `musetalk_inference_first_result`，預期第二輪起首批推論變短、`avatar_to_webrtc_commit` 降低；同時目視舞台確認開口第一幀嘴型與聲音對齊、TTS 慢時待機影像不凍結。
    - C：量測工具只送語音，不受影響。另在主控台前一輪仍在播放時送出文字問題，以瀏覽器 DevTools 看 `POST /human` 回應時間：改前 ≥ 0.3 s，改後應 < 0.05 s。
 3. 任何一項的 P50 沒有改善（或 B 造成嘴型不同步／影像凍結）就 `git revert` 該 commit，並把各次量測摘要補在本 Comments。
+
+### 2026-10-30 實機逐項量測（orchestrator）
+同一整合分支，各跑 32 輪：`ablation-none.json`（撤回 A、B）、`ablation-a-only.json`（撤回 B）、`offset-split-2026-10-30.json`（A＋B）。C 不在語音路徑上，量測工具看不到，依單元測試保留。
+
+| 全部輪次 P50 | 都不含 | 只含 A | A＋B |
+|---|---|---|---|
+| 片段到 WebRTC 送出 | 0.408 s | 0.398 s | **0.358 s** |
+| MuseTalk 首批推論結果 | 0.297 s | 0.258 s | 0.256 s |
+| 感知首音延遲 P50／P95 | 1.99／2.33 s | 2.06／2.34 s | **1.95／2.20 s** |
+
+結論：A＋B 讓片段到送出 P50 少約 0.05 s、感知首音 P95 少約 0.13 s；A 單獨效果在雜訊範圍內，但 B 依賴 A 的喚醒，兩者一起保留。B 的嘴型與聲音同步需由使用者目視確認（列入最終報告）。
