@@ -560,7 +560,7 @@ class SpeechSettingsTests(unittest.TestCase):
             ids,
             {
                 "edgetts", "gpt-sovits", "xtts",
-                "cosyvoice", "fun-cosyvoice3", "fishtts", "indextts2",
+                "cosyvoice", "fun-cosyvoice3", "breezyvoice", "fishtts", "indextts2",
             },
         )
         self.assertTrue(ids.isdisjoint({"azuretts", "cosyvoice_api", "doubao", "tencent"}))

@@ -80,7 +80,7 @@ model:
 
 # TTS 配置資訊，可以改對應的模型，建議edgetts
 tts:
-  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | indextts2 | xtts
+  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | breezyvoice | indextts2 | xtts
   mode: auto  # CosyVoice: auto | zero_shot | cross_lingual | instruct
   ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；其他引擎填控制台音訊庫的參考音訊 ID
   tts_server: http://127.0.0.1:9880  # 只接受本機位址；gpt-sovits 等；cosyvoice 系列套用時會改用 50000 並自動啟動

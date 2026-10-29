@@ -132,6 +132,12 @@ rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 
 使用中的音訊不能刪除。模型目錄只能從 `models/` 掃描結果選擇，TTS 服務只接受
 本機位址。舊設定中的路徑在載入時會遷移進音訊庫，無法遷移的會清空並記錄警告。
 
+**BreezyVoice（台灣華語）**：在 CosyVoice 的 conda 環境安裝
+`python -m pip install --no-deps g2pw==0.1.1`，再執行
+`uv run --no-sync python scripts/breezyvoice_weights.py` 把權重與 g2pW 下載到
+`models/BreezyVoice`（固定版本並核對 SHA-256）。參考錄音須在 8 秒內，上傳音訊庫時
+一併填寫與錄音逐字相同的逐字稿；BreezyVoice 不串流，每個回覆片段整段合成。
+
 **天氣工具**：使用中央氣象署 CWA，授權碼只從服務端的 `NOVA_CWA_API_KEY`（亦支援
 `CWA_API_KEY`）或已排除 Git 的 `config/cwa.env` 載入；可執行
 `uv run python scripts/configure-cwa.py` 隱藏輸入。
