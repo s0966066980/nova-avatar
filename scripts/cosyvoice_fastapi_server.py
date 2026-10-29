@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import sys
 import tempfile
@@ -51,6 +52,13 @@ def _save_upload(prompt_wav: UploadFile) -> str:
     with os.fdopen(handle, "wb") as output:
         output.write(prompt_wav.file.read())
     return path
+
+
+def _remove_temporaries(*paths: str | None) -> None:
+    for path in paths:
+        if path:
+            with contextlib.suppress(FileNotFoundError):
+                os.remove(path)
 
 
 def clip_prompt_wav(path: str, *, max_seconds: float = MAX_PROMPT_SECONDS) -> str:
@@ -139,9 +147,7 @@ def create_app(cosyvoice):
             )
             first = next(iterator, None)
         except Exception as exc:
-            for path in (uploaded, clipped):
-                if path and os.path.exists(path):
-                    os.remove(path)
+            _remove_temporaries(uploaded, clipped)
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         def generate():
@@ -151,9 +157,7 @@ def create_app(cosyvoice):
                 if iterator is not None:
                     yield from _pcm16_chunks(iterator)
             finally:
-                for path in (uploaded, clipped):
-                    if path and os.path.exists(path):
-                        os.remove(path)
+                _remove_temporaries(uploaded, clipped)
 
         return StreamingResponse(generate(), media_type="application/octet-stream")
 
@@ -178,9 +182,7 @@ def create_app(cosyvoice):
             )
             first = next(iterator, None)
         except Exception as exc:
-            for path in (uploaded, clipped):
-                if path and os.path.exists(path):
-                    os.remove(path)
+            _remove_temporaries(uploaded, clipped)
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         def generate():
@@ -190,9 +192,7 @@ def create_app(cosyvoice):
                 if iterator is not None:
                     yield from _pcm16_chunks(iterator)
             finally:
-                for path in (uploaded, clipped):
-                    if path and os.path.exists(path):
-                        os.remove(path)
+                _remove_temporaries(uploaded, clipped)
 
         return StreamingResponse(generate(), media_type="application/octet-stream")
 
@@ -219,9 +219,7 @@ def create_app(cosyvoice):
             )
             first = next(iterator, None)
         except Exception as exc:
-            for path in (uploaded, clipped):
-                if path and os.path.exists(path):
-                    os.remove(path)
+            _remove_temporaries(uploaded, clipped)
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         def generate():
@@ -231,9 +229,7 @@ def create_app(cosyvoice):
                 if iterator is not None:
                     yield from _pcm16_chunks(iterator)
             finally:
-                for path in (uploaded, clipped):
-                    if path and os.path.exists(path):
-                        os.remove(path)
+                _remove_temporaries(uploaded, clipped)
 
         return StreamingResponse(generate(), media_type="application/octet-stream")
 

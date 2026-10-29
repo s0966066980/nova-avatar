@@ -412,6 +412,41 @@ def player_worker_thread(
 ):
     container.render(quit_event,loop,audio_track,video_track)
 
+
+# Upper bound for waiting on a renderer after its quit event is set. The wait
+# runs off the event loop, so a slow or wedged renderer only delays cleanup.
+RENDER_THREAD_JOIN_TIMEOUT = 5.0
+_render_joins: Set["asyncio.Task[None]"] = set()
+
+
+def _warn_if_alive(thread: threading.Thread) -> None:
+    if thread.is_alive():
+        mylogger.warning(
+            "render thread %s still running %.1fs after stop; abandoning it",
+            thread.name, RENDER_THREAD_JOIN_TIMEOUT,
+        )
+
+
+def _join_render_thread(thread: threading.Thread) -> "Optional[asyncio.Future[None]]":
+    """Join a stopped renderer without blocking the event loop."""
+    timeout = RENDER_THREAD_JOIN_TIMEOUT
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        thread.join(timeout)
+        _warn_if_alive(thread)
+        return None
+
+    async def join() -> None:
+        await asyncio.to_thread(thread.join, timeout)
+        _warn_if_alive(thread)
+
+    task = loop.create_task(join())
+    _render_joins.add(task)
+    task.add_done_callback(_render_joins.discard)
+    return task
+
+
 class HumanPlayer:
 
     def __init__(
@@ -426,6 +461,8 @@ class HumanPlayer:
     ):
         self.__thread: Optional[threading.Thread] = None
         self.__thread_quit: Optional[threading.Event] = None
+        # Completes once the stopped renderer thread has exited (or was abandoned).
+        self.render_stopped: Optional[asyncio.Future[None]] = None
 
         # examine streams
         self.__started: Set[PlayerStreamTrack] = set()
@@ -602,9 +639,10 @@ class HumanPlayer:
 
         if not self.__started and self.__thread is not None:
             self.__log_debug("Stopping worker thread")
-            self.__thread_quit.set()
-            self.__thread.join()
-            self.__thread = None
+            thread, self.__thread = self.__thread, None
+            if self.__thread_quit is not None:
+                self.__thread_quit.set()
+            self.render_stopped = _join_render_thread(thread)
 
         if not self.__started and self.__container is not None:
             #self.__container.close()

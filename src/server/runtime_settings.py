@@ -12,7 +12,6 @@ from dataclasses import asdict
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Optional
-from urllib.parse import urlparse
 
 from src.avatars.catalog import (
     ENGINE_META,
@@ -41,8 +40,14 @@ from src.llm.llamacpp import (
     ensure_server,
     find_llama_server,
     list_gguf_models,
-    openai_base_url,
     server_status,
+)
+from src.llm.endpoints import (
+    EndpointError,
+    active_endpoint_name,
+    apply_endpoint,
+    configured_endpoints,
+    resolve_endpoint,
 )
 from src.llm.service import switch_llm_endpoint
 from src.llm.rules import default_rules, rules_from_config, snapshot_from_config, validate_rules
@@ -148,14 +153,6 @@ def ollama_native_url(base_url: str) -> str:
     return url or "http://localhost:11434"
 
 
-def is_ollama_endpoint(base_url: str) -> bool:
-    raw = (base_url or "").lower()
-    if "11434" in raw or "ollama" in raw:
-        return True
-    host = (urlparse(base_url).hostname or "").lower()
-    return host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
-
-
 def _is_embedding_model(name: str, family: str = "") -> bool:
     blob = f"{name} {family}".lower()
     return "embed" in blob or "bert" in blob
@@ -176,14 +173,12 @@ def format_bytes(size: Optional[int]) -> str:
 
 
 def resolve_provider(config) -> str:
-    provider = (getattr(config.llm, "provider", "") or "").strip().lower()
-    if provider in {"ollama", "llamacpp"}:
-        return provider
-    if "11434" in (config.llm.base_url or ""):
-        return "ollama"
-    if "8080" in (config.llm.base_url or "") or str(config.llm.model).endswith(".gguf"):
-        return "llamacpp"
-    return "ollama" if is_ollama_endpoint(config.llm.base_url) else "openai"
+    """The active endpoint's explicit provider; never guessed from the URL."""
+    return resolve_endpoint(config.llm, active_endpoint_name(config.llm)).provider
+
+
+def endpoint_choices(config) -> list[Dict[str, str]]:
+    return [item.public() for item in configured_endpoints(config.llm).values()]
 
 
 def current_snapshot(config) -> Dict[str, Any]:
@@ -194,6 +189,8 @@ def current_snapshot(config) -> Dict[str, Any]:
     return {
         "llm": {
             "model": llm.model,
+            "endpoint": active_endpoint_name(llm),
+            "endpoints": endpoint_choices(config),
             "base_url": llm.base_url,
             "provider": resolve_provider(config),
             "system_prompt": load_system_prompt(config),
@@ -756,12 +753,14 @@ async def _fetch_ollama_tags(session, native_url: str):
     return items
 
 
-async def _fetch_openai_models(session, base_url: str):
+async def _fetch_openai_models(session, base_url: str, api_key: str = ""):
     url = (base_url or "").rstrip("/")
     if not url.endswith("/v1"):
         url = f"{url}/v1"
+    # Only the endpoint's own key, and only to that endpoint's URL.
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
     try:
-        async with session.get(f"{url}/models") as resp:
+        async with session.get(f"{url}/models", headers=headers) as resp:
             if resp.status != 200:
                 return None
             payload = await resp.json()
@@ -788,7 +787,7 @@ async def _fetch_openai_models(session, base_url: str):
 def apply_llm_model(
     config,
     model: str,
-    provider: str = "",
+    endpoint: str = "",
     system_prompt: Optional[str] = None,
     response_max_chars: Optional[int] = None,
     reply_mode: Optional[str] = None,
@@ -799,9 +798,11 @@ def apply_llm_model(
     model = (model or "").strip()
     if not model:
         raise SettingsError("請選擇一個對話模型")
-    provider = (provider or resolve_provider(config)).strip().lower()
-    if provider not in {"ollama", "llamacpp"}:
-        raise SettingsError("不支援的對話後端，請選擇 Ollama 或 llama.cpp")
+    try:
+        target = resolve_endpoint(config.llm, endpoint or active_endpoint_name(config.llm))
+    except EndpointError as exc:
+        raise SettingsError(str(exc)) from exc
+    provider = target.provider
     profile_requested = assistant_profile is not None or system_prompt is not None
     previous_profile = assistant_profile_snapshot(config)
     profile_values = assistant_profile
@@ -843,13 +844,17 @@ def apply_llm_model(
     if not 0.5 <= next_semantic_wait <= 30.0:
         raise SettingsError("語意等待上限必須介於 0.5 至 30 秒")
 
-    previous = f"{resolve_provider(config)}/{config.llm.model}"
+    previous = f"{config.llm.endpoint or resolve_provider(config)}/{config.llm.model}"
+    # URL, provider and key are taken together from the allowlisted endpoint.
+    target_llm = deepcopy(config.llm)
+    apply_endpoint(target_llm, target.name)
+    base_url, api_key = target.base_url, target.api_key
     if provider == "llamacpp":
-        host = getattr(config.llm, "llamacpp_host", "127.0.0.1") or "127.0.0.1"
-        port = int(getattr(config.llm, "llamacpp_port", 8080) or 8080)
+        host = target_llm.llamacpp_host
+        port = int(target_llm.llamacpp_port)
         extra_dir = getattr(config.llm, "llamacpp_dir", "") or ""
         try:
-            base_url = ensure_server(
+            ensure_server(
                 model,
                 extra_dir=extra_dir,
                 host=host,
@@ -860,11 +865,9 @@ def apply_llm_model(
         except Exception as exc:
             raise SettingsError(f"無法啟動 llama.cpp：{exc}", status=500) from exc
         extra_body = {}
-        api_key = config.llm.api_key or "llamacpp"
+    elif provider == "openai":
+        extra_body = dict(getattr(config.llm, "extra_body", None) or {})
     else:
-        base_url = config.llm.base_url
-        if "11434" not in (base_url or ""):
-            base_url = "http://localhost:11434/v1"
         existing_extra = dict(getattr(config.llm, "extra_body", None) or {})
         options = dict(existing_extra.get("options") or {})
         options.update(
@@ -881,16 +884,13 @@ def apply_llm_model(
             **existing_extra,
             "options": options,
         }
-        api_key = config.llm.api_key or "ollama"
 
     with _RULES_LOCK:
         if not profile_requested:
             next_profile = assistant_profile_snapshot(config)
             next_system_prompt = next_profile["system_prompt"]
-        config.llm.provider = provider
+        apply_endpoint(config.llm, target.name)
         config.llm.model = model
-        config.llm.base_url = base_url
-        config.llm.api_key = api_key
         config.llm.max_tokens = next_max_tokens
         config.llm.response_max_chars = next_response_max_chars
         config.llm.board.max_items = next_board_max_items
@@ -907,16 +907,17 @@ def apply_llm_model(
             model=model,
             base_url=base_url,
             extra_body=extra_body,
-            api_key=api_key,
+            api_key=api_key or provider,
             max_tokens=next_max_tokens,
             response_max_chars=next_response_max_chars,
             system_prompt=next_system_prompt,
             reset_history=profile_changed,
         )
         persist_runtime_overrides(config)
-    logger.info(f"LLM 已切換: {previous} -> {provider}/{model} @ {base_url}")
+    logger.info(f"LLM 已切換: {previous} -> {target.name}/{model} @ {base_url}")
     return {
         "model": model,
+        "endpoint": target.name,
         "provider": provider,
         "base_url": base_url,
         "system_prompt": next_system_prompt,
@@ -929,42 +930,56 @@ def apply_llm_model(
     }
 
 
+async def _endpoint_catalog(config, endpoint) -> Dict[str, Any]:
+    """Model discovery for one allowlisted endpoint, chosen by its provider."""
+    block = {**endpoint.public(), "id": endpoint.name,
+             "label": PROVIDER_LABELS[endpoint.provider], "models": []}
+    if endpoint.provider == "llamacpp":
+        local = deepcopy(config.llm)
+        apply_endpoint(local, endpoint.name)
+        ggufs = list_gguf_models(getattr(config.llm, "llamacpp_dir", "") or "")
+        status = server_status(local.llamacpp_host, int(local.llamacpp_port))
+        binary = find_llama_server()
+        return {**block, "reachable": bool(binary) or bool(ggufs),
+                "error": "" if (binary or ggufs) else "找不到 llama-server 或 GGUF 模型",
+                "models": ggufs, "server_running": status["running"], "binary": status["binary"]}
+    if endpoint.provider == "ollama":
+        found = await fetch_ollama_models(endpoint.base_url)
+    else:
+        import aiohttp
+
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+                models = await _fetch_openai_models(session, endpoint.base_url, endpoint.api_key)
+        except Exception:
+            models = None
+        found = {"reachable": models is not None, "models": models or [],
+                 "error": "" if models is not None else f"無法列出 {endpoint.name} 的模型"}
+    return {**block, "reachable": found.get("reachable", False),
+            "error": found.get("error", ""), "models": found.get("models") or []}
+
+
+PROVIDER_LABELS = {"llamacpp": "llama.cpp", "ollama": "Ollama", "openai": "OpenAI 相容服務"}
+
+
 async def fetch_llm_catalog(config) -> Dict[str, Any]:
-    extra_dir = getattr(config.llm, "llamacpp_dir", "") or ""
-    host = getattr(config.llm, "llamacpp_host", "127.0.0.1") or "127.0.0.1"
-    port = int(getattr(config.llm, "llamacpp_port", 8080) or 8080)
-    ggufs = list_gguf_models(extra_dir)
-    llama_status = server_status(host, port)
-    binary = find_llama_server()
-    ollama = await fetch_ollama_models(
-        config.llm.base_url if "11434" in (config.llm.base_url or "") else "http://localhost:11434/v1"
-    )
+    import asyncio
+
+    endpoints = list(configured_endpoints(config.llm).values())
+    blocks = await asyncio.gather(*(_endpoint_catalog(config, item) for item in endpoints))
+    providers: Dict[str, Any] = {}
+    for block in blocks:
+        providers.setdefault(block["provider"], block)
     return {
         "current": {
+            "endpoint": active_endpoint_name(config.llm),
             "provider": resolve_provider(config),
             "model": config.llm.model,
             "base_url": config.llm.base_url,
         },
-        "providers": {
-            "ollama": {
-                "id": "ollama",
-                "label": "Ollama",
-                "reachable": ollama.get("reachable", False),
-                "error": ollama.get("error", ""),
-                "models": ollama.get("models") or [],
-                "base_url": "http://localhost:11434/v1",
-            },
-            "llamacpp": {
-                "id": "llamacpp",
-                "label": "llama.cpp",
-                "reachable": bool(binary) or bool(ggufs),
-                "error": "" if (binary or ggufs) else "找不到 llama-server 或 GGUF 模型",
-                "models": ggufs,
-                "base_url": openai_base_url(host, port),
-                "server_running": llama_status["running"],
-                "binary": llama_status["binary"],
-            },
-        },
+        "endpoints": blocks,
+        # First endpoint of each provider, for older console views.
+        "providers": providers,
     }
 
 
@@ -1257,14 +1272,14 @@ TTS_ENGINE_META = {
     "gpt-sovits": {
         "label": "GPT-SoVITS",
         "module": "requests",
-        "description": "連線本機或內網 GPT-SoVITS 服務",
-        "setup": "需要可連線的本地服務與參考音訊",
+        "description": "連線本機 GPT-SoVITS 服務",
+        "setup": "需要本機服務與音訊庫中的參考音訊",
     },
     "xtts": {
         "label": "XTTS",
         "module": "requests",
-        "description": "連線本機或內網 XTTS 服務",
-        "setup": "需要可連線的本地服務與參考音訊",
+        "description": "連線本機 XTTS 服務",
+        "setup": "需要本機服務與音訊庫中的參考音訊",
     },
     "cosyvoice": {
         "label": "CosyVoice 2",
@@ -1281,14 +1296,14 @@ TTS_ENGINE_META = {
     "fishtts": {
         "label": "Fish Speech",
         "module": "requests",
-        "description": "連線本機或內網 Fish Speech 服務",
-        "setup": "需要可連線的本地服務",
+        "description": "連線本機 Fish Speech 服務",
+        "setup": "需要本機服務",
     },
     "indextts2": {
         "label": "IndexTTS2",
         "module": "gradio_client",
-        "description": "連線本機或內網 IndexTTS2 Gradio 服務",
-        "setup": "需要 gradio_client、本地服務與參考音訊",
+        "description": "連線本機 IndexTTS2 Gradio 服務",
+        "setup": "需要 gradio_client、本機服務與音訊庫中的參考音訊",
     },
 }
 
@@ -1330,6 +1345,9 @@ def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
 
 
 def speech_snapshot(config) -> Dict[str, Any]:
+    from src.tts.cosyvoice_runtime import local_models
+    from src.tts.voice_library import list_voices
+
     asr = config.asr
     tts = config.tts
     return {
@@ -1368,7 +1386,9 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "instruct": tts.instruct,
             "device": tts.device,
             "engines": _catalog(TTS_ENGINE_META),
-            "models": [],
+            # Reference audio and models are chosen from these server-side lists.
+            "voices": list_voices(),
+            "models": local_models(),
             "languages": [
                 {"id": item_id, "label": label}
                 for item_id, label in languages_for_family(
@@ -1453,22 +1473,65 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
     return speech_snapshot(config)["stt"]
 
 
-def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) -> Dict[str, Any]:
-    """Validate reference/connectivity and synthesize a short preview before commit."""
-    _require_no_sessions(session_count)
+def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
+    """Check the TTS fields that name files, models or servers.
+
+    ``ref_file`` must be a voice-library ID (or an Edge / Fish voice name),
+    ``model`` a ``models/`` catalog ID and ``tts_server`` a loopback address.
+    Runs before a request is applied or saved for later.
+    """
+    from src.tts.cosyvoice_runtime import resolve_model_dir
+    from src.tts.voice_library import (
+        VoiceLibraryError,
+        check_model,
+        check_reference,
+        check_tts_server,
+    )
+
+    if not isinstance(params, dict):
+        raise SettingsError("設定格式不正確")
     engine = str(params.get("type", config.tts.type)).strip().lower()
     if engine not in TTS_ENGINE_META:
         raise SettingsError(f"不支援的 TTS 引擎: {engine}")
+    values = {
+        key: params.get(key, getattr(config.tts, key))
+        for key in ("ref_file", "tts_server", "model")
+    }
+    for key, value in values.items():
+        if value is not None and not isinstance(value, str):
+            raise SettingsError(f"{key} 格式不正確")
+        values[key] = (value or "").strip()
+    if is_cosyvoice_engine(engine) and values["ref_file"] in EDGE_TTS_ZH_TW_VOICE_IDS:
+        values["ref_file"] = ""
+    try:
+        values["ref_file"] = check_reference(engine, values["ref_file"])
+        values["tts_server"] = check_tts_server(values["tts_server"])
+        values["model"] = check_model(values["model"])
+    except VoiceLibraryError as exc:
+        raise SettingsError(exc.message) from None
+    if is_cosyvoice_engine(engine) and values["model"]:
+        try:
+            resolve_model_dir(values["model"], family=cosyvoice_family(engine))
+        except FileNotFoundError as exc:
+            raise SettingsError(str(exc)) from None
+    return {"type": engine, **values}
+
+
+def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) -> Dict[str, Any]:
+    """Validate reference/connectivity and synthesize a short preview before commit."""
+    _require_no_sessions(session_count)
+    sources = validate_tts_sources(config, params)
+    engine = sources["type"]
     meta = TTS_ENGINE_META[engine]
     if not _engine_available(meta):
         raise SettingsError(
             f"{meta['label']} 依賴未安裝",
             extra={"missing_package": meta["module"]},
         )
-    ref_file = str(params.get("ref_file", config.tts.ref_file) or "").strip()
+    ref_file = sources["ref_file"]
     ref_text = str(params.get("ref_text", config.tts.ref_text) or "").strip()
-    tts_server = str(params.get("tts_server", config.tts.tts_server) or "").strip()
-    model = str(params.get("model", config.tts.model) or "").strip()
+    tts_server = sources["tts_server"]
+    model = sources["model"]
     mode = str(params.get("mode", getattr(config.tts, "mode", "auto")) or "auto").strip().lower()
     language = str(params.get("language", config.tts.language) or "Auto").strip()
     speaker = str(params.get("speaker", config.tts.speaker) or "").strip()
@@ -1482,8 +1545,6 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
             DEFAULT_PROMPT_WAV,
             ensure_server,
             parse_server_url,
-            prepare_prompt_wav,
-            resolve_prompt_source,
         )
 
         family = cosyvoice_family(engine)
@@ -1491,35 +1552,18 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
 
         if not tts_server:
             tts_server = "http://127.0.0.1:50000"
-        if ref_file in EDGE_TTS_ZH_TW_VOICE_IDS:
-            ref_file = ""
 
         if mode == "zero_shot" and ref_file and not ref_text:
             raise SettingsError(
                 "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
             )
 
-        if ref_file:
-            try:
-                source = resolve_prompt_source(ref_file)
-            except FileNotFoundError:
-                raise SettingsError(
-                    f"參考音訊不存在：{ref_file}。"
-                    "請填完整路徑，例如 /home/oliver/CosyVoice/asset/SHINeeJonghyun.mp3"
-                ) from None
-            try:
-                ref_file = str(prepare_prompt_wav(source))
-            except Exception as exc:
-                raise SettingsError(
-                    f"無法把參考音訊轉成 CosyVoice 可用的 WAV：{source}。"
-                    "請使用可播放的 WAV 或 MP3。"
-                ) from exc
-        else:
+        if not ref_file:
+            # An empty reference selects the bundled default prompt.
             if not DEFAULT_PROMPT_WAV.is_file():
                 raise SettingsError(
-                    "未填參考音訊，且預設 data/tts/cosyvoice_prompt.wav 也不存在。"
+                    "未選擇參考音訊，且預設 data/tts/cosyvoice_prompt.wav 也不存在。"
                 )
-            ref_file = str(DEFAULT_PROMPT_WAV)
             if not ref_text:
                 ref_text = DEFAULT_PROMPT_TEXT
         if mode == "zero_shot" and not ref_text:
@@ -1584,15 +1628,8 @@ def _preview_tts(
     device: str,
 ) -> str:
     """Run the real engine against a bounded phrase and return a WAV data URI."""
-    if engine in {"gpt-sovits", "xtts", "cosyvoice", "fun-cosyvoice3", "indextts2"}:
-        audio_path = Path(ref_file).expanduser() if ref_file else None
-        if audio_path is None or not audio_path.is_file():
-            shown = ref_file or "（未填寫）"
-            raise SettingsError(
-                f"參考音訊不存在：{shown}。"
-                "請填寫本機 WAV／MP3 的完整路徑，不能使用 Edge 聲線名稱"
-                "（例如 zh-TW-HsiaoChenNeural）。"
-            )
+    if engine in {"gpt-sovits", "xtts", "indextts2"} and not ref_file:
+        raise SettingsError("請從音訊庫選擇或上傳參考音訊")
 
     pending = deepcopy(config)
     pending.tts.type = engine

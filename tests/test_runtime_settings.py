@@ -35,7 +35,6 @@ from src.server.runtime_settings import (
     apply_avatar,
     current_snapshot,
     format_bytes,
-    is_ollama_endpoint,
     ollama_native_url,
     apply_stt_settings,
     apply_tts_settings,
@@ -128,11 +127,6 @@ class OllamaHelperTests(unittest.TestCase):
             ollama_native_url("http://127.0.0.1:11434/v1/"),
             "http://127.0.0.1:11434",
         )
-
-    def test_detect_ollama_endpoint(self):
-        self.assertTrue(is_ollama_endpoint("http://localhost:11434/v1"))
-        self.assertTrue(is_ollama_endpoint("http://127.0.0.1:11434/v1"))
-        self.assertFalse(is_ollama_endpoint("https://dashscope.aliyuncs.com/compatible-mode/v1"))
 
     def test_format_bytes(self):
         self.assertEqual(format_bytes(0), "")
@@ -615,7 +609,24 @@ class SpeechSettingsTests(unittest.TestCase):
         with self.assertRaises(SettingsError):
             apply_tts_settings(Config(), {"type": "azuretts"}, session_count=0)
 
+    def _library_voice(self) -> str:
+        """A voice in a temporary voice library; returns its ID."""
+        import numpy as np
+        import soundfile as sf
+        from src.tts import voice_library
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        tmp = Path(directory.name)
+        patcher = patch.object(voice_library, "VOICES_ROOT", tmp / "voices")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        source = tmp / "reference.wav"
+        sf.write(source, np.full(16000, 0.1, dtype=np.float32), 16000)
+        return voice_library.add_voice(source, "reference")["id"]
+
     def test_zero_shot_requires_reference_transcript_before_starting_server(self):
+        voice = self._library_voice()
         with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
             "src.tts.cosyvoice_runtime.ensure_server"
         ) as ensure:
@@ -625,7 +636,7 @@ class SpeechSettingsTests(unittest.TestCase):
                     {
                         "type": "fun-cosyvoice3",
                         "mode": "zero_shot",
-                        "ref_file": "/tmp/reference.wav",
+                        "ref_file": voice,
                         "ref_text": "",
                     },
                     session_count=0,
@@ -660,7 +671,7 @@ class SpeechSettingsTests(unittest.TestCase):
                 )
         self.assertEqual(config.tts.type, "cosyvoice")
         self.assertEqual(config.tts.tts_server, "http://127.0.0.1:50000")
-        self.assertTrue(config.tts.ref_file.endswith("cosyvoice_prompt.wav"))
+        self.assertEqual(config.tts.ref_file, "")  # The bundled default prompt.
         self.assertEqual(config.tts.ref_text, "你好，我是數字人助手。")
         ensure.assert_called_once()
         self.assertIn("preview_audio", result)
@@ -670,12 +681,8 @@ class SpeechSettingsTests(unittest.TestCase):
             {"zh", "en", "ja", "ko", "yue", "auto"},
         )
 
-    def test_cosyvoice_converts_mp3_reference_instead_of_rejecting_it(self):
-        from src.tts.cosyvoice_runtime import prepare_prompt_wav
-
-        mp3 = Path("/home/oliver/CosyVoice/asset/SHINeeJonghyun.mp3")
-        if not mp3.is_file():
-            self.skipTest("SHINeeJonghyun.mp3 is not on this machine")
+    def test_cosyvoice_keeps_the_library_voice_id(self):
+        voice = self._library_voice()
         config = Config()
         with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
             "src.tts.cosyvoice_runtime.ensure_server",
@@ -688,18 +695,13 @@ class SpeechSettingsTests(unittest.TestCase):
                 config,
                 {
                     "type": "cosyvoice",
-                    "ref_file": str(mp3),
+                    "ref_file": voice,
                     "ref_text": "test lyrics",
                 },
                 session_count=0,
             )
-        self.assertTrue(config.tts.ref_file.endswith(".cosy24k.v2.wav"))
-        self.assertTrue(Path(config.tts.ref_file).is_file())
+        self.assertEqual(config.tts.ref_file, voice)
         self.assertEqual(config.tts.ref_text, "test lyrics")
-        self.assertEqual(
-            Path(config.tts.ref_file).resolve(),
-            prepare_prompt_wav(mp3).resolve(),
-        )
 
     def test_fun_cosyvoice3_auto_starts_local_server(self):
         config = Config()
@@ -752,10 +754,10 @@ class SpeechSettingsTests(unittest.TestCase):
             with self.assertRaises(SettingsError) as ctx:
                 apply_tts_settings(
                     Config(),
-                    {"type": "cosyvoice", "ref_file": "/tmp/not-a-real-voice.mp3"},
+                    {"type": "cosyvoice", "ref_file": "0123456789abcdef"},
                     session_count=0,
                 )
-        self.assertIn("不存在", ctx.exception.message)
+        self.assertIn("不在音訊庫中", ctx.exception.message)
 
     def test_tts_commits_only_after_preview(self):
         config = Config()
@@ -785,7 +787,7 @@ class SpeechSettingsTests(unittest.TestCase):
                     session_count=0,
                 )
         self.assertIn("zh-TW-YunJheNeural", ctx.exception.message)
-        self.assertIn("完整路徑", ctx.exception.message)
+        self.assertIn("音訊庫", ctx.exception.message)
 
     def test_edge_tts_rejects_non_zh_tw_voice(self):
         with patch("src.server.runtime_settings._engine_available", return_value=True):

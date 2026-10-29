@@ -12,7 +12,12 @@ import resampy
 import soundfile as sf
 
 from src.tts.base import BaseTTS, State
+from src.tts.voice_library import voice_path
 from src.utils.logging import logger
+
+# Seconds for each HTTP call and for one Gradio prediction.
+HTTP_TIMEOUT = 30
+PREDICT_TIMEOUT = 120
 
 
 class IndexTTS2(BaseTTS):
@@ -20,14 +25,14 @@ class IndexTTS2(BaseTTS):
         super().__init__(config, parent)
         # IndexTTS2 配置引數
         self.server_url = config.tts.tts_server  # Gradio伺服器地址
-        self.ref_audio_path = config.tts.ref_file  # 參考音訊檔案路徑
+        self.ref_audio_path = str(voice_path(config.tts.ref_file))  # 音訊庫中的參考音訊
         self.max_tokens = getattr(config.tts, "max_tokens", 120)  # 最大token數
 
         # 初始化Gradio客戶端
         try:
             from gradio_client import Client, handle_file
 
-            self.client = Client(self.server_url)
+            self.client = Client(self.server_url, httpx_kwargs={"timeout": HTTP_TIMEOUT})
             self.handle_file = handle_file
             logger.info(f"IndexTTS2 Gradio客戶端初始化成功: {self.server_url}")
         except ImportError:
@@ -75,11 +80,11 @@ class IndexTTS2(BaseTTS):
         try:
             logger.info(f"IndexTTS2 開始分割文本，長度: {len(text)}")
 
-            result = self.client.predict(
+            result = self.client.submit(
                 text=text,
                 max_text_tokens_per_segment=self.max_tokens,
                 api_name="/on_input_text_change",
-            )
+            ).result(timeout=PREDICT_TIMEOUT)
 
             if "value" in result and "data" in result["value"]:
                 data = result["value"]["data"]
@@ -107,7 +112,7 @@ class IndexTTS2(BaseTTS):
         start = time.perf_counter()
 
         try:
-            result = self.client.predict(
+            result = self.client.submit(
                 emo_control_method="Same as the voice reference",
                 prompt=self.handle_file(self.ref_audio_path),
                 text=text,
@@ -133,7 +138,7 @@ class IndexTTS2(BaseTTS):
                 param_22=10,
                 param_23=1500,
                 api_name="/gen_single",
-            )
+            ).result(timeout=PREDICT_TIMEOUT)
 
             end = time.perf_counter()
             logger.info(f"IndexTTS2 片段生成完成，耗時: {end-start:.2f}s")

@@ -67,6 +67,7 @@ Repository = "https://github.com/s0966066980/nova-avatar"
 
 [dependency-groups]
 dev = [
+    "pyright==1.1.414",
     "pytest>=8",
     "ruff==0.17.1",
 ]
@@ -121,7 +122,47 @@ extend-exclude = [
 [tool.ruff.lint]
 # Start with syntax/control-flow errors and undefined names. Style and unused
 # code cleanup can be introduced separately without rewriting inherited code.
-select = ["E9", "F63", "F7", "F82"]
+select = [
+    "E9",
+    "F63",
+    "F7",
+    "F82",
+    # Security subset: exec, requests without timeout, pickle, urlopen schemes,
+    # shell commands.
+    "S102",
+    "S113",
+    "S301",
+    "S310",
+    "S605",
+    # Blocking HTTP, subprocess, file, os.path, and sleep calls in async code.
+    "ASYNC210",
+    "ASYNC220",
+    "ASYNC230",
+    "ASYNC240",
+    "ASYNC251",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.pyright]
+# Control-flow guard for the server package: basic mode minus the rules that
+# still report existing type-annotation debt there. Every rule left enabled
+# passes with zero findings, so a new hit is a real regression.
+include = ["src/server"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+reportPossiblyUnboundVariable = "error"
+# Import resolution depends on which optional extras are installed.
+reportMissingImports = "none"
+reportMissingModuleSource = "none"
+# Existing debt in src/server; enable once cleaned up.
+reportArgumentType = "none"
+reportAttributeAccessIssue = "none"
+reportCallIssue = "none"
+reportGeneralTypeIssues = "none"
+reportOptionalMemberAccess = "none"
+reportReturnType = "none"
 
 [[tool.uv.index]]
 name = "pytorch-cu124"

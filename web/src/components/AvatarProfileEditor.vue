@@ -29,12 +29,13 @@
       <h3>AI 模型與回覆規則</h3>
       <p>模型、回答長度、回覆模式與看板規則隨這份數位人設定檔一起儲存。</p>
       <div class="profile-grid">
-        <label>模型服務<select v-model="profile.llm.provider"><option value="llamacpp">llama.cpp</option><option value="ollama">Ollama</option><option value="openai">OpenAI 相容服務</option></select></label>
+        <label>LLM 端點<select v-model="profile.llm.endpoint" required><option value="" disabled>請選擇端點</option><option v-for="e in endpointOptions" :key="e.name" :value="e.name">{{ e.name }} · {{ e.label || e.provider }}</option></select></label>
         <label>回答模型<input v-model="profile.llm.model" required list="role-models"></label>
       </div>
       <datalist id="role-models"><option v-for="m in modelNames" :key="m" :value="m"></option></datalist>
-      <label>服務網址<input v-model="profile.llm.base_url" type="url" placeholder="http://127.0.0.1:8080/v1"></label>
-      <p>API 金鑰由服務端管理；本機 llama.cpp 會在套用時載入所選模型。即時交接的兩位角色需使用相同服務與模型。</p>
+      <p v-if="selectedEndpoint">服務網址：{{ selectedEndpoint.base_url }}</p>
+      <p v-else-if="endpoints.length" role="alert">此設定檔的原服務網址不在伺服器設定檔的 LLM 端點清單中，請改選端點後再儲存套用。</p>
+      <p>LLM 端點、網址與 API 金鑰只能由伺服器設定檔 <code>llm.endpoints</code> 管理；本機 llama.cpp 會在套用時載入所選模型。即時交接的兩位角色需使用相同端點與模型。</p>
       <div class="profile-grid">
         <label for="llm-response-max-chars">口語字數上限<input id="llm-response-max-chars" type="number" v-model.number="profile.llm.response_max_chars" min="20" max="2000" required aria-describedby="llm-response-max-chars-hint"></label>
         <label>模型 Token 預算<input type="number" v-model.number="profile.llm.max_tokens" min="16" max="8192" required></label>
@@ -52,9 +53,10 @@
     </section>
     <section v-show="section === 'voice'" class="profile-section">
       <h3>聲音與工具</h3><p>每位角色可選擇自己的聲線；即時組合共用同一語音合成引擎。</p>
-      <div class="profile-grid"><label>語音引擎<select v-model="profile.tts.type"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ engine }}</option></select></label><label>聲線／參考音檔<input v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label></div>
+      <div class="profile-grid"><label>語音引擎<select v-model="profile.tts.type"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ engine }}</option></select></label><label>聲線／參考音檔<select v-if="usesVoiceLibrary" v-model="profile.tts.ref_file"><option value="">{{ isCosyVoice ? '預設參考音訊' : '請選擇參考音訊' }}</option><option v-for="voice in ttsVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}</option></select><input v-else v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label></div>
       <label v-if="profile.tts.type === 'edgetts'">英文聲音<input v-model="profile.tts.voice_en_us" placeholder="en-US-JennyNeural"></label>
-      <label v-if="['cosyvoice' ,'fun-cosyvoice3'].includes(profile.tts.type)">參考語音逐字稿<textarea v-model="profile.tts.ref_text" rows="3"></textarea></label>
+      <p v-if="usesVoiceLibrary">參考音檔請先在「語音」設定的音訊庫上傳，再於此選擇。</p>
+      <label v-if="isCosyVoice">參考語音逐字稿<textarea v-model="profile.tts.ref_text" rows="3"></textarea></label>
       <details><summary>其他聲音設定</summary><div class="profile-grid"><label v-for="(label,key) in voiceFields" :key="key">{{ label }}<input :value="profile.tts[key] || ''" @input="profile.tts[key] = $event.target.value"></label></div></details>
       <label class="profile-check"><input type="checkbox" v-model="profile.tools.weather">使用 CWA 即時天氣工具（臺灣，角色交接模式）</label>
     </section>
@@ -64,9 +66,10 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RagFlowSettings from './RagFlowSettings.vue'
+import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
 const profile = defineModel({ type: Object, required: true })
-const props = defineProps({ avatars: { type: Array, default: () => [] }, providers: { type: Object, default: () => ({}) }, initialSection: { type: String, default: 'identity' }, disabled: Boolean })
+const props = defineProps({ avatars: { type: Array, default: () => [] }, endpoints: { type: Array, default: () => [] }, initialSection: { type: String, default: 'identity' }, disabled: Boolean })
 defineEmits(['restore-rules'])
 const section = ref(props.initialSection)
 const sections = [
@@ -76,9 +79,21 @@ const sections = [
   { id: 'voice', icon: 'bi bi-soundwave', label: '聲音與工具' }
 ]
 const ruleFields = [{ key: 'activation', label: '何時使用看板' }, { key: 'speech', label: '口語回覆規則' }, { key: 'board', label: '看板內容規則' }]
-const voiceFields = { mode: '合成模式', tts_server: '語音服務網址', model: '本機模型路徑', language: '語言', speaker: '說話者', instruct: '合成指令', device: '運算裝置' }
+const voiceFields = { mode: '合成模式', tts_server: '語音服務網址（限本機）', model: 'models/ 內的模型名稱（留空為預設）', language: '語言', speaker: '說話者', instruct: '合成指令', device: '運算裝置' }
+// Reference audio is a voice-library ID; the server rejects file paths.
+const { ttsVoiceOptions } = useRuntimeSettings()
+const VOICE_LIBRARY_ENGINES = ['gpt-sovits', 'xtts', 'indextts2', 'cosyvoice', 'fun-cosyvoice3']
+const usesVoiceLibrary = computed(() => VOICE_LIBRARY_ENGINES.includes(profile.value.tts.type))
+const isCosyVoice = computed(() => ['cosyvoice', 'fun-cosyvoice3'].includes(profile.value.tts.type))
 const ttsEngines = computed(() => [...new Set([profile.value.tts.type, 'edgetts', 'cosyvoice', 'fun-cosyvoice3', 'piper'])])
-const modelNames = computed(() => (props.providers[profile.value.llm.provider]?.models || []).map(m => typeof m === 'string' ? m : m.name || m.id).filter(Boolean))
+const endpointOptions = computed(() => {
+  const listed = props.endpoints || []
+  const current = profile.value.llm.endpoint
+  // Keep an unlisted saved name visible so the admin sees what must be changed.
+  return current && !listed.some(e => e.name === current) ? [...listed, { name: current, label: '未列於伺服器設定' }] : listed
+})
+const selectedEndpoint = computed(() => (props.endpoints || []).find(e => e.name === profile.value.llm.endpoint))
+const modelNames = computed(() => (selectedEndpoint.value?.models || []).map(m => typeof m === 'string' ? m : m.name || m.id).filter(Boolean))
 const EDITOR_HEIGHT_STORAGE_KEY = STORAGE_KEYS.editorHeights
 const defaults = { prompt: 200, activation: 120, speech: 120, board: 120 }
 function loadHeights() {

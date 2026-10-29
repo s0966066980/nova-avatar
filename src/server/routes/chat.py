@@ -35,7 +35,6 @@ async def human(request):
                 "code": 0,
                 "msg": "ok",
                 "response": response_text,
-                **started,
             }
         elif params['type'] == 'chat':
             voice_session = state.voice_sessions.get(sessionid)

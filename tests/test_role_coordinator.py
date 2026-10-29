@@ -510,12 +510,14 @@ async def test_two_role_transitions_run_independently(field):
 async def test_profile_model_change_stays_pending_until_both_pages_disconnect(field, monkeypatch):
     console, _ = connect(field, 7, 'console')
     stage, _ = connect(field, 8, 'stage')
+    field.state.config.llm.endpoints = {
+        'ollama': {'provider': 'ollama', 'base_url': field.state.config.llm.base_url},
+        'local': {'provider': 'llamacpp', 'base_url': 'http://localhost:8080/v1'}}
     target = deepcopy(field.library)
     target['revision'] += 1
     for profile in target['profiles']:
         profile['llm']['model'] = 'new-local-model'
-        profile['llm']['provider'] = 'llamacpp'
-        profile['llm']['base_url'] = 'http://localhost:8080/v1'
+        profile['llm']['endpoint'] = 'local'
     loader = Mock()
     monkeypatch.setattr('src.llm.llamacpp.ensure_server', loader)
     try:

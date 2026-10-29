@@ -10,6 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from src.avatars.asset_io import coords_present
 from src.utils.paths import get_data_dir, get_models_dir
 
 AVATAR_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.-]*$"
@@ -67,7 +68,7 @@ def detect_avatar_type(avatar_dir: Path) -> Optional[str]:
         return "ernerf"
     if _looks_like_talkinggaussian(avatar_dir):
         return "talkinggaussian"
-    if (avatar_dir / "face_imgs").is_dir() and (avatar_dir / "coords.pkl").exists():
+    if (avatar_dir / "face_imgs").is_dir() and coords_present(avatar_dir, "coords"):
         return "wav2lip"
 
     name = avatar_dir.name.lower()

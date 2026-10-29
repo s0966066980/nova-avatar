@@ -93,6 +93,17 @@ def enqueue_media_frame(track, frame, eventpoint, loop, quit_event) -> bool:
     return wait_media_coroutine(coroutine, loop, quit_event)
 
 
+def put_until_quit(target, item, quit_event, poll: float = 0.1) -> bool:
+    """Bounded put so a producer thread can stop once its consumer is gone."""
+    while not quit_event.is_set():
+        try:
+            target.put(item, block=True, timeout=poll)
+            return True
+        except queue.Full:
+            continue
+    return False
+
+
 def drain_media_queue(target) -> None:
     mutex = getattr(target, "mutex", None)
     storage = getattr(target, "queue", None)
@@ -522,6 +533,22 @@ class BaseAvatar:
 
     def process_frames(self,quit_event,loop=None,audio_track=None,video_track=None):
         logger.info(f'[幀處理] process_frames 執行緒啟動, sessionid={self.config.sessionid}')
+        try:
+            while not quit_event.is_set():
+                try:
+                    self._process_frames_loop(quit_event, loop, audio_track, video_track)
+                    break
+                except Exception:
+                    # One bad frame must not leave the avatar stuck in the
+                    # speaking state or silently kill video for the session.
+                    logger.exception('[幀處理] 幀處理失敗，結束說話狀態')
+                    self.speaking = False
+                    time.sleep(0.04)
+        finally:
+            self.speaking = False
+            logger.info('basereal process_frames thread stop')
+
+    def _process_frames_loop(self, quit_event, loop, audio_track, video_track):
         while not quit_event.is_set():
             try:
                 result = self.res_frame_queue.get(block=True, timeout=1)
@@ -655,7 +682,6 @@ class BaseAvatar:
             if video_eventpoint is not None:
                 self.mark_stage_end("webrtc_video_enqueue")
             self.record_video_data(combine_frame)
-        logger.info('basereal process_frames thread stop') 
 
 
     def _init_recording_state(self):

@@ -9,7 +9,7 @@ import numpy as np
 import torch.nn as nn
 from torch import optim
 from tqdm import tqdm
-import pickle
+import json
 from glob import glob
 
 from face_detect_utils.get_landmark import Landmark
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     avatar_path = f"./results/avatars/{args.avatar_id}"
     full_imgs_path = f"{avatar_path}/full_imgs" 
     face_imgs_path = f"{avatar_path}/face_imgs" 
-    coords_path = f"{avatar_path}/coords.pkl"
+    coords_path = f"{avatar_path}/coords.json"
     pth_path = f"{avatar_path}/ultralight.pth"
     osmakedirs([avatar_path,full_imgs_path,face_imgs_path])
     print(args)
@@ -93,6 +93,7 @@ if __name__ == "__main__":
     print(f"共檢測到{idx}張人臉")
 	
     print(f"寫入資料到座標檔案:{coords_path}")
-    with open(coords_path, 'wb') as f:
-        pickle.dump(coord_list, f)
+    # Plain JSON: avatar loaders never unpickle face boxes.
+    with open(coords_path, 'w') as f:
+        json.dump(coord_list, f, default=lambda value: value.item())
     os.system(f"cp {args.checkpoint} {pth_path}")
