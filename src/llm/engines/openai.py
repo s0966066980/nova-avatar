@@ -123,6 +123,9 @@ class OpenAILLM(BaseLLM):
             terminal_reason=terminal_reason,
         )
     
+    def discard_pending_history_turn(self, turn_id: str) -> bool:
+        return self._history.discard_pending(turn_id)
+
     def clear_history(self):
         """清空對話歷史"""
         self._history.clear()

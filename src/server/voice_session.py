@@ -17,7 +17,7 @@ import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from threading import RLock
+from threading import Event, RLock
 from typing import Callable, Optional
 from uuid import uuid4
 
@@ -35,6 +35,7 @@ from src.llm.service import (
     acknowledge_session_board_item,
     clear_session_history,
     commit_session_history,
+    discard_pending_history,
     llm_response,
     prepare_spoken_history,
 )
@@ -51,6 +52,19 @@ from src.vad.service import create_segmenter
 EventSink = Callable[[str], None]
 TestResultSink = Callable[[dict], object]
 OUTPUT_STALL_FRAMES = 50  # one second at the 20 ms audio commit clock
+# The main answer waits at most this long for retrieval (ADR 0022).
+RETRIEVAL_BUDGET_SECONDS = 0.4
+# Answer content a held turn keeps from clients until routing releases it.
+_HELD_EVENT_TYPES = frozenset({
+    "rag_retrieval",
+    "assistant_response_start",
+    "assistant_response_delta",
+    "assistant_response_mode",
+    "assistant_board",
+    "board_begin",
+    "board_item",
+    "board_end",
+})
 
 
 def speech_input_rejection_reason(
@@ -203,6 +217,13 @@ class VoiceTurnSession:
         # guard can never clear a turn accepted while it was sleeping.
         self._turn_lock = asyncio.Lock()
         self._llm_finished = False
+        # Playback hold: (turn_id, generation) of a main answer generated
+        # before routing decided. TTS threads wait at the audio boundary.
+        self._playback_hold: Optional[tuple[str, int]] = None
+        self._playback_released = Event()
+        self._playback_released.set()
+        self._playback_blocked_at: Optional[float] = None
+        self._held_events: list[tuple[str, Optional[str], dict]] = []
         self._media_player = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
         self._silent_output_frames = 0
@@ -843,28 +864,152 @@ class VoiceTurnSession:
         if self._metrics is not None:
             self._metrics.mark_prompt_accepted()
         self.mark_stage_start("pre_answer")
-        role_plan = None
         roles = self._role_coordinator
-        if roles is not None and roles.enabled:
-            self.mark_stage_start("routing")
-            role_plan = await roles.before_generate(self, text, turn_id, generation)
-            self.mark_stage_end("routing")
-            if not self._is_current(turn_id, generation) or role_plan.get("cancelled"):
+        if roles is None or not roles.enabled:
+            await self._answer_turn(text, turn_id, generation, input_source, None)
+            return
+        if not roles.continues(self, turn_id):
+            await self._route_concurrently(roles, text, turn_id, generation, input_source)
+            return
+        # A handoff continuation already carries its plan; no routing call.
+        self.mark_stage_start("routing")
+        role_plan = await roles.before_generate(self, text, turn_id, generation)
+        self.mark_stage_end("routing")
+        await self._follow_role_plan(text, turn_id, generation, input_source, role_plan)
+
+    async def _route_concurrently(self, roles, text, turn_id, generation, input_source):
+        """Route while the main answer is generated; play it only if routing keeps it.
+
+        The answer starts after retrieval (bounded) with the plan routing
+        returns when it keeps the current role, and its audio is held at the
+        TTS boundary. An equal routed plan releases it; any other plan fences
+        it by generation and the turn follows the routed plan (ADR 0022).
+        """
+        speculative = roles.speculative_plan()
+        self._hold_playback(turn_id, generation)
+        self.mark_stage_start("routing")
+        routing = asyncio.create_task(roles.before_generate(self, text, turn_id, generation))
+        inputs = asyncio.create_task(self._answer_inputs(text, turn_id, generation))
+        worker: list[asyncio.Future] = []
+        answer = asyncio.create_task(self._speculate(
+            inputs, turn_id, generation, input_source, speculative, worker))
+        try:
+            plan = await routing
+        except BaseException:
+            inputs.cancel()
+            answer.cancel()
+            raise
+        self.mark_stage_end("routing")
+        if not self._is_current(turn_id, generation):
+            inputs.cancel()
+            answer.cancel()
+            return
+        if plan.get("cancelled"):
+            inputs.cancel()
+            await self._discard_speculation(turn_id, answer, worker)
+            return
+        if plan == speculative:
+            self._release_playback(turn_id, generation)
+            response = await answer
+            if response is not None:
+                self._finish_answer(response, turn_id, generation, input_source)
+            return
+        prepared = None
+        if "fixed" in plan:
+            inputs.cancel()
+        else:
+            try:
+                # Reuse this turn's attachments and retrieval for the new answer.
+                prepared = await inputs
+            except asyncio.CancelledError:
+                answer.cancel()
+                raise
+            except Exception as exc:
+                prepared = exc
+        generation = await self._discard_speculation(turn_id, answer, worker)
+        try:
+            if isinstance(prepared, Exception):
+                raise prepared
+            await self._follow_role_plan(text, turn_id, generation, input_source, plan, prepared)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            # The caller's generation was fenced with the discarded answer.
+            self._handle_turn_error(exc, turn_id, generation)
+
+    async def _speculate(self, inputs, turn_id, generation, input_source, plan, worker):
+        prepared = await inputs
+        if prepared is None:
+            return None
+        return await self._stream_answer(
+            prepared, turn_id, generation, input_source, plan, worker=worker)
+
+    async def _discard_speculation(self, turn_id, answer, worker) -> int:
+        """Fence an answer routing did not keep; return the turn's new generation."""
+        generation = self._fence_held_answer(turn_id)
+        answer.cancel()
+        await asyncio.gather(answer, return_exceptions=True)
+        if worker:
+            # The fenced worker stops at its next chunk. Its pending history
+            # must be gone before the routed reply opens the same turn's, and
+            # a fragment it queued meanwhile must not delay that reply's TTS.
+            await asyncio.gather(worker[0], return_exceptions=True)
+            self.avatar.flush_talk()
+        discard_pending_history(self.avatar, turn_id)
+        return generation
+
+    def _fence_held_answer(self, turn_id: str) -> int:
+        """Same turn, new generation: everything the held answer queued is stale."""
+        self._generation += 1
+        self._turn_context = TurnContext(turn_id=turn_id, generation=self._generation)
+        self._release_playback(turn_id, None)
+        self.avatar.flush_talk()
+        if self._media_player is not None:
+            self._media_player.discard_stale_media()
+        with self._fragment_lock:
+            self._fragment_texts.clear()
+            self._played_fragment_sequences.clear()
+            self._ended_fragment_sequences.clear()
+            self._played_fragments.clear()
+            self._llm_finished = False
+        if self._metrics is not None:
+            self._metrics.discard_answer_stages()
+        return self._generation
+
+    async def _follow_role_plan(self, text, turn_id, generation, input_source, role_plan,
+                                prepared=None):
+        if not self._is_current(turn_id, generation) or role_plan.get("cancelled"):
+            return
+        if "fixed" in role_plan:
+            self._speak_fixed(text, role_plan["fixed"], turn_id, generation, input_source)
+            return
+        weather = role_plan.get("weather")
+        if weather is not None:
+            self._emit("weather_result", turn_id=turn_id, result=weather)
+            if weather["status"] != "available":
+                explanation = ("目前提供未來七天的天氣預報，請指定這個範圍內的日期。"
+                               if weather["status"] == "out_of_range" else
+                               "目前暫時無法取得所問的最新天氣資料，請稍後再試。")
+                self._speak_fixed(text, explanation, turn_id, generation, input_source)
                 return
-            if "fixed" in role_plan:
-                self._speak_fixed(text, role_plan["fixed"], turn_id, generation, input_source)
+            # Facts join this role's own Prompt/RAG/rules below. A successful
+            # tool result must not bypass the specialist's answer pipeline.
+        await self._answer_turn(text, turn_id, generation, input_source, role_plan, prepared)
+
+    async def _answer_turn(self, text, turn_id, generation, input_source, role_plan,
+                           prepared=None):
+        if prepared is None:
+            prepared = await self._answer_inputs(text, turn_id, generation)
+            if prepared is None:
                 return
-            weather = role_plan.get("weather")
-            if weather is not None:
-                self._emit("weather_result", turn_id=turn_id, result=weather)
-                if weather["status"] != "available":
-                    explanation = ("目前提供未來七天的天氣預報，請指定這個範圍內的日期。"
-                                   if weather["status"] == "out_of_range" else
-                                   "目前暫時無法取得所問的最新天氣資料，請稍後再試。")
-                    self._speak_fixed(text, explanation, turn_id, generation, input_source)
-                    return
-                # Facts join this role's own Prompt/RAG/rules below. A successful
-                # tool result must not bypass the specialist's answer pipeline.
+        response = await self._stream_answer(
+            prepared, turn_id, generation, input_source, role_plan)
+        if response is not None:
+            self._finish_answer(response, turn_id, generation, input_source)
+
+    async def _answer_inputs(self, text, turn_id, generation):
+        """Attachments and bounded retrieval; ``None`` once the turn is stale."""
+        loop = asyncio.get_running_loop()
         resolved = self.attachments.validate_selection(self.attachments.selection)
         if resolved:
             from src.server.attachments import vision_ready
@@ -879,24 +1024,38 @@ class VoiceTurnSession:
                 self.avatar.config if getattr(self.avatar, 'config', None) else self.config,
                 progress, lambda: self._is_current(turn_id, generation))
             if not self._is_current(turn_id, generation):
-                return
+                return None
         rag_result = None
         rag_selection = self._rag_snapshot
         if rag_selection["enabled"] and rag_selection["dataset_ids"]:
             self._emit("state", state="retrieving", turn_id=turn_id)
             self.mark_stage_start("retrieval")
             try:
-                rag_result = await RagFlowClient().retrieve(
+                rag_result = await asyncio.wait_for(RagFlowClient().retrieve(
                     text, rag_selection["dataset_ids"],
                     **({"document_ids": rag_selection["document_ids"]}
                        if rag_selection.get("document_scope") == "selected" else {}),
-                )
+                ), RETRIEVAL_BUDGET_SECONDS)
+            except asyncio.TimeoutError:
+                rag_result = {"status": "timeout", "sources": []}
+                logger.info("RAGFlow retrieval exceeded %.1fs; answering without it",
+                            RETRIEVAL_BUDGET_SECONDS)
             except Exception as exc:
                 rag_result = {"status": "unavailable", "sources": []}
                 logger.warning(f"RAGFlow retrieval unavailable: {type(exc).__name__}")
             self.mark_stage_end("retrieval")
             if not self._is_current(turn_id, generation):
-                return
+                return None
+        return text, rag_result
+
+    async def _stream_answer(self, prepared, turn_id, generation, input_source, role_plan,
+                             *, worker=None):
+        """Generate the main answer; ``None`` once the turn is stale."""
+        loop = asyncio.get_running_loop()
+        text, rag_result = prepared
+        if not self._is_current(turn_id, generation):
+            return None
+        if rag_result is not None:
             self._emit(
                 "rag_retrieval",
                 turn_id=turn_id,
@@ -908,7 +1067,7 @@ class VoiceTurnSession:
             self._emit("assistant_response_start", turn_id=turn_id, mode="streaming", input_source=input_source)
         turn_context = self._turn_context
         if turn_context is None:
-            return
+            return None
         if turn_context.state == TurnState.CREATED:
             turn_context.transition(TurnState.LLM_STREAMING)
 
@@ -924,7 +1083,7 @@ class VoiceTurnSession:
             "datainfo": {
                 "turn_id": turn_id,
                 "generation": generation,
-                "on_board": self._on_board_event,
+                "on_board": partial(self._on_board_event, generation=generation),
             },
         }
         if rag_result and rag_result["status"] == "matched":
@@ -941,7 +1100,8 @@ class VoiceTurnSession:
         try:
             self.avatar._reply_rules_snapshot = self._rules_snapshot
             self.avatar._assistant_profile_snapshot = self._assistant_profile_snapshot
-            self.avatar._reply_mode_callback = lambda mode: self._on_mode_event(turn_id, mode)
+            self.avatar._reply_mode_callback = (
+                lambda mode: self._on_mode_event(turn_id, mode, generation))
             self.avatar._incremental_board = True
         except Exception:
             pass
@@ -962,11 +1122,22 @@ class VoiceTurnSession:
             with observe_stages(report_stage):
                 return llm_response(text, self.avatar, **kwargs)
 
-        response = await loop.run_in_executor(None, _call_llm)
+        future = loop.run_in_executor(None, _call_llm)
+        if worker is not None:
+            # A held answer may be discarded while its worker still runs; its
+            # owner awaits the worker, so cancellation must not orphan it.
+            worker.append(future)
+            response = await asyncio.shield(future)
+        else:
+            response = await future
         self.mark_stage_end("llm_total")
         if not self._is_current(turn_id, generation):
+            return None
+        return str(response).strip()
+
+    def _finish_answer(self, response, turn_id, generation, input_source) -> None:
+        if not self._is_current(turn_id, generation):
             return
-        response = str(response).strip()
         self._llm_finished = True
         self._emit("state", state="tts_ready", turn_id=turn_id)
         if not response:
@@ -995,6 +1166,61 @@ class VoiceTurnSession:
             )
         self._turn_task = None
         self._end_turn_if_nothing_speakable(turn_id)
+
+    def _hold_playback(self, turn_id: str, generation: int) -> None:
+        self._held_events = []
+        self._playback_blocked_at = None
+        self._playback_hold = (turn_id, generation)
+        self._playback_released.clear()
+
+    def _playback_held(self) -> bool:
+        """Whether the active turn's answer still waits for routing."""
+        hold = self._playback_hold
+        return hold is not None and hold == (self._turn_id, self._generation)
+
+    def _release_playback(self, turn_id: str, generation: Optional[int]) -> None:
+        """Let a held answer play (``generation``) or drop it (``None``)."""
+        hold = self._playback_hold
+        blocked_at = self._playback_blocked_at
+        held, self._held_events = self._held_events, []
+        self._playback_hold = None
+        self._playback_blocked_at = None
+        self._playback_released.set()
+        if generation is None or hold != (turn_id, generation):
+            return
+        if self._metrics is not None:
+            waited = 0.0 if blocked_at is None else self._metrics_clock() - blocked_at
+            self._metrics.record_stage_duration("routing_hold", max(0.0, waited))
+        for event_type, event_turn, payload in held:
+            self._emit(event_type, turn_id=event_turn, **payload)
+
+    def _await_playback_release(self, eventpoint: dict) -> None:
+        """Block a TTS thread's held answer audio until routing decides."""
+        try:
+            key = (str(eventpoint["turn_id"]), int(eventpoint["generation"]))
+        except (KeyError, TypeError, ValueError):
+            return
+        if self._playback_hold != key:
+            return
+        loop = self._event_loop
+        try:
+            if asyncio.get_running_loop() is loop:
+                return  # never block the session loop itself
+        except RuntimeError:
+            pass
+        if loop is not None and not loop.is_closed():
+            try:
+                loop.call_soon_threadsafe(
+                    self._note_playback_blocked, key, self._metrics_clock())
+            except RuntimeError:
+                logger.debug("Dropped playback hold timing: session loop closed")
+        while (self._playback_hold == key and self._generation == key[1]
+               and not self._closed):
+            self._playback_released.wait(0.05)
+
+    def _note_playback_blocked(self, key, blocked_at: float) -> None:
+        if self._playback_hold == key and self._playback_blocked_at is None:
+            self._playback_blocked_at = blocked_at
 
     def _end_silent_turn(self, turn_id: str) -> None:
         """Finish a turn that will never produce playback audio."""
@@ -1112,6 +1338,11 @@ class VoiceTurnSession:
             return
         if self._metrics is not None:
             self._metrics.mark_output_stopped()
+        if not self._output_active and self._playback_held():
+            # Silence while routing decides is the hold, not a stalled TTS.
+            self._silent_output_frames = 0
+            self._tts_pending_silent_frames = 0
+            return
         if not self._output_active:
             if self._has_unended_fragments():
                 if self._tts_has_pending_work():
@@ -1525,7 +1756,13 @@ class VoiceTurnSession:
         return accepted
 
     def accepts_media(self, eventpoint: dict, stage: str) -> bool:
-        """Validate one turn-aware media item at a cross-thread boundary."""
+        """Validate one turn-aware media item at a cross-thread boundary.
+
+        At ``avatar_audio_enqueue`` a held answer's TTS thread first waits
+        for the routing decision, so its audio is synthesized but not sent.
+        """
+        if stage == "avatar_audio_enqueue" and isinstance(eventpoint, dict):
+            self._await_playback_release(eventpoint)
         if isinstance(eventpoint, dict) and "avatar_epoch" in eventpoint:
             if self._closed or eventpoint["avatar_epoch"] != getattr(self.avatar, "_asset_epoch", 0):
                 return False
@@ -1684,13 +1921,20 @@ class VoiceTurnSession:
             return
         loop.call_soon_threadsafe(
             partial(
-                self._emit,
+                self._emit_if_current,
+                int(generation),
                 "assistant_response_delta",
                 turn_id=turn_id,
                 sequence=sequence,
                 text_delta=text,
             )
         )
+
+    def _emit_if_current(self, generation: int, event_type: str, *, turn_id: str,
+                         **payload) -> None:
+        """Loop-side delivery of worker output; a fence may have run since."""
+        if self._is_current(turn_id, generation):
+            self._emit(event_type, turn_id=turn_id, **payload)
 
     def _start_turn_context(self, turn_id: str, *, origin="visitor") -> None:
         self._turn_origin = origin
@@ -1996,30 +2240,41 @@ class VoiceTurnSession:
         if refresh_greetings:
             self.greetings.refresh()
 
-    def _on_board_event(self, payload: dict) -> None:
+    def _on_board_event(self, payload: dict, generation: Optional[int] = None) -> None:
         if not isinstance(payload, dict):
             return
         payload_turn = payload.get("turn_id") or self._turn_id
-        if not payload_turn or not self._is_current(str(payload_turn), self._generation):
+        if generation is None:
+            generation = self._generation
+        if not payload_turn or not self._is_current(str(payload_turn), generation):
             return
         loop = self._event_loop
         if loop is not None and not loop.is_closed():
-            loop.call_soon_threadsafe(self._dispatch_board_event, payload)
+            loop.call_soon_threadsafe(self._dispatch_board_event_if_current,
+                                      str(payload_turn), generation, payload)
         else:
             self._dispatch_board_event(payload)
 
-    def _on_mode_event(self, turn_id: str, mode) -> None:
+    def _dispatch_board_event_if_current(self, turn_id: str, generation: int,
+                                         payload: dict) -> None:
+        if self._is_current(turn_id, generation):
+            self._dispatch_board_event(payload)
+
+    def _on_mode_event(self, turn_id: str, mode, generation: Optional[int] = None) -> None:
         """Forward parser-confirmed mode from the worker thread safely."""
-        if not self._is_current(str(turn_id), self._generation):
+        if generation is None:
+            generation = self._generation
+        if not self._is_current(str(turn_id), generation):
             return
         value = getattr(mode, "value", str(mode))
         loop = self._event_loop
         if loop is not None and not loop.is_closed():
             loop.call_soon_threadsafe(
                 partial(
-                    self._emit,
+                    self._emit_if_current,
+                    generation,
                     "assistant_response_mode",
-                    turn_id=turn_id,
+                    turn_id=str(turn_id),
                     mode=value,
                 )
             )
@@ -2087,6 +2342,10 @@ class VoiceTurnSession:
 
 
     def _emit(self, event_type: str, *, turn_id: Optional[str] = None, **payload) -> None:
+        if event_type in _HELD_EVENT_TYPES and self._playback_held():
+            # Routing may still discard this answer; clients see it on release.
+            self._held_events.append((event_type, turn_id, payload))
+            return
         event = {
             "type": event_type,
             "turn_id": turn_id if turn_id is not None else self._turn_id,

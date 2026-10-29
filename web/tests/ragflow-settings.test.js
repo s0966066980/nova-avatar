@@ -26,6 +26,8 @@ test('檢索參考與故障可顯示，但空結果不混入對話', () => {
   assert.match(app, /ragByTurn\[msg\.voiceTurnId\]\.status === 'unavailable'/)
   assert.match(app, /<details[^>]*class="rag-turn-references"/)
   assert.match(app, /status === 'unavailable'[\s\S]*\|\| ragByTurn\[msg\.voiceTurnId\]\.sources\.length/)
+  // ADR 0022: retrieval past its 400 ms budget is reported, not waited for.
+  assert.match(app, /status === 'timeout'"[^>]*class="rag-turn-warning"[\s\S]*?本輪未取得檢索/)
   assert.doesNotMatch(app, /ragByTurn\[msg\.voiceTurnId\]\.status === 'empty'/)
   assert.doesNotMatch(app, /本輪是一般回答/)
   assert.doesNotMatch(app, /put_msg_txt\(source\.content/)
