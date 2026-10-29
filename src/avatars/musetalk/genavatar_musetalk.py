@@ -8,7 +8,6 @@ import argparse
 import glob
 import json
 import os
-import pickle
 import shutil
 import sys
 
@@ -68,8 +67,8 @@ def create_musetalk_human(file, avatar_id):
     mask_out_path = os.path.join(save_path, "mask")
     create_dir(mask_out_path)
 
-    mask_coords_path = os.path.join(save_path, "mask_coords.pkl")
-    coords_path = os.path.join(save_path, "coords.pkl")
+    mask_coords_path = os.path.join(save_path, "mask_coords.json")
+    coords_path = os.path.join(save_path, "coords.json")
     latents_out_path = os.path.join(save_path, "latents.pt")
 
     with open(os.path.join(save_path, "avator_info.json"), "w") as f:
@@ -130,11 +129,12 @@ def create_musetalk_human(file, avatar_id):
         mask_coords_list_cycle += [crop_box]
         mask_list_cycle.append(mask)
 
-    with open(mask_coords_path, 'wb') as f:
-        pickle.dump(mask_coords_list_cycle, f)
+    # Plain JSON: avatar loaders never unpickle face boxes.
+    with open(mask_coords_path, 'w') as f:
+        json.dump(mask_coords_list_cycle, f, default=lambda value: value.item())
 
-    with open(coords_path, 'wb') as f:
-        pickle.dump(coord_list_cycle, f)
+    with open(coords_path, 'w') as f:
+        json.dump(coord_list_cycle, f, default=lambda value: value.item())
     torch.save(input_latent_list_cycle, os.path.join(latents_out_path))
 
 

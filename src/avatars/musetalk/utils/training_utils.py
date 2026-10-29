@@ -1,3 +1,9 @@
+# Portions derived from MuseTalk.
+# Copyright (c) 2024 Tencent Music Entertainment Group.
+# Licensed under the MIT License.
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
+# See third_party/licenses/MuseTalk-LICENSE.txt.
+
 import os
 import json
 import logging
@@ -75,7 +81,7 @@ def initialize_models_and_optimizers(cfg, accelerator, weight_dtype):
     if not cfg.random_init_unet:
         pretrained_unet_path = os.path.join(cfg.pretrained_model_name_or_path, cfg.unet_sub_folder, "pytorch_model.bin")
         print(f"### Loading existing unet weights from {pretrained_unet_path}. ###")
-        checkpoint = torch.load(pretrained_unet_path, map_location=accelerator.device)
+        checkpoint = torch.load(pretrained_unet_path, map_location=accelerator.device, weights_only=True)
         model_dict['unet'].load_state_dict(checkpoint)
       
     unet_params = [p.numel() for n, p in model_dict['unet'].named_parameters()]
@@ -261,7 +267,8 @@ def initialize_syncnet(cfg, accelerator, weight_dtype):
         print(
             f"Load SyncNet checkpoint from: {syncnet_config.ckpt.inference_ckpt_path}")
         checkpoint = torch.load(
-            syncnet_config.ckpt.inference_ckpt_path, map_location=accelerator.device)
+            syncnet_config.ckpt.inference_ckpt_path, map_location=accelerator.device,
+            weights_only=True)
         syncnet.load_state_dict(checkpoint["state_dict"])
         syncnet.to(dtype=weight_dtype)
         syncnet.requires_grad_(False)

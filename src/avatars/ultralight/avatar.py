@@ -15,7 +15,6 @@ import os
 import time
 import cv2
 import glob
-import pickle
 import copy
 
 import queue
@@ -27,6 +26,7 @@ import torch.multiprocessing as mp
 from src.avatars.ultralight.audio_stream_handler import HubertAudioStreamHandler
 import asyncio
 from av import AudioFrame, VideoFrame
+from src.avatars.asset_io import load_avatar_tensors, load_coords
 from src.avatars.base import BaseAvatar
 
 #from imgcache import ImgCache
@@ -58,13 +58,11 @@ def load_avatar(avatar_id):
     avatar_path = f"./data/avatars/{avatar_id}"
     full_imgs_path = f"{avatar_path}/full_imgs" 
     face_imgs_path = f"{avatar_path}/face_imgs" 
-    coords_path = f"{avatar_path}/coords.pkl" 
-    
+
     model = Model(6, 'hubert').to(device)  # 假設Model是你自定義的類
-    model.load_state_dict(torch.load(f"{avatar_path}/ultralight.pth"))
-    
-    with open(coords_path, 'rb') as f:
-        coord_list_cycle = pickle.load(f)
+    model.load_state_dict(load_avatar_tensors(f"{avatar_path}/ultralight.pth"))
+
+    coord_list_cycle = load_coords(avatar_path, "coords")
     input_img_list = glob.glob(os.path.join(full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
     input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
     frame_list_cycle = read_imgs(input_img_list)

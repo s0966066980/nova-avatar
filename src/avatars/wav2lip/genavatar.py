@@ -10,7 +10,6 @@ import json, subprocess, random, string
 from tqdm import tqdm
 from glob import glob
 import torch
-import pickle
 import face_detection
 
 
@@ -108,7 +107,7 @@ if __name__ == "__main__":
     avatar_path = f"./data/avatars/{args.avatar_id}"
     full_imgs_path = f"{avatar_path}/full_imgs" 
     face_imgs_path = f"{avatar_path}/face_imgs" 
-    coords_path = f"{avatar_path}/coords.pkl"
+    coords_path = f"{avatar_path}/coords.json"
     osmakedirs([avatar_path,full_imgs_path,face_imgs_path])
     print(args)
 
@@ -127,5 +126,6 @@ if __name__ == "__main__":
         coord_list.append(coords)
         idx = idx + 1
 	
-    with open(coords_path, 'wb') as f:
-        pickle.dump(coord_list, f)
+    # Plain JSON: avatar loaders never unpickle face boxes.
+    with open(coords_path, 'w') as f:
+        json.dump(coord_list, f, default=lambda value: value.item())
