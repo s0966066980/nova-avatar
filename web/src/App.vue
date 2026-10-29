@@ -193,12 +193,17 @@ See LICENSE and NOTICE.
                   <div
                     v-if="msg.type === 'ai' && msg.voiceTurnId && ragByTurn[msg.voiceTurnId]
                       && (ragByTurn[msg.voiceTurnId].status === 'unavailable'
+                        || ragByTurn[msg.voiceTurnId].status === 'timeout'
                         || ragByTurn[msg.voiceTurnId].sources.length)"
                     class="rag-turn-status"
                   >
                     <div v-if="ragByTurn[msg.voiceTurnId].status === 'unavailable'" class="rag-turn-warning" role="status">
                       <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
                       知識庫暫時無法連線，本輪沿用一般回答。
+                    </div>
+                    <div v-else-if="ragByTurn[msg.voiceTurnId].status === 'timeout'" class="rag-turn-warning" role="status">
+                      <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                      本輪未取得檢索：知識庫回應逾時，本輪沿用一般回答。
                     </div>
                     <details v-else-if="ragByTurn[msg.voiceTurnId].sources.length" class="rag-turn-references">
                       <summary>檢索參考 · {{ ragByTurn[msg.voiceTurnId].sources.length }} 段</summary>
