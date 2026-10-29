@@ -33,11 +33,12 @@ SHARED_MODEL_URL = "http://host.docker.internal:11436"
 
 
 def ollama_api(path: str, body: dict | None = None, *, base: str = "http://127.0.0.1:11434"):
-    request = urllib.request.Request(
+    # Every caller passes a fixed http:// base: loopback or the docker gateway.
+    request = urllib.request.Request(  # noqa: S310 -- fixed http:// Ollama base
         base + path, data=json.dumps(body).encode() if body is not None else None,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=180) as response:
+    with urllib.request.urlopen(request, timeout=180) as response:  # noqa: S310 -- same request
         return json.load(response)
 
 
@@ -55,25 +56,25 @@ def read_key() -> str:
 def works(key: str) -> bool:
     if not key:
         return False
-    request = urllib.request.Request(
+    request = urllib.request.Request(  # noqa: S310 -- fixed loopback BASE_URL
         BASE_URL + "/api/v1/datasets?page_size=1",
         headers={"Authorization": "Bearer " + key},
     )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310 -- same request
             return json.load(response).get("code") == 0
     except (urllib.error.URLError, ValueError):
         return False
 
 
 def model_api(key: str, method: str, path: str, body: dict | None = None):
-    request = urllib.request.Request(
+    request = urllib.request.Request(  # noqa: S310 -- fixed loopback BASE_URL
         BASE_URL + "/api/v1" + path,
         method=method,
         data=json.dumps(body).encode() if body is not None else None,
         headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=120) as response:
+    with urllib.request.urlopen(request, timeout=120) as response:  # noqa: S310 -- same request
         result = json.load(response)
     if result.get("code") != 0:
         raise RuntimeError(f"RAGFlow 模型設定失敗：{method} {path}")
@@ -274,7 +275,7 @@ def configure_chat(key: str, model_name: str) -> None:
         }).encode(),
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=180) as response:
+    with urllib.request.urlopen(request, timeout=180) as response:  # noqa: S310 -- fixed loopback URL
         if not json.load(response).get("done"):
             raise RuntimeError(f"本機 Ollama 的 {model_name} 預熱未完成。")
     if not any(provider.get("name") == "Ollama" for provider in api("GET", "/providers")):

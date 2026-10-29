@@ -62,6 +62,7 @@ AREA_BY_FILE = {
     "test_runtime_settings.py": "runtime",
     "test_deferred_settings.py": "runtime",
     "test_dependency_lock.py": "governance",
+    "test_ruff_security.py": "governance",
     "test_scene_background.py": "avatar",
     "test_server_shutdown.py": "runtime",
     "test_sovits_tts.py": "speech",
