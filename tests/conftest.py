@@ -55,6 +55,7 @@ AREA_BY_FILE = {
     "test_ragflow_integration.py": "ragflow",
     "test_reply_streaming.py": "conversation",
     "test_reply_latency.py": "conversation",
+    "test_render_stop.py": "conversation",
     "test_realtime_avatar.py": "conversation",
     "test_response_protocol.py": "conversation",
     "test_route_access.py": "runtime",
