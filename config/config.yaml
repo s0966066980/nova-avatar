@@ -123,11 +123,11 @@ llm:
   provider: llamacpp  # llamacpp | ollama | openai
   api_key: ollama  # Ollama / llama-server 都不驗證；llamacpp 端點實際用清單中的設定
   base_url: http://127.0.0.1:8080/v1
-  model: Qwen3.5-9B-UD-Q4_K_XL
+  model: gemma-4-E2B_q4_0-it
   # llama.cpp 端點的模型是 llamacpp_dir 內的 GGUF 名稱，由數位人設定檔的 llm.model 選擇：
-  #   Qwen3.5-9B-UD-Q4_K_XL  目前主角色使用的模型
-  #   gemma-4-E2B_q4_0-it    Gemma 4 E2B（Apache-2.0），同目錄的 gemma-4-E2B-it-mmproj.gguf 會自動
-  #                          附掛供附件看圖；首音延遲改善的候選預設，品質報告經使用者接受後才切換
+  #   gemma-4-E2B_q4_0-it    預設。Gemma 4 E2B（Apache-2.0），同目錄的 gemma-4-E2B-it-mmproj.gguf
+  #                          會自動附掛供附件看圖（品質報告：.scratch/first-audio-latency/e2b-eval/report.md）
+  #   Qwen3.5-9B-UD-Q4_K_XL  可選；品質略好，首個片段約慢 2–3 倍
   #   兩者都關閉思考模式（--reasoning off，請求也帶 enable_thinking: false）。
   llamacpp_dir: /home/oliver/llama
   llamacpp_host: 127.0.0.1

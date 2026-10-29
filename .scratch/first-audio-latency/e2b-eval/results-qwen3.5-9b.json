@@ -1,0 +1,1758 @@
+{
+  "label": "Qwen3.5-9B",
+  "model": "Qwen3.5-9B-UD-Q4_K_XL",
+  "base_url": "http://127.0.0.1:18080/v1",
+  "at": "2026-10-29T17:32:04+00:00",
+  "items": [
+    {
+      "id": "g01",
+      "category": "general",
+      "source": "voice-test-history",
+      "role": "main",
+      "text": "請只回答「語音測試正常」。不要補充其他內容。",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.539,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n語音測試正常。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "語音測試正常。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 7
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "語音測試正常。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.419,
+        "first_speech_seconds": 0.514,
+        "first_fragment": {
+          "text": "語音測試正常。",
+          "chars": 6,
+          "seconds": 0.548
+        },
+        "total_seconds": 0.593
+      }
+    },
+    {
+      "id": "g02",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "你好，你是誰？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.476,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我是 Nova Avatar，很高興認識你。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我是 Nova Avatar，很高興認識你。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 20
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "我是 Nova Avatar，很高興認識你。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.403,
+        "first_speech_seconds": 0.514,
+        "first_fragment": {
+          "text": "我是 Nova Avatar，很高興認識你。",
+          "chars": 18,
+          "seconds": 0.579
+        },
+        "total_seconds": 0.622
+      }
+    },
+    {
+      "id": "g03",
+      "category": "general",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "介紹你們的服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.476,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我們提供即時語音對話互動服務。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我們提供即時語音對話互動服務。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 15
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "我們提供即時語音對話互動服務。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.263,
+        "first_speech_seconds": 0.369,
+        "first_fragment": {
+          "text": "我們提供即時語音對話互動服務。",
+          "chars": 14,
+          "seconds": 0.435
+        },
+        "total_seconds": 0.476
+      }
+    },
+    {
+      "id": "g04",
+      "category": "general",
+      "source": "reply-rules-example",
+      "role": "main",
+      "text": "請說明安裝軟體的三個步驟。",
+      "expected_route": "answer",
+      "expected_mode": "BOARD",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.53,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n安裝軟體通常包含下載檔案與執行安裝程序。\n[[BOARD_JSON]]\n{\"title\":\"軟體安裝步驟\",\"items\":[{\"title\":\"下載安裝檔\",\"content\":\"前往軟體官方網站，找到並下載對應作業系統的安裝程式。\"},{\"title\":\"執行安裝程式\",\"content\":\"雙擊下載好的檔案，依照畫面提示進行安裝設定。\"},{\"title\":\"完成與啟動\",\"content\":\"等待安裝結束，重新啟動軟體即可開始使用。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "安裝軟體通常包含下載檔案與執行安裝程序。",
+        "board": {
+          "title": "軟體安裝步驟",
+          "items": [
+            {
+              "title": "下載安裝檔",
+              "content": "前往軟體官方網站，找到並下載對應作業系統的安裝程式。"
+            },
+            {
+              "title": "執行安裝程式",
+              "content": "雙擊下載好的檔案，依照畫面提示進行安裝設定。"
+            },
+            {
+              "title": "完成與啟動",
+              "content": "等待安裝結束，重新啟動軟體即可開始使用。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 20
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "安裝軟體通常包含下載檔案與執行安裝程序。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "BOARD"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.401,
+        "first_speech_seconds": 0.502,
+        "first_fragment": {
+          "text": "安裝軟體通常包含下載檔案與執行安裝程序。",
+          "chars": 19,
+          "seconds": 0.75
+        },
+        "total_seconds": 1.456
+      }
+    },
+    {
+      "id": "g05",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "比較搭捷運和開車去臺北車站的優缺點。",
+      "expected_route": "answer",
+      "expected_mode": "BOARD",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.498,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n搭捷運和開車各有優缺點，視您的需求與情境而定。\n[[BOARD_JSON]]\n{\"title\":\"搭捷運與開車比較\",\"items\":[{\"title\":\"搭捷運優勢\",\"content\":\"不受塞車影響，準時且方便，停車費也較省。\"},{\"title\":\"搭捷運劣勢\",\"content\":\"需配合時刻表，攜帶大件行李或重物較不便。\"},{\"title\":\"開車優勢\",\"content\":\"門到門服務，攜帶行李方便，時間彈性高。\"},{\"title\":\"開車劣勢\",\"content\":\"易受塞車影響，停車費昂貴且尋找车位耗時。\"},{\"title\":\"成本比較\",\"content\":\"搭捷運通常較便宜，開車則需負擔油費與停車費。\"},{\"title\":\"環境影響\",\"content\":\"搭捷運較環保，開車則會增加碳排放。\"},{\"title\":\"適合情境\",\"content\":\"短途或行李多適合開車，長途或固定路線適合捷運。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "搭捷運和開車各有優缺點，視您的需求與情境而定。",
+        "board": {
+          "title": "搭捷運與開車比較",
+          "items": [
+            {
+              "title": "搭捷運優勢",
+              "content": "不受塞車影響，準時且方便，停車費也較省。"
+            },
+            {
+              "title": "搭捷運劣勢",
+              "content": "需配合時刻表，攜帶大件行李或重物較不便。"
+            },
+            {
+              "title": "開車優勢",
+              "content": "門到門服務，攜帶行李方便，時間彈性高。"
+            },
+            {
+              "title": "開車劣勢",
+              "content": "易受塞車影響，停車費昂貴且尋找车位耗時。"
+            },
+            {
+              "title": "成本比較",
+              "content": "搭捷運通常較便宜，開車則需負擔油費與停車費。"
+            },
+            {
+              "title": "環境影響",
+              "content": "搭捷運較環保，開車則會增加碳排放。"
+            },
+            {
+              "title": "適合情境",
+              "content": "短途或行李多適合開車，長途或固定路線適合捷運。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": false,
+            "value": "车"
+          },
+          "length": {
+            "passed": true,
+            "value": 23
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "搭捷運和開車各有優缺點，視您的需求與情境而定。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "BOARD"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.381,
+        "first_speech_seconds": 0.482,
+        "first_fragment": {
+          "text": "搭捷運和開車各有優缺點，視您的需求與情境而定。",
+          "chars": 21,
+          "seconds": 0.597
+        },
+        "total_seconds": 2.112
+      }
+    },
+    {
+      "id": "g06",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "謝謝你的幫忙！",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.484,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n不客氣，很高興能幫上忙。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "不客氣，很高興能幫上忙。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 12
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "不客氣，很高興能幫上忙。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.222,
+        "first_speech_seconds": 0.329,
+        "first_fragment": {
+          "text": "不客氣，很高興能幫上忙。",
+          "chars": 10,
+          "seconds": 0.411
+        },
+        "total_seconds": 0.452
+      }
+    },
+    {
+      "id": "g07",
+      "category": "general",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "解釋量子力學",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.488,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n量子力學是研究極微小粒子行為的理論，和我們日常經驗很不一樣。\n[[BOARD_JSON]]\n{\"title\":\"量子力學核心概念\",\"items\":[{\"title\":\"波粒二象性\",\"content\":\"微觀粒子同時具有波動與粒子特性，取決於觀察方式。\"},{\"title\":\"不確定性原理\",\"content\":\"無法同時精確測量粒子的位置與動量，存在本質限制。\"},{\"title\":\"量子疊加\",\"content\":\"粒子在測量前可處於多個狀態的混合，直到被觀察才確定。\"},{\"title\":\"量子糾纏\",\"content\":\"兩個粒子即使相隔遠，狀態仍會瞬間相互影響，違反直覺。\"},{\"title\":\"機率解釋\",\"content\":\"無法預測單一結果，只能計算各種可能發生的機率分佈。\"},{\"title\":\"應用領域\",\"content\":\"廣泛應用於半導體、雷射、核磁共振及未來量子電腦開發。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "量子力學是研究極微小粒子行為的理論，和我們日常經驗很不一樣。",
+        "board": {
+          "title": "量子力學核心概念",
+          "items": [
+            {
+              "title": "波粒二象性",
+              "content": "微觀粒子同時具有波動與粒子特性，取決於觀察方式。"
+            },
+            {
+              "title": "不確定性原理",
+              "content": "無法同時精確測量粒子的位置與動量，存在本質限制。"
+            },
+            {
+              "title": "量子疊加",
+              "content": "粒子在測量前可處於多個狀態的混合，直到被觀察才確定。"
+            },
+            {
+              "title": "量子糾纏",
+              "content": "兩個粒子即使相隔遠，狀態仍會瞬間相互影響，違反直覺。"
+            },
+            {
+              "title": "機率解釋",
+              "content": "無法預測單一結果，只能計算各種可能發生的機率分佈。"
+            },
+            {
+              "title": "應用領域",
+              "content": "廣泛應用於半導體、雷射、核磁共振及未來量子電腦開發。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 30
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "量子力學是研究極微小粒子行為的理論，和我們日常經驗很不一樣。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.348,
+        "first_speech_seconds": 0.448,
+        "first_fragment": {
+          "text": "量子力學是研究極微小粒子行為的理論，和我們日常經驗很不一樣。",
+          "chars": 28,
+          "seconds": 0.598
+        },
+        "total_seconds": 2.027
+      }
+    },
+    {
+      "id": "g08",
+      "category": "general",
+      "source": "prewarm-prompt",
+      "role": "main",
+      "text": "請用一句短句說明如何保持專注。",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.503,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n保持專注可以透過排除干擾並設定明確目標。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "保持專注可以透過排除干擾並設定明確目標。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 20
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "保持專注可以透過排除干擾並設定明確目標。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.394,
+        "first_speech_seconds": 0.502,
+        "first_fragment": {
+          "text": "保持專注可以透過排除干擾並設定明確目標。",
+          "chars": 19,
+          "seconds": 0.585
+        },
+        "total_seconds": 0.625
+      }
+    },
+    {
+      "id": "g09",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "臺灣最高的山是哪一座？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.47,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n臺灣最高的山是玉山。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "臺灣最高的山是玉山。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 10
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "臺灣最高的山是玉山。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.352,
+        "first_speech_seconds": 0.461,
+        "first_fragment": {
+          "text": "臺灣最高的山是玉山。",
+          "chars": 9,
+          "seconds": 0.501
+        },
+        "total_seconds": 0.544
+      }
+    },
+    {
+      "id": "g10",
+      "category": "general",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "比較台北和高雄的公司服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.476,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n台北與高雄的公司服務各有特色，取決於您的具體需求。\n[[BOARD_JSON]]\n{\"title\":\"台北與高雄公司服務比較\",\"items\":[{\"title\":\"人才資源\",\"content\":\"台北人才密集，適合高階專業服務；高雄人力成本較低，適合製造與基礎服務。\"},{\"title\":\"營運成本\",\"content\":\"台北租金與人力成本高，高雄相對低廉，預算有限者較適合。\"},{\"title\":\"產業生態\",\"content\":\"台北以金融、科技為主；高雄則以製造業、物流及新興科技為重點。\"},{\"title\":\"客戶接觸\",\"content\":\"台北國際化程度高，方便接觸全球客戶；高雄在地連結緊密，適合區域市場。\"},{\"title\":\"政策支援\",\"content\":\"台北資源集中但競爭激烈；高雄有政府積極推動產業升級與補助。\"},{\"title\":\"生活環境\",\"content\":\"台北生活便利但压力大；高雄生活節奏較慢，適合重視工作生活平衡。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "台北與高雄的公司服務各有特色，取決於您的具體需求。",
+        "board": {
+          "title": "台北與高雄公司服務比較",
+          "items": [
+            {
+              "title": "人才資源",
+              "content": "台北人才密集，適合高階專業服務；高雄人力成本較低，適合製造與基礎服務。"
+            },
+            {
+              "title": "營運成本",
+              "content": "台北租金與人力成本高，高雄相對低廉，預算有限者較適合。"
+            },
+            {
+              "title": "產業生態",
+              "content": "台北以金融、科技為主；高雄則以製造業、物流及新興科技為重點。"
+            },
+            {
+              "title": "客戶接觸",
+              "content": "台北國際化程度高，方便接觸全球客戶；高雄在地連結緊密，適合區域市場。"
+            },
+            {
+              "title": "政策支援",
+              "content": "台北資源集中但競爭激烈；高雄有政府積極推動產業升級與補助。"
+            },
+            {
+              "title": "生活環境",
+              "content": "台北生活便利但压力大；高雄生活節奏較慢，適合重視工作生活平衡。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": false,
+            "value": "压"
+          },
+          "length": {
+            "passed": true,
+            "value": 25
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "台北與高雄的公司服務各有特色，取決於您的具體需求。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.35,
+        "first_speech_seconds": 0.452,
+        "first_fragment": {
+          "text": "台北與高雄的公司服務各有特色，取決於您的具體需求。",
+          "chars": 23,
+          "seconds": 0.566
+        },
+        "total_seconds": 2.098
+      }
+    },
+    {
+      "id": "r01",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣在哪裡？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.478,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣位於 m87 星雲。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣位於 m87 星雲。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 13
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "馬拉斯客灣位於 m87 星雲。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.408,
+        "first_speech_seconds": 0.517,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於 m87 星雲。",
+          "chars": 12,
+          "seconds": 0.608
+        },
+        "total_seconds": 0.651
+      }
+    },
+    {
+      "id": "r02",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "請介紹一下馬拉斯客灣。",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.407,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣位於著名的 M87 星雲之中，是一個非常壯觀的太空區域。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣位於著名的 M87 星雲之中，是一個非常壯觀的太空區域。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 31
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "馬拉斯客灣位於著名的 M87 星雲之中，是一個非常壯觀的太空區域。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.362,
+        "first_speech_seconds": 0.472,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於著名的 M87 星雲之中，是一個非常壯觀的太空區域。",
+          "chars": 29,
+          "seconds": 0.644
+        },
+        "total_seconds": 0.685
+      }
+    },
+    {
+      "id": "r03",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣位於哪個星雲？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.417,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣位於 M87 星雲。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣位於 M87 星雲。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 13
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "馬拉斯客灣位於 M87 星雲。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.357,
+        "first_speech_seconds": 0.465,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於 M87 星雲。",
+          "chars": 12,
+          "seconds": 0.556
+        },
+        "total_seconds": 0.599
+      }
+    },
+    {
+      "id": "r04",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣離地球近嗎？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.477,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣位於 m87 星雲，距離地球非常遙遠，不在我們熟悉的太陽系範圍內。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣位於 m87 星雲，距離地球非常遙遠，不在我們熟悉的太陽系範圍內。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 36
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "馬拉斯客灣位於 m87 星雲，距離地球非常遙遠，不在我們熟悉的太陽系範圍內。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.206,
+        "first_speech_seconds": 0.315,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於 m87 星雲，距離地球非常遙遠，不在我們熟悉的太陽系範圍內。",
+          "chars": 33,
+          "seconds": 0.519
+        },
+        "total_seconds": 0.562
+      }
+    },
+    {
+      "id": "r05",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "我想去馬拉斯客灣旅遊，要怎麼去？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.468,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n馬拉斯客灣位於 m87 星雲，目前沒有實際交通方式可前往。\n[[BOARD_JSON]]\n{\"title\":\"前往馬拉斯客灣資訊\",\"items\":[{\"title\":\"地理位置\",\"content\":\"位於 m87 星雲，屬於科幻或虛構場景。\"},{\"title\":\"交通方式\",\"content\":\"目前現實世界中無實際交通路線可抵達。\"},{\"title\":\"建議行動\",\"content\":\"建議查詢科幻作品或遊戲中的相關設定。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "馬拉斯客灣位於 m87 星雲，目前沒有實際交通方式可前往。",
+        "board": {
+          "title": "前往馬拉斯客灣資訊",
+          "items": [
+            {
+              "title": "地理位置",
+              "content": "位於 m87 星雲，屬於科幻或虛構場景。"
+            },
+            {
+              "title": "交通方式",
+              "content": "目前現實世界中無實際交通路線可抵達。"
+            },
+            {
+              "title": "建議行動",
+              "content": "建議查詢科幻作品或遊戲中的相關設定。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 27
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "馬拉斯客灣位於 m87 星雲，目前沒有實際交通方式可前往。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.361,
+        "first_speech_seconds": 0.462,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於 m87 星雲，目前沒有實際交通方式可前往。",
+          "chars": 25,
+          "seconds": 0.617
+        },
+        "total_seconds": 1.284
+      }
+    },
+    {
+      "id": "r06",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣的門票多少錢？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.477,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n目前資料中沒有馬拉斯客灣的門票資訊。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "目前資料中沒有馬拉斯客灣的門票資訊。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 18
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "目前資料中沒有馬拉斯客灣的門票資訊。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.208,
+        "first_speech_seconds": 0.32,
+        "first_fragment": {
+          "text": "目前資料中沒有馬拉斯客灣的門票資訊。",
+          "chars": 17,
+          "seconds": 0.409
+        },
+        "total_seconds": 0.451
+      }
+    },
+    {
+      "id": "w01",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "明天台北會下雨嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.809,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n明天台北有雨，機率六成。\n[[BOARD_JSON]]\n{\"title\":\"台北明日天氣預報\",\"items\":[{\"title\":\"降雨機率\",\"content\":\"12 小時內降雨機率為 60%，需注意攜帶雨具。\"},{\"title\":\"天氣狀況\",\"content\":\"多雲時陰短暫雨，午後可能有雨勢。\"},{\"title\":\"溫度變化\",\"content\":\"氣溫介於 21 至 26 度之間，早晚微涼。\"},{\"title\":\"資料來源\",\"content\":\"交通部中央氣象署，資料時間為 2026 年 10 月 30 日 17:00。\"},{\"title\":\"適用時段\",\"content\":\"預報適用 2026 年 10 月 31 日 06:00 至 18:00。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "明天台北有雨，機率六成。",
+        "board": {
+          "title": "台北明日天氣預報",
+          "items": [
+            {
+              "title": "降雨機率",
+              "content": "12 小時內降雨機率為 60%，需注意攜帶雨具。"
+            },
+            {
+              "title": "天氣狀況",
+              "content": "多雲時陰短暫雨，午後可能有雨勢。"
+            },
+            {
+              "title": "溫度變化",
+              "content": "氣溫介於 21 至 26 度之間，早晚微涼。"
+            },
+            {
+              "title": "資料來源",
+              "content": "交通部中央氣象署，資料時間為 2026 年 10 月 30 日 17:00。"
+            },
+            {
+              "title": "適用時段",
+              "content": "預報適用 2026 年 10 月 31 日 06:00 至 18:00。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 12
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "明天台北有雨，機率六成。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.443,
+        "first_speech_seconds": 0.543,
+        "first_fragment": {
+          "text": "明天台北有雨，機率六成。",
+          "chars": 10,
+          "seconds": 0.6
+        },
+        "total_seconds": 2.07
+      }
+    },
+    {
+      "id": "w02",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "明天適合爬山嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.989,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天有雨，不適合爬山。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天有雨，不適合爬山。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 11
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "明天有雨，不適合爬山。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.452,
+        "first_speech_seconds": 0.562,
+        "first_fragment": {
+          "text": "明天有雨，不適合爬山。",
+          "chars": 9,
+          "seconds": 0.619
+        },
+        "total_seconds": 0.661
+      }
+    },
+    {
+      "id": "w03",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "那週末呢？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.782,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n週末台北中正區多雲，偶有短暫雨。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "週末台北中正區多雲，偶有短暫雨。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 16
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "週末台北中正區多雲，偶有短暫雨。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.207,
+        "first_speech_seconds": 0.318,
+        "first_fragment": {
+          "text": "週末台北中正區多雲，偶有短暫雨。",
+          "chars": 14,
+          "seconds": 0.408
+        },
+        "total_seconds": 0.483
+      }
+    },
+    {
+      "id": "w04",
+      "category": "weather",
+      "source": "role-topic",
+      "role": "weather",
+      "text": "明天臺北市中正區最高溫幾度？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.88,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n明天中正區最高溫約 27 度。\n[[BOARD_JSON]]\n{\"title\":\"臺北市中正區明日天氣\",\"items\":[{\"title\":\"適用時段\",\"content\":\"2026 年 11 月 1 日 06:00 至 18:00\"},{\"title\":\"天氣狀況\",\"content\":\"多雲，降雨機率 20%\"},{\"title\":\"溫度預測\",\"content\":\"最低 20 度，最高 27 度\"},{\"title\":\"資料來源\",\"content\":\"交通部中央氣象署\"},{\"title\":\"發布時間\",\"content\":\"2026 年 10 月 30 日 17:00\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "明天中正區最高溫約 27 度。",
+        "board": {
+          "title": "臺北市中正區明日天氣",
+          "items": [
+            {
+              "title": "適用時段",
+              "content": "2026 年 11 月 1 日 06:00 至 18:00"
+            },
+            {
+              "title": "天氣狀況",
+              "content": "多雲，降雨機率 20%"
+            },
+            {
+              "title": "溫度預測",
+              "content": "最低 20 度，最高 27 度"
+            },
+            {
+              "title": "資料來源",
+              "content": "交通部中央氣象署"
+            },
+            {
+              "title": "發布時間",
+              "content": "2026 年 10 月 30 日 17:00"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 13
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "明天中正區最高溫約 27 度。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.479,
+        "first_speech_seconds": 0.582,
+        "first_fragment": {
+          "text": "明天中正區最高溫約 27 度。",
+          "chars": 12,
+          "seconds": 0.672
+        },
+        "total_seconds": 1.827
+      }
+    },
+    {
+      "id": "w05",
+      "category": "weather",
+      "source": "role-topic",
+      "role": "weather",
+      "text": "明天出門要帶傘嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.794,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n明天中正區白天有雨，建議帶傘。\n[[BOARD_JSON]]\n{\"title\":\"台北中正區明日天氣\",\"items\":[{\"title\":\"10月31日（明天）\",\"content\":\"白天多雲時陰有短暫雨，降雨機率60%，氣溫21至26度，建議攜帶雨具。\"},{\"title\":\"11月1日（週日）\",\"content\":\"白天多雲，降雨機率20%，氣溫20至27度，若無雨可視情況攜帶。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "明天中正區白天有雨，建議帶傘。",
+        "board": {
+          "title": "台北中正區明日天氣",
+          "items": [
+            {
+              "title": "10月31日（明天）",
+              "content": "白天多雲時陰有短暫雨，降雨機率60%，氣溫21至26度，建議攜帶雨具。"
+            },
+            {
+              "title": "11月1日（週日）",
+              "content": "白天多雲，降雨機率20%，氣溫20至27度，若無雨可視情況攜帶。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 15
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "明天中正區白天有雨，建議帶傘。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.443,
+        "first_speech_seconds": 0.544,
+        "first_fragment": {
+          "text": "明天中正區白天有雨，建議帶傘。",
+          "chars": 13,
+          "seconds": 0.625
+        },
+        "total_seconds": 1.508
+      }
+    },
+    {
+      "id": "w06",
+      "category": "weather",
+      "source": "role-topic",
+      "role": "weather",
+      "text": "後天臺北的天氣怎麼樣？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.729,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n後天臺北多雲，偶有短暫雨。\n[[BOARD_JSON]]\n{\"title\":\"臺北市中正區後天天氣預報\",\"items\":[{\"title\":\"適用時段\",\"content\":\"2026 年 11 月 1 日 06:00 至 18:00\"},{\"title\":\"天氣狀況\",\"content\":\"多雲，降雨機率約 20%\"},{\"title\":\"溫度範圍\",\"content\":\"最低 20 度，最高 27 度\"},{\"title\":\"資料來源\",\"content\":\"交通部中央氣象署\"},{\"title\":\"發布時間\",\"content\":\"2026 年 10 月 30 日 17:00\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "後天臺北多雲，偶有短暫雨。",
+        "board": {
+          "title": "臺北市中正區後天天氣預報",
+          "items": [
+            {
+              "title": "適用時段",
+              "content": "2026 年 11 月 1 日 06:00 至 18:00"
+            },
+            {
+              "title": "天氣狀況",
+              "content": "多雲，降雨機率約 20%"
+            },
+            {
+              "title": "溫度範圍",
+              "content": "最低 20 度，最高 27 度"
+            },
+            {
+              "title": "資料來源",
+              "content": "交通部中央氣象署"
+            },
+            {
+              "title": "發布時間",
+              "content": "2026 年 10 月 30 日 17:00"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 13
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "後天臺北多雲，偶有短暫雨。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.375,
+        "first_speech_seconds": 0.477,
+        "first_fragment": {
+          "text": "後天臺北多雲，偶有短暫雨。",
+          "chars": 11,
+          "seconds": 0.559
+        },
+        "total_seconds": 1.752
+      }
+    },
+    {
+      "id": "w07",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "先說明天的天氣",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.763,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天中正區多雲，氣溫約 20 到 27 度。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天中正區多雲，氣溫約 20 到 27 度。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 18
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天中正區多雲，氣溫約 20 到 27 度。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.448,
+        "first_speech_seconds": 0.557,
+        "first_fragment": {
+          "text": "明天中正區多雲，氣溫約 20 到 27 度。",
+          "chars": 16,
+          "seconds": 0.711
+        },
+        "total_seconds": 0.752
+      }
+    },
+    {
+      "id": "h01",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "明天台北會下雨嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.839,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n明天台北有雨，機率六成。\n[[BOARD_JSON]]\n{\"title\":\"台北明日天氣預報\",\"items\":[{\"title\":\"降雨機率\",\"content\":\"12 小時內降雨機率為 60%，需注意攜帶雨具。\"},{\"title\":\"天氣狀況\",\"content\":\"多雲時陰短暫雨，天氣變化較大。\"},{\"title\":\"溫度範圍\",\"content\":\"氣溫介於 21 至 26 度之間，早晚微涼。\"},{\"title\":\"適用時段\",\"content\":\"預報適用時間為 2026 年 10 月 31 日 06:00 至 18:00。\"},{\"title\":\"資料來源\",\"content\":\"交通部中央氣象署，發布於 2026 年 10 月 30 日。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "明天台北有雨，機率六成。",
+        "board": {
+          "title": "台北明日天氣預報",
+          "items": [
+            {
+              "title": "降雨機率",
+              "content": "12 小時內降雨機率為 60%，需注意攜帶雨具。"
+            },
+            {
+              "title": "天氣狀況",
+              "content": "多雲時陰短暫雨，天氣變化較大。"
+            },
+            {
+              "title": "溫度範圍",
+              "content": "氣溫介於 21 至 26 度之間，早晚微涼。"
+            },
+            {
+              "title": "適用時段",
+              "content": "預報適用時間為 2026 年 10 月 31 日 06:00 至 18:00。"
+            },
+            {
+              "title": "資料來源",
+              "content": "交通部中央氣象署，發布於 2026 年 10 月 30 日。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 12
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "明天台北有雨，機率六成。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.403,
+        "first_speech_seconds": 0.505,
+        "first_fragment": {
+          "text": "明天台北有雨，機率六成。",
+          "chars": 10,
+          "seconds": 0.562
+        },
+        "total_seconds": 1.984
+      }
+    },
+    {
+      "id": "h02",
+      "category": "handoff",
+      "source": "role-topic",
+      "role": "main",
+      "text": "這週末臺北天氣怎麼樣？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.72,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n本週末臺北多雲有短暫雨，氣溫約 20 到 27 度。\n[[BOARD_JSON]]\n{\"title\":\"臺北本週末天氣預報\",\"items\":[{\"title\":\"週六天氣\",\"content\":\"多雲時陰短暫雨，降雨機率 60%，氣溫 21 至 26 度。\"},{\"title\":\"週日天氣\",\"content\":\"多雲，降雨機率 20%，氣溫 20 至 27 度。\"},{\"title\":\"資料來源\",\"content\":\"交通部中央氣象署，資料時間為 2026 年 10 月 30 日 17:00。\"},{\"title\":\"適用地點\",\"content\":\"臺北市中正區，觀測時間為 2026 年 10 月 30 日 20:00。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "本週末臺北多雲有短暫雨，氣溫約 20 到 27 度。",
+        "board": {
+          "title": "臺北本週末天氣預報",
+          "items": [
+            {
+              "title": "週六天氣",
+              "content": "多雲時陰短暫雨，降雨機率 60%，氣溫 21 至 26 度。"
+            },
+            {
+              "title": "週日天氣",
+              "content": "多雲，降雨機率 20%，氣溫 20 至 27 度。"
+            },
+            {
+              "title": "資料來源",
+              "content": "交通部中央氣象署，資料時間為 2026 年 10 月 30 日 17:00。"
+            },
+            {
+              "title": "適用地點",
+              "content": "臺北市中正區，觀測時間為 2026 年 10 月 30 日 20:00。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 22
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "本週末臺北多雲有短暫雨，氣溫約 20 到 27 度。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.375,
+        "first_speech_seconds": 0.479,
+        "first_fragment": {
+          "text": "本週末臺北多雲有短暫雨，氣溫約 20 到 27 度。",
+          "chars": 20,
+          "seconds": 0.66
+        },
+        "total_seconds": 2.067
+      }
+    },
+    {
+      "id": "h03",
+      "category": "handoff",
+      "source": "role-topic",
+      "role": "main",
+      "text": "明天適合去陽明山爬山嗎？會不會下雨？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.981,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n明天中正區多雲時有短暫雨，不適合爬山。\n[[BOARD_JSON]]\n{\"title\":\"明日天氣與活動建議\",\"items\":[{\"title\":\"降雨機率\",\"content\":\"12 小時內降雨機率達 60%，有明顯下雨機會。\"},{\"title\":\"天氣狀況\",\"content\":\"多雲時陰短暫雨，氣溫介於 21 至 26 度。\"},{\"title\":\"適用地點\",\"content\":\"資料為臺北市中正區觀測，非陽明山實測值。\"},{\"title\":\"資料來源\",\"content\":\"交通部中央氣象署，發布於 2026-10-30 17:00。\"},{\"title\":\"適用時段\",\"content\":\"預報涵蓋 2026-10-31 06:00 至 18:00。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "明天中正區多雲時有短暫雨，不適合爬山。",
+        "board": {
+          "title": "明日天氣與活動建議",
+          "items": [
+            {
+              "title": "降雨機率",
+              "content": "12 小時內降雨機率達 60%，有明顯下雨機會。"
+            },
+            {
+              "title": "天氣狀況",
+              "content": "多雲時陰短暫雨，氣溫介於 21 至 26 度。"
+            },
+            {
+              "title": "適用地點",
+              "content": "資料為臺北市中正區觀測，非陽明山實測值。"
+            },
+            {
+              "title": "資料來源",
+              "content": "交通部中央氣象署，發布於 2026-10-30 17:00。"
+            },
+            {
+              "title": "適用時段",
+              "content": "預報涵蓋 2026-10-31 06:00 至 18:00。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 19
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天中正區多雲時有短暫雨，不適合爬山。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.376,
+        "first_speech_seconds": 0.477,
+        "first_fragment": {
+          "text": "明天中正區多雲時有短暫雨，不適合爬山。",
+          "chars": 17,
+          "seconds": 0.584
+        },
+        "total_seconds": 2.009
+      }
+    },
+    {
+      "id": "h04",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "介紹你們的服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.55,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我們提供即時語音對話互動服務。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我們提供即時語音對話互動服務。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 15
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "我們提供即時語音對話互動服務。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.236,
+        "first_speech_seconds": 0.345,
+        "first_fragment": {
+          "text": "我們提供即時語音對話互動服務。",
+          "chars": 14,
+          "seconds": 0.411
+        },
+        "total_seconds": 0.453
+      }
+    },
+    {
+      "id": "h05",
+      "category": "handoff",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "weather",
+      "text": "馬拉斯客灣在哪裡？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.483,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣位於 m87 星雲。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣位於 m87 星雲。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 13
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "馬拉斯客灣位於 m87 星雲。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.36,
+        "first_speech_seconds": 0.471,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於 m87 星雲。",
+          "chars": 12,
+          "seconds": 0.561
+        },
+        "total_seconds": 0.604
+      }
+    },
+    {
+      "id": "h06",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "明天天氣如何？也介紹一下你們的服務。",
+      "expected_route": "clarify",
+      "expected_mode": null,
+      "route": "clarify",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.88,
+      "answer": null
+    },
+    {
+      "id": "h07",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "先介紹服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.299,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我是 Nova Avatar，能為您提供即時語音對話互動，並回答各種問題。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我是 Nova Avatar，能為您提供即時語音對話互動，並回答各種問題。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 35
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "我是 Nova Avatar，能為您提供即時語音對話互動，並回答各種問題。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.406,
+        "first_speech_seconds": 0.517,
+        "first_fragment": {
+          "text": "我是 Nova Avatar，能為您提供即時語音對話互動，並回答各種問題。",
+          "chars": 32,
+          "seconds": 0.658
+        },
+        "total_seconds": 0.701
+      }
+    }
+  ]
+}

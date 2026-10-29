@@ -1,7 +1,7 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 文件更新與最終驗收
 Status: ready-for-agent
-Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13
+Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 15
 
 依[規格](../spec.md)。
 

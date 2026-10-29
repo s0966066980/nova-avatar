@@ -74,3 +74,7 @@ Blocked by: 01, 03
      --note "Gemma 4 E2B ngl 99" --output .scratch/first-audio-latency/after-e2b-2026-10-30.json
    ```
    與 issue 01 基準線比較 general／rag／handoff 的 P50／P95。
+
+### 2026-10-30 實機評估與使用者決定（orchestrator）
+9B 與 E2B 各在 18080 單獨載入（無 MuseTalk）跑 30 題：路由 30/30 對 30/30；格式 29/29 對 29/29；關鍵事實 9/9 對 8/9（E2B 漏 w04 氣溫 26）；首句 15 字內 15/29 對 7/29；首個片段 P50 0.58 對 0.24 s、路由 P50 0.50 對 0.23 s。E2B 有 3 題原始輸出含簡體字（正式流程經 OpenCC s2twp）。E2B 顯存 3.1 GB（含 mmproj）。`-fa on` 啟動正常、`modalities.vision: true`。
+**使用者決定：接受，切換為 E2B**（Q26）。預設已改 `config/config.yaml`；切換後量測見下一段。路由未低於 9B，不需關鍵字初篩。

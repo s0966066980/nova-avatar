@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # RAGFlow 檢索速度
-Status: needs-triage
+Status: ready-for-agent
 Blocked by: 06
 
 依[規格](../spec.md)與 [ADR 0022](../../../docs/adr/0022-run-routing-retrieval-and-answer-concurrently.md)。issue 06 實測（`after-06-2026-10-30.json`）：檢索上限 400 ms，24 輪中 22 輪 `timeout`；串行時期檢索本身 P50 0.50–0.58 s、P95 0.77–0.85 s。上限幾乎每輪落空，等於關閉 RAG。

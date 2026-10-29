@@ -1,0 +1,1578 @@
+{
+  "label": "Gemma 4 E2B",
+  "model": "gemma-4-E2B_q4_0-it",
+  "base_url": "http://127.0.0.1:18080/v1",
+  "at": "2026-10-29T17:34:47+00:00",
+  "items": [
+    {
+      "id": "g01",
+      "category": "general",
+      "source": "voice-test-history",
+      "role": "main",
+      "text": "請只回答「語音測試正常」。不要補充其他內容。",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.465,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n語音測試正常。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "語音測試正常。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 7
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "語音測試正常。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.144,
+        "first_speech_seconds": 0.22,
+        "first_fragment": {
+          "text": "語音測試正常。",
+          "chars": 6,
+          "seconds": 0.237
+        },
+        "total_seconds": 0.349
+      }
+    },
+    {
+      "id": "g02",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "你好，你是誰？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.204,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我是 Nova Avatar。我是一個基於先進人工智慧的語音對話助手，可以理解你的問題並提供準確、有幫助的回答。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我是 Nova Avatar。我是一個基於先進人工智慧的語音對話助手，可以理解你的問題並提供準確、有幫助的回答。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 54
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "我是 Nova Avatar。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.097,
+        "first_speech_seconds": 0.151,
+        "first_fragment": {
+          "text": "我是 Nova Avatar。",
+          "chars": 12,
+          "seconds": 0.165
+        },
+        "total_seconds": 0.318
+      }
+    },
+    {
+      "id": "g03",
+      "category": "general",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "介紹你們的服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.217,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。我能理解你的問題，並提供準確、有幫助的回答。你可以隨時跟我聊天，我會用簡潔清晰的語音來跟你溝通。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。我能理解你的問題，並提供準確、有幫助的回答。你可以隨時跟我聊天，我會用簡潔清晰的語音來跟你溝通。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 81
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.099,
+        "first_speech_seconds": 0.151,
+        "first_fragment": {
+          "text": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。",
+          "chars": 31,
+          "seconds": 0.228
+        },
+        "total_seconds": 0.488
+      }
+    },
+    {
+      "id": "g04",
+      "category": "general",
+      "source": "reply-rules-example",
+      "role": "main",
+      "text": "請說明安裝軟體的三個步驟。",
+      "expected_route": "answer",
+      "expected_mode": "BOARD",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.219,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n安裝軟體通常有三個主要步驟，請參考看板的詳細說明。\n[[BOARD_JSON]]\n{\"title\":\"安裝軟體的三個步驟\",\"items\":[{\"title\":\"準備環境\",\"content\":\"確認您的電腦系統是否符合軟體的要求，例如作業系統版本、記憶體大小等等。同時確保網路連線穩定。\"},{\"title\":\"下載與解壓縮\",\"content\":\"從官方網站下載安裝檔案，然後將下載的檔案解壓縮到您希望安裝的資料夾中。\"},{\"title\":\"執行安裝與設定\",\"content\":\"依照安裝程式的指示，執行安裝程序，並完成必要的設定，例如輸入授權金或設定資料夾路徑。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "安裝軟體通常有三個主要步驟，請參考看板的詳細說明。",
+        "board": {
+          "title": "安裝軟體的三個步驟",
+          "items": [
+            {
+              "title": "準備環境",
+              "content": "確認您的電腦系統是否符合軟體的要求，例如作業系統版本、記憶體大小等等。同時確保網路連線穩定。"
+            },
+            {
+              "title": "下載與解壓縮",
+              "content": "從官方網站下載安裝檔案，然後將下載的檔案解壓縮到您希望安裝的資料夾中。"
+            },
+            {
+              "title": "執行安裝與設定",
+              "content": "依照安裝程式的指示，執行安裝程序，並完成必要的設定，例如輸入授權金或設定資料夾路徑。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 25
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "安裝軟體通常有三個主要步驟，請參考看板的詳細說明。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "BOARD"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.101,
+        "first_speech_seconds": 0.154,
+        "first_fragment": {
+          "text": "安裝軟體通常有三個主要步驟，請參考看板的詳細說明。",
+          "chars": 23,
+          "seconds": 0.222
+        },
+        "total_seconds": 0.914
+      }
+    },
+    {
+      "id": "g05",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "比較搭捷運和開車去臺北車站的優缺點。",
+      "expected_route": "answer",
+      "expected_mode": "BOARD",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.212,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n搭捷運和開車去臺北車站各有優缺點，取決於你的行程和偏好。\n[[BOARD_JSON]]\n{\"title\":\"捷運與開車去臺北車站的比較\",\"items\":[{\"title\":\"捷運的優點\",\"content\":\"捷運通常是最穩定的選擇，時間預測比較準確，而且在尖峰時段，它能避開部分交通壅塞，不用擔心停車問題。\"},{\"title\":\"捷運的缺點\",\"content\":\"捷運的班次可能較少，而且在某些時間段，可能需要換乘，行程規劃需要比較精確。\"},{\"title\":\"開車的優點\",\"content\":\"開車最大的優點是自由度高，可以隨時停靠，行程安排非常彈性，適合多人出行或攜帶大量行李。\"},{\"title\":\"開車的缺點\",\"content\":\"開車最大的缺點是交通壅塞，尤其在尖峰時段，可能會花費較多時間在交通上，而且停車位可能很難找到。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "搭捷運和開車去臺北車站各有優缺點，取決於你的行程和偏好。",
+        "board": {
+          "title": "捷運與開車去臺北車站的比較",
+          "items": [
+            {
+              "title": "捷運的優點",
+              "content": "捷運通常是最穩定的選擇，時間預測比較準確，而且在尖峰時段，它能避開部分交通壅塞，不用擔心停車問題。"
+            },
+            {
+              "title": "捷運的缺點",
+              "content": "捷運的班次可能較少，而且在某些時間段，可能需要換乘，行程規劃需要比較精確。"
+            },
+            {
+              "title": "開車的優點",
+              "content": "開車最大的優點是自由度高，可以隨時停靠，行程安排非常彈性，適合多人出行或攜帶大量行李。"
+            },
+            {
+              "title": "開車的缺點",
+              "content": "開車最大的缺點是交通壅塞，尤其在尖峰時段，可能會花費較多時間在交通上，而且停車位可能很難找到。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 28
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "搭捷運和開車去臺北車站各有優缺點，取決於你的行程和偏好。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "BOARD"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.099,
+        "first_speech_seconds": 0.152,
+        "first_fragment": {
+          "text": "搭捷運和開車去臺北車站各有優缺點，取決於你的行程和偏好。",
+          "chars": 26,
+          "seconds": 0.258
+        },
+        "total_seconds": 1.271
+      }
+    },
+    {
+      "id": "g06",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "謝謝你的幫忙！",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.32,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n不客氣，Nova Avatar 隨時都在這裡幫您。有什麼需要我協助的嗎？\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "不客氣，Nova Avatar 隨時都在這裡幫您。有什麼需要我協助的嗎？",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 34
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "不客氣，Nova Avatar 隨時都在這裡幫您。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.097,
+        "first_speech_seconds": 0.149,
+        "first_fragment": {
+          "text": "不客氣，Nova Avatar 隨時都在這裡幫您。",
+          "chars": 21,
+          "seconds": 0.209
+        },
+        "total_seconds": 0.269
+      }
+    },
+    {
+      "id": "g07",
+      "category": "general",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "解釋量子力學",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.208,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n量子力學描述了微觀世界里粒子不確定性的現象。\n[[BOARD_JSON]]\n{\"title\":\"量子力學核心概念\",\"items\":[{\"title\":\"不確定性原理\",\"content\":\"在量子力學中，我们无法同时精确知道一个粒子的位置和动量。这就像说你无法同时知道一个球在哪里以及它移动的速度有多快。\"},{\"title\":\"波粒二象性\",\"content\":\"微观粒子，比如电子和光子，既可以表现出粒子性，也可以表现出波的特性。\"},{\"title\":\"叠加态\",\"content\":\"在被观测之前，一个量子系统可以处于多种可能状态的叠加之中。只有当我们进行观测时，它才会确定一个确定的状态。\"},{\"title\":\"量子纠缠\",\"content\":\"两个或多个粒子之间存在一种特殊的关联，无论它们相隔多远，一个粒子的状态的变化都会瞬间影响另一个粒子的状态。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "量子力學描述了微觀世界里粒子不確定性的現象。",
+        "board": {
+          "title": "量子力學核心概念",
+          "items": [
+            {
+              "title": "不確定性原理",
+              "content": "在量子力學中，我们无法同时精确知道一个粒子的位置和动量。这就像说你无法同时知道一个球在哪里以及它移动的速度有多快。"
+            },
+            {
+              "title": "波粒二象性",
+              "content": "微观粒子，比如电子和光子，既可以表现出粒子性，也可以表现出波的特性。"
+            },
+            {
+              "title": "叠加态",
+              "content": "在被观测之前，一个量子系统可以处于多种可能状态的叠加之中。只有当我们进行观测时，它才会确定一个确定的状态。"
+            },
+            {
+              "title": "量子纠缠",
+              "content": "两个或多个粒子之间存在一种特殊的关联，无论它们相隔多远，一个粒子的状态的变化都会瞬间影响另一个粒子的状态。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": false,
+            "value": "们无时确个动这说观电现叠态测统处于种状当进会纠缠两间关联论远变响"
+          },
+          "length": {
+            "passed": true,
+            "value": 22
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "量子力學描述了微觀世界里粒子不確定性的現象。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.124,
+        "first_speech_seconds": 0.178,
+        "first_fragment": {
+          "text": "量子力學描述了微觀世界里粒子不確定性的現象。",
+          "chars": 21,
+          "seconds": 0.241
+        },
+        "total_seconds": 1.097
+      }
+    },
+    {
+      "id": "g08",
+      "category": "general",
+      "source": "prewarm-prompt",
+      "role": "main",
+      "text": "請用一句短句說明如何保持專注。",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.212,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n保持專注要先設定好目標，然後排除干擾，把注意力集中在當下。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "保持專注要先設定好目標，然後排除干擾，把注意力集中在當下。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 29
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "保持專注要先設定好目標，然後排除干擾，把注意力集中在當下。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.101,
+        "first_speech_seconds": 0.153,
+        "first_fragment": {
+          "text": "保持專注要先設定好目標，然後排除干擾，把注意力集中在當下。",
+          "chars": 26,
+          "seconds": 0.244
+        },
+        "total_seconds": 0.268
+      }
+    },
+    {
+      "id": "g09",
+      "category": "general",
+      "source": "role-topic",
+      "role": "main",
+      "text": "臺灣最高的山是哪一座？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.217,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n臺灣最高的山是玉山。這座山海拔超過三千米，是臺灣的最高峰。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "臺灣最高的山是玉山。這座山海拔超過三千米，是臺灣的最高峰。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 29
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "臺灣最高的山是玉山。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.093,
+        "first_speech_seconds": 0.146,
+        "first_fragment": {
+          "text": "臺灣最高的山是玉山。",
+          "chars": 9,
+          "seconds": 0.173
+        },
+        "total_seconds": 0.265
+      }
+    },
+    {
+      "id": "g10",
+      "category": "general",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "比較台北和高雄的公司服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.218,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n台北和高雄的公司服務各有優勢，選擇哪一個其實要看您公司的業務性質和需求。\n[[BOARD_JSON]]\n{\"title\":\"台北与高雄公司服务对比\",\"items\":[{\"title\":\"服务网络与资源\",\"content\":\"台北作为商业中心，服务资源和高端人才的聚集度更高，适合需要大量专业咨询和高端客户对接的公司。\"},{\"title\":\"成本与生活成本\",\"content\":\"台北的生活成本和运营成本通常高于高雄，这会影响到整体的预算规划。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "台北和高雄的公司服務各有優勢，選擇哪一個其實要看您公司的業務性質和需求。",
+        "board": {
+          "title": "台北与高雄公司服务对比",
+          "items": [
+            {
+              "title": "服务网络与资源",
+              "content": "台北作为商业中心，服务资源和高端人才的聚集度更高，适合需要大量专业咨询和高端客户对接的公司。"
+            },
+            {
+              "title": "成本与生活成本",
+              "content": "台北的生活成本和运营成本通常高于高雄，这会影响到整体的预算规划。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": false,
+            "value": "与务对网络资为业适专咨询户运营于这会响体预规"
+          },
+          "length": {
+            "passed": true,
+            "value": 36
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "台北和高雄的公司服務各有優勢，選擇哪一個其實要看您公司的業務性質和需求。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.103,
+        "first_speech_seconds": 0.156,
+        "first_fragment": {
+          "text": "台北和高雄的公司服務各有優勢，選擇哪一個其實要看您公司的業務性質和需求。",
+          "chars": 34,
+          "seconds": 0.253
+        },
+        "total_seconds": 0.725
+      }
+    },
+    {
+      "id": "r01",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣在哪裡？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.227,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣就在m87星雲裡面。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣就在m87星雲裡面。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 15
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "馬拉斯客灣就在m87星雲裡面。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.157,
+        "first_speech_seconds": 0.21,
+        "first_fragment": {
+          "text": "馬拉斯客灣就在m87星雲裡面。",
+          "chars": 14,
+          "seconds": 0.259
+        },
+        "total_seconds": 0.351
+      }
+    },
+    {
+      "id": "r02",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "請介紹一下馬拉斯客灣。",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.196,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣是位於m87星雲的一個地方。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣是位於m87星雲的一個地方。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 19
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "馬拉斯客灣是位於m87星雲的一個地方。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.039,
+        "first_speech_seconds": 0.091,
+        "first_fragment": {
+          "text": "馬拉斯客灣是位於m87星雲的一個地方。",
+          "chars": 18,
+          "seconds": 0.15
+        },
+        "total_seconds": 0.174
+      }
+    },
+    {
+      "id": "r03",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣位於哪個星雲？",
+      "expected_route": "answer",
+      "expected_mode": "SIMPLE",
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.222,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣位於m87星雲。這是一個非常簡單的資訊。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣位於m87星雲。這是一個非常簡單的資訊。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 25
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "馬拉斯客灣位於m87星雲。"
+          },
+          "mode": {
+            "passed": true,
+            "value": "SIMPLE"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.1,
+        "first_speech_seconds": 0.177,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於m87星雲。",
+          "chars": 12,
+          "seconds": 0.223
+        },
+        "total_seconds": 0.345
+      }
+    },
+    {
+      "id": "r04",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣離地球近嗎？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.217,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣離地球其實不近。它位於m87星雲裡面，是一個非常遙遠的宇宙天體。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣離地球其實不近。它位於m87星雲裡面，是一個非常遙遠的宇宙天體。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 37
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "馬拉斯客灣離地球其實不近。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.102,
+        "first_speech_seconds": 0.155,
+        "first_fragment": {
+          "text": "馬拉斯客灣離地球其實不近。",
+          "chars": 12,
+          "seconds": 0.195
+        },
+        "total_seconds": 0.301
+      }
+    },
+    {
+      "id": "r05",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "我想去馬拉斯客灣旅遊，要怎麼去？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.226,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n去馬拉斯客灣，最簡單的方式是搭乘飞机。\n[[BOARD_JSON]]\n{\"title\":\"前往馬拉斯客灣的交通方式\",\"items\":[{\"title\":\"國際航班\",\"content\":\"從您所在的城市搭乘國際航班前往馬拉斯。這通常是最快且最方便的方式。\"},{\"title\":\"當地交通\",\"content\":\"抵達馬拉斯後，您可以利用計程車或網約車前往客灣。\"},{\"title\":\"注意事項\",\"content\":\"請留意當地交通狀況和客灣的開放時間，建議提前查詢相關資訊。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "去馬拉斯客灣，最簡單的方式是搭乘飞机。",
+        "board": {
+          "title": "前往馬拉斯客灣的交通方式",
+          "items": [
+            {
+              "title": "國際航班",
+              "content": "從您所在的城市搭乘國際航班前往馬拉斯。這通常是最快且最方便的方式。"
+            },
+            {
+              "title": "當地交通",
+              "content": "抵達馬拉斯後，您可以利用計程車或網約車前往客灣。"
+            },
+            {
+              "title": "注意事項",
+              "content": "請留意當地交通狀況和客灣的開放時間，建議提前查詢相關資訊。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": false,
+            "value": "飞机"
+          },
+          "length": {
+            "passed": true,
+            "value": 19
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "去馬拉斯客灣，最簡單的方式是搭乘飞机。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.128,
+        "first_speech_seconds": 0.181,
+        "first_fragment": {
+          "text": "去馬拉斯客灣，最簡單的方式是搭乘飞机。",
+          "chars": 17,
+          "seconds": 0.24
+        },
+        "total_seconds": 0.904
+      }
+    },
+    {
+      "id": "r06",
+      "category": "rag",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "main",
+      "text": "馬拉斯客灣的門票多少錢？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.212,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣的門票價格需要您再確認一下。我目前沒有關於門票費用的即時資訊。建議您直接查詢官方網站或相關旅遊資訊來獲得最準確的價格。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣的門票價格需要您再確認一下。我目前沒有關於門票費用的即時資訊。建議您直接查詢官方網站或相關旅遊資訊來獲得最準確的價格。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 64
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "馬拉斯客灣的門票價格需要您再確認一下。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.103,
+        "first_speech_seconds": 0.157,
+        "first_fragment": {
+          "text": "馬拉斯客灣的門票價格需要您再確認一下。",
+          "chars": 18,
+          "seconds": 0.215
+        },
+        "total_seconds": 0.376
+      }
+    },
+    {
+      "id": "w01",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "明天台北會下雨嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.371,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天台北多雲時陰短暫雨，降雨機率為 60%。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天台北多雲時陰短暫雨，降雨機率為 60%。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 21
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天台北多雲時陰短暫雨，降雨機率為 60%。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.129,
+        "first_speech_seconds": 0.208,
+        "first_fragment": {
+          "text": "明天台北多雲時陰短暫雨，降雨機率為 60%。",
+          "chars": 18,
+          "seconds": 0.288
+        },
+        "total_seconds": 0.311
+      }
+    },
+    {
+      "id": "w02",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "明天適合爬山嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.445,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天多雲時陰短暫雨，適合戶外活動但需注意降雨。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天多雲時陰短暫雨，適合戶外活動但需注意降雨。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 23
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天多雲時陰短暫雨，適合戶外活動但需注意降雨。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.141,
+        "first_speech_seconds": 0.283,
+        "first_fragment": {
+          "text": "明天多雲時陰短暫雨，適合戶外活動但需注意降雨。",
+          "chars": 21,
+          "seconds": 0.364
+        },
+        "total_seconds": 0.388
+      }
+    },
+    {
+      "id": "w03",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "那週末呢？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.266,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n週末多雲，降雨機率較低，建議您留意一下。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "週末多雲，降雨機率較低，建議您留意一下。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 20
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "週末多雲，降雨機率較低，建議您留意一下。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.136,
+        "first_speech_seconds": 0.215,
+        "first_fragment": {
+          "text": "週末多雲，降雨機率較低，建議您留意一下。",
+          "chars": 17,
+          "seconds": 0.284
+        },
+        "total_seconds": 0.308
+      }
+    },
+    {
+      "id": "w04",
+      "category": "weather",
+      "source": "role-topic",
+      "role": "weather",
+      "text": "明天臺北市中正區最高溫幾度？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.379,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天臺北市中正區最高溫預計為攝氏二十七度。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天臺北市中正區最高溫預計為攝氏二十七度。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 21
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天臺北市中正區最高溫預計為攝氏二十七度。"
+          },
+          "terms": {
+            "passed": false,
+            "value": "26"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.135,
+        "first_speech_seconds": 0.213,
+        "first_fragment": {
+          "text": "明天臺北市中正區最高溫預計為攝氏二十七度。",
+          "chars": 20,
+          "seconds": 0.285
+        },
+        "total_seconds": 0.309
+      }
+    },
+    {
+      "id": "w05",
+      "category": "weather",
+      "source": "role-topic",
+      "role": "weather",
+      "text": "明天出門要帶傘嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.394,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天多雲時陰短暫雨，建議您帶傘以備不時之需。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天多雲時陰短暫雨，建議您帶傘以備不時之需。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 22
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天多雲時陰短暫雨，建議您帶傘以備不時之需。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.132,
+        "first_speech_seconds": 0.272,
+        "first_fragment": {
+          "text": "明天多雲時陰短暫雨，建議您帶傘以備不時之需。",
+          "chars": 20,
+          "seconds": 0.359
+        },
+        "total_seconds": 0.384
+      }
+    },
+    {
+      "id": "w06",
+      "category": "weather",
+      "source": "role-topic",
+      "role": "weather",
+      "text": "後天臺北的天氣怎麼樣？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.33,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n後天臺北多雲時陰短暫雨，最低溫約20度，最高溫約27度。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "後天臺北多雲時陰短暫雨，最低溫約20度，最高溫約27度。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 28
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "後天臺北多雲時陰短暫雨，最低溫約20度，最高溫約27度。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.104,
+        "first_speech_seconds": 0.183,
+        "first_fragment": {
+          "text": "後天臺北多雲時陰短暫雨，最低溫約20度，最高溫約27度。",
+          "chars": 25,
+          "seconds": 0.295
+        },
+        "total_seconds": 0.32
+      }
+    },
+    {
+      "id": "w07",
+      "category": "weather",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "先說明天的天氣",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.335,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天多雲，白天溫度會從21度到26度之間，有短暫雨的可能。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天多雲，白天溫度會從21度到26度之間，有短暫雨的可能。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 29
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天多雲，白天溫度會從21度到26度之間，有短暫雨的可能。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.125,
+        "first_speech_seconds": 0.204,
+        "first_fragment": {
+          "text": "明天多雲，白天溫度會從21度到26度之間，有短暫雨的可能。",
+          "chars": 26,
+          "seconds": 0.307
+        },
+        "total_seconds": 0.33
+      }
+    },
+    {
+      "id": "h01",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "main",
+      "text": "明天台北會下雨嗎？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.357,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天台北多雲時陰短暫雨，降雨機率為60%。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天台北多雲時陰短暫雨，降雨機率為60%。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 21
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天台北多雲時陰短暫雨，降雨機率為60%。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.035,
+        "first_speech_seconds": 0.115,
+        "first_fragment": {
+          "text": "明天台北多雲時陰短暫雨，降雨機率為60%。",
+          "chars": 18,
+          "seconds": 0.191
+        },
+        "total_seconds": 0.214
+      }
+    },
+    {
+      "id": "h02",
+      "category": "handoff",
+      "source": "role-topic",
+      "role": "main",
+      "text": "這週末臺北天氣怎麼樣？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.324,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:BOARD]]\n[[SPEECH]]\n這週末臺北多雲時陰短暫雨，建議您留意降雨機率。\n[[BOARD_JSON]]\n{\"title\":\"臺北市週末天氣預報\",\"items\":[{\"title\":\"本週末天氣概況\",\"content\":\"本週末（10/31至11/1）臺北市預計多雲時陰短暫雨，最低溫為20°C，最高溫為27°C。\"}]}\n[[END]]",
+        "mode": "BOARD",
+        "speech": "這週末臺北多雲時陰短暫雨，建議您留意降雨機率。",
+        "board": {
+          "title": "臺北市週末天氣預報",
+          "items": [
+            {
+              "title": "本週末天氣概況",
+              "content": "本週末（10/31至11/1）臺北市預計多雲時陰短暫雨，最低溫為20°C，最高溫為27°C。"
+            }
+          ]
+        },
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 23
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "這週末臺北多雲時陰短暫雨，建議您留意降雨機率。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.102,
+        "first_speech_seconds": 0.155,
+        "first_fragment": {
+          "text": "這週末臺北多雲時陰短暫雨，建議您留意降雨機率。",
+          "chars": 21,
+          "seconds": 0.241
+        },
+        "total_seconds": 0.621
+      }
+    },
+    {
+      "id": "h03",
+      "category": "handoff",
+      "source": "role-topic",
+      "role": "main",
+      "text": "明天適合去陽明山爬山嗎？會不會下雨？",
+      "expected_route": "specialist",
+      "expected_mode": null,
+      "route": "specialist",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.323,
+      "answer": {
+        "role": "weather",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n明天陽明山爬山天氣多雲，降雨機率為60%，建議您攜帶雨具。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "明天陽明山爬山天氣多雲，降雨機率為60%，建議您攜帶雨具。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 29
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "明天陽明山爬山天氣多雲，降雨機率為60%，建議您攜帶雨具。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.105,
+        "first_speech_seconds": 0.183,
+        "first_fragment": {
+          "text": "明天陽明山爬山天氣多雲，降雨機率為60%，建議您攜帶雨具。",
+          "chars": 25,
+          "seconds": 0.29
+        },
+        "total_seconds": 0.313
+      }
+    },
+    {
+      "id": "h04",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "介紹你們的服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.237,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。我能理解你的問題，並提供準確、有幫助的回答。你可以隨時跟我聊天，我會用簡潔清晰的語音來跟你溝通。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。我能理解你的問題，並提供準確、有幫助的回答。你可以隨時跟我聊天，我會用簡潔清晰的語音來跟你溝通。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 81
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.096,
+        "first_speech_seconds": 0.147,
+        "first_fragment": {
+          "text": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。",
+          "chars": 31,
+          "seconds": 0.223
+        },
+        "total_seconds": 0.474
+      }
+    },
+    {
+      "id": "h05",
+      "category": "handoff",
+      "source": "knowledge-base:馬拉斯客灣",
+      "role": "weather",
+      "text": "馬拉斯客灣在哪裡？",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.222,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n馬拉斯客灣位於m87星雲裡。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "馬拉斯客灣位於m87星雲裡。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 14
+          },
+          "first_sentence": {
+            "passed": true,
+            "value": "馬拉斯客灣位於m87星雲裡。"
+          },
+          "terms": {
+            "passed": true,
+            "value": ""
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.102,
+        "first_speech_seconds": 0.155,
+        "first_fragment": {
+          "text": "馬拉斯客灣位於m87星雲裡。",
+          "chars": 13,
+          "seconds": 0.204
+        },
+        "total_seconds": 0.294
+      }
+    },
+    {
+      "id": "h06",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "明天天氣如何？也介紹一下你們的服務。",
+      "expected_route": "clarify",
+      "expected_mode": null,
+      "route": "clarify",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.505,
+      "answer": null
+    },
+    {
+      "id": "h07",
+      "category": "handoff",
+      "source": "routing-probe",
+      "role": "weather",
+      "text": "先介紹服務",
+      "expected_route": "answer",
+      "expected_mode": null,
+      "route": "answer",
+      "route_error": "",
+      "route_correct": true,
+      "route_seconds": 0.351,
+      "answer": {
+        "role": "main",
+        "raw": "[[MODE:SIMPLE]]\n[[SPEECH]]\n我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。我們能用即時語音對話與您互動，提供準確有幫助的回答。我們專注於理解您的問題，並用簡潔清晰的方式給您回覆，讓您獲得快速的資訊。\n[[END]]",
+        "mode": "SIMPLE",
+        "speech": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。我們能用即時語音對話與您互動，提供準確有幫助的回答。我們專注於理解您的問題，並用簡潔清晰的方式給您回覆，讓您獲得快速的資訊。",
+        "board": null,
+        "error": "",
+        "checks": {
+          "format": {
+            "passed": true,
+            "value": ""
+          },
+          "simplified": {
+            "passed": true,
+            "value": ""
+          },
+          "length": {
+            "passed": true,
+            "value": 95
+          },
+          "first_sentence": {
+            "passed": false,
+            "value": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。"
+          }
+        },
+        "max_chars": 200,
+        "first_token_seconds": 0.135,
+        "first_speech_seconds": 0.187,
+        "first_fragment": {
+          "text": "我們是 Nova Avatar，是一個基於先進人工智慧的語音對話助手。",
+          "chars": 31,
+          "seconds": 0.263
+        },
+        "total_seconds": 0.569
+      }
+    }
+  ]
+}
