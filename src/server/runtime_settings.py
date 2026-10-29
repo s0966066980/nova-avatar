@@ -1272,14 +1272,14 @@ TTS_ENGINE_META = {
     "gpt-sovits": {
         "label": "GPT-SoVITS",
         "module": "requests",
-        "description": "連線本機或內網 GPT-SoVITS 服務",
-        "setup": "需要可連線的本地服務與參考音訊",
+        "description": "連線本機 GPT-SoVITS 服務",
+        "setup": "需要本機服務與音訊庫中的參考音訊",
     },
     "xtts": {
         "label": "XTTS",
         "module": "requests",
-        "description": "連線本機或內網 XTTS 服務",
-        "setup": "需要可連線的本地服務與參考音訊",
+        "description": "連線本機 XTTS 服務",
+        "setup": "需要本機服務與音訊庫中的參考音訊",
     },
     "cosyvoice": {
         "label": "CosyVoice 2",
@@ -1296,14 +1296,14 @@ TTS_ENGINE_META = {
     "fishtts": {
         "label": "Fish Speech",
         "module": "requests",
-        "description": "連線本機或內網 Fish Speech 服務",
-        "setup": "需要可連線的本地服務",
+        "description": "連線本機 Fish Speech 服務",
+        "setup": "需要本機服務",
     },
     "indextts2": {
         "label": "IndexTTS2",
         "module": "gradio_client",
-        "description": "連線本機或內網 IndexTTS2 Gradio 服務",
-        "setup": "需要 gradio_client、本地服務與參考音訊",
+        "description": "連線本機 IndexTTS2 Gradio 服務",
+        "setup": "需要 gradio_client、本機服務與音訊庫中的參考音訊",
     },
 }
 
@@ -1345,6 +1345,9 @@ def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
 
 
 def speech_snapshot(config) -> Dict[str, Any]:
+    from src.tts.cosyvoice_runtime import local_models
+    from src.tts.voice_library import list_voices
+
     asr = config.asr
     tts = config.tts
     return {
@@ -1383,7 +1386,9 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "instruct": tts.instruct,
             "device": tts.device,
             "engines": _catalog(TTS_ENGINE_META),
-            "models": [],
+            # Reference audio and models are chosen from these server-side lists.
+            "voices": list_voices(),
+            "models": local_models(),
             "languages": [
                 {"id": item_id, "label": label}
                 for item_id, label in languages_for_family(
@@ -1468,22 +1473,65 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
     return speech_snapshot(config)["stt"]
 
 
-def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) -> Dict[str, Any]:
-    """Validate reference/connectivity and synthesize a short preview before commit."""
-    _require_no_sessions(session_count)
+def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
+    """Check the TTS fields that name files, models or servers.
+
+    ``ref_file`` must be a voice-library ID (or an Edge / Fish voice name),
+    ``model`` a ``models/`` catalog ID and ``tts_server`` a loopback address.
+    Runs before a request is applied or saved for later.
+    """
+    from src.tts.cosyvoice_runtime import resolve_model_dir
+    from src.tts.voice_library import (
+        VoiceLibraryError,
+        check_model,
+        check_reference,
+        check_tts_server,
+    )
+
+    if not isinstance(params, dict):
+        raise SettingsError("設定格式不正確")
     engine = str(params.get("type", config.tts.type)).strip().lower()
     if engine not in TTS_ENGINE_META:
         raise SettingsError(f"不支援的 TTS 引擎: {engine}")
+    values = {
+        key: params.get(key, getattr(config.tts, key))
+        for key in ("ref_file", "tts_server", "model")
+    }
+    for key, value in values.items():
+        if value is not None and not isinstance(value, str):
+            raise SettingsError(f"{key} 格式不正確")
+        values[key] = (value or "").strip()
+    if is_cosyvoice_engine(engine) and values["ref_file"] in EDGE_TTS_ZH_TW_VOICE_IDS:
+        values["ref_file"] = ""
+    try:
+        values["ref_file"] = check_reference(engine, values["ref_file"])
+        values["tts_server"] = check_tts_server(values["tts_server"])
+        values["model"] = check_model(values["model"])
+    except VoiceLibraryError as exc:
+        raise SettingsError(exc.message) from None
+    if is_cosyvoice_engine(engine) and values["model"]:
+        try:
+            resolve_model_dir(values["model"], family=cosyvoice_family(engine))
+        except FileNotFoundError as exc:
+            raise SettingsError(str(exc)) from None
+    return {"type": engine, **values}
+
+
+def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) -> Dict[str, Any]:
+    """Validate reference/connectivity and synthesize a short preview before commit."""
+    _require_no_sessions(session_count)
+    sources = validate_tts_sources(config, params)
+    engine = sources["type"]
     meta = TTS_ENGINE_META[engine]
     if not _engine_available(meta):
         raise SettingsError(
             f"{meta['label']} 依賴未安裝",
             extra={"missing_package": meta["module"]},
         )
-    ref_file = str(params.get("ref_file", config.tts.ref_file) or "").strip()
+    ref_file = sources["ref_file"]
     ref_text = str(params.get("ref_text", config.tts.ref_text) or "").strip()
-    tts_server = str(params.get("tts_server", config.tts.tts_server) or "").strip()
-    model = str(params.get("model", config.tts.model) or "").strip()
+    tts_server = sources["tts_server"]
+    model = sources["model"]
     mode = str(params.get("mode", getattr(config.tts, "mode", "auto")) or "auto").strip().lower()
     language = str(params.get("language", config.tts.language) or "Auto").strip()
     speaker = str(params.get("speaker", config.tts.speaker) or "").strip()
@@ -1497,8 +1545,6 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
             DEFAULT_PROMPT_WAV,
             ensure_server,
             parse_server_url,
-            prepare_prompt_wav,
-            resolve_prompt_source,
         )
 
         family = cosyvoice_family(engine)
@@ -1506,35 +1552,18 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
 
         if not tts_server:
             tts_server = "http://127.0.0.1:50000"
-        if ref_file in EDGE_TTS_ZH_TW_VOICE_IDS:
-            ref_file = ""
 
         if mode == "zero_shot" and ref_file and not ref_text:
             raise SettingsError(
                 "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
             )
 
-        if ref_file:
-            try:
-                source = resolve_prompt_source(ref_file)
-            except FileNotFoundError:
-                raise SettingsError(
-                    f"參考音訊不存在：{ref_file}。"
-                    "請填完整路徑，例如 /home/oliver/CosyVoice/asset/SHINeeJonghyun.mp3"
-                ) from None
-            try:
-                ref_file = str(prepare_prompt_wav(source))
-            except Exception as exc:
-                raise SettingsError(
-                    f"無法把參考音訊轉成 CosyVoice 可用的 WAV：{source}。"
-                    "請使用可播放的 WAV 或 MP3。"
-                ) from exc
-        else:
+        if not ref_file:
+            # An empty reference selects the bundled default prompt.
             if not DEFAULT_PROMPT_WAV.is_file():
                 raise SettingsError(
-                    "未填參考音訊，且預設 data/tts/cosyvoice_prompt.wav 也不存在。"
+                    "未選擇參考音訊，且預設 data/tts/cosyvoice_prompt.wav 也不存在。"
                 )
-            ref_file = str(DEFAULT_PROMPT_WAV)
             if not ref_text:
                 ref_text = DEFAULT_PROMPT_TEXT
         if mode == "zero_shot" and not ref_text:
@@ -1599,15 +1628,8 @@ def _preview_tts(
     device: str,
 ) -> str:
     """Run the real engine against a bounded phrase and return a WAV data URI."""
-    if engine in {"gpt-sovits", "xtts", "cosyvoice", "fun-cosyvoice3", "indextts2"}:
-        audio_path = Path(ref_file).expanduser() if ref_file else None
-        if audio_path is None or not audio_path.is_file():
-            shown = ref_file or "（未填寫）"
-            raise SettingsError(
-                f"參考音訊不存在：{shown}。"
-                "請填寫本機 WAV／MP3 的完整路徑，不能使用 Edge 聲線名稱"
-                "（例如 zh-TW-HsiaoChenNeural）。"
-            )
+    if engine in {"gpt-sovits", "xtts", "indextts2"} and not ref_file:
+        raise SettingsError("請從音訊庫選擇或上傳參考音訊")
 
     pending = deepcopy(config)
     pending.tts.type = engine

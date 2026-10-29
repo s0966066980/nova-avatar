@@ -30,6 +30,7 @@ from src.server.runtime_settings import (
     apply_mouth_quality,
     apply_stt_settings,
     apply_tts_settings,
+    validate_tts_sources,
     apply_vad_settings,
     apply_stage_settings,
     apply_stage_background,
@@ -57,6 +58,7 @@ from src.scene.service import (
     restore_background,
     scene_service,
 )
+from src.tts import voice_library
 from src.utils.logging import logger
 
 
@@ -369,8 +371,22 @@ async def set_stt_settings(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
-@defer_when_connected("語音合成", lambda config: speech_snapshot(config)["tts"])
 async def set_tts_settings(request):
+    """Reject unsafe sources before the request is applied or saved for later."""
+    if state.config:
+        try:
+            params = await request.json()
+        except (ValueError, TypeError):
+            return _json({"code": -1, "msg": "設定格式不正確"}, status=400)
+        try:
+            await asyncio.to_thread(validate_tts_sources, state.config, params)
+        except SettingsError as exc:
+            return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
+    return await _apply_tts_settings(request)
+
+
+@defer_when_connected("語音合成", lambda config: speech_snapshot(config)["tts"])
+async def _apply_tts_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     try:
@@ -390,22 +406,86 @@ async def set_tts_settings(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
-async def pick_speech_path(request):
-    """Open a native local chooser; browser file inputs cannot reveal paths."""
+async def list_tts_voices(request):
+    return _json({"code": 0, "data": {"items": await asyncio.to_thread(voice_library.list_voices)}})
+
+
+async def _read_field(part, limit: int = 1024) -> str:
+    data = bytearray()
+    while chunk := await part.read_chunk(size=limit):
+        data.extend(chunk)
+        if len(data) > limit:
+            raise voice_library.VoiceLibraryError("欄位內容過長")
+    return data.decode("utf-8", "replace")
+
+
+async def upload_tts_voice(request):
+    """Add reference audio to the voice library: stream, cap, validate, convert."""
+    root = voice_library.voices_root()
+    temporary = root / f".upload-{uuid4().hex}"
     try:
-        kind = (await request.json()).get("kind", "file")
-        import tkinter as tk
-        from tkinter import filedialog
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        path = filedialog.askdirectory() if kind == "directory" else filedialog.askopenfilename(
-            filetypes=[("Audio files", "*.wav *.mp3 *.flac *.m4a *.ogg"), ("All files", "*")]
-        )
-        root.destroy()
-        return _json({"code": 0, "msg": "ok", "data": {"path": path}})
-    except Exception as exc:
-        return _json({"code": -1, "msg": f"無法開啟本機檔案選擇器：{exc}"}, status=500)
+        root.mkdir(parents=True, exist_ok=True)
+        reader = await request.multipart()
+        name, stem, received = "", "", False
+        while (part := await reader.next()) is not None:
+            if part.name == "name":
+                name = (await _read_field(part)).strip()
+            elif part.name == "voice" and part.filename and not received:
+                stem = Path(part.filename).stem
+                size = 0
+                with temporary.open("wb") as handle:
+                    while chunk := await part.read_chunk(size=256 * 1024):
+                        size += len(chunk)
+                        if size > voice_library.MAX_UPLOAD_BYTES:
+                            limit = voice_library.MAX_UPLOAD_BYTES / 1024 / 1024
+                            return _json({"code": -1, "msg": f"參考音訊不可超過 {limit:g} MB"}, status=413)
+                        handle.write(chunk)
+                received = True
+            else:
+                return _json({"code": -1, "msg": "上傳欄位不正確"}, status=400)
+        if not received:
+            return _json({"code": -1, "msg": "請選擇參考音訊檔"}, status=400)
+        voice = await asyncio.to_thread(voice_library.add_voice, temporary, name or stem)
+        return _json({"code": 0, "msg": "ok", "data": voice})
+    except voice_library.VoiceLibraryError as exc:
+        return _json({"code": -1, "msg": exc.message}, status=exc.status)
+    except Exception:
+        logger.exception("上傳參考音訊失敗")
+        return _json({"code": -1, "msg": "上傳參考音訊失敗"}, status=500)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _voice_in_use(voice_id: str) -> bool:
+    if state.config is not None and getattr(state.config.tts, "ref_file", "") == voice_id:
+        return True
+    roles = getattr(state, "roles", None)
+    if roles is None:
+        return False
+    libraries = [getattr(roles, "library", None) or {}]
+    try:
+        libraries.append(roles.store.load())
+    except Exception:
+        logger.warning("讀取角色設定失敗，無法確認參考音訊是否仍被引用")
+        return True
+    return any(profile.get("tts", {}).get("ref_file") == voice_id
+               for library in libraries for profile in library.get("profiles", []))
+
+
+def _archive_unused_voice(voice_id: str) -> None:
+    if _voice_in_use(voice_id):
+        raise voice_library.VoiceLibraryError("這段參考音訊正在使用中，請先改用其他聲音", status=409)
+    voice_library.delete_voice(voice_id)
+
+
+async def delete_tts_voice(request):
+    """Move an unused voice to the library's recycle bin."""
+    voice_id = request.match_info.get("voice_id", "")
+    try:
+        await asyncio.to_thread(_archive_unused_voice, voice_id)
+        return _json({"code": 0, "msg": "ok", "data": {"id": voice_id}})
+    except voice_library.VoiceLibraryError as exc:
+        return _json({"code": -1, "msg": exc.message}, status=exc.status)
 
 
 @defer_when_connected("數位人引擎", lambda config: current_snapshot(config)["avatar"])

@@ -15,11 +15,15 @@ class RecordingParent:
 
 class SovitsTTSFailureTests(unittest.TestCase):
     def _make_tts(self):
+        # ref_file names a voice-library entry; the server reads the stored WAV.
+        patcher = patch("src.tts.engines.sovits.voice_path", return_value="/tmp/ref.wav")
+        patcher.start()
+        self.addCleanup(patcher.stop)
         parent = RecordingParent()
         config = SimpleNamespace(
             audio=SimpleNamespace(fps=50),
             tts=SimpleNamespace(
-                ref_file="/tmp/ref.wav",
+                ref_file="0123456789abcdef",
                 ref_text="你好",
                 tts_server="http://127.0.0.1:9880",
             ),

@@ -159,6 +159,7 @@ const speech = reactive({
     device: 'auto',
     engines: [],
     models: [],
+    voices: [],
     languages: [],
     speakers: [],
     edge_voices: [],
@@ -188,6 +189,7 @@ const ttsDraft = reactive({
 const applyingStt = ref(false)
 const applyingTts = ref(false)
 const speechError = ref('')
+const voiceLibraryBusy = ref(false)
 
 const selectedProvider = ref('ollama')
 
@@ -448,6 +450,14 @@ const edgeVoiceOptions = computed(() => {
   return [{ id: selected, name: selected }, ...available]
 })
 
+// Reference audio and CosyVoice models come from server-side lists, never typed paths.
+const ttsVoiceOptions = computed(() => (Array.isArray(speech.tts.voices) ? speech.tts.voices : []))
+
+const ttsModelOptions = computed(() => {
+  const family = ttsDraft.type === 'fun-cosyvoice3' ? 'cosyvoice3' : 'cosyvoice2'
+  return (Array.isArray(speech.tts.models) ? speech.tts.models : []).filter((item) => item.family === family)
+})
+
 watch(() => sttDraft.type, () => {
   if (sttModelOptions.value.length && !sttModelOptions.value.includes(sttDraft.model_size)) {
     sttDraft.model_size = sttModelOptions.value[0]
@@ -680,6 +690,48 @@ async function applyTtsSettings() {
     throw error
   } finally {
     applyingTts.value = false
+  }
+}
+
+async function refreshTtsVoices() {
+  const data = await parseJson(await fetch('/api/speech/voices'))
+  speech.tts.voices = Array.isArray(data?.items) ? data.items : []
+  return speech.tts.voices
+}
+
+async function uploadTtsVoice(file, name = '') {
+  if (!file) throw new Error('請先選擇參考音訊檔')
+  voiceLibraryBusy.value = true
+  speechError.value = ''
+  try {
+    const form = new FormData()
+    if (name) form.append('name', name)
+    form.append('voice', file)
+    const voice = await parseJson(await fetch('/api/speech/voices', { method: 'POST', body: form }))
+    await refreshTtsVoices()
+    ttsDraft.ref_file = voice.id
+    return voice
+  } catch (error) {
+    speechError.value = error.message
+    throw error
+  } finally {
+    voiceLibraryBusy.value = false
+  }
+}
+
+async function deleteTtsVoice(voiceId) {
+  if (!voiceId) return
+  voiceLibraryBusy.value = true
+  speechError.value = ''
+  try {
+    await parseJson(await fetch(`/api/speech/voices/${encodeURIComponent(voiceId)}`, { method: 'DELETE' }))
+    await refreshTtsVoices()
+    if (ttsDraft.ref_file === voiceId) ttsDraft.ref_file = ''
+  } catch (error) {
+    speechError.value = error.message
+    throw error
+  } finally {
+    voiceLibraryBusy.value = false
   }
 }
 
@@ -1555,6 +1607,12 @@ export function useRuntimeSettings() {
     sttModelOptions,
     ttsDirty,
     edgeVoiceOptions,
+    ttsVoiceOptions,
+    ttsModelOptions,
+    voiceLibraryBusy,
+    refreshTtsVoices,
+    uploadTtsVoice,
+    deleteTtsVoice,
     applyingStt,
     applyingTts,
     speechError,

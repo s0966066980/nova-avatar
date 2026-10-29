@@ -27,6 +27,8 @@ DEFAULT_COSYVOICE3_MODEL_DIRS = (
     Path("/home/oliver/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B-2512"),
 )
 DEFAULT_PROMPT_WAV = get_project_root() / "data" / "tts" / "cosyvoice_prompt.wav"
+MODELS_ROOT = get_project_root() / "models"
+MODEL_FAMILY_MARKERS = (("cosyvoice3.yaml", "cosyvoice3"), ("cosyvoice2.yaml", "cosyvoice2"))
 DEFAULT_PROMPT_TEXT = "你好，我是數字人助手。"
 COSYVOICE_ENGINES = frozenset({"cosyvoice", "fun-cosyvoice3"})
 COSYVOICE_LANGUAGE_INSTRUCT = {
@@ -130,20 +132,49 @@ def languages_for_family(family: str):
     return COSYVOICE_LANGUAGES
 
 
+def _model_family(directory: Path) -> str:
+    for marker, family in MODEL_FAMILY_MARKERS:
+        if (directory / marker).is_file():
+            return family
+    return ""
+
+
+def local_models() -> list[dict]:
+    """CosyVoice model folders under ``models/`` (one or two levels deep).
+
+    Settings name a model by its ID here, the folder relative to ``models/``.
+    """
+    root = MODELS_ROOT
+    found = []
+    try:
+        children = sorted(path for path in root.iterdir() if path.is_dir() and not path.name.startswith("."))
+    except OSError:
+        return []
+    for child in children:
+        candidates = [child]
+        if not _model_family(child):
+            try:
+                candidates = sorted(path for path in child.iterdir()
+                                    if path.is_dir() and not path.name.startswith("."))
+            except OSError:
+                continue
+        for directory in candidates:
+            family = _model_family(directory)
+            if family:
+                found.append({"id": directory.relative_to(root).as_posix(), "family": family})
+    return sorted(found, key=lambda item: item["id"])
+
+
 def resolve_model_dir(model: str = "", family: str = "cosyvoice2") -> Path:
+    """The model folder for a ``models/`` catalog ID, or the default for ``family``."""
     if model:
-        path = Path(model).expanduser()
-        if path.is_dir():
-            return path
-        name = path.name
-        if name:
-            for folder in (
-                Path.home() / "CosyVoice" / "pretrained_models",
-                Path("/home/oliver/CosyVoice/pretrained_models"),
-            ):
-                candidate = folder / name
-                if candidate.is_dir():
-                    return candidate
+        match = next((item for item in local_models() if item["id"] == model), None)
+        if match is None:
+            raise FileNotFoundError(f"TTS 模型「{model}」不在 models/ 清單中")
+        if match["family"] != family:
+            label = "Fun-CosyVoice 3.0" if family == "cosyvoice3" else "CosyVoice 2"
+            raise FileNotFoundError(f"TTS 模型「{model}」不是 {label} 模型")
+        return MODELS_ROOT / match["id"]
     candidates = (
         DEFAULT_COSYVOICE3_MODEL_DIRS
         if family == "cosyvoice3"
@@ -155,12 +186,13 @@ def resolve_model_dir(model: str = "", family: str = "cosyvoice2") -> Path:
     expected = candidates[0]
     if family == "cosyvoice3":
         raise FileNotFoundError(
-            f"找不到 Fun-CosyVoice 3.0 模型：{model or expected}。"
+            f"找不到 Fun-CosyVoice 3.0 模型：{expected}。"
             "請下載 FunAudioLLM/Fun-CosyVoice3-0.5B-2512 到 "
-            "~/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B"
+            "~/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B，"
+            "或放到 models/ 後從清單選擇"
         )
     raise FileNotFoundError(
-        f"找不到 CosyVoice 模型目錄: {model or DEFAULT_MODEL_DIR}"
+        f"找不到 CosyVoice 模型目錄: {DEFAULT_MODEL_DIR}"
     )
 
 
@@ -460,7 +492,10 @@ def ensure_server(
     port: int = DEFAULT_PORT,
     timeout_seconds: float = 180.0,
 ) -> str:
-    """Start CosyVoice 2/3 if needed and return the HTTP base URL."""
+    """Start CosyVoice 2/3 if needed and return the HTTP base URL.
+
+    ``model_dir`` is a ``models/`` catalog ID, or empty for the family default.
+    """
     global _server_proc, _loaded_model
     resolved = resolve_model_dir(model_dir, family=family)
     url = server_url(host, port)

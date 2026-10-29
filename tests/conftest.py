@@ -70,6 +70,7 @@ AREA_BY_FILE = {
     "test_startup_scripts.py": "runtime",
     "test_turn_lifecycle.py": "conversation",
     "test_vad.py": "speech",
+    "test_voice_library.py": "speech",
     "test_voice_session.py": "conversation",
     "test_webrtc_lifecycle.py": "conversation",
     "test_voice_test_history.py": "conversation",

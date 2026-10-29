@@ -83,11 +83,22 @@ test('Zero-shot 顯示並檢核參考語音逐字稿', () => {
   assert.match(settings, /Zero-shot 需要填寫「參考語音逐字稿」/)
 })
 
-test('從 Edge 切到本機 TTS 時會清掉聲線名稱並要求音訊路徑', () => {
+test('從 Edge 切到本機 TTS 時會清掉聲線名稱並改從音訊庫選擇', () => {
   assert.match(settings, /EDGE_VOICE_ID/)
   assert.match(settings, /previous === 'edgetts'/)
-  assert.match(panel, /settings\.speech\.referencePathDesc/)
-  assert.match(panel, /settings\.speech\.referencePathPlaceholder/)
+  assert.match(panel, /settings\.speech\.voiceLibraryDesc/)
+})
+
+test('參考音訊與模型只能從伺服器清單選擇，不再開本機路徑選擇器', () => {
+  assert.doesNotMatch(panel, /path-picker|chooseSpeechPath/)
+  assert.doesNotMatch(settings, /path-picker/)
+  assert.match(panel, /id="tts-voice-library"[\s\S]*v-model="ttsDraft\.ref_file"/)
+  assert.match(panel, /v-for="voice in ttsVoiceOptions"/)
+  assert.match(panel, /id="tts-cosyvoice-model"[\s\S]*v-for="model in ttsModelOptions"/)
+  assert.doesNotMatch(panel, /type="text"\s+v-model(\.trim)?="ttsDraft\.(ref_file|model)"/)
+  assert.match(settings, /fetch\('\/api\/speech\/voices', \{ method: 'POST', body: form \}\)/)
+  assert.match(settings, /\/api\/speech\/voices\/\$\{encodeURIComponent\(voiceId\)\}/)
+  assert.match(editor, /v-for="voice in ttsVoiceOptions"/)
 })
 
 test('套用舞台設定時會送出看板視窗樣式', () => {

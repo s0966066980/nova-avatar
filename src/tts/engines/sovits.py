@@ -13,6 +13,7 @@ import resampy
 import soundfile as sf
 
 from src.tts.base import BaseTTS, State
+from src.tts.voice_library import voice_path
 from src.utils.logging import logger
 import time
 
@@ -23,7 +24,7 @@ class SovitsTTS(BaseTTS):
         emitted = self.stream_tts(
             self.gpt_sovits(
                 text=text,
-                reffile=self.config.tts.ref_file,
+                reffile=str(voice_path(self.config.tts.ref_file)),
                 reftext=self.config.tts.ref_text,
                 language="zh",
                 server_url=self.config.tts.tts_server,
