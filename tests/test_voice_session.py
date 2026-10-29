@@ -230,26 +230,27 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         await session.close()
 
 
-    async def test_speech_turn_recognizes_in_the_conversation_language(self):
+    async def test_speech_turn_detects_chinese_or_english_in_any_conversation(self):
         segment = SimpleNamespace(
             audio=np.ones(1600, dtype=np.int16),
             sample_rate=16000,
         )
-        for locale, expected in (("zh-TW", "zh"), ("en-US", "en")):
+        for locale in ("zh-TW", "en-US"):
             with self.subTest(locale=locale):
                 session, _, _ = self.make_session(segment)
                 session._conversation["locale"] = locale
                 session._asr = SimpleNamespace(
                     supports_language_options=True,
-                    transcribe=Mock(return_value={"text": "hello", "language": expected}),
+                    transcribe=Mock(return_value={"text": "hello", "language": "en"}),
                 )
                 with patch("src.server.voice_session.llm_response", return_value="ok"):
                     await session.feed_pcm(np.ones(512, dtype=np.int16))
                     await session._turn_task
 
-                # A fixed language skips Whisper's per-turn language detection.
+                # Visitors switch language mid-conversation; fixing the
+                # recognizer to the conversation locale garbles the other (Q24).
                 self.assertEqual(
-                    session._asr.transcribe.call_args.kwargs, {"language": expected})
+                    session._asr.transcribe.call_args.kwargs, {"language": "auto"})
                 await session.close()
 
     async def test_legacy_turn_exposes_first_audio_metric(self):

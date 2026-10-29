@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 主要 LLM 改為 Gemma 4 E2B
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01, 03
 
 依[規格](../spec.md)。`gemma-4-E2B_q4_0-it.gguf`＋`gemma-4-E2B-it-mmproj.gguf` 已在 `/home/oliver/llama/`，`src/llm/llamacpp.py:359,414` 已支援（附件視覺模型）。授權 Apache-2.0（Google 官方 `google/gemma-4-E2B-it-qat-q4_0-gguf`）。
@@ -78,3 +78,9 @@ Blocked by: 01, 03
 ### 2026-10-30 實機評估與使用者決定（orchestrator）
 9B 與 E2B 各在 18080 單獨載入（無 MuseTalk）跑 30 題：路由 30/30 對 30/30；格式 29/29 對 29/29；關鍵事實 9/9 對 8/9（E2B 漏 w04 氣溫 26）；首句 15 字內 15/29 對 7/29；首個片段 P50 0.58 對 0.24 s、路由 P50 0.50 對 0.23 s。E2B 有 3 題原始輸出含簡體字（正式流程經 OpenCC s2twp）。E2B 顯存 3.1 GB（含 mmproj）。`-fa on` 啟動正常、`modalities.vision: true`。
 **使用者決定：接受，切換為 E2B**（Q26）。預設已改 `config/config.yaml`；切換後量測見下一段。路由未低於 9B，不需關鍵字初篩。
+
+### 2026-10-30 切換後實測（orchestrator）
+`after-e2b-2026-10-30.json`（整合分支 b76eeb8，E2B＋mmproj、`-ngl 99`，總顯存 18.0 GB）對照 `after-06-2026-10-30.json`（9B）：
+- 感知首音延遲 P50／P95：一般 2.57／2.95 → **2.03／2.30 s**；RAG 2.51／2.66 → **2.02／2.29 s**；交接 2.39／2.82 → **1.79／2.17 s**。
+- 主回答首 token 0.52 → 0.23 s；首片段 0.91 → 0.45 s；路由 1.09 → 0.33 s。
+- 一般輪次 P50 剩餘組成：VAD 靜音等待 0.32＋用戶端偏移 0.39＋辨識 0.06＋主回答前（檢索上限）0.40＋首片段 0.45＋片段到 WebRTC 0.42 s。

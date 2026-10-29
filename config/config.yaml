@@ -98,7 +98,7 @@ asr:
   mode: server  # 互動麥克風固定經 WebRTC 送到服務端
   type: whisper  # whisper | funasr
   model_size: small
-  language: zh  # zh | en | auto
+  language: zh  # /asr 上傳辨識：zh | en | auto（auto 只在中英文間偵測）；語音輪次一律中英自動偵測
   output_script: traditional-tw  # FunASR: traditional-tw | simplified
   device: auto  # auto | cpu | cuda
   # 輸入品質閘門：無效音訊或低可信轉寫不得觸發新的對話輪次。
