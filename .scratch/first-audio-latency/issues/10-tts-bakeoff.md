@@ -52,7 +52,7 @@ qwen-tts-hf 0.1.1.post1（Apache-2.0，已查 PyPI metadata），僅評比用、
 **驗證**：`tests/test_tts_bakeoff.py` 22 項（含以本機假 HTTP 伺服器跑 run→score→report→soak）、
 `tests/test_qwen3_tts_server.py` 6 項＋1 項 FastAPI 測試（主 venv 跳過，已在 `.venv-qwen-speech` 以 CPU 通過）。
 另以 CPU Whisper tiny＋Edge TTS 實跑 `score` 路徑一次（發現 Whisper 會寫「3萬2千9百」，已補混寫數字正規化）。
-全套 pytest 1224 passed、4 skipped，僅 2 項已知 worktree 基準失敗；ruff、pyright、`check-integration.py` 通過。
+合併 `first-audio-latency` 後全套 pytest 1264 passed、4 skipped，僅 2 項已知 worktree 基準失敗；ruff、pyright、`check-integration.py` 通過。
 
 ### 待實機驗證（Status 維持 ready-for-agent）
 
