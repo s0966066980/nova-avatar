@@ -251,7 +251,7 @@ class ZeroShotClientTests(unittest.TestCase):
         with FakeTTSServer(chunks=chunks, delays=(0.05, 0.1)) as server:
             client = ZeroShotClient(server.url, self.prompt, "參考逐字稿")
             self.assertEqual(client.health()["family"], "breezyvoice")
-            result = client.synthesize("歡迎來到臺北。", "zh-TW")
+            result = client.synthesize("歡迎來到臺北。")
 
         self.assertTrue(result.ok)
         self.assertGreaterEqual(result.first_audio_seconds, 0.05)
@@ -262,23 +262,21 @@ class ZeroShotClientTests(unittest.TestCase):
         body = server.bodies[0]
         self.assertIn("歡迎來到臺北。".encode(), body)
         self.assertIn("參考逐字稿".encode(), body)
-        self.assertIn(b'name="language"', body)
-        self.assertIn(b"Chinese", body)
+        self.assertNotIn(b'name="language"', body)
         self.assertIn(b"RIFF-prompt-bytes", body)
 
     def test_cosyvoice3_gets_the_same_prompt_prefix_the_app_sends(self):
         with FakeTTSServer(family="cosyvoice3", sample_rate=24000) as server:
             client = ZeroShotClient(server.url, self.prompt, "參考逐字稿")
             client.health()
-            client.synthesize("Hello.", "en-US")
+            client.synthesize("Hello.")
         self.assertIn("You are a helpful assistant.<|endofprompt|>參考逐字稿".encode(), server.bodies[0])
-        self.assertIn(b"English", server.bodies[0])
 
     def test_http_errors_are_recorded_not_raised(self):
         with FakeTTSServer(status=400) as server:
             client = ZeroShotClient(server.url, self.prompt, "")
             client.health()
-            result = client.synthesize("你好。", "zh-TW")
+            result = client.synthesize("你好。")
         self.assertFalse(result.ok)
         self.assertIn("400", result.error)
         self.assertEqual(result.samples.size, 0)

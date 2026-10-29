@@ -226,20 +226,6 @@ same classification in each engine label.
   license can be obtained.
 - Source: <https://huggingface.co/coqui/XTTS-v2/blob/main/LICENSE.txt>
 
-### Qwen3-TTS (bake-off evaluation only)
-
-- Role: candidate engine in the issue 10 TTS bake-off, served by
-  [`scripts/qwen3_tts_server.py`](scripts/qwen3_tts_server.py) in a separate
-  environment; not a selectable Nova Avatar engine.
-- Qwen3-TTS code (`qwen-tts`) and weights (`Qwen/Qwen3-TTS-12Hz-0.6B-Base`,
-  `-CustomVoice`): Apache-2.0, Alibaba Qwen team, <https://github.com/QwenLM/Qwen3-TTS>.
-- `faster-qwen3-tts==0.5.4`: MIT, Andres Marafioti,
-  <https://github.com/andimarafioti/faster-qwen3-tts>. Its default install
-  pulls `qwen-tts-hf==0.1.1.post1` (Apache-2.0), a repackaging of `qwen-tts`
-  with a Transformers 5 patch.
-- Nothing is bundled; the packages and weights are installed only in the
-  evaluation environment.
-
 ## Models, weights, and datasets
 
 Model weights and datasets are not relicensed by Nova Avatar. A usable code
