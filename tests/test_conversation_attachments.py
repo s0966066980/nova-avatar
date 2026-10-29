@@ -265,7 +265,7 @@ def test_pending_text_cancellation_and_replacement_do_not_overlap_interrupts():
         session._segmenter, session._asr = FakeSegmenter(), FakeASR()
         session.attach_event_sink(lambda raw: None)
         interrupting, release = asyncio.Event(), asyncio.Event()
-        real_interrupt = session.interrupt
+        real_interrupt = session._interrupt_locked
         overlapping = []
 
         async def delayed_interrupt():
@@ -278,7 +278,7 @@ def test_pending_text_cancellation_and_replacement_do_not_overlap_interrupts():
             with patch('src.server.voice_session.llm_response', return_value='Answer'):
                 await session.start_text_turn('Old question', request_id='old')
                 await session._turn_task
-                with patch.object(session, 'interrupt', side_effect=delayed_interrupt):
+                with patch.object(session, '_interrupt_locked', side_effect=delayed_interrupt):
                     cancellation = asyncio.create_task(session.cancel_text_request('old'))
                     await interrupting.wait()
                     replacement = asyncio.create_task(session.start_text_turn('New question', request_id='new'))

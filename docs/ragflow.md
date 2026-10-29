@@ -29,7 +29,9 @@ bash scripts/ragflow.sh status
 若安裝後 `docker info` 顯示群組權限錯誤，請重新登入本機 shell，再從 `validate`
 繼續。`prepare` 會在忽略版本控制的 `.local/ragflow/upstream` 取得固定的
 RAGFlow `v0.27.2`，並產生檔案權限 `0600` 的獨立隨機密碼；重跑不會覆蓋現有
-密碼。`up` 啟動 `nova-ragflow` Compose 專案與獨立的使用者層級嵌入服務；
+密碼。RAGFlow 映像以 tag 加 digest 固定（`validate` 會拒絕不符者，既有設定
+重跑 `prepare` 時只更新映像欄位）；`pull-model` 驗證 BGE-M3 權重 blob 的
+sha256，主機現有或新拉取的版本不符即中止。`up` 啟動 `nova-ragflow` Compose 專案與獨立的使用者層級嵌入服務；
 `down` 停止兩者，但不刪除資料卷或模型。首次拉取映像、模型及建立索引可能需要
 較長時間和磁碟空間。
 
