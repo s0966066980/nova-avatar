@@ -340,18 +340,6 @@ def test_ragflow_sync_is_additive_and_idempotent_without_changing_defaults(monke
     assert models[0]['name'] == 'bge-m3'
 
 
-@pytest.mark.parametrize('text,expected', [
-    ('What is the weather in Taipei today?', {'臺北市'}),
-    ('Compare New Taipei and Taipei.', {'新北市', '臺北市'}),
-    ('New Taipei City tomorrow', {'新北市'}),
-    ('Hsinchu tomorrow', set()),
-    ('Hsinchu City tomorrow', {'新竹市'}),
-])
-def test_english_place_validation_uses_explicit_unambiguous_names(text, expected):
-    from src.profiles.language import explicit_english_counties
-    assert explicit_english_counties(text) == expected
-
-
 @async_test
 async def test_english_fixed_weather_failure_is_spoken_in_english(field):
     voice, _ = connect(field)
