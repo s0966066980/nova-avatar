@@ -1,0 +1,1973 @@
+{
+  "categories": {
+    "all": {
+      "alignment": {
+        "client_offset_seconds": {
+          "p50": 0.405553,
+          "p95": 0.542305
+        },
+        "server_residual_seconds": {
+          "p50": 0.001023,
+          "p95": 0.001531
+        }
+      },
+      "failed_turns": 0,
+      "first_audio_seconds": {
+        "p50": 1.743229,
+        "p95": 2.133627
+      },
+      "handoff_observed_turns": 8,
+      "misaligned_turns": 1,
+      "perceived_first_audio_seconds": {
+        "p50": 2.498048,
+        "p95": 2.86774
+      },
+      "prompt_first_audio_seconds": {
+        "p50": 1.674453,
+        "p95": 1.992782
+      },
+      "rag_status": {
+        "empty": 2,
+        "timeout": 22
+      },
+      "server_perceived_first_audio_seconds": {
+        "p50": 2.063229,
+        "p95": 2.453627
+      },
+      "specialist_first_audio_seconds": {
+        "p50": 1.979032,
+        "p95": 2.149803
+      },
+      "stage_seconds": {
+        "asr": {
+          "p50": 0.066182,
+          "p95": 0.208256
+        },
+        "avatar_pasteback_done": {
+          "p50": 0.408226,
+          "p95": 0.573905
+        },
+        "avatar_to_webrtc_commit": {
+          "p50": 0.465183,
+          "p95": 0.611347
+        },
+        "first_fragment": {
+          "p50": 0.876311,
+          "p95": 1.006929
+        },
+        "llm_first_speech": {
+          "p50": 0.644427,
+          "p95": 0.985071
+        },
+        "llm_first_token": {
+          "p50": 0.511692,
+          "p95": 0.559889
+        },
+        "llm_total": {
+          "p50": 1.035436,
+          "p95": 2.892907
+        },
+        "model_info": {
+          "p50": 0.000455,
+          "p95": 0.000766
+        },
+        "musetalk_first_batch": {
+          "p50": 0.278194,
+          "p95": 0.443348
+        },
+        "musetalk_inference_first_result": {
+          "p50": 0.340945,
+          "p95": 0.491734
+        },
+        "pre_answer": {
+          "p50": 0.402503,
+          "p95": 1.246361
+        },
+        "retrieval": {
+          "p50": 0.401016,
+          "p95": 0.402731
+        },
+        "routing": {
+          "p50": 1.050645,
+          "p95": 1.310897
+        },
+        "routing_hold": {
+          "p50": 0.0,
+          "p95": 0.0
+        },
+        "tts_first_encoded": {
+          "p50": 0.229358,
+          "p95": 0.385103
+        },
+        "tts_first_pcm": {
+          "p50": 0.234973,
+          "p95": 0.389314
+        },
+        "tts_pcm_available": {
+          "p50": 0.234873,
+          "p95": 0.389232
+        },
+        "vad_endpoint": {
+          "p50": 0.32,
+          "p95": 0.32
+        },
+        "webrtc_audio_commit": {
+          "p50": 0.465183,
+          "p95": 0.611348
+        },
+        "webrtc_audio_enqueue": {
+          "p50": 0.404948,
+          "p95": 0.566106
+        },
+        "webrtc_video_enqueue": {
+          "p50": 0.396746,
+          "p95": 0.563668
+        }
+      },
+      "turns": 32
+    },
+    "general": {
+      "alignment": {
+        "client_offset_seconds": {
+          "p50": 0.389139,
+          "p95": 0.42751
+        },
+        "server_residual_seconds": {
+          "p50": 0.001,
+          "p95": 0.001417
+        }
+      },
+      "checks": {
+        "phase1": false,
+        "phase2": false
+      },
+      "failed_turns": 0,
+      "first_audio_seconds": {
+        "p50": 1.880959,
+        "p95": 2.226906
+      },
+      "handoff_observed_turns": 0,
+      "misaligned_turns": 0,
+      "perceived_first_audio_seconds": {
+        "p50": 2.570051,
+        "p95": 2.954146
+      },
+      "prompt_first_audio_seconds": {
+        "p50": 1.817586,
+        "p95": 1.99342
+      },
+      "rag_status": {
+        "timeout": 11
+      },
+      "server_perceived_first_audio_seconds": {
+        "p50": 2.200959,
+        "p95": 2.546906
+      },
+      "specialist_first_audio_seconds": {
+        "p50": null,
+        "p95": null
+      },
+      "stage_seconds": {
+        "asr": {
+          "p50": 0.070593,
+          "p95": 0.239957
+        },
+        "avatar_pasteback_done": {
+          "p50": 0.408559,
+          "p95": 0.513547
+        },
+        "avatar_to_webrtc_commit": {
+          "p50": 0.476866,
+          "p95": 0.584431
+        },
+        "first_fragment": {
+          "p50": 0.912335,
+          "p95": 1.035394
+        },
+        "llm_first_speech": {
+          "p50": 0.696386,
+          "p95": 1.024979
+        },
+        "llm_first_token": {
+          "p50": 0.519744,
+          "p95": 0.554763
+        },
+        "llm_total": {
+          "p50": 1.322264,
+          "p95": 2.96465
+        },
+        "model_info": {
+          "p50": 0.000499,
+          "p95": 0.000757
+        },
+        "musetalk_first_batch": {
+          "p50": 0.321891,
+          "p95": 0.417604
+        },
+        "musetalk_inference_first_result": {
+          "p50": 0.36361,
+          "p95": 0.46073
+        },
+        "pre_answer": {
+          "p50": 0.40205,
+          "p95": 0.404251
+        },
+        "retrieval": {
+          "p50": 0.401046,
+          "p95": 0.402332
+        },
+        "routing": {
+          "p50": 1.094213,
+          "p95": 1.329309
+        },
+        "routing_hold": {
+          "p50": 0.0,
+          "p95": 0.0
+        },
+        "tts_first_encoded": {
+          "p50": 0.268654,
+          "p95": 0.366865
+        },
+        "tts_first_pcm": {
+          "p50": 0.274373,
+          "p95": 0.370524
+        },
+        "tts_pcm_available": {
+          "p50": 0.274325,
+          "p95": 0.370468
+        },
+        "vad_endpoint": {
+          "p50": 0.32,
+          "p95": 0.32
+        },
+        "webrtc_audio_commit": {
+          "p50": 0.476866,
+          "p95": 0.584431
+        },
+        "webrtc_audio_enqueue": {
+          "p50": 0.405481,
+          "p95": 0.50891
+        },
+        "webrtc_video_enqueue": {
+          "p50": 0.40508,
+          "p95": 0.508479
+        }
+      },
+      "turns": 11
+    },
+    "handoff": {
+      "alignment": {
+        "client_offset_seconds": {
+          "p50": 0.405888,
+          "p95": 0.673962
+        },
+        "server_residual_seconds": {
+          "p50": 0.001089,
+          "p95": 0.003448
+        }
+      },
+      "checks": {
+        "phase1": false
+      },
+      "failed_turns": 0,
+      "first_audio_seconds": {
+        "p50": 1.647559,
+        "p95": 2.11126
+      },
+      "handoff_observed_turns": 8,
+      "misaligned_turns": 1,
+      "perceived_first_audio_seconds": {
+        "p50": 2.390544,
+        "p95": 2.821553
+      },
+      "prompt_first_audio_seconds": {
+        "p50": 1.590567,
+        "p95": 1.993559
+      },
+      "rag_status": {
+        "timeout": 2
+      },
+      "server_perceived_first_audio_seconds": {
+        "p50": 1.967558,
+        "p95": 2.43126
+      },
+      "specialist_first_audio_seconds": {
+        "p50": 1.979032,
+        "p95": 2.149803
+      },
+      "stage_seconds": {
+        "asr": {
+          "p50": 0.063142,
+          "p95": 0.127652
+        },
+        "avatar_pasteback_done": {
+          "p50": 0.385484,
+          "p95": 0.643546
+        },
+        "avatar_to_webrtc_commit": {
+          "p50": 0.43572,
+          "p95": 0.714936
+        },
+        "first_fragment": {
+          "p50": 0.844393,
+          "p95": 0.914147
+        },
+        "llm_first_speech": {
+          "p50": 0.621509,
+          "p95": 0.631658
+        },
+        "llm_first_token": {
+          "p50": 0.498556,
+          "p95": 0.511684
+        },
+        "llm_total": {
+          "p50": 1.112189,
+          "p95": 1.246652
+        },
+        "model_info": {
+          "p50": 0.000302,
+          "p95": 0.000306
+        },
+        "musetalk_first_batch": {
+          "p50": 0.209493,
+          "p95": 0.549588
+        },
+        "musetalk_inference_first_result": {
+          "p50": 0.27264,
+          "p95": 0.581915
+        },
+        "pre_answer": {
+          "p50": 1.010253,
+          "p95": 1.321337
+        },
+        "retrieval": {
+          "p50": 0.40086,
+          "p95": 0.401363
+        },
+        "routing": {
+          "p50": 1.101777,
+          "p95": 1.312674
+        },
+        "routing_hold": {
+          "p50": 0.0,
+          "p95": 0.0
+        },
+        "tts_first_encoded": {
+          "p50": 0.18392,
+          "p95": 0.51055
+        },
+        "tts_first_pcm": {
+          "p50": 0.189244,
+          "p95": 0.515644
+        },
+        "tts_pcm_available": {
+          "p50": 0.189153,
+          "p95": 0.515547
+        },
+        "vad_endpoint": {
+          "p50": 0.32,
+          "p95": 0.32
+        },
+        "webrtc_audio_commit": {
+          "p50": 0.43572,
+          "p95": 0.714937
+        },
+        "webrtc_audio_enqueue": {
+          "p50": 0.380615,
+          "p95": 0.637497
+        },
+        "webrtc_video_enqueue": {
+          "p50": 0.331113,
+          "p95": 0.637216
+        }
+      },
+      "turns": 10
+    },
+    "rag": {
+      "alignment": {
+        "client_offset_seconds": {
+          "p50": 0.389062,
+          "p95": 0.467441
+        },
+        "server_residual_seconds": {
+          "p50": 0.000983,
+          "p95": 0.001174
+        }
+      },
+      "checks": {
+        "phase1": false
+      },
+      "failed_turns": 0,
+      "first_audio_seconds": {
+        "p50": 1.782162,
+        "p95": 1.962531
+      },
+      "handoff_observed_turns": 0,
+      "misaligned_turns": 0,
+      "perceived_first_audio_seconds": {
+        "p50": 2.511608,
+        "p95": 2.659639
+      },
+      "prompt_first_audio_seconds": {
+        "p50": 1.721265,
+        "p95": 1.809277
+      },
+      "rag_status": {
+        "empty": 2,
+        "timeout": 9
+      },
+      "server_perceived_first_audio_seconds": {
+        "p50": 2.102162,
+        "p95": 2.282531
+      },
+      "specialist_first_audio_seconds": {
+        "p50": null,
+        "p95": null
+      },
+      "stage_seconds": {
+        "asr": {
+          "p50": 0.065712,
+          "p95": 0.167655
+        },
+        "avatar_pasteback_done": {
+          "p50": 0.397527,
+          "p95": 0.509802
+        },
+        "avatar_to_webrtc_commit": {
+          "p50": 0.463007,
+          "p95": 0.540494
+        },
+        "first_fragment": {
+          "p50": 0.873418,
+          "p95": 0.959946
+        },
+        "llm_first_speech": {
+          "p50": 0.628024,
+          "p95": 0.68101
+        },
+        "llm_first_token": {
+          "p50": 0.508375,
+          "p95": 0.559599
+        },
+        "llm_total": {
+          "p50": 0.940568,
+          "p95": 1.07892
+        },
+        "model_info": {
+          "p50": 0.000468,
+          "p95": 0.000771
+        },
+        "musetalk_first_batch": {
+          "p50": 0.29359,
+          "p95": 0.356038
+        },
+        "musetalk_inference_first_result": {
+          "p50": 0.334896,
+          "p95": 0.436124
+        },
+        "pre_answer": {
+          "p50": 0.40228,
+          "p95": 0.404234
+        },
+        "retrieval": {
+          "p50": 0.40137,
+          "p95": 0.402492
+        },
+        "routing": {
+          "p50": 1.030231,
+          "p95": 1.154419
+        },
+        "routing_hold": {
+          "p50": 0.0,
+          "p95": 0.0
+        },
+        "tts_first_encoded": {
+          "p50": 0.234779,
+          "p95": 0.31589
+        },
+        "tts_first_pcm": {
+          "p50": 0.238455,
+          "p95": 0.320385
+        },
+        "tts_pcm_available": {
+          "p50": 0.23836,
+          "p95": 0.320318
+        },
+        "vad_endpoint": {
+          "p50": 0.32,
+          "p95": 0.32
+        },
+        "webrtc_audio_commit": {
+          "p50": 0.463007,
+          "p95": 0.540495
+        },
+        "webrtc_audio_enqueue": {
+          "p50": 0.390909,
+          "p95": 0.502787
+        },
+        "webrtc_video_enqueue": {
+          "p50": 0.389429,
+          "p95": 0.500457
+        }
+      },
+      "turns": 11
+    }
+  },
+  "definitions": {
+    "alignment": "server_residual = first_audio − 依序鏈；client_offset = 感知 − 伺服器估算",
+    "first_audio_seconds": "首音延遲：VAD 判定說完 → 伺服器送出第一個非靜音 WebRTC 回覆音訊幀",
+    "perceived_first_audio_seconds": "感知首音延遲：錄音中人聲實際結束 → 用戶端收到該輪第一個非靜音回覆音訊幀（含 WebRTC 傳輸與 aiortc 解碼；僅計入對齊的輪次）",
+    "prompt_first_audio_seconds": "伺服器接受 Prompt（辨識結果進入回覆流程）→ 第一個非靜音回覆音訊幀",
+    "server_perceived_first_audio_seconds": "伺服器估算：vad_endpoint + first_audio_seconds",
+    "specialist_first_audio_seconds": "交接輪次：接手角色回覆的首音延遲（伺服器接受交接問題起算）",
+    "stage_seconds": "依序鏈：asr → pre_answer（含 retrieval；routing 與其並行）→ first_fragment（含 model_info、llm_first_token）→ avatar_to_webrtc_commit（含 routing_hold、tts_first_pcm、musetalk_first_batch、webrtc_audio_enqueue）"
+  },
+  "environment": {
+    "client_role": "stage",
+    "fixture_set": "builtin",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "input": "synthetic Edge TTS fixtures, streamed in real time",
+    "measured_at": "2026-10-30T01:27:56+08:00",
+    "note": "integration 39306c0: +06 concurrent routing, +04 code; 9B ngl=99; edge-tts; whisper fixed zh (en fixtures in zh-TW conversation)",
+    "rounds": "1",
+    "transport": "WebRTC (aiortc client, loopback)"
+  },
+  "failed_turns": 0,
+  "mode": "first_audio_latency",
+  "schema_version": 1,
+  "targets": {
+    "general": {
+      "phase1": {
+        "p50": 1.2,
+        "p95": 2.5
+      },
+      "phase2": {
+        "p50": 1.0,
+        "p95": 1.5
+      }
+    },
+    "handoff": {
+      "phase1": {
+        "p50": 1.6,
+        "p95": 3.0
+      }
+    },
+    "rag": {
+      "phase1": {
+        "p50": 1.6,
+        "p95": 3.0
+      }
+    }
+  },
+  "turn_records": [
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.652213,
+        "client_offset_seconds": 0.405657,
+        "server_perceived_first_audio_seconds": 1.972853,
+        "server_residual_seconds": 0.00064
+      },
+      "category": "general",
+      "first_audio_seconds": 1.652853,
+      "fixture_id": "general-zh-01",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.37851,
+      "prompt_first_audio_seconds": 1.571507,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.080719,
+        "avatar_pasteback_done": 0.435042,
+        "avatar_to_webrtc_commit": 0.496357,
+        "first_fragment": 0.673808,
+        "llm_first_speech": 0.358201,
+        "llm_first_token": 0.234909,
+        "llm_total": 0.71587,
+        "model_info": 0.000505,
+        "musetalk_first_batch": 0.347255,
+        "musetalk_inference_first_result": 0.390018,
+        "pre_answer": 0.401329,
+        "retrieval": 0.400547,
+        "routing": 0.714518,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.311923,
+        "tts_first_pcm": 0.323717,
+        "tts_pcm_available": 0.323626,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.496358,
+        "webrtc_audio_enqueue": 0.431918,
+        "webrtc_video_enqueue": 0.431594
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.350404,
+        "client_offset_seconds": 0.406685,
+        "server_perceived_first_audio_seconds": 1.671522,
+        "server_residual_seconds": 0.001118
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.351522,
+      "fixture_id": "rag-zh-01",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.078207,
+      "prompt_first_audio_seconds": 1.293411,
+      "rag_status": "empty",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.057007,
+        "avatar_pasteback_done": 0.322391,
+        "avatar_to_webrtc_commit": 0.389368,
+        "first_fragment": 0.642624,
+        "llm_first_speech": 0.389495,
+        "llm_first_token": 0.26862,
+        "llm_total": 0.683958,
+        "model_info": 0.000243,
+        "musetalk_first_batch": 0.19849,
+        "musetalk_inference_first_result": 0.273415,
+        "pre_answer": 0.261405,
+        "retrieval": 0.260372,
+        "routing": 0.757621,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.146483,
+        "tts_first_pcm": 0.152226,
+        "tts_pcm_available": 0.152149,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.389369,
+        "webrtc_audio_enqueue": 0.316641,
+        "webrtc_video_enqueue": 0.315631
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.471517,
+        "client_offset_seconds": 0.584584,
+        "server_perceived_first_audio_seconds": 1.79306,
+        "server_residual_seconds": 0.001543
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.47306,
+      "fixture_id": "handoff-zh-01",
+      "handoff_expected": "to_specialist",
+      "handoff_observed": true,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.377644,
+      "prompt_first_audio_seconds": 1.407477,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 2.182796,
+      "stage_seconds": {
+        "asr": 0.064177,
+        "avatar_pasteback_done": 0.307959,
+        "avatar_to_webrtc_commit": 0.383825,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.174677,
+        "musetalk_inference_first_result": 0.195304,
+        "pre_answer": 1.023515,
+        "retrieval": 0.401232,
+        "routing": 1.015293,
+        "routing_hold": null,
+        "tts_first_encoded": 0.171107,
+        "tts_first_pcm": 0.174189,
+        "tts_pcm_available": 0.17411,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.383826,
+        "webrtc_audio_enqueue": 0.302887,
+        "webrtc_video_enqueue": 0.236286
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.33569,
+        "client_offset_seconds": 0.405708,
+        "server_perceived_first_audio_seconds": 1.656619,
+        "server_residual_seconds": 0.000929
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.336619,
+      "fixture_id": "handoff-zh-02",
+      "handoff_expected": "to_main",
+      "handoff_observed": true,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.062327,
+      "prompt_first_audio_seconds": 1.275015,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 1.867205,
+      "stage_seconds": {
+        "asr": 0.060907,
+        "avatar_pasteback_done": 0.237335,
+        "avatar_to_webrtc_commit": 0.261606,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.131834,
+        "musetalk_inference_first_result": 0.172042,
+        "pre_answer": 1.013177,
+        "retrieval": null,
+        "routing": 0.998455,
+        "routing_hold": null,
+        "tts_first_encoded": 0.093325,
+        "tts_first_pcm": 0.095878,
+        "tts_pcm_available": 0.095805,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.261606,
+        "webrtc_audio_enqueue": 0.22403,
+        "webrtc_video_enqueue": 0.222642
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.619761,
+        "client_offset_seconds": 0.410405,
+        "server_perceived_first_audio_seconds": 1.940943,
+        "server_residual_seconds": 0.001182
+      },
+      "category": "general",
+      "first_audio_seconds": 1.620943,
+      "fixture_id": "general-zh-02",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.351348,
+      "prompt_first_audio_seconds": 1.548433,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.071342,
+        "avatar_pasteback_done": 0.343227,
+        "avatar_to_webrtc_commit": 0.401353,
+        "first_fragment": 0.743787,
+        "llm_first_speech": 0.743424,
+        "llm_first_token": 0.417114,
+        "llm_total": 2.14595,
+        "model_info": 0.00025,
+        "musetalk_first_batch": 0.230087,
+        "musetalk_inference_first_result": 0.288145,
+        "pre_answer": 0.403279,
+        "retrieval": 0.401317,
+        "routing": 1.22371,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.191609,
+        "tts_first_pcm": 0.19547,
+        "tts_pcm_available": 0.195422,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.401354,
+        "webrtc_audio_enqueue": 0.329756,
+        "webrtc_video_enqueue": 0.329589
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.803795,
+        "client_offset_seconds": 0.386663,
+        "server_perceived_first_audio_seconds": 2.124945,
+        "server_residual_seconds": 0.00115
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.804945,
+      "fixture_id": "rag-zh-02",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.511608,
+      "prompt_first_audio_seconds": 1.721265,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.082541,
+        "avatar_pasteback_done": 0.571143,
+        "avatar_to_webrtc_commit": 0.583979,
+        "first_fragment": 0.735253,
+        "llm_first_speech": 0.520199,
+        "llm_first_token": 0.400219,
+        "llm_total": 0.776552,
+        "model_info": 0.000261,
+        "musetalk_first_batch": 0.387042,
+        "musetalk_inference_first_result": 0.472483,
+        "pre_answer": 0.402022,
+        "retrieval": 0.400798,
+        "routing": 0.953062,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.332857,
+        "tts_first_pcm": 0.338676,
+        "tts_pcm_available": 0.338588,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.58398,
+        "webrtc_audio_enqueue": 0.562348,
+        "webrtc_video_enqueue": 0.55845
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.664244,
+        "client_offset_seconds": 0.405449,
+        "server_perceived_first_audio_seconds": 1.985095,
+        "server_residual_seconds": 0.000851
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.665095,
+      "fixture_id": "handoff-zh-03",
+      "handoff_expected": "to_specialist",
+      "handoff_observed": true,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.390544,
+      "prompt_first_audio_seconds": 1.594135,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 1.838581,
+      "stage_seconds": {
+        "asr": 0.070255,
+        "avatar_pasteback_done": 0.345713,
+        "avatar_to_webrtc_commit": 0.400767,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.244309,
+        "musetalk_inference_first_result": 0.29117,
+        "pre_answer": 1.193222,
+        "retrieval": 0.400611,
+        "routing": 1.18826,
+        "routing_hold": null,
+        "tts_first_encoded": 0.196734,
+        "tts_first_pcm": 0.204298,
+        "tts_pcm_available": 0.204197,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.400767,
+        "webrtc_audio_enqueue": 0.340028,
+        "webrtc_video_enqueue": 0.339388
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": false,
+        "chain_seconds": 1.222793,
+        "client_offset_seconds": 0.747089,
+        "server_perceived_first_audio_seconds": 1.543936,
+        "server_residual_seconds": 0.001143
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.223936,
+      "fixture_id": "handoff-zh-04",
+      "handoff_expected": "to_main",
+      "handoff_observed": true,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.291025,
+      "prompt_first_audio_seconds": 1.149309,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 2.037348,
+      "stage_seconds": {
+        "asr": 0.073649,
+        "avatar_pasteback_done": 0.278149,
+        "avatar_to_webrtc_commit": 0.333586,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.151611,
+        "musetalk_inference_first_result": 0.214029,
+        "pre_answer": 0.815558,
+        "retrieval": null,
+        "routing": 0.805347,
+        "routing_hold": null,
+        "tts_first_encoded": 0.118984,
+        "tts_first_pcm": 0.12272,
+        "tts_pcm_available": 0.122617,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.333587,
+        "webrtc_audio_enqueue": 0.273856,
+        "webrtc_video_enqueue": 0.273516
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.983944,
+        "client_offset_seconds": 0.366035,
+        "server_perceived_first_audio_seconds": 2.305256,
+        "server_residual_seconds": 0.001312
+      },
+      "category": "general",
+      "first_audio_seconds": 1.985256,
+      "fixture_id": "general-zh-03",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.671291,
+      "prompt_first_audio_seconds": 1.916367,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.067592,
+        "avatar_pasteback_done": 0.449813,
+        "avatar_to_webrtc_commit": 0.523172,
+        "first_fragment": 0.990843,
+        "llm_first_speech": 0.989742,
+        "llm_first_token": 0.462878,
+        "llm_total": 2.7462,
+        "model_info": 0.000684,
+        "musetalk_first_batch": 0.324977,
+        "musetalk_inference_first_result": 0.390338,
+        "pre_answer": 0.402337,
+        "retrieval": 0.401319,
+        "routing": 1.394839,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.273856,
+        "tts_first_pcm": 0.275864,
+        "tts_pcm_available": 0.275818,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.523172,
+        "webrtc_audio_enqueue": 0.44712,
+        "webrtc_video_enqueue": 0.446914
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.741693,
+        "client_offset_seconds": 0.366218,
+        "server_perceived_first_audio_seconds": 2.062892,
+        "server_residual_seconds": 0.001199
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.742892,
+      "fixture_id": "rag-zh-03",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.42911,
+      "prompt_first_audio_seconds": 1.664321,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.077387,
+        "avatar_pasteback_done": 0.384471,
+        "avatar_to_webrtc_commit": 0.43091,
+        "first_fragment": 0.831493,
+        "llm_first_speech": 0.541281,
+        "llm_first_token": 0.396302,
+        "llm_total": 0.873395,
+        "model_info": 0.0006,
+        "musetalk_first_batch": 0.255616,
+        "musetalk_inference_first_result": 0.317834,
+        "pre_answer": 0.401903,
+        "retrieval": 0.400848,
+        "routing": 0.944751,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.211396,
+        "tts_first_pcm": 0.216683,
+        "tts_pcm_available": 0.216607,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.430911,
+        "webrtc_audio_enqueue": 0.37838,
+        "webrtc_video_enqueue": 0.377823
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.742422,
+        "client_offset_seconds": 0.406068,
+        "server_perceived_first_audio_seconds": 2.063566,
+        "server_residual_seconds": 0.001144
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.743566,
+      "fixture_id": "handoff-zh-05",
+      "handoff_expected": "to_specialist",
+      "handoff_observed": true,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.469634,
+      "prompt_first_audio_seconds": 1.682138,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 1.9064,
+      "stage_seconds": {
+        "asr": 0.060427,
+        "avatar_pasteback_done": 0.335931,
+        "avatar_to_webrtc_commit": 0.352453,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.171559,
+        "musetalk_inference_first_result": 0.25411,
+        "pre_answer": 1.329542,
+        "retrieval": 0.40071,
+        "routing": 1.320669,
+        "routing_hold": null,
+        "tts_first_encoded": 0.137255,
+        "tts_first_pcm": 0.142319,
+        "tts_pcm_available": 0.142233,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.352454,
+        "webrtc_audio_enqueue": 0.323515,
+        "webrtc_video_enqueue": 0.322838
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.628931,
+        "client_offset_seconds": 0.365132,
+        "server_perceived_first_audio_seconds": 1.950022,
+        "server_residual_seconds": 0.001091
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.630022,
+      "fixture_id": "handoff-zh-06",
+      "handoff_expected": "to_main",
+      "handoff_observed": true,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.315154,
+      "prompt_first_audio_seconds": 1.586999,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 2.011757,
+      "stage_seconds": {
+        "asr": 0.042045,
+        "avatar_pasteback_done": 0.517075,
+        "avatar_to_webrtc_commit": 0.579557,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.422323,
+        "musetalk_inference_first_result": 0.452103,
+        "pre_answer": 1.007329,
+        "retrieval": null,
+        "routing": 1.006435,
+        "routing_hold": null,
+        "tts_first_encoded": 0.374331,
+        "tts_first_pcm": 0.380059,
+        "tts_pcm_available": 0.379963,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.579558,
+        "webrtc_audio_enqueue": 0.510062,
+        "webrtc_video_enqueue": 0.509819
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 2.070379,
+        "client_offset_seconds": 0.42657,
+        "server_perceived_first_audio_seconds": 2.391379,
+        "server_residual_seconds": 0.001
+      },
+      "category": "general",
+      "first_audio_seconds": 2.071379,
+      "fixture_id": "general-zh-04",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.817949,
+      "prompt_first_audio_seconds": 1.999797,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.070593,
+        "avatar_pasteback_done": 0.577281,
+        "avatar_to_webrtc_commit": 0.644796,
+        "first_fragment": 0.953062,
+        "llm_first_speech": 0.952303,
+        "llm_first_token": 0.467556,
+        "llm_total": 3.010502,
+        "model_info": 0.000334,
+        "musetalk_first_batch": 0.469045,
+        "musetalk_inference_first_result": 0.515264,
+        "pre_answer": 0.401928,
+        "retrieval": 0.400891,
+        "routing": 1.231455,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.398268,
+        "tts_first_pcm": 0.400625,
+        "tts_pcm_available": 0.40056,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.644797,
+        "webrtc_audio_enqueue": 0.570699,
+        "webrtc_video_enqueue": 0.570045
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.812569,
+        "client_offset_seconds": 0.38498,
+        "server_perceived_first_audio_seconds": 2.133467,
+        "server_residual_seconds": 0.000898
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.813467,
+      "fixture_id": "rag-zh-04",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.518447,
+      "prompt_first_audio_seconds": 1.7391,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.073483,
+        "avatar_pasteback_done": 0.354811,
+        "avatar_to_webrtc_commit": 0.394258,
+        "first_fragment": 0.942231,
+        "llm_first_speech": 0.644929,
+        "llm_first_token": 0.513495,
+        "llm_total": 0.989792,
+        "model_info": 0.000698,
+        "musetalk_first_batch": 0.238099,
+        "musetalk_inference_first_result": 0.304564,
+        "pre_answer": 0.402597,
+        "retrieval": 0.401478,
+        "routing": 1.236108,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.190318,
+        "tts_first_pcm": 0.193834,
+        "tts_pcm_available": 0.19376,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.394259,
+        "webrtc_audio_enqueue": 0.349893,
+        "webrtc_video_enqueue": 0.34963
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.989846,
+        "client_offset_seconds": 0.366652,
+        "server_perceived_first_audio_seconds": 2.310934,
+        "server_residual_seconds": 0.001088
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.990934,
+      "fixture_id": "handoff-en-01",
+      "handoff_expected": "to_specialist",
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.677586,
+      "prompt_first_audio_seconds": 1.818022,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.171836,
+        "avatar_pasteback_done": 0.467878,
+        "avatar_to_webrtc_commit": 0.493775,
+        "first_fragment": 0.921897,
+        "llm_first_speech": 0.610233,
+        "llm_first_token": 0.483968,
+        "llm_total": 0.962786,
+        "model_info": 0.000297,
+        "musetalk_first_batch": 0.264054,
+        "musetalk_inference_first_result": 0.353733,
+        "pre_answer": 0.402338,
+        "retrieval": 0.400927,
+        "routing": 1.287168,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.218554,
+        "tts_first_pcm": 0.224288,
+        "tts_pcm_available": 0.224211,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.493775,
+        "webrtc_audio_enqueue": 0.461389,
+        "webrtc_video_enqueue": 0.425794
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.690367,
+        "client_offset_seconds": 0.507168,
+        "server_perceived_first_audio_seconds": 2.011127,
+        "server_residual_seconds": 0.00076
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.691127,
+      "fixture_id": "handoff-en-02",
+      "handoff_expected": "to_main",
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.518295,
+      "prompt_first_audio_seconds": 1.639986,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.050395,
+        "avatar_pasteback_done": 0.425255,
+        "avatar_to_webrtc_commit": 0.470674,
+        "first_fragment": 0.766889,
+        "llm_first_speech": 0.632786,
+        "llm_first_token": 0.513143,
+        "llm_total": 1.261592,
+        "model_info": 0.000307,
+        "musetalk_first_batch": 0.288756,
+        "musetalk_inference_first_result": 0.346994,
+        "pre_answer": 0.402409,
+        "retrieval": 0.401407,
+        "routing": 1.237959,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.231191,
+        "tts_first_pcm": 0.240475,
+        "tts_pcm_available": 0.240392,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.470674,
+        "webrtc_audio_enqueue": 0.421203,
+        "webrtc_video_enqueue": 0.420839
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.671015,
+        "client_offset_seconds": 0.406611,
+        "server_perceived_first_audio_seconds": 1.991854,
+        "server_residual_seconds": 0.000839
+      },
+      "category": "general",
+      "first_audio_seconds": 1.671854,
+      "fixture_id": "general-zh-05",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.398465,
+      "prompt_first_audio_seconds": 1.624579,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.046461,
+        "avatar_pasteback_done": 0.375904,
+        "avatar_to_webrtc_commit": 0.430013,
+        "first_fragment": 0.792491,
+        "llm_first_speech": 0.648171,
+        "llm_first_token": 0.525915,
+        "llm_total": 1.277,
+        "model_info": 0.000442,
+        "musetalk_first_batch": 0.239739,
+        "musetalk_inference_first_result": 0.313455,
+        "pre_answer": 0.40205,
+        "retrieval": 0.400987,
+        "routing": 1.094213,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.199919,
+        "tts_first_pcm": 0.205047,
+        "tts_pcm_available": 0.204956,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.430013,
+        "webrtc_audio_enqueue": 0.3713,
+        "webrtc_video_enqueue": 0.370909
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.769331,
+        "client_offset_seconds": 0.407606,
+        "server_perceived_first_audio_seconds": 2.090442,
+        "server_residual_seconds": 0.001111
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.770442,
+      "fixture_id": "rag-zh-05",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.498048,
+      "prompt_first_audio_seconds": 1.702695,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.066651,
+        "avatar_pasteback_done": 0.39365,
+        "avatar_to_webrtc_commit": 0.403497,
+        "first_fragment": 0.894752,
+        "llm_first_speech": 0.601691,
+        "llm_first_token": 0.482265,
+        "llm_total": 0.940568,
+        "model_info": 0.000367,
+        "musetalk_first_batch": 0.236413,
+        "musetalk_inference_first_result": 0.278329,
+        "pre_answer": 0.404431,
+        "retrieval": 0.403393,
+        "routing": 1.026851,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.203696,
+        "tts_first_pcm": 0.21374,
+        "tts_pcm_available": 0.213653,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.403497,
+        "webrtc_audio_enqueue": 0.390909,
+        "webrtc_video_enqueue": 0.3577
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 2.208741,
+        "client_offset_seconds": 0.387822,
+        "server_perceived_first_audio_seconds": 2.529709,
+        "server_residual_seconds": 0.000968
+      },
+      "category": "handoff",
+      "first_audio_seconds": 2.209709,
+      "fixture_id": "handoff-en-03",
+      "handoff_expected": "to_specialist",
+      "handoff_observed": true,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.917531,
+      "prompt_first_audio_seconds": 2.13718,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 1.946307,
+      "stage_seconds": {
+        "asr": 0.071732,
+        "avatar_pasteback_done": 0.747023,
+        "avatar_to_webrtc_commit": 0.8257,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.653713,
+        "musetalk_inference_first_result": 0.688125,
+        "pre_answer": 1.311309,
+        "retrieval": 0.400793,
+        "routing": 1.302902,
+        "routing_hold": null,
+        "tts_first_encoded": 0.622002,
+        "tts_first_pcm": 0.626578,
+        "tts_pcm_available": 0.626479,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.825701,
+        "webrtc_audio_enqueue": 0.741762,
+        "webrtc_video_enqueue": 0.741449
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.389663,
+        "client_offset_seconds": 0.410202,
+        "server_perceived_first_audio_seconds": 1.714669,
+        "server_residual_seconds": 0.005006
+      },
+      "category": "handoff",
+      "first_audio_seconds": 1.394669,
+      "fixture_id": "handoff-en-04",
+      "handoff_expected": "to_main",
+      "handoff_observed": true,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.124871,
+      "prompt_first_audio_seconds": 1.327702,
+      "rag_status": null,
+      "specialist_first_audio_seconds": 2.08853,
+      "stage_seconds": {
+        "asr": 0.062108,
+        "avatar_pasteback_done": 0.477446,
+        "avatar_to_webrtc_commit": 0.52973,
+        "first_fragment": null,
+        "llm_first_speech": null,
+        "llm_first_token": null,
+        "llm_total": null,
+        "model_info": null,
+        "musetalk_first_batch": 0.132404,
+        "musetalk_inference_first_result": 0.141717,
+        "pre_answer": 0.797825,
+        "retrieval": null,
+        "routing": 0.789363,
+        "routing_hold": null,
+        "tts_first_encoded": 0.129515,
+        "tts_first_pcm": 0.132053,
+        "tts_pcm_available": 0.132,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.52973,
+        "webrtc_audio_enqueue": 0.473345,
+        "webrtc_video_enqueue": 0.166435
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.902873,
+        "client_offset_seconds": 0.346308,
+        "server_perceived_first_audio_seconds": 2.223743,
+        "server_residual_seconds": 0.00087
+      },
+      "category": "general",
+      "first_audio_seconds": 1.903743,
+      "fixture_id": "general-zh-06",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.570051,
+      "prompt_first_audio_seconds": 1.817586,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.085307,
+        "avatar_pasteback_done": 0.407893,
+        "avatar_to_webrtc_commit": 0.453796,
+        "first_fragment": 0.959295,
+        "llm_first_speech": 0.958603,
+        "llm_first_token": 0.510241,
+        "llm_total": 2.918797,
+        "model_info": 0.000745,
+        "musetalk_first_batch": 0.321891,
+        "musetalk_inference_first_result": 0.36361,
+        "pre_answer": 0.404475,
+        "retrieval": 0.403345,
+        "routing": 1.245696,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.268654,
+        "tts_first_pcm": 0.274373,
+        "tts_pcm_available": 0.274325,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.453796,
+        "webrtc_audio_enqueue": 0.404415,
+        "webrtc_video_enqueue": 0.404063
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.839705,
+        "client_offset_seconds": 0.389062,
+        "server_perceived_first_audio_seconds": 2.160688,
+        "server_residual_seconds": 0.000983
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.840688,
+      "fixture_id": "rag-zh-06",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "zh-TW",
+      "perceived_first_audio_seconds": 2.54975,
+      "prompt_first_audio_seconds": 1.774005,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.065712,
+        "avatar_pasteback_done": 0.440278,
+        "avatar_to_webrtc_commit": 0.49701,
+        "first_fragment": 0.873418,
+        "llm_first_speech": 0.616103,
+        "llm_first_token": 0.495647,
+        "llm_total": 0.914743,
+        "model_info": 0.000713,
+        "musetalk_first_batch": 0.310363,
+        "musetalk_inference_first_result": 0.399765,
+        "pre_answer": 0.403565,
+        "retrieval": 0.40137,
+        "routing": 1.030819,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.262699,
+        "tts_first_pcm": 0.267562,
+        "tts_pcm_available": 0.267462,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.49701,
+        "webrtc_audio_enqueue": 0.437311,
+        "webrtc_video_enqueue": 0.437079
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.660431,
+        "client_offset_seconds": 0.367673,
+        "server_perceived_first_audio_seconds": 1.981671,
+        "server_residual_seconds": 0.00124
+      },
+      "category": "general",
+      "first_audio_seconds": 1.661671,
+      "fixture_id": "general-en-01",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.349344,
+      "prompt_first_audio_seconds": 1.59814,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.062311,
+        "avatar_pasteback_done": 0.33165,
+        "avatar_to_webrtc_commit": 0.391556,
+        "first_fragment": 0.804544,
+        "llm_first_speech": 0.680833,
+        "llm_first_token": 0.562085,
+        "llm_total": 1.322264,
+        "model_info": 0.00077,
+        "musetalk_first_batch": 0.231618,
+        "musetalk_inference_first_result": 0.271769,
+        "pre_answer": 0.40202,
+        "retrieval": 0.400886,
+        "routing": 1.028963,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.178684,
+        "tts_first_pcm": 0.182925,
+        "tts_pcm_available": 0.182879,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.391556,
+        "webrtc_audio_enqueue": 0.323251,
+        "webrtc_video_enqueue": 0.322662
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.701711,
+        "client_offset_seconds": 0.407887,
+        "server_perceived_first_audio_seconds": 2.022663,
+        "server_residual_seconds": 0.000952
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.702663,
+      "fixture_id": "rag-en-01",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.43055,
+      "prompt_first_audio_seconds": 1.655703,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.04602,
+        "avatar_pasteback_done": 0.395626,
+        "avatar_to_webrtc_commit": 0.467359,
+        "first_fragment": 0.784295,
+        "llm_first_speech": 0.643926,
+        "llm_first_token": 0.52492,
+        "llm_total": 1.060422,
+        "model_info": 0.000321,
+        "musetalk_first_batch": 0.29359,
+        "musetalk_inference_first_result": 0.334896,
+        "pre_answer": 0.404037,
+        "retrieval": 0.401488,
+        "routing": 1.050296,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.234779,
+        "tts_first_pcm": 0.238455,
+        "tts_pcm_available": 0.23836,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.467359,
+        "webrtc_audio_enqueue": 0.38787,
+        "webrtc_video_enqueue": 0.387357
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.642528,
+        "client_offset_seconds": 0.366188,
+        "server_perceived_first_audio_seconds": 1.96336,
+        "server_residual_seconds": 0.000832
+      },
+      "category": "general",
+      "first_audio_seconds": 1.64336,
+      "fixture_id": "general-en-02",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.329548,
+      "prompt_first_audio_seconds": 1.593801,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.048748,
+        "avatar_pasteback_done": 0.300055,
+        "avatar_to_webrtc_commit": 0.332337,
+        "first_fragment": 0.859053,
+        "llm_first_speech": 0.661817,
+        "llm_first_token": 0.542774,
+        "llm_total": 0.90691,
+        "model_info": 0.000508,
+        "musetalk_first_batch": 0.18714,
+        "musetalk_inference_first_result": 0.22722,
+        "pre_answer": 0.40239,
+        "retrieval": 0.401046,
+        "routing": 1.263778,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.155412,
+        "tts_first_pcm": 0.160847,
+        "tts_pcm_available": 0.160785,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.332337,
+        "webrtc_audio_enqueue": 0.290375,
+        "webrtc_video_enqueue": 0.289675
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.902838,
+        "client_offset_seconds": 0.385484,
+        "server_perceived_first_audio_seconds": 2.223713,
+        "server_residual_seconds": 0.000875
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.903713,
+      "fixture_id": "rag-en-02",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.609197,
+      "prompt_first_audio_seconds": 1.84455,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.058311,
+        "avatar_pasteback_done": 0.412257,
+        "avatar_to_webrtc_commit": 0.463007,
+        "first_fragment": 0.97766,
+        "llm_first_speech": 0.713946,
+        "llm_first_token": 0.594278,
+        "llm_total": 1.018578,
+        "model_info": 0.000746,
+        "musetalk_first_batch": 0.325034,
+        "musetalk_inference_first_result": 0.383773,
+        "pre_answer": 0.40386,
+        "retrieval": 0.401476,
+        "routing": 1.07273,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.298923,
+        "tts_first_pcm": 0.302094,
+        "tts_pcm_available": 0.302047,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.463007,
+        "webrtc_audio_enqueue": 0.40979,
+        "webrtc_video_enqueue": 0.409629
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.879873,
+        "client_offset_seconds": 0.42845,
+        "server_perceived_first_audio_seconds": 2.200959,
+        "server_residual_seconds": 0.001086
+      },
+      "category": "general",
+      "first_audio_seconds": 1.880959,
+      "fixture_id": "general-en-03",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.629409,
+      "prompt_first_audio_seconds": 1.833187,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.046708,
+        "avatar_pasteback_done": 0.445663,
+        "avatar_to_webrtc_commit": 0.516802,
+        "first_fragment": 0.912335,
+        "llm_first_speech": 0.696386,
+        "llm_first_token": 0.547442,
+        "llm_total": 1.182286,
+        "model_info": 0.000323,
+        "musetalk_first_batch": 0.366162,
+        "musetalk_inference_first_result": 0.406196,
+        "pre_answer": 0.404028,
+        "retrieval": 0.401221,
+        "routing": 1.07089,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.335462,
+        "tts_first_pcm": 0.340422,
+        "tts_pcm_available": 0.340375,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.516803,
+        "webrtc_audio_enqueue": 0.442299,
+        "webrtc_video_enqueue": 0.441783
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.70339,
+        "client_offset_seconds": 0.427169,
+        "server_perceived_first_audio_seconds": 2.024158,
+        "server_residual_seconds": 0.000768
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.704158,
+      "fixture_id": "rag-en-03",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.451327,
+      "prompt_first_audio_seconds": 1.666769,
+      "rag_status": "empty",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.036636,
+        "avatar_pasteback_done": 0.417446,
+        "avatar_to_webrtc_commit": 0.492649,
+        "first_fragment": 0.776481,
+        "llm_first_speech": 0.636805,
+        "llm_first_token": 0.517555,
+        "llm_total": 0.999127,
+        "model_info": 0.000468,
+        "musetalk_first_batch": 0.298508,
+        "musetalk_inference_first_result": 0.358433,
+        "pre_answer": 0.397624,
+        "retrieval": 0.396598,
+        "routing": 1.054457,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.270724,
+        "tts_first_pcm": 0.275182,
+        "tts_pcm_available": 0.275105,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.49265,
+        "webrtc_audio_enqueue": 0.414163,
+        "webrtc_video_enqueue": 0.413831
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.960125,
+        "client_offset_seconds": 0.389139,
+        "server_perceived_first_audio_seconds": 2.281647,
+        "server_residual_seconds": 0.001522
+      },
+      "category": "general",
+      "first_audio_seconds": 1.961647,
+      "fixture_id": "general-en-04",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.670786,
+      "prompt_first_audio_seconds": 1.888552,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.071586,
+        "avatar_pasteback_done": 0.408559,
+        "avatar_to_webrtc_commit": 0.476866,
+        "first_fragment": 1.009768,
+        "llm_first_speech": 0.643284,
+        "llm_first_token": 0.519744,
+        "llm_total": 1.052295,
+        "model_info": 0.000351,
+        "musetalk_first_batch": 0.312743,
+        "musetalk_inference_first_result": 0.35374,
+        "pre_answer": 0.401905,
+        "retrieval": 0.400966,
+        "routing": 1.024336,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.260465,
+        "tts_first_pcm": 0.26378,
+        "tts_pcm_available": 0.263687,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.476866,
+        "webrtc_audio_enqueue": 0.405481,
+        "webrtc_video_enqueue": 0.40508
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 2.020605,
+        "client_offset_seconds": 0.368055,
+        "server_perceived_first_audio_seconds": 2.341348,
+        "server_residual_seconds": 0.000743
+      },
+      "category": "rag",
+      "first_audio_seconds": 2.021348,
+      "fixture_id": "rag-en-04",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.709403,
+      "prompt_first_audio_seconds": 1.767847,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.252769,
+        "avatar_pasteback_done": 0.448461,
+        "avatar_to_webrtc_commit": 0.479984,
+        "first_fragment": 0.885572,
+        "llm_first_speech": 0.648074,
+        "llm_first_token": 0.524047,
+        "llm_total": 1.097417,
+        "model_info": 0.000386,
+        "musetalk_first_batch": 0.310787,
+        "musetalk_inference_first_result": 0.35462,
+        "pre_answer": 0.40228,
+        "retrieval": 0.40159,
+        "routing": 1.030231,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.285575,
+        "tts_first_pcm": 0.289576,
+        "tts_pcm_available": 0.289515,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.479985,
+        "webrtc_audio_enqueue": 0.443226,
+        "webrtc_video_enqueue": 0.442465
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 2.381633,
+        "client_offset_seconds": 0.387909,
+        "server_perceived_first_audio_seconds": 2.702433,
+        "server_residual_seconds": 0.0008
+      },
+      "category": "general",
+      "first_audio_seconds": 2.382433,
+      "fixture_id": "general-en-05",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 3.090342,
+      "prompt_first_audio_seconds": 1.987043,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.394606,
+        "avatar_pasteback_done": 0.447843,
+        "avatar_to_webrtc_commit": 0.524065,
+        "first_fragment": 1.061021,
+        "llm_first_speech": 1.060216,
+        "llm_first_token": 0.538754,
+        "llm_total": 2.576747,
+        "model_info": 0.000499,
+        "musetalk_first_batch": 0.355723,
+        "musetalk_inference_first_result": 0.39616,
+        "pre_answer": 0.401941,
+        "retrieval": 0.401135,
+        "routing": 1.050994,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.308944,
+        "tts_first_pcm": 0.315796,
+        "tts_pcm_available": 0.315749,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.524066,
+        "webrtc_audio_enqueue": 0.445165,
+        "webrtc_video_enqueue": 0.444946
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    },
+    {
+      "alignment": {
+        "aligned": true,
+        "chain_seconds": 1.781116,
+        "client_offset_seconds": 0.507713,
+        "server_perceived_first_audio_seconds": 2.102162,
+        "server_residual_seconds": 0.001046
+      },
+      "category": "rag",
+      "first_audio_seconds": 1.782162,
+      "fixture_id": "rag-en-05",
+      "handoff_expected": null,
+      "handoff_observed": false,
+      "language": "en-US",
+      "perceived_first_audio_seconds": 2.609875,
+      "prompt_first_audio_seconds": 1.726348,
+      "rag_status": "timeout",
+      "specialist_first_audio_seconds": null,
+      "stage_seconds": {
+        "asr": 0.054782,
+        "avatar_pasteback_done": 0.397527,
+        "avatar_to_webrtc_commit": 0.445548,
+        "first_fragment": 0.879204,
+        "llm_first_speech": 0.628024,
+        "llm_first_token": 0.508375,
+        "llm_total": 0.922966,
+        "model_info": 0.000795,
+        "musetalk_first_batch": 0.267632,
+        "musetalk_inference_first_result": 0.328174,
+        "pre_answer": 0.401582,
+        "retrieval": 0.400481,
+        "routing": 0.983903,
+        "routing_hold": 0.0,
+        "tts_first_encoded": 0.227525,
+        "tts_first_pcm": 0.231491,
+        "tts_pcm_available": 0.231386,
+        "vad_endpoint": 0.32,
+        "webrtc_audio_commit": 0.445549,
+        "webrtc_audio_enqueue": 0.390262,
+        "webrtc_video_enqueue": 0.389429
+      },
+      "status": "completed",
+      "terminal_reason": "completed"
+    }
+  ],
+  "turns_total": 32
+}

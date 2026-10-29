@@ -38,3 +38,10 @@ Blocked by: 01
 3. 預期：general 類 `pre_answer` P50 ≈ 檢索時間且 ≤ 0.45 s（無 RAG 時接近 0）；`routing_hold` P50 接近 0，P95 不超過 `routing` − 首片段時間；general 首音較基準線約少一次路由時間（約 0.4–1.2 s，依 GPU 層數）。handoff 類：用戶端該輪聽到的第一段音訊是交接說明（`handoff=True` 且無主回答文字出現在控制台）；`rag_status` 出現 `timeout` 時控制台顯示「本輪未取得檢索」。
 4. 在 `logs/llama-server.log` 確認同一輪的路由請求與主回答請求時間重疊（不同 slot id）。
 5. 結果摘要補在本 Comments 後設 `Status: resolved`。
+
+### 2026-10-30 實機量測（orchestrator）
+`after-06-2026-10-30.json`（整合分支 39306c0）對照 `integration-2026-10-30-a.json`（未含 06）：
+- 感知首音延遲 P50／P95：一般 3.58／4.08 → **2.57／2.95 s**；RAG 3.25／3.51 → **2.51／2.66 s**；交接 1.95／3.56 → 2.39／2.82 s。
+- `pre_answer` P50 0.40 s、`routing_hold` 0；路由並行後本身變慢（0.69 → 1.09 s，與主回答共用 GPU），但已不在首音路徑上。
+- **問題：檢索 24 輪中 22 輪 `timeout`**。RAGFlow 檢索本來就要 0.50–0.67 s，400 ms 上限幾乎每輪落空，等於關閉 RAG。待使用者決定（見 issue 15）。
+- 交接 10 句中 8 句交接成功；2 句英文未交接，原因是 issue 07 的固定語系把英文當中文辨識（見 issue 07 Comments）。

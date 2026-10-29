@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # LLM 全 GPU 啟動
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)。`src/llm/llamacpp.py:266` 依啟動當下剩餘顯存決定 `-ngl`；llama-server 在 MuseTalk 載入後才啟動，10/29 21:29 只得到 31 層（生成約 35 tok/s，全 GPU 時 107–124）。最新 `logs/llama-server.log` 首行為「no usable GPU found」，一併查明。
 
@@ -31,3 +31,6 @@ Status: ready-for-agent
 3. `tail -n 80 logs/llama-server.log`：最後一個 `===== … nova-avatar 啟動 llama-server: … -ngl 99 =====` 之後不應出現 `no usable GPU found`。`pgrep -a llama-server` 應含 `-ngl 99`。
 4. `curl -s http://127.0.0.1:8010/health` 應含 `"llm_full_gpu": true`，控制台不顯示 GPU 警告。
 5. 風險：LLM 改為先占顯存（Qwen3.5-9B 約需 5851＋2048 MiB），若 MuseTalk／TensorRT 因此載入失敗，日誌會出現「啟動時載入數字人失敗」，需記錄當下 `nvidia-smi`，再依 Q13 換用較小的 LLM。
+
+### 2026-10-30 實機驗證（orchestrator）
+整合分支 50790ce 啟動：日誌依序為「正在啟動 llama-server → 使用 CUDA 解除安裝 99 層 → 已就緒」，之後才載入 MuseTalk；MuseTalk 正常載入；`/health` 回 `llm_full_gpu: true`。

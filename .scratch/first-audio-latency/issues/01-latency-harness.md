@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 量測工具與基準線
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)。`scripts/replay_voice_baseline.py` 與 `scripts/benchmark_streaming_vs_legacy.py` 使用模擬時鐘，不是實測；`webrtc_video_enqueue` 指標恆為 0；主回答前的路由、檢索、模型資訊查詢沒有任何指標（`src/server/voice_session.py:843-952` 之前段）。
 
@@ -38,3 +38,8 @@ Status: ready-for-agent
    約 35 輪、10–15 分鐘。每輪印 `turn i/N <fixture> status=completed perceived=… first_audio=… handoff=…`，最後印各類別 P50／P95 與報告路徑；有失敗輪次時結束碼為 1。
 4. 預期（與 10/29 日誌同量級，ngl 31）：general `first_audio_seconds` P50 約 3–4 s、`perceived_first_audio_seconds` 約再加 0.3–0.4 s；`pre_answer` P50 約 1.5 s（路由約 1.2 s、檢索約 0.7 s）；`model_info` 約 0.2–0.4 s；`webrtc_video_enqueue` 不再為 0。`misaligned_turns` 應為 0 或極少；`rag_status` 若多為 `empty`，以現場知識庫問題改用 `--fixtures` 重跑 RAG 類。
 5. 將結果摘要（各類別感知／首音／Prompt 起算 P50／P95、主要階段）補在本 Comments，再設 `Status: resolved`。
+
+### 2026-10-30 實機基準線（orchestrator）
+`baseline-2026-10-30.json`：`main`＋本 issue 量測（commit 8d625f7），9B 全 GPU（`-ngl 99`）、Whisper small auto／beam 5、Edge TTS，32 輪全數完成、對齊 0 失敗。
+感知首音延遲 P50／P95：一般 4.09／4.43 s、RAG 3.93／4.22 s、交接 2.48／2.69 s。一般輪次 P50 各段：VAD 靜音等待 0.32、辨識 0.41、主回答前 1.29（路由 0.69＋檢索 0.50，串行）、首片段 0.93、片段到 WebRTC 0.62 s。模型資訊查詢實測僅 0.03 s。
+用戶端偏移（感知 − 伺服器估算）P50 0.37 s，未拆解，待 issue 14 說明。測試題的 RAG 問題與現場知識庫（僅一份文件）不符，21 輪中 20 輪檢索為空。
