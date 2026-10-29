@@ -23,3 +23,4 @@ Blocked by: 15
 - 測試：`tests/test_startup_scripts.py` 27 項全過（新增：他程式占埠不殺、舊 Nova 程序先 TERM、忽略 TERM 於寬限後 KILL、只清本專案 CosyVoice、後端自行結束／啟動腳本被停止時整組與 CosyVoice 皆收掉、RAGFlow 失敗非致命、post_musetalk 兩項）。測試以假 `lsof`／`ss` 與 tmp 目錄替身程序進行，未觸及本機真實 3000／8010。
 - 驗證：ruff、check-integration 通過；pytest 927 passed、3 skipped（僅兩項已知 worktree 基線失敗）；web lint、test（202）、build 通過。
 - 未處理：llama-server 同以 `start_new_session` 啟動，後端被 SIGKILL 時也可能成孤兒；本票範圍只含 CosyVoice。
+- 合併 `security-hardening` 後（無衝突）：ruff、pyright、check-integration 通過；pytest 1065 passed、3 skipped（僅兩項已知基線失敗）；web lint、test（204）、build 通過。
