@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 路由、檢索與主回答並行
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 依[規格](../spec.md)與 [ADR 0022](../../../docs/adr/0022-run-routing-retrieval-and-answer-concurrently.md)。目前 `src/server/voice_session.py:843-952` 依序執行路由（`src/profiles/routing.py:60`，非串流、max_tokens 384）、RAGFlow 檢索，再開始主回答。
@@ -45,3 +45,6 @@ Blocked by: 01
 - `pre_answer` P50 0.40 s、`routing_hold` 0；路由並行後本身變慢（0.69 → 1.09 s，與主回答共用 GPU），但已不在首音路徑上。
 - **問題：檢索 24 輪中 22 輪 `timeout`**。RAGFlow 檢索本來就要 0.50–0.67 s，400 ms 上限幾乎每輪落空，等於關閉 RAG。待使用者決定（見 issue 15）。
 - 交接 10 句中 8 句交接成功；2 句英文未交接，原因是 issue 07 的固定語系把英文當中文辨識（見 issue 07 Comments）。
+
+### 2026-10-30 收尾（orchestrator）
+路由並行已實機驗證（`after-06`、`after-e2b`、`offset-split`）：`pre_answer` 不含路由、`routing_hold` 0。檢索上限的取捨移到 issue 15（Q25：暫為 0.7 s）。

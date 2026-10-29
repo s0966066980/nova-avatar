@@ -1,0 +1,258 @@
+{
+  "generated_at": "2026-10-30T04:17:47+08:00",
+  "targets": {
+    "first_audio_p50_seconds": 0.4,
+    "first_audio_p95_seconds": 0.7
+  },
+  "definitions": {
+    "first_audio": "送出 /inference_zero_shot 到收到第一段 PCM（與應用 `first audio:` 日誌相同）；BreezyVoice 不串流，約等於整段合成時間",
+    "cold": "第一筆為伺服器載入後第一次合成；其餘每筆前閒置 idle_seconds",
+    "warm": "暖機後連續合成第一個片段（約 15 字）",
+    "contended": "同上，但 LLM 同時串流生成",
+    "vram": "nvidia-smi 量測：delta_peak_mib = 評比期間峰值 − 啟動伺服器前基準",
+    "error_rate": "第一輪 Whisper 回辨；zh-TW 為 CER（中文逐字、英文字詞整體）、en-US 為 WER；忽略繁簡字形與標點，數字的讀法與寫法視為相同，取最接近的可接受逐字稿",
+    "stability": "全部輪次：failed／empty／too_short／too_long 依音訊長度判斷，truncated（結尾少 2 個以上單位）／hallucinated（多出 30% 以上或重複片段）依回辨"
+  },
+  "engines": {
+    "breezyvoice": {
+      "label": "BreezyVoice",
+      "run_dir": "/home/oliver/nova-avatar/.scratch/first-audio-latency/tts-bakeoff/runs/breezyvoice",
+      "measured_at": "2026-10-30T02:46:03+08:00",
+      "note": "MuseTalk+E2B loaded; dev reference clip",
+      "server": {
+        "status": "ok",
+        "sample_rate": 22050,
+        "prompt_clip": true,
+        "prompt_prep": 3,
+        "max_prompt_seconds": 8.0,
+        "model_dir": "/home/oliver/nova-avatar/models/BreezyVoice",
+        "family": "breezyvoice",
+        "streaming": false
+      },
+      "settings": {
+        "cold_rounds": 5,
+        "idle_seconds": 30.0,
+        "warmup": 3,
+        "warm_rounds": 3,
+        "stability_count": 500,
+        "sentences": "/home/oliver/nova-avatar/.scratch/first-audio-latency/tts-bakeoff/sentences.json"
+      },
+      "latency": {
+        "cold": {
+          "n": 5,
+          "failures": 0,
+          "first_audio_p50": 2.7103,
+          "first_audio_p95": 5.13516,
+          "total_p50": 2.7495,
+          "total_p95": 5.17148,
+          "rtf_p50": 0.745812
+        },
+        "warm": {
+          "n": 60,
+          "failures": 0,
+          "first_audio_p50": 2.48245,
+          "first_audio_p95": 2.944985,
+          "total_p50": 2.5151,
+          "total_p95": 2.986765,
+          "rtf_p50": 0.69952
+        },
+        "contended": {
+          "n": 60,
+          "failures": 0,
+          "first_audio_p50": 3.19945,
+          "first_audio_p95": 3.76502,
+          "total_p50": 3.23375,
+          "total_p95": 3.807735,
+          "rtf_p50": 0.85691
+        },
+        "cold_first_after_load_seconds": 5.7293
+      },
+      "meets_target": {
+        "warm": false,
+        "contended": false
+      },
+      "llm_load": {
+        "url": "http://127.0.0.1:8080/v1",
+        "model": "default",
+        "completed_requests": 55,
+        "chunks": 28315,
+        "errors": []
+      },
+      "vram": {
+        "baseline_mib": 17968,
+        "first_sample_mib": 21185,
+        "peak_mib": 23881,
+        "delta_peak_mib": 5913,
+        "server_pid": 656126,
+        "server_process_peak_mib": 5916,
+        "samples": 1595,
+        "errors": []
+      },
+      "asr": {
+        "engine": "whisper",
+        "model": "turbo",
+        "device": "cuda",
+        "compute_type": "float16",
+        "beam_size": 1,
+        "load_seconds": 2.048
+      },
+      "accuracy": {
+        "zh-TW": {
+          "metric": "CER",
+          "utterances": 100,
+          "failed": 0,
+          "error_rate": 0.051,
+          "by_category": {
+            "general": 0.012,
+            "number": 0.045,
+            "place-name": 0.0925,
+            "taiwan-reading": 0.0246,
+            "zh-en": 0.0783
+          }
+        },
+        "en-US": {
+          "metric": "WER",
+          "utterances": 30,
+          "failed": 0,
+          "error_rate": 0.0359,
+          "by_category": {
+            "english": 0.0359
+          }
+        }
+      },
+      "stability": {
+        "utterances": 500,
+        "failed": 0,
+        "empty": 0,
+        "too_short": 0,
+        "too_long": 0,
+        "truncated": 2,
+        "hallucinated": 0,
+        "transcripts_scored": true,
+        "any_issue": 2,
+        "any_issue_rate": 0.004
+      },
+      "soak": null
+    },
+    "cosyvoice3": {
+      "label": "Fun-CosyVoice3",
+      "run_dir": "/home/oliver/nova-avatar/.scratch/first-audio-latency/tts-bakeoff/runs/cosyvoice3",
+      "measured_at": "2026-10-30T03:07:55+08:00",
+      "note": "MuseTalk+E2B loaded; dev reference clip",
+      "server": {
+        "status": "ok",
+        "sample_rate": 24000,
+        "prompt_clip": true,
+        "prompt_prep": 3,
+        "max_prompt_seconds": 8.0,
+        "model_dir": "/home/oliver/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B-2512",
+        "family": "cosyvoice3",
+        "streaming": true
+      },
+      "settings": {
+        "cold_rounds": 5,
+        "idle_seconds": 30.0,
+        "warmup": 3,
+        "warm_rounds": 3,
+        "stability_count": 500,
+        "sentences": "/home/oliver/nova-avatar/.scratch/first-audio-latency/tts-bakeoff/sentences.json"
+      },
+      "latency": {
+        "cold": {
+          "n": 5,
+          "failures": 0,
+          "first_audio_p50": 1.9114,
+          "first_audio_p95": 3.321,
+          "total_p50": 2.3153,
+          "total_p95": 4.53462,
+          "rtf_p50": 0.521464
+        },
+        "warm": {
+          "n": 60,
+          "failures": 0,
+          "first_audio_p50": 1.77435,
+          "first_audio_p95": 1.89093,
+          "total_p50": 1.79255,
+          "total_p95": 2.29977,
+          "rtf_p50": 0.475039
+        },
+        "contended": {
+          "n": 60,
+          "failures": 0,
+          "first_audio_p50": 2.25065,
+          "first_audio_p95": 2.457285,
+          "total_p50": 2.25715,
+          "total_p95": 3.02222,
+          "rtf_p50": 0.588907
+        },
+        "cold_first_after_load_seconds": 3.6385
+      },
+      "meets_target": {
+        "warm": false,
+        "contended": false
+      },
+      "llm_load": {
+        "url": "http://127.0.0.1:8080/v1",
+        "model": "default",
+        "completed_requests": 32,
+        "chunks": 16893,
+        "errors": []
+      },
+      "vram": {
+        "baseline_mib": 17959,
+        "first_sample_mib": 22898,
+        "peak_mib": 23394,
+        "delta_peak_mib": 5435,
+        "server_pid": 802960,
+        "server_process_peak_mib": 5430,
+        "samples": 1198,
+        "errors": []
+      },
+      "asr": {
+        "engine": "whisper",
+        "model": "turbo",
+        "device": "cuda",
+        "compute_type": "float16",
+        "beam_size": 1,
+        "load_seconds": 2.048
+      },
+      "accuracy": {
+        "zh-TW": {
+          "metric": "CER",
+          "utterances": 100,
+          "failed": 0,
+          "error_rate": 0.0438,
+          "by_category": {
+            "general": 0.0,
+            "number": 0.0721,
+            "place-name": 0.0705,
+            "taiwan-reading": 0.0175,
+            "zh-en": 0.0553
+          }
+        },
+        "en-US": {
+          "metric": "WER",
+          "utterances": 30,
+          "failed": 0,
+          "error_rate": 0.004,
+          "by_category": {
+            "english": 0.004
+          }
+        }
+      },
+      "stability": {
+        "utterances": 500,
+        "failed": 0,
+        "empty": 1,
+        "too_short": 0,
+        "too_long": 2,
+        "truncated": 1,
+        "hallucinated": 1,
+        "transcripts_scored": true,
+        "any_issue": 4,
+        "any_issue_rate": 0.008
+      },
+      "soak": null
+    }
+  }
+}

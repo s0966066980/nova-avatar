@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 停用預設 Ollama 與顯存盤點
-Status: ready-for-agent
+Status: resolved
 Blocked by: 04
 
 依[規格](../spec.md)。10/29 實測 4090 已用 22.1／24.5 GB：Nova 10.7、llama-server 6.0、Ollama（11434）1.6、不明 python 約 2.9 GB。
@@ -49,3 +49,6 @@ E2B＋MuseTalk＋BreezyVoice 同時載入的顯存需在 ticket 04 使用者接�
    nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
    ```
    依 PID 分列 llama-server（E2B）、Nova 後端（MuseTalk＋Whisper）、BreezyVoice（CosyVoice 伺服器）、11435 BGE-M3，以及非 Nova 程序；回填本節合計與「扣除非 Nova 程序後」的數字。
+
+### 2026-10-30 實機（orchestrator）
+E2B（含 mmproj）＋MuseTalk 已載入時 GPU 共 18.0 GB；再載 BreezyVoice 峰值 23.9／24.5 GB、Fun-CosyVoice3 峰值 23.4 GB，餘量不足 1 GB。停用 11434 需使用者以 sudo 執行 `sudo systemctl disable --now ollama`（幾乎不省顯存，選擇性）。

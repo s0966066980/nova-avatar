@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # TTS 評比
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 04, 09
 
 依[規格](../spec.md)。主角 BreezyVoice；對照 Fun-CosyVoice3 0.5B（已整合）。Qwen3-TTS 已於 2026-10-30 由使用者決定移除，不列入評比（見 Comments）。在 MuseTalk 與 E2B 都載入的實機上量測：
@@ -115,3 +115,17 @@ LLM=http://127.0.0.1:8080/v1   # 會在 llama-server 上持續生成；舞台使
 改為只收文字）與說明中的 Qwen3-TTS；`THIRD_PARTY_NOTICES.md` 的 Qwen3-TTS／faster-qwen3-tts／qwen-tts-hf 段落。
 上方「待實機驗證」已改為只比 BreezyVoice 與 Fun-CosyVoice3；上方 2026-10-30 評比工具一節保留為歷史紀錄。
 `tts-bakeoff/runs/` 下的 Qwen3-TTS 測試輸出（gitignored）未動。
+
+### 2026-10-30 實機結果（orchestrator）
+`tts-bakeoff/bakeoff.json`，試聽頁 `tts-bakeoff/index.html`（音訊在 gitignored 的 `runs/`，僅本機可聽）。MuseTalk＋E2B 已載入、開發用參考錄音：
+
+| | BreezyVoice | Fun-CosyVoice3 |
+|---|---|---|
+| 第一個片段 P50／P95（暖機） | 2.48／2.94 s | 1.77／1.89 s |
+| LLM 生成中 P50 | 3.20 s | 2.25 s |
+| 冷啟動 P50 | 2.71 s | 1.91 s |
+| 中文／英文字錯率 | 5.1%／3.6% | 4.4%／0.4% |
+| 截斷／幻覺率 | 0.4% | 0.8% |
+| 額外顯存峰值 | 5.9 GB | 5.4 GB |
+
+兩者都比 0.4 s 目標慢 4–6 倍（非串流、與 MuseTalk 共用 GPU）。8 小時穩定性測試未跑，待使用者選定方向後再跑。需要使用者：試聽評分，並決定 TTS 方向（見最終報告）。

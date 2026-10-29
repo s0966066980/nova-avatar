@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # BreezyVoice 引擎
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)。BreezyVoice（MediaTek，程式碼與權重 Apache-2.0）以 CosyVoice v1 為基礎，吃繁體字、以 g2pW 處理台灣讀音、可指定注音；不支援串流，以參考音訊＋逐字稿複製聲線。
 
@@ -96,3 +96,6 @@ ticket 12 釋出顯存。套用 TTS 需先斷開舞台連線。
    取 P50／P95 對照目標 0.4／0.7 s；再以舞台講一句，於後端日誌讀
    `breezyvoice first audio:` 與 `logs/cosyvoice-server.log` 的 rtf。
 5. 實測後把顯存、P50／P95 寫回本節；達標或交給 ticket 10 後改 `Status: resolved`。
+
+### 2026-10-30 實機（orchestrator）
+g2pw 0.1.1 已裝入 cosyvoice conda 環境。在 MuseTalk＋E2B 已載入的 GPU 上以開發用參考錄音實跑（issue 10 評比）：第一個片段（約 15 字）合成 P50 2.48／P95 2.94 s，LLM 生成中 3.20 s；額外顯存峰值 5.9 GB（總用量 23.9／24.5 GB）；500 句 0 失敗。引擎可用，但遠未達 0.4 s 目標，是否採用見 issue 10。

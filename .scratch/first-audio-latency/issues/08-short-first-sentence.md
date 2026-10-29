@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 第一句簡短的 Prompt 規則
-Status: ready-for-agent
+Status: resolved
 Blocked by: 04
 
 依[規格](../spec.md)。第一個可播回覆片段需等完整句子（`src/server/reply_streaming/fragmenter.py`；逗號切分需 24 字以上且 0.5 s，0.5 s 只在新 token 到達時檢查）。
@@ -79,3 +79,6 @@ Blocked by: 04
      --output .scratch/first-audio-latency/after-08b-2026-10-30.json
    ```
    比較 `first_fragment` 與 `tts_first_pcm` 階段；另以天氣題（如「明天台北會下雨嗎？」）實聽第一片段後的停頓是否可接受，由使用者確認。
+
+### 2026-10-30 實機（orchestrator）
+E2B＋首句規則＋首個片段例外（08b）：`first_fragment` P50 0.45 s（`after-e2b`）→ 0.39 s（`after-followups`）→ 0.43 s（`offset-split`，在雜訊範圍）。首句 15 字規則遵循率低（E2B 7/29），首個片段例外已依 Q27 實作。首片段後的停頓需使用者試聽確認（列入最終報告）。
