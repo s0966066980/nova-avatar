@@ -20,9 +20,9 @@ from src.tts.cosyvoice_runtime import (
     cosyvoice_family,
     parse_server_url,
     prepare_prompt_wav,
-    resolve_prompt_source,
     server_url,
 )
+from src.tts.voice_library import voice_path
 from src.utils.logging import logger
 
 
@@ -58,21 +58,20 @@ class CosyVoiceTTS(BaseTTS):
         return server_url()
 
     def _prompt_wav(self) -> str:
+        """The voice-library reference, or the bundled default prompt when none is set."""
         configured = str(getattr(self.config.tts, "ref_file", "") or "").strip()
-        source = configured or str(DEFAULT_PROMPT_WAV)
-        try:
-            return str(prepare_prompt_wav(resolve_prompt_source(source)))
-        except FileNotFoundError:
-            if DEFAULT_PROMPT_WAV.is_file():
-                return str(DEFAULT_PROMPT_WAV)
-            raise
+        if configured:
+            return str(prepare_prompt_wav(voice_path(configured)))
+        if DEFAULT_PROMPT_WAV.is_file():
+            return str(DEFAULT_PROMPT_WAV)
+        raise FileNotFoundError(f"未選擇參考音訊，且預設 {DEFAULT_PROMPT_WAV} 不存在")
 
     def _prompt_text(self) -> str:
         configured = str(getattr(self.config.tts, "ref_text", "") or "").strip()
         if configured:
             return configured
         wav = str(getattr(self.config.tts, "ref_file", "") or "")
-        if Path(wav).name.startswith("cosyvoice_prompt"):
+        if not wav.strip() or Path(wav).name.startswith("cosyvoice_prompt"):
             return DEFAULT_PROMPT_TEXT
         return ""
 

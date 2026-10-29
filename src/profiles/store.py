@@ -20,6 +20,9 @@ from src.greetings.content import validate_content
 from src.llm.rules import rules_from_config, validate_rules
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
+from src.tts.voice_library import (
+    VoiceLibraryError, check_model, check_reference, check_tts_server, migrate_tts_values,
+)
 
 _ID = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
 LLM_FIELDS = ("provider", "model", "base_url", "max_tokens", "response_max_chars")
@@ -143,8 +146,12 @@ def validate_profile(value: dict) -> dict:
                 raise ProfileError("聲音設定格式不正確")
         elif current is not None:
             tts[item.name] = _text(current, item.name, 4000)
-    if tts["tts_server"]:
-        tts["tts_server"] = _endpoint(tts["tts_server"])
+    try:
+        tts["ref_file"] = check_reference(tts["type"], tts["ref_file"])
+        tts["tts_server"] = check_tts_server(tts["tts_server"])
+        tts["model"] = check_model(tts["model"])
+    except VoiceLibraryError as exc:
+        raise ProfileError(f"聲音設定：{exc.message}") from None
     try:
         rag = validate_selection(value.get("rag"))
     except ValueError as exc:
@@ -225,29 +232,49 @@ def validate_library(value: dict) -> dict:
                 weather=weather, migrated=True)
 
 
+def _migrate_voice_settings(raw) -> bool:
+    """Saved reference paths move into the voice library or are cleared (see voice_library)."""
+    profiles = raw.get("profiles") if isinstance(raw, dict) else None
+    changed = False
+    for profile in profiles if isinstance(profiles, list) else ():
+        tts = profile.get("tts") if isinstance(profile, dict) else None
+        if isinstance(tts, dict):
+            values = {"type": TTSConfig().type, **tts}
+            if migrate_tts_values(values, where=f"角色設定檔 {profile.get('id')}"):
+                tts.update({key: values[key] for key in tts})
+                changed = True
+    return changed
+
+
 class ProfileStore:
     def __init__(self, path: Path):
         self.path = Path(path)
         self._lock = RLock()
 
     def load(self) -> dict:
+        return self._read()[0]
+
+    def _read(self) -> tuple[dict, bool]:
+        """The saved library, and whether saved voice settings had to be migrated."""
         with self._lock:
             if self.path.is_symlink():
                 raise ProfileError("角色設定不可使用符號連結")
             try:
-                return validate_library(yaml.safe_load(self.path.read_text("utf-8")))
+                raw = yaml.safe_load(self.path.read_text("utf-8"))
             except OSError as exc:
                 raise ProfileError("無法讀取角色設定", 503) from exc
             except yaml.YAMLError as exc:
                 raise ProfileError("角色設定 YAML 無法解析") from exc
+            migrated = _migrate_voice_settings(raw)
+            return validate_library(raw), migrated
 
     def initialize(self, config, *, defaults_path: Path | None = None) -> dict:
         """Migrate missing settings once, preserving every explicit role choice."""
         with self._lock:
             if self.path.exists() or self.path.is_symlink():
-                library = self.load()
+                library, changed = self._read()
                 raw = yaml.safe_load(self.path.read_text("utf-8"))
-                changed = any(key not in raw['handoff'] for key in RETURN_ANNOUNCEMENTS)
+                changed = changed or any(key not in raw['handoff'] for key in RETURN_ANNOUNCEMENTS)
                 for profile, original in zip(library["profiles"], raw["profiles"]):
                     for key, value in _playback_settings(config).items():
                         if key not in original["llm"]:

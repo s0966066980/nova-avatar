@@ -846,9 +846,9 @@
                 <label for="stt-model-size" class="field-main-label">辨識模型</label>
               </div>
               <div class="field-control-area">
-                <div class="input-group"><select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
+                <select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
                   <option v-for="model in sttModelOptions" :key="model" :value="model">{{ model }}</option>
-                </select><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('stt', 'directory')">選擇資料夾</button></div>
+                </select>
               </div>
             </div>
 
@@ -954,28 +954,34 @@
 
               <div class="setting-form-row">
                 <div class="field-label-group">
-                  <label for="tts-cosyvoice-prompt-wav" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
+                  <label for="tts-cosyvoice-model" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
+                  <span class="field-sub-hint">{{ t('settings.speech.cosyvoiceModelDesc') }}</span>
                 </div>
                 <div class="field-control-area">
-                  <div class="input-group"><input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model"><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'directory')">選擇資料夾</button></div>
+                  <select id="tts-cosyvoice-model" class="std-select" v-model="ttsDraft.model">
+                    <option value="">{{ t('settings.speech.cosyvoiceModelAuto') }}</option>
+                    <option v-for="model in ttsModelOptions" :key="model.id" :value="model.id">{{ model.id }}</option>
+                  </select>
                 </div>
               </div>
             </template>
 
-            <!-- 參考音訊路徑 (非 Edge-TTS 時) -->
+            <!-- 參考音訊（非 Edge-TTS 時）：只能從伺服器的音訊庫選擇或上傳 -->
             <div class="setting-form-row" v-if="ttsDraft.type !== 'edgetts'">
               <div class="field-label-group">
-                <label for="tts-voice-audio-path" class="field-main-label">參考音訊路徑</label>
-                <span class="field-sub-hint">{{ t('settings.speech.referencePathDesc') }}</span>
+                <label for="tts-voice-library" class="field-main-label">{{ t('settings.speech.reference') }}</label>
+                <span class="field-sub-hint">{{ t('settings.speech.voiceLibraryDesc') }}</span>
               </div>
               <div class="field-control-area">
-                <div class="input-group"><input
-                  id="tts-voice-audio-path"
-                  class="chat-text-entry"
-                  type="text"
-                  v-model.trim="ttsDraft.ref_file"
-                  :placeholder="t('settings.speech.referencePathPlaceholder')"
-                ><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'file')">選擇音檔</button></div>
+                <div class="input-group">
+                  <select id="tts-voice-library" class="std-select" v-model="ttsDraft.ref_file" :disabled="voiceLibraryBusy">
+                    <option value="">{{ isCosyVoiceFamily ? t('settings.speech.voiceLibraryDefault') : t('settings.speech.voiceLibraryChoose') }}</option>
+                    <option v-for="voice in ttsVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}（{{ voice.seconds }} 秒）</option>
+                  </select>
+                  <button type="button" class="btn btn-outline-secondary" :disabled="voiceLibraryBusy" @click="voiceFileInput?.click()">{{ t('settings.speech.voiceLibraryUpload') }}</button>
+                  <button type="button" class="btn btn-outline-secondary" :disabled="voiceLibraryBusy || !ttsDraft.ref_file" @click="removeSelectedVoice">{{ t('settings.speech.voiceLibraryDelete') }}</button>
+                </div>
+                <input ref="voiceFileInput" type="file" accept="audio/*,.wav,.mp3,.flac,.ogg,.m4a,.webm" hidden @change="onVoiceFileChosen">
               </div>
             </div>
           </section>
@@ -1295,9 +1301,13 @@ const {
   sttModelOptions,
   ttsDirty,
   edgeVoiceOptions,
+  ttsVoiceOptions,
+  ttsModelOptions,
+  voiceLibraryBusy,
+  uploadTtsVoice,
+  deleteTtsVoice,
   applyingStt,
   applyingTts,
-  speechError,
   applySttSettings,
   applyTtsSettings
 } = useRuntimeSettings()
@@ -1306,16 +1316,23 @@ const isCosyVoiceFamily = computed(() => (
   ttsDraft.type === 'cosyvoice' || ttsDraft.type === 'fun-cosyvoice3'
 ))
 
-async function chooseSpeechPath(target, kind) {
+const voiceFileInput = ref(null)
+
+async function onVoiceFileChosen(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
   try {
-    const response = await fetch('/api/speech/path-picker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind }) })
-    const result = await response.json()
-    if (!response.ok || result.code !== 0) throw new Error(result.msg || '選擇路徑失敗')
-    if (!result.data?.path) return
-    if (target === 'tts' && kind === 'directory') ttsDraft.model = result.data.path
-    if (target === 'tts' && kind === 'file') ttsDraft.ref_file = result.data.path
-    if (target === 'stt') sttDraft.model_size = result.data.path
-  } catch (error) { speechError.value = error.message }
+    await uploadTtsVoice(file)
+    emit('notification', '參考音訊已加入音訊庫', 'success')
+  } catch (error) { emit('notification', error.message, 'error') }
+}
+
+async function removeSelectedVoice() {
+  try {
+    await deleteTtsVoice(ttsDraft.ref_file)
+    emit('notification', '參考音訊已移入回收桶', 'success')
+  } catch (error) { emit('notification', error.message, 'error') }
 }
 
 const COSYVOICE_LANGUAGE_FALLBACK = [

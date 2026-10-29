@@ -48,9 +48,9 @@ class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ServerRouteRegistrationTests(unittest.TestCase):
-    def test_speech_path_picker_is_exported_and_registered(self):
-        """Creating the app must not fail when registering the path picker."""
-        self.assertTrue(callable(routes.pick_speech_path))
+    def test_speech_routes_are_exported_and_registered(self):
+        """Creating the app registers the voice library; the host path picker is gone."""
+        self.assertFalse(hasattr(routes, "pick_speech_path"))
 
         app = create_app()
         registered = {
@@ -58,7 +58,10 @@ class ServerRouteRegistrationTests(unittest.TestCase):
             for route in app.router.routes()
         }
 
-        self.assertIn(("POST", "/api/speech/path-picker"), registered)
+        self.assertNotIn(("POST", "/api/speech/path-picker"), registered)
+        self.assertIn(("GET", "/api/speech/voices"), registered)
+        self.assertIn(("POST", "/api/speech/voices"), registered)
+        self.assertIn(("DELETE", "/api/speech/voices/{voice_id}"), registered)
         self.assertIn(("GET", "/api/voice-tests"), registered)
         self.assertIn(("POST", "/api/voice-tests/run"), registered)
         self.assertIn(("DELETE", "/api/voice-tests"), registered)
