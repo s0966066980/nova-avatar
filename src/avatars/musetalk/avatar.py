@@ -594,86 +594,93 @@ class MuseTalkAvatar(BaseAvatar):
         
         #self.render_event.set() #start infer process render
         infer_quit_event = Event()
-        infer_thread = Thread(target=inference, args=(infer_quit_event,self.batch_size,self.input_latent_list_cycle,
-                                           self.audio_stream.feat_queue,self.audio_stream.output_queue,self.res_frame_queue,
-                                           self.vae, self.unet, self.pe,self.timesteps,
-                                           self.accepts_media,self.record_stale_drop,
-                                           self.mark_stage_end, self.asset_snapshot)) #mp.Process
-        infer_thread.start()
-        
         process_quit_event = Event()
-        process_thread = Thread(target=self.process_frames, args=(process_quit_event,loop,audio_track,video_track))
-        process_thread.start()
+        workers = []
+        try:
+            infer_thread = Thread(target=inference, args=(infer_quit_event,self.batch_size,self.input_latent_list_cycle,
+                                               self.audio_stream.feat_queue,self.audio_stream.output_queue,self.res_frame_queue,
+                                               self.vae, self.unet, self.pe,self.timesteps,
+                                               self.accepts_media,self.record_stale_drop,
+                                               self.mark_stage_end, self.asset_snapshot)) #mp.Process
+            infer_thread.start()
+            workers.append(infer_thread)
 
-        
-        count=0
-        totaltime=0
-        _starttime=time.perf_counter()
-        tts_wait_started_at = None
-        #_totalframe=0
-        while not quit_event.is_set(): #todo
-            # update texture every frame
-            # audio stream thread...
-            video_queue_size = video_track._queue.qsize() if video_track else 0
-            required_audio_frames = (
-                self.batch_size * 2
-                if self.audio_stream.startup_batch_emitted
-                else self.audio_stream.startup_batch_size * 2
-            )
-            tts_pending = self.tts.has_pending_work()
-            queued_audio_frames = self.audio_stream.queue.qsize()
-            now = time.perf_counter()
-            if not tts_pending or queued_audio_frames >= required_audio_frames:
-                tts_wait_started_at = None
-            elif tts_wait_started_at is None:
-                tts_wait_started_at = now
-            pending_wait_seconds = (
-                0.0
-                if tts_wait_started_at is None
-                else now - tts_wait_started_at
-            )
-            if should_wait_for_tts_audio(
-                tts_pending,
-                queued_audio_frames,
-                required_audio_frames,
-                video_queue_size,
-                pending_wait_seconds,
-                max_wait_seconds=self.max_tts_audio_wait_seconds,
-            ):
-                time.sleep(0.01)
-                continue
-            if tts_pending and queued_audio_frames < required_audio_frames:
-                # Let one idle/partial batch advance after the bounded hold,
-                # then grant the next fragment a fresh short coalescing window.
-                tts_wait_started_at = None
+            process_thread = Thread(target=self.process_frames, args=(process_quit_event,loop,audio_track,video_track))
+            process_thread.start()
+            workers.append(process_thread)
 
-            t = time.perf_counter()
-            if self.audio_stream.run_step() is False:
-                time.sleep(0.01)
-                continue
-            #self.test_step(loop,audio_track,video_track)
-            # totaltime += (time.perf_counter() - t)
-            # count += self.opt.batch_size
-            # if count>=100:
-            #     print(f"------actual avg infer fps:{count/totaltime:.4f}")
-            #     count=0
-            #     totaltime=0
-            if (video_track and self.audio_stream.queue.empty()
-                    and video_track._queue.qsize() >= MIN_VIDEO_BUFFER_FRAMES):
-                logger.debug('sleep qsize=%d',video_track._queue.qsize())
-                time.sleep(0.04*video_track._queue.qsize()*0.8)
-            # if video_track._queue.qsize()>=5:
-            #     print('sleep qsize=',video_track._queue.qsize())
-            #     time.sleep(0.04*video_track._queue.qsize()*0.8)
-                
-            # delay = _starttime+_totalframe*0.04-time.perf_counter() #40ms
-            # if delay > 0:
-            #     time.sleep(delay)
-        logger.info('musereal thread stop')
 
-        infer_quit_event.set()
-        process_quit_event.set()
-        infer_thread.join()
+            count=0
+            totaltime=0
+            _starttime=time.perf_counter()
+            tts_wait_started_at = None
+            #_totalframe=0
+            while not quit_event.is_set(): #todo
+                # update texture every frame
+                # audio stream thread...
+                video_queue_size = video_track._queue.qsize() if video_track else 0
+                required_audio_frames = (
+                    self.batch_size * 2
+                    if self.audio_stream.startup_batch_emitted
+                    else self.audio_stream.startup_batch_size * 2
+                )
+                tts_pending = self.tts.has_pending_work()
+                queued_audio_frames = self.audio_stream.queue.qsize()
+                now = time.perf_counter()
+                if not tts_pending or queued_audio_frames >= required_audio_frames:
+                    tts_wait_started_at = None
+                elif tts_wait_started_at is None:
+                    tts_wait_started_at = now
+                pending_wait_seconds = (
+                    0.0
+                    if tts_wait_started_at is None
+                    else now - tts_wait_started_at
+                )
+                if should_wait_for_tts_audio(
+                    tts_pending,
+                    queued_audio_frames,
+                    required_audio_frames,
+                    video_queue_size,
+                    pending_wait_seconds,
+                    max_wait_seconds=self.max_tts_audio_wait_seconds,
+                ):
+                    time.sleep(0.01)
+                    continue
+                if tts_pending and queued_audio_frames < required_audio_frames:
+                    # Let one idle/partial batch advance after the bounded hold,
+                    # then grant the next fragment a fresh short coalescing window.
+                    tts_wait_started_at = None
 
-        process_thread.join()
+                t = time.perf_counter()
+                if self.audio_stream.run_step() is False:
+                    time.sleep(0.01)
+                    continue
+                #self.test_step(loop,audio_track,video_track)
+                # totaltime += (time.perf_counter() - t)
+                # count += self.opt.batch_size
+                # if count>=100:
+                #     print(f"------actual avg infer fps:{count/totaltime:.4f}")
+                #     count=0
+                #     totaltime=0
+                if (video_track and self.audio_stream.queue.empty()
+                        and video_track._queue.qsize() >= MIN_VIDEO_BUFFER_FRAMES):
+                    logger.debug('sleep qsize=%d',video_track._queue.qsize())
+                    time.sleep(0.04*video_track._queue.qsize()*0.8)
+                # if video_track._queue.qsize()>=5:
+                #     print('sleep qsize=',video_track._queue.qsize())
+                #     time.sleep(0.04*video_track._queue.qsize()*0.8)
+
+                # delay = _starttime+_totalframe*0.04-time.perf_counter() #40ms
+                # if delay > 0:
+                #     time.sleep(delay)
+            logger.info('musereal thread stop')
+        finally:
+            # Signal every worker before joining any of them: inference can be
+            # blocked handing frames to a processor that is itself waiting to
+            # quit, and a failed loop must still stop TTS and the workers.
+            quit_event.set()
+            infer_quit_event.set()
+            process_quit_event.set()
+            for worker in workers:
+                worker.join()
             

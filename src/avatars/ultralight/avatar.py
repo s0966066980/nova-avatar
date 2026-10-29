@@ -27,7 +27,7 @@ import torch.multiprocessing as mp
 from src.avatars.ultralight.audio_stream_handler import HubertAudioStreamHandler
 import asyncio
 from av import AudioFrame, VideoFrame
-from src.avatars.base import BaseAvatar
+from src.avatars.base import BaseAvatar, put_until_quit
 
 #from imgcache import ImgCache
 
@@ -158,7 +158,8 @@ def inference(quit_event, batch_size, face_list_cycle, audio_feat_queue, audio_o
                 is_all_silence=False
         if is_all_silence:
             for i in range(batch_size):
-                res_frame_queue.put((None,__mirror_index(length,index),audio_frames[i*2:i*2+2]))
+                if not put_until_quit(res_frame_queue, (None,__mirror_index(length,index),audio_frames[i*2:i*2+2]), quit_event):
+                    break
                 index = index + 1
         else:
             t = time.perf_counter()
@@ -200,7 +201,8 @@ def inference(quit_event, batch_size, face_list_cycle, audio_feat_queue, audio_o
                 counttime = 0
             for i,res_frame in enumerate(pred):
                 #self.__pushmedia(res_frame,loop,audio_track,video_track)
-                res_frame_queue.put((res_frame,__mirror_index(length,index),audio_frames[i*2:i*2+2]))
+                if not put_until_quit(res_frame_queue, (res_frame,__mirror_index(length,index),audio_frames[i*2:i*2+2]), quit_event):
+                    break
                 index = index + 1
 
 #            for i, pred_frame in enumerate(pred):
@@ -261,41 +263,48 @@ class UltralightAvatar(BaseAvatar):
         self.tts.render(quit_event)
         
         infer_quit_event = Event()
-        infer_thread = Thread(target=inference, args=(infer_quit_event,self.batch_size,self.face_list_cycle,self.audio_stream.feat_queue,self.audio_stream.output_queue,self.res_frame_queue,
-                                           self.model,))  #mp.Process
-        infer_thread.start()
-        
         process_quit_event = Event()
-        process_thread = Thread(target=self.process_frames, args=(process_quit_event,loop,audio_track,video_track))
-        process_thread.start()   
+        workers = []
+        try:
+            infer_thread = Thread(target=inference, args=(infer_quit_event,self.batch_size,self.face_list_cycle,self.audio_stream.feat_queue,self.audio_stream.output_queue,self.res_frame_queue,
+                                               self.model,))  #mp.Process
+            infer_thread.start()
+            workers.append(infer_thread)
 
-        #self.render_event.set() #start infer process render
-        count=0
-        totaltime=0
-        _starttime=time.perf_counter()
-        #_totalframe=0
-        while not quit_event.is_set(): 
-            # update texture every frame
-            # audio stream thread...
-            t = time.perf_counter()
-            self.audio_stream.run_step()
+            process_thread = Thread(target=self.process_frames, args=(process_quit_event,loop,audio_track,video_track))
+            process_thread.start()
+            workers.append(process_thread)
 
-            # if video_track._queue.qsize()>=2*self.config.model.batch_size:
-            #     print('sleep qsize=',video_track._queue.qsize())
-            #     time.sleep(0.04*video_track._queue.qsize()*0.8)
-            if video_track and video_track._queue.qsize()>=5:
-                logger.debug('sleep qsize=%d',video_track._queue.qsize())
-                time.sleep(0.04*video_track._queue.qsize()*0.8)
-                
-            # delay = _starttime+_totalframe*0.04-time.perf_counter() #40ms
-            # if delay > 0:
-            #     time.sleep(delay)
-        #self.render_event.clear() #end infer process render
-        logger.info('lightreal thread stop')
+            #self.render_event.set() #start infer process render
+            count=0
+            totaltime=0
+            _starttime=time.perf_counter()
+            #_totalframe=0
+            while not quit_event.is_set(): 
+                # update texture every frame
+                # audio stream thread...
+                t = time.perf_counter()
+                self.audio_stream.run_step()
 
-        infer_quit_event.set()
-        infer_thread.join()
+                # if video_track._queue.qsize()>=2*self.config.model.batch_size:
+                #     print('sleep qsize=',video_track._queue.qsize())
+                #     time.sleep(0.04*video_track._queue.qsize()*0.8)
+                if video_track and video_track._queue.qsize()>=5:
+                    logger.debug('sleep qsize=%d',video_track._queue.qsize())
+                    time.sleep(0.04*video_track._queue.qsize()*0.8)
 
-        process_quit_event.set()
-        process_thread.join()
+                # delay = _starttime+_totalframe*0.04-time.perf_counter() #40ms
+                # if delay > 0:
+                #     time.sleep(delay)
+            #self.render_event.clear() #end infer process render
+            logger.info('lightreal thread stop')
+        finally:
+            # Signal every worker before joining any of them: inference can be
+            # blocked handing frames to a processor that is itself waiting to
+            # quit, and a failed loop must still stop TTS and the workers.
+            quit_event.set()
+            infer_quit_event.set()
+            process_quit_event.set()
+            for worker in workers:
+                worker.join()
             
