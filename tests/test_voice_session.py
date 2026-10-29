@@ -870,5 +870,123 @@ class ChatReplyModeRouteTests(unittest.IsolatedAsyncioTestCase):
                 await human(request)
 
 
+class SessionThreadSafetyTests(unittest.IsolatedAsyncioTestCase):
+    """Cross-thread events and overlapping interrupts must not wedge a kiosk."""
+
+    def make_session(self):
+        config = SimpleNamespace(
+            asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
+            vad=SimpleNamespace(enabled=False),
+            reply_streaming=SimpleNamespace(enabled=False),
+            stage=SimpleNamespace(idle_greeting_seconds=60),
+        )
+        avatar = FakeAvatar()
+        session = VoiceTurnSession(7, config, avatar)
+        session._segmenter = FakeSegmenter()
+        session._asr = FakeASR()
+        events = []
+
+        def loop_bound_sink(raw):
+            # aiortc's RTCDataChannel.send schedules on the running loop and
+            # raises RuntimeError when called from a worker thread.
+            asyncio.get_running_loop()
+            events.append(json.loads(raw))
+
+        session.attach_event_sink(loop_bound_sink)
+        self.addAsyncCleanup(session.close)
+        return session, events
+
+    @staticmethod
+    def register_fragment(session, turn_id):
+        session._turn_id = turn_id
+        session._start_turn_context(turn_id, origin="greeting")
+        with session._fragment_lock:
+            session._fragment_texts[0] = "歡迎光臨"
+        return {
+            "turn_id": turn_id,
+            "generation": session._generation,
+            "fragment_sequence": 0,
+        }
+
+    async def test_tts_failure_before_first_turn_keeps_event_channel(self):
+        session, events = self.make_session()
+        await session.prepare()
+        eventpoint = self.register_fragment(session, "greeting-turn")
+
+        await asyncio.to_thread(
+            session.on_fragment_synthesis_failed, eventpoint, "no_audio"
+        )
+        await asyncio.sleep(0)
+
+        self.assertTrue(session.event_sink_ready)
+        cancelled = [item for item in events if item["type"] == "turn_cancelled"]
+        self.assertEqual([item["turn_id"] for item in cancelled], ["greeting-turn"])
+        session._emit("state", state="probe")
+        self.assertEqual(events[-1].get("state"), "probe")
+
+    async def test_tts_failure_without_event_loop_is_dropped(self):
+        session, events = self.make_session()
+        eventpoint = self.register_fragment(session, "orphan-turn")
+        before = list(events)
+
+        with self.assertLogs("src.utils.logging", level="WARNING"):
+            await asyncio.to_thread(
+                session.on_fragment_synthesis_failed, eventpoint, "no_audio"
+            )
+
+        self.assertTrue(session.event_sink_ready)
+        self.assertEqual(events, before)
+        self.assertEqual(session._turn_id, "orphan-turn")
+
+    async def test_event_emitted_from_worker_thread_keeps_event_channel(self):
+        session, events = self.make_session()
+        await session.prepare()
+
+        await asyncio.to_thread(session._emit, "state", state="from_worker")
+        await asyncio.sleep(0)
+
+        self.assertTrue(session.event_sink_ready)
+        self.assertEqual(events[-1].get("state"), "from_worker")
+
+    async def test_overlapping_interrupts_do_not_clear_a_new_turn(self):
+        session, _ = self.make_session()
+        session._turn_id = "old-turn"
+
+        async def hold_turn(*_args, **_kwargs):
+            await asyncio.Event().wait()
+
+        session._process_text_turn = hold_turn
+        first = asyncio.create_task(session.interrupt())
+        await asyncio.sleep(0.1)
+        second = asyncio.create_task(session.interrupt())
+        await first
+        started = await session.start_text_turn("新問題", interrupt=True)
+        await second
+
+        self.assertEqual(session._turn_id, started["turn_id"])
+
+    async def test_interrupt_keeps_turn_started_during_its_tail_guard(self):
+        session, _ = self.make_session()
+        session._turn_id = "old-turn"
+        release = asyncio.Event()
+        real_sleep = asyncio.sleep
+
+        async def controlled_sleep(_seconds):
+            await release.wait()
+
+        with patch("src.server.voice_session.asyncio.sleep", new=controlled_sleep):
+            interrupting = asyncio.create_task(session.interrupt())
+            for _ in range(3):
+                await real_sleep(0)
+            # A path that fences by generation (greeting, failure, handoff)
+            # owns a newer turn before the tail guard wakes up.
+            session._generation += 1
+            session._turn_id = "newer-turn"
+            release.set()
+            await interrupting
+
+        self.assertEqual(session._turn_id, "newer-turn")
+
+
 if __name__ == "__main__":
     unittest.main()

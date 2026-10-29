@@ -8,6 +8,9 @@ import { createApp } from 'vue'
 import ConsoleRoot from './ConsoleRoot.vue'
 import { installSessionExpiry } from './adminSession.js'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+// 樣式與圖示字型由 npm 套件打包，場域斷網時仍可顯示。
+import 'bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap-icons/font/bootstrap-icons.min.css'
 import './console-prototype.css'
 
 installSessionExpiry()

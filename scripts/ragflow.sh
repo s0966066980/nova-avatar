@@ -10,6 +10,13 @@ REF="v0.27.2"
 COMPOSE_FILE="$DEPLOY_DIR/docker/docker-compose.yml"
 OVERLAY_FILE="$ROOT/integrations/ragflow/compose.nova.yml"
 EMBEDDING_UNIT="$ROOT/integrations/ragflow/nova-ragflow-embedding.service"
+# Ollama cannot pull by digest; verify the content-addressed weights blob of
+# bge-m3:latest instead (registry manifest sha256:79076464260700...).
+BGE_M3_BLOB="sha256-daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c"
+
+bge_m3_is_pinned() {
+    ollama show --modelfile bge-m3 2>/dev/null | grep -Eq "^FROM [^ ]*/${BGE_M3_BLOB}\$"
+}
 
 usage() {
     printf '用法：%s {install-docker|ensure-docker|prepare|connect|connect-chat [模型]|unify-models|sync-models|up|down|status|is-running|pull-model|validate}\n' "$0"
@@ -235,10 +242,15 @@ case "${1:-}" in
         ;;
     pull-model)
         if ollama show bge-m3 >/dev/null 2>&1; then
-            printf '已存在 BGE-M3 模型，沿用主機現有檔案。\n'
+            printf '已存在 BGE-M3 模型，檢查是否為固定版本。\n'
         else
             ollama pull bge-m3
         fi
+        if ! bge_m3_is_pinned; then
+            printf 'bge-m3 權重與固定的 %s 不符；請移除後重跑，或確認上游是否更新。\n' "$BGE_M3_BLOB" >&2
+            exit 1
+        fi
+        printf 'BGE-M3 權重已通過 digest 驗證。\n'
         ;;
     *)
         usage >&2
