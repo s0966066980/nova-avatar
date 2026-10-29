@@ -83,6 +83,46 @@ class BrandingComplianceTests(unittest.TestCase):
         self.assertIn("nova-avatar-wav2lip-research", wav2lip_package)
         self.assertNotIn('license = "Apache-2.0"', wav2lip_package)
 
+    def test_restricted_tts_engines_are_labeled_in_catalog_ui_and_notices(self):
+        from src.server.runtime_settings import TTS_ENGINE_META, _catalog
+
+        expected = {
+            "edgetts": ("Edge TTS (Development only)", "開發用"),
+            "fishtts": ("Fish Speech (Community License / Revenue < USD 500k)", "50 萬美元"),
+            "indextts2": ("IndexTTS2 (bilibili Model License / Usage thresholds)", "月活"),
+            "xtts": ("XTTS (Research / Non-commercial)", "非商用"),
+        }
+        catalog = {item["id"]: item for item in _catalog(TTS_ENGINE_META)}
+        for engine, (label, restriction) in expected.items():
+            with self.subTest(engine=engine):
+                self.assertEqual(catalog[engine]["label"], label)
+                self.assertIn(restriction, catalog[engine]["description"])
+
+        settings = (ROOT / "web/src/components/SettingsPanel.vue").read_text(encoding="utf-8")
+        self.assertIn("Edge TTS (Development only)", settings)
+        self.assertIn("開發用", settings)
+
+        engine_files = {
+            "edge.py": "Development only",
+            "fish.py": "Fish Audio Community License",
+            "indextts2.py": "bilibili",
+            "xtts.py": "Research / Non-commercial",
+        }
+        for name, marker in engine_files.items():
+            with self.subTest(engine_file=name):
+                header = (ROOT / "src/tts/engines" / name).read_text(encoding="utf-8")[:600]
+                self.assertIn(marker, header)
+
+        third_party = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+        self.assertRegex(third_party, r"Edge TTS[\s\S]+Development only")
+        self.assertRegex(third_party, r"Fish[\s\S]+USD 500,000")
+        self.assertRegex(third_party, r"IndexTTS2[\s\S]+100 million monthly active users")
+        self.assertRegex(third_party, r"XTTS[\s\S]+Research / Non-commercial")
+        self.assertRegex(third_party, r"Gemma 4[\s\S]+Gemma Terms of Use do not apply")
+
+        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        self.assertRegex(stack, r"\| TTS \| Edge TTS \| \*\*Development only\*\*")
+
     def test_commercial_review_profile_and_audits_are_present(self):
         profile = (ROOT / "config/config_commercial.yaml").read_text(encoding="utf-8")
         stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")

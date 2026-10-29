@@ -205,6 +205,7 @@ class TurnMetricsTests(unittest.TestCase):
             {
                 "turn_id": "anonymous-turn",
                 "first_audio_seconds": 0.8,
+                "prompt_first_audio_seconds": None,
                 "interrupt_stop_seconds": 0.15,
                 "listening_resume_seconds": 0.4,
                 "max_media_debt_seconds": 1.6,
@@ -220,6 +221,10 @@ class TurnMetricsTests(unittest.TestCase):
                 "stage_seconds": {
                     "vad_endpoint": None,
                     "asr": None,
+                    "pre_answer": None,
+                    "routing": None,
+                    "retrieval": None,
+                    "model_info": None,
                     "llm_first_token": 0.05,
                     "llm_first_speech": None,
                     "llm_total": None,

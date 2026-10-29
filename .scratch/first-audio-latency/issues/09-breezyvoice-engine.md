@@ -68,8 +68,8 @@ spk2info，未抓 JIT／TensorRT 匯出）、BreezyVoice GitHub `d592c9d3…` �
   阻塞整段合成時間。
 - 參考錄音被裁到 8 秒，逐字稿必須對應裁切後的內容。
 
-驗證：`pytest` 1104 passed、2 failed（皆為已知 worktree 基準失敗）、3 skipped；
-`ruff`、`pyright`、`scripts/check-integration.py` 通過；web `lint`／`test`（207）／`build` 通過。
+驗證（已合併 `first-audio-latency`，含 ticket 11）：`pytest` 1155 passed、2 failed（皆為已知 worktree
+基準失敗）、3 skipped；`ruff`、`pyright`、`scripts/check-integration.py` 通過；web `lint`／`test`（210）／`build` 通過。
 
 ### 待實機驗證
 

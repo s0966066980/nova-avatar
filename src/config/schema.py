@@ -312,6 +312,8 @@ class LLMConfig:
     llamacpp_port: int = 8080
     llamacpp_ctx: int = 8192
     llamacpp_threads: int = 0  # 0 = 自動用滿 CPU
+    # Partial or CPU offload is ~3x slower; startup fails instead unless allowed.
+    llamacpp_allow_partial_offload: bool = False
     max_tokens: int = 128  # 語音對話宜短，顯著降低尾端延遲
     response_max_chars: int = 120  # 每次回答的約略字數上限
     # Legacy compatibility only. New writes use assistant_profile.system_prompt.

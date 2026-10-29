@@ -195,6 +195,7 @@ def _ensure_llamacpp_if_needed(config) -> None:
         port=port,
         ctx=int(getattr(config.llm, "llamacpp_ctx", 8192) or 8192),
         threads=int(getattr(config.llm, "llamacpp_threads", 0) or 0),
+        allow_partial_offload=bool(getattr(config.llm, "llamacpp_allow_partial_offload", False)),
     )
     config.llm.base_url = base_url
 

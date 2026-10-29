@@ -67,6 +67,61 @@ def _await_edge_tts_prewarm(worker: Thread | None) -> bool:
     return bool(getattr(worker, "prewarm_ready", False))
 
 
+def _start_local_llm() -> None:
+    """Launch llama-server when it is the selected LLM, so turns never hit Connection refused."""
+    if getattr(state.config.llm, "provider", "") != "llamacpp":
+        return
+    try:
+        from src.llm.llamacpp import ensure_server
+
+        logger.info("正在啟動 llama-server: %s", state.config.llm.model)
+        state.config.llm.base_url = ensure_server(
+            state.config.llm.model,
+            extra_dir=getattr(state.config.llm, "llamacpp_dir", "") or "",
+            host=getattr(state.config.llm, "llamacpp_host", "127.0.0.1") or "127.0.0.1",
+            port=int(getattr(state.config.llm, "llamacpp_port", 8080) or 8080),
+            ctx=int(getattr(state.config.llm, "llamacpp_ctx", 8192) or 8192),
+            threads=int(getattr(state.config.llm, "llamacpp_threads", 0) or 0),
+            allow_partial_offload=bool(
+                getattr(state.config.llm, "llamacpp_allow_partial_offload", False)
+            ),
+        )
+        logger.info("llama-server 已就緒: %s", state.config.llm.base_url)
+    except Exception:
+        # The console must stay reachable to change the model or free VRAM.
+        logger.exception("啟動 llama-server 失敗，對話時會再試一次")
+
+
+def _load_startup_avatar() -> None:
+    """Preload the selected avatar only when its engine and assets are complete."""
+    from src.avatars.catalog import avatar_bootable
+
+    engine = state.config.model.type
+    avatar_id = state.config.model.avatar_id
+    bootable, reason = avatar_bootable(engine, avatar_id)
+    if bootable:
+        logger.info(f"正在載入數字人: {engine} / {avatar_id}")
+        try:
+            state.model, state.avatar = prepare_avatar_model(state.config)
+            state.model_ready = True
+            logger.info("數字人載入完成")
+        except Exception:
+            logger.exception("啟動時載入數字人失敗，服務仍會啟動，請到設定中重新選擇")
+            state.model = None
+            state.avatar = None
+            state.model_ready = False
+    else:
+        logger.warning(f"啟動時不預載數字人：{reason}。請開啟設定選擇引擎與角色。")
+        state.model_ready = False
+
+
+def _load_startup_models() -> None:
+    # llama-server sizes its GPU offload from the VRAM free at launch. Start it
+    # before MuseTalk/TensorRT claim memory so every layer fits on the GPU.
+    _start_local_llm()
+    _load_startup_avatar()
+
+
 def main():
     """主啟動函式"""
     # 設定 multiprocessing 啟動方式
@@ -116,44 +171,7 @@ def main():
         with open(state.config.custom_video.config_path, 'r') as file:
             state.config.customopt = json.load(file)
     
-    # 數字人可在設定裡切換；啟動時只預載「已選且素材齊全」的角色
-    from src.avatars.catalog import avatar_bootable
-
-    engine = state.config.model.type
-    avatar_id = state.config.model.avatar_id
-    bootable, reason = avatar_bootable(engine, avatar_id)
-    if bootable:
-        logger.info(f"正在載入數字人: {engine} / {avatar_id}")
-        try:
-            state.model, state.avatar = prepare_avatar_model(state.config)
-            state.model_ready = True
-            logger.info("數字人載入完成")
-        except Exception:
-            logger.exception("啟動時載入數字人失敗，服務仍會啟動，請到設定中重新選擇")
-            state.model = None
-            state.avatar = None
-            state.model_ready = False
-    else:
-        logger.warning(f"啟動時不預載數字人：{reason}。請開啟設定選擇引擎與角色。")
-        state.model_ready = False
-    
-    # 若當前選的是 llama.cpp，先把 llama-server 拉起來，避免對話 Connection refused
-    if getattr(state.config.llm, "provider", "") == "llamacpp":
-        try:
-            from src.llm.llamacpp import ensure_server
-
-            logger.info("正在啟動 llama-server: %s", state.config.llm.model)
-            state.config.llm.base_url = ensure_server(
-                state.config.llm.model,
-                extra_dir=getattr(state.config.llm, "llamacpp_dir", "") or "",
-                host=getattr(state.config.llm, "llamacpp_host", "127.0.0.1") or "127.0.0.1",
-                port=int(getattr(state.config.llm, "llamacpp_port", 8080) or 8080),
-                ctx=int(getattr(state.config.llm, "llamacpp_ctx", 8192) or 8192),
-                threads=int(getattr(state.config.llm, "llamacpp_threads", 0) or 0),
-            )
-            logger.info("llama-server 已就緒: %s", state.config.llm.base_url)
-        except Exception:
-            logger.exception("啟動 llama-server 失敗，對話時會再試一次")
+    _load_startup_models()
 
     tts_type = str(getattr(state.config.tts, "type", "")).strip().lower()
     from src.tts.cosyvoice_runtime import is_cosyvoice_engine

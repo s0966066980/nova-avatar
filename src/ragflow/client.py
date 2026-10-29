@@ -44,6 +44,32 @@ class RagFlowConnection:
         return bool(self.base_url and self.api_key)
 
 
+_session: aiohttp.ClientSession | None = None
+_session_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _shared_session() -> aiohttp.ClientSession:
+    """One pooled session per event loop; concurrent requests share it.
+
+    Keys and timeouts are set per request, so a changed connection or a
+    request with another timeout reuses the same pool.
+    """
+    global _session, _session_loop
+    loop = asyncio.get_running_loop()
+    if _session is None or _session.closed or _session_loop is not loop:
+        _session, _session_loop = aiohttp.ClientSession(), loop
+    return _session
+
+
+async def close_shared_session() -> None:
+    """Release pooled RAGFlow connections; call on shutdown after the turns end."""
+    global _session, _session_loop
+    session, loop = _session, _session_loop
+    _session = _session_loop = None
+    if session is not None and loop is asyncio.get_running_loop():
+        await session.close()
+
+
 def _bounded_text(value: Any, limit: int) -> str:
     if not isinstance(value, str):
         return ""
@@ -75,25 +101,26 @@ class RagFlowClient:
         headers = {"Authorization": f"Bearer {self.connection.api_key}"}
         request_timeout = aiohttp.ClientTimeout(total=timeout, connect=min(timeout, 1.0))
         try:
-            async with aiohttp.ClientSession(timeout=request_timeout, headers=headers) as session:
-                async with session.request(
-                    method,
-                    f"{self.connection.base_url}{path}",
-                    params=params,
-                    json=body,
-                ) as response:
-                    if response.status in {401, 403}:
-                        raise RagFlowError("RAGFlow API 金鑰無效或無權限")
-                    if response.status >= 400:
-                        raise RagFlowError(f"RAGFlow 回應 HTTP {response.status}")
-                    chunks = []
-                    received = 0
-                    async for chunk in response.content.iter_chunked(65536):
-                        received += len(chunk)
-                        if received > MAX_RESPONSE_BYTES:
-                            raise RagFlowError("RAGFlow 回應過大")
-                        chunks.append(chunk)
-                    payload = json.loads(b"".join(chunks))
+            async with _shared_session().request(
+                method,
+                f"{self.connection.base_url}{path}",
+                params=params,
+                json=body,
+                headers=headers,
+                timeout=request_timeout,
+            ) as response:
+                if response.status in {401, 403}:
+                    raise RagFlowError("RAGFlow API 金鑰無效或無權限")
+                if response.status >= 400:
+                    raise RagFlowError(f"RAGFlow 回應 HTTP {response.status}")
+                chunks = []
+                received = 0
+                async for chunk in response.content.iter_chunked(65536):
+                    received += len(chunk)
+                    if received > MAX_RESPONSE_BYTES:
+                        raise RagFlowError("RAGFlow 回應過大")
+                    chunks.append(chunk)
+                payload = json.loads(b"".join(chunks))
         except RagFlowError:
             raise
         except (asyncio.TimeoutError, TimeoutError) as exc:

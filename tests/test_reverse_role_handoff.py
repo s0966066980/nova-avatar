@@ -220,8 +220,7 @@ def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
     create = Mock(return_value=response)
     class Client:
         def __init__(self, **_): self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
-        def __enter__(self): return self
-        def __exit__(self, *_): pass
+        def close(self): pass
     routed = route_question(field.state.config, field.library, 'weather',
         '比較台北和高雄的公司服務', [], {}, client_factory=Client)
     assert routed['route'] == 'answer'

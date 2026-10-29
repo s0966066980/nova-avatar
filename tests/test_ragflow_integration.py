@@ -17,7 +17,9 @@ from aiohttp import web
 from src.config.schema import Config
 from src.llm.base import BaseLLM
 from src.ragflow import settings
-from src.ragflow.client import RagFlowClient, RagFlowConnection, RagFlowError, retrieval_prompt
+from src.ragflow.client import (
+    RagFlowClient, RagFlowConnection, RagFlowError, close_shared_session, retrieval_prompt,
+)
 from src.server.routes.ragflow import get_ragflow_settings
 from src.server.voice_session import VoiceTurnSession
 from scripts.ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
@@ -102,6 +104,7 @@ class RagFlowPromptTests(unittest.TestCase):
 class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.received = []
+        self.client_ports = []
 
         async def datasets(request):
             self.received.append((request.path, request.headers.get("Authorization"), None))
@@ -113,6 +116,7 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
         async def retrieve(request):
             body = await request.json()
             self.received.append((request.path, request.headers.get("Authorization"), body))
+            self.client_ports.append(request.transport.get_extra_info("peername")[1])
             return web.json_response({"code": 0, "data": {"chunks": [{
                 "content": "內容" * 500,
                 "document_keyword": "手冊",
@@ -131,7 +135,33 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
         self.client = RagFlowClient(RagFlowConnection(f"http://127.0.0.1:{port}", "local-secret"))
 
     async def asyncTearDown(self):
+        await close_shared_session()
         await self.runner.cleanup()
+
+    async def test_turns_reuse_one_connection_and_shutdown_closes_it(self):
+        for _ in range(3):
+            self.assertEqual((await self.client.retrieve("問題", [DATASET_A]))["status"], "matched")
+        # Each retrieval used to open a fresh session and TCP connection.
+        self.assertEqual(len(set(self.client_ports)), 1)
+        # Turns retrieving at the same time (ADR 0022) share the pool.
+        results = await asyncio.gather(*(self.client.retrieve("問題", [DATASET_A]) for _ in range(3)))
+        self.assertEqual([r["status"] for r in results], ["matched"] * 3)
+        await close_shared_session()
+        await self.client.retrieve("問題", [DATASET_A])
+        self.assertNotIn(self.client_ports[-1], self.client_ports[:-1])
+
+    async def test_server_shutdown_releases_pooled_connections(self):
+        import src.server.server as server
+        await self.client.retrieve("問題", [DATASET_A])
+        with patch.object(server.state, "roles", None), patch.object(server.state, "pcs", set()), \
+                patch.object(server.state, "voice_sessions", {}), \
+                patch.object(server, "shutdown_llama_server"), \
+                patch.object(server, "shutdown_cosyvoice_server"), \
+                patch.object(server.scene_service, "close"), \
+                patch("src.tts.engines.edge.shutdown_edge_tts"):
+            await server.on_shutdown(None)
+        await self.client.retrieve("問題", [DATASET_A])
+        self.assertNotEqual(self.client_ports[0], self.client_ports[1])
 
     async def test_lists_and_bounds_retrieval_without_exposing_key(self):
         datasets = await self.client.list_datasets()

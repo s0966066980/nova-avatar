@@ -67,6 +67,10 @@ See LICENSE and NOTICE.
          2. 頁面視圖容器 (Page Views)
          ══════════════════════════════════════════════════════════════ -->
     <div class="app-viewport">
+      <div v-if="llmPartialGpu" class="llm-gpu-warning" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>{{ t('notifications.llmPartialGpu') }}</span>
+      </div>
 
       <!-- ──────────────────────────────────────────────────────────
            頁面 A：即時演播控制台 (Studio Console View)
@@ -487,6 +491,7 @@ import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardS
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from './storageKeys.js'
 import { renderMarkdown, stripProtocolMarkers } from './markdown.js'
+import { readBackendHealth } from './backendHealth.js'
 
 const { t, setLocale, loadLocale } = useI18n()
 const { roleRuntime, roleLibrary, roleRequest, roleEvent } = useRoles()
@@ -680,6 +685,8 @@ function askPreset(query) {
 }
 const backendReady = ref(false)  // 後端是否就緒
 const modelReady = ref(false)    // 是否已套用數字人引擎
+const llmPartialGpu = ref(false) // 本機 LLM 未全 GPU 執行（回覆會明顯變慢）
+let healthRefresh = null
 const stageBoard = reactive(createConsoleBoardState())
 const voiceTestPanelRef = ref(null)
 const videoWrapperRef = ref(null)
@@ -1200,10 +1207,11 @@ const checkBackendReady = async () => {
   try {
     const response = await fetch('/health')
     if (response.ok) {
-      const data = await response.json()
-      if (data.ready) {
+      const health = readBackendHealth(await response.json())
+      llmPartialGpu.value = health.llmPartialGpu
+      if (health.ready) {
         backendReady.value = true
-        modelReady.value = Boolean(data.model_ready)
+        modelReady.value = health.modelReady
         console.log('✅ 後端已就緒, model_ready=', modelReady.value)
         return true
       }
@@ -1488,6 +1496,7 @@ watch(handsFreeTalk, (enabled) => {
 })
 
 onUnmounted(() => {
+  clearInterval(healthRefresh)
   stopPlay()
   videoResizeObserver?.disconnect()
 })
@@ -1578,6 +1587,8 @@ onMounted(async () => {
     if (ready) {
       clearInterval(checkInterval)
       showNotification(t('notifications.backendReady'), 'success')
+      // A model switch can move the LLM off the GPU; keep the warning current.
+      healthRefresh = setInterval(checkBackendReady, 30000)
     }
   }, 2000)  // 每2秒檢查一次
   
@@ -1592,6 +1603,17 @@ onMounted(async () => {
 </script>
 
 <style>
+.llm-gpu-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 16px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--warning);
+  background: var(--warning-surface);
+}
+
 .role-console-controls {
   flex-shrink: 0;
   display: flex;

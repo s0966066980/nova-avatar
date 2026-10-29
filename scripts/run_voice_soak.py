@@ -17,6 +17,7 @@ from collections import Counter, deque
 from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
+from typing import Callable
 
 import aiohttp
 import av
@@ -56,12 +57,28 @@ class PushAudioTrack(MediaStreamTrack):
         self._frames: deque[np.ndarray] = deque()
         self._timestamp = 0
         self._started_at: float | None = None
+        self._queued_samples = 0
+        self._sent_samples = 0
+        self._markers: list[tuple[int, Callable[[float], None]]] = []
 
-    def push(self, samples: np.ndarray) -> None:
+    def push(
+        self,
+        samples: np.ndarray,
+        *,
+        on_sample_sent: tuple[int, Callable[[float], None]] | None = None,
+    ) -> None:
+        """Queue PCM; ``on_sample_sent=(offset, callback)`` reports when that
+        sample of this push goes out, on the sender's monotonic clock."""
         pcm = np.asarray(samples, dtype=np.int16).reshape(-1)
         padded = int(np.ceil(pcm.size / FRAME_SAMPLES)) * FRAME_SAMPLES
         if padded > pcm.size:
             pcm = np.pad(pcm, (0, padded - pcm.size))
+        if on_sample_sent is not None:
+            offset, callback = on_sample_sent
+            self._markers.append(
+                (self._queued_samples + min(max(0, int(offset)), pcm.size), callback)
+            )
+        self._queued_samples += pcm.size
         for offset in range(0, pcm.size, FRAME_SAMPLES):
             self._frames.append(pcm[offset : offset + FRAME_SAMPLES].copy())
 
@@ -73,11 +90,12 @@ class PushAudioTrack(MediaStreamTrack):
             deadline = self._started_at + self._timestamp / SAMPLE_RATE
             if deadline > now:
                 await asyncio.sleep(deadline - now)
-        samples = (
-            self._frames.popleft()
-            if self._frames
-            else np.zeros(FRAME_SAMPLES, dtype=np.int16)
-        )
+        if self._frames:
+            samples = self._frames.popleft()
+            self._sent_samples += FRAME_SAMPLES
+            self._report_markers(self._sent_samples - FRAME_SAMPLES)
+        else:
+            samples = np.zeros(FRAME_SAMPLES, dtype=np.int16)
         frame = av.AudioFrame(format="s16", layout="mono", samples=FRAME_SAMPLES)
         frame.planes[0].update(samples.tobytes())
         frame.sample_rate = SAMPLE_RATE
@@ -85,6 +103,13 @@ class PushAudioTrack(MediaStreamTrack):
         frame.time_base = Fraction(1, SAMPLE_RATE)
         self._timestamp += FRAME_SAMPLES
         return frame
+
+    def _report_markers(self, frame_start: int) -> None:
+        now = time.monotonic()
+        due = [marker for marker in self._markers if marker[0] <= self._sent_samples]
+        self._markers = [marker for marker in self._markers if marker[0] > self._sent_samples]
+        for index, callback in due:
+            callback(now + (index - frame_start) / SAMPLE_RATE)
 
 
 class EventBroker:

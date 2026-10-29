@@ -53,7 +53,7 @@
     </section>
     <section v-show="section === 'voice'" class="profile-section">
       <h3>聲音與工具</h3><p>每位角色可選擇自己的聲線；即時組合共用同一語音合成引擎。</p>
-      <div class="profile-grid"><label>語音引擎<select v-model="profile.tts.type"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ engine }}</option></select></label><label>聲線／參考音檔<select v-if="usesVoiceLibrary" v-model="profile.tts.ref_file"><option value="">{{ isCosyVoice ? '預設參考音訊' : '請選擇參考音訊' }}</option><option v-for="voice in ttsVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}</option></select><input v-else v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label></div>
+      <div class="profile-grid"><label>語音引擎<select v-model="profile.tts.type"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ ttsEngineLabel(engine) }}</option></select></label><label>聲線／參考音檔<select v-if="usesVoiceLibrary" v-model="profile.tts.ref_file"><option value="">{{ isCosyVoice ? '預設參考音訊' : '請選擇參考音訊' }}</option><option v-for="voice in ttsVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}</option></select><input v-else v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label></div>
       <label v-if="profile.tts.type === 'edgetts'">英文聲音<input v-model="profile.tts.voice_en_us" placeholder="en-US-JennyNeural"></label>
       <p v-if="usesVoiceLibrary">參考音檔請先在「語音」設定的音訊庫上傳，再於此選擇。</p>
       <label v-if="usesReferenceText">參考語音逐字稿<textarea v-model="profile.tts.ref_text" rows="3"></textarea></label>
@@ -81,7 +81,9 @@ const sections = [
 const ruleFields = [{ key: 'activation', label: '何時使用看板' }, { key: 'speech', label: '口語回覆規則' }, { key: 'board', label: '看板內容規則' }]
 const voiceFields = { mode: '合成模式', tts_server: '語音服務網址（限本機）', model: 'models/ 內的模型名稱（留空為預設）', language: '語言', speaker: '說話者', instruct: '合成指令', device: '運算裝置' }
 // Reference audio is a voice-library ID; the server rejects file paths.
-const { ttsVoiceOptions } = useRuntimeSettings()
+const { ttsVoiceOptions, speech } = useRuntimeSettings()
+// Server catalog labels carry each engine's usage restriction (e.g. Edge TTS is development only).
+const ttsEngineLabel = id => speech.tts.engines.find(engine => engine.id === id)?.label || id
 const VOICE_LIBRARY_ENGINES = ['gpt-sovits', 'xtts', 'indextts2', 'cosyvoice', 'fun-cosyvoice3', 'breezyvoice']
 const usesVoiceLibrary = computed(() => VOICE_LIBRARY_ENGINES.includes(profile.value.tts.type))
 const isCosyVoice = computed(() => ['cosyvoice', 'fun-cosyvoice3'].includes(profile.value.tts.type))

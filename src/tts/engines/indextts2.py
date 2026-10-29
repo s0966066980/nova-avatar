@@ -1,6 +1,8 @@
 # Derived from Kedreamix/Linly-Talker-Stream.
 # Licensed under the Apache License, Version 2.0.
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+# Usage classification: bilibili Model Use License. A separate license is required above
+# 100M MAU or RMB 1B revenue; no use to improve other models. See THIRD_PARTY_NOTICES.md.
 
 from __future__ import annotations
 

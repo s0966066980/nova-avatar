@@ -7,14 +7,25 @@ from __future__ import annotations
 import time
 import math
 from collections import Counter
-from typing import Callable, Optional
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Callable, Iterator, Optional
 
 
 Clock = Callable[[], float]
+StageObserver = Callable[[str, float], None]
 
+# Stage durations are measured where the work runs; durations, not clocks,
+# cross threads. Pre-answer stages (``pre_answer`` contains ``routing`` and
+# ``retrieval``) run between the transcript and the main answer;
+# ``model_info`` is the llama-server preflight inside ``llm_first_token``.
 STAGE_NAMES = (
     "vad_endpoint",
     "asr",
+    "pre_answer",
+    "routing",
+    "retrieval",
+    "model_info",
     "llm_first_token",
     "llm_first_speech",
     "llm_total",
@@ -30,6 +41,34 @@ STAGE_NAMES = (
     "avatar_to_webrtc_commit",
     "webrtc_audio_commit",
 )
+
+
+_stage_observer: ContextVar[Optional[StageObserver]] = ContextVar(
+    "turn_stage_observer", default=None,
+)
+
+
+@contextmanager
+def observe_stages(observer: StageObserver) -> Iterator[None]:
+    """Route ``timed_stage`` durations in this context to ``observer``."""
+    token = _stage_observer.set(observer)
+    try:
+        yield
+    finally:
+        _stage_observer.reset(token)
+
+
+@contextmanager
+def timed_stage(stage: str, *, clock: Clock = time.monotonic) -> Iterator[None]:
+    """Time a block for the current turn, if one is observing this context."""
+    TurnMetrics._validate_stage(stage)
+    observer = _stage_observer.get()
+    started = clock()
+    try:
+        yield
+    finally:
+        if observer is not None:
+            observer(stage, max(0.0, clock() - started))
 
 
 def _duration(start: Optional[float], end: Optional[float]) -> Optional[float]:
@@ -49,6 +88,7 @@ class TurnMetrics:
         self._turn_id = turn_id
         self._clock = clock
         self._speech_end_at: Optional[float] = None
+        self._prompt_accepted_at: Optional[float] = None
         self._first_audio_at: Optional[float] = None
         self._interrupt_at: Optional[float] = None
         self._output_stopped_at: Optional[float] = None
@@ -70,6 +110,11 @@ class TurnMetrics:
     def mark_speech_end(self) -> None:
         if self._speech_end_at is None:
             self._speech_end_at = self._clock()
+
+    def mark_prompt_accepted(self) -> None:
+        """The transcript or typed prompt enters the reply pipeline."""
+        if self._prompt_accepted_at is None:
+            self._prompt_accepted_at = self._clock()
 
     def mark_first_audio(self) -> None:
         if self._first_audio_at is None:
@@ -175,6 +220,10 @@ class TurnMetrics:
             "turn_id": self._turn_id,
             "first_audio_seconds": _duration(
                 self._speech_end_at,
+                self._first_audio_at,
+            ),
+            "prompt_first_audio_seconds": _duration(
+                self._prompt_accepted_at,
                 self._first_audio_at,
             ),
             "interrupt_stop_seconds": _duration(

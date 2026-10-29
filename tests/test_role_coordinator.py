@@ -92,10 +92,37 @@ def test_routing_does_not_guess_a_county_for_an_ambiguous_district(field, text, 
     class Client:
         def __init__(self, **_):
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
-        def __enter__(self): return self
-        def __exit__(self, *_): pass
+        def close(self): pass
     route = route_question(field.state.config, field.library, 'main', text, [], confirmed, client_factory=Client)
     assert route['route'] == expected
+
+
+def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field):
+    from concurrent.futures import ThreadPoolExecutor
+    from src.profiles.routing import RoutingClients
+    result = dict(route='answer')
+    response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
+    built = []
+    class Client:
+        def __init__(self, **options):
+            self.options, self.closed = options, False
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
+            built.append(self)
+        def close(self): self.closed = True
+    roles = RoleCoordinator(field.state, field.store, field.library, weather=field.weather,
+                            routing_clients=RoutingClients(Client))
+    config = field.state.config
+    with ThreadPoolExecutor(4) as pool:
+        routes = list(pool.map(lambda text: roles.router(config, roles.library, 'main', text, [], {}),
+                               ['公司地址？', '營業時間？', '有停車場嗎？', '怎麼預約？']))
+    assert [r['route'] for r in routes] == ['answer'] * 4
+    assert len(built) == 1
+    assert built[0].options['max_retries'] == 0
+    asyncio.run(roles.close())
+    assert built[0].closed
+    # A turn that outlives shutdown cannot reopen a connection.
+    with pytest.raises(RuntimeError):
+        roles.router(config, roles.library, 'main', '公司地址？', [], {})
 
 
 async def wait_until(predicate):
@@ -332,8 +359,7 @@ def test_county_weather_question_handoffs_without_inventing_a_district(field, te
     class Client:
         def __init__(self, **_):
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
-        def __enter__(self): return self
-        def __exit__(self, *_): pass
+        def close(self): pass
     route = route_question(field.state.config, field.library, 'main', text, [], {}, client_factory=Client)
     assert route['route'] == 'specialist', route
     assert route['county'] == '臺北市'

@@ -130,6 +130,25 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - Tested Ubuntu package copyright/license notices and upstream license texts:
   [`third_party/licenses/tesseract/`](third_party/licenses/tesseract/).
 
+## Gemma 4 language model
+
+- Role: main local LLM (`gemma-4-E2B_q4_0-it.gguf`) and its vision projector
+  (`gemma-4-E2B-it-mmproj.gguf`), served by llama.cpp
+- Source: Google `google/gemma-4-E2B-it-qat-q4_0-gguf`,
+  <https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf>
+- License: Apache-2.0, per the model cards of that repository,
+  `google/gemma-4-E2B-it` and `google/gemma-4-E2B`, and the linked Gemma 4
+  license page <https://ai.google.dev/gemma/docs/gemma_4_license> (checked
+  2026-10-29)
+- The Gemma Terms of Use do not apply to Gemma 4: they cover only the models
+  listed in their appendix (Gemma 1 to TranslateGemma) and refer Gemma 4 to its
+  own license. Commercial use carries no revenue or user threshold. Following
+  the Gemma Prohibited Use Policy is still recommended.
+- Earlier Gemma generations (1 to 3) use the Gemma Terms of Use, whose use
+  restrictions flow downstream. Do not apply this Gemma 4 statement to them.
+- The weights are not bundled in this repository. When distributing them,
+  include the Apache-2.0 license text and keep the model card and notices.
+
 ## RAGFlow and dedicated embedding service
 
 - RAGFlow role: optional, separately deployed document retrieval service
@@ -162,6 +181,50 @@ terms remain controlling for those files.
 Edge TTS, GPT-SoVITS, CosyVoice, Fun-CosyVoice, Fish TTS, XTTS, and IndexTTS2
 are optional integrations. Verify the exact code, service, voice, model, and
 checkpoint terms before redistribution or commercial packaging.
+
+The engines below carry known usage restrictions (checked against their
+primary license sources on 2026-10-29). The Console engine catalog shows the
+same classification in each engine label.
+
+### Edge TTS
+
+- Usage classification: **Development only**
+- Edge TTS calls the non-public Microsoft Edge read-aloud endpoint. No formal
+  commercial license or service agreement covers that endpoint, and the venue
+  cannot synthesize speech without Internet access.
+- Do not use Edge TTS as the speech engine of a commercial or production
+  deployment.
+
+### Fish Speech / OpenAudio
+
+- Usage classification: **Community License / Revenue < USD 500k**
+- License: Fish Audio Community License v1.0 (from 2026-10-13; earlier
+  releases used CC-BY-NC-SA-4.0 or the non-commercial Fish Audio Research
+  License, and `s1-mini` remains CC-BY-NC-SA-4.0)
+- Commercial use is licensed only while the licensee has annual revenue below
+  USD 500,000. Integrators and on-premises vendors also need each customer to
+  stay below that threshold. Hosted-service use is excluded.
+- Source: <https://github.com/fishaudio/fish-speech/blob/main/LICENSE>
+
+### IndexTTS2
+
+- Usage classification: **bilibili Model License / Usage thresholds**
+- License: bilibili IndexTTS Model Use License (repository `LICENSE`)
+- Commercial use is allowed only up to 100 million monthly active users and
+  RMB 1 billion annual revenue; above either threshold a separate license from
+  bilibili is required. The model and its outputs must not be used to improve
+  other models. Downstream recipients inherit the use restrictions. The license
+  is governed by PRC law with arbitration in Shanghai.
+- Source: <https://huggingface.co/IndexTeam/IndexTTS-2/blob/main/LICENSE.txt>
+
+### XTTS-v2
+
+- Usage classification: **Research / Non-commercial**
+- Code: MPL-2.0 (Coqui TTS); weights: Coqui Public Model License, which allows
+  only non-commercial use of the model and its outputs
+- Commercial use: **not permitted**. Coqui has shut down, so no commercial
+  license can be obtained.
+- Source: <https://huggingface.co/coqui/XTTS-v2/blob/main/LICENSE.txt>
 
 ## Models, weights, and datasets
 

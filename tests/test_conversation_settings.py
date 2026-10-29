@@ -207,25 +207,72 @@ def test_context_capacity_uses_deployed_server_not_training_size(monkeypatch):
         def raise_for_status(self): pass
         def json(self): return self.value
     monkeypatch.setattr(context_usage.requests, 'get', lambda *a, **k: Response({'default_generation_settings': {'n_ctx': 64}}))
-    monkeypatch.setattr(context_usage.requests, 'post', lambda url, **k: Response({'prompt': 'template'} if url.endswith('apply-template') else {'tokens': list(range(40))}))
-    result = measure_request('http://local-unique/v1', [{'role': 'system', 'content': 'rule'}, {'role': 'user', 'content': 'question'}], 30, local=True, model='test')
+    capacity = context_usage.deployed_capacity('http://local-unique/v1', refresh=True)
+    # 34 CJK characters, 'rule' and a separator estimate 36 tokens; 4 per message: 44.
+    result = measure_request([{'role': 'system', 'content': 'rule'}, {'role': 'user', 'content': '問' * 34}],
+                             30, capacity=capacity, model='test')
     assert result['capacity'] == 64
-    assert result['input_tokens'] == 40
-    assert not result['estimated']
+    assert result['input_tokens'] == 44
+    assert result['estimated'] and result['source'] == 'estimate'
     assert result['over_capacity']
     assert result['remaining_tokens'] == 0
 
 
-def test_oversized_request_does_not_call_model_or_modify_history(monkeypatch):
+def test_answer_starts_without_model_info_requests_and_reports_provider_usage(monkeypatch):
+    from src.llm import context_usage
+    class Response:
+        def __init__(self, value): self.value = value
+        def raise_for_status(self): pass
+        def json(self): return self.value
+    calls = []
+    def get(url, **_):
+        calls.append(url)
+        return Response({'default_generation_settings': {'n_ctx': 10000}})
+    def post(url, **_):
+        calls.append(url)
+        return Response({'prompt': 'template'} if url.endswith('apply-template') else {'tokens': [1]})
+    monkeypatch.setattr(context_usage.requests, 'get', get)
+    monkeypatch.setattr(context_usage.requests, 'post', post)
+    base_url = 'http://model-info-cache/v1'
+    # Loading or switching the model is the only point that asks /props.
+    assert context_usage.deployed_capacity(base_url, refresh=True) == 10000
+    calls.clear()
+    config = Config()
+    config.llm.provider = 'llamacpp'
+    llm = OpenAILLM(config=config, api_key='test', base_url=base_url)
+    before_answer = []
+    def create(**_):
+        before_answer.extend(calls)
+        return [SimpleNamespace(choices=[SimpleNamespace(
+                    delta=SimpleNamespace(content='好'), finish_reason='stop')], usage=None),
+                SimpleNamespace(choices=[], usage=SimpleNamespace(prompt_tokens=40))]
+    llm._client = Mock()
+    llm._client.chat.completions.create.side_effect = create
+    for _ in range(2):
+        assert list(llm.chat_stream('question', 'system')) == ['好']
+    assert before_answer == []
+    assert calls == []
+    usage = llm.context_usage
+    assert (usage['capacity'], usage['input_tokens'], usage['estimated']) == (10000, 40, False)
+    assert usage['remaining_tokens'] == 10000 - 40 - usage['reserved_output_tokens']
+    assert usage['over_capacity'] is False
+
+
+def test_llama_server_context_overflow_keeps_history_unchanged():
+    import httpx2 as httpx
+    from openai import BadRequestError
     llm = OpenAILLM(config=Config(), api_key='test')
     llm.add_to_history('user', 'retain this')
     client = Mock()
     llm._client = client
-    monkeypatch.setattr('src.llm.engines.openai.measure_request', lambda *a, **k: {'over_capacity': True, 'estimated': False})
+    # llama.cpp's reply when the templated prompt exceeds the slot's n_ctx.
+    body = {'code': 400, 'type': 'exceed_context_size_error', 'n_prompt_tokens': 9000, 'n_ctx': 8192,
+            'message': 'request (9000 tokens) exceeds the available context size (8192 tokens)'}
+    response = httpx.Response(400, request=httpx.Request('POST', 'http://llama/v1/chat/completions'))
+    client.chat.completions.create.side_effect = BadRequestError(body['message'], response=response, body=body)
     transaction = llm.begin_history_turn('oversized', turn_id='large')
     with pytest.raises(ContextCapacityError):
         list(llm.chat_stream('oversized', 'system', history_transaction=transaction))
-    client.chat.completions.create.assert_not_called()
     assert llm.conversation_history == [{'role': 'user', 'content': 'retain this'}]
     assert not llm._history._pending
 

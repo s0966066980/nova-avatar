@@ -125,6 +125,7 @@ llm:
   llamacpp_port: 8080
   llamacpp_ctx: 8192          # 容納看板協定與最近10輪，避免超長 prompt 被拒絕
   llamacpp_threads: 0         # 0=自動用滿 CPU；有 CUDA 時主要靠 GPU
+  llamacpp_allow_partial_offload: false  # 顯存放不下全部層數時：false=啟動失敗並說明；true=接受較慢的部分卸載
   max_tokens: 128             # 模型輸出 token 安全上限，會依回覆字數自動加緩衝，避免句中硬切
   response_max_chars: 120     # 每次回答要在這個字數內把話說完，不是多出來再切斷
   extra_body:
