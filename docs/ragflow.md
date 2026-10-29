@@ -9,7 +9,8 @@ Nova Avatar 只向 RAGFlow 查找文件片段，並由 Nova 現有的模型、�
 語音與看板流程產生、交付回答。RAGFlow 使用獨立的 Compose 專案與資料庫；
 完成本機準備後，`scripts/start-all.sh` 會一併啟動它。嵌入服務沿用主機已安裝
 的 Ollama 程式與 BGE-M3 模型檔，但另開一個使用 GPU 的程序（預設 CUDA 裝置 0，
-可用 `NOVA_RAGFLOW_CUDA_VISIBLE_DEVICES` 覆寫）；Nova 原有的 Ollama 與
+可用 `NOVA_RAGFLOW_CUDA_VISIBLE_DEVICES` 覆寫），不需要系統的 11434 Ollama 服務
+（`pull-model` 等例外見[停用預設 Ollama](installation.md#停用預設-ollama11434)）；
 llama.cpp 語言模型服務不變。首次安裝與每位數位人的檢索設定均預設關閉。
 
 ## 本機安裝
@@ -71,7 +72,7 @@ MuseTalk、STT 和語言模型一起估算），文件批量解析降至一次�
    `.local/ragflow/upstream/docker/.env` 中 `ADMIN_DEFAULT_PASSWORD` 欄位。
 2. 在 RAGFlow 模型供應者設定中新增 Ollama 執行個體：服務位址
    `http://host.docker.internal:11435`，嵌入模型 `bge-m3`。此嵌入程序
-   與 Nova 的 `127.0.0.1:11434` 語言模型程序分開，但讀取同一份本機模型檔，
+   與系統的 `127.0.0.1:11434` Ollama 服務分開，但讀取同一份本機模型檔，
    不另下載 Ollama 映像。建立知識庫前，請核對模型卡與權重授權。
 3. 在 RAGFlow 建立知識庫，上傳文件、完成解析。文件上傳／解析只在
    RAGFlow 原生介面管理。接著點右上角頭像 → 設定 → **API** 頁，
