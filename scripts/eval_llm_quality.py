@@ -11,7 +11,8 @@ automatic checks: reply format, Simplified characters, spoken length cap, the
 short first sentence (issue 08) and routing correctness. The user decides on
 the default model from that report. ``first-sentence`` summarises one run:
 how often the reply opens with a complete sentence of at most 15 characters,
-and how long and how late the first playable fragment was.
+and how long and how late the first playable fragment was, both at the
+complete semantic boundary and with the first-fragment exception.
 """
 from __future__ import annotations
 
@@ -98,7 +99,7 @@ def first_sentence(speech: str) -> str:
     """
     from src.server.reply_streaming.fragmenter import SemanticFragmenter
 
-    fragments = SemanticFragmenter(clock=lambda: 0.0).feed(speech)
+    fragments = SemanticFragmenter(clock=lambda: 0.0, first_fragment_min_units=None).feed(speech)
     return fragments[0] if fragments else ""
 
 
@@ -112,20 +113,25 @@ def first_sentence_check(speech: str) -> dict:
             "value": first}
 
 
-def first_fragment(chunks, *, semantic_wait_seconds: float = 0.5) -> dict | None:
+def first_fragment(chunks, *, semantic_wait_seconds: float = 0.5,
+                   exception: bool = True) -> dict | None:
     """When the first playable fragment would leave the fragmenter.
 
     ``chunks`` are ``(seconds, text)`` as the model streamed them. They are
     replayed through the production protocol parser and fragmenter; between
     chunks the semantic-wait timer may release a clause, as it does live.
+    ``exception=False`` replays the complete semantic boundary without the
+    first-fragment exception.
     """
     from src.llm.response_protocol import ResponseProtocolParser
     from src.llm.router import ReplyMode
-    from src.server.reply_streaming.fragmenter import SemanticFragmenter, content_length
+    from src.server.reply_streaming.fragmenter import (
+        FIRST_FRAGMENT_MIN_UNITS, SemanticFragmenter, content_length)
 
     now = 0.0
-    fragmenter = SemanticFragmenter(semantic_wait_seconds=semantic_wait_seconds,
-                                    clock=lambda: now)
+    fragmenter = SemanticFragmenter(
+        semantic_wait_seconds=semantic_wait_seconds, clock=lambda: now,
+        first_fragment_min_units=FIRST_FRAGMENT_MIN_UNITS if exception else None)
     parser = ResponseProtocolParser(mode=ReplyMode.AUTO, guard_board_speech=True)
 
     def found(fragments, at):
@@ -151,6 +157,50 @@ def first_fragment(chunks, *, semantic_wait_seconds: float = 0.5) -> dict | None
         if result := found(fragmenter.feed(delta), at):
             return result
     return found(fragmenter.flush(), at)
+
+
+def opening_fragment(speech: str) -> str:
+    """The first fragment of ``speech``, with the exception, fed one character at a time.
+
+    The semantic wait never expires here, as in a fast stream.
+    """
+    from src.server.reply_streaming.fragmenter import SemanticFragmenter
+
+    fragmenter = SemanticFragmenter(clock=lambda: 0.0)
+    for character in speech:
+        if fragments := fragmenter.feed(character):
+            return fragments[0]
+    return next(iter(fragmenter.flush()), "")
+
+
+def compare_first_fragment(answer: dict, *, semantic_wait_seconds: float = 0.5) -> dict:
+    """The first fragment at the complete semantic boundary and with the exception.
+
+    Runs that kept their chunks are replayed exactly. Older runs kept only the
+    first fragment at the complete boundary: the exception's fragment is a
+    prefix of it, so its time is interpolated linearly, by content characters,
+    between the first spoken character and that fragment (``estimated``).
+    """
+    from src.server.reply_streaming.fragmenter import content_length
+
+    if answer.get("chunks"):
+        chunks = [(at, text) for at, text in answer["chunks"]]
+        return {"before": first_fragment(chunks, semantic_wait_seconds=semantic_wait_seconds,
+                                          exception=False),
+                "after": first_fragment(chunks, semantic_wait_seconds=semantic_wait_seconds),
+                "estimated": False}
+    before = answer.get("first_fragment")
+    after = None
+    text = opening_fragment(parse_reply(answer["raw"])["speech"])
+    if before and text == before["text"]:
+        after = dict(before)
+    elif before and text and before["text"].startswith(text) and before["chars"]:
+        spoken_at = answer.get("first_speech_seconds")
+        chars = content_length(text)
+        if spoken_at is not None:
+            seconds = spoken_at + (before["seconds"] - spoken_at) * chars / before["chars"]
+            after = {"text": text, "chars": chars, "seconds": round(seconds, 3)}
+    return {"before": before, "after": after, "estimated": True}
 
 
 def check_answer(raw: str, *, max_chars: int, expected_mode: str | None = None,
@@ -263,6 +313,7 @@ def _answer(question: dict, data: dict, config, profile) -> dict:
         "first_speech_seconds": _rounded(engine.first_speech),
         "first_fragment": first_fragment(
             engine.chunks, semantic_wait_seconds=config.reply_streaming.semantic_wait_seconds),
+        "chunks": [[_rounded(at), chunk] for at, chunk in engine.chunks],
         "total_seconds": _rounded(total),
     }
 
@@ -471,14 +522,14 @@ def build_report(baseline: dict, candidate: dict) -> str:
                 f"| 看板 | {_cell(_board_text(x['board']))} | {_cell(_board_text(y['board']))} |",
                 f"| 檢查 | {_cell(_check_summary(x))} | {_cell(_check_summary(y))} |",
                 f"| 首個口語 | {_cell(x['first_speech_seconds'])} s | {_cell(y['first_speech_seconds'])} s |",
-                f"| 首個片段 | {_cell(_fragment_cell(x))} | {_cell(_fragment_cell(y))} |",
+                f"| 首個片段 | {_cell(_fragment_cell(x.get('first_fragment')))} "
+                f"| {_cell(_fragment_cell(y.get('first_fragment')))} |",
             ]
         lines.append("")
     return "\n".join(lines)
 
 
-def _fragment_cell(answer: dict) -> str:
-    fragment = answer.get("first_fragment")
+def _fragment_cell(fragment: dict | None) -> str:
     if not fragment:
         return "—"
     return f"{fragment['chars']} 字，{fragment['seconds']} s：{fragment['text']}"
@@ -491,19 +542,27 @@ def build_first_sentence_report(result: dict) -> str:
     check existed are summarised too; fragment timing needs a newer run.
     """
     from src.llm.reply_contract import FIRST_SENTENCE_MAX_CHARS
-    from src.server.reply_streaming.fragmenter import content_length
+    from src.server.reply_streaming.fragmenter import FIRST_FRAGMENT_MIN_UNITS, content_length
 
     answers = [(item, item["answer"]) for item in result["items"] if item["answer"] is not None]
     checked = [(item, first_sentence_check(parse_reply(answer["raw"])["speech"]))
                for item, answer in answers]
     failed = [(item, check) for item, check in checked if not check["passed"]]
+    compared = [(item, compare_first_fragment(answer)) for item, answer in answers]
+    estimated = any(comparison["estimated"] for _, comparison in compared)
 
-    def spread(key: str, unit: str) -> str:
-        values = [_fragment_value(answer, key) for _, answer in answers]
+    def spread(side: str, key: str, unit: str) -> str:
+        values = [(comparison[side] or {}).get(key) for _, comparison in compared]
         p50, p95 = _percentile(values, 0.5), _percentile(values, 0.95)
         if p50 is None:
             return "—（此次執行未記錄串流時間）"
-        return f"P50 {p50:g}{unit}，P95 {p95:g}{unit}"
+        counted = sum(value is not None for value in values)
+        missing = f"（{counted}/{len(values)} 題）" if counted < len(values) else ""
+        return f"P50 {p50:g}{unit}，P95 {p95:g}{unit}{missing}"
+
+    timing = ("此次執行未保存 chunk：完整語意邊界為記錄值；首個片段例外為估計，"
+              "以首個口語時間與記錄值依字數線性內插"
+              if estimated else "兩者皆以記錄的 chunk 逐一重播")
 
     lines = [
         "<!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->",
@@ -513,13 +572,30 @@ def build_first_sentence_report(result: dict) -> str:
         f"- 規則：口語以一句 {FIRST_SENTENCE_MAX_CHARS} 字內、以「。」「！」「？」結束的完整句開頭。"
         "字數以正式分段器的計法（字母、數字、漢字各算一字）計算。",
         f"- 遵循率：{len(checked) - len(failed)}/{len(checked)}",
-        f"- 首個片段字數 P50／P95：{spread('chars', ' 字')}",
-        f"- 首個片段時間 P50／P95：{spread('seconds', ' s')}"
-        "（自送出回答請求起算，以正式分段器與語意等待計時重播串流）",
         "",
-        "## 未遵循",
+        "## 首個片段",
+        "",
+        f"首個片段例外：每輪第一個片段在逗號、冒號、分號處、且前段已有 {FIRST_FRAGMENT_MIN_UNITS} "
+        "字（英文以字詞計）以上時立即釋放；之後的片段仍守完整語意邊界。時間自送出回答請求起算，"
+        f"以正式分段器與語意等待計時計算。{timing}。",
+        "",
+        "| | 完整語意邊界 | 首個片段例外 |",
+        "|---|---|---|",
+        f"| 字數 | {spread('before', 'chars', ' 字')} | {spread('after', 'chars', ' 字')} |",
+        f"| 時間 | {spread('before', 'seconds', ' s')} | {spread('after', 'seconds', ' s')} |",
         "",
     ]
+    changed = [(item, comparison) for item, comparison in compared
+               if comparison["after"] and comparison["before"]
+               and comparison["after"]["text"] != comparison["before"]["text"]]
+    if changed:
+        lines += [f"提早釋放 {len(changed)}/{len(compared)} 題：", "",
+                  "| 題號 | 完整語意邊界 | 首個片段例外 |", "|---|---|---|"]
+        lines += [f"| {item['id']} | {_cell(_fragment_cell(comparison['before']))} "
+                  f"| {_cell(_fragment_cell(comparison['after']))} |"
+                  for item, comparison in changed]
+        lines.append("")
+    lines += ["## 未遵循", ""]
     if not failed:
         lines.append("無。")
     else:
