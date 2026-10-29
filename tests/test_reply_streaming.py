@@ -224,6 +224,7 @@ class TurnMetricsTests(unittest.TestCase):
                     "pre_answer": None,
                     "routing": None,
                     "retrieval": None,
+                    "routing_hold": None,
                     "model_info": None,
                     "llm_first_token": 0.05,
                     "llm_first_speech": None,

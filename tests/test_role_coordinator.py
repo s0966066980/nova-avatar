@@ -203,7 +203,10 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
         await voice._turn_task
         assert runtime.phase == 'announcement', voice.avatar.messages
         assert runtime.current_id == 'main'
-        llm.assert_not_called()
+        # The main answer generated beside routing (ADR 0022) is never delivered.
+        source_calls = llm.call_count
+        assert source_calls <= 1
+        assert [text for text, _ in voice.avatar.messages] == [roles.library['handoff']['announcement']]
         roles._apply_waiting = apply_waiting
         _, audio = voice.avatar.messages[0]
         voice.on_output_audio_frame({**audio, 'fragment_end': True}, True)
@@ -212,14 +215,14 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
             voice.on_output_audio(False)
         await wait_until(lambda: runtime.phase == 'transition')
         assert runtime.current_id == 'main'
-        llm.assert_not_called()
+        assert llm.call_count == source_calls
         runtime.video_committed(voice.sessionid, {'role_transition_id': 'stale', 'role_transition_end': True})
         assert not runtime._transition_event.is_set()
         runtime.video_committed(voice.sessionid, {'role_transition_id': runtime._transition_id, 'role_transition_end': True})
         await voice._tail_task
         await wait_until(lambda: voice._turn_task is None)
         assert runtime.current_id == 'weather'
-        llm.assert_called_once()
+        assert llm.call_count == source_calls + 1
         assert llm.call_args.args[0] == question
         assert '本輪氣象工具資料' in llm.call_args.kwargs['rag_context']
         assert voice.config.llm.assistant_profile.assistant_name == '天氣助手'

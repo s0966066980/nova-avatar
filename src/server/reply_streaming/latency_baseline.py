@@ -49,9 +49,9 @@ DEFINITIONS = {
     "prompt_first_audio_seconds": "伺服器接受 Prompt（辨識結果進入回覆流程）→ 第一個非靜音回覆音訊幀",
     "specialist_first_audio_seconds": "交接輪次：接手角色回覆的首音延遲（伺服器接受交接問題起算）",
     "stage_seconds": (
-        "依序鏈：asr → pre_answer（含 routing、retrieval）→ first_fragment"
+        "依序鏈：asr → pre_answer（含 retrieval；routing 與其並行）→ first_fragment"
         "（含 model_info、llm_first_token）→ avatar_to_webrtc_commit"
-        "（含 tts_first_pcm、musetalk_first_batch、webrtc_audio_enqueue）"),
+        "（含 routing_hold、tts_first_pcm、musetalk_first_batch、webrtc_audio_enqueue）"),
     "alignment": "server_residual = first_audio − 依序鏈；client_offset = 感知 − 伺服器估算",
 }
 

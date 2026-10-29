@@ -70,11 +70,14 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
         assert roles.current_id == 'weather'
         announcement = roles.library['handoff']['return_announcement_en' if locale == 'en-US' else 'return_announcement']
         assert voice.avatar.messages[-1][0] == announcement
-        llm.assert_not_called()
+        # The weather role's answer generated beside routing (ADR 0022) is discarded.
+        source_calls = llm.call_count
+        assert source_calls <= 1
+        assert '主角色的服務介紹' not in [text for text, _ in voice.avatar.messages]
         field.weather.query.assert_not_called()
         await play_announcement(voice)
         assert roles.current_id == 'weather'
-        llm.assert_not_called()
+        assert llm.call_count == source_calls
         roles.video_committed(7, {'role_transition_id': roles._transition_id, 'role_transition_end': True})
         await voice._tail_task
         await wait_until(lambda: voice._turn_task is None)
@@ -83,7 +86,7 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
         assert voice.config.llm.assistant_profile.assistant_name != '天氣助手'
         assert voice._conversation['locale'] == locale
         assert roles.confirmed[7] == {'county': '臺南市', 'town': '安平區'}
-        llm.assert_called_once()
+        assert llm.call_count == source_calls + 1
         assert llm.call_args.args[0] == question
         assert '訪客想了解服務' in llm.call_args.kwargs['rag_context']
         assert '本輪氣象工具資料' not in llm.call_args.kwargs['rag_context']
@@ -95,7 +98,7 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
         assert other.config.profile_id == 'main'
         assert len([event for event in events if event['type'] == 'role_handoff']) == 1
         await roles.after_playback(voice, source_turn)
-        llm.assert_called_once()
+        assert llm.call_count == source_calls + 1
         # A new weather question can still hand off in the forward direction.
         field.router.reset_mock()
         roles.router = Mock(return_value={'route': 'specialist', 'county': '臺南市', 'town': '安平區',
@@ -146,12 +149,14 @@ async def test_cancelled_or_failed_reverse_handoff_keeps_weather_role(field, mon
         assert roles.phase == 'ready'
         assert not roles.pending and not roles.continuations
         assert not any(e['type'] == 'role_handoff' for e in events)
-        llm.assert_not_called()
+        # Only the discarded answer generated beside routing (ADR 0022) ran.
+        assert llm.call_count <= 1
+        assert 'must not be delivered' not in [text for text, _ in voice.avatar.messages]
     finally:
         await voice.close()
 
 
-@pytest.mark.parametrize('question', ['明天台北會下雨嗎？', '明天適合爬山嗎？', '那週末呢？'])
+@pytest.mark.parametrize('question',['明天台北會下雨嗎？', '明天適合爬山嗎？', '那週末呢？'])
 @async_test
 async def test_weather_followups_stay_with_specialist(field, question):
     field.router = Mock(return_value={'route': 'specialist', 'county': '臺北市', 'town': '',
