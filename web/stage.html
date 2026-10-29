@@ -409,6 +409,9 @@ import {
   isKioskMode, kioskReconnectDelayMs, KIOSK_UNAVAILABLE_TITLE, KIOSK_UNAVAILABLE_TEXT
 } from '/src/stageKiosk.js';
 import {
+  fetchJsonWithTimeout, STAGE_CONNECT_TIMEOUT_MS, STAGE_OFFER_TIMEOUT_MS, STAGE_POLL_TIMEOUT_MS
+} from '/src/stageConnection.js';
+import {
   boardReopenPresentation,
   captionStyle,
   previewScale,
@@ -479,7 +482,9 @@ import {
   const roleReturn=$('roleReturn');
   roleReturn.addEventListener('click',()=>send({type:'role_return'}));
   const kiosk = isKioskMode(window.location.search);
-  let kioskTimer=null, kioskAttempt=0;
+  let reconnectTimer=null, reconnectAttempt=0;
+  // 每次 connect/teardown 都換新編號：逾時後仍在等待的舊嘗試回來時直接丟棄。
+  let connectAttempt=0, connectWatchdog=null, lostAttempt=-1;
   let live=false;
   let replyTimer=null, saidTimer=null;
   let replyTurnId=null, replyRevision=0;
@@ -680,7 +685,7 @@ import {
     veilTitle.textContent = t(title);
     veilText.textContent = t(text);
     veilText.classList.toggle('err', isError);
-    veilBtn.textContent = btn;
+    veilBtn.textContent = t(btn);
     veilBtn.hidden = !onBtn;
     veilBtn.onclick = onBtn;
     veilAlt.hidden = !alt;
@@ -718,9 +723,8 @@ import {
   // ── 收音模式：跟著後台 VAD 開關走 ────────────
   async function syncVadMode(){
     try{
-      const r = await fetch('/api/vad', {cache:'no-store'});
-      if(!r.ok) return;
-      const payload = await r.json();
+      const {ok, data:payload} = await fetchJsonWithTimeout('/api/vad', {cache:'no-store'}, STAGE_POLL_TIMEOUT_MS);
+      if(!ok) return;
       const next = Boolean(payload?.data?.enabled);
       if(next === autoMode) return;
       autoMode = next;
@@ -733,9 +737,8 @@ import {
 
   async function syncStageSettings(){
     try{
-      const r = await fetch('/api/stage', {cache:'no-store'});
-      if(!r.ok) return;
-      const payload = await r.json();
+      const {ok, data:payload} = await fetchJsonWithTimeout('/api/stage', {cache:'no-store'}, STAGE_POLL_TIMEOUT_MS);
+      if(!ok) return;
       const data = payload?.data || {};
       composerState.settings={...composerSettings(data), idle_reset_seconds:Number(data.idle_reset_seconds || 60)}; composerState.enabled=Boolean(data.composer_enabled);
       const next = Number(data.caption_max_chars);
@@ -874,49 +877,71 @@ import {
     }
   }
 
-  // kiosk：連不上時不等人點按鈕，依退避時間自動重連，訪客只看到簡短提示。
-  function scheduleKioskReconnect(){
-    if(!kiosk) return;
-    clearTimeout(kioskTimer);
-    kioskTimer = setTimeout(connect, kioskReconnectDelayMs(kioskAttempt++));
+  // 連不上時依退避時間自動重連。kiosk 一律如此；一般舞台只在逾時或
+  // 事件通道失效（影像還在、畫面看不出問題）時自動重連。
+  function scheduleReconnect(){
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, kioskReconnectDelayMs(reconnectAttempt++));
   }
   function showKioskProblem(){
     showVeil(KIOSK_UNAVAILABLE_TITLE, KIOSK_UNAVAILABLE_TEXT, {isError:true, btn:'重新連線', onBtn:connect});
-    scheduleKioskReconnect();
+    scheduleReconnect();
+  }
+  // 卡在「連線中」超過上限：拆掉這次嘗試，露出重試並自動重連。
+  function connectTimedOut(attempt){
+    if(attempt !== connectAttempt || live) return;
+    teardown();
+    if(kiosk){ showKioskProblem(); return; }
+    showVeil('連線逾時', '連線時間過長，正在自動重新連線。', {isError:true, btn:'重試', onBtn:connect, alt:true});
+    scheduleReconnect();
+  }
+  // 同一次連線的 peer 失敗與通道關閉只處理一次，避免重複排程拉長退避。
+  function connectionLost(attempt, {auto=false}={}){
+    if(attempt !== connectAttempt || lostAttempt === attempt) return;
+    lostAttempt = attempt;
+    live = false; reportStageReady(); setMode(); refreshAffordance();
+    if(kiosk){ showKioskProblem(); return; }
+    showVeil('連線中斷', '與數字人的通道已斷開。', {isError:true, btn:'重新連線', onBtn:connect});
+    if(auto) scheduleReconnect();
   }
 
   // ── 建立 WebRTC 連線 ────────────────────────
   async function connect(){
-    clearTimeout(kioskTimer);
+    clearTimeout(reconnectTimer);
     teardown();
+    const attempt = connectAttempt;
+    const stale = () => attempt !== connectAttempt;
+    connectWatchdog = setTimeout(() => connectTimedOut(attempt), STAGE_CONNECT_TIMEOUT_MS);
     autoPaused = false;
     entryLanguages.hidden=true;
     await syncStageSettings();
+    if(stale()) return;
     showVeil('連線中', '正在建立與數字人的即時通道。', {btn:'', onBtn:null});
     veilBtn.hidden = true;
 
-    pc = new RTCPeerConnection({iceServers:[]});
+    const peer = pc = new RTCPeerConnection({iceServers:[]});
 
     const remote = new MediaStream();
     // 只綁一次 srcObject。音軌與視訊軌是分開抵達的，每次 ontrack 都重綁會讓
     // 元素重新接管已在播放的音訊管線，兩軌可能因此跑在各自的時鐘上。
     video.srcObject = remote;
-    pc.ontrack = (e) => {
+    peer.ontrack = (e) => {
       if(!remote.getTracks().some(t => t.id === e.track.id)) remote.addTrack(e.track);
     };
-    pc.onconnectionstatechange = () => {
-      const s = pc?.connectionState;
-      if(s === 'connected'){ live = true; kioskAttempt = 0; clearTimeout(kioskTimer); hideVeil(); setMode(); refreshAffordance(); reportStageReady(); }
-      if(s === 'failed' || s === 'disconnected'){
-        live = false; reportStageReady(); refreshAffordance();
-        if(kiosk) showKioskProblem();
-        else showVeil('連線中斷', '與數字人的通道已斷開。', {isError:true, btn:'重新連線', onBtn:connect});
+    peer.onconnectionstatechange = () => {
+      if(stale()) return;
+      const s = peer.connectionState;
+      if(s === 'connected'){
+        live = true; lostAttempt = -1; reconnectAttempt = 0;
+        clearTimeout(reconnectTimer); clearTimeout(connectWatchdog);
+        hideVeil(); setMode(); refreshAffordance(); reportStageReady();
       }
+      if(s === 'failed' || s === 'disconnected') connectionLost(attempt);
     };
 
-    chan = pc.createDataChannel('voice-events', {ordered:true});
-    chan.onopen = () => setCapture(autoMode && Boolean(micStream));
-    chan.onmessage = (e) => {
+    const channel = chan = peer.createDataChannel('voice-events', {ordered:true});
+    channel.onopen = () => setCapture(autoMode && Boolean(micStream));
+    channel.onmessage = (e) => {
       try{
         const msg = JSON.parse(e.data);
         if(!Number.isFinite(msg.seq) || msg.seq <= lastSeq) return;
@@ -924,37 +949,45 @@ import {
         onVoiceEvent(msg);
       }catch(_){ /* 壞掉的事件直接丟掉 */ }
     };
+    // 通道關閉而影像仍在時，字幕與看板會無聲停擺：比照控制台直接重連。
+    channel.onclose = () => connectionLost(attempt, {auto:true});
+    channel.onerror = () => connectionLost(attempt, {auto:true});
 
     // 麥克風拿不到也要能看數字人，退成純觀看
     try{
-      micStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1}
       });
+      if(stale()){ stream.getTracks().forEach(t => t.stop()); return; }
+      micStream = stream;
       for(const track of micStream.getAudioTracks()) for(const event of ['ended','mute','unmute']) track.addEventListener?.(event, reportStageReady);
-      pc.addTrack(micStream.getAudioTracks()[0], micStream);
+      peer.addTrack(micStream.getAudioTracks()[0], micStream);
       micStream.getAudioTracks()[0].enabled = false;
     }catch(err){
+      if(stale()) return;
       micStream = null;
-      pc.addTransceiver('audio', {direction:composerState.enabled ? 'sendrecv' : 'recvonly'});
+      peer.addTransceiver('audio', {direction:composerState.enabled ? 'sendrecv' : 'recvonly'});
       if(!composerState.enabled) showSaid(t('麥克風無法使用，目前為純觀看'));
     }
-    pc.addTransceiver('video', {direction:'recvonly'});
+    peer.addTransceiver('video', {direction:'recvonly'});
 
     try{
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      const res = await fetch('/offer', {
+      const offer = await peer.createOffer();
+      if(stale()) return;
+      await peer.setLocalDescription(offer);
+      if(stale()) return;
+      const res = await fetchJsonWithTimeout('/offer', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           client_role:'stage', locale:stageLocale, has_microphone:Boolean(micStream),
-          sdp:pc.localDescription.sdp,
-          type:pc.localDescription.type
+          sdp:peer.localDescription.sdp,
+          type:peer.localDescription.type
         })
-      });
+      }, STAGE_OFFER_TIMEOUT_MS);
+      if(stale()) return;
       if(!res.ok){
-        let m = `HTTP ${res.status}`;
-        try{ m = (await res.json()).msg || m; }catch(_){}
+        const m = res.data?.msg || `HTTP ${res.status}`;
         if(res.status === 409){
           teardown();
           if(kiosk) showKioskProblem();
@@ -963,11 +996,13 @@ import {
         }
         throw new Error(m);
       }
-      const data = await res.json();
+      const data = res.data || {};
       sessionId = data.sessionid; composerState.sessionId=sessionId;
       if(data.conversation) finishLanguageSwitch(data.conversation.locale);
-      await pc.setRemoteDescription(new RTCSessionDescription({sdp:data.sdp, type:data.type}));
+      await peer.setRemoteDescription(new RTCSessionDescription({sdp:data.sdp, type:data.type}));
     }catch(err){
+      if(stale()) return;
+      if(err?.name === 'TimeoutError'){ connectTimedOut(attempt); return; }
       teardown();
       if(kiosk) showKioskProblem();
       else showVeil('無法連線', String(err.message || err), {isError:true, btn:'重試', onBtn:connect});
@@ -975,14 +1010,16 @@ import {
   }
 
   function teardown(){
+    connectAttempt++;
+    clearTimeout(connectWatchdog);
     send({type:'stage_ready', audible:false, microphone:false, interaction:false});
     roleState={enabled:false};captureWanted=false;roleReturn.hidden=true;
     composerState.connected=false;
     live = false; speaking = false; holding = false; interruptedPress = false; lastSeq = 0;
     clearReply();
-    if(chan){ chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){} }
+    if(chan){ chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){ /* 已關閉 */ } }
     chan = null;
-    if(pc){ try{pc.close();}catch(_){} }
+    if(pc){ try{pc.close();}catch(_){ /* 已關閉 */ } }
     pc = null;
     micStream?.getTracks().forEach(t => t.stop());
     micStream = null;

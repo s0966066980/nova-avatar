@@ -29,7 +29,11 @@ jobs:
           version: '0.11.21'
           python-version: '3.11'
           enable-cache: true
-          cache-dependency-glob: pyproject.toml
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+      - name: Check uv.lock matches pyproject.toml
+        run: uv lock --check
       - name: Install development and offline-check dependencies
         # uv's pip backend selects CPU wheels only for PyTorch packages.
         run: |
@@ -60,6 +64,9 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install frontend dependencies
         run: npm ci
+      - name: Audit production dependencies (advisory)
+        run: npm audit --omit=dev
+        continue-on-error: true
       - name: Lint frontend
         run: npm run lint
       - name: Run frontend tests
