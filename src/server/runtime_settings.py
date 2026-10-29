@@ -1298,6 +1298,12 @@ TTS_ENGINE_META = {
         "description": "本機 Fun-CosyVoice3-0.5B；九語加方言，套用時自動啟動獨立 GPU 服務",
         "setup": "需要 conda 環境 cosyvoice、Fun-CosyVoice3-0.5B 與參考音訊",
     },
+    "breezyvoice": {
+        "label": "BreezyVoice",
+        "module": "requests",
+        "description": "本機 BreezyVoice（聯發科，Apache-2.0）；台灣華語與注音讀音，整段合成不串流，套用時自動啟動獨立 GPU 服務",
+        "setup": "需要 conda 環境 cosyvoice（另裝 g2pw）、scripts/breezyvoice_weights.py 下載的權重，以及音訊庫中附逐字稿的參考音訊",
+    },
     "fishtts": {
         "label": "Fish Speech",
         "module": "requests",
@@ -1544,6 +1550,16 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     device = str(params.get("device", config.tts.device) or "auto").strip().lower()
     if engine == "edgetts" and ref_file not in EDGE_TTS_ZH_TW_VOICE_IDS:
         raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線")
+    breezy = engine == "breezyvoice"
+    if breezy:
+        from src.tts.voice_library import voice_transcript
+
+        # BreezyVoice only clones from a reference recording and its transcript.
+        mode, instruct = "zero_shot", ""
+        if not ref_file:
+            raise SettingsError("BreezyVoice 需要從音訊庫選擇參考音訊（自錄或有書面授權的台灣華語錄音）")
+        if not ref_text and not voice_transcript(ref_file):
+            raise SettingsError("BreezyVoice 需要參考音訊的逐字稿：上傳時填寫，或填入「參考語音逐字稿」")
     if is_cosyvoice_engine(engine):
         from src.tts.cosyvoice_runtime import (
             DEFAULT_PROMPT_TEXT,
@@ -1558,7 +1574,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         if not tts_server:
             tts_server = "http://127.0.0.1:50000"
 
-        if mode == "zero_shot" and ref_file and not ref_text:
+        if mode == "zero_shot" and ref_file and not ref_text and not breezy:
             raise SettingsError(
                 "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
             )
@@ -1571,7 +1587,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
                 )
             if not ref_text:
                 ref_text = DEFAULT_PROMPT_TEXT
-        if mode == "zero_shot" and not ref_text:
+        if mode == "zero_shot" and not ref_text and not breezy:
             raise SettingsError(
                 "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
             )

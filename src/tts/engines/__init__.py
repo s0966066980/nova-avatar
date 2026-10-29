@@ -14,6 +14,7 @@ from .edge import EdgeTTS
 from .fish import FishTTS
 from .sovits import SovitsTTS
 from .cosyvoice import CosyVoiceTTS
+from .breezyvoice import BreezyVoiceTTS
 from .indextts2 import IndexTTS2
 from .xtts import XTTS
 
@@ -24,6 +25,7 @@ __all__ = [
     "FishTTS",
     "SovitsTTS",
     "CosyVoiceTTS",
+    "BreezyVoiceTTS",
     "IndexTTS2",
     "XTTS",
 ]

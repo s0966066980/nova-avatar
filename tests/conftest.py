@@ -28,6 +28,7 @@ AREA_BY_FILE = {
     "test_auto_response_protocol.py": "conversation",
     "test_avatar_transition.py": "avatar",
     "test_branding_compliance.py": "governance",
+    "test_breezyvoice_tts.py": "speech",
     "test_cosyvoice_tts.py": "speech",
     "test_edge_connection.py": "speech",
     "test_edge_endpoint.py": "speech",

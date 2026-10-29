@@ -72,6 +72,30 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - Source: <https://github.com/modelscope/FunASR>
 - License: verify the exact FunASR release and model license before redistribution
 
+## BreezyVoice and g2pW (optional TTS)
+
+- Role: optional local Taiwanese Mandarin voice-cloning TTS (`breezyvoice`
+  engine), served by the owned CosyVoice process
+- BreezyVoice code: Apache-2.0, MediaTek Research,
+  <https://github.com/mtkresearch/BreezyVoice>; derived from CosyVoice
+  (Apache-2.0, Alibaba). [`scripts/breezyvoice_frontend.py`](scripts/breezyvoice_frontend.py)
+  adapts its `get_bopomofo_rare` (commit `d592c9d3e8927a0f53f68616387060dcd32a05ea`)
+  and carries a modification notice.
+- BreezyVoice weights: Apache-2.0, `MediaTek-Research/BreezyVoice` revision
+  `e33b502e0ac21c16b0ee0d00df66ac3fa737393d`. Its reading tables (`utils/word_utils.py`)
+  come from the GitHub commit above.
+- g2pW: Apache-2.0, Yi-Chang Chen et al., <https://github.com/GitYCC/g2pW>;
+  ONNX model `YC-Chen/g2pW` revision `fb4784f7dce8466a53dd4f3552f5a4c5b657b90c`;
+  Python package `g2pw==0.1.1` in the CosyVoice environment.
+- Tokenizer for g2pW: `google-bert/bert-base-chinese` revision
+  `8f23c25b06e129b6c986331a13d8d025a92cf0ea`, Apache-2.0 (tokenizer files only).
+- [`scripts/breezyvoice_weights.py`](scripts/breezyvoice_weights.py) fetches all
+  of the above at those revisions and checks SHA-256; none are bundled here.
+- Voices: the BreezyVoice repository's example recording (`data/example.wav`)
+  documents no speaker consent or recording source beyond the repository's
+  Apache-2.0 grant. Use it for development only; production voices must be
+  recorded by the operator or used with written permission.
+
 ## Whisper bilingual recognition weights
 
 - Official weights: OpenAI `whisper-small`, revision `973afd24965f72e36ca33b3055d56a652f456b4d`,

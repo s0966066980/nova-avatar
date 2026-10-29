@@ -1,7 +1,12 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Owned CosyVoice FastAPI process. Run with the CosyVoice conda interpreter."""
+"""Owned CosyVoice FastAPI process. Run with the CosyVoice conda interpreter.
+
+Also serves BreezyVoice (a CosyVoice-v1 model): a model folder holding
+BreezyVoice's ``word_utils.py`` gets its 注音 text frontend and whole-fragment
+(non-streaming) synthesis.
+"""
 from __future__ import annotations
 
 import argparse
@@ -33,8 +38,30 @@ def _prepare_cosyvoice_path(model_dir: str) -> str:
                 break
     sys.path.insert(0, root)
     sys.path.insert(0, os.path.join(root, "third_party", "Matcha-TTS"))
+    if ROOT_DIR not in sys.path:
+        sys.path.append(ROOT_DIR)  # breezyvoice_frontend, named by its YAML overrides
     os.chdir(root)
     return model_dir
+
+
+def load_model(model_dir: str):
+    """CosyVoice 2/3 through AutoModel; BreezyVoice with its YAML overrides."""
+    from breezyvoice_frontend import is_breezyvoice_dir, load_breezyvoice_model
+
+    if is_breezyvoice_dir(model_dir):
+        return load_breezyvoice_model(model_dir)
+    from cosyvoice.cli.cosyvoice import AutoModel
+
+    return AutoModel(model_dir=model_dir)
+
+
+def load_frontend(cosyvoice, model_dir: str):
+    """The BreezyVoice text frontend, or None for other models."""
+    from breezyvoice_frontend import BreezyVoiceFrontend, is_breezyvoice_dir
+
+    if not is_breezyvoice_dir(model_dir):
+        return None
+    return BreezyVoiceFrontend(model_dir)
 
 
 def _pcm16_chunks(model_output):
@@ -93,8 +120,14 @@ def clip_prompt_wav(path: str, *, max_seconds: float = MAX_PROMPT_SECONDS) -> st
     return clipped
 
 
-def create_app(cosyvoice):
+def create_app(cosyvoice, frontend=None):
+    """``frontend`` (BreezyVoice) rewrites text and turns off streaming."""
     app = FastAPI()
+    stream = frontend is None
+
+    def prepare(text: str) -> str:
+        return frontend.prepare(text) if frontend is not None else text
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -106,7 +139,9 @@ def create_app(cosyvoice):
     @app.get("/health")
     def health():
         model_dir = str(getattr(cosyvoice, "model_dir", "") or "")
-        if os.path.isfile(os.path.join(model_dir, "cosyvoice3.yaml")):
+        if frontend is not None:
+            family = "breezyvoice"
+        elif os.path.isfile(os.path.join(model_dir, "cosyvoice3.yaml")):
             family = "cosyvoice3"
         elif os.path.isfile(os.path.join(model_dir, "cosyvoice2.yaml")):
             family = "cosyvoice2"
@@ -121,6 +156,7 @@ def create_app(cosyvoice):
                 "max_prompt_seconds": MAX_PROMPT_SECONDS,
                 "model_dir": model_dir,
                 "family": family,
+                "streaming": stream,
             }
         )
 
@@ -138,10 +174,10 @@ def create_app(cosyvoice):
             clipped = clip_prompt_wav(uploaded)
             iterator = iter(
                 cosyvoice.inference_zero_shot(
-                    tts_text,
-                    prompt_text or "",
+                    prepare(tts_text),
+                    prepare(prompt_text or ""),
                     clipped,
-                    stream=True,
+                    stream=stream,
                     text_frontend=False,
                 )
             )
@@ -174,9 +210,9 @@ def create_app(cosyvoice):
             clipped = clip_prompt_wav(uploaded)
             iterator = iter(
                 cosyvoice.inference_cross_lingual(
-                    tts_text,
+                    prepare(tts_text),
                     clipped,
-                    stream=True,
+                    stream=stream,
                     text_frontend=False,
                 )
             )
@@ -210,10 +246,10 @@ def create_app(cosyvoice):
             clipped = clip_prompt_wav(uploaded)
             iterator = iter(
                 cosyvoice.inference_instruct2(
-                    tts_text,
+                    prepare(tts_text),
                     instruct_text,
                     clipped,
-                    stream=True,
+                    stream=stream,
                     text_frontend=False,
                 )
             )
@@ -247,10 +283,9 @@ def main() -> None:
     )
     args = parser.parse_args()
     model_dir = _prepare_cosyvoice_path(args.model_dir)
-    from cosyvoice.cli.cosyvoice import AutoModel
-
-    cosyvoice = AutoModel(model_dir=model_dir)
-    uvicorn.run(create_app(cosyvoice), host=args.host, port=int(args.port))
+    cosyvoice = load_model(model_dir)
+    frontend = load_frontend(cosyvoice, model_dir)
+    uvicorn.run(create_app(cosyvoice, frontend), host=args.host, port=int(args.port))
 
 
 if __name__ == "__main__":

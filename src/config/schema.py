@@ -205,7 +205,7 @@ class ModelConfig:
 class TTSConfig:
     voice_en_us: str = "en-US-JennyNeural"
     """TTS 配置"""
-    type: str = "edgetts"  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | indextts2 | xtts
+    type: str = "edgetts"  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | breezyvoice | indextts2 | xtts
     mode: str = "auto"  # auto | zero_shot | cross_lingual | instruct
     ref_file: str = "zh-TW-HsiaoChenNeural"
     ref_text: Optional[str] = None

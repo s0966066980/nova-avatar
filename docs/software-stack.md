@@ -32,6 +32,7 @@ the root Apache-2.0 grant.
 | LLM | Ollama / llama.cpp | Supported local OpenAI-compatible endpoints | Review the selected model and endpoint terms. |
 | TTS | Edge TTS | Supported integration and default checked path | Review service and voice terms for the deployment. |
 | TTS | GPT-SoVITS, CosyVoice, Fun-CosyVoice, Fish TTS, XTTS, IndexTTS2 | Optional | Review code, model, voice, and checkpoint terms individually. |
+| TTS | BreezyVoice (MediaTek Research) with g2pW | Optional, local Taiwanese Mandarin; whole-fragment synthesis in the owned CosyVoice process | Code and weights Apache-2.0 (pinned in `scripts/breezyvoice_weights.py`); the reference voice needs its own consent. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 | Avatar | MuseTalk | Supported, recommended review-profile path | Code is MIT; models and dependencies retain separate terms. |
 | Avatar | Wav2Lip | **Research / Non-commercial** | Do not include its integration or upstream weights in a commercial Nova Avatar distribution. |
 | Avatar | ER-NeRF, TalkingGaussian, UltraLight | Optional, license review required | Do not infer commercial rights from the root license. |
