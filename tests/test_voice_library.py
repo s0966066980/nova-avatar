@@ -371,6 +371,41 @@ def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, st
     assert "/etc/passwd" not in store.path.read_text("utf-8")
 
 
+def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_path, monkeypatch):
+    from src.profiles import store as profile_store
+    from src.profiles.store import ProfileStore
+
+    allowed = tmp_path / "data" / "tts"
+    allowed.mkdir(parents=True)
+    (allowed / "host.wav").write_bytes(wav_bytes())
+    monkeypatch.setattr(voice_library, "MIGRATION_ROOTS", (tmp_path / "data",))
+    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    config = Config()
+    config.model.avatar_id = "musetalk_angela"
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.initialize(config)
+    raw = yaml.safe_load(store.path.read_text("utf-8"))
+    raw["profiles"][0]["tts"].update(type="xtts", ref_file=str(allowed / "host.wav"))
+    # A legacy role whose URL is not a listed endpoint keeps the file unwritten
+    # until an admin picks one; the voice migration must still be saved.
+    raw["profiles"][1]["llm"].pop("endpoint")
+    raw["profiles"][1]["llm"]["base_url"] = "http://unlisted.example/v1"
+    store.path.write_text(yaml.safe_dump(raw, allow_unicode=True), "utf-8")
+
+    library = store.initialize(config)
+    voice_id = library["profiles"][0]["tts"]["ref_file"]
+    assert voice_library.voice_path(voice_id).is_file()
+    saved = yaml.safe_load(store.path.read_text("utf-8"))
+    assert saved["profiles"][0]["tts"]["ref_file"] == voice_id
+    assert "endpoint" not in saved["profiles"][1]["llm"]
+
+    def no_migration(*_args, **_kwargs):
+        raise AssertionError("load() must not decode or hash saved audio again")
+
+    monkeypatch.setattr(profile_store, "migrate_tts_values", no_migration)
+    assert store.load()["profiles"][0]["tts"]["ref_file"] == voice_id
+
+
 # ---------------------------------------------------------------- engine clients
 
 

@@ -250,6 +250,40 @@ def same_origin(request: web.Request) -> bool:
     return bool(parts.scheme in {"http", "https"} and parts.netloc) and parts.netloc.lower() == (request.host or "").lower()
 
 
+def host_name(request: web.Request) -> str:
+    """The lower-cased host name the client addressed, without port or trailing dot."""
+    try:
+        name = urlsplit("//" + request.headers.get("Host", "")).hostname or ""
+    except ValueError:
+        return ""
+    return name.rstrip(".")
+
+
+def allowed_host(name: str, configured: frozenset[str]) -> bool:
+    """Whether ``name`` is a name this server answers to.
+
+    DNS rebinding points an attacker's host name at 127.0.0.1; the browser
+    still sends that name in ``Host`` and ``Origin``, so the Origin check alone
+    passes and the stage's loopback rule would trust the request. Only
+    ``localhost``, the names set in ``app.allowed_hosts`` and IP literals are
+    accepted. An IP literal cannot be rebound: the browser connects to that
+    address and the page's origin is that address.
+    """
+    if not name:
+        return False
+    if name == "localhost" or name in configured:
+        return True
+    try:
+        ipaddress.ip_address(name)
+    except ValueError:
+        return False
+    return True
+
+
+def normalize_hosts(names) -> frozenset[str]:
+    return frozenset(str(name).strip().lower().rstrip(".") for name in names or () if str(name).strip())
+
+
 class AdminAuth:
     """Administrator password check, progressive login delay and in-memory sessions."""
 
@@ -272,19 +306,18 @@ class AdminAuth:
         self._sessions: dict[str, float] = {}
         self._failures: dict[str, int] = {}
         self._locks: dict[str, asyncio.Lock] = {}
-        self._cached: tuple[float, str | None] | None = None
+        self._cached: tuple[float | None, str | None] | None = None
         self._last_unconfigured_log = float("-inf")
 
     def password_hash(self) -> str | None:
         try:
-            mtime = self.env_path.stat().st_mtime
+            mtime: float | None = self.env_path.stat().st_mtime
         except OSError:
-            self._cached = None
-            return None
+            mtime = None  # Removed: remembered as "no password" so a new one is a change.
         if self._cached is None or self._cached[0] != mtime:
-            encoded = read_password_hash(self.env_path)
+            encoded = None if mtime is None else read_password_hash(self.env_path)
             if self._cached is not None and self._cached[1] != encoded:
-                self._sessions.clear()  # A new password signs everyone out.
+                self._sessions.clear()  # Any password change, set or removal signs everyone out.
             self._cached = (mtime, encoded)
         return self._cached[1]
 
@@ -350,10 +383,11 @@ class AdminAuth:
 
 
 ADMIN_AUTH = web.AppKey("admin_auth", AdminAuth)
+ALLOWED_HOSTS = web.AppKey("allowed_hosts", frozenset)
 
 
 # ``reason`` values of the guard's own denials (the console keys on login_required).
-GUARD_DENIALS = frozenset({"origin_mismatch", "stage_local_only", "admin_unconfigured", "login_required"})
+GUARD_DENIALS = frozenset({"host_not_allowed", "origin_mismatch", "stage_local_only", "admin_unconfigured", "login_required"})
 
 
 def _deny(status: int, reason: str, msg: str) -> web.Response:
@@ -369,6 +403,8 @@ def _unconfigured(auth: AdminAuth) -> web.Response:
 async def access_guard(request: web.Request, handler):
     if request.match_info.http_exception is not None:
         return await handler(request)  # 404 / 405
+    if not allowed_host(host_name(request), request.app[ALLOWED_HOSTS]):
+        return _deny(403, "host_not_allowed", "請以 localhost、IP 或設定檔 app.allowed_hosts 中的主機名稱連線")
     if request.method not in SAFE_METHODS and not same_origin(request):
         return _deny(403, "origin_mismatch", "請求來源與伺服器不同源")
     access = await classify(request)
@@ -424,13 +460,17 @@ async def logout(request: web.Request) -> web.Response:
     return response
 
 
-def install_access(app: web.Application, admin_env_path: Path | None = None) -> AdminAuth:
+def install_access(app: web.Application, admin_env_path: Path | None = None,
+                   allowed_hosts=()) -> AdminAuth:
     """Attach the guard's state and login routes to ``app``.
 
-    ``access_guard`` must also be in the app's middlewares (create_app puts it first).
+    ``allowed_hosts`` are host names besides localhost and IP literals that
+    clients may address (``app.allowed_hosts``). ``access_guard`` must also be
+    in the app's middlewares (create_app puts it first).
     """
     auth = AdminAuth(admin_env_path or ADMIN_ENV_PATH)
     app[ADMIN_AUTH] = auth
+    app[ALLOWED_HOSTS] = normalize_hosts(allowed_hosts)
     app.router.add_get("/api/session", session_status)
     app.router.add_post("/api/login", login)
     app.router.add_post("/api/logout", logout)

@@ -292,3 +292,41 @@ def test_loaded_config_freezes_endpoints_and_persists_only_the_selection(tmp_pat
     saved = yaml.safe_load((tmp_path / "runtime_overrides.yaml").read_text("utf-8"))
     assert saved["llm"]["endpoint"] == "llamacpp"
     assert "endpoints" not in saved["llm"]
+
+
+def test_default_config_offers_both_local_servers(tmp_path, monkeypatch):
+    """The console swaps Ollama and llama.cpp; both must be listed out of the box."""
+    from pathlib import Path
+
+    from src.config import loader, overrides
+    from src.llm.endpoints import configured_endpoints
+
+    monkeypatch.setattr(overrides, "RUNTIME_OVERRIDES_FILE", tmp_path / "absent.yaml")
+    config = loader.load_config(str(Path(__file__).resolve().parents[1] / "config" / "config.yaml"))
+    providers = {item.provider for item in configured_endpoints(config.llm).values()}
+    assert {"ollama", "llamacpp"} <= providers
+
+
+@pytest.mark.parametrize("target", ["remote", "local"])
+def test_switching_away_from_ollama_drops_ollama_only_request_fields(monkeypatch, target):
+    from src.server import runtime_settings
+    from src.server.runtime_settings import apply_llm_model
+
+    config = _config({"ollama": {"provider": "ollama", "base_url": "http://localhost:11434/v1"},
+                      "local": {"provider": "llamacpp", "base_url": "http://127.0.0.1:8080/v1"},
+                      "remote": {"provider": "openai", "base_url": "https://llm.example/v1",
+                                 "api_key": REMOTE_KEY}})
+    monkeypatch.setattr(runtime_settings, "persist_runtime_overrides", lambda _: None)
+    monkeypatch.setattr(runtime_settings, "ensure_server", lambda *a, **k: None)
+    switched = []
+    monkeypatch.setattr(runtime_settings, "switch_llm_endpoint", lambda **kw: switched.append(kw))
+    apply_llm_model(config, "qwen", "ollama")
+    assert {"options", "keep_alive", "reasoning_effort", "think"} <= set(switched[-1]["extra_body"])
+
+    apply_llm_model(config, "gpt", target)
+    body = switched[-1]["extra_body"]
+    assert not {"options", "keep_alive", "reasoning_effort", "think"} & set(body)
+    assert config.llm.extra_body == body
+
+    apply_llm_model(config, "qwen", "ollama")
+    assert switched[-1]["extra_body"]["keep_alive"] == -1

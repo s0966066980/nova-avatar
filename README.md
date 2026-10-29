@@ -155,7 +155,8 @@ CosyVoice），先送 SIGTERM 讓其正常收尾，`NOVA_STOP_GRACE_SECONDS`（�
 數位人舞台只在場域主機本機（loopback）開啟，其他電腦開啟會被拒絕（403）。
 `/health` 與前端靜態檔不需登入。後端只提供 `web/dist` 建置結果，缺少時
 啟動失敗並提示先執行 `npm run build`。後端不提供 CORS，跨來源的變更請求
-一律拒絕。
+一律拒絕。為防 DNS rebinding，只接受以 `localhost`、IP 或設定檔
+`app.allowed_hosts` 列出的主機名稱連線；以主機名稱連入控制台前先加入該清單。
 
 啟動後，在控制台選擇數位人與模型，使用文字訊息或啟用麥克風開始對話。
 需要文件檢索時，到「設定 → 數位人、AI 與知識設定」選定數位人，

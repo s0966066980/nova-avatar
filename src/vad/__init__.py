@@ -19,7 +19,7 @@ from .segmenter import (
     detect_speech_segments,
     extract_speech,
 )
-from .service import VADOutcome, create_segmenter, preprocess_audio_bytes
+from .service import VADOutcome, create_segmenter, preprocess_audio_bytes, preprocess_pcm
 
 __all__ = [
     # base
@@ -41,5 +41,6 @@ __all__ = [
     # service
     "VADOutcome",
     "preprocess_audio_bytes",
+    "preprocess_pcm",
     "create_segmenter",
 ]

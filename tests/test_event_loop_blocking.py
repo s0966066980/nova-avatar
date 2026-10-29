@@ -110,7 +110,7 @@ def bare_avatar(tmp_path: Path | None = None) -> BaseAvatar:
 
 
 def test_asr_checks_the_session_before_decoding(server, monkeypatch):
-    monkeypatch.setattr(audio_routes, "ensure_audio_within", forbid)
+    monkeypatch.setattr(audio_routes, "decode_audio", forbid)
     monkeypatch.setattr(sf, "read", forbid)
 
     async def run():
@@ -148,9 +148,9 @@ def test_asr_bounds_decoding_of_audio_without_a_duration_header(monkeypatch):
     monkeypatch.setattr(vad_audio, "_decode_with_soundfile", lambda *_a, **_k: None)
     monkeypatch.setattr(vad_audio, "_decode_with_av", spy)
     with pytest.raises(vad_audio.AudioTooLongError):
-        vad_audio.ensure_audio_within(audio_bytes(3), max_seconds=1)
+        vad_audio.decode_audio(audio_bytes(3), max_seconds=1)
     assert calls == [1]
-    vad_audio.ensure_audio_within(audio_bytes(0.5), max_seconds=1)
+    vad_audio.decode_audio(audio_bytes(0.5), max_seconds=1)
 
 
 def test_asr_reuses_the_session_recognizer(server, monkeypatch):
@@ -197,12 +197,72 @@ def test_asr_reuses_the_session_recognizer(server, monkeypatch):
     assert replies == ["reply to hello (en)"] * 2
 
 
+def test_asr_rejects_playlists_that_read_files_on_the_host(server, monkeypatch, tmp_path):
+    # FFmpeg's concat demuxer, probed from an upload, opens files named in it.
+    (tmp_path / "secret.wav").write_bytes(audio_bytes(1))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(audio_routes, "get_asr_engine", forbid)
+    state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
+    playlist = b"ffconcat version 1.0\nfile 'secret.wav'\n"
+
+    async def run():
+        async with access_client() as client:
+            response = await client.post("/asr", data=audio_form(playlist))
+            assert response.status == 400
+    asyncio.run(run())
+
+
+def test_asr_decodes_the_upload_once_and_hands_asr_only_decoded_audio(server, monkeypatch):
+    from src.vad import service as vad_service
+
+    decodes = []
+    real = vad_audio._decode_with_soundfile
+
+    def spy(*args, **kwargs):
+        decodes.append(args[0][:4])
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(vad_audio, "_decode_with_soundfile", spy)
+    server.vad.enabled = True
+    monkeypatch.setattr(vad_service, "get_vad_engine_from_config",
+                        lambda *_a, **_k: SimpleNamespace(reset=lambda: None))
+    monkeypatch.setattr(vad_service, "detect_speech_segments",
+                        lambda _vad, pcm, **_k: [SimpleNamespace(audio=pcm[:8000])])
+    heard = []
+    recognizer = SimpleNamespace(transcribe=lambda audio, language=None: heard.append(audio) or {"text": ""})
+    monkeypatch.setattr(audio_routes, "get_asr_engine", lambda *_a, **_k: recognizer)
+    state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
+    flac = audio_bytes(1, fmt="FLAC")
+
+    async def run():
+        async with access_client() as client:
+            response = await client.post("/asr", data=audio_form(flac))
+            assert (await response.json())["msg"] == "未識別到語音內容"
+    asyncio.run(run())
+    assert decodes == [b"fLaC"]
+    assert heard[0][:4] == b"RIFF" and len(heard[0]) < len(audio_bytes(1))
+
+
+def test_asr_without_vad_hands_asr_only_decoded_audio(server, monkeypatch):
+    heard = []
+    recognizer = SimpleNamespace(transcribe=lambda audio, language=None: heard.append(audio) or {"text": ""})
+    monkeypatch.setattr(audio_routes, "get_asr_engine", lambda *_a, **_k: recognizer)
+    state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
+
+    async def run():
+        async with access_client() as client:
+            response = await client.post("/asr", data=audio_form(audio_bytes(1, fmt="FLAC")))
+            assert (await response.json())["msg"] == "未識別到語音內容"
+    asyncio.run(run())
+    assert heard[0][:4] == b"RIFF"
+
+
 @pytest.mark.parametrize("stage", ["decode", "load"])
 def test_asr_decodes_and_loads_the_recognizer_off_the_loop(server, monkeypatch, stage):
     recognizer = SimpleNamespace(transcribe=lambda _audio, language=None: {"text": ""})
-    blocker = Blocker(recognizer if stage == "load" else None)
+    blocker = Blocker(recognizer if stage == "load" else np.zeros(16000, np.int16))
     if stage == "decode":
-        monkeypatch.setattr(audio_routes, "ensure_audio_within", blocker)
+        monkeypatch.setattr(audio_routes, "decode_audio", blocker)
         monkeypatch.setattr(audio_routes, "get_asr_engine", lambda *_a, **_k: recognizer)
     else:
         monkeypatch.setattr(audio_routes, "get_asr_engine", blocker)
@@ -252,6 +312,25 @@ def test_humanaudio_decodes_resamples_and_queues_audio(server):
         async with access_client() as client:
             response = await client.post("/humanaudio", data=audio_form(audio_bytes(1, sample_rate=8000)))
             assert response.status == 200
+            assert (await response.json())["code"] == 0
+    asyncio.run(run())
+    assert len(avatar.frames) == 16000 // 320
+
+
+def test_humanaudio_decodes_once_with_libsndfile_and_never_follows_playlists(server, monkeypatch, tmp_path):
+    import av
+
+    (tmp_path / "secret.wav").write_bytes(audio_bytes(1))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(av, "open", forbid)
+    avatar = bare_avatar()
+    state.avatar_streams[SESSION] = avatar
+
+    async def run():
+        async with access_client() as client:
+            response = await client.post("/humanaudio", data=audio_form(b"ffconcat version 1.0\nfile 'secret.wav'\n"))
+            assert (await response.json())["code"] == -1
+            response = await client.post("/humanaudio", data=audio_form(audio_bytes(1)))
             assert (await response.json())["code"] == 0
     asyncio.run(run())
     assert len(avatar.frames) == 16000 // 320
@@ -379,3 +458,40 @@ def test_stopped_ffmpeg_that_hangs_is_killed():
     BaseAvatar._close_recording_pipes((pipe, None), timeout=0.01)
     assert pipe.killed and pipe.stdin.closed
     assert waits == [0.01, None]
+
+
+# --- settings snapshots ----------------------------------------------------
+
+
+@pytest.mark.parametrize("path", ["/api/speech", "/api/settings"])
+def test_speech_snapshot_scans_files_off_the_loop(server, monkeypatch, path):
+    from src.tts import voice_library
+
+    blocker = Blocker(result=[])
+    monkeypatch.setattr(voice_library, "list_voices", blocker)
+
+    async def run():
+        async with access_client() as client:
+            response = await assert_loop_serves_while_blocked(client, blocker, client.get(path))
+            assert response.status == 200
+    asyncio.run(run())
+
+
+def test_deferred_speech_settings_snapshot_scans_files_off_the_loop(server, monkeypatch):
+    from src.server import deferred_settings
+    from src.tts import voice_library
+
+    blocker = Blocker(result=[])
+    monkeypatch.setattr(voice_library, "list_voices", blocker)
+    monkeypatch.setattr(deferred_settings, "_store", lambda: SimpleNamespace(
+        values={}, error="", save=lambda _values: None))
+    monkeypatch.setattr(deferred_settings, "snapshot", lambda: {"items": [], "error": ""})
+    state.avatar_streams[SESSION] = object()
+
+    async def run():
+        async with access_client() as client:
+            response = await assert_loop_serves_while_blocked(client, blocker, client.post(
+                "/api/speech/stt", json={"type": "whisper"},
+                headers={"Origin": str(client.make_url("/").origin())}))
+            assert response.status == 202
+    asyncio.run(run())

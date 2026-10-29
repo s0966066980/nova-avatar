@@ -784,6 +784,9 @@ async def _fetch_openai_models(session, base_url: str, api_key: str = ""):
     return items
 
 
+OLLAMA_ONLY_REQUEST_FIELDS = frozenset({"options", "keep_alive", "think", "reasoning_effort"})
+
+
 def apply_llm_model(
     config,
     model: str,
@@ -866,7 +869,9 @@ def apply_llm_model(
             raise SettingsError(f"無法啟動 llama.cpp：{exc}", status=500) from exc
         extra_body = {}
     elif provider == "openai":
-        extra_body = dict(getattr(config.llm, "extra_body", None) or {})
+        # Strict OpenAI-compatible APIs reject Ollama's request extensions.
+        extra_body = {key: value for key, value in (getattr(config.llm, "extra_body", None) or {}).items()
+                      if key not in OLLAMA_ONLY_REQUEST_FIELDS}
     else:
         existing_extra = dict(getattr(config.llm, "extra_body", None) or {})
         options = dict(existing_extra.get("options") or {})

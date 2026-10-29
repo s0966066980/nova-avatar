@@ -11,11 +11,12 @@ from src.asr import get_asr_engine
 from src.llm.service import llm_response
 from src.utils.logging import logger
 from src.server.state import state
-from src.vad import preprocess_audio_bytes
-from src.vad.audio import AudioTooLongError, ensure_audio_within
+from src.vad import preprocess_pcm
+from src.vad.audio import AudioTooLongError, decode_audio
 
 # Uploaded clips are decoded on worker threads, and only up to these lengths.
 MAX_ASR_AUDIO_SECONDS = 60.0
+ASR_SAMPLE_RATE = 16000
 
 
 def _json(payload: dict, status: int = 200) -> web.Response:
@@ -57,12 +58,15 @@ async def asr(request):
         fileobj = form["file"]
         filebytes = fileobj.file.read()
 
+        # Decoded once, at most MAX_ASR_AUDIO_SECONDS; VAD and the recognizer
+        # only ever see this PCM (as WAV), never the uploaded container.
         try:
-            await asyncio.to_thread(ensure_audio_within, filebytes, MAX_ASR_AUDIO_SECONDS)
+            pcm = await asyncio.to_thread(
+                decode_audio, filebytes, ASR_SAMPLE_RATE, MAX_ASR_AUDIO_SECONDS)
         except AudioTooLongError as e:
             return _json({"code": -1, "msg": str(e)}, status=413)
-        except ValueError as e:
-            return _json({"code": -1, "msg": str(e)}, status=400)
+        except ValueError:
+            return _json({"code": -1, "msg": "無法讀取音訊檔案"}, status=400)
 
         # ASR/LLM 呼叫在同一流程中，失敗時返回可讀錯誤
         try:
@@ -71,7 +75,7 @@ async def asr(request):
 
             # 先過 VAD：全是靜音/噪聲就不用麻煩 ASR，有語音則裁掉前後靜音
             vad_result = await asyncio.to_thread(
-                preprocess_audio_bytes, filebytes, vad_config, state.config
+                preprocess_pcm, pcm, ASR_SAMPLE_RATE, vad_config, state.config
             )
             if not vad_result.has_speech:
                 return _json({"code": -1, "msg": "未檢測到語音內容", "vad": vad_result.engine})

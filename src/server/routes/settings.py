@@ -43,6 +43,7 @@ from src.server.runtime_settings import (
     apply_reply_rules,
     reply_rules_snapshot,
 )
+from src.profiles.store import ProfileError
 from src.server.deferred_settings import defer_when_connected, snapshot as pending_snapshot
 from src.server.state import state
 from src.scene.service import (
@@ -77,7 +78,8 @@ def _active_session_count() -> int:
 async def get_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    data = current_snapshot(state.config)
+    # The snapshot scans avatars, voices and models on disk.
+    data = await asyncio.to_thread(current_snapshot, state.config)
     data["pending_settings"] = pending_snapshot()
     data["session_count"] = _active_session_count()
     data["switching"] = bool(state.switching or state.settings_applying)
@@ -192,7 +194,7 @@ async def set_vad_settings(request):
 async def get_speech_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    return _json({"code": 0, "data": speech_snapshot(state.config)})
+    return _json({"code": 0, "data": await asyncio.to_thread(speech_snapshot, state.config)})
 
 
 async def get_stage_settings(request):
@@ -619,11 +621,16 @@ def _avatar_replace_conflict(avatar_id: str) -> str | None:
     if config is not None and avatar_id == config.model.avatar_id:
         return "正在使用的數字人無法覆寫，請先切換角色"
     roles = getattr(state, "roles", None)
-    if roles and any(
-        profile["avatar_id"] == avatar_id
-        for library in (roles.library, roles.store.load())
-        for profile in library["profiles"]
-    ):
+    if not roles:
+        return None
+    try:
+        saved = roles.store.load()
+    except ProfileError as exc:
+        # Fail closed: an unreadable library may still reference this avatar.
+        logger.warning("讀取角色設定失敗，暫不允許覆寫數字人 %s：%s", avatar_id, exc)
+        return f"角色設定檔無法讀取（{exc}），無法確認此人物素材未被引用，暫不允許覆寫"
+    if any(profile["avatar_id"] == avatar_id
+           for library in (roles.library, saved) for profile in library["profiles"]):
         return "請先解除角色設定檔對此人物素材的引用，再覆寫"
     return None
 
@@ -691,7 +698,8 @@ async def import_avatar(request):
                     overwrite=overwrite,
                     session_count=_active_session_count(),
                 )
-                if overwrite and (conflict := _avatar_replace_conflict(avatar_id)):
+                # Checked again by the builder right before installing.
+                if overwrite and (conflict := await asyncio.to_thread(_avatar_replace_conflict, avatar_id)):
                     return _json({"code": -1, "msg": conflict}, status=409)
                 upload_dir = uploads_dir() / uuid4_name()
                 upload_dir.mkdir(parents=True, exist_ok=True)
