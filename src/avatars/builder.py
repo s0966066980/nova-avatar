@@ -8,6 +8,7 @@ import json
 import pickle
 import re
 import shutil
+import uuid
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -16,6 +17,7 @@ import numpy as np
 
 from src.avatars.catalog import (
     IMPORTABLE_ENGINES,
+    archive_avatar,
     avatars_root,
     is_safe_avatar_id,
     list_avatar_characters,
@@ -86,6 +88,9 @@ def extract_frames(video_path: Path, dest_dir: Path, max_frames: int = MAX_FRAME
     return count
 
 
+ReplaceGuard = Optional[Callable[[str], Optional[str]]]
+
+
 def build_character(
     engine: str,
     video_path: Path,
@@ -95,7 +100,15 @@ def build_character(
     progress: ProgressCb = None,
     quality: Optional[dict] = None,
     green_screen: bool = False,
+    replace_guard: ReplaceGuard = None,
 ) -> dict:
+    """Build an avatar in a private staging directory, then install it.
+
+    ``replace_guard(avatar_id)`` returns a reason why an existing avatar must
+    not be replaced (for example, it is live or referenced by a profile). It is
+    checked before the build starts and again right before the swap. A replaced
+    avatar goes to the recycle bin; a failed build leaves the old one untouched.
+    """
     engine = (engine or "").strip().lower()
     avatar_id = (avatar_id or "").strip()
     if engine not in IMPORTABLE_ENGINES:
@@ -105,19 +118,20 @@ def build_character(
     if not video_path.is_file():
         raise BuildError("找不到上傳的影片")
 
-    dest = avatars_root() / avatar_id
-    if dest.exists() and not overwrite:
-        raise BuildError(f"角色 {avatar_id} 已存在，請換一個名稱")
+    root = avatars_root()
+    dest = root / avatar_id
+    _check_replaceable(dest, avatar_id, overwrite, replace_guard)
 
     def report(percent: int, message: str) -> None:
         if progress:
             progress(percent, message)
         logger.info(f"[import {avatar_id}] {percent}% {message}")
 
-    work_dir = dest
-    if dest.exists() and overwrite:
-        shutil.rmtree(dest)
-    work_dir.mkdir(parents=True, exist_ok=True)
+    # Dot-prefixed directories are invisible to the catalog, so neither /offer
+    # nor the console can load a half-built avatar.
+    root.mkdir(parents=True, exist_ok=True)
+    work_dir = root / f".building-{uuid.uuid4().hex}"
+    work_dir.mkdir()
 
     try:
         # Keep the exact uploaded source with the generated avatar. Import jobs
@@ -139,16 +153,46 @@ def build_character(
         else:
             _build_wav2lip(work_dir, report, options)
 
+        _install_character(work_dir, dest, avatar_id, overwrite, replace_guard)
         report(100, "角色製作完成")
         return {
             "type": engine,
             "avatar_id": avatar_id,
             "frames": frame_count,
         }
-    except Exception:
-        if dest.exists():
-            shutil.rmtree(dest, ignore_errors=True)
-        raise
+    finally:
+        if work_dir.exists():
+            shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def _check_replaceable(
+    dest: Path, avatar_id: str, overwrite: bool, replace_guard: ReplaceGuard
+) -> None:
+    if not (dest.exists() or dest.is_symlink()):
+        return
+    if not overwrite:
+        raise BuildError(f"角色 {avatar_id} 已存在，請換一個名稱")
+    reason = replace_guard(avatar_id) if replace_guard else None
+    if reason:
+        raise BuildError(reason)
+
+
+def _install_character(
+    work_dir: Path, dest: Path, avatar_id: str, overwrite: bool, replace_guard: ReplaceGuard
+) -> None:
+    _check_replaceable(dest, avatar_id, overwrite, replace_guard)
+    archived: Optional[Path] = None
+    if dest.exists() or dest.is_symlink():
+        try:
+            archived = archive_avatar(avatar_id)
+        except ValueError as exc:
+            raise BuildError(f"無法覆寫 {avatar_id}：現有目錄不是可辨識的數字人") from exc
+    try:
+        work_dir.rename(dest)
+    except OSError as exc:
+        if archived is not None and not dest.exists():
+            shutil.move(str(archived), str(dest))
+        raise BuildError(f"無法安裝角色 {avatar_id}") from exc
 
 
 def _sorted_images(folder: Path) -> list[Path]:
