@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+from threading import Lock
 
 from openai import OpenAI
 
@@ -36,7 +37,40 @@ town 是訪客明示、前文已確認或場域預設的鄉鎮市區，禁止猜
 """
 
 
-def route_question(config, library, current_id, text, history, confirmed, *, client_factory=OpenAI):
+class RoutingClients:
+    """One reusable client per endpoint, safe to share across worker threads.
+
+    The client owns no weights, only pooled connections; ``close`` releases
+    them on shutdown and refuses any later routing request.
+    """
+
+    def __init__(self, factory=OpenAI):
+        self._factory = factory
+        self._clients = {}
+        self._closed = False
+        self._lock = Lock()
+
+    def get(self, api_key, base_url):
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("routing clients are closed")
+            client = self._clients.get((api_key, base_url))
+            if client is None:
+                # Retries cannot multiply a turn's latency.
+                client = self._factory(api_key=api_key, base_url=base_url, timeout=8., max_retries=0)
+                self._clients[(api_key, base_url)] = client
+            return client
+
+    def close(self):
+        with self._lock:
+            self._closed = True
+            clients, self._clients = list(self._clients.values()), {}
+        for client in clients:
+            client.close()
+
+
+def route_question(config, library, current_id, text, history, confirmed, *,
+                   clients=None, client_factory=OpenAI):
     now = datetime.now(TAIPEI)
     specialist = next(p for p in library["profiles"] if p["id"] == library["pair"]["specialist"])
     main = next(p for p in library["profiles"] if p["id"] == library["pair"]["main"])
@@ -55,15 +89,19 @@ def route_question(config, library, current_id, text, history, confirmed, *, cli
     if config.llm.provider == "llamacpp":
         for key in ("reasoning_effort", "think", "keep_alive", "options"):
             extra.pop(key, None)
-    # The client owns no weights. Both control and answer requests use the
-    # already loaded, prewarmed common model; retries cannot multiply latency.
-    with client_factory(api_key=config.llm.api_key or "nova-avatar-local",
-                        base_url=config.llm.base_url, timeout=8., max_retries=0) as client:
+    # Both control and answer requests use the already loaded, prewarmed
+    # common model. Without shared clients this call owns a client of its own.
+    owned = RoutingClients(client_factory) if clients is None else None
+    try:
+        client = (clients or owned).get(config.llm.api_key or "nova-avatar-local", config.llm.base_url)
         response = client.chat.completions.create(
             model=config.llm.model, stream=False, max_tokens=384, temperature=0,
             response_format={"type": "json_object"}, extra_body=extra or None,
             messages=[{"role": "system", "content": prompt},
                       *history[-10:], {"role": "user", "content": text}])
+    finally:
+        if owned is not None:
+            owned.close()
     raw = response.choices[0].message.content or ""
     if len(raw) > 6000:
         raise ProfileError("角色判斷資料過長")

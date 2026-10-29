@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import atexit
+import functools
 import os
 import re
 import shutil
@@ -14,7 +15,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from src.utils.logging import logger
 from src.utils.paths import get_project_root
@@ -336,6 +337,18 @@ def stop_llama_on_port(port: int) -> None:
                 pass
 
 
+def _refreshes_model_info(start: Callable[..., str]) -> Callable[..., str]:
+    """Ask the loaded model's context size once, so answers never ask it."""
+    @functools.wraps(start)
+    def ensure(*args, **kwargs) -> str:
+        base_url = start(*args, **kwargs)
+        from src.llm.context_usage import deployed_capacity
+        deployed_capacity(base_url, refresh=True)
+        return base_url
+    return ensure
+
+
+@_refreshes_model_info
 def ensure_server(
     model: str,
     *,

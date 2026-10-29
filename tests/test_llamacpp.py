@@ -161,6 +161,42 @@ class LlamaServerLaunchEnvTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, combined[-500:])
 
 
+class ModelInfoCacheTests(unittest.TestCase):
+    def test_loading_another_model_replaces_the_cached_context_size(self):
+        import src.llm.llamacpp as llamacpp
+        from src.llm import context_usage
+
+        sizes = iter([4096, 8192])
+
+        class Props:
+            def __init__(self):
+                self.value = next(sizes)
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"default_generation_settings": {"n_ctx": self.value}}
+
+        url = llamacpp.openai_base_url("127.0.0.1", 18080)
+        with tempfile.TemporaryDirectory() as tmp, patch.object(
+            context_usage.requests, "get", side_effect=lambda *_, **__: Props()
+        ) as get, patch.object(llamacpp, "server_status", return_value={"running": False}), patch.object(
+            llamacpp, "_stop_owned_server"
+        ), patch.object(llamacpp, "find_llama_server", return_value=Path(tmp) / "llama-server"), patch.object(
+            llamacpp, "build_server_env", return_value={}
+        ), patch.object(llamacpp, "has_cuda_backend", return_value=False), patch.object(
+            llamacpp, "get_project_root", return_value=Path(tmp)
+        ), patch.object(llamacpp.subprocess, "Popen"), patch.object(llamacpp, "_wait_until_ready"):
+            for name, size in (("first", 4096), ("second", 8192)):
+                (Path(tmp) / f"{name}.gguf").write_bytes(b"GGUF")
+                self.assertEqual(llamacpp.ensure_server(name, extra_dir=tmp, port=18080), url)
+                calls = get.call_count
+                # The answer path reads the cache; it never asks /props itself.
+                self.assertEqual(context_usage.cached_capacity(url), size)
+                self.assertEqual(get.call_count, calls)
+
+
 if __name__ == "__main__":
     os.chdir(PROJECT_ROOT)
     unittest.main()

@@ -145,10 +145,11 @@ def test_current_request_has_image_but_retained_history_does_not(store):
 def test_image_context_is_not_falsely_measured_by_text_tokenizer():
     messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'hello'},
                 {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,' + 'X' * 200000}}]}]
-    with patch('src.llm.context_usage.deployed_capacity', return_value=8192), patch('src.llm.context_usage.requests.post') as post:
-        result = measure_request('http://localhost/v1', messages, 500, local=True, model='local')
+    with patch('src.llm.context_usage.requests.post') as post:
+        result = measure_request(messages, 500, capacity=8192, model='local')
     post.assert_not_called()
     assert result['estimated'] is True
+    assert result['source'] == 'text estimate; visual tokens pending provider usage'
     assert result['visual_tokens_unknown'] is True
     assert result['input_tokens'] < 100
 
