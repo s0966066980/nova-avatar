@@ -39,6 +39,8 @@ AREA_BY_FILE = {
     "test_frontend_serving.py": "runtime",
     "test_funasr.py": "speech",
     "test_asr_comparison.py": "speech",
+    "test_tts_bakeoff.py": "speech",
+    "test_qwen3_tts_server.py": "speech",
     "test_health_route.py": "runtime",
     "test_integration_check.py": "governance",
     "test_kiosk_launcher.py": "runtime",

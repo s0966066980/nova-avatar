@@ -63,6 +63,9 @@ outputs/
 # Recordings
 data/records/
 
+# TTS bake-off synthesized audio and raw runs (scripts/tts_bakeoff.py)
+.scratch/first-audio-latency/tts-bakeoff/runs/
+
 # Certificates
 certs/
 *.pem
