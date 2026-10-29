@@ -41,7 +41,8 @@ sha256，主機現有或新拉取的版本不符即中止。`up` 啟動 `nova-ra
 尚未運行時，腳本會先啟動本機 Docker 服務，必要時在同一終端要求 `sudo`
 驗證；Docker 已就緒時不會要求管理權限。遠端 Docker context 或 rootless
 服務仍由其原本的方式管理。啟動後會等待容器健康狀態、RAGFlow 網頁、
-API 與獨立嵌入端點就緒，再啟動 Nova 前後端；逾時會明確失敗。
+API 與獨立嵌入端點就緒，再啟動 Nova 前後端。Docker 無法啟動或 RAGFlow
+逾時只顯示警告，並停止這次帶起的部分服務；數位人照常啟動，暫無知識庫檢索。
 `NOVA_RAGFLOW_STARTUP_TIMEOUT` 可調整容器與端點各自的等待上限（預設 180 秒）。
 若 RAGFlow 在啟動 Nova 前已經執行，`start-all.sh` 會沿用它，按 `Ctrl+C`
 也不會停止該既有實例；若由 `start-all.sh` 帶起，則在結束時停止。

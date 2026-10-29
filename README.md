@@ -125,7 +125,9 @@ bash ./scripts/start-all.sh
 啟動 RAGFlow；尚未執行 `prepare` 的主機會提示略過 RAGFlow，繼續啟動 Nova。
 若已安裝的 Docker 尚未運行，啟動腳本會自動啟動它；需要管理權限時，
 直接在同一個終端提示輸入 `sudo` 密碼。RAGFlow 的容器、網頁、API 與嵌入
-服務就緒後，才會啟動 Nova 前後端，不必另開終端逐一啟動服務。
+服務就緒後，才會啟動 Nova 前後端，不必另開終端逐一啟動服務。Docker 或
+RAGFlow 啟動失敗（含 `sudo` 驗證失敗、等待逾時）只會顯示警告並收掉這次
+帶起的部分服務，數位人照常啟動，只是暫無知識庫檢索。
 若 RAGFlow 已由其他命令啟動，`start-all.sh` 會沿用該實例。按
 `Ctrl+C` 停止 Nova，以及這次由 `start-all.sh` 帶起的 RAGFlow 服務；
 既有 RAGFlow 實例會保持執行。暫時不啟動檢索服務可執行
@@ -142,6 +144,11 @@ bash ./scripts/start-all.sh
 上表依預設 YAML 的 `app.ssl: true` 顯示 HTTPS；若關閉 SSL，Nova
 控制台和後端網址改用 HTTP。RAGFlow 管理頁只綁定主機 loopback，從另一
 台電腦無法直接連線。後端日誌在 `logs/start-all-backend.log`。
+
+啟動腳本只會停止本專案殘留的 Nova 程序（舊後端、Vite 開發伺服器與孤兒
+CosyVoice），先送 SIGTERM 讓其正常收尾，`NOVA_STOP_GRACE_SECONDS`（預設 20
+秒）後仍未結束才強制終止；埠 8010／3000 被其他程式占用時會報錯退出，不會
+誤殺。`start-all.sh` 讓後端自成程序群組，結束時連同子程序一併停止。
 
 存取規則（路由分類集中在 `src/server/access.py`）：控制台需以管理者密碼
 登入，本機也不例外；登入 cookie 為 `Secure`，區網連入請使用 HTTPS。

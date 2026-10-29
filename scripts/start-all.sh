@@ -21,7 +21,11 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/web"
 # 相對路徑以呼叫者目錄為準；轉成絕對路徑，切換目錄後前後端讀到同一檔案
 CONFIG_FILE="$(realpath -m -- "${1:-$PROJECT_ROOT/config/config.yaml}")"
+# shellcheck source=process-control.sh
+. "$PROJECT_ROOT/scripts/process-control.sh"
 BACKEND_PID=""
+# 後端以 setsid 啟動，自成程序群組；結束時整組終止，uv 子程序不會成孤兒。
+BACKEND_PGID=""
 RAGFLOW_OWNED=0
 RAGFLOW_STARTED=0
 
@@ -48,21 +52,18 @@ read_protocol() {
 cleanup() {
     local status=$?
     trap - EXIT
+    # 收尾期間不再被 Ctrl+C 打斷，避免留下孤兒程序。
+    trap '' INT TERM
     echo ""
     echo -e "${YELLOW}🛑 正在停止所有服務...${NC}"
-    if [ -n "$BACKEND_PID" ]; then
-        kill "$BACKEND_PID" 2>/dev/null || true
-        # 後端會先關閉連線與 llama-server，最多 15 秒；逾時才強制終止。
-        for _ in $(seq 1 40); do
-            kill -0 "$BACKEND_PID" 2>/dev/null || break
-            sleep 0.5
-        done
-        if kill -0 "$BACKEND_PID" 2>/dev/null; then
-            kill -9 "$BACKEND_PID" 2>/dev/null || true
+    if [ -n "$BACKEND_PGID" ]; then
+        # 先 SIGTERM 讓後端關閉連線、llama-server 與 CosyVoice，寬限期後才 SIGKILL。
+        if ! nova_stop_group "$BACKEND_PGID"; then
+            echo -e "${RED}⚠ 後端程序群組 $BACKEND_PGID 未能停止，請手動處理${NC}"
         fi
-        # uv 子程式可能還在
-        pkill -P "$BACKEND_PID" 2>/dev/null || true
     fi
+    # 後端被強制終止時 atexit 不會執行；確認 CosyVoice 也已停止。
+    nova_stop_cosyvoice || true
     if [ "$RAGFLOW_OWNED" -eq 1 ]; then
         if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" down; then
             echo -e "${RED}⚠ RAGFlow 未能自動停止，請執行 bash scripts/ragflow.sh status${NC}"
@@ -92,12 +93,22 @@ if [ ! -d "$PROJECT_ROOT/.venv" ]; then
     exit 1
 fi
 
+if ! command -v setsid >/dev/null 2>&1; then
+    echo -e "${RED}❌ 錯誤: 需要 setsid（util-linux）${NC}"
+    exit 1
+fi
+
 if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
     echo -e "${RED}❌ 錯誤: 需要 Node.js / npm${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}✓${NC} 配置檔案: $CONFIG_FILE"
+
+# 建置與帶起 RAGFlow 前先確認 8010：只停止本專案殘留的後端（與其孤兒
+# CosyVoice）；其他程式占用時報錯退出，不誤殺。
+nova_clear_port 8010 '*src/server/app.py*' || exit 1
+nova_stop_cosyvoice || true
 
 cd "$FRONTEND_DIR"
 if [ ! -d node_modules ]; then
@@ -111,39 +122,36 @@ env -u NOVA_RAGFLOW_API_KEY -u NOVA_RAGFLOW_URL VITE_CONFIG_QUIET=1 \
 echo -e "${GREEN}✓${NC} 前端已建置: $FRONTEND_DIR/dist"
 cd "$PROJECT_ROOT"
 
-clear_port() {
-    local port=$1
-    local pid
-    # 只找監聽此埠的伺服器，避免誤殺已連線的瀏覽器等用戶端。
-    pid=$(lsof -ti:"$port" -sTCP:LISTEN 2>/dev/null || true)
-    if [ -n "$pid" ]; then
-        echo -e "${YELLOW}⚠ 清理埠 $port (PID $pid)${NC}"
-        kill $pid 2>/dev/null || true
-        sleep 2
-        if kill -0 $pid 2>/dev/null; then
-            kill -9 $pid 2>/dev/null || true
-        fi
-    fi
-}
-
 # 已完成本機 RAGFlow 準備後，日常啟動一併帶起其獨立服務。
 # 已在執行的 Compose 專案或嵌入服務屬於外部生命週期，不由本腳本停止。
 if [ "${NOVA_START_RAGFLOW:-auto}" != 0 ] && \
     { [ "${NOVA_START_RAGFLOW:-auto}" = 1 ] || [ -d "$PROJECT_ROOT/.local/ragflow/upstream/.git" ]; }; then
     echo -e "${BLUE}🔎 啟動 RAGFlow...${NC}"
+    # RAGFlow 失敗不阻擋數字人：記錄警告後照常啟動，只是暫無知識庫檢索。
     # Docker 啟動時可能自動恢復既有容器，必須在這之後判定服務所有權。
-    bash "$PROJECT_ROOT/scripts/ragflow.sh" ensure-docker
-    if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" is-running >/dev/null 2>&1; then
-        RAGFLOW_OWNED=1
+    if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" ensure-docker; then
+        echo -e "${YELLOW}⚠ Docker 未就緒，略過 RAGFlow；數字人照常啟動（無知識庫檢索）${NC}"
+    else
+        if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" is-running >/dev/null 2>&1; then
+            RAGFLOW_OWNED=1
+        fi
+        if bash "$PROJECT_ROOT/scripts/ragflow.sh" up; then
+            RAGFLOW_STARTED=1
+            echo -e "${GREEN}✓${NC} RAGFlow 管理頁: http://127.0.0.1:8088"
+        else
+            echo -e "${YELLOW}⚠ RAGFlow 未能就緒；數字人照常啟動（無知識庫檢索），請執行 bash scripts/ragflow.sh status 檢查${NC}"
+            if [ "$RAGFLOW_OWNED" -eq 1 ]; then
+                # 收掉這次帶起的部分服務，不讓半啟動的容器占用資源。
+                RAGFLOW_OWNED=0
+                if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" down; then
+                    echo -e "${RED}⚠ RAGFlow 未能自動停止，請執行 bash scripts/ragflow.sh status${NC}"
+                fi
+            fi
+        fi
     fi
-    bash "$PROJECT_ROOT/scripts/ragflow.sh" up
-    RAGFLOW_STARTED=1
-    echo -e "${GREEN}✓${NC} RAGFlow 管理頁: http://127.0.0.1:8088"
 else
     echo -e "${YELLOW}RAGFlow 尚未準備或已停用；部署方式見 docs/ragflow.md${NC}"
 fi
-
-clear_port 8010
 
 PROTOCOL=$(read_protocol "$CONFIG_FILE")
 BACKEND_URL="${PROTOCOL}://localhost:8010"
@@ -163,9 +171,11 @@ cd "$PROJECT_ROOT"
         . "$PROJECT_ROOT/config/ragflow.env"
         set +a
     fi
-    exec uv run python src/server/app.py --config "$CONFIG_FILE"
+    # 非互動腳本的背景子程序不是群組領頭，setsid 不會 fork：PID 即 PGID。
+    exec setsid uv run python src/server/app.py --config "$CONFIG_FILE"
 ) >>"$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
+BACKEND_PGID=$BACKEND_PID
 echo -e "${GREEN}✓${NC} 後端程式 PID $BACKEND_PID，日誌: $BACKEND_LOG"
 
 echo -e "${BLUE}⏳ 等待後端就緒（首次載入數字人可能需要一兩分鐘）...${NC}"
