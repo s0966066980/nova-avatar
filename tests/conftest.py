@@ -20,6 +20,7 @@ AREA_BY_FILE = {
     "test_avatar_profiles.py": "runtime",
     "test_cwa_weather.py": "conversation",
     "test_weather_context.py": "conversation",
+    "test_weather_keywords.py": "conversation",
     "test_role_media.py": "avatar",
     "test_role_coordinator.py": "conversation",
     "test_reverse_role_handoff.py": "conversation",

@@ -118,6 +118,9 @@ class _FakeLlamaServer:
         self.httpd.server_close()
 
 
+KEYWORD_ROUTED = {"w01", "w06", "h01", "h02"}
+
+
 @pytest.fixture
 def fake_llama():
     server = _FakeLlamaServer()
@@ -141,11 +144,14 @@ def test_run_asks_every_question_through_the_production_routing_and_answer_path(
     assert result["model"] == "gemma-4-E2B_q4_0-it"
     items = {item["id"]: item for item in result["items"]}
     assert len(items) == 30
-    # Routing correctness against the fixed expectations.
+    # Routing correctness against the fixed expectations. The fake model says
+    # "answer"; a clear weather question about one county is decided by the
+    # keyword pre-filter before the model (ticket 17).
     for question in data["questions"]:
         item = items[question["id"]]
-        assert item["route"] == "answer"
-        assert item["route_correct"] is (question["expected_route"] == "answer")
+        route = "specialist" if question["id"] in KEYWORD_ROUTED else "answer"
+        assert item["route"] == route
+        assert item["route_correct"] is (question["expected_route"] == route)
     # A clarification has no answer; every other question is answered once.
     assert items["h06"]["answer"] is None
     answered = [item for item in result["items"] if item["answer"] is not None]
@@ -156,7 +162,7 @@ def test_run_asks_every_question_through_the_production_routing_and_answer_path(
 
     answers = [body for body in fake_llama.requests if body.get("stream")]
     routings = [body for body in fake_llama.requests if not body.get("stream")]
-    assert len(routings) == 30 and len(answers) == 29
+    assert len(routings) == 30 - len(KEYWORD_ROUTED) and len(answers) == 29
     # Same grammar, thinking switch and prompt pipeline as a live turn.
     assert all(body["grammar"].startswith("root ::= (simple | board)") for body in answers)
     assert all(body["chat_template_kwargs"] == {"enable_thinking": False}
@@ -184,7 +190,7 @@ def test_report_puts_both_models_side_by_side_and_flags_weaker_routing(fake_llam
 
     report = build_report(baseline, candidate)
 
-    assert "| 路由正確率 | 19/30 | 16/30 |" in report
+    assert "| 路由正確率 | 23/30 | 20/30 |" in report
     assert "| 無簡體字 | 29/29 | 28/29 |" in report
     assert "E2B 路由正確率比 Qwen3.5-9B 少 3 題" in report
     assert "關鍵字初篩" in report
@@ -214,7 +220,7 @@ def test_command_line_runs_a_server_and_writes_the_report(fake_llama, library, t
                  "--output", str(tmp_path / "report.md")]) == 0
     report = (tmp_path / "report.md").read_text("utf-8")
     assert report.startswith("<!-- Copyright (c) 2026 HongXian0903.")
-    assert "| 路由正確率 | 19/30 | 19/30 |" in report
+    assert "| 路由正確率 | 23/30 | 23/30 |" in report
 
 
 def test_wrong_mode_and_missing_terms_are_reported():

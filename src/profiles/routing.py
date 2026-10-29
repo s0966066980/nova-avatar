@@ -14,6 +14,7 @@ from openai import OpenAI
 from src.llm.llamacpp_protocol import thinking_request_fields
 from src.profiles.store import ProfileError
 from src.profiles.weather import COUNTIES, TAIPEI
+from src.profiles.weather_keywords import canonical_county, explicit_counties, keyword_route
 
 _ROUTE_FIELDS = ("clarification", "county", "town", "kind", "start_date", "end_date", "context")
 ROUTE_SCHEMA = {
@@ -102,6 +103,12 @@ def route_question(config, library, current_id, text, history, confirmed, *,
     now = datetime.now(TAIPEI)
     specialist = next(p for p in library["profiles"] if p["id"] == library["pair"]["specialist"])
     main = next(p for p in library["profiles"] if p["id"] == library["pair"]["main"])
+    if specialist["tools"]["weather"]:
+        # A clear weather question about one county skips the small model,
+        # which may drop or misspell an English county name (ticket 17).
+        decided = keyword_route(text, now.date(), confirmed=confirmed, site=library["weather"])
+        if decided is not None:
+            return {**decided, "accepted_at": now.isoformat()}
     prompt = _CONTRACT + "\n" + json.dumps({
         "today": now.date().isoformat(), "current_role": current_id,
         "main": {"id": main["id"], "name": main["name"]},
@@ -160,16 +167,15 @@ def route_question(config, library, current_id, text, history, confirmed, *,
     if result['route'] != 'specialist' or not specialist['tools']['weather']:
         result.update(county='', town='', kind='', start_date='', end_date='')
         return result
-    result["county"] = result["county"].replace("台", "臺")
+    # "臺南" or "Tainan" means 臺南市; an unknown name is kept and rejected below.
+    result["county"] = canonical_county(result["county"]) or result["county"].replace("台", "臺")
     result["town"] = result["town"].replace("台", "臺")
+    spoken = text.replace("台", "臺")
+    explicit = explicit_counties(text)
+    if not result["county"] and len(explicit) == 1:
+        result["county"] = next(iter(explicit))
     if result["county"] and result["county"] not in COUNTIES:
         result.update(route="clarify", clarification="請問您想查詢臺灣哪個縣市及鄉鎮？")
-    spoken = text.replace("台", "臺")
-    explicit = {county for county in COUNTIES if county in spoken}
-    if not explicit:
-        explicit = {county for county in COUNTIES if county[:-1] in spoken}
-    from src.profiles.language import explicit_english_counties
-    explicit.update(explicit_english_counties(text))
     allowed = explicit or {confirmed.get("county"), library["weather"].get("county")}
     if len(explicit) > 1 or result["county"] and result["county"] not in allowed:
         result.update(route="clarify", county="", town="",
