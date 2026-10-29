@@ -42,3 +42,40 @@ Blocked by: 04
 ### 若仍不達標：放寬第一個片段邊界的方案（需改術語表與 ADR 0007，交使用者決定）
 
 只對每輪**第一個**片段放寬：遇到逗號、冒號、分號且前段已是 8 字以上可獨立朗讀的子句時立即釋放（不等 24 字與 0.5 s），之後的片段仍守完整語意邊界。需在 `CONTEXT.md`「完整語意邊界」與 ADR 0007 加註「首個片段例外」。代價：第一片段後韻律重置，可能聽到短停頓；第一片段被柵欄或重試時需確認不重複朗讀。較保守的替代：只把第一片段的語意等待縮為 0.2 s。
+
+### 2026-10-30 首個片段例外（使用者決定 Q27；分支 `fal/08b-first-fragment`）
+
+- **分段器**（`src/server/reply_streaming/fragmenter.py`）：`SemanticFragmenter` 新增 `first_fragment_min_units`（預設 `FIRST_FRAGMENT_MIN_UNITS = 8`，`None` 關閉）。每輪第一個片段在「，：；,:;」處、前段已 ≥ 8 單位時立即釋放，不等 24 字與 0.5 s；之後的片段規則不變。頓號「、」、數字／時間／網址內的標點、未閉合引號內的標點不算；半形「,:;」須等下一字為空白或中日韓文字才確認（避免 `1,250`、`3:30`、`https:` 被切）。若整句已在緩衝內，取較早的邊界，因此結果與 token 切法無關。
+- **英文**：新增 `speech_units`，漢字逐字計、拉丁字母與數字逐「詞」計，所以英文需 8 個詞（`Tomorrow looks cloudy,` 3 詞不切）。逐字母計會讓 `Of course,` 這類兩詞片段先播，故不採用。副作用：中英混排如「我們是 Nova Avatar，」只算 5 單位，不提早釋放。
+- **不重複朗讀**：已釋放的子句從緩衝移除，後續片段不含它（測試以各片段串接等於原文驗證）；輪次被柵欄擋下後 `generate_response` 不再 flush，計時器也不釋放（測試：第一片段後柵欄只送出第一片段）。TTS 重試仍以單一片段為單位，沿用既有提交規則，未改。
+- **評估工具**：`first_sentence()` 關閉例外（首句遵循率定義不變）；`first_fragment(..., exception=False)` 可重播舊邊界；`run` 起保存每個 chunk（`answer["chunks"]`）；新增 `compare_first_fragment`，`first-sentence` 報告加「## 首個片段」前後對照與提早釋放清單。
+- **注意**：既有 `results-*.json` **沒有**保存 chunk（只有原首個片段的文字、字數、時間與首個口語時間），無法逐 chunk 重播。新邊界的片段文字可由口語文字精確算出；時間為估計：以首個口語時間與原首個片段時間，依字數線性內插（原片段都以「。」結尾，無語意等待釋放，內插前提成立）。
+- **E2B 結果**（`.scratch/first-audio-latency/e2b-eval/first-sentence.md`，13/29 題提早釋放）：
+
+  | 首個片段 | 完整語意邊界（記錄值） | 首個片段例外（時間為估計） |
+  |---|---|---|
+  | 字數 | P50 20 字，P95 31 字 | P50 13 字，P95 31 字 |
+  | 時間 | P50 0.241 s，P95 0.359 s | P50 0.223 s，P95 0.311 s |
+
+  P95 字數不變，來自三題「我們是 Nova Avatar，是一個…」（中英混排開頭子句只算 5 單位）。E2B 生成很快，LLM 端只省約 20–50 ms；實際收益在 TTS 端：首個片段字數 P50 從 20 降到 13，非串流 TTS 的合成時間應隨之下降，需實機量測。參考：Qwen3.5-9B 字數 P50 14→12、P95 32→19。
+- **驗證**：新增 `tests/test_first_fragment_exception.py` 13 項；`test_reply_streaming.py` 四項計時器／逗號測試改為先播一句再測後續片段，或明確關閉例外（仍驗證語意等待與完整語意邊界），`test_llm_quality_eval.py` 新增 1 項並更新 2 項。ruff、pyright、`check-integration.py` 通過；全套 pytest 1278 passed、4 skipped，2 項失敗為 worktree 缺本機資產的已知基準失敗。
+
+### 待實機驗證（首個片段例外；Status 維持 ready-for-agent）
+
+1. **精確重播**（需 GPU 上的 E2B，18080）：重跑 `run` 後，結果會保存 chunk，`first-sentence` 改為逐 chunk 重播前後兩種邊界：
+   ```
+   cd /home/oliver/nova-avatar
+   .venv/bin/python scripts/eval_llm_quality.py run --base-url http://127.0.0.1:18080/v1 \
+     --label "Gemma 4 E2B" --output .scratch/first-audio-latency/e2b-eval/results-gemma-4-e2b.json
+   .venv/bin/python scripts/eval_llm_quality.py first-sentence \
+     --results .scratch/first-audio-latency/e2b-eval/results-gemma-4-e2b.json \
+     --output .scratch/first-audio-latency/e2b-eval/first-sentence.md
+   ```
+   預期報告註明「兩者皆以記錄的 chunk 逐一重播」，首個片段例外字數 P50 約 13 字。
+2. **實機首音與聽感**：合併並重啟後端後，
+   ```
+   .venv/bin/python scripts/measure_first_audio.py --rounds 1 --warmup 1 \
+     --note "issue 08b first-fragment exception" \
+     --output .scratch/first-audio-latency/after-08b-2026-10-30.json
+   ```
+   比較 `first_fragment` 與 `tts_first_pcm` 階段；另以天氣題（如「明天台北會下雨嗎？」）實聽第一片段後的停頓是否可接受，由使用者確認。

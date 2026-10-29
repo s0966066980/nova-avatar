@@ -13,8 +13,8 @@ import threading
 import pytest
 
 from scripts.eval_llm_quality import (
-    QUESTIONS_PATH, build_first_sentence_report, build_report, check_answer, first_fragment,
-    load_questions, main, run_eval,
+    QUESTIONS_PATH, build_first_sentence_report, build_report, check_answer,
+    compare_first_fragment, first_fragment, load_questions, main, run_eval,
 )
 from src.config.schema import Config
 from src.profiles.store import ProfileStore
@@ -262,14 +262,37 @@ def test_first_fragment_replays_the_stream_through_the_production_fragmenter():
     assert first_fragment([(0.1, header), (0.2, "好的，"), (0.25, "在 M87。"),
                            (0.3, "後面。\n[[END]]")]) == {
         "text": "好的，在 M87。", "chars": 6, "seconds": 0.25}
-    # A long clause is released by the semantic-wait timer, not by the next token.
+    # At the complete boundary a long clause is released by the semantic-wait
+    # timer, not by the next token; the first-fragment exception releases it at once.
     clause = "一" * 30 + "，"
-    assert first_fragment([(0.1, header), (0.2, clause), (1.5, "完。\n[[END]]")]) == {
+    stalled = [(0.1, header), (0.2, clause), (1.5, "完。\n[[END]]")]
+    assert first_fragment(stalled, exception=False) == {
         "text": clause, "chars": 30, "seconds": 0.7}
+    assert first_fragment(stalled) == {"text": clause, "chars": 30, "seconds": 0.2}
     # Without a boundary the speech is released when the reply ends.
     assert first_fragment([(0.1, header), (0.2, "好的"), (0.4, "\n[[END]]")]) == {
         "text": "好的", "chars": 2, "seconds": 0.4}
     assert first_fragment([(0.1, "[[MODE:SIMPLE]]\n")]) is None
+
+
+def test_first_fragment_comparison_replays_chunks_or_interpolates_older_runs():
+    header = "[[MODE:SIMPLE]]\n[[SPEECH]]\n"
+    chunks = [[0.1, header], [0.2, "明天台北多雲時陰短暫雨，"], [0.4, "降雨機率為六成。\n[[END]]"]]
+    raw = "".join(text for _, text in chunks)
+    whole = {"text": "明天台北多雲時陰短暫雨，降雨機率為六成。", "chars": 18, "seconds": 0.4}
+    opening = {"text": "明天台北多雲時陰短暫雨，", "chars": 11, "seconds": 0.2}
+    assert compare_first_fragment({"raw": raw, "chunks": chunks}) == {
+        "before": whole, "after": opening, "estimated": False}
+    # Older runs kept no chunks: the earlier release is interpolated by characters.
+    older = compare_first_fragment({"raw": raw, "first_speech_seconds": 0.2,
+                                    "first_fragment": whole})
+    assert older == {"before": whole, "estimated": True,
+                     "after": {**opening, "seconds": round(0.2 + 0.2 * 11 / 18, 3)}}
+    # A reply that opens with a sentence keeps its recorded fragment.
+    sentence = {"text": "好的。", "chars": 2, "seconds": 0.25}
+    assert compare_first_fragment({"raw": _speech("好的。明天台北多雲時陰短暫雨，會下雨。"),
+                                   "first_speech_seconds": 0.2,
+                                   "first_fragment": sentence})["after"] == sentence
 
 
 def test_runs_record_first_sentence_and_first_fragment_for_both_reports(
@@ -281,6 +304,7 @@ def test_runs_record_first_sentence_and_first_fragment_for_both_reports(
     assert answer["first_fragment"]["text"] == "好的，馬拉斯客灣位於M87星雲。"
     assert answer["first_fragment"]["chars"] == 14
     assert answer["first_fragment"]["seconds"] >= answer["first_speech_seconds"]
+    assert "".join(text for _, text in answer["chunks"]) == answer["raw"]
 
     assert "| 首句 15 字內且完整 | 29/29 | 29/29 |" in build_report(result, result)
 
@@ -290,7 +314,8 @@ def test_runs_record_first_sentence_and_first_fragment_for_both_reports(
     assert summary.startswith("<!-- Copyright (c) 2026 HongXian0903.")
     assert "遵循率：28/29" in summary
     assert "g03" in summary and "這是一句超過十五個字而且中途完全沒有停下來的開頭。" in summary
-    assert "首個片段字數 P50" in summary and "首個片段時間 P50" in summary
+    assert "| 字數 | P50" in summary and "| 時間 | P50" in summary
+    assert "兩者皆以記錄的 chunk 逐一重播" in summary
 
     path = tmp_path / "e2b.json"
     path.write_text(json.dumps(result, ensure_ascii=False), "utf-8")
