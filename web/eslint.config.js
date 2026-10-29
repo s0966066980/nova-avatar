@@ -3,6 +3,7 @@
 
 import js from '@eslint/js'
 import vue from 'eslint-plugin-vue'
+import html from 'eslint-plugin-html'
 import globals from 'globals'
 
 export default [
@@ -21,6 +22,12 @@ export default [
   {
     files: ['src/**/*.{js,vue}'],
     languageOptions: { globals: globals.browser },
+  },
+  {
+    // 公開舞台的 inline module script 也要納入 lint；其他 .html 為原型頁，不在守門範圍。
+    files: ['stage.html'],
+    plugins: { html },
+    languageOptions: { globals: globals.browser, sourceType: 'module' },
   },
   {
     files: ['tests/**/*.js', '*.config.js'],
