@@ -485,7 +485,7 @@ class PlaybackMetadataTests(unittest.IsolatedAsyncioTestCase):
             def notify_media_timing(self, _kind, _seconds, _eventpoint=None):
                 return None
 
-            def notify_audio_activity(self, _active):
+            def notify_audio_activity(self, _active, _peak=None):
                 return None
 
             def notify_audio_frame(self, eventpoint, active):

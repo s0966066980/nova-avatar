@@ -5,9 +5,15 @@
 
 Fixture utterances (general, RAG and handoff; zh-TW and en-US) are synthesized
 in memory and streamed in real time as the stage microphone. The harness
-records when the recording's voice actually ends and when the first non-silent
+records when the recording's voice actually ends and when the first audible
 reply audio frame arrives, then joins that with the server's content-free
 ``turn_metrics``. Only scalar timings and fixture IDs are written (ADR 0004).
+
+The harness and the backend share ``time.monotonic`` on the stage host, so the
+server's ``clock_marks`` split the client offset into the VAD speech tail, VAD
+work, uplink, audible onset and downlink. Perceived latency ends when the
+server sends the first audible frame; the downlink (aiortc jitter buffer and
+decode in this harness) is reported separately because a browser differs.
 
 Run only from the stage host: ``POST /offer`` with ``client_role=stage`` is a
 loopback-only route (ADR 0021). Close the kiosk stage page first; the backend
@@ -60,11 +66,6 @@ class LatencyPeer(SoakPeer):
         self.voice_ended_at = at
         self.first_reply_audio_at = None
 
-    def perceived_seconds(self) -> float | None:
-        if self.voice_ended_at is None or self.first_reply_audio_at is None:
-            return None
-        return self.first_reply_audio_at - self.voice_ended_at
-
     def _observe(self, raw: str) -> None:
         try:
             event = json.loads(raw)
@@ -105,7 +106,7 @@ async def measure_turn(peer: LatencyPeer, fixture: LatencyFixture, samples, voic
     turn_id = str(transcript["turn_id"])
     metric_event = await _wait(
         peer, lambda e: e.get("type") == "turn_metrics" and e.get("turn_id") == turn_id, timeout)
-    perceived = peer.perceived_seconds()
+    voice_ended_at, first_reply_audio_at = peer.voice_ended_at, peer.first_reply_audio_at
     final_event = metric_event
     specialist = None
     handoff = turn_id in peer.handoff_turns
@@ -121,7 +122,8 @@ async def measure_turn(peer: LatencyPeer, fixture: LatencyFixture, samples, voic
                 and int(e.get("seq") or 0) > after, timeout)
     return build_turn_record(
         fixture, metric_event,
-        perceived_first_audio_seconds=perceived,
+        voice_ended_at=voice_ended_at,
+        first_reply_audio_at=first_reply_audio_at,
         handoff_observed=handoff,
         rag_status=peer.rag_status.get(turn_id),
         specialist_first_audio_seconds=specialist,
@@ -162,8 +164,10 @@ async def run(args) -> dict:
                 records.append(record)
                 print(f"turn {index}/{len(plan)} {fixture.fixture_id} status={record['status']} "
                       f"perceived={record.get('perceived_first_audio_seconds')} "
+                      f"({record.get('perceived_basis')}) "
                       f"first_audio={record.get('first_audio_seconds')} "
-                      f"handoff={record.get('handoff_observed')}", flush=True)
+                      f"handoff={record.get('handoff_observed')} "
+                      f"offset_split={record.get('offset_split')}", flush=True)
                 await asyncio.sleep(args.pause)
         finally:
             await peer.close()
@@ -172,6 +176,7 @@ async def run(args) -> dict:
         "measured_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "gpu": args.gpu,
         "transport": "WebRTC (aiortc client, loopback)",
+        "clock": "time.monotonic shared with the backend on this host",
         "client_role": "stage",
         "input": "synthetic Edge TTS fixtures, streamed in real time",
         "fixture_set": str(args.fixtures) if args.fixtures else "builtin",
@@ -209,7 +214,9 @@ def main() -> int:
         print(f"{name}: n={summary['turns']} misaligned={summary['misaligned_turns']} "
               f"perceived={summary['perceived_first_audio_seconds']} "
               f"first_audio={summary['first_audio_seconds']} "
-              f"prompt={summary['prompt_first_audio_seconds']}", flush=True)
+              f"prompt={summary['prompt_first_audio_seconds']} "
+              f"client_received={summary['client_received_first_audio_seconds']} "
+              f"offset_split={summary['offset_split']}", flush=True)
     print(f"report: {args.output}")
     return 0 if report["failed_turns"] == 0 else 1
 

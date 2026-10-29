@@ -16,7 +16,9 @@ from typing import Iterable, Mapping, Optional, Sequence
 
 import numpy as np
 
-from .metrics import STAGE_NAMES
+from src.vad.audio import voiced_end_sample  # noqa: F401  (harness re-export)
+
+from .metrics import AUDIBLE_PEAK, STAGE_NAMES
 from .soak import percentile
 
 CATEGORIES = ("general", "rag", "handoff")
@@ -36,14 +38,29 @@ TARGETS = {
 # reply frame was not this turn's reply (e.g. a greeting still playing).
 ALIGNMENT_WINDOW_SECONDS = (-0.3, 0.6)
 
-FRAME_SAMPLES = 320
-VOICED_RMS_THRESHOLD = 0.01  # -40 dBFS on a 20 ms frame
-ACTIVE_PEAK_THRESHOLD = 64   # int16 peak; decoded Opus silence stays below it
+ACTIVE_PEAK_THRESHOLD = AUDIBLE_PEAK  # int16 peak; decoded Opus silence stays below it
+
+# Server clock marks are compared with the harness clock only when they read
+# as one clock: the endpoint can follow the voice end by the speech tail,
+# silence wait and transport, never precede it or lag by seconds.
+SHARED_CLOCK_WINDOW_SECONDS = (0.0, 5.0)
+
+# Client offset = these parts, in order along the turn.
+OFFSET_PARTS = ("vad_speech_tail", "vad_processing", "uplink", "audible_onset", "downlink")
 
 DEFINITIONS = {
     "perceived_first_audio_seconds": (
-        "感知首音延遲：錄音中人聲實際結束 → 用戶端收到該輪第一個非靜音回覆音訊幀"
-        "（含 WebRTC 傳輸與 aiortc 解碼；僅計入對齊的輪次）"),
+        "感知首音延遲：錄音中人聲實際結束 → 伺服器送出該輪第一個可聽（峰值 > 64）回覆音訊幀；"
+        "以同主機共用的單調時鐘比對（perceived_basis=server_send）。伺服器未提供時鐘標記時"
+        "退回用戶端收到時間（client_receive）。僅計入對齊的輪次"),
+    "client_received_first_audio_seconds": (
+        "錄音中人聲實際結束 → 量測工具（aiortc）收到第一個可聽回覆音訊幀；"
+        "含工具自身的接收抖動緩衝與解碼，舞台瀏覽器不同"),
+    "offset_split": (
+        "client_offset 拆解：vad_speech_tail（人聲低於 -40 dBFS 後 VAD 仍判為語音）"
+        "＋vad_processing（收到完成端點的上行幀 → 判定說完）＋uplink（工具送出 → 伺服器收到，"
+        "含伺服器 aiortc 抖動緩衝）＋audible_onset（伺服器送出首個非零幀 → 首個可聽幀，"
+        "TTS 起音前導）＋downlink（伺服器送出 → 工具收到，量測工具專屬）"),
     "server_perceived_first_audio_seconds": "伺服器估算：vad_endpoint + first_audio_seconds",
     "first_audio_seconds": "首音延遲：VAD 判定說完 → 伺服器送出第一個非靜音 WebRTC 回覆音訊幀",
     "prompt_first_audio_seconds": "伺服器接受 Prompt（辨識結果進入回覆流程）→ 第一個非靜音回覆音訊幀",
@@ -174,25 +191,8 @@ def turn_plan(fixtures: Sequence[LatencyFixture], *, rounds: int = 1) -> list[La
     return one_round * rounds
 
 
-def voiced_end_sample(
-    samples: np.ndarray,
-    *,
-    frame: int = FRAME_SAMPLES,
-    threshold: float = VOICED_RMS_THRESHOLD,
-) -> int:
-    """Sample index just after the last voiced frame of an int16 recording."""
-    pcm = np.asarray(samples).reshape(-1).astype(np.float64) / 32768.0
-    frames = pcm.size // frame + (1 if pcm.size % frame else 0)
-    padded = np.pad(pcm, (0, frames * frame - pcm.size))
-    rms = np.sqrt(np.mean(padded.reshape(frames, frame) ** 2, axis=1))
-    voiced = np.flatnonzero(rms >= threshold)
-    if voiced.size == 0:
-        raise ValueError("recording contains no voiced frame")
-    return int(min(pcm.size, (voiced[-1] + 1) * frame))
-
-
 def is_active_audio(samples: np.ndarray, *, peak: int = ACTIVE_PEAK_THRESHOLD) -> bool:
-    """Whether a received int16 reply frame is non-silent."""
+    """Whether a received int16 reply frame is audible (same threshold as the server)."""
     pcm = np.asarray(samples)
     return bool(pcm.size) and int(np.max(np.abs(pcm.astype(np.int32)))) > peak
 
@@ -201,7 +201,7 @@ def _round(value: Optional[float]) -> Optional[float]:
     return None if value is None else round(float(value), 6)
 
 
-def align_turn(record: Mapping, *, perceived_first_audio_seconds: Optional[float]) -> dict:
+def align_turn(record: Mapping, *, client_received_first_audio_seconds: Optional[float]) -> dict:
     """Check that server stages and the client observation describe one reply."""
     stages = dict(record.get("stage_seconds") or {})
     first_audio = record.get("first_audio_seconds")
@@ -213,8 +213,8 @@ def align_turn(record: Mapping, *, perceived_first_audio_seconds: Optional[float
     residual = None if chain is None or first_audio is None else first_audio - chain
     vad = stages.get("vad_endpoint")
     server_perceived = None if vad is None or first_audio is None else vad + first_audio
-    offset = (None if server_perceived is None or perceived_first_audio_seconds is None
-              else perceived_first_audio_seconds - server_perceived)
+    offset = (None if server_perceived is None or client_received_first_audio_seconds is None
+              else client_received_first_audio_seconds - server_perceived)
     low, high = ALIGNMENT_WINDOW_SECONDS
     return {
         "chain_seconds": _round(chain),
@@ -225,11 +225,60 @@ def align_turn(record: Mapping, *, perceived_first_audio_seconds: Optional[float
     }
 
 
+def _shared_marks(metrics: Mapping, voice_ended_at: Optional[float]) -> Optional[dict]:
+    """Server clock marks, when they are readings of the harness clock."""
+    marks = dict(metrics.get("clock_marks") or {})
+    if voice_ended_at is None or None in (marks.get("speech_end"), marks.get("first_audible")):
+        return None
+    low, high = SHARED_CLOCK_WINDOW_SECONDS
+    if not low <= marks["speech_end"] - voice_ended_at <= high:
+        return None
+    return marks
+
+
+def split_client_offset(
+    metrics: Mapping,
+    *,
+    voice_ended_at: Optional[float],
+    first_reply_audio_at: Optional[float],
+) -> dict:
+    """Perceived latency and the parts of the client offset for one turn.
+
+    ``voice_ended_at`` and ``first_reply_audio_at`` are harness readings of
+    ``time.monotonic``; the server's ``clock_marks`` share that clock only on
+    the same host.
+    """
+    stages = dict(metrics.get("stage_seconds") or {})
+    received = (None if voice_ended_at is None or first_reply_audio_at is None
+                else first_reply_audio_at - voice_ended_at)
+    split = {
+        "vad_speech_tail": stages.get("vad_speech_tail"),
+        "vad_processing": stages.get("vad_processing"),
+        "uplink": None,
+        "audible_onset": stages.get("webrtc_audible_onset"),
+        "downlink": None,
+    }
+    marks = _shared_marks(metrics, voice_ended_at)
+    if marks is None:
+        return {"client_received": _round(received), "perceived": _round(received),
+                "basis": "client_receive", "split": split}
+    vad, tail = stages.get("vad_endpoint"), split["vad_speech_tail"]
+    if vad is not None and tail is not None:
+        split["uplink"] = _round(marks["speech_end"] - voice_ended_at - vad - tail
+                                 - float(split["vad_processing"] or 0.0))
+    if first_reply_audio_at is not None:
+        split["downlink"] = _round(first_reply_audio_at - marks["first_audible"])
+    return {"client_received": _round(received),
+            "perceived": _round(marks["first_audible"] - voice_ended_at),
+            "basis": "server_send", "split": split}
+
+
 def build_turn_record(
     fixture: LatencyFixture,
     metric_event: Optional[Mapping],
     *,
-    perceived_first_audio_seconds: Optional[float] = None,
+    voice_ended_at: Optional[float] = None,
+    first_reply_audio_at: Optional[float] = None,
     handoff_observed: bool = False,
     rag_status: Optional[str] = None,
     specialist_first_audio_seconds: Optional[float] = None,
@@ -246,12 +295,17 @@ def build_turn_record(
     if metric_event is None:
         return record
     metrics = dict(metric_event.get("metrics") or {})
+    client = split_client_offset(metrics, voice_ended_at=voice_ended_at,
+                                 first_reply_audio_at=first_reply_audio_at)
     record.update(
         status=status or "completed",
         terminal_reason=metric_event.get("terminal_reason"),
         handoff_observed=bool(handoff_observed),
         rag_status=rag_status,
-        perceived_first_audio_seconds=_round(perceived_first_audio_seconds),
+        perceived_first_audio_seconds=client["perceived"],
+        perceived_basis=client["basis"],
+        client_received_first_audio_seconds=client["client_received"],
+        offset_split=client["split"],
         first_audio_seconds=metrics.get("first_audio_seconds"),
         prompt_first_audio_seconds=metrics.get("prompt_first_audio_seconds"),
         specialist_first_audio_seconds=specialist_first_audio_seconds,
@@ -259,14 +313,15 @@ def build_turn_record(
                        for stage in STAGE_NAMES},
     )
     record["alignment"] = align_turn(
-        record, perceived_first_audio_seconds=record["perceived_first_audio_seconds"])
+        record, client_received_first_audio_seconds=client["client_received"])
     return record
 
 
 _RECORD_KEYS = (
     "fixture_id", "category", "language", "status", "terminal_reason", "handoff_expected",
-    "handoff_observed", "rag_status", "perceived_first_audio_seconds", "first_audio_seconds",
-    "prompt_first_audio_seconds", "specialist_first_audio_seconds", "stage_seconds", "alignment",
+    "handoff_observed", "rag_status", "perceived_first_audio_seconds", "perceived_basis",
+    "client_received_first_audio_seconds", "first_audio_seconds", "prompt_first_audio_seconds",
+    "specialist_first_audio_seconds", "stage_seconds", "offset_split", "alignment",
 )
 
 
@@ -283,6 +338,14 @@ def _summarize(category: str, turns: list[Mapping], failed: int) -> dict:
         "failed_turns": failed,
         "misaligned_turns": len(turns) - len(aligned),
         "perceived_first_audio_seconds": perceived,
+        "perceived_basis": dict(Counter(turn["perceived_basis"] for turn in aligned
+                                        if turn.get("perceived_basis"))),
+        "client_received_first_audio_seconds": _p50_p95(
+            turn.get("client_received_first_audio_seconds") for turn in aligned),
+        "offset_split": {
+            part: _p50_p95(dict(turn.get("offset_split") or {}).get(part) for turn in aligned)
+            for part in OFFSET_PARTS
+        },
         "server_perceived_first_audio_seconds": _p50_p95(
             turn["alignment"]["server_perceived_first_audio_seconds"] for turn in turns),
         "first_audio_seconds": _p50_p95(turn.get("first_audio_seconds") for turn in turns),
@@ -323,7 +386,7 @@ def build_latency_report(turns: Sequence[Mapping], *, environment: Mapping[str, 
             failed[category],
         )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "mode": "first_audio_latency",
         "environment": dict(environment),
         "definitions": DEFINITIONS,

@@ -21,8 +21,19 @@ StageObserver = Callable[[str, float], None]
 # concurrently with it; ``routing_hold`` is how long synthesized answer audio
 # waited for the routing decision, inside ``avatar_to_webrtc_commit``.
 # ``model_info`` is the llama-server preflight inside ``llm_first_token``.
+#
+# Before the speech end (not part of ``first_audio_seconds``):
+# ``vad_endpoint`` is the silence wait on the audio timeline (the configured
+# ``min_silence_ms`` rounded up to whole VAD frames, not a wall-clock reading);
+# ``vad_speech_tail`` is how long the VAD still judged speech after the voice
+# fell below -40 dBFS; ``vad_processing`` runs from the arrival of the uplink
+# frame that completed the endpoint to the endpoint decision.
+# After the first audio: ``webrtc_audible_onset`` runs from the first nonzero
+# reply frame sent to the first one whose peak exceeds ``AUDIBLE_PEAK``.
 STAGE_NAMES = (
     "vad_endpoint",
+    "vad_speech_tail",
+    "vad_processing",
     "asr",
     "pre_answer",
     "routing",
@@ -43,7 +54,12 @@ STAGE_NAMES = (
     "webrtc_video_enqueue",
     "avatar_to_webrtc_commit",
     "webrtc_audio_commit",
+    "webrtc_audible_onset",
 )
+
+# int16 peak of a 20 ms frame above which reply audio is audible (-54 dBFS).
+# The harness applies the same threshold to the frames it decodes.
+AUDIBLE_PEAK = 64
 
 # Stages a main answer owns. A discarded speculative answer forgets them so the
 # reply that is actually played measures its own.
@@ -84,6 +100,10 @@ def _duration(start: Optional[float], end: Optional[float]) -> Optional[float]:
     return round(max(0.0, end - start), 6)
 
 
+def _mark(at: Optional[float]) -> Optional[float]:
+    return None if at is None else round(at, 6)
+
+
 class TurnMetrics:
     """Collect the fixed, privacy-safe measurements for a single turn.
 
@@ -97,6 +117,7 @@ class TurnMetrics:
         self._speech_end_at: Optional[float] = None
         self._prompt_accepted_at: Optional[float] = None
         self._first_audio_at: Optional[float] = None
+        self._first_audible_at: Optional[float] = None
         self._interrupt_at: Optional[float] = None
         self._output_stopped_at: Optional[float] = None
         self._listening_resumed_at: Optional[float] = None
@@ -126,6 +147,11 @@ class TurnMetrics:
     def mark_first_audio(self) -> None:
         if self._first_audio_at is None:
             self._first_audio_at = self._clock()
+
+    def mark_first_audible(self) -> None:
+        """The first reply frame above ``AUDIBLE_PEAK`` is sent."""
+        if self._first_audible_at is None:
+            self._first_audible_at = self._clock()
 
     def mark_interrupt(self) -> None:
         if self._interrupt_at is None:
@@ -265,6 +291,14 @@ class TurnMetrics:
             "tts_retry_after_playback_commit_count": (
                 self._tts_retry_after_playback_commit_count
             ),
+            # Raw session-clock readings (time.monotonic in production). Only a
+            # client on the same host, such as the loopback stage harness, can
+            # compare them with its own clock to split the client offset.
+            "clock_marks": {
+                "speech_end": _mark(self._speech_end_at),
+                "first_audio": _mark(self._first_audio_at),
+                "first_audible": _mark(self._first_audible_at),
+            },
             "stage_seconds": {
                 stage: self._stage_durations.get(stage, _duration(
                     self._stage_started_at.get(stage),

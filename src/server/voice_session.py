@@ -43,7 +43,7 @@ from src.llm.rules import snapshot_from_config
 from src.ragflow.client import RagFlowClient, retrieval_prompt
 from src.ragflow.settings import avatar_settings
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
-from src.server.reply_streaming.metrics import TurnMetrics, observe_stages
+from src.server.reply_streaming.metrics import AUDIBLE_PEAK, TurnMetrics, observe_stages
 from src.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
 from src.utils.logging import logger
 from src.vad.service import create_segmenter
@@ -517,19 +517,20 @@ class VoiceTurnSession:
                 # Only the track itself ending or failing to deliver audio is a loss.
                 self._track_lost(exc, on_lost)
                 return
+            received_at = self._metrics_clock()
             # Keep draining paused uplink audio without scheduling work
             # whose PCM the closed capture gate would immediately discard.
             if not self._gate_open or self._segmenter is None or self._closed:
                 continue
             try:
-                await self._process_frame(frame)
+                await self._process_frame(frame, received_at)
             except asyncio.CancelledError:
                 raise
             except Exception:
                 # One bad frame or a failed turn start must not hang up the peer.
                 logger.exception("Microphone frame processing failed; continuing")
 
-    async def _process_frame(self, frame) -> None:
+    async def _process_frame(self, frame, received_at: Optional[float] = None) -> None:
         loop = asyncio.get_running_loop()
         generation = self._generation
         pcm_chunks = await loop.run_in_executor(
@@ -540,7 +541,7 @@ class VoiceTurnSession:
         if generation != self._generation:
             return
         for pcm in pcm_chunks:
-            await self.feed_pcm(pcm)
+            await self.feed_pcm(pcm, received_at=received_at)
 
     def _track_lost(self, exc: Exception, on_lost) -> None:
         if self._closed:
@@ -559,8 +560,12 @@ class VoiceTurnSession:
             for converted in self._resampler.resample(frame)
         ]
 
-    async def feed_pcm(self, pcm: np.ndarray) -> None:
-        """Feed mono 16 kHz int16 PCM; intentionally a small testable seam."""
+    async def feed_pcm(self, pcm: np.ndarray, *, received_at: Optional[float] = None) -> None:
+        """Feed mono 16 kHz int16 PCM; intentionally a small testable seam.
+
+        ``received_at`` is when the uplink frame carrying this PCM arrived, on
+        the metrics clock; it times the VAD work behind an endpoint.
+        """
         if not self._gate_open or self._closed or self._segmenter is None:
             return
         loop = asyncio.get_running_loop()
@@ -595,6 +600,12 @@ class VoiceTurnSession:
         endpoint_wait = getattr(segment, "endpoint_wait_ms", None)
         if endpoint_wait is not None:
             self._metrics.record_stage_duration("vad_endpoint", endpoint_wait / 1000.0)
+        speech_tail = getattr(segment, "speech_tail_ms", None)
+        if speech_tail is not None:
+            self._metrics.record_stage_duration("vad_speech_tail", speech_tail / 1000.0)
+        if received_at is not None:
+            self._metrics.record_stage_duration(
+                "vad_processing", max(0.0, self._metrics_clock() - received_at))
         generation = self._generation
         self._turn_task = asyncio.create_task(
             self._process_turn(
@@ -1309,8 +1320,12 @@ class VoiceTurnSession:
         self._turn_task = None
         self._refresh_gate()
 
-    def on_output_audio(self, active: bool) -> None:
-        """Called from the outbound WebRTC audio track for frame-accurate gating."""
+    def on_output_audio(self, active: bool, peak: Optional[float] = None) -> None:
+        """Called from the outbound WebRTC audio track for frame-accurate gating.
+
+        ``peak`` is the frame's int16 peak; without it an active frame counts
+        as audible.
+        """
         if self._closed:
             return
         if active:
@@ -1321,6 +1336,10 @@ class VoiceTurnSession:
                 self._metrics.mark_first_audio()
                 self._metrics.mark_stage_end("avatar_to_webrtc_commit")
                 self._metrics.mark_stage_end("webrtc_audio_commit")
+                self._metrics.mark_stage_start("webrtc_audible_onset")
+                if peak is None or peak > AUDIBLE_PEAK:
+                    self._metrics.mark_stage_end("webrtc_audible_onset")
+                    self._metrics.mark_first_audible()
                 if not had_first_audio:
                     logger.info(
                         "first active audio committed turn=%s stages=%s",

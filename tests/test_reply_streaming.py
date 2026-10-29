@@ -218,8 +218,11 @@ class TurnMetricsTests(unittest.TestCase):
                 "tts_onset_preroll_ms": 80.0,
                 "tts_retry_after_pcm_count": 1,
                 "tts_retry_after_playback_commit_count": 0,
+                "clock_marks": {"speech_end": 0.0, "first_audio": 0.8, "first_audible": None},
                 "stage_seconds": {
                     "vad_endpoint": None,
+                    "vad_speech_tail": None,
+                    "vad_processing": None,
                     "asr": None,
                     "pre_answer": None,
                     "routing": None,
@@ -240,6 +243,7 @@ class TurnMetricsTests(unittest.TestCase):
                     "webrtc_video_enqueue": None,
                     "avatar_to_webrtc_commit": None,
                     "webrtc_audio_commit": None,
+                    "webrtc_audible_onset": None,
                 },
             },
         )

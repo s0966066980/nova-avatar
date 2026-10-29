@@ -23,6 +23,7 @@ from typing import Iterator, List, Optional
 import numpy as np
 
 from src.utils.logging import logger
+from src.vad.audio import voiced_end_sample
 from src.vad.base import AudioLike, BaseVAD, to_int16
 
 
@@ -34,7 +35,13 @@ class SpeechSegment:
     audio: np.ndarray = field(repr=False)
     sample_rate: int = 16000
     speech_ms: int = 0  # 片段裡真正判定為語音的時長（不含 padding / 中間停頓）
+    # Endpoint only. ``endpoint_wait_ms`` is the silence wait on the audio
+    # timeline (silence frames x frame length, i.e. the configured
+    # min_silence_ms rounded up to whole frames). ``speech_tail_ms`` is how
+    # long the VAD still judged speech after the voice fell below -40 dBFS,
+    # before that wait started counting.
     endpoint_wait_ms: Optional[int] = None
+    speech_tail_ms: Optional[int] = None
 
     @property
     def duration_ms(self) -> int:
@@ -183,6 +190,7 @@ class VADSegmenter:
     ) -> Optional[SpeechSegment]:
         """閉合當前片段，太短的直接丟棄"""
         frames = self._segment
+        speech_tail_ms = self._speech_tail_ms(frames) if endpoint else None
         if trim_trailing_silence:
             # 尾部靜音只保留 speech_pad_ms
             drop = max(0, self._silence_run - self._pad_frames)
@@ -216,7 +224,18 @@ class VADSegmenter:
             sample_rate=self.vad.sample_rate,
             speech_ms=speech_ms,
             endpoint_wait_ms=endpoint_wait_ms,
+            speech_tail_ms=speech_tail_ms,
         )
+
+    def _speech_tail_ms(self, frames: List[np.ndarray]) -> Optional[int]:
+        """Audio from the last voiced sample to the start of the silence run."""
+        if not frames:
+            return None
+        voiced_end = voiced_end_sample(np.concatenate(frames), missing=None)
+        if voiced_end is None:
+            return None
+        silence_start = (len(frames) - self._silence_run) * self.vad.frame_samples
+        return max(0, (silence_start - voiced_end) * 1000 // self.vad.sample_rate)
 
 
 def detect_speech_segments(vad: BaseVAD, audio: AudioLike, **kwargs) -> List[SpeechSegment]:
