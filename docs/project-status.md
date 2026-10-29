@@ -86,7 +86,8 @@ stale-output Gate；generation fence、取消或提交前檢查丟棄的媒體�
 
 - `reply_streaming.enabled: false`：v1 保留舊有與串流兩種回覆模式，串流由設定頁或 YAML 明確啟用。
 - `reply_streaming.semantic_wait_seconds: 0.5`：弱語意邊界預設等待上限（原為 5 s），
-  到期時若已有可獨立朗讀的子句即在該邊界釋放；控制台可在 0.5–30 s 間調整。
+  到期時若已有可獨立朗讀的子句即在該邊界釋放（由計時器觸發，不等下一個 token）；
+  控制台可在 0.5–30 s 間調整。
 - `reply_streaming.decoupled_audio_clock: false`：正式路徑維持單一 renderer-owned 音訊 producer。
 - `vad.min_silence_ms: 300`：連續靜音 300 ms 視為使用者說完。
 - `model.musetalk.mouth_continuity: true`、`mouth_continuity_idle_alignment: true`、

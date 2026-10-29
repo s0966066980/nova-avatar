@@ -50,6 +50,7 @@ AREA_BY_FILE = {
     "test_gemma_e2b.py": "llm",
     "test_default_llm_endpoint.py": "llm",
     "test_llm_quality_eval.py": "llm",
+    "test_first_sentence_rule.py": "llm",
     "test_media_fencing.py": "conversation",
     "test_mouth_continuity.py": "avatar",
     "test_mouth_quality.py": "avatar",

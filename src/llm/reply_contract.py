@@ -29,6 +29,14 @@ def guard_board_summary(text: str, *, locale: str = "zh-TW") -> str:
         return "具體內容已整理在看板，請參考各項說明與必要的注意事項。"
     return text
 
+# The first playable fragment waits for a complete sentence (ADR 0007), so a
+# short opening sentence is what lets speech start early (issue 08).
+FIRST_SENTENCE_MAX_CHARS = 15
+FIRST_SENTENCE_PROMPT = f"""【口語第一句】
+[[SPEECH]] 必須以一句 {FIRST_SENTENCE_MAX_CHARS} 字以內、可單獨聽懂的完整短句開頭，直接說出結論，並以「。」「！」或「？」結束。
+第一句不要用逗號接成長句；補充說明放在後面的句子。看板模式的口語摘要也遵守這條。
+"""
+
 AUTO_BOARD_SCHEMA_PROMPT = """For BOARD, BOARD_JSON has this required schema in words:
 the top level has title (string) and items (array).
 Each object in items has title (string) and content (string).
@@ -44,7 +52,7 @@ CHANNEL_SPLIT_PROMPT = """【口語與看板分工】
 搭配看板時，口語只說主要結論與必要前提，不逐項列舉、朗讀或複製看板細節。
 BOARD 的口語只用一句整體結論，以完整句號結束；展開說明全部放看板。
 看板模式的口語也不能把項目標題串成一句清單；不要念出每個步驟名稱或比較點。
-正確口語範例：「先確保系統能安全穩定運作，具體檢查項目已整理在看板。」
+正確口語範例：「先確保系統安全穩定，細節在看板。」
 錯誤口語範例：「三個步驟是檢查環境、設定服務、測試功能。」
 看板項目的標題與具體說明只放在 [[BOARD_JSON]]；只有 [[SPEECH]] 會被朗讀。
 口語不要用「首先、其次、最後」等方式把步驟念完，也不要逐一解說所有比較對象。

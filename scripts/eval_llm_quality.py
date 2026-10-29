@@ -7,13 +7,17 @@
 production code: the role routing decision, then the answer of the expected
 destination role with the real system prompt, reply grammar, retrieved
 knowledge or weather facts. ``report`` puts two runs side by side with the
-automatic checks: reply format, Simplified characters, spoken length cap and
-routing correctness. The user decides on the default model from that report.
+automatic checks: reply format, Simplified characters, spoken length cap, the
+short first sentence (issue 08) and routing correctness. The user decides on
+the default model from that report. ``first-sentence`` summarises one run:
+how often the reply opens with a complete sentence of at most 15 characters,
+and how long and how late the first playable fragment was.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import math
 import re
 import sys
 import time
@@ -86,6 +90,69 @@ def _visible_text(reply: dict) -> str:
     return "\n".join(parts)
 
 
+def first_sentence(speech: str) -> str:
+    """The opening sentence the production fragmenter would cut, or ``""``.
+
+    Only a sentence end counts: the semantic wait never expires here, so text
+    without one (or only a comma clause) is not a complete first sentence.
+    """
+    from src.server.reply_streaming.fragmenter import SemanticFragmenter
+
+    fragments = SemanticFragmenter(clock=lambda: 0.0).feed(speech)
+    return fragments[0] if fragments else ""
+
+
+def first_sentence_check(speech: str) -> dict:
+    """Issue 08 rule: a complete first sentence of at most 15 content characters."""
+    from src.llm.reply_contract import FIRST_SENTENCE_MAX_CHARS
+    from src.server.reply_streaming.fragmenter import content_length
+
+    first = first_sentence(speech)
+    return {"passed": bool(first) and content_length(first) <= FIRST_SENTENCE_MAX_CHARS,
+            "value": first}
+
+
+def first_fragment(chunks, *, semantic_wait_seconds: float = 0.5) -> dict | None:
+    """When the first playable fragment would leave the fragmenter.
+
+    ``chunks`` are ``(seconds, text)`` as the model streamed them. They are
+    replayed through the production protocol parser and fragmenter; between
+    chunks the semantic-wait timer may release a clause, as it does live.
+    """
+    from src.llm.response_protocol import ResponseProtocolParser
+    from src.llm.router import ReplyMode
+    from src.server.reply_streaming.fragmenter import SemanticFragmenter, content_length
+
+    now = 0.0
+    fragmenter = SemanticFragmenter(semantic_wait_seconds=semantic_wait_seconds,
+                                    clock=lambda: now)
+    parser = ResponseProtocolParser(mode=ReplyMode.AUTO, guard_board_speech=True)
+
+    def found(fragments, at):
+        if not fragments:
+            return None
+        return {"text": fragments[0], "chars": content_length(fragments[0]),
+                "seconds": round(at, 3)}
+
+    at = 0.0
+    for at, chunk in chunks:
+        remaining = fragmenter.semantic_wait_remaining()
+        if remaining is not None and now + remaining <= at:
+            released_at, now = now + remaining, at
+            if result := found(fragmenter.feed(""), released_at):
+                return result
+        now = at
+        for delta in parser.feed(chunk):
+            if result := found(fragmenter.feed(delta), at):
+                return result
+        if parser.speech_complete and (result := found(fragmenter.flush(), at)):
+            return result
+    for delta in parser.flush()[0]:
+        if result := found(fragmenter.feed(delta), at):
+            return result
+    return found(fragmenter.flush(), at)
+
+
 def check_answer(raw: str, *, max_chars: int, expected_mode: str | None = None,
                  expected_terms=()) -> dict:
     """Automatic checks of one raw reply; each is ``{"passed", "value"}``.
@@ -100,6 +167,7 @@ def check_answer(raw: str, *, max_chars: int, expected_mode: str | None = None,
         "format": {"passed": not reply["error"], "value": reply["error"]},
         "simplified": {"passed": not simplified, "value": simplified},
         "length": {"passed": spoken <= max_chars, "value": spoken},
+        "first_sentence": first_sentence_check(reply["speech"]),
     }
     if expected_mode:
         checks["mode"] = {"passed": reply["mode"] == expected_mode, "value": reply["mode"]}
@@ -138,14 +206,15 @@ def _timed_engine(config):
     from src.llm.engines.openai import OpenAILLM
 
     class TimedLLM(OpenAILLM):
-        """Keeps the raw protocol text and when the first token and speech arrived."""
+        """Keeps the raw protocol text, each chunk's arrival and the first speech."""
 
         def chat_stream(self, message, system_prompt=None, **kwargs):
             started = time.perf_counter()
-            self.raw, self.first_token, self.first_speech = "", None, None
+            self.raw, self.first_token, self.first_speech, self.chunks = "", None, None, []
             for chunk in super().chat_stream(message, system_prompt, **kwargs):
                 elapsed = time.perf_counter() - started
                 self.raw += chunk
+                self.chunks.append((elapsed, chunk))
                 if self.first_token is None:
                     self.first_token = elapsed
                 if self.first_speech is None and re.search(r"\[\[SPEECH\]\]\n\s*\S", self.raw):
@@ -154,7 +223,7 @@ def _timed_engine(config):
 
     llm = config.llm
     engine = TimedLLM(config=config, api_key=llm.api_key, base_url=llm.base_url, model=llm.model)
-    engine.raw, engine.first_token, engine.first_speech = "", None, None
+    engine.raw, engine.first_token, engine.first_speech, engine.chunks = "", None, None, []
     return engine
 
 
@@ -192,6 +261,8 @@ def _answer(question: dict, data: dict, config, profile) -> dict:
         "max_chars": config.llm.response_max_chars,
         "first_token_seconds": _rounded(engine.first_token),
         "first_speech_seconds": _rounded(engine.first_speech),
+        "first_fragment": first_fragment(
+            engine.chunks, semantic_wait_seconds=config.reply_streaming.semantic_wait_seconds),
         "total_seconds": _rounded(total),
     }
 
@@ -244,8 +315,8 @@ def run_eval(base_url: str, *, label: str, config, library: dict, data: dict,
 # many more of the 30 questions than the baseline.
 ROUTING_GAP = 2
 _CHECK_LABELS = (("format", "格式正確"), ("simplified", "無簡體字"),
-                 ("length", "口語字數未超過上限"), ("mode", "模式符合預期"),
-                 ("terms", "關鍵事實命中"))
+                 ("length", "口語字數未超過上限"), ("first_sentence", "首句 15 字內且完整"),
+                 ("mode", "模式符合預期"), ("terms", "關鍵事實命中"))
 _ROLE_LABELS = {"main": "主角色", "weather": "天氣角色"}
 
 
@@ -260,6 +331,18 @@ def _median(values) -> str:
     middle = len(values) // 2
     value = values[middle] if len(values) % 2 else (values[middle - 1] + values[middle]) / 2
     return f"{value:.2f} s"
+
+
+def _percentile(values, fraction: float):
+    """Nearest-rank percentile, or ``None`` without values."""
+    values = sorted(value for value in values if value is not None)
+    if not values:
+        return None
+    return values[max(0, math.ceil(len(values) * fraction) - 1)]
+
+
+def _fragment_value(answer: dict, key: str):
+    return (answer.get("first_fragment") or {}).get(key)
 
 
 def _answers(result: dict) -> list:
@@ -287,6 +370,12 @@ def _check_summary(answer: dict) -> str:
     parts.append("簡體✓" if simplified["passed"] else f"簡體：{simplified['value']}")
     length = checks["length"]
     parts.append(f"字數 {length['value']}/{answer['max_chars']}{'✓' if length['passed'] else '✗'}")
+    if "first_sentence" in checks:
+        from src.server.reply_streaming.fragmenter import content_length
+
+        first = checks["first_sentence"]
+        size = f"首句 {content_length(first['value'])} 字" if first["value"] else "首句未完整"
+        parts.append(size + ("✓" if first["passed"] else "✗"))
     if "mode" in checks:
         parts.append("模式✓" if checks["mode"]["passed"] else "模式✗")
     if "terms" in checks:
@@ -336,6 +425,8 @@ def build_report(baseline: dict, candidate: dict) -> str:
                        ("total_seconds", "回答總耗時 P50")):
         lines.append(f"| {label} | {_median(x[key] for x in _answers(a))} | "
                      f"{_median(x[key] for x in _answers(b))} |")
+    lines.append(f"| 首個片段 P50 | {_median(_fragment_value(x, 'seconds') for x in _answers(a))} | "
+                 f"{_median(_fragment_value(x, 'seconds') for x in _answers(b))} |")
 
     lines += ["", "## 各類別路由正確率", "", f"| 類別 | {_cell(names[0])} | {_cell(names[1])} |",
               "|---|---|---|"]
@@ -380,8 +471,64 @@ def build_report(baseline: dict, candidate: dict) -> str:
                 f"| 看板 | {_cell(_board_text(x['board']))} | {_cell(_board_text(y['board']))} |",
                 f"| 檢查 | {_cell(_check_summary(x))} | {_cell(_check_summary(y))} |",
                 f"| 首個口語 | {_cell(x['first_speech_seconds'])} s | {_cell(y['first_speech_seconds'])} s |",
+                f"| 首個片段 | {_cell(_fragment_cell(x))} | {_cell(_fragment_cell(y))} |",
             ]
         lines.append("")
+    return "\n".join(lines)
+
+
+def _fragment_cell(answer: dict) -> str:
+    fragment = answer.get("first_fragment")
+    if not fragment:
+        return "—"
+    return f"{fragment['chars']} 字，{fragment['seconds']} s：{fragment['text']}"
+
+
+def build_first_sentence_report(result: dict) -> str:
+    """Markdown summary of the issue 08 first-sentence rule for one run.
+
+    Compliance is recomputed from each raw reply, so runs recorded before the
+    check existed are summarised too; fragment timing needs a newer run.
+    """
+    from src.llm.reply_contract import FIRST_SENTENCE_MAX_CHARS
+    from src.server.reply_streaming.fragmenter import content_length
+
+    answers = [(item, item["answer"]) for item in result["items"] if item["answer"] is not None]
+    checked = [(item, first_sentence_check(parse_reply(answer["raw"])["speech"]))
+               for item, answer in answers]
+    failed = [(item, check) for item, check in checked if not check["passed"]]
+
+    def spread(key: str, unit: str) -> str:
+        values = [_fragment_value(answer, key) for _, answer in answers]
+        p50, p95 = _percentile(values, 0.5), _percentile(values, 0.95)
+        if p50 is None:
+            return "—（此次執行未記錄串流時間）"
+        return f"P50 {p50:g}{unit}，P95 {p95:g}{unit}"
+
+    lines = [
+        "<!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->",
+        f"# 首句規則遵循：{result['label']}",
+        "",
+        f"- 模型：`{result['model']}`（{result['at']}）",
+        f"- 規則：口語以一句 {FIRST_SENTENCE_MAX_CHARS} 字內、以「。」「！」「？」結束的完整句開頭。"
+        "字數以正式分段器的計法（字母、數字、漢字各算一字）計算。",
+        f"- 遵循率：{len(checked) - len(failed)}/{len(checked)}",
+        f"- 首個片段字數 P50／P95：{spread('chars', ' 字')}",
+        f"- 首個片段時間 P50／P95：{spread('seconds', ' s')}"
+        "（自送出回答請求起算，以正式分段器與語意等待計時重播串流）",
+        "",
+        "## 未遵循",
+        "",
+    ]
+    if not failed:
+        lines.append("無。")
+    else:
+        lines += ["| 題號 | 首句 | 口語 |", "|---|---|---|"]
+        for item, check in failed:
+            first = (f"{content_length(check['value'])} 字：{check['value']}"
+                     if check["value"] else "沒有完整句")
+            speech = parse_reply(item["answer"]["raw"])["speech"]
+            lines.append(f"| {item['id']} | {_cell(first)} | {_cell(speech)} |")
     return "\n".join(lines)
 
 
@@ -418,6 +565,9 @@ def main(argv=None) -> int:
     report.add_argument("--baseline", type=Path, required=True)
     report.add_argument("--candidate", type=Path, required=True)
     report.add_argument("--output", type=Path, default=EVAL_DIR / "report.md")
+    first = commands.add_parser("first-sentence", help="summarise the first-sentence rule of one run")
+    first.add_argument("--results", type=Path, required=True)
+    first.add_argument("--output", type=Path, default=EVAL_DIR / "first-sentence.md")
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -429,6 +579,8 @@ def main(argv=None) -> int:
                           config=load_config(args.config), library=ProfileStore(args.profiles).load(),
                           data=load_questions(args.questions), model=args.model)
         output = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+    elif args.command == "first-sentence":
+        output = build_first_sentence_report(json.loads(args.results.read_text("utf-8"))) + "\n"
     else:
         output = build_report(json.loads(args.baseline.read_text("utf-8")),
                               json.loads(args.candidate.read_text("utf-8"))) + "\n"
