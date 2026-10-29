@@ -892,10 +892,11 @@
             <div class="setting-form-row">
               <div class="field-label-group">
                 <span class="field-main-label">TTS 語音合成引擎</span>
+                <span v-if="ttsDraft.type === 'edgetts'" class="field-sub-hint">開發用：使用 Microsoft Edge 朗讀功能的非公開端點，無正式商用授權；場域斷網即無法發聲。</span>
               </div>
               <div class="field-control-area">
                 <select class="std-select" v-model="ttsDraft.type">
-                  <option value="edgetts">Edge-TTS (雲端免顯存 · 低延遲)</option>
+                  <option value="edgetts">Edge TTS (Development only) · 開發用</option>
                   <option value="cosyvoice">CosyVoice (本機聲音複製 · 深度神經合成)</option>
                   <option value="fun-cosyvoice3">Fun-CosyVoice3 (最新多語神經模型)</option>
                 </select>
