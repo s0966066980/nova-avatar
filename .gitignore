@@ -55,6 +55,7 @@ config/runtime_overrides.yaml
 config/ragflow_settings.yaml
 config/ragflow.env
 config/cwa.env
+config/admin.env
 config/avatar_profiles.yaml
 .local/ragflow/
 outputs/

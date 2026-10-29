@@ -57,6 +57,9 @@ See LICENSE and NOTICE.
           <i :class="isRecordingVoice ? 'bi bi-mic-fill' : 'bi bi-soundwave'"></i>
           <span>{{ voiceBadgeText || '語音待命' }}</span>
         </div>
+        <button type="button" class="nav-logout-btn" aria-label="登出控制台" title="登出控制台" @click="logout">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
       </div>
     </header>
 
@@ -476,6 +479,7 @@ import { useRuntimeSettings } from './composables/useRuntimeSettings'
 import { useRoles } from './composables/useRoles.js'
 import { canRoleInput, canRoleReturn, rolePhaseLabel } from './roleState.js'
 import { downloadMedia } from './mediaDownload.js'
+import { logout } from './adminSession.js'
 import { avatarScenePreviewUrl } from './scenePreview.js'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
@@ -1693,6 +1697,12 @@ onMounted(async () => {
   padding: 6px;
 }
 .role-message-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; }
+.nav-logout-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 999px; cursor: pointer;
+  background: transparent; border: 1px solid var(--border-default); color: var(--text-secondary);
+}
+.nav-logout-btn:hover { color: var(--text-primary); background: var(--bg-surface-hover); }
 
 .app-root-shell {
   height: 100dvh;

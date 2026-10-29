@@ -51,6 +51,7 @@ AREA_BY_FILE = {
     "test_reply_latency.py": "conversation",
     "test_realtime_avatar.py": "conversation",
     "test_response_protocol.py": "conversation",
+    "test_route_access.py": "runtime",
     "test_runtime_settings.py": "runtime",
     "test_deferred_settings.py": "runtime",
     "test_scene_background.py": "avatar",
