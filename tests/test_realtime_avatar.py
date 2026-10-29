@@ -229,14 +229,116 @@ def test_speech_onset_replaces_only_unscoped_idle_lookahead():
                            {'turn_id': 'turn', 'media_sequence': sequence}))
     handler.run_step()
     first = handler.feat_queue.get_nowait()
-    assert [event['media_sequence'] for _, _, event in first.audio_frames] == list(range(16))
+    # The first speech batch is a startup-sized batch, not a full model batch.
+    assert [event['media_sequence'] for _, _, event in first.audio_frames] == list(range(8))
     handler.run_step()
     second = handler.feat_queue.get_nowait()
-    assert [event['media_sequence'] for _, _, event in second.audio_frames] == list(range(16, 32))
+    assert [event['media_sequence'] for _, _, event in second.audio_frames] == list(range(8, 24))
     # The first voice sample is centered after the original left context.
     assert np.all(feature_inputs[0][:10 * 320] == 0)
     assert np.allclose(feature_inputs[0][10 * 320:11 * 320], .01)
-    assert first.features == [5] * 8
+    assert first.features == [5] * 4
+
+
+def _muse_handler(pending=lambda: True):
+    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+
+    class Features:
+        def audio2feat(self, _samples): return np.zeros((36, 5, 384), np.float32)
+        def feature2chunks(self, **kwargs): return [0] * kwargs['batch_size']
+    config = SimpleNamespace(model=SimpleNamespace(batch_size=8),
+                             audio=SimpleNamespace(fps=50, l=10, r=10, av_offset_ms=0))
+    parent = SimpleNamespace(tts=SimpleNamespace(has_pending_work=pending))
+    handler = MuseAudioStreamHandler(config, parent, Features())
+    handler.warm_up(); handler.run_step(); handler.feat_queue.get_nowait()
+    return handler
+
+
+def _queue_turn(handler, turn_id, sequences):
+    for sequence in sequences:
+        event = {'turn_id': turn_id, 'generation': 0, 'media_sequence': sequence}
+        if sequence == 0:
+            event['status'] = 'start'
+        handler.queue.put((np.full(320, .1, np.float32), event))
+
+
+def _finish_turn_with_idle(handler):
+    while not handler.queue.empty():
+        handler.run_step(); handler.feat_queue.get_nowait()
+    for _ in range(3):  # idle batches refill the right context with idle frames
+        handler.run_step(); handler.feat_queue.get_nowait()
+
+
+def test_each_reply_turn_starts_with_a_startup_batch_of_its_own_speech():
+    handler = _muse_handler()
+    _queue_turn(handler, 'first', range(32))
+    handler.run_step(); handler.feat_queue.get_nowait()
+    _finish_turn_with_idle(handler)
+    assert not handler.first_speech_batch_pending()
+
+    _queue_turn(handler, 'second', range(6))
+    assert handler.first_speech_batch_pending()
+    # A later turn used to emit a full batch led by 200 ms of idle lookahead.
+    assert handler.run_step() is False
+    _queue_turn(handler, 'second', range(6, 18))
+    handler.run_step()
+    batch = handler.feat_queue.get_nowait()
+    assert [(event or {}).get('media_sequence') for _, _, event in batch.audio_frames] == list(range(8))
+    assert not handler.first_speech_batch_pending()
+    handler.run_step()
+    # Later batches of the same turn use the full model batch.
+    assert handler.feat_queue.get_nowait().batch_size == 8
+
+
+def test_first_speech_runway_wait_is_bounded(monkeypatch):
+    import src.avatars.musetalk.audio_stream_handler as module
+
+    handler = _muse_handler()
+    now = [100.0]
+    monkeypatch.setattr(module.time, 'perf_counter', lambda: now[0])
+    _queue_turn(handler, 'stalled', range(6))
+    assert handler.run_step() is False
+    now[0] += .2
+    assert handler.run_step() is False
+    now[0] += .2
+    # A stalled TTS stream must not freeze idle video indefinitely.
+    assert handler.run_step() is not False
+
+
+@pytest.mark.parametrize('first_speech,expected_runs', [(True, 1), (False, 0)])
+def test_render_does_not_hold_first_speech_batch_for_a_full_batch(monkeypatch, first_speech, expected_runs):
+    from threading import Event
+    import src.avatars.musetalk.avatar as module
+
+    quit_event = Event()
+    runs = []
+    class Thread:
+        def __init__(self, **_kwargs): pass
+        def start(self): pass
+        def join(self): pass
+    monkeypatch.setattr(module, 'Thread', Thread)
+    def sleep(_seconds):
+        quit_event.set()
+    monkeypatch.setattr(module.time, 'sleep', sleep)
+    avatar = module.MuseTalkAvatar.__new__(module.MuseTalkAvatar)
+    avatar.batch_size = 8
+    avatar.max_tts_audio_wait_seconds = .35
+    avatar.init_customindex = lambda: None
+    avatar.tts = SimpleNamespace(render=lambda _: None, has_pending_work=lambda: True)
+    def run_step():
+        runs.append(True)
+        quit_event.set()
+    avatar.audio_stream = SimpleNamespace(
+        queue=SimpleNamespace(qsize=lambda: 8, empty=lambda: False),
+        startup_batch_emitted=True, startup_batch_size=4,
+        first_speech_batch_pending=lambda: first_speech,
+        feat_queue=None, output_queue=None, run_step=run_step,
+        wait_for_audio=lambda _timeout: None,
+    )
+    for name in ('input_latent_list_cycle', 'res_frame_queue', 'vae', 'unet', 'pe', 'timesteps'):
+        setattr(avatar, name, None)
+    avatar.render(quit_event, video_track=SimpleNamespace(_queue=SimpleNamespace(qsize=lambda: 6)))
+    assert len(runs) == expected_runs
 
 
 def test_completed_short_utterance_does_not_wait_for_full_lookahead():
@@ -254,9 +356,13 @@ def test_completed_short_utterance_does_not_wait_for_full_lookahead():
         handler.queue.put((np.full(320, .1, np.float32),
                            {'turn_id': 'short', 'media_sequence': sequence,
                             'fragment_end': sequence == 5}))
-    assert handler.run_step() is not False
-    batch = handler.feat_queue.get_nowait()
-    assert [event['media_sequence'] for _, _, event in batch.audio_frames if event] == list(range(6))
+    # Too short for a speech lookahead: the startup-sized batches drain the
+    # idle lookahead and then the whole utterance without waiting.
+    frames = []
+    for _ in range(2):
+        assert handler.run_step() is not False
+        frames.extend(handler.feat_queue.get_nowait().audio_frames)
+    assert [event['media_sequence'] for _, _, event in frames if event] == list(range(6))
 
 
 @pytest.mark.parametrize('queued_audio,expected_delay', [(32, []), (0, [.192])])
@@ -281,7 +387,7 @@ def test_render_throttles_only_idle_when_video_queue_is_full(monkeypatch, queued
         queue=SimpleNamespace(qsize=lambda: queued_audio, empty=lambda: queued_audio == 0),
         startup_batch_emitted=True, startup_batch_size=4,
         feat_queue=None, output_queue=None, run_step=quit_event.set,
-        wait_for_audio=delays.append,
+        wait_for_audio=delays.append, first_speech_batch_pending=lambda: False,
     )
     for name in ('input_latent_list_cycle', 'res_frame_queue', 'vae', 'unet', 'pe', 'timesteps'):
         setattr(avatar, name, None)

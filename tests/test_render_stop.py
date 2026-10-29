@@ -159,6 +159,7 @@ def test_render_stops_workers_when_its_loop_fails(monkeypatch, module_name, cls_
     avatar.audio_stream = SimpleNamespace(
         queue=SimpleNamespace(qsize=lambda: 0, empty=lambda: True),
         startup_batch_emitted=True, startup_batch_size=2,
+        first_speech_batch_pending=lambda: False,
         feat_queue=None, output_queue=None, run_step=explode,
     )
     for name in ('face_list_cycle', 'model', 'input_latent_list_cycle', 'res_frame_queue',

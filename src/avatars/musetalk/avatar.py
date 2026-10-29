@@ -623,6 +623,7 @@ class MuseTalkAvatar(BaseAvatar):
                 required_audio_frames = (
                     self.batch_size * 2
                     if self.audio_stream.startup_batch_emitted
+                    and not self.audio_stream.first_speech_batch_pending()
                     else self.audio_stream.startup_batch_size * 2
                 )
                 tts_pending = self.tts.has_pending_work()
