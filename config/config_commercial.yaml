@@ -34,8 +34,9 @@ model:
     settling_max_frames: 6
 
 tts:
-  # Edge TTS is the checked integration path. Its service and voice terms still
-  # require review for the intended distribution.
+  # Edge TTS is development only: it uses a non-public endpoint with no formal
+  # commercial license. Replace it with a commercially licensed local engine
+  # before a commercial deployment (see THIRD_PARTY_NOTICES.md).
   type: edgetts
   ref_file: zh-TW-HsiaoChenNeural
   edge_persistent_worker: true

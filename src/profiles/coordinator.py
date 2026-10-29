@@ -490,7 +490,8 @@ class RoleCoordinator:
                 await asyncio.to_thread(ensure_server, config.llm.model,
                     extra_dir=config.llm.llamacpp_dir, host=config.llm.llamacpp_host,
                     port=config.llm.llamacpp_port, ctx=config.llm.llamacpp_ctx,
-                    threads=config.llm.llamacpp_threads)
+                    threads=config.llm.llamacpp_threads,
+                    allow_partial_offload=config.llm.llamacpp_allow_partial_offload)
             self.assets, self.library = cache, target
             self.profiles_applied = True
             self.phase = "ready" if target["enabled"] else "disabled"

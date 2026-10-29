@@ -27,7 +27,9 @@ Status: resolved
   `on_shutdown` 在語音工作階段關閉後呼叫 `close_shared_session()`。
 - 回歸測試：主回答前零次模型資訊請求且用量正確、伺服器回報超容量不動記憶、切換模型更新容量、
   路由並行重用單一 client 並於關機關閉、RAG 連線重用（含並行）並於關機釋放。
-- 驗證：ruff、pyright、`scripts/check-integration.py` 通過；pytest 1087 passed，失敗僅兩個已知
-  worktree 基準失敗，另 `test_server_shutdown` 在全套負載下偶發逾時一次（該測試使用自己的
-  shutdown hook，與本變更無關，單獨重跑 10 次皆通過）。
+- 驗證（合併 03、02、11 後）：ruff、pyright、`scripts/check-integration.py` 通過；pytest 1102 passed，
+  失敗僅兩個已知 worktree 基準失敗。合併前曾見 `test_server_shutdown` 在全套負載下偶發失敗一次
+  （該測試使用自己的 shutdown hook，與本變更無關，單獨重跑 10 次皆通過）。
+- 與 03 合併：`ensure_server` 以裝飾器補上容量更新，未改動 03 的 GPU 邏輯；本票測試傳
+  `allow_partial_offload=True` 以隔離 GPU 判斷。
 - 無需實機驗證；省下的初始化時間由 issue 01 的量測工具於最終驗收一併量測。

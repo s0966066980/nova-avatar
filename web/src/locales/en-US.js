@@ -426,6 +426,7 @@ export default {
     voiceMessageFailed: 'Failed to send voice message, please try again',
     connectFirst: 'Please connect first',
     backendNotReady: 'Backend is not fully started, please wait...',
+    llmPartialGpu: 'The local LLM is not fully on the GPU, so replies will be much slower; see the llama-server startup messages in logs',
     selectAvatarFirst: 'Choose and apply a digital human engine and character in Settings first',
     historyCleared: 'Chat history cleared',
     historyClearFailed: 'Failed to clear history',

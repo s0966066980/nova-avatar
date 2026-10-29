@@ -37,6 +37,20 @@ AUDIO_PACING_JITTER = 0.002
 MAX_MEDIA_BUFFER_SECONDS = 0.240
 SPEECH_START_RUNWAY_SECONDS = VIDEO_PTIME
 
+# Renderer-only markers that idle frames carry; they do not make a frame part
+# of a reply.
+IDLE_MEDIA_MARKER_KEYS = frozenset({"avatar_epoch"})
+
+
+def _is_reply_metadata(eventpoint) -> bool:
+    """Return whether queued media carries reply metadata, not only idle markers."""
+    if eventpoint is None:
+        return False
+    if not isinstance(eventpoint, dict):
+        return True
+    return not eventpoint.keys() <= IDLE_MEDIA_MARKER_KEYS
+
+
 #from aiortc.contrib.media import MediaPlayer, MediaRelay
 #from aiortc.rtcrtpsender import RTCRtpSender
 from aiortc import (
@@ -582,7 +596,9 @@ class HumanPlayer:
         ):
             first_audio = self.__audio._queue._queue[0]
             second_audio = self.__audio._queue._queue[1]
-            if first_audio[1] is not None or second_audio[1] is not None:
+            if _is_reply_metadata(first_audio[1]) or _is_reply_metadata(
+                second_audio[1]
+            ):
                 break
             self.__audio._queue.get_nowait()
             self.__audio._queue.get_nowait()
