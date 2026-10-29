@@ -25,6 +25,7 @@ import numpy as np
 import soundfile as sf
 from av.audio.resampler import AudioResampler
 
+from src.asr.base import asr_language
 from src.asr.factory import get_asr_engine
 from src.greetings.controller import IdleGreetingController
 from src.greetings.content import GreetingError
@@ -772,8 +773,9 @@ class VoiceTurnSession:
             sf.write(wav, audio, sample_rate, format="WAV", subtype="PCM_16")
             self.mark_stage_start("asr")
             if getattr(self._asr, 'supports_language_options', False) is True:
+                language = asr_language(self._conversation['locale'])
                 result = await loop.run_in_executor(None, partial(
-                    self._asr.transcribe, wav.getvalue(), language='auto'))
+                    self._asr.transcribe, wav.getvalue(), language=language))
             else:
                 result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
             self.mark_stage_end("asr")

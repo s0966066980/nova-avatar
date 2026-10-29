@@ -21,6 +21,18 @@ from abc import ABC, abstractmethod
 
 from src.utils.logging import logger
 
+# Conversation locale -> recognizer language. A fixed language skips Whisper's
+# per-turn language detection; the conversation already says which to expect.
+_LOCALE_LANGUAGES = {"zh-TW": "zh", "en-US": "en"}
+
+
+def asr_language(locale: str) -> str:
+    """Recognizer language for a conversation locale."""
+    try:
+        return _LOCALE_LANGUAGES[locale]
+    except KeyError:
+        raise ValueError(f"不支援的語系: {locale}") from None
+
 
 class BaseASR(ABC):
     """
@@ -81,19 +93,21 @@ class BaseASR(ABC):
         # 延遲載入模型，避免啟動時耗時/佔用視訊記憶體
         self.ensure_ready()
         
+        options = {"language": language} if getattr(self, "supports_language_options", False) else {}
+        result = self._transcribe_bytes(audio_bytes, **options)
+        logger.info(
+            "[ASR] transcription completed language=%s",
+            result.get("language", "unknown"),
+        )
+        return result
+
+    def _transcribe_bytes(self, audio_bytes: bytes, **options) -> Dict[str, Any]:
+        """Recognize encoded audio; engines that decode in memory override this."""
         # 統一轉成臨時檔案，方便不同引擎複用檔案介面
         temp_audio_path = None
         try:
             temp_audio_path = self._save_temp_audio(audio_bytes)
-            options = {"language": language} if getattr(self, "supports_language_options", False) else {}
-            result = self._transcribe(temp_audio_path, **options)
-            
-            logger.info(
-                "[ASR] transcription completed language=%s",
-                result.get("language", "unknown"),
-            )
-            return result
-            
+            return self._transcribe(temp_audio_path, **options)
         finally:
             # 清理臨時檔案
             if temp_audio_path and os.path.exists(temp_audio_path):
