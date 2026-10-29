@@ -21,6 +21,8 @@ NC='\033[0m' # No Color
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # 配置檔案：相對路徑以呼叫者目錄為準，轉成絕對路徑後再切換目錄
 CONFIG_FILE="$(realpath -m -- "${1:-$PROJECT_ROOT/config/config.yaml}")"
+# shellcheck source=process-control.sh
+. "$PROJECT_ROOT/scripts/process-control.sh"
 
 if [ -f "$PROJECT_ROOT/config/ragflow.env" ]; then
     set -a
@@ -87,51 +89,16 @@ check_config() {
     echo -e "${GREEN}✓${NC} 配置檔案: $CONFIG_FILE"
 }
 
-# 檢查並清理埠
+# 檢查並清理埠：只停止本專案殘留的後端（寬限期見 process-control.sh），
+# 其他程式占用時報錯退出，不誤殺。
 check_and_kill_port() {
     local port=8010
-    
+
     echo -e "${BLUE}🔍 檢查埠 $port 是否被佔用...${NC}"
-    
-    # 查詢佔用埠的程式（只找監聽者，避免誤殺已連線的瀏覽器等用戶端）
-    local pid=$(lsof -ti:$port -sTCP:LISTEN 2>/dev/null)
-    
-    if [ -n "$pid" ]; then
-        echo -e "${YELLOW}⚠ 埠 $port 被程式 $pid 佔用${NC}"
-        
-        # 顯示程式資訊
-        local process_info=$(ps -p $pid -o pid,ppid,cmd --no-headers 2>/dev/null)
-        if [ -n "$process_info" ]; then
-            echo -e "${YELLOW}程式資訊: $process_info${NC}"
-        fi
-        
-        echo -e "${YELLOW}正在終止佔用埠的程式...${NC}"
-        kill $pid 2>/dev/null
-        
-        # 等待程式結束：後端會先關閉連線與 llama-server，最多 15 秒
-        for _ in $(seq 1 40); do
-            kill -0 $pid 2>/dev/null || break
-            sleep 0.5
-        done
-        
-        # 檢查程式是否還存在
-        if kill -0 $pid 2>/dev/null; then
-            echo -e "${YELLOW}程式未響應，強制終止...${NC}"
-            kill -9 $pid 2>/dev/null
-            sleep 1
-        fi
-        
-        # 再次檢查埠
-        local new_pid=$(lsof -ti:$port -sTCP:LISTEN 2>/dev/null)
-        if [ -n "$new_pid" ]; then
-            echo -e "${RED}❌ 無法清理埠 $port，請手動處理${NC}"
-            exit 1
-        else
-            echo -e "${GREEN}✓${NC} 埠 $port 已清理"
-        fi
-    else
-        echo -e "${GREEN}✓${NC} 埠 $port 可用"
-    fi
+    nova_clear_port "$port" '*src/server/app.py*' || exit 1
+    # 舊後端若曾被強制終止，其 CosyVoice 會成孤兒占用 GPU。
+    nova_stop_cosyvoice || true
+    echo -e "${GREEN}✓${NC} 埠 $port 可用"
 }
 
 # 啟動後端服務
