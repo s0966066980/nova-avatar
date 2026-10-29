@@ -455,8 +455,10 @@ const edgeVoiceOptions = computed(() => {
 // Reference audio and CosyVoice models come from server-side lists, never typed paths.
 const ttsVoiceOptions = computed(() => (Array.isArray(speech.tts.voices) ? speech.tts.voices : []))
 
+const TTS_MODEL_FAMILIES = { 'fun-cosyvoice3': 'cosyvoice3', breezyvoice: 'breezyvoice' }
+
 const ttsModelOptions = computed(() => {
-  const family = ttsDraft.type === 'fun-cosyvoice3' ? 'cosyvoice3' : 'cosyvoice2'
+  const family = TTS_MODEL_FAMILIES[ttsDraft.type] || 'cosyvoice2'
   return (Array.isArray(speech.tts.models) ? speech.tts.models : []).filter((item) => item.family === family)
 })
 
@@ -467,6 +469,13 @@ watch(() => sttDraft.type, () => {
 })
 
 const EDGE_VOICE_ID = /^zh-TW-.+Neural$/
+
+// BreezyVoice clones from a library recording plus what it says.
+watch(() => ttsDraft.ref_file, (voiceId) => {
+  if (ttsDraft.type !== 'breezyvoice') return
+  const voice = ttsVoiceOptions.value.find((item) => item.id === voiceId)
+  if (voice?.transcript) ttsDraft.ref_text = voice.transcript
+})
 
 watch(() => ttsDraft.type, (type, previous) => {
   if (previous === 'edgetts' && type !== 'edgetts' && EDGE_VOICE_ID.test(ttsDraft.ref_file)) {
@@ -701,13 +710,14 @@ async function refreshTtsVoices() {
   return speech.tts.voices
 }
 
-async function uploadTtsVoice(file, name = '') {
+async function uploadTtsVoice(file, name = '', transcript = '') {
   if (!file) throw new Error('請先選擇參考音訊檔')
   voiceLibraryBusy.value = true
   speechError.value = ''
   try {
     const form = new FormData()
     if (name) form.append('name', name)
+    if (transcript) form.append('transcript', transcript)
     form.append('voice', file)
     const voice = await parseJson(await fetch('/api/speech/voices', { method: 'POST', body: form }))
     await refreshTtsVoices()
