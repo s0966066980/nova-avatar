@@ -43,7 +43,7 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 | Python | 安裝腳本以 uv 管理 Python 3.10.19，保留既有 `.venv` |
 | 系統工具 | Git、FFmpeg、OpenSSL、Node.js 22+／npm、C++ 編譯工具 |
 | CUDA | PyTorch 固定 cu124；首次編譯 mmcv 需 CUDA Toolkit 12.4／`nvcc` |
-| LLM | 預設 Ollama `qwen3.5:4b`；也內建 llama.cpp 端點，可加其他服務 |
+| LLM | 預設 llama.cpp（後端自行啟動 llama-server）；Ollama 為可選端點，可加其他服務 |
 
 在專案根目錄依序執行：
 
@@ -121,8 +121,9 @@ uv run python scripts/configure-admin.py
 **LLM 端點**：可用的端點只能在 `config/config.yaml` 的 `llm.endpoints` 編輯，
 每個端點明確指定 `provider`（`llamacpp`／`ollama`／`openai`）、`base_url` 與
 `api_key`。金鑰只會送往該端點自己的網址；控制台與數位人設定檔只能選端點名稱。
-預設提供 `llamacpp`（`127.0.0.1:8080`）與 `ollama`（`localhost:11434`），
-請確認 Ollama 已啟動並有 `qwen3.5:4b`，或改用可用的模型。
+預設提供 `llamacpp`（`127.0.0.1:8080`，預設選用，後端自行啟動 llama-server）與
+`ollama`（`localhost:11434`，選用時才需要 Ollama 與其模型）。預設不需要 11434 的
+Ollama，停用方式見[安裝流程](docs/installation.md#停用預設-ollama11434)。
 
 **以主機名稱連入**：除 `localhost` 與 IP 外，其他 `Host` 一律拒絕（防 DNS
 rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 `app.allowed_hosts`。
