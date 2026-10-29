@@ -25,6 +25,7 @@ from src.llm.reply_contract import auto_reply_grammar
 from src.llm.context_usage import (
     ContextCapacityError, cached_capacity, measure_request, with_input_tokens,
 )
+from src.server.reply_streaming.metrics import timed_stage
 
 
 class OpenAILLM(BaseLLM):
@@ -187,10 +188,11 @@ class OpenAILLM(BaseLLM):
                 # Never ask the model server before the answer: the size is
                 # cached per model load and provider usage arrives with the
                 # reply. An overflow is the provider's error, handled below.
-                self.context_usage = measure_request(
-                    messages, self.max_tokens, model=self.model,
-                    capacity=cached_capacity(self.base_url) if local else None,
-                )
+                with timed_stage("model_info"):
+                    self.context_usage = measure_request(
+                        messages, self.max_tokens, model=self.model,
+                        capacity=cached_capacity(self.base_url) if local else None,
+                    )
             
             # 採用 OpenAI 相容流式介面，逐塊返回內容
             completion = self.client.chat.completions.create(

@@ -41,7 +41,7 @@ from src.llm.rules import snapshot_from_config
 from src.ragflow.client import RagFlowClient, retrieval_prompt
 from src.ragflow.settings import avatar_settings
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
-from src.server.reply_streaming.metrics import TurnMetrics
+from src.server.reply_streaming.metrics import TurnMetrics, observe_stages
 from src.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
 from src.utils.logging import logger
 from src.vad.service import create_segmenter
@@ -838,10 +838,15 @@ class VoiceTurnSession:
         if not self._is_current(turn_id, generation):
             return
         self._emit("board_clear", turn_id=turn_id)
+        if self._metrics is not None:
+            self._metrics.mark_prompt_accepted()
+        self.mark_stage_start("pre_answer")
         role_plan = None
         roles = self._role_coordinator
         if roles is not None and roles.enabled:
+            self.mark_stage_start("routing")
             role_plan = await roles.before_generate(self, text, turn_id, generation)
+            self.mark_stage_end("routing")
             if not self._is_current(turn_id, generation) or role_plan.get("cancelled"):
                 return
             if "fixed" in role_plan:
@@ -877,6 +882,7 @@ class VoiceTurnSession:
         rag_selection = self._rag_snapshot
         if rag_selection["enabled"] and rag_selection["dataset_ids"]:
             self._emit("state", state="retrieving", turn_id=turn_id)
+            self.mark_stage_start("retrieval")
             try:
                 rag_result = await RagFlowClient().retrieve(
                     text, rag_selection["dataset_ids"],
@@ -886,6 +892,7 @@ class VoiceTurnSession:
             except Exception as exc:
                 rag_result = {"status": "unavailable", "sources": []}
                 logger.warning(f"RAGFlow retrieval unavailable: {type(exc).__name__}")
+            self.mark_stage_end("retrieval")
             if not self._is_current(turn_id, generation):
                 return
             self._emit(
@@ -903,6 +910,7 @@ class VoiceTurnSession:
         if turn_context.state == TurnState.CREATED:
             turn_context.transition(TurnState.LLM_STREAMING)
 
+        self.mark_stage_end("pre_answer")
         self.mark_stage_start("llm_first_token")
         self.mark_stage_start("llm_first_speech")
         self.mark_stage_start("llm_total")
@@ -946,8 +954,11 @@ class VoiceTurnSession:
                 }
             )
 
+        report_stage = self._threadsafe_stage_reporter(loop, turn_id, generation)
+
         def _call_llm():
-            return llm_response(text, self.avatar, **kwargs)
+            with observe_stages(report_stage):
+                return llm_response(text, self.avatar, **kwargs)
 
         response = await loop.run_in_executor(None, _call_llm)
         self.mark_stage_end("llm_total")
@@ -1005,6 +1016,7 @@ class VoiceTurnSession:
         """Fixed announcements/failures use the real TTS and played-only history."""
         from src.profiles.language import fixed_text
         response = fixed_text(response, self._conversation["locale"])
+        self.mark_stage_end("pre_answer")
         if not self.is_greeting:
             prepare_spoken_history(question, self.avatar, turn_id)
         if self._turn_context is not None and self._turn_context.state == TurnState.CREATED:
@@ -1635,6 +1647,20 @@ class VoiceTurnSession:
     def mark_stage_end(self, stage: str) -> None:
         if self._metrics is not None:
             self._metrics.mark_stage_end(stage)
+
+    def _threadsafe_stage_reporter(self, loop, turn_id: str, generation: int):
+        """Deliver a worker-thread stage duration to this turn on its loop."""
+        def deliver(stage: str, seconds: float) -> None:
+            if self._metrics is not None and self._is_current(turn_id, generation):
+                self._metrics.record_stage_duration(stage, seconds)
+
+        def report(stage: str, seconds: float) -> None:
+            try:
+                loop.call_soon_threadsafe(deliver, stage, seconds)
+            except RuntimeError:
+                logger.debug("Dropped %s timing: session loop closed", stage)
+
+        return report
 
     def _on_llm_chunk(self, text: str, eventpoint: dict) -> None:
         """Forward generated text to the event loop without blocking LLM work."""

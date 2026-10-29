@@ -679,7 +679,9 @@ class BaseAvatar:
                 if not self.accepts_media(video_eventpoint, "renderer_video_retry"):
                     continue
                 break
-            if video_eventpoint is not None:
+            # Idle frames carry an avatar_epoch eventpoint; only frames of a
+            # reply batch complete the reply's video stage.
+            if turn_events:
                 self.mark_stage_end("webrtc_video_enqueue")
             self.record_video_data(combine_frame)
 
