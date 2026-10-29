@@ -1,0 +1,85 @@
+{
+  "description": "Issue 04 fixed quality set: Qwen3.5-9B vs Gemma 4 E2B. Sources: logs/voice-test-history.json (main checkout, 2026-10-30: one recorded prompt), the RAGFlow knowledge base nova_rag (one document), the 2026-10-29 reverse-handoff routing probe, and Nova Avatar role topics.",
+  "knowledge_base": {
+    "dataset": "nova_rag",
+    "snapshot": "2026-10-30",
+    "sources": [
+      {"document_name": "馬拉斯客灣", "content": "位於m87星雲"}
+    ]
+  },
+  "weather_fixture": {
+    "status": "available",
+    "source": "交通部中央氣象署",
+    "source_url": "https://opendata.cwa.gov.tw/",
+    "county": "臺北市",
+    "town": "中正區",
+    "kind": "forecast",
+    "fetched_at": "2026-10-30T20:00:00+08:00",
+    "timezone": "Asia/Taipei",
+    "issued_at": "2026-10-30T17:00:00+08:00",
+    "start_date": "2026-10-31",
+    "end_date": "2026-11-01",
+    "series": {
+      "weather": [
+        {"start": "2026-10-31T06:00:00+08:00", "end": "2026-10-31T18:00:00+08:00", "value": "多雲時陰短暫雨"},
+        {"start": "2026-11-01T06:00:00+08:00", "end": "2026-11-01T18:00:00+08:00", "value": "多雲"}
+      ],
+      "precipitation_probability_12h": [
+        {"start": "2026-10-31T06:00:00+08:00", "end": "2026-10-31T18:00:00+08:00", "value": 60},
+        {"start": "2026-11-01T06:00:00+08:00", "end": "2026-11-01T18:00:00+08:00", "value": 20}
+      ],
+      "min_temperature_c": [
+        {"start": "2026-10-31T06:00:00+08:00", "end": "2026-10-31T18:00:00+08:00", "value": 21},
+        {"start": "2026-11-01T06:00:00+08:00", "end": "2026-11-01T18:00:00+08:00", "value": 20}
+      ],
+      "max_temperature_c": [
+        {"start": "2026-10-31T06:00:00+08:00", "end": "2026-10-31T18:00:00+08:00", "value": 26},
+        {"start": "2026-11-01T06:00:00+08:00", "end": "2026-11-01T18:00:00+08:00", "value": 27}
+      ]
+    },
+    "probability_note": "一週產品的降雨機率僅前三天提供；未提供不代表 0%。"
+  },
+  "questions": [
+    {"id": "g01", "category": "general", "source": "voice-test-history", "role": "main", "text": "請只回答「語音測試正常」。不要補充其他內容。", "expected_route": "answer", "expected_mode": "SIMPLE", "expected_terms": ["語音測試正常"]},
+    {"id": "g02", "category": "general", "source": "role-topic", "role": "main", "text": "你好，你是誰？", "expected_route": "answer", "expected_mode": "SIMPLE"},
+    {"id": "g03", "category": "general", "source": "routing-probe", "role": "main", "text": "介紹你們的服務", "expected_route": "answer"},
+    {"id": "g04", "category": "general", "source": "reply-rules-example", "role": "main", "text": "請說明安裝軟體的三個步驟。", "expected_route": "answer", "expected_mode": "BOARD"},
+    {"id": "g05", "category": "general", "source": "role-topic", "role": "main", "text": "比較搭捷運和開車去臺北車站的優缺點。", "expected_route": "answer", "expected_mode": "BOARD"},
+    {"id": "g06", "category": "general", "source": "role-topic", "role": "main", "text": "謝謝你的幫忙！", "expected_route": "answer", "expected_mode": "SIMPLE"},
+    {"id": "g07", "category": "general", "source": "routing-probe", "role": "main", "text": "解釋量子力學", "expected_route": "answer"},
+    {"id": "g08", "category": "general", "source": "prewarm-prompt", "role": "main", "text": "請用一句短句說明如何保持專注。", "expected_route": "answer", "expected_mode": "SIMPLE"},
+    {"id": "g09", "category": "general", "source": "role-topic", "role": "main", "text": "臺灣最高的山是哪一座？", "expected_route": "answer", "expected_mode": "SIMPLE", "expected_terms": ["玉山"]},
+    {"id": "g10", "category": "general", "source": "routing-probe", "role": "main", "text": "比較台北和高雄的公司服務", "expected_route": "answer"},
+    {"id": "r01", "category": "rag", "source": "knowledge-base:馬拉斯客灣", "role": "main", "text": "馬拉斯客灣在哪裡？", "rag": true, "expected_route": "answer", "expected_mode": "SIMPLE", "expected_terms": ["M87"]},
+    {"id": "r02", "category": "rag", "source": "knowledge-base:馬拉斯客灣", "role": "main", "text": "請介紹一下馬拉斯客灣。", "rag": true, "expected_route": "answer", "expected_terms": ["M87"]},
+    {"id": "r03", "category": "rag", "source": "knowledge-base:馬拉斯客灣", "role": "main", "text": "馬拉斯客灣位於哪個星雲？", "rag": true, "expected_route": "answer", "expected_mode": "SIMPLE", "expected_terms": ["M87"]},
+    {"id": "r04", "category": "rag", "source": "knowledge-base:馬拉斯客灣", "role": "main", "text": "馬拉斯客灣離地球近嗎？", "rag": true, "expected_route": "answer", "expected_terms": ["M87"]},
+    {"id": "r05", "category": "rag", "source": "knowledge-base:馬拉斯客灣", "role": "main", "text": "我想去馬拉斯客灣旅遊，要怎麼去？", "rag": true, "expected_route": "answer"},
+    {"id": "r06", "category": "rag", "source": "knowledge-base:馬拉斯客灣", "role": "main", "text": "馬拉斯客灣的門票多少錢？", "rag": true, "expected_route": "answer"},
+    {"id": "w01", "category": "weather", "source": "routing-probe", "role": "weather", "text": "明天台北會下雨嗎？", "expected_route": "specialist", "expected_terms": ["60"]},
+    {"id": "w02", "category": "weather", "source": "routing-probe", "role": "weather", "text": "明天適合爬山嗎？", "history": "prior_weather", "expected_route": "specialist"},
+    {"id": "w03", "category": "weather", "source": "routing-probe", "role": "weather", "text": "那週末呢？", "history": "prior_weather", "expected_route": "specialist"},
+    {"id": "w04", "category": "weather", "source": "role-topic", "role": "weather", "text": "明天臺北市中正區最高溫幾度？", "expected_route": "specialist", "expected_terms": ["26"]},
+    {"id": "w05", "category": "weather", "source": "role-topic", "role": "weather", "text": "明天出門要帶傘嗎？", "history": "prior_weather", "expected_route": "specialist"},
+    {"id": "w06", "category": "weather", "source": "role-topic", "role": "weather", "text": "後天臺北的天氣怎麼樣？", "expected_route": "specialist"},
+    {"id": "w07", "category": "weather", "source": "routing-probe", "role": "weather", "text": "先說明天的天氣", "history": "mixed", "expected_route": "specialist"},
+    {"id": "h01", "category": "handoff", "source": "routing-probe", "role": "main", "text": "明天台北會下雨嗎？", "expected_route": "specialist"},
+    {"id": "h02", "category": "handoff", "source": "role-topic", "role": "main", "text": "這週末臺北天氣怎麼樣？", "expected_route": "specialist"},
+    {"id": "h03", "category": "handoff", "source": "role-topic", "role": "main", "text": "明天適合去陽明山爬山嗎？會不會下雨？", "expected_route": "specialist"},
+    {"id": "h04", "category": "handoff", "source": "routing-probe", "role": "weather", "text": "介紹你們的服務", "expected_route": "answer"},
+    {"id": "h05", "category": "handoff", "source": "knowledge-base:馬拉斯客灣", "role": "weather", "text": "馬拉斯客灣在哪裡？", "rag": true, "expected_route": "answer", "expected_terms": ["M87"]},
+    {"id": "h06", "category": "handoff", "source": "routing-probe", "role": "weather", "text": "明天天氣如何？也介紹一下你們的服務。", "expected_route": "clarify"},
+    {"id": "h07", "category": "handoff", "source": "routing-probe", "role": "weather", "text": "先介紹服務", "history": "mixed", "expected_route": "answer"}
+  ],
+  "histories": {
+    "prior_weather": [
+      {"role": "user", "content": "明天台北中正區的天氣如何？"},
+      {"role": "assistant", "content": "剛剛談的是台北中正區明天的天氣。"}
+    ],
+    "mixed": [
+      {"role": "user", "content": "明天天氣如何？也介紹一下你們的服務。"},
+      {"role": "assistant", "content": "您想先詢問天氣，還是服務介紹？"}
+    ]
+  },
+  "confirmed_context": {"county": "臺北市", "town": "中正區"}
+}

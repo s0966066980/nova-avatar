@@ -325,6 +325,19 @@ class FullGpuStartupTests(unittest.TestCase):
         self.assertIsNone(self.llamacpp._server_proc)
         self.assertEqual(self.llamacpp.gpu_offload_status()["full"], False)
 
+    def test_gemma_e2b_launches_without_thinking_and_with_its_vision_projector(self):
+        root = Path(self.tmp.name)
+        model = _write_gguf(root / "gemma-4-E2B_q4_0-it.gguf", 35, 3 * 1024**3)
+        projector = root / "gemma-4-E2B-it-mmproj.gguf"
+        projector.write_bytes(b"GGUF")
+        with patch.object(self.llamacpp, "cuda_free_mb", return_value=20000):
+            self.llamacpp.ensure_server(str(model), port=18080)
+        cmd = self.launched[-1]
+        self.assertEqual(cmd[cmd.index("--reasoning") + 1], "off")
+        self.assertEqual(cmd[cmd.index("--reasoning-budget") + 1], "0")
+        self.assertEqual(cmd[cmd.index("--mmproj") + 1], str(projector))
+        self.assertEqual(self._ngl(cmd), 99)
+
     def test_each_launch_is_marked_in_the_shared_log(self):
         with patch.object(self.llamacpp, "cuda_free_mb", return_value=20000):
             self.llamacpp.ensure_server(str(self.model), port=18080)

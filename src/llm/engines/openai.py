@@ -20,7 +20,7 @@ from src.llm.base import (
 )
 from src.utils.logging import logger
 from src.llm.history import HistoryTransaction, TransactionalHistory
-from src.llm.llamacpp_protocol import is_lfm25_reasoning
+from src.llm.llamacpp_protocol import is_lfm25_reasoning, thinking_request_fields
 from src.llm.reply_contract import auto_reply_grammar
 from src.llm.context_usage import (
     ContextCapacityError, cached_capacity, measure_request, with_input_tokens,
@@ -150,6 +150,7 @@ class OpenAILLM(BaseLLM):
             llm_cfg = getattr(self.config, "llm", None)
             if getattr(llm_cfg, "provider", "") == "llamacpp":
                 thinking = is_lfm25_reasoning(self.model)
+                extra_body.update(thinking_request_fields(self.model))
                 board_cfg = getattr(llm_cfg, "board", None)
                 grammar = auto_reply_grammar(
                     system_prompt, max_items=getattr(board_cfg, "max_items", 8),
