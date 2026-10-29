@@ -1,3 +1,7 @@
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Licensed under the Apache License, Version 2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 from __future__ import annotations
 
 import time
@@ -8,13 +12,18 @@ import requests
 import resampy
 
 from src.tts.base import BaseTTS
+from src.tts.voice_library import voice_path
 from src.utils.logging import logger
+
+# (connect, read) seconds: a stalled local service must not hang a TTS thread.
+REQUEST_TIMEOUT = (5, 60)
 
 
 class XTTS(BaseTTS):
     def __init__(self, config, parent):
         super().__init__(config, parent)
-        self.speaker = self.get_speaker(config.tts.ref_file, config.tts.tts_server)
+        # ref_file is a voice-library ID; only library audio is ever uploaded.
+        self.speaker = self.get_speaker(voice_path(config.tts.ref_file), config.tts.tts_server)
 
     def txt_to_audio(self, msg: tuple[str, dict]):
         text, textevent = msg
@@ -30,8 +39,13 @@ class XTTS(BaseTTS):
         )
 
     def get_speaker(self, ref_audio, server_url):
-        files = {"wav_file": ("reference.wav", open(ref_audio, "rb"))}
-        response = requests.post(f"{server_url}/clone_speaker", files=files)
+        with open(ref_audio, "rb") as handle:
+            response = requests.post(
+                f"{server_url}/clone_speaker",
+                files={"wav_file": ("reference.wav", handle)},
+                timeout=REQUEST_TIMEOUT,
+            )
+        response.raise_for_status()
         return response.json()
 
     def xtts(
@@ -46,6 +60,7 @@ class XTTS(BaseTTS):
                 f"{server_url}/tts_stream",
                 json=speaker,
                 stream=True,
+                timeout=REQUEST_TIMEOUT,
             )
             end = time.perf_counter()
             logger.info(f"xtts Time to make POST: {end-start}s")

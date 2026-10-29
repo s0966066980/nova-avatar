@@ -1,3 +1,6 @@
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Existing third-party terms remain applicable; see THIRD_PARTY_NOTICES.md.
+
 import argparse
 import os
 import cv2
@@ -8,7 +11,7 @@ from torch import optim
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from unet import Model
-import pickle
+import json
 # from unet2 import Model
 # from unet_att import Model
 
@@ -35,7 +38,7 @@ lms_dir = os.path.join(dataset_dir, "landmarks/")
 avatar_path = f"./results/avatars/{args.avatar_id}"
 full_imgs_path = f"{avatar_path}/full_imgs" 
 face_imgs_path = f"{avatar_path}/face_imgs" 
-coords_path = f"{avatar_path}/coords.pkl"
+coords_path = f"{avatar_path}/coords.json"
 pth_path = f"{avatar_path}/ultralight.pth"
 osmakedirs([avatar_path,full_imgs_path,face_imgs_path])
 
@@ -48,7 +51,7 @@ img_idx = 0
 coord_list = []
 
 net = Model(6, 'hubert').cuda()
-net.load_state_dict(torch.load(checkpoint))
+net.load_state_dict(torch.load(checkpoint, weights_only=True))
 net.eval()
 for i in range(len_img):
     if img_idx>len_img - 1:
@@ -109,8 +112,8 @@ for i in range(len_img):
     cv2.imwrite(f"{face_imgs_path}/{img_idx:08d}.png", crop_img)
     coord_list.append((xmin, ymin, xmin+w, ymin+h))
 
-with open(coords_path, 'wb') as f:
-        pickle.dump(coord_list, f)
+with open(coords_path, 'w') as f:
+        json.dump(coord_list, f, default=lambda value: value.item())
 os.system(f"cp {checkpoint} {pth_path}")
 
 # ffmpeg -i test_video.mp4 -i test_audio.pcm -c:v libx264 -c:a aac result_test.mp4

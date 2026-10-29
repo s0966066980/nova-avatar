@@ -5,7 +5,8 @@
 
 # ========================================
 # Nova Avatar - 全棧啟動指令碼
-# 與分開執行 start-backend.sh + start-frontend.sh 同一套服務
+# 建置前端（web/dist），再啟動後端；控制台與舞台由後端同源提供
+# 與分開執行 start-frontend.sh（建置）+ start-backend.sh 同一套服務
 # ========================================
 
 set -e
@@ -18,7 +19,8 @@ NC='\033[0m'
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/web"
-CONFIG_FILE="${1:-config/config.yaml}"
+# 相對路徑以呼叫者目錄為準；轉成絕對路徑，切換目錄後前後端讀到同一檔案
+CONFIG_FILE="$(realpath -m -- "${1:-$PROJECT_ROOT/config/config.yaml}")"
 BACKEND_PID=""
 RAGFLOW_OWNED=0
 RAGFLOW_STARTED=0
@@ -102,6 +104,11 @@ if [ ! -d node_modules ]; then
     echo -e "${YELLOW}📦 安裝前端依賴...${NC}"
     npm install
 fi
+echo -e "${BLUE}🔨 建置前端...${NC}"
+export CONFIG_FILE
+env -u NOVA_RAGFLOW_API_KEY -u NOVA_RAGFLOW_URL VITE_CONFIG_QUIET=1 \
+    npm --silent run build -- --logLevel warn
+echo -e "${GREEN}✓${NC} 前端已建置: $FRONTEND_DIR/dist"
 cd "$PROJECT_ROOT"
 
 clear_port() {
@@ -137,16 +144,14 @@ else
 fi
 
 clear_port 8010
-clear_port 3000
 
 PROTOCOL=$(read_protocol "$CONFIG_FILE")
 BACKEND_URL="${PROTOCOL}://localhost:8010"
-FRONTEND_URL="${PROTOCOL}://localhost:3000"
 NETWORK_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 if [ -z "$NETWORK_IP" ]; then
     NETWORK_IP="localhost"
 fi
-NETWORK_FRONTEND_URL="${PROTOCOL}://${NETWORK_IP}:3000"
+NETWORK_BACKEND_URL="${PROTOCOL}://${NETWORK_IP}:8010"
 mkdir -p "$PROJECT_ROOT/logs"
 BACKEND_LOG="$PROJECT_ROOT/logs/start-all-backend.log"
 
@@ -184,18 +189,24 @@ fi
 
 echo -e "${GREEN}✓${NC} 後端已就緒: $BACKEND_URL"
 echo ""
-echo -e "${GREEN}🌐 控制台 Local: ${NC}$FRONTEND_URL"
-echo -e "${GREEN}🌐 控制台 Network: ${NC}$NETWORK_FRONTEND_URL"
-echo -e "${GREEN}🎭 數字人舞台 Local: ${NC}$FRONTEND_URL/stage.html"
-echo -e "${GREEN}🎭 數字人舞台 Network: ${NC}$NETWORK_FRONTEND_URL/stage.html"
+echo -e "${GREEN}🌐 控制台 Local: ${NC}$BACKEND_URL"
+echo -e "${GREEN}🌐 控制台 Network: ${NC}$NETWORK_BACKEND_URL"
+if [ "$PROTOCOL" != https ]; then
+    echo -e "${YELLOW}   登入 cookie 為 Secure，區網連入控制台需在配置啟用 ssl: true${NC}"
+fi
+echo -e "${GREEN}🎭 數字人舞台 Local: ${NC}$BACKEND_URL/stage.html"
+echo -e "${YELLOW}   舞台只在本機開啟（其他電腦會被拒絕）；場域全螢幕請執行 bash scripts/start-kiosk.sh${NC}"
 if [ "$RAGFLOW_STARTED" -eq 1 ]; then
     echo -e "${GREEN}📚 RAGFlow 管理頁 Local: ${NC}http://127.0.0.1:8088"
 fi
 echo -e "${YELLOW}控制台與舞台已分流，可同時連線；設定仍在控制台。按 Ctrl+C 停止全部服務${NC}"
 echo ""
 
-cd "$FRONTEND_DIR"
-CONFIG_BASENAME=$(basename "$CONFIG_FILE" .yaml)
-export CONFIG_FILE="$CONFIG_BASENAME.yaml"
-export VITE_CONFIG_QUIET=1
-env -u NOVA_RAGFLOW_API_KEY -u NOVA_RAGFLOW_URL npm --silent run dev -- --logLevel warn
+# 後端在前景期間保持執行；後端自行結束時以其結束碼離開。
+BACKEND_STATUS=0
+wait "$BACKEND_PID" || BACKEND_STATUS=$?
+BACKEND_PID=""
+if [ "$BACKEND_STATUS" -ne 0 ]; then
+    echo -e "${RED}❌ 後端程式已結束（代碼 $BACKEND_STATUS），請檢視 $BACKEND_LOG${NC}"
+fi
+exit "$BACKEND_STATUS"

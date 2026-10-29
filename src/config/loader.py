@@ -144,6 +144,8 @@ def dict_to_config(config_dict: Dict) -> Config:
             system_prompt=str(llm_dict['system_prompt']).strip()
         )
     llm_config = LLMConfig(**llm_dict)
+    from src.llm.endpoints import freeze_endpoints
+    freeze_endpoints(llm_config)
     audio_config = AudioConfig(**config_dict.get('audio', {}))
     video_config = VideoConfig(**config_dict.get('video', {}))
     custom_video_config = CustomVideoConfig(**config_dict.get('custom_video', {}))
@@ -255,6 +257,12 @@ def load_config(
 
     # 5. 轉換為 Config 物件
     config = dict_to_config(config_dict)
+
+    # Saved TTS sources obey the same rules as settings requests: reference
+    # audio paths move into the voice library or are cleared.
+    from src.tts.voice_library import migrate_tts_config
+
+    migrate_tts_config(config.tts, where="設定檔")
     
     # 處理 -O 快捷選項
     if config.model.ernerf.O:

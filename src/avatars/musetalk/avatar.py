@@ -15,7 +15,6 @@ import time
 import torch.nn.functional as F
 import cv2
 import glob
-import pickle
 import copy
 
 import queue
@@ -36,6 +35,7 @@ from src.avatars.musetalk.audio_stream_handler import (
 )
 import asyncio
 from av import AudioFrame, VideoFrame
+from src.avatars.asset_io import coords_present, load_avatar_tensors, load_coords
 from src.avatars.base import BaseAvatar
 
 from tqdm import tqdm
@@ -199,14 +199,17 @@ def load_avatar(avatar_id):
     #self.bbox_shift = opt.bbox_shift
     avatar_path = f"./data/avatars/{avatar_id}"
     full_imgs_path = f"{avatar_path}/full_imgs" 
-    coords_path = f"{avatar_path}/coords.pkl"
     latents_out_path= f"{avatar_path}/latents.pt"
     video_out_path = f"{avatar_path}/vid_output/"
     mask_out_path =f"{avatar_path}/mask"
-    mask_coords_path =f"{avatar_path}/mask_coords.pkl"
     avatar_info_path = f"{avatar_path}/avator_info.json"
-    required = [latents_out_path, coords_path, mask_coords_path, full_imgs_path, mask_out_path]
+    required = [latents_out_path, full_imgs_path, mask_out_path]
     missing = [p for p in required if not os.path.exists(p)]
+    missing += [
+        f"{avatar_path}/{name}.json"
+        for name in ("coords", "mask_coords")
+        if not coords_present(avatar_path, name)
+    ]
     if missing:
         raise FileNotFoundError(
             f"MuseTalk 數字人素材不完整: {avatar_path}\n"
@@ -216,14 +219,12 @@ def load_avatar(avatar_id):
             f"--avatar_id {avatar_id} --file /path/to/silent_video.mp4"
         )
 
-    input_latent_list_cycle = torch.load(latents_out_path)  #,weights_only=True
-    with open(coords_path, 'rb') as f:
-        coord_list_cycle = pickle.load(f)
+    input_latent_list_cycle = load_avatar_tensors(latents_out_path)
+    coord_list_cycle = load_coords(avatar_path, "coords")
     input_img_list = glob.glob(os.path.join(full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
     input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
     frame_list_cycle = read_imgs(input_img_list)
-    with open(mask_coords_path, 'rb') as f:
-        mask_coords_list_cycle = pickle.load(f)
+    mask_coords_list_cycle = load_coords(avatar_path, "mask_coords")
     input_mask_list = glob.glob(os.path.join(mask_out_path, '*.[jpJP][pnPN]*[gG]'))
     input_mask_list = sorted(input_mask_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
     mask_list_cycle = read_imgs(input_mask_list)

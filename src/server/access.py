@@ -104,6 +104,7 @@ CONVERSATION = "/api/conversations/{sessionid}"
 ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     # Public
     ("GET", "/health"): PUBLIC,
+    ("GET", "/"): PUBLIC,
     ("GET", STATIC_FRONTEND): PUBLIC,
     ("GET", "/api/session"): PUBLIC,
     ("POST", "/api/login"): PUBLIC,
@@ -150,7 +151,9 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     ("GET", "/api/speech"): ADMIN,
     ("POST", "/api/speech/stt"): ADMIN,
     ("POST", "/api/speech/tts"): ADMIN,
-    ("POST", "/api/speech/path-picker"): ADMIN,
+    ("GET", "/api/speech/voices"): ADMIN,
+    ("POST", "/api/speech/voices"): ADMIN,
+    ("DELETE", "/api/speech/voices/{voice_id}"): ADMIN,
     ("GET", "/api/llm/models"): ADMIN,
     ("POST", "/api/llm/model"): ADMIN,
     ("PUT", "/api/llm/behavior"): ADMIN,

@@ -1,0 +1,451 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+"""Reference-audio library and the TTS inputs that may name files, models or servers."""
+
+from __future__ import annotations
+
+import asyncio
+import io
+import logging
+import sys
+from copy import deepcopy
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import aiohttp
+import numpy as np
+import pytest
+import soundfile as sf
+import yaml
+
+from src.config.schema import Config
+from src.server.state import state
+from src.tts import voice_library
+from src.tts.voice_library import VoiceLibraryError
+from tests.access_helpers import access_client, same_origin
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+UNSAFE_REFERENCES = [
+    "/etc/passwd",
+    "config/ragflow.env",
+    str(PROJECT_ROOT / "config" / "ragflow.env"),
+    "../config/admin.env",
+    "zh-TW-HsiaoChenNeural/../../etc/passwd",
+]
+EXTERNAL_SERVERS = [
+    "http://evil.example:8020",
+    "http://192.168.50.9:8020",
+    "http://127.0.0.1@evil.example:8020",
+    "https://8.8.8.8",
+    "file:///etc/passwd",
+    "http://127.0.0.1:8020/upload?x=1",
+]
+
+
+def wav_bytes(seconds: float = 1.0, rate: int = 16000, fmt: str = "WAV") -> bytes:
+    t = np.arange(int(seconds * rate)) / rate
+    buffer = io.BytesIO()
+    sf.write(buffer, (0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32), rate, format=fmt)
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def voices(tmp_path, monkeypatch):
+    root = tmp_path / "voices"
+    monkeypatch.setattr(voice_library, "VOICES_ROOT", root)
+    return root
+
+
+@pytest.fixture
+def stored_voice(voices, tmp_path):
+    source = tmp_path / "clip.wav"
+    source.write_bytes(wav_bytes())
+    return voice_library.add_voice(source, "clip")["id"]
+
+
+@pytest.fixture
+def server_config():
+    previous = state.config
+    state.config = Config()
+    yield state.config
+    state.config = previous
+
+
+# ---------------------------------------------------------------- library
+
+
+def test_upload_is_converted_to_a_wav_in_the_library(voices, tmp_path):
+    source = tmp_path / "speaker.flac"
+    source.write_bytes(wav_bytes(seconds=1.5, rate=44100, fmt="FLAC"))
+    voice = voice_library.add_voice(source, "講者 A")
+    assert voice_library.VOICE_ID.fullmatch(voice["id"])
+    stored = voices / f"{voice['id']}.wav"
+    assert voice_library.voice_path(voice["id"]) == stored
+    audio, rate = sf.read(stored)
+    assert audio.ndim == 1 and rate == 44100
+    assert abs(len(audio) / rate - 1.5) < 0.05
+    assert voice_library.list_voices() == [voice]
+    assert voice["name"] == "講者 A"
+    # The same audio is the same voice.
+    assert voice_library.add_voice(source, "again")["id"] == voice["id"]
+    archived = voice_library.delete_voice(voice["id"])
+    assert voice_library.list_voices() == []
+    assert not stored.exists()
+    # Deleted voices go to the recycle bin rather than being erased.
+    assert archived.parent == voices / ".deleted"
+    assert sorted(path.name for path in archived.iterdir()) == [f"{voice['id']}.json", f"{voice['id']}.wav"]
+
+
+@pytest.mark.parametrize("content", [
+    b"root:x:0:0:root:/root:/bin/bash\n",
+    b"#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\nfile:///etc/passwd\n#EXT-X-ENDLIST\n",
+    b"ffconcat version 1.0\nfile '/etc/passwd'\n",
+    b"",
+])
+def test_non_audio_uploads_are_rejected(voices, tmp_path, content):
+    source = tmp_path / "upload.wav"
+    source.write_bytes(content)
+    with pytest.raises(VoiceLibraryError):
+        voice_library.add_voice(source, "bad")
+    assert voice_library.list_voices() == []
+
+
+def test_overlong_audio_is_rejected_from_its_header(voices, tmp_path, monkeypatch):
+    monkeypatch.setattr(voice_library, "MAX_SECONDS", 2.0)
+    source = tmp_path / "long.wav"
+    source.write_bytes(wav_bytes(seconds=3.0))
+    with pytest.raises(VoiceLibraryError, match="秒"):
+        voice_library.add_voice(source, "long")
+    assert voice_library.list_voices() == []
+
+
+@pytest.mark.parametrize("voice_id", ["", "../voices", "/etc/passwd", "ABCDEF0123456789", "0" * 15, "0" * 16])
+def test_unknown_or_malformed_ids_do_not_resolve(voices, voice_id):
+    with pytest.raises(VoiceLibraryError):
+        voice_library.voice_path(voice_id)
+
+
+# ---------------------------------------------------------------- input rules
+
+
+@pytest.mark.parametrize("engine", ["xtts", "gpt-sovits", "indextts2", "cosyvoice", "fun-cosyvoice3"])
+@pytest.mark.parametrize("reference", UNSAFE_REFERENCES)
+def test_reference_audio_engines_only_accept_library_ids(voices, stored_voice, engine, reference):
+    with pytest.raises(VoiceLibraryError):
+        voice_library.check_reference(engine, reference)
+    assert voice_library.check_reference(engine, stored_voice) == stored_voice
+
+
+@pytest.mark.parametrize("reference", UNSAFE_REFERENCES)
+def test_server_side_references_cannot_be_paths(reference):
+    for engine in ("edgetts", "fishtts"):
+        with pytest.raises(VoiceLibraryError):
+            voice_library.check_reference(engine, reference)
+    assert voice_library.check_reference("fishtts", "narrator_01") == "narrator_01"
+
+
+@pytest.mark.parametrize("server", EXTERNAL_SERVERS)
+def test_tts_server_must_be_loopback(server):
+    with pytest.raises(VoiceLibraryError):
+        voice_library.check_tts_server(server)
+
+
+@pytest.mark.parametrize("server, normalized", [
+    ("http://127.0.0.1:9880", "http://127.0.0.1:9880"),
+    ("http://localhost:8020/", "http://localhost:8020"),
+    ("http://[::1]:50000", "http://[::1]:50000"),
+    ("", ""),
+])
+def test_loopback_tts_servers_are_accepted(server, normalized):
+    assert voice_library.check_tts_server(server) == normalized
+
+
+def test_tts_models_come_from_the_models_folder(tmp_path, monkeypatch):
+    from src.tts import cosyvoice_runtime as runtime
+
+    models = tmp_path / "models"
+    (models / "Fun-CosyVoice3-0.5B").mkdir(parents=True)
+    (models / "Fun-CosyVoice3-0.5B" / "cosyvoice3.yaml").write_text("")
+    (models / "tts" / "CosyVoice2-0.5B").mkdir(parents=True)
+    (models / "tts" / "CosyVoice2-0.5B" / "cosyvoice2.yaml").write_text("")
+    (models / "whisper-small").mkdir()
+    monkeypatch.setattr(runtime, "MODELS_ROOT", models)
+    assert runtime.local_models() == [
+        {"id": "Fun-CosyVoice3-0.5B", "family": "cosyvoice3"},
+        {"id": "tts/CosyVoice2-0.5B", "family": "cosyvoice2"},
+    ]
+    assert runtime.resolve_model_dir("tts/CosyVoice2-0.5B") == models / "tts" / "CosyVoice2-0.5B"
+    for bad in ("/tmp", str(models / "whisper-small"), "../models/Fun-CosyVoice3-0.5B", "whisper-small"):
+        with pytest.raises(FileNotFoundError):
+            runtime.resolve_model_dir(bad)
+    with pytest.raises(FileNotFoundError):
+        runtime.resolve_model_dir("Fun-CosyVoice3-0.5B", family="cosyvoice2")
+
+
+# ---------------------------------------------------------------- HTTP regression
+
+
+def run(coro):
+    return asyncio.run(coro)
+
+
+def tts_engine_spy():
+    return patch("src.tts.factory.create_tts_engine", side_effect=AssertionError("engine must not start"))
+
+
+@pytest.mark.parametrize("reference", UNSAFE_REFERENCES)
+@pytest.mark.parametrize("engine", ["xtts", "gpt-sovits", "cosyvoice"])
+def test_tts_request_with_file_path_reference_is_rejected(voices, server_config, engine, reference):
+    async def scenario():
+        async with access_client() as client:
+            response = await client.post("/api/speech/tts", headers=same_origin(client), json={
+                "type": engine, "ref_file": reference, "tts_server": "http://127.0.0.1:8020",
+            })
+            assert response.status == 400, await response.text()
+    with tts_engine_spy(), patch("src.tts.cosyvoice_runtime.ensure_server") as ensure, \
+            patch("src.server.runtime_settings._engine_available", return_value=True):
+        run(scenario())
+    ensure.assert_not_called()
+    assert server_config.tts.ref_file == Config().tts.ref_file
+
+
+@pytest.mark.parametrize("server", EXTERNAL_SERVERS)
+def test_tts_request_with_external_server_is_rejected(voices, stored_voice, server_config, server):
+    async def scenario():
+        async with access_client() as client:
+            response = await client.post("/api/speech/tts", headers=same_origin(client), json={
+                "type": "xtts", "ref_file": stored_voice, "tts_server": server,
+            })
+            assert response.status == 400, await response.text()
+    with tts_engine_spy(), patch("src.server.runtime_settings._engine_available", return_value=True):
+        run(scenario())
+    assert server_config.tts.tts_server == Config().tts.tts_server
+
+
+def test_tts_request_with_model_directory_outside_catalog_is_rejected(voices, server_config):
+    async def scenario():
+        async with access_client() as client:
+            response = await client.post("/api/speech/tts", headers=same_origin(client), json={
+                "type": "cosyvoice", "model": "/tmp",
+            })
+            assert response.status == 400, await response.text()
+    with tts_engine_spy(), patch("src.tts.cosyvoice_runtime.subprocess.Popen") as popen, \
+            patch("src.server.runtime_settings._engine_available", return_value=True):
+        run(scenario())
+    popen.assert_not_called()
+
+
+def test_unsafe_tts_request_is_rejected_even_while_peers_are_connected(voices, server_config, monkeypatch, tmp_path):
+    monkeypatch.setattr(state, "avatar_streams", {1: object()})
+    monkeypatch.setattr(state, "config_path", str(tmp_path / "config.yaml"))
+
+    async def scenario():
+        async with access_client() as client:
+            response = await client.post("/api/speech/tts", headers=same_origin(client), json={
+                "type": "xtts", "ref_file": "/etc/passwd", "tts_server": "http://127.0.0.1:8020",
+            })
+            assert response.status == 400, await response.text()
+    run(scenario())
+    assert not (tmp_path / "pending_settings.json").exists()
+
+
+def test_path_picker_route_is_gone(server_config):
+    async def scenario():
+        async with access_client() as client:
+            response = await client.post("/api/speech/path-picker", headers=same_origin(client), json={"kind": "file"})
+            assert response.status in {404, 405}
+    run(scenario())
+
+
+def test_voice_library_routes_upload_list_and_delete(voices, server_config):
+    async def scenario():
+        async with access_client() as client:
+            form = aiohttp.FormData()
+            form.add_field("name", "接待員")
+            form.add_field("voice", wav_bytes(), filename="ref.wav", content_type="audio/wav")
+            response = await client.post("/api/speech/voices", headers=same_origin(client), data=form)
+            assert response.status == 200, await response.text()
+            voice = (await response.json())["data"]
+            assert voice["name"] == "接待員"
+            listed = await (await client.get("/api/speech/voices")).json()
+            assert listed["data"]["items"] == [voice]
+            speech = await (await client.get("/api/speech")).json()
+            assert speech["data"]["tts"]["voices"] == [voice]
+
+            form = aiohttp.FormData()
+            form.add_field("voice", b"root:x:0:0:root", filename="passwd.wav", content_type="audio/wav")
+            response = await client.post("/api/speech/voices", headers=same_origin(client), data=form)
+            assert response.status == 400
+
+            server_config.tts.type, server_config.tts.ref_file = "xtts", voice["id"]
+            response = await client.delete(f"/api/speech/voices/{voice['id']}", headers=same_origin(client))
+            assert response.status == 409
+            server_config.tts.type, server_config.tts.ref_file = "edgetts", "zh-TW-HsiaoChenNeural"
+            response = await client.delete(f"/api/speech/voices/{voice['id']}", headers=same_origin(client))
+            assert response.status == 200
+            response = await client.delete("/api/speech/voices/..%2F..%2Fetc", headers=same_origin(client))
+            assert response.status == 404
+        async with access_client(admin=False) as client:
+            assert (await client.get("/api/speech/voices")).status == 401
+    run(scenario())
+    assert sorted(path.name for path in voices.iterdir()) == [".deleted"]
+
+
+def test_oversized_voice_upload_is_rejected_and_cleaned(voices, server_config, monkeypatch):
+    monkeypatch.setattr(voice_library, "MAX_UPLOAD_BYTES", 1024)
+
+    async def scenario():
+        async with access_client() as client:
+            form = aiohttp.FormData()
+            form.add_field("voice", wav_bytes(), filename="ref.wav", content_type="audio/wav")
+            response = await client.post("/api/speech/voices", headers=same_origin(client), data=form)
+            assert response.status == 413
+    run(scenario())
+    assert list(voices.iterdir()) == []
+
+
+# ---------------------------------------------------------------- stored settings
+
+
+def test_saved_paths_migrate_into_the_library_or_are_cleared(voices, tmp_path, monkeypatch, caplog):
+    allowed = tmp_path / "data" / "tts"
+    allowed.mkdir(parents=True)
+    (allowed / "host.wav").write_bytes(wav_bytes())
+    outside = tmp_path / "outside.wav"
+    outside.write_bytes(wav_bytes(seconds=0.8))
+    monkeypatch.setattr(voice_library, "MIGRATION_ROOTS", (tmp_path / "data",))
+
+    values = {"type": "xtts", "ref_file": str(allowed / "host.wav"), "tts_server": "http://127.0.0.1:8020", "model": ""}
+    assert voice_library.migrate_tts_values(values, where="test") is True
+    assert voice_library.voice_path(values["ref_file"]).is_file()
+    assert voice_library.migrate_tts_values(values, where="test") is False
+
+    with caplog.at_level(logging.WARNING):
+        for reference in (str(outside), "/etc/passwd", str(allowed / ".." / ".." / "outside.wav")):
+            values = {"type": "cosyvoice", "ref_file": reference, "tts_server": "http://evil.example", "model": "/tmp"}
+            assert voice_library.migrate_tts_values(values, where="test") is True
+            assert values == {"type": "cosyvoice", "ref_file": "", "tts_server": "", "model": ""}
+    assert "ref_file" in caplog.text and "tts_server" in caplog.text
+    assert len(voice_library.list_voices()) == 1
+
+
+def test_load_config_migrates_runtime_override_paths(voices, tmp_path, monkeypatch):
+    from src.config import loader, overrides
+
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(yaml.safe_dump({"tts": {"type": "xtts", "ref_file": "/etc/passwd",
+                                                   "tts_server": "http://evil.example:8020"}}))
+    monkeypatch.setattr(overrides, "RUNTIME_OVERRIDES_FILE", tmp_path / "missing.yaml")
+    config = loader.load_config(str(config_file))
+    assert config.tts.ref_file == ""
+    assert config.tts.tts_server == ""
+
+
+def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, stored_voice, tmp_path, monkeypatch):
+    from src.profiles.store import ProfileError, ProfileStore
+
+    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    config = Config()
+    config.model.avatar_id = "musetalk_angela"
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    library = store.initialize(config)
+    for change in ({"type": "xtts", "ref_file": "/etc/passwd"},
+                   {"type": "xtts", "ref_file": stored_voice, "tts_server": "http://evil.example:8020"},
+                   {"type": "cosyvoice", "ref_file": "", "model": "/tmp"}):
+        attempt = deepcopy(library)
+        attempt["profiles"][0]["tts"].update(change)
+        with pytest.raises(ProfileError):
+            store.save(attempt, expected_revision=library["revision"])
+    good = deepcopy(library)
+    good["profiles"][0]["tts"].update(type="xtts", ref_file=stored_voice, tts_server="http://127.0.0.1:8020")
+    library = store.save(good, expected_revision=library["revision"])
+
+    raw = yaml.safe_load(store.path.read_text("utf-8"))
+    raw["profiles"][0]["tts"].update(ref_file="/etc/passwd", tts_server="http://evil.example:8020")
+    store.path.write_text(yaml.safe_dump(raw, allow_unicode=True), "utf-8")
+    loaded = store.initialize(config)
+    assert loaded["profiles"][0]["tts"]["ref_file"] == ""
+    assert loaded["profiles"][0]["tts"]["tts_server"] == ""
+    assert "/etc/passwd" not in store.path.read_text("utf-8")
+
+
+# ---------------------------------------------------------------- engine clients
+
+
+def engine_config(**tts):
+    defaults = dict(ref_file="", ref_text="", tts_server="http://127.0.0.1:8020", type="xtts")
+    return SimpleNamespace(audio=SimpleNamespace(fps=50), tts=SimpleNamespace(**{**defaults, **tts}))
+
+
+def test_xtts_uploads_only_the_library_file_with_a_timeout(voices, stored_voice):
+    from src.tts.engines import xtts
+
+    opened = []
+    real_open = open
+
+    def tracking_open(*args, **kwargs):
+        handle = real_open(*args, **kwargs)
+        opened.append((args[0], handle))
+        return handle
+
+    response = MagicMock()
+    response.json.return_value = {"gpt_cond_latent": [], "speaker_embedding": []}
+    with patch.object(xtts.requests, "post", return_value=response) as post, \
+            patch("builtins.open", tracking_open):
+        engine = xtts.XTTS(engine_config(ref_file=stored_voice), MagicMock())
+    assert engine.speaker == response.json.return_value
+    assert post.call_args.kwargs.get("timeout")
+    assert [str(path) for path, _ in opened] == [str(voices / f"{stored_voice}.wav")]
+    assert all(handle.closed for _, handle in opened)
+
+    with patch.object(xtts.requests, "post") as post:
+        with pytest.raises(VoiceLibraryError):
+            xtts.XTTS(engine_config(ref_file="/etc/passwd"), MagicMock())
+    post.assert_not_called()
+
+    with patch.object(xtts.requests, "post", return_value=MagicMock(status_code=200, iter_content=lambda chunk_size=None: iter(()))) as post:
+        list(engine.xtts("你好", {}, "zh-cn", "http://127.0.0.1:8020", "20"))
+    assert post.call_args.kwargs.get("timeout")
+
+
+def test_fish_requests_have_a_timeout():
+    from src.tts.engines import fish
+
+    engine = fish.FishTTS(engine_config(type="fishtts", ref_file="narrator"), MagicMock())
+    with patch.object(fish.requests, "post", return_value=MagicMock(status_code=200, iter_content=lambda chunk_size=None: iter(()))) as post:
+        list(engine.fish_speech("你好", "narrator", "", "zh", "http://127.0.0.1:8080"))
+    assert post.call_args.kwargs.get("timeout")
+
+
+def test_indextts2_client_uses_a_timeout_and_the_library_file(voices, stored_voice, monkeypatch):
+    fake = ModuleType("gradio_client")
+    fake.Client = MagicMock()
+    fake.handle_file = lambda path: ("handled", path)
+    monkeypatch.setitem(sys.modules, "gradio_client", fake)
+    from src.tts.engines import indextts2
+
+    engine = indextts2.IndexTTS2(engine_config(type="indextts2", ref_file=stored_voice), MagicMock())
+    kwargs = fake.Client.call_args.kwargs
+    assert kwargs.get("httpx_kwargs", {}).get("timeout")
+    assert engine.ref_audio_path == str(voices / f"{stored_voice}.wav")
+    with pytest.raises(VoiceLibraryError):
+        indextts2.IndexTTS2(engine_config(type="indextts2", ref_file="/etc/passwd"), MagicMock())
+
+
+def test_cosyvoice_prompt_comes_from_the_library(voices, stored_voice, tmp_path, monkeypatch):
+    from src.tts.engines.cosyvoice import CosyVoiceTTS
+
+    monkeypatch.setattr("src.tts.cosyvoice_runtime.get_project_root", lambda: tmp_path)
+    engine = CosyVoiceTTS.__new__(CosyVoiceTTS)
+    engine.config = engine_config(type="cosyvoice", ref_file=stored_voice)
+    with patch("src.tts.engines.cosyvoice.prepare_prompt_wav", side_effect=lambda path: path) as prepare:
+        assert engine._prompt_wav() == str(voices / f"{stored_voice}.wav")
+    prepare.assert_called_once()
+    engine.config = engine_config(type="cosyvoice", ref_file="/etc/passwd")
+    with patch("src.tts.engines.cosyvoice.prepare_prompt_wav") as prepare, \
+            patch("src.tts.engines.cosyvoice.DEFAULT_PROMPT_WAV", tmp_path / "missing.wav"):
+        with pytest.raises(VoiceLibraryError):
+            engine._prompt_wav()
+    prepare.assert_not_called()

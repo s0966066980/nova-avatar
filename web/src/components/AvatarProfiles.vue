@@ -39,7 +39,7 @@
           </aside>
           <section v-if="profile" class="role-card role-editor-card">
             <div class="role-editor-title"><div><h3>{{ profile.name }}</h3><p>目前編輯的數位人 · {{ profile.id }}</p></div><span v-if="roleRuntime.active_profile_id === profile.id">目前作用中</span></div>
-            <AvatarProfileEditor ref="editorRef" v-model="draft.profiles[profileIndex]" :avatars="runtime.characters" :providers="providers" :initial-section="initialSection" :disabled="busy" @restore-rules="restoreRules" />
+            <AvatarProfileEditor ref="editorRef" v-model="draft.profiles[profileIndex]" :avatars="runtime.characters" :endpoints="endpoints" :initial-section="initialSection" :disabled="busy" @restore-rules="restoreRules" />
           </section>
         </div>
         <div v-show="workspace === 'handoff'" class="role-handoff">
@@ -91,7 +91,7 @@ import AvatarProfileEditor from './AvatarProfileEditor.vue'
 const props = defineProps({ initialSection: { type: String, default: 'identity' } })
 const { libraryRuntime: roleRuntime, roleRequest, roleLibrary } = useRoles()
 const { runtime } = useRuntimeSettings()
-const draft = ref(null), selected = ref(''), media = ref([]), providers = ref({}), defaults = ref(null)
+const draft = ref(null), selected = ref(''), media = ref([]), endpoints = ref([]), defaults = ref(null)
 const busy = ref(false), error = ref(''), notice = ref(''), savedText = ref(''), edgeSource = ref(''), edgeTarget = ref('')
 const workspace = ref('profiles'), editorRef = ref(null), reloadPending = ref(false)
 let adopting = false
@@ -107,7 +107,7 @@ const pairError = computed(() => {
   const specialist = draft.value.profiles.find(p => p.id === draft.value.pair.specialist)
   if (!main || !specialist || main.id === specialist.id) return '主角色與專門角色需選擇不同設定檔。'
   if ([main, specialist].some(p => p.engine !== 'musetalk')) return '即時角色組合需要兩位 MuseTalk 數位人。'
-  if (['provider','model','base_url'].some(key => main.llm[key] !== specialist.llm[key])) return '兩位角色的模型服務、模型名稱與服務網址需一致。請分別在 AI 模型與規則中調整。'
+  if (['endpoint','model'].some(key => main.llm[key] !== specialist.llm[key])) return '兩位角色的 LLM 端點與模型名稱需一致。請分別在 AI 模型與規則中調整。'
   if (main.tts.type !== specialist.tts.type) return '兩位角色需使用同一語音合成引擎，聲線可各自設定。'
   return ''
 })
@@ -127,7 +127,7 @@ function adopt(data) {
 async function load() {
   adopt(await roleRequest())
   // Model discovery is optional; a manual model name remains editable offline.
-  try { const r = await fetch('/api/llm/models'); const j = await r.json(); providers.value = j.data?.providers || {} } catch { /* Keep manual entry available. */ }
+  try { const r = await fetch('/api/llm/models'); const j = await r.json(); endpoints.value = j.data?.endpoints || [] } catch { /* Keep manual entry available. */ }
   try { const r = await fetch('/api/llm/rules'); const j = await r.json(); defaults.value = j.data?.defaults || null } catch { /* The editor retains existing rules. */ }
 }
 function requestReload() { if (dirty.value) reloadPending.value = true; else run(load) }

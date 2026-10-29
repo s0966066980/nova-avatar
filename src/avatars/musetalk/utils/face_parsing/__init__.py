@@ -1,3 +1,8 @@
+# Portions derived from MuseTalk and bundled face-parsing code.
+# MuseTalk copyright (c) 2024 Tencent Music Entertainment Group; MIT License.
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Existing third-party author notices remain applicable.
+
 import torch
 import time
 import os
@@ -82,9 +87,9 @@ class FaceParsing():
         net = BiSeNet(resnet_path)
         if torch.cuda.is_available():
             net.cuda()
-            net.load_state_dict(torch.load(model_pth)) 
+            net.load_state_dict(torch.load(model_pth, weights_only=True))
         else:
-            net.load_state_dict(torch.load(model_pth, map_location=torch.device('cpu')))
+            net.load_state_dict(torch.load(model_pth, map_location=torch.device('cpu'), weights_only=True))
         net.eval()
         return net
 

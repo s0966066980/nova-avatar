@@ -1,3 +1,7 @@
+# Derived from Kedreamix/Linly-Talker-Stream.
+# Licensed under the Apache License, Version 2.0.
+# Modified by HongXian0903, 2026. See LICENSE and NOTICE.
+
 from __future__ import annotations
 
 import time
@@ -9,6 +13,9 @@ import resampy
 
 from src.tts.base import BaseTTS, State
 from src.utils.logging import logger
+
+# (connect, read) seconds: a stalled local service must not hang a TTS thread.
+REQUEST_TIMEOUT = (5, 60)
 
 
 class FishTTS(BaseTTS):
@@ -44,6 +51,7 @@ class FishTTS(BaseTTS):
                 headers={
                     "content-type": "application/json",
                 },
+                timeout=REQUEST_TIMEOUT,
             )
             end = time.perf_counter()
             logger.info(f"fish_speech Time to make POST: {end-start}s")

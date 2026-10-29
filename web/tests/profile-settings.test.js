@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readFileSync } from 'node:fs'
 import { h } from 'vue'
 import { loadComponent, mount, all, button, textContent, settle } from './helpers/componentHarness.js'
 
@@ -14,7 +15,7 @@ const Component = await loadComponent(new URL('../src/components/AvatarProfiles.
 test('切換設定檔保留各自草稿，複製互不影響，儲存與套用使用同一份版本', async t => {
   const previousFetch = globalThis.fetch
   const makeProfile = (id, name) => ({ id, name, avatar_id: 'shared_visual', engine: 'musetalk',
-    llm: { provider: 'ollama', model: 'local-model', base_url: 'http://localhost:11434/v1' },
+    llm: { endpoint: 'local', model: 'local-model' },
     tts: { type: 'edgetts' }, rag: { enabled: false, dataset_ids: [], document_scope: 'all', document_ids: [] } })
   let library = { enabled: false, revision: 1, profiles: [makeProfile('main','接待員'), makeProfile('weather','氣象員')],
     pair: { main: 'main', specialist: 'weather' }, transitions: [],
@@ -33,7 +34,7 @@ test('切換設定檔保留各自草稿，複製互不影響，儲存與套用�
       return result({ code: 0, library: structuredClone(library), runtime: runtime(), media: [] })
     }
     if (url === '/api/profiles/apply') { requests.push('apply'); activeRevision = library.revision; return result({ code: 0, runtime: runtime() }) }
-    if (url === '/api/llm/models') return result({ code: 0, data: { providers: {} } })
+    if (url === '/api/llm/models') return result({ code: 0, data: { endpoints: [{ name: 'local', provider: 'llamacpp', base_url: 'http://127.0.0.1:8080/v1', models: [] }] } })
     if (url === '/api/llm/rules') return result({ code: 0, data: { defaults: {} } })
     throw Error(`Unexpected endpoint: ${url}`)
   }
@@ -79,4 +80,12 @@ test('切換設定檔保留各自草稿，複製互不影響，儲存與套用�
   assert.equal(requests[1], 'apply')
   assert.equal(activeRevision, 2)
   assert.ok(textContent(view.root).includes('下一場對話採用'))
+})
+
+test('數位人設定檔只選擇伺服器設定的 LLM 端點，不能填寫服務網址', () => {
+  const editor = readFileSync(new URL('../src/components/AvatarProfileEditor.vue', import.meta.url), 'utf8')
+  assert.match(editor, /v-model="profile\.llm\.endpoint"/)
+  assert.doesNotMatch(editor, /v-model="profile\.llm\.(base_url|provider)"/)
+  const profiles = readFileSync(new URL('../src/components/AvatarProfiles.vue', import.meta.url), 'utf8')
+  assert.match(profiles, /\['endpoint','model'\]/)
 })
