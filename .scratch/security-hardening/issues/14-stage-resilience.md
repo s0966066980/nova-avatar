@@ -17,5 +17,5 @@ Status: resolved
 - 新增 `web/src/stageConnection.js`：`fetchJsonWithTimeout` 以 `AbortController` 加上與回應內容讀取共用的逾時（並以 `Promise.race` 保證上限）；輪詢 4 秒、`/offer` 15 秒、整體連線看門狗 25 秒。
 - `stage.html`：三處 fetch 全改用逾時包裝；`connect()` 啟動看門狗，卡在「連線中」逾時即拆掉本次嘗試、露出重試按鈕並依退避自動重連（kiosk 與一般舞台皆是）；每次 connect/teardown 換編號，逾時後才回來的舊嘗試（如麥克風授權）會釋放音軌、不送 offer。
 - data channel 補 `onclose`／`onerror`：停用互動並自動重連；同一連線的 peer 失敗與通道關閉只處理一次，不重複拉長退避。一般舞台 peer 失敗仍維持手動「重新連線」（既有測試的行為）。
-- 未把 inline script 整段抽成模組（多個既有測試以正規式讀取 stage.html）；改以 `eslint-plugin-html`（devDependency）讓 `npm run lint` 涵蓋 `stage.html`，順手修掉兩個空 catch。舞台 vm 測試 harness 移到 `web/tests/helpers/stageHarness.js` 共用。
-- 測試：`web/tests/stage-connection.test.js`、`web/tests/stage-resilience.test.js`；`npm run lint`／`npm test`（188 通過）／`npm run build`、ruff、check-integration 通過。pytest 798 通過，2 個失敗為 worktree 缺模型權重／OCR 環境所致，與本票無關。
+- 未把 inline script 整段抽成模組（多個既有測試以正規式讀取 stage.html）；改以 `eslint-plugin-html@8.2.1`（devDependency，固定版本）讓 `npm run lint` 涵蓋 `stage.html`，順手修掉兩個空 catch。舞台 vm 測試 harness 移到 `web/tests/helpers/stageHarness.js` 共用。
+- 測試：`web/tests/stage-connection.test.js`、`web/tests/stage-resilience.test.js`；`npm run lint`／`npm test`（合併後 193 通過）／`npm run build`、ruff、check-integration 通過。pytest 798 通過，2 個失敗為 worktree 缺模型權重／OCR 環境所致，與本票無關。

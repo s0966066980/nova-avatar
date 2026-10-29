@@ -22,6 +22,9 @@ export default [
   {
     files: ['src/**/*.{js,vue}'],
     languageOptions: { globals: globals.browser },
+    // Raw HTML sinks must go through src/markdown.js and carry a reviewed
+    // single-line disable comment.
+    rules: { 'vue/no-v-html': 'error' },
   },
   {
     // 公開舞台的 inline module script 也要納入 lint；其他 .html 為原型頁，不在守門範圍。
