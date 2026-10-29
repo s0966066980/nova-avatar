@@ -12,6 +12,7 @@ import os
 import signal
 import threading
 
+from pathlib import Path
 from aiohttp import web
 import aiohttp_cors
 
@@ -37,13 +38,13 @@ HTTP_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 async def profile_settings_guard(request, handler):
     roles = getattr(state, "roles", None)
     if roles and getattr(roles, "profiles_applied", False) and request.method in {"POST", "PUT"} and request.path in {
-        "/api/llm/model", "/api/llm/rules", "/api/ragflow/settings",
+        "/api/llm/model", "/api/llm/rules", "/api/llm/behavior", "/api/ragflow/settings",
     }:
         return web.json_response({"code": -1, "msg": "請至數位人設定檔修改模型、規則與知識範圍並套用"}, status=409)
     if roles and roles.enabled and request.path == "/humanaudio" and request.method == "POST":
         return web.json_response({"code": -1, "msg": "角色組合請使用即時麥克風或文字對話"}, status=409)
     if roles and roles.enabled and request.method in {"POST", "PUT"} and request.path in {
-        "/api/llm/model", "/api/llm/rules", "/api/avatar", "/api/avatar/quality",
+        "/api/llm/model", "/api/llm/rules", "/api/llm/behavior", "/api/avatar", "/api/avatar/quality",
         "/api/speech/tts", "/api/ragflow/settings",
     }:
         return web.json_response({"code": -1, "msg": "角色組合啟用中，請至數位人設定檔修改並套用"}, status=409)
@@ -52,6 +53,7 @@ async def profile_settings_guard(request, handler):
 
 async def on_shutdown(app):
     """伺服器關閉時的清理操作"""
+    state.shutting_down = True
     if state.roles is not None:
         await state.roles.close()
     coros = [pc.close() for pc in state.pcs]
@@ -63,6 +65,8 @@ async def on_shutdown(app):
             await session.close()
         except Exception:
             logger.exception("關閉語音工作階段失敗")
+    from src.tts.engines.edge import shutdown_edge_tts
+    await asyncio.to_thread(shutdown_edge_tts)
     shutdown_llama_server()
     shutdown_cosyvoice_server()
     scene_service.close()
@@ -70,12 +74,22 @@ async def on_shutdown(app):
 
 def create_app():
     """建立並配置 aiohttp 應用"""
+    state.shutting_down = False
     # 單獨設定較大的請求體上限，方便上傳音影片
     # Leave space for multipart headers around the 100 MB background asset.
     app = web.Application(client_max_size=1024**2*101, middlewares=[profile_settings_guard])
+    from src.server.routes.attachments import register as register_attachments
+    register_attachments(app)
+    from src.server import conversations
+    app.router.add_get('/api/conversations', conversations.list_conversations)
+    app.router.add_post('/api/conversations/defaults', conversations.save_defaults)
+    app.router.add_post(r'/api/conversations/{sessionid:\d+}', conversations.update_conversation)
+    app.router.add_post(r'/api/conversations/{sessionid:\d+}/clear', conversations.clear_conversation)
     app.on_shutdown.append(on_shutdown)
     async def prepare_roles(app):
         if state.config is not None and state.config_path:
+            from src.server.deferred_settings import apply_pending
+            await apply_pending()
             await initialize_roles(state)
     app.on_startup.append(prepare_roles)
     register_profile_routes(app)
@@ -101,10 +115,12 @@ def create_app():
     app.router.add_post("/api/ragflow/test", routes.test_ragflow_retrieval)
     app.router.add_get("/api/llm/models", routes.list_llm_models)
     app.router.add_post("/api/llm/model", routes.set_llm_model)
+    app.router.add_put("/api/llm/behavior", routes.set_llm_behavior)
     app.router.add_get("/api/llm/rules", routes.get_llm_rules)
     app.router.add_put("/api/llm/rules", routes.set_llm_rules)
     app.router.add_post("/api/avatar", routes.set_avatar)
     app.router.add_post("/api/avatar/quality", routes.set_mouth_quality)
+    app.router.add_post("/api/avatar/output", routes.set_video_output)
     app.router.add_get("/api/vad", routes.get_vad_settings)
     app.router.add_post("/api/vad", routes.set_vad_settings)
     app.router.add_get("/api/speech", routes.get_speech_settings)
@@ -132,7 +148,8 @@ def create_app():
     app.router.add_post("/api/voice-tests/run", routes.run_voice_test)
     app.router.add_delete("/api/voice-tests", routes.clear_voice_tests)
     # 前端靜態資源託管
-    app.router.add_static('/', path='web')
+    frontend = Path('web/dist')
+    app.router.add_static('/', path=frontend if (frontend / 'index.html').is_file() else Path('web'))
     
     # 寬鬆 CORS 方便本地除錯和跨域訪問
     cors = aiohttp_cors.setup(app, defaults={
@@ -182,7 +199,10 @@ def run_server(app, config):
     
     # 標記可用，供健康檢查使用
     state.server_ready = True
-    logger.info('✅ 服務已就緒，可以接受連線')
+    if getattr(state, "reply_prewarm_ready", True):
+        logger.info('✅ 服務已就緒，可以接受連線')
+    else:
+        logger.warning('回覆預熱未完成；健康檢查未就緒，暫不接受對話')
     
     def _run():
         # 獨立事件迴圈，避免與外部執行緒衝突

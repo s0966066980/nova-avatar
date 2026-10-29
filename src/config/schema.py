@@ -201,6 +201,7 @@ class ModelConfig:
 
 @dataclass
 class TTSConfig:
+    voice_en_us: str = "en-US-JennyNeural"
     """TTS 配置"""
     type: str = "edgetts"  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | indextts2 | xtts
     mode: str = "auto"  # auto | zero_shot | cross_lingual | instruct
@@ -337,7 +338,13 @@ class VideoConfig:
     width: int = 450
     height: int = 450
     fps: int = 25
-    max_height: int = 0  # 0 preserves the source; shrink before compositing/encoding
+    # Zero preserves source size. Apply after mouth/transition geometry and
+    # before scene compositing and encoding; never stretch or upscale.
+    max_height: int = 0
+
+    def __post_init__(self):
+        if self.max_height != 0 and self.max_height < 2:
+            raise ValueError("video.max_height must be zero or at least 2")
 
 
 @dataclass
@@ -369,6 +376,7 @@ class GreetingConfig:
     """Per-avatar proactive content; disabled by the stage by default."""
     mode: str = "scripts"
     scripts: List[str] = field(default_factory=list)
+    scripts_en: List[str] = field(default_factory=list)
     prompt: str = ""
     min_chars: int = 20
     max_chars: int = 60
@@ -379,9 +387,19 @@ class StageConfig:
     """數字人舞台顯示配置。"""
     background_id: str = ""
     caption_max_chars: int = 120
-    idle_reset_seconds: int = 10
+    idle_reset_seconds: int = 60
     idle_greeting_enabled: bool = False
-    idle_greeting_seconds: float = 60.0
+    idle_greeting_seconds: float = 30.0
+    clear_display_seconds: int = 15
+    composer_enabled: bool = False
+    composer_x: int = 50
+    composer_y: int = 78
+    composer_width: int = 90
+    composer_height: int = 220
+    composer_font_size: int = 16
+    composer_opacity: int = 92
+    composer_placeholder_zh: str = '輸入問題，或附上 PDF／圖片'
+    composer_placeholder_en: str = 'Ask a question or attach a PDF / image'
     caption_x: int = 50
     caption_y: int = 90
     caption_width: int = 100
@@ -401,6 +419,15 @@ class StageConfig:
 
 
 @dataclass
+class ConversationConfig:
+    """New-session defaults, separate from the assistant's identity."""
+    locale: str = "zh-TW"
+    history_max_messages: int = 20
+    voice_zh_tw: str = "zh-TW-HsiaoChenNeural"
+    voice_en_us: str = "en-US-JennyNeural"
+
+
+@dataclass
 class Config:
     """全域性配置"""
     app: AppConfig = field(default_factory=AppConfig)
@@ -415,6 +442,7 @@ class Config:
     reply_streaming: ReplyStreamingConfig = field(default_factory=ReplyStreamingConfig)
     stage: StageConfig = field(default_factory=StageConfig)
     greeting: GreetingConfig = field(default_factory=GreetingConfig)
+    conversation: ConversationConfig = field(default_factory=ConversationConfig)
     
     # 其他動態配置
     sessionid: int = 0

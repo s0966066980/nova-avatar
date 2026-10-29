@@ -54,16 +54,29 @@ test('切換設定檔保留各自草稿，複製互不影響，儲存與套用�
   await settle()
   input().props.onInput({ target: { value: '第三位數位人' } })
   await settle()
+  button(view.root, '角色組合、交接與轉場').props.onClick()
+  await settle()
+  for (const [label, value] of [
+    ['中文返回交接說明', '接下來請主數位人為您介紹。'],
+    ['英文返回交接說明', 'Our main avatar will introduce our services.']
+  ]) {
+    const field = all(view.root, n => n.type === 'label' && textContent(n).includes(label))[0]
+    assert.ok(field, `提供有標籤的${label}欄位`)
+    all(field, n => n.type === 'textarea')[0].props['onUpdate:modelValue'](value)
+  }
+  await settle()
   all(view.root, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} })
   await settle()
   assert.equal(library.profiles.length, 3)
   assert.equal(library.profiles[0].name, '更新的接待員')
   assert.equal(library.profiles[2].name, '第三位數位人')
+  assert.equal(library.handoff.return_announcement, '接下來請主數位人為您介紹。')
+  assert.equal(library.handoff.return_announcement_en, 'Our main avatar will introduce our services.')
   assert.ok(textContent(view.root).includes('已儲存，尚未套用'))
   button(view.root, '儲存並套用').props.onClick()
   await settle()
   assert.equal(requests[0].expected_revision, 1)
   assert.equal(requests[1], 'apply')
   assert.equal(activeRevision, 2)
-  assert.ok(textContent(view.root).includes('主數位人的完整設定已套用'))
+  assert.ok(textContent(view.root).includes('下一場對話採用'))
 })

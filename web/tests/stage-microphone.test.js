@@ -5,6 +5,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
+import { stageText, stageItemCount } from '../src/stageLocale.js'
+import { composerSettings } from '../src/conversationAttachments.js'
 import { stageErrorMessage } from '../src/stageErrorMessage.js'
 import { canRoleInput, canRoleReturn } from '../src/roleState.js'
 import { StageCaptionWindow } from '../src/stageCaptionWindow.js'
@@ -18,7 +20,7 @@ import {
 const html = readFileSync(new URL('../stage.html', import.meta.url), 'utf8')
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
 
-function stageHarness({ search = '' } = {}) {
+function stageHarness({ search = '', composerEnabled = false, microphoneDenied = false } = {}) {
   const elements = new Map()
   const element = (id) => {
     if (!elements.has(id)) {
@@ -28,6 +30,7 @@ function stageHarness({ search = '' } = {}) {
         hidden: false,
         disabled: id === 'mic',
         dataset: {},
+        querySelectorAll: () => [],
         style: { setProperty() {} },
         classList: { add() {}, remove() {}, toggle() {} },
         textContent: '',
@@ -44,6 +47,8 @@ function stageHarness({ search = '' } = {}) {
   }
   const sent = []
   const fetchCalls = []
+  const offers = []
+  const microphoneRequests = []
   const timers = []
   const track = { enabled: false, readyState: 'live', muted: false, stop() {} }
   let channel
@@ -62,11 +67,16 @@ function stageHarness({ search = '' } = {}) {
     close() {}
   }
   const context = {
+    stageText, stageItemCount, composerSettings,
+    reactive: value => value, createApp: () => ({ mount() {} }), h: () => null,
+    queueMicrotask,
     document: { getElementById: element },
     window: { ResizeObserver: null, location: { search } },
-    navigator: { mediaDevices: { getUserMedia: async () => ({
-      getAudioTracks: () => [track], getTracks: () => [track]
-    }) } },
+    navigator: { mediaDevices: { getUserMedia: async options => {
+      microphoneRequests.push(options)
+      if (microphoneDenied) throw new Error('Permission denied')
+      return { getAudioTracks: () => [track], getTracks: () => [track] }
+    } } },
     RTCPeerConnection: Peer,
     RTCSessionDescription: class { constructor(value) { Object.assign(this, value) } },
     MediaStream: class { getTracks() { return [] } addTrack() {} },
@@ -94,11 +104,15 @@ function stageHarness({ search = '' } = {}) {
     STAGE_BOARD_PREVIEW_ITEMS: [],
     STAGE_BOARD_PREVIEW_TITLE: '',
     placeStageBoard: () => ({ width: 200, height: 200, left: 0, top: 0 }),
-    fetch: async (url) => (fetchCalls.push(url), { ok: true, json: async () => {
-      if (url === '/api/vad') return { data: { enabled: true } }
-      if (url === '/api/stage') return { data: {} }
-      return { sessionid: 7, sdp: 'answer', type: 'answer' }
-    } }),
+    fetch: async (url, options) => {
+      fetchCalls.push(url)
+      if (url === '/offer') offers.push(JSON.parse(options.body))
+      return { ok: true, json: async () => {
+        if (url === '/api/vad') return { data: { enabled: true } }
+        if (url === '/api/stage') return { data: { composer_enabled: composerEnabled } }
+        return { sessionid: 7, sdp: 'answer', type: 'answer' }
+      } }
+    },
     setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length },
     clearTimeout() {},
     setInterval() {},
@@ -109,6 +123,8 @@ function stageHarness({ search = '' } = {}) {
   return {
     sent,
     fetchCalls,
+    offers,
+    microphoneRequests,
     timers,
     peerState(value) { peer.connectionState = value; peer.onconnectionstatechange() },
     track,
@@ -122,6 +138,41 @@ function stageHarness({ search = '' } = {}) {
     event(data) { channel.onmessage({ data: JSON.stringify(data) }) },
   }
 }
+
+test('啟用文字附件的舞台進入後也會自動收音，不必再點麥克風', async () => {
+  const stage = stageHarness({ composerEnabled: true })
+  await stage.connect()
+  assert.equal(stage.microphoneRequests.length, 1)
+  assert.equal(stage.offers[0].has_microphone, true)
+  assert.equal(stage.track.enabled, true)
+  assert.deepEqual(stage.sent.filter(message => message.type === 'capture').at(-1), {
+    type: 'capture', enabled: true, finalize: false, manual_pause: false
+  })
+})
+
+test('舞台拒絕麥克風權限時仍可連線使用文字附件', async () => {
+  const stage = stageHarness({ composerEnabled: true, microphoneDenied: true })
+  await stage.connect()
+  assert.equal(stage.microphoneRequests.length, 1)
+  assert.equal(stage.offers[0].has_microphone, false)
+  assert.equal(stage.track.enabled, false)
+  assert.equal(stage.sent.some(message => message.type === 'capture' && message.enabled), false)
+  assert.equal(stage.element('veil').hidden, true)
+})
+
+test('舞台暫停後重新進入會恢復自動收音', async () => {
+  const stage = stageHarness()
+  await stage.connect()
+  stage.element('mic').dispatch('pointerdown')
+  stage.element('mic').dispatch('pointerup')
+  assert.equal(stage.track.enabled, false)
+  stage.peerState('failed')
+  await stage.connect()
+  assert.equal(stage.track.enabled, true)
+  assert.deepEqual(stage.sent.filter(message => message.type === 'capture').at(-1), {
+    type: 'capture', enabled: true, finalize: false, manual_pause: false
+  })
+})
 
 test('舞台插話的按下與鬆開不會在多輪後關閉收音', async () => {
   const stage = stageHarness()
@@ -155,7 +206,7 @@ test('暫停中的舞台插話會同步恢復前後端收音狀態', async () =>
   assert.equal(stage.track.enabled, true)
   assert.equal(stage.element('hint').textContent, '直接說話')
   assert.deepEqual(stage.sent.slice(-2), [
-    { type: 'capture', enabled: true, finalize: false },
+    { type: 'capture', enabled: true, finalize: false, manual_pause: false },
     { type: 'interrupt' },
   ])
 })
@@ -215,32 +266,29 @@ test('對話重置事件清除舞台字幕、看板與使用者字句，但不�
   assert.equal(stage.element('veil').hidden, true)
 })
 
-test('控制台測試的提問與已播回答顯示在舞台，切回訪客模式會更新目前問答', async () => {
+test('舞台忽略舊同步展示事件並保持自己的收音及問答', async () => {
   const stage = stageHarness()
   await stage.connect()
-  stage.event({ seq: 1, type: 'role_state', enabled: true, phase: 'ready', mode: 'console' })
+  stage.event({ seq: 1, type: 'role_state', enabled: true, phase: 'ready' })
   stage.event({ seq: 2, type: 'user_transcript', turn_id: 'console-turn', text: '控制台的問題', mirrored: true })
-  stage.event({ seq: 3, type: 'assistant_fragment', turn_id: 'console-turn', text: '測試中的已播回答', mirrored: true })
-  assert.equal(stage.element('said').textContent, '控制台的問題')
-  assert.equal(stage.element('reply').textContent, '測試中的已播回答')
-  assert.equal(stage.element('mic').disabled, true)
-  stage.event({ seq: 4, type: 'presentation_reset' })
+  stage.event({ seq: 3, type: 'assistant_fragment', turn_id: 'console-turn', text: '控制台回答', mirrored: true })
   assert.equal(stage.element('said').textContent, '')
   assert.equal(stage.element('reply').textContent, '')
-  stage.event({ seq: 5, type: 'role_state', enabled: true, phase: 'ready', mode: 'visitor' })
-  stage.event({ seq: 6, type: 'user_transcript', turn_id: 'visitor-turn', text: '舞台目前的問題' })
-  stage.event({ seq: 7, type: 'assistant_fragment', turn_id: 'visitor-turn', text: '舞台目前的已播回答' })
-  assert.equal(stage.element('said').textContent, '舞台目前的問題')
-  assert.equal(stage.element('reply').textContent, '舞台目前的已播回答')
+  assert.equal(stage.track.enabled, true)
+  assert.equal(stage.element('mic').disabled, false)
+  stage.event({ seq: 4, type: 'user_transcript', turn_id: 'stage-turn', text: '舞台問題' })
+  stage.event({ seq: 5, type: 'assistant_fragment', turn_id: 'stage-turn', text: '舞台回答' })
+  assert.equal(stage.element('said').textContent, '舞台問題')
+  assert.equal(stage.element('reply').textContent, '舞台回答')
 })
 
-test('角色轉場與控制台測試暫停舞台收音，恢復時不重建連線', async () => {
+test('只有此場角色轉場才暫停舞台收音，恢復時不重建連線', async () => {
   const stage = stageHarness()
   await stage.connect()
   const offers = stage.fetchCalls.filter(url => url === '/offer').length
   stage.event({ seq: 1, type: 'role_state', enabled: true, phase: 'ready', mode: 'console' })
-  assert.equal(stage.track.enabled, false)
-  assert.equal(stage.element('mic').disabled, true)
+  assert.equal(stage.track.enabled, true)
+  assert.equal(stage.element('mic').disabled, false)
   stage.event({ seq: 2, type: 'role_state', enabled: true, phase: 'transition', mode: 'visitor' })
   assert.equal(stage.track.enabled, false)
   stage.event({ seq: 3, type: 'role_state', enabled: true, phase: 'ready', mode: 'visitor', can_return: true })

@@ -123,3 +123,21 @@ MuseTalk、STT 和語言模型一起估算），文件批量解析降至一次�
 
 RAGFlow 與 BGE-M3 是第三方元件，相關來源與授權界限見
 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)。
+
+## PC 與主機 Ollama 模型統一（選用）
+
+此移植保留既有獨立嵌入服務；不會自動改變工作區、知識庫或預設模型。
+管理者明確執行以下命令才啟用共用服務：
+
+```bash
+bash scripts/ragflow.sh unify-models
+# 之後立即同步新下載的模型
+bash scripts/ragflow.sh sync-models
+```
+
+啟用前檢查 BGE-M3 嵌入維度與原服務向量一致，保留既有模型引用，再將
+服務指向 `http://host.docker.internal:11436`，透過本機 Docker bridge
+轉送至主機 Ollama。主機既有 Ollama 仍由原服務管理。
+背景同步每 30 秒只加入新模型，不刪模型、不改管理者已選預設。
+`up`／`down` 同時管理已啟用的轉送與同步服務；本次不搬 Jetson 的資料卷。
+共用模式的 GPU 駐留由主機 Ollama 管理，須與即時數位人及 STT 一起評估。

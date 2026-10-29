@@ -85,3 +85,8 @@ src/omni/
 results/
 .local/kiosk-profile/
 .local/tensorrt/
+.local/jetson-to-pc-port/
+.local/ocr-packages/
+
+# Saved resource changes awaiting all peers to disconnect.
+config/pending_settings.json

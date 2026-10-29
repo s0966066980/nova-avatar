@@ -35,6 +35,7 @@ async def human(request):
                 "code": 0,
                 "msg": "ok",
                 "response": response_text,
+                **started,
             }
         elif params['type'] == 'chat':
             voice_session = state.voice_sessions.get(sessionid)
@@ -42,9 +43,30 @@ async def human(request):
                 raise web.HTTPConflict(text="語音工作階段尚未連線")
             if not getattr(voice_session, "event_sink_ready", True):
                 raise web.HTTPConflict(text="回覆事件通道尚未就緒，請稍後再試")
+            if getattr(voice_session, '_presenter', 'console') == 'stage' and not getattr(state.config.stage, 'composer_enabled', False):
+                raise web.HTTPConflict(text='composer_disabled')
+            store = getattr(voice_session, 'attachments', None)
+            selection = params.get('attachments', store.selection if store else [])
+            try:
+                if store:
+                    store.validate_selection(selection)
+                elif selection:
+                    raise ValueError('missing_attachment')
+            except ValueError as exc:
+                raise web.HTTPBadRequest(text=str(exc)) from exc
+            if selection:
+                import asyncio
+                from src.server.attachments import vision_ready
+                if not await asyncio.to_thread(vision_ready, voice_session.config):
+                    raise web.HTTPConflict(text='vision_unavailable')
+            request_id = params.get('request_id')
+            if request_id is not None and (not isinstance(request_id, str) or not 1 <= len(request_id) <= 64):
+                raise web.HTTPBadRequest(text='invalid_request')
             started = await voice_session.start_text_turn(
-                params['text'],
+                params.get('text', ''),
                 interrupt=bool(params.get('interrupt')),
+                **({'attachments': selection} if store else {}),
+                **({'request_id': request_id} if request_id else {}),
             )
             response_payload = {
                 "code": 0,
@@ -78,9 +100,12 @@ async def interrupt_talk(request):
         voice_session = state.voice_sessions.get(sessionid)
         if voice_session is not None:
             roles = getattr(state, 'roles', None)
-            if roles is not None and roles.enabled and not roles.input_allowed(voice_session):
-                raise ValueError("目前由另一個輸入來源接收問題，請使用角色停止操作")
-            await voice_session.interrupt()
+            if roles is not None and not roles.input_allowed(voice_session):
+                raise ValueError("目前角色正在轉場，請稍候")
+            if params.get('request_id'):
+                await voice_session.cancel_text_request(params['request_id'])
+            else:
+                await voice_session.interrupt()
         else:
             state.avatar_streams[sessionid].flush_talk()
         
@@ -119,12 +144,15 @@ async def clear_history(request):
         params = await request.json()
         sessionid = params.get('sessionid', 0)
         
-        roles = getattr(state, 'roles', None)
-        voice = state.voice_sessions.get(sessionid)
-        if roles is not None and roles.enabled and voice is not None:
-            if not voice._is_conversation_idle():
-                await voice.interrupt()
-            voice.reset_conversation()
+        voice_session = state.voice_sessions.get(sessionid)
+        if voice_session is not None:
+            capture, paused = voice_session._capture_requested, voice_session._manual_pause
+            try:
+                await voice_session.interrupt()
+                voice_session.reset_conversation(return_to_main=False)
+            finally:
+                voice_session._capture_requested, voice_session._manual_pause = capture, paused
+                voice_session._refresh_gate()
         else:
             clear_session_history(sessionid)
         

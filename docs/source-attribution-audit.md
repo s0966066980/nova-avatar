@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Source Attribution Audit
 
-Updated: 2026-09-25
+Updated: 2026-10-29
 
 This is the maintained classification record for Nova Avatar source roots. It
 does not relicense code, models, weights, voices, datasets, or services. The
@@ -43,3 +43,37 @@ retain or add the source-specific notice required by that classification.
 
 The remaining per-file provenance review is intentionally tracked as ongoing
 maintenance, not represented as complete by this root-level audit.
+
+## 2026-10-29: Independent conversations
+
+The conversation coordinators, presentation module, deferred resource settings,
+related tests and domain documents are Nova Avatar-authored Apache-2.0 files.
+Changes to inherited voice/WebRTC lifecycle, server state, LLM service and web
+application files retain their existing upstream and modification notices.
+No bundled third-party source or license was modified by this change.
+
+The pending-submission interruption fix retains the inherited App and voice
+session notices. The shared composer, regression tests and conversation docs
+are Nova Avatar-authored Apache-2.0 files; no third-party source was changed.
+
+The reverse role handoff change updates Nova Avatar-authored profile routing,
+coordination, persistence, default content, settings UI and regression tests.
+The inherited voice session retains its existing upstream and modification
+notice. No bundled third-party code, model or license notice was changed.
+
+The console idle-reset update retains the inherited voice session and settings
+panel notices, and updates Nova Avatar-authored conversation coordination,
+session metadata, memory UI, tests and documentation. No third-party code or
+license notice was changed.
+
+The weather-context capacity fix changes Nova Avatar-authored weather prompt
+transport and regression coverage. Source facts in validation fixtures retain
+CWA source metadata; no model weights, third-party implementation or license
+notice was changed.
+
+The console layout update retains the inherited App and settings-panel notices.
+The console stylesheet carries an explicit modification notice and points to
+the root LICENSE and NOTICE. The conversation and voice-test panels, behavioral
+regression tests, design notes and layout preview retain Nova Avatar Apache-2.0
+headers. No third-party implementation, model, weight or license was changed;
+the Wav2Lip Research / Non-commercial label is retained.

@@ -45,7 +45,7 @@ def test_required_content(value):
 def test_old_config_and_profiles_default_off(tmp_path):
     config = dict_to_config({})
     assert config.stage.idle_greeting_enabled is False
-    assert config.stage.idle_greeting_seconds == 60
+    assert config.stage.idle_greeting_seconds == 30
     library = ProfileStore(tmp_path / 'roles.yaml').initialize(config)
     for p in library['profiles']:
         p.pop('greeting')
@@ -150,20 +150,19 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(session._gate_open)
         self.assertFalse(session._conversation_dirty)
 
-    async def test_waits_for_clear_without_restarting_expired_deadline(self):
+    async def test_starts_a_fresh_interval_only_after_visitor_records_are_cleared(self):
         session, _ = self.make()
-        session._conversation_dirty = True
         self.ready(session)
+        session._conversation_dirty = True
+        session.greetings.tick()
+        self.assertIsNone(session.greetings.deadline)
         self.now = 60
         session.greetings.tick()
-        self.assertEqual(session.greetings.status, 'waiting_clear')
         self.assertIsNone(session.greetings.preparation)
-        self.now = 120
         session.reset_conversation()
         session.greetings.tick()
-        await session.greetings.preparation
-        self.assertTrue(session.is_greeting)
-        self.assertFalse(session._conversation_dirty)
+        self.assertEqual(session.greetings.deadline, 120)
+        self.assertIsNone(session.greetings.preparation)
 
     async def test_visitor_cancels_ai_and_late_result_cannot_queue(self):
         session, _ = self.make()
@@ -379,16 +378,16 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.addCleanup(service.remove_session, 333)
         draft['tts']['ref_file'] = 'draft-voice'
         request = SimpleNamespace(json=AsyncMock(return_value={'profile': draft, 'sessionid': 333}))
-        state.roles.mode = 'visitor'
+        voice._presenter = 'stage'
         self.assertEqual((await routes.greeting_try(request)).status, 409)
-        state.roles.mode = 'console'
+        voice._presenter = 'console'
         response = await routes.greeting_try(request)
         self.assertEqual(response.status, 202)
         self.assertEqual(avatar.messages[-1][0], '未儲存的招呼草稿')
         self.assertEqual(avatar.tts.config.tts.ref_file, 'draft-voice')
         self.assertFalse(voice._conversation_dirty)
         voice.cancel_greeting(stop_playing=True)
-        self.assertIs(avatar.tts.config, config)
+        self.assertIs(avatar.tts.config, voice.config)
 
     async def test_pending_trial_cancel_never_publishes_late_text(self):
         routes, state, draft = self.setup_field()

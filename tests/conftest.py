@@ -11,10 +11,15 @@ import pytest
 
 
 AREA_BY_FILE = {
+    "test_conversation_attachments.py": "conversation",
+    "test_conversation_settings.py": "conversation",
+    "test_pc_conversations.py": "conversation",
     "test_avatar_profiles.py": "runtime",
     "test_cwa_weather.py": "conversation",
+    "test_weather_context.py": "conversation",
     "test_role_media.py": "avatar",
     "test_role_coordinator.py": "conversation",
+    "test_reverse_role_handoff.py": "conversation",
     "test_answer_board.py": "conversation",
     "test_assistant_profile.py": "llm",
     "test_auto_response_protocol.py": "conversation",
@@ -47,6 +52,7 @@ AREA_BY_FILE = {
     "test_realtime_avatar.py": "conversation",
     "test_response_protocol.py": "conversation",
     "test_runtime_settings.py": "runtime",
+    "test_deferred_settings.py": "runtime",
     "test_scene_background.py": "avatar",
     "test_server_shutdown.py": "runtime",
     "test_sovits_tts.py": "speech",

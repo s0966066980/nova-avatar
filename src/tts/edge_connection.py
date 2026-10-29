@@ -1,47 +1,38 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Reuse Edge TTS WebSocket connections so synthesis skips connection setup.
+"""Reusable Edge sockets owned by one persistent asyncio loop.
 
-edge-tts opens a new TCP + TLS + WebSocket connection for every request. On the
-field host that setup occasionally stalls for 1-10 s (packet loss on the path
-to the service), while a request on an open connection answers in 0.1-0.3 s.
-One open connection serves any number of sequential requests and stays usable
-for at least a minute of idle time, so this pool keeps a spare connection ready
-and puts used ones back. A stalled setup then happens in the background
-instead of in front of the visitor.
-
-The protocol messages come from edge-tts itself; only connection ownership
-differs from ``edge_tts.Communicate``.
+Adapted from Nova Avatar main's connection pool. Speech framing comes from
+edge-tts; cancellation and interrupted requests always discard the socket.
 """
 from __future__ import annotations
 
 import asyncio
-import time
-from collections import deque
 from dataclasses import dataclass
-from typing import AsyncIterator, Callable, Optional
+from email.utils import parsedate_to_datetime
+import math
+import time
+from typing import Callable
+from urllib.parse import parse_qs, urlencode, urlsplit
 from xml.sax.saxutils import escape
 
 import aiohttp
-from edge_tts import communicate as _edge
+from edge_tts import communicate as transport
 from edge_tts.data_classes import TTSConfig
 from edge_tts.drm import DRM
 
 from src.utils.logging import logger
+from src.tts import edge_endpoint
 
-# Idle connections older than this are not used: a minute of idle time is
-# verified against the service, longer is not, and the URL token is time-based.
 MAX_IDLE_AGE_SECONDS = 60.0
-# A kiosk can sit idle for hours, so the spare is replaced this long before it
-# expires; the visitor's first sentence never waits for a connection setup.
 REFRESH_BEFORE_EXPIRY_SECONDS = 10.0
-MAX_IDLE_CONNECTIONS = 2
-# Upper bound for one request on an open connection to answer at all.
+CONNECT_TIMEOUT_SECONDS = 10.0
 RESPONSE_TIMEOUT_SECONDS = 15.0
-# Background warm-up failures (for example a 429) wait this long before trying again.
+# A socket can remain locally open after its idle peer stops accepting speech.
+# Replace it before the synthesis caller exhausts its first-audio deadline.
+REUSED_FIRST_AUDIO_TIMEOUT_SECONDS = 1.0
 WARM_RETRY_SECONDS = 15.0
-_MAX_REQUEST_BYTES = 4096
 
 _SPEECH_CONFIG = (
     "X-Timestamp:{timestamp}\r\n"
@@ -53,8 +44,45 @@ _SPEECH_CONFIG = (
 )
 
 
-class StaleConnection(Exception):
-    """A reused connection closed before it produced any audio."""
+def configure_edge_endpoint() -> None:
+    """Preserve Nova's legacy endpoint migration and future upstream endpoints."""
+    endpoint = urlsplit(transport.WSS_URL)
+    if (
+        endpoint.netloc == "speech.platform.bing.com"
+        and endpoint.path == "/consumer/speech/synthesize/readaloud/edge/v1"
+    ):
+        if transport.WSS_URL == edge_endpoint.current_url():
+            return
+        token = parse_qs(endpoint.query)["TrustedClientToken"][0]
+        transport.WSS_URL = (
+            "wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1?"
+            + urlencode({"Ocp-Apim-Subscription-Key": token})
+        )
+
+
+def _default_url() -> str:
+    configure_edge_endpoint()
+    return (
+        f"{transport.WSS_URL}&ConnectionId={transport.connect_id()}"
+        f"&Sec-MS-GEC={DRM.generate_sec_ms_gec()}"
+        f"&Sec-MS-GEC-Version={transport.SEC_MS_GEC_VERSION}"
+    )
+
+
+def _retry_delay(exc: Exception, default: float) -> float:
+    value = (getattr(exc, "headers", None) or {}).get("Retry-After", "")
+    try:
+        delay = float(value)
+    except (TypeError, ValueError):
+        try:
+            delay = parsedate_to_datetime(value).timestamp() - time.time()
+        except (TypeError, ValueError, OverflowError):
+            return default
+    return max(default, delay) if math.isfinite(delay) else default
+
+
+class StaleConnection(ConnectionError):
+    """The peer closed a socket before any audio was received."""
 
 
 @dataclass
@@ -63,189 +91,181 @@ class _Connection:
     opened_at: float
 
 
-def _default_url() -> str:
-    # edge_endpoint swaps edge-tts's WSS_URL when a host rejects handshakes;
-    # read it at connect time so both paths follow the same host.
-    return (
-        f"{_edge.WSS_URL}&ConnectionId={_edge.connect_id()}"
-        f"&Sec-MS-GEC={DRM.generate_sec_ms_gec()}"
-        f"&Sec-MS-GEC-Version={_edge.SEC_MS_GEC_VERSION}"
-    )
-
-
 class EdgeConnectionPool:
-    """Open Edge connections owned by one event loop."""
-
     def __init__(
-        self,
-        *,
-        url_factory: Callable[[], str] = _default_url,
+        self, *, url_factory: Callable[[], str] = _default_url,
         clock: Callable[[], float] = time.monotonic,
-        max_idle: int = MAX_IDLE_CONNECTIONS,
-        max_age: float = MAX_IDLE_AGE_SECONDS,
+        max_idle: int = 2, max_age: float = MAX_IDLE_AGE_SECONDS,
     ) -> None:
         self._url_factory = url_factory
         self._clock = clock
         self._max_idle = max_idle
         self._max_age = max_age
-        self._idle: deque[_Connection] = deque()
-        self._session: Optional[aiohttp.ClientSession] = None
-        self._warm_task: Optional[asyncio.Task] = None
+        self._idle: list[_Connection] = []
+        self._session = None
+        self._warm_task = None
         self._closed = False
-        self.opened = 0
-        self.reused = 0
+        self._retry_until = 0.0
 
     @property
     def idle_count(self) -> int:
         return len(self._idle)
 
     async def _open(self) -> _Connection:
-        if self._session is None or self._session.closed:
+        if self._closed:
+            raise RuntimeError("Edge connection pool is closed")
+        while self._retry_until > time.monotonic():
+            await asyncio.sleep(self._retry_until - time.monotonic())
+        if self._closed:
+            raise RuntimeError("Edge connection pool is closed")
+        if self._session is None:
             self._session = aiohttp.ClientSession(trust_env=True)
-        ws = await self._session.ws_connect(
-            self._url_factory(),
-            compress=15,
-            headers=DRM.headers_with_muid(_edge.WSS_HEADERS),
-            ssl=_edge._SSL_CTX,
-        )
-        self.opened += 1
-        return _Connection(ws=ws, opened_at=self._clock())
+        try:
+            ws = await asyncio.wait_for(
+                self._session.ws_connect(
+                    self._url_factory(), compress=15,
+                    headers=DRM.headers_with_muid(transport.WSS_HEADERS),
+                    ssl=transport._SSL_CTX,
+                ), timeout=CONNECT_TIMEOUT_SECONDS,
+            )
+        except aiohttp.WSServerHandshakeError as exc:
+            if exc.status == 429:
+                self._retry_until = max(self._retry_until, time.monotonic() + _retry_delay(exc, 1.0))
+            raise
+        return _Connection(ws, self._clock())
 
-    def _take_idle(self) -> Optional[_Connection]:
-        while self._idle:
-            connection = self._idle.pop()
-            fresh = self._clock() - connection.opened_at < self._max_age
-            if fresh and not connection.ws.closed:
-                return connection
-            asyncio.ensure_future(connection.ws.close())
-        return None
+    async def _prune_expired(self) -> None:
+        expired = [
+            connection for connection in self._idle
+            if connection.ws.closed or self._clock() - connection.opened_at >= self._max_age
+        ]
+        # Claim all expired sockets before yielding: the background refresher
+        # and multiple foreground requests can prune on the same loop.
+        self._idle = [connection for connection in self._idle if connection not in expired]
+        await asyncio.gather(*(connection.ws.close() for connection in expired))
 
-    def _put_back(self, connection: _Connection) -> None:
-        if self._closed or connection.ws.closed or len(self._idle) >= self._max_idle:
-            asyncio.ensure_future(connection.ws.close())
+    async def _put_back(self, connection: _Connection) -> None:
+        if self._closed or connection.ws.closed or self._clock() - connection.opened_at >= self._max_age:
+            await connection.ws.close()
             return
         self._idle.append(connection)
+        if len(self._idle) > self._max_idle:
+            # Refresh must replace an older socket even when the idle pool is
+            # full. Discarding the new socket here would cause a reconnect loop.
+            oldest = min(self._idle, key=lambda item: item.opened_at)
+            self._idle.remove(oldest)
+            await oldest.ws.close()
 
     def ensure_warm(self) -> None:
-        """Keep a fresh spare connection ready in the background."""
-        if self._closed:
-            return
-        if self._warm_task is not None and not self._warm_task.done():
-            return
-        self._warm_task = asyncio.ensure_future(self._keep_warm())
-
-    def _prune_expired(self) -> None:
-        now = self._clock()
-        for connection in list(self._idle):
-            if connection.ws.closed or now - connection.opened_at >= self._max_age:
-                self._idle.remove(connection)
-                asyncio.ensure_future(connection.ws.close())
+        if not self._closed and (self._warm_task is None or self._warm_task.done()):
+            self._warm_task = asyncio.create_task(self._keep_warm())
 
     async def _keep_warm(self) -> None:
         refresh_age = max(self._max_age - REFRESH_BEFORE_EXPIRY_SECONDS, self._max_age / 2)
         while not self._closed:
-            self._prune_expired()
-            newest = self._idle[-1] if self._idle else None
+            await self._prune_expired()
+            newest = max(self._idle, key=lambda item: item.opened_at, default=None)
             age = None if newest is None else self._clock() - newest.opened_at
             if age is not None and age < refresh_age:
-                await asyncio.sleep(max(refresh_age - age, 0.05))
+                await asyncio.sleep(max(0.05, refresh_age - age))
                 continue
             try:
-                connection = await self._open()
+                await self._put_back(await self._open())
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                logger.warning("Edge TTS spare connection failed: %s", exc)
-                await asyncio.sleep(WARM_RETRY_SECONDS)
-                continue
-            self._put_back(connection)
+                delay = _retry_delay(exc, WARM_RETRY_SECONDS)
+                logger.warning("Edge TTS spare unavailable type=%s retry_in=%.1fs", type(exc).__name__, delay)
+                await asyncio.sleep(delay)
 
-    async def stream(self, text: str, voice: str) -> AsyncIterator[dict]:
-        """Yield ``{"type": "audio", "data": bytes}`` chunks for ``text``.
-
-        A reused connection that turns out to be closed is replaced once,
-        transparently, before any audio has been yielded.
-        """
+    async def stream(self, text: str, voice: str):
         config = TTSConfig(voice, "+0%", "+0%", "+0Hz", "SentenceBoundary")
-        requests = _edge.split_text_by_byte_length(
-            escape(_edge.remove_incompatible_characters(text)), _MAX_REQUEST_BYTES
+        requests = transport.split_text_by_byte_length(
+            escape(transport.remove_incompatible_characters(text)), 4096,
         )
-        connection = self._take_idle()
+        await self._prune_expired()
+        connection = self._idle.pop() if self._idle else None
         reused = connection is not None
-        if connection is None:
-            connection = await self._open()
-        else:
-            self.reused += 1
         clean = False
+        yielded = False
         try:
-            yielded = False
-            for index, request in enumerate(requests):
+            if connection is None:
+                connection = await self._open()
+            for request in requests:
                 while True:
                     try:
-                        async for chunk in self._request(connection, config, request):
+                        async for chunk in self._request(
+                            connection, config, request,
+                            first_audio_timeout=(
+                                REUSED_FIRST_AUDIO_TIMEOUT_SECONDS
+                                if reused and not yielded else RESPONSE_TIMEOUT_SECONDS
+                            ),
+                        ):
                             yielded = True
                             yield chunk
                         break
-                    except StaleConnection:
-                        if yielded or not reused or index:
+                    except (StaleConnection, asyncio.TimeoutError):
+                        if yielded or not reused:
                             raise
                         await connection.ws.close()
                         connection = await self._open()
                         reused = False
             clean = True
         finally:
-            if clean:
-                self._put_back(connection)
-            else:
-                # Cancelled or failed mid-request: the socket state is unknown.
-                await connection.ws.close()
+            if connection is not None:
+                if clean:
+                    await self._put_back(connection)
+                else:
+                    await connection.ws.close()
             self.ensure_warm()
 
     async def _request(
-        self, connection: _Connection, config: TTSConfig, request: bytes
-    ) -> AsyncIterator[dict]:
+        self, connection, config, request, *,
+        first_audio_timeout: float = RESPONSE_TIMEOUT_SECONDS,
+    ):
         ws = connection.ws
+        first_audio_deadline = asyncio.get_running_loop().time() + first_audio_timeout
         try:
-            await ws.send_str(_SPEECH_CONFIG.format(timestamp=_edge.date_to_string()))
-            await ws.send_str(
-                _edge.ssml_headers_plus_data(
-                    _edge.connect_id(), _edge.date_to_string(), _edge.mkssml(config, request)
-                )
-            )
+            await ws.send_str(_SPEECH_CONFIG.format(timestamp=transport.date_to_string()))
+            await ws.send_str(transport.ssml_headers_plus_data(
+                transport.connect_id(), transport.date_to_string(), transport.mkssml(config, request),
+            ))
         except (ConnectionError, aiohttp.ClientError, RuntimeError) as exc:
-            raise StaleConnection(str(exc)) from exc
+            raise StaleConnection() from exc
         audio_seen = False
         while True:
-            message = await asyncio.wait_for(ws.receive(), timeout=RESPONSE_TIMEOUT_SECONDS)
+            timeout = (
+                RESPONSE_TIMEOUT_SECONDS if audio_seen else
+                max(0.0, first_audio_deadline - asyncio.get_running_loop().time())
+            )
+            message = await asyncio.wait_for(ws.receive(), timeout=timeout)
             if message.type == aiohttp.WSMsgType.TEXT:
                 if "Path:turn.end" in message.data:
                     if not audio_seen:
                         raise RuntimeError("Edge TTS turn ended without audio")
                     return
-                continue
-            if message.type == aiohttp.WSMsgType.BINARY:
+            elif message.type == aiohttp.WSMsgType.BINARY:
                 data = message.data
                 if len(data) < 2:
-                    continue
-                # Same framing as edge-tts: a 2-byte header length, headers, audio.
+                    raise RuntimeError("Invalid Edge audio frame")
                 header_length = int.from_bytes(data[:2], "big")
-                headers, payload = _edge.get_headers_and_data(data, header_length)
-                if headers.get(b"Path") == b"audio" and payload:
+                if header_length > len(data) - 2:
+                    raise RuntimeError("Invalid Edge audio header")
+                headers = data[2:2 + header_length].split(b"\r\n")
+                payload = data[2 + header_length:]
+                if b"Path:audio" in headers and payload:
                     audio_seen = True
                     yield {"type": "audio", "data": payload}
-                continue
-            if not audio_seen:
+            elif not audio_seen:
                 raise StaleConnection(f"socket {message.type.name}")
-            raise ConnectionError(f"Edge TTS socket {message.type.name} mid-stream")
+            else:
+                raise ConnectionError(f"Edge TTS socket {message.type.name} mid-stream")
 
     async def close(self) -> None:
         self._closed = True
         if self._warm_task is not None:
             self._warm_task.cancel()
-            try:
-                await self._warm_task
-            except BaseException:
-                pass
+            await asyncio.gather(self._warm_task, return_exceptions=True)
         while self._idle:
             await self._idle.pop().ws.close()
         if self._session is not None:

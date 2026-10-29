@@ -10,6 +10,7 @@ remain private so routes and UI cannot accidentally create competing pipelines.
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 from functools import partial
 import json
 import time
@@ -100,13 +101,16 @@ class VoiceTurnSession:
         test_result_sink: Optional[TestResultSink] = None,
     ) -> None:
         self.sessionid = sessionid
-        self.config = config
+        self.config = deepcopy(config)
+        self.config.conversation_snapshot = True
         self.avatar = avatar
+        self.avatar.config = self.config
         self._presenter = presenter if presenter in {"console", "stage"} else "console"
         self._event_sink: Optional[EventSink] = None
         self._test_result_sink = test_result_sink
         self._sequence = 0
         self._role_coordinator = None
+        self._role_reset_task = None
         self._presentation = None
         self._turn_origin = "visitor"
         self._greeting_trial_preparation = None
@@ -122,6 +126,15 @@ class VoiceTurnSession:
         self._gate_open = False
         self._manual_pause = False
         self._closed = False
+        from src.server.conversations import defaults, configure_avatar
+        self._conversation = defaults(self.config)
+        self._role_voices = {}
+        self._voice_overrides = set()
+        self._composer_has_draft = False
+        self._settings_switching = False
+        self._pending_history_limit = None
+        self._settings_lock = asyncio.Lock()
+        self.bind_conversation()
         self._prepare_error = ""
         self._preparing = False
         self._segmenter = None
@@ -135,6 +148,7 @@ class VoiceTurnSession:
         self._metrics: Optional[TurnMetrics] = None
         self._turn_context: Optional[TurnContext] = None
         self._rules_snapshot = None
+        self._assistant_profile_snapshot = None
         self._rag_snapshot = {"enabled": False, "dataset_ids": []}
         self._circuit_breaker = ReplyCircuitBreaker(clock=clock)
         self._pipeline_mode = "legacy"
@@ -148,6 +162,13 @@ class VoiceTurnSession:
         self._board_display_receipts: set[tuple[str, str, int, str]] = set()
         self._conversation_dirty = False
         self._idle_reset_task: Optional[asyncio.Task] = None
+        from src.server.attachments import AttachmentStore
+        self.attachments = AttachmentStore()
+        self._attachment_busy = 0
+        self._composer_editing = False
+        self._client_request_id = None
+        self._cancelled_text_requests: set[str] = set()
+        self._text_turn_lock = asyncio.Lock()
         self._llm_finished = False
         self._media_player = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -187,6 +208,18 @@ class VoiceTurnSession:
                 on_llm_chunk=self._on_llm_chunk,
             )
 
+    def bind_conversation(self):
+        from src.server.conversations import configure_avatar
+        identity = getattr(self.config, 'profile_id', '')
+        if identity not in self._voice_overrides:
+            self._role_voices[identity] = {
+                'voice_zh_tw': getattr(getattr(self.config, 'tts', None), 'ref_file', '') or self._conversation['voice_zh_tw'],
+                'voice_en_us': getattr(getattr(self.config, 'tts', None), 'voice_en_us', 'en-US-JennyNeural'),
+            }
+        self._conversation.update(self._role_voices[identity])
+        configure_avatar(self.avatar, self._conversation)
+        self.config = self.avatar.config
+
     async def prepare(self) -> None:
         """Prewarm Silero and STT before the session may announce listening."""
         if not bool(getattr(self.config.vad, "enabled", True)):
@@ -200,6 +233,9 @@ class VoiceTurnSession:
         loop = asyncio.get_running_loop()
         try:
             await loop.run_in_executor(None, self._prepare_sync)
+            if self._conversation['locale'] == 'en-US':
+                from src.server.conversations import warm_voice
+                await warm_voice(self.config, self._conversation)
         except Exception as exc:
             self._preparing = False
             self._prepare_error = str(exc)
@@ -220,7 +256,7 @@ class VoiceTurnSession:
             model_size=self.config.asr.model_size,
             config=self.config,
         )
-        self._asr.set_language(self.config.asr.language)
+        # Per-call language options keep the shared recognizer immutable.
         if getattr(getattr(self.config, "app", None), "prewarm", True):
             self._asr.prewarm()
         else:
@@ -228,6 +264,7 @@ class VoiceTurnSession:
 
     def attach_event_sink(self, sink: EventSink) -> None:
         self._event_sink = sink
+        self._emit('conversation_settings', **self._conversation)
         if self._prepare_error:
             self._emit("state", state="degraded", error=self._prepare_error)
         else:
@@ -268,27 +305,24 @@ class VoiceTurnSession:
         except (TypeError, json.JSONDecodeError):
             return
         kind = message.get("type")
+        if kind == 'conversation_settings':
+            asyncio.create_task(self._apply_conversation_control(message.get('settings', {})))
+            return
         roles = self._role_coordinator
-        if kind in {"role_return", "role_mode", "role_stop"} and roles is not None:
+        if kind in {"role_return", "role_stop"} and roles is not None:
             async def control_role():
                 try:
                     if kind == "role_return":
                         await roles.return_to_main(self)
-                    elif kind == "role_mode" and self._presenter == "console":
-                        await roles.set_mode(str(message.get("mode") or ""))
-                    elif kind == "role_stop" and self._presenter == "console":
-                        for voice in list(roles.state.voice_sessions.values()):
-                            if roles.input_allowed(voice):
-                                await voice.interrupt()
+                    elif kind == "role_stop":
+                        await self.interrupt()
                 except Exception:
                     self._emit("role_error", message="目前無法執行角色操作，請等目前輪次結束後再試。")
             asyncio.create_task(control_role())
             return
-        if (roles is not None and roles.input_mode_managed and kind == "interrupt"
-                and not roles.input_allowed(self)):
-            return
         if kind == "stage_ready" and self._presenter == "stage":
-            self._stage_ready = all(message.get(k) is True for k in ("audible", "microphone", "interaction"))
+            self._stage_ready = (message.get('audible') is True and message.get('interaction') is True
+                and (message.get('microphone') is True or bool(getattr(self.config.stage, 'composer_enabled', False))))
             self.greetings.refresh()
             return
         if kind == "capture":
@@ -300,7 +334,7 @@ class VoiceTurnSession:
                 and self._gate_open
             )
             self._capture_requested = enabled
-            self._manual_pause = not enabled
+            self._manual_pause = bool(message.get("manual_pause", not enabled))
             if finalize:
                 # Preserve the current segment until flush runs in the same
                 # ordered worker as resampling/VAD.
@@ -310,6 +344,9 @@ class VoiceTurnSession:
                     self._finalize_capture()
                 )
                 return
+            if enabled and self._asr is None and not self._preparing:
+                self._preparing = True
+                asyncio.create_task(self.prepare())
             if enabled and self._output_active:
                 return
             self._refresh_gate()
@@ -349,6 +386,60 @@ class VoiceTurnSession:
             self._track_task.cancel()
         self._track_task = asyncio.create_task(self._consume_track(track))
 
+    async def _apply_conversation_control(self, values: dict) -> None:
+        try:
+            await self.apply_conversation(values)
+        except (ValueError, RuntimeError, TypeError) as exc:
+            self._emit('conversation_settings_error', error=str(exc), **self._conversation)
+
+    async def apply_conversation(self, values: dict) -> None:
+        from src.server.conversations import validate, check_language_support, configure_avatar, warm_voice
+        from src.llm.service import set_session_history_limit
+        async with self._settings_lock:
+            candidate = validate(values, self._conversation)
+            voice_change = any(candidate[key] != self._conversation[key] for key in ("voice_zh_tw", "voice_en_us"))
+            language_change = any(candidate[key] != self._conversation[key]
+                                  for key in ('locale', 'voice_zh_tw', 'voice_en_us'))
+            if language_change:
+                if (getattr(self.config.tts, 'type', '') != 'edgetts'
+                        and any(candidate[key] != self._conversation[key]
+                                for key in ('voice_zh_tw', 'voice_en_us'))):
+                    raise ValueError('voice_controls_require_edge_tts')
+                check_language_support(self.config, candidate['locale'])
+                capture, paused = self._capture_requested, self._manual_pause
+                self._settings_switching = True
+                self._emit('conversation_settings_pending')
+                self._close_gate()
+                try:
+                    await self.interrupt()
+                    if self._closed:
+                        raise RuntimeError('對話已結束')
+                    await warm_voice(self.config, candidate)
+                    if self._closed:
+                        raise RuntimeError('對話已結束')
+                    # Old media is fenced before changing the per-avatar config.
+                    configure_avatar(self.avatar, candidate)
+                except Exception:
+                    self._emit('conversation_settings_error', error='voice_unavailable', **self._conversation)
+                    raise
+                finally:
+                    self._settings_switching = False
+                    self._capture_requested, self._manual_pause = capture, paused
+                    self._refresh_gate()
+            limit = candidate['history_max_messages']
+            if self._turn_id is not None or self._turn_task is not None or self._output_active:
+                self._pending_history_limit = limit
+                candidate['history_max_messages'] = self._conversation['history_max_messages']
+            else:
+                self._pending_history_limit = None
+                set_session_history_limit(self.sessionid, limit)
+            self._conversation = candidate
+            if voice_change:
+                self._voice_overrides.add(getattr(self.config, "profile_id", ""))
+            self._role_voices[getattr(self.config, 'profile_id', '')] = {key: candidate[key] for key in ('voice_zh_tw', 'voice_en_us')}
+            configure_avatar(self.avatar, candidate)
+            self._emit('conversation_settings', **self._conversation)
+
     async def _consume_track(self, track) -> None:
         try:
             while not self._closed:
@@ -358,11 +449,14 @@ class VoiceTurnSession:
                 if not self._gate_open or self._segmenter is None or self._closed:
                     continue
                 loop = asyncio.get_running_loop()
+                generation = self._generation
                 pcm_chunks = await loop.run_in_executor(
                     self._voice_executor,
                     self._resample_frame_sync,
                     frame,
                 )
+                if generation != self._generation:
+                    continue
                 for pcm in pcm_chunks:
                     await self.feed_pcm(pcm)
         except asyncio.CancelledError:
@@ -414,6 +508,9 @@ class VoiceTurnSession:
             self._turn_id = uuid4().hex
         self._start_turn_context(self._turn_id)
         self._metrics.mark_speech_end()
+        endpoint_wait = getattr(segment, "endpoint_wait_ms", None)
+        if endpoint_wait is not None:
+            self._metrics.record_stage_duration("vad_endpoint", endpoint_wait / 1000.0)
         generation = self._generation
         self._turn_task = asyncio.create_task(
             self._process_turn(
@@ -427,21 +524,80 @@ class VoiceTurnSession:
 
     async def start_text_turn(self, text: str, *, interrupt: bool = True,
                               _handoff_id: str | None = None,
-                              _speak_only: bool = False) -> dict:
+                              _speak_only: bool = False, attachments=None, request_id=None) -> dict:
         """Start a typed turn through the same reply pipeline as speech."""
         text = str(text or "").strip()
-        if not text:
+        selected = self.attachments.selection if attachments is None else attachments
+        self.attachments.validate_selection(selected)
+        if not text and not selected:
             raise ValueError("文字訊息不可為空")
         if self._closed:
             raise RuntimeError("語音工作階段已關閉")
         roles = self._role_coordinator
+        continuation = roles.continuations.get(self.sessionid, {}) if roles is not None else {}
         accepted_handoff = (roles is not None and _handoff_id is not None
-            and roles.continuations.get(self.sessionid, {}).get("id") == _handoff_id
+            and continuation.get("id") == _handoff_id
             and roles.enabled and roles.phase == "ready"
-            and roles.current_id == roles.library["pair"]["specialist"])
+            and roles.current_id == continuation.get('target_profile_id'))
         if roles is not None and not accepted_handoff and not roles.input_allowed(self):
-            raise RuntimeError("目前由另一個輸入來源接收問題，或角色正在轉場")
+            raise RuntimeError("目前角色正在轉場，請稍候")
         self.greetings.reset()
+        if request_id and request_id in self._cancelled_text_requests:
+            raise ValueError('cancelled')
+        if selected:
+            from src.server.attachments import vision_ready
+            if not await asyncio.to_thread(vision_ready, self.config):
+                raise ValueError('vision_unavailable')
+        # A replacement and cancellation may arrive together. Serialize their
+        # interrupt/accept steps, and reject stale validation before it can
+        # interrupt the replacement's answer.
+        async with self._text_turn_lock:
+            if _handoff_id is not None and (not accepted_handoff
+                    or roles.continuations.get(self.sessionid) is not continuation):
+                raise ValueError('cancelled')
+            if request_id and request_id in self._cancelled_text_requests:
+                raise ValueError('cancelled')
+            if interrupt and (
+                self._turn_id is not None
+                or self._turn_task is not None
+                or self._output_active
+            ):
+                await self.interrupt()
+            if self._turn_id is not None or self._turn_task is not None:
+                raise RuntimeError("上一個對話輪次尚未結束")
+            if request_id and request_id in self._cancelled_text_requests:
+                raise ValueError('cancelled')
+            if _handoff_id is None and roles is not None:
+                roles.cancel(self.sessionid)
+            self.attachments.select(selected, submitted=True)
+            self._turn_id = uuid4().hex
+            self._start_turn_context(self._turn_id)
+            self._client_request_id = request_id
+            # Text and microphone turns own the same single-turn session.
+            # Close capture before yielding so VAD cannot replace this turn ID
+            # while it is waiting for first audio.
+            self._close_gate()
+            self._metrics.mark_speech_end()
+            generation = self._generation
+            turn_id = self._turn_id
+            if accepted_handoff:
+                continuation['target_turn'] = turn_id
+            self._turn_task = asyncio.create_task(
+                self._process_text_turn(text, turn_id, generation, speak_only=_speak_only)
+            )
+            return {
+                "turn_id": turn_id,
+                "reply_mode": self._pipeline_mode,
+                "delivery": "events",
+            }
+
+    async def start_read_aloud_turn(self, text: str, *, interrupt: bool = True) -> dict:
+        """Send fixed text to TTS with the normal capture and media fences."""
+        text = str(text or "").strip()
+        if not text:
+            raise ValueError("朗讀文字不可為空")
+        if self._closed:
+            raise RuntimeError("語音工作階段已關閉")
         if interrupt and (
             self._turn_id is not None
             or self._turn_task is not None
@@ -452,21 +608,29 @@ class VoiceTurnSession:
             raise RuntimeError("上一個對話輪次尚未結束")
         self._turn_id = uuid4().hex
         self._start_turn_context(self._turn_id)
-        # Text and console-test turns own the same single-turn session as
-        # microphone turns. Pause capture before yielding to the LLM task so
-        # VAD cannot replace this turn ID while it is waiting for first audio.
+        self._pipeline_mode = "read_aloud"
+        self._event_loop = asyncio.get_running_loop()
         self._close_gate()
         self._metrics.mark_speech_end()
-        generation = self._generation
-        turn_id = self._turn_id
-        self._turn_task = asyncio.create_task(
-            self._process_text_turn(text, turn_id, generation, speak_only=_speak_only)
-        )
-        return {
-            "turn_id": turn_id,
-            "reply_mode": self._pipeline_mode,
-            "delivery": "events",
+        self._llm_finished = True
+        envelope = {
+            "turn_id": self._turn_id,
+            "generation": self._generation,
+            "fragment_sequence": 0,
         }
+        self._emit("state", state="tts_ready", turn_id=self._turn_id)
+        self.avatar.put_msg_txt(text, envelope)
+        return {"turn_id": self._turn_id, "reply_mode": "read_aloud", "delivery": "events"}
+
+    async def cancel_text_request(self, request_id: str) -> None:
+        if not isinstance(request_id, str) or not 1 <= len(request_id) <= 64:
+            raise ValueError('invalid_request')
+        if len(self._cancelled_text_requests) >= 128:
+            self._cancelled_text_requests.pop()
+        self._cancelled_text_requests.add(request_id)
+        async with self._text_turn_lock:
+            if request_id == self._client_request_id:
+                await self.interrupt()
 
     def _segment_pcm_sync(self, pcm: np.ndarray):
         if self._segmenter_reset_pending:
@@ -478,13 +642,14 @@ class VoiceTurnSession:
 
     async def _finalize_capture(self) -> None:
         loop = asyncio.get_running_loop()
+        generation = self._generation
         try:
             segments = await loop.run_in_executor(
                 self._voice_executor,
                 lambda: list(self._segmenter.flush()),
             )
             self._segmenter_reset_pending = True
-            if self._closed:
+            if self._closed or generation != self._generation:
                 return
             if not segments:
                 return
@@ -537,7 +702,11 @@ class VoiceTurnSession:
             wav = BytesIO()
             sf.write(wav, audio, sample_rate, format="WAV", subtype="PCM_16")
             self.mark_stage_start("asr")
-            result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
+            if getattr(self._asr, 'supports_language_options', False) is True:
+                result = await loop.run_in_executor(None, partial(
+                    self._asr.transcribe, wav.getvalue(), language='auto'))
+            else:
+                result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
             self.mark_stage_end("asr")
             if not self._is_current(turn_id, generation):
                 return
@@ -620,6 +789,21 @@ class VoiceTurnSession:
                     return
                 # Facts join this role's own Prompt/RAG/rules below. A successful
                 # tool result must not bypass the specialist's answer pipeline.
+        resolved = self.attachments.validate_selection(self.attachments.selection)
+        if resolved:
+            from src.server.attachments import vision_ready
+            if not await asyncio.to_thread(vision_ready, self.config):
+                raise ValueError('vision_unavailable')
+            self._emit('attachment_status', turn_id=turn_id, state='reading', total=sum(len(p) for _, p in resolved))
+            def progress(index, total, source):
+                loop.call_soon_threadsafe(lambda: self._emit('attachment_status', turn_id=turn_id,
+                    state='analyzing', index=index, total=total, source=source)
+                    if self._is_current(turn_id, generation) else None)
+            text = await asyncio.to_thread(self.attachments.prepare_question, text, resolved,
+                self.avatar.config if getattr(self.avatar, 'config', None) else self.config,
+                progress, lambda: self._is_current(turn_id, generation))
+            if not self._is_current(turn_id, generation):
+                return
         rag_result = None
         rag_selection = self._rag_snapshot
         if rag_selection["enabled"] and rag_selection["dataset_ids"]:
@@ -651,11 +835,13 @@ class VoiceTurnSession:
             turn_context.transition(TurnState.LLM_STREAMING)
 
         self.mark_stage_start("llm_first_token")
+        self.mark_stage_start("llm_first_speech")
         self.mark_stage_start("llm_total")
         self.mark_stage_start("first_fragment")
 
         kwargs = {
             "stream_to_avatar": self._pipeline_mode == "streaming",
+            "defer_history_commit": True,
             "datainfo": {
                 "turn_id": turn_id,
                 "generation": generation,
@@ -675,6 +861,7 @@ class VoiceTurnSession:
         # test doubles and TTS metadata do not receive internal rule text.
         try:
             self.avatar._reply_rules_snapshot = self._rules_snapshot
+            self.avatar._assistant_profile_snapshot = self._assistant_profile_snapshot
             self.avatar._reply_mode_callback = lambda mode: self._on_mode_event(turn_id, mode)
             self.avatar._incremental_board = True
         except Exception:
@@ -701,8 +888,7 @@ class VoiceTurnSession:
         self._llm_finished = True
         self._emit("state", state="tts_ready", turn_id=turn_id)
         if not response:
-            if self._pipeline_mode == "streaming" or getattr(self.config, "profile_id", ""):
-                self._commit_history("no_audio", turn_id=turn_id)
+            self._commit_history("no_audio", turn_id=turn_id)
             self._emit_turn_metrics("no_audio", turn_id=turn_id)
             self._turn_id = None
             self._turn_task = None
@@ -733,6 +919,8 @@ class VoiceTurnSession:
 
     def _speak_fixed(self, question, response, turn_id, generation, input_source):
         """Fixed announcements/failures use the real TTS and played-only history."""
+        from src.profiles.language import fixed_text
+        response = fixed_text(response, self._conversation["locale"])
         if not self.is_greeting:
             prepare_spoken_history(question, self.avatar, turn_id)
         if self._turn_context is not None and self._turn_context.state == TurnState.CREATED:
@@ -761,6 +949,25 @@ class VoiceTurnSession:
             self._role_coordinator.cancel(self.sessionid)
         if not self._is_current(turn_id, generation):
             return
+        from src.llm.context_usage import ContextCapacityError
+        from src.server.attachments import AttachmentError
+        if isinstance(exc, AttachmentError):
+            if self._turn_context is not None:
+                self._turn_context.fail('attachment_error')
+            self._history_finalized_turns.add(turn_id)
+            self._emit('state', state='error', error=str(exc), turn_id=turn_id)
+            self._emit_turn_metrics('attachment_error', turn_id=turn_id)
+            self._turn_id = None
+            self._turn_task = None
+            self._refresh_gate()
+            return
+        if isinstance(exc, ContextCapacityError):
+            self._history_finalized_turns.add(turn_id)
+            self._emit('state', state='error', error='context_capacity', turn_id=turn_id)
+            self._turn_id = None
+            self._turn_task = None
+            self._refresh_gate()
+            return
         if self._turn_context is not None:
             self._turn_context.fail("pipeline_error")
         if self._pipeline_mode == "streaming":
@@ -769,8 +976,7 @@ class VoiceTurnSession:
                     "reply streaming circuit opened session=%s reason=pipeline_error",
                     self.sessionid,
                 )
-        if self._pipeline_mode == "streaming" or getattr(self.config, "profile_id", ""):
-            self._commit_history("pipeline_error", turn_id=turn_id)
+        self._commit_history("pipeline_error", turn_id=turn_id)
         self._emit_turn_metrics("pipeline_error", turn_id=turn_id)
         logger.error("Voice turn failed reason=pipeline_error type=%s", type(exc).__name__)
         self._emit("state", state="error", error="pipeline_error", turn_id=turn_id)
@@ -886,6 +1092,7 @@ class VoiceTurnSession:
             self._fragment_texts.setdefault(sequence, str(text))
         self.mark_stage_end("first_fragment")
         self.mark_stage_start("tts_first_encoded")
+        self.mark_stage_start("tts_pcm_available")
         self.mark_stage_start("tts_first_pcm")
         self.mark_stage_start("musetalk_first_batch")
         self.mark_stage_start("musetalk_inference_first_result")
@@ -1015,7 +1222,8 @@ class VoiceTurnSession:
     @property
     def played_assistant_text(self) -> str:
         with self._fragment_lock:
-            return "".join(self._played_fragments)
+            from src.llm.text_normalizer import join_spoken_fragments
+            return join_spoken_fragments(self._played_fragments)
 
     def _all_registered_fragments_ended(self) -> bool:
         with self._fragment_lock:
@@ -1084,8 +1292,7 @@ class VoiceTurnSession:
         completed_turn = self._turn_id
         was_greeting = self.is_greeting
         self._emit("state", state="tail_guard", turn_id=self._turn_id)
-        if self.is_greeting or self._pipeline_mode == "streaming" or getattr(self.config, "profile_id", ""):
-            self._commit_history("completed")
+        self._commit_history("completed")
         self._emit_turn_metrics("completed")
         if self._pipeline_mode == "streaming":
             self._circuit_breaker.record_turn_success()
@@ -1134,6 +1341,10 @@ class VoiceTurnSession:
         self._emit_turn_metrics("interrupt", turn_id=interrupted_turn_id)
 
     async def close(self) -> None:
+        if self._role_reset_task is not None:
+            self._role_reset_task.cancel()
+            await asyncio.gather(self._role_reset_task, return_exceptions=True)
+            self._role_reset_task = None
         if self._role_coordinator is not None:
             self._role_coordinator.cancel(self.sessionid)
         self.greetings.close()
@@ -1141,6 +1352,7 @@ class VoiceTurnSession:
         self._commit_history("disconnect")
         self._emit_turn_metrics("disconnect")
         self._closed = True
+        self.attachments.close()
         if self._turn_context is not None:
             self._turn_context.cancel("disconnect")
         self._generation += 1
@@ -1350,9 +1562,17 @@ class VoiceTurnSession:
                 turn_id=turn_id,
                 generation=self._generation,
             )
+            self._client_request_id = None
             # Capture once at turn acceptance. A later control-panel save only
-            # affects the next turn, even while this one is still generating.
-            self._rules_snapshot = snapshot_from_config(self.config)
+            # affects the next conversation, preserving the current scene.
+            published = self.config
+            if not getattr(self.config, 'conversation_snapshot', False):
+                from src.server.state import state
+                published = state.config or self.config
+            self._rules_snapshot = snapshot_from_config(published)
+            self._assistant_profile_snapshot = deepcopy(
+                getattr(getattr(published, 'llm', None), 'assistant_profile', None)
+            )
             self._rag_snapshot = getattr(self.config, "profile_rag", None) or avatar_settings(
                 str(getattr(getattr(self.config, "model", None), "avatar_id", "") or "")
             )
@@ -1423,18 +1643,18 @@ class VoiceTurnSession:
         active = (self._presenter == "stage" and not self._closed
                   and self._stage_ready and self._event_sink is not None
                   and self.config.stage.idle_greeting_enabled
-                  and bool(self.config.vad.enabled) and not self._prepare_error
-                  and not self._preparing
-                  and (roles is None or roles.mode == "visitor")
-                  and (roles is None or not roles._apply_waiting)
-                  and (roles is None or roles.current_id == roles.library["pair"]["main"]
-                       or self._conversation_dirty or self._greeting_returning))
+                  and not self._manual_pause and not self._prepare_error and not self._preparing
+                  and (roles is None or roles.current_id == roles.library["pair"]["main"]))
         idle = (self._is_conversation_idle()
-                and (roles is None or roles.all_idle()) and
-                (roles is None or roles.phase in {"ready", "disabled"}
-                 or self._greeting_returning))
+                and (roles is None or roles.all_idle())
+                and (roles is None or roles.phase in {"ready", "disabled"}))
+        from src.llm.service import _session_llm_instances
+        records = any((key == self.sessionid or isinstance(key, tuple) and key[0] == self.sessionid)
+                      and (bool(getattr(llm, 'conversation_history', [])) or llm.get_last_board() is not None)
+                      for key, llm in list(_session_llm_instances.items()))
         clear = (not self._conversation_dirty and not self._greeting_returning
-                 and (roles is None or roles.current_id == roles.library["pair"]["main"]))
+                 and not records and not self.attachments.snapshot()['files']
+                 and not self._composer_has_draft)
         return bool(active), bool(idle), bool(clear)
 
     def start_greeting(self, text: str, *, playback_config=None) -> str:
@@ -1494,10 +1714,12 @@ class VoiceTurnSession:
     def _is_conversation_idle(self) -> bool:
         return (
             not self._closed
+            and not self._settings_switching
             and self._turn_id is None
             and self._turn_task is None
             and self._finalize_task is None
             and not self._output_active
+            and not self._attachment_busy
         )
 
     def _idle_reset_delay(self) -> float:
@@ -1507,6 +1729,9 @@ class VoiceTurnSession:
         except (TypeError, ValueError):
             return 10.0
 
+    def _full_reset_delay(self) -> float:
+        return self._idle_reset_delay()
+
     def _cancel_idle_reset(self) -> None:
         task = self._idle_reset_task
         self._idle_reset_task = None
@@ -1514,19 +1739,16 @@ class VoiceTurnSession:
             task.cancel()
 
     def _schedule_idle_reset(self) -> None:
-        """Count down to a visitor conversation reset while the stage sits idle.
+        """Count down independently for each idle console or stage conversation.
 
-        Only a stage session resets: the console keeps its history for the
-        manager. The countdown starts when no turn is running and restarts after
-        any new speech or turn ends.
+        The countdown starts when no turn is running and restarts after any
+        new interaction or turn ends.
         """
         if self._role_coordinator is not None and not self._role_coordinator.input_allowed(self):
             self._cancel_idle_reset()
             return
         if (
-            self._presenter != "stage"
-            or self._role_coordinator is not None and not self._role_coordinator.input_allowed(self)
-            or not self._conversation_dirty
+            not self._conversation_dirty
             or not self._is_conversation_idle()
         ):
             return
@@ -1542,9 +1764,22 @@ class VoiceTurnSession:
             return
         self._idle_reset_task = loop.create_task(self._reset_after_idle(delay))
 
+    def note_interaction(self) -> None:
+        """Restart visitor deadlines; actual input also invalidates greeting preparation."""
+        self.greetings.reset(stop_playing=True)
+        self._conversation_dirty = True
+        self._cancel_idle_reset()
+        self._schedule_idle_reset()
+
     async def _reset_after_idle(self, delay: float) -> None:
         try:
-            await asyncio.sleep(delay)
+            full_delay = self._full_reset_delay()
+            short_delay = min(float(getattr(self.config.stage, "clear_display_seconds", 15)), full_delay)
+            await asyncio.sleep(short_delay)
+            if self._conversation_dirty and self._is_conversation_idle():
+                self._emit('board_clear')
+                self._emit('answer_clear')
+            await asyncio.sleep(max(0.0, full_delay - short_delay))
         except asyncio.CancelledError:
             return
         self._idle_reset_task = None
@@ -1554,15 +1789,23 @@ class VoiceTurnSession:
             return
         self.reset_conversation()
 
-    def reset_conversation(self) -> None:
-        """Forget the previous visitor: history, shown board items and stage content."""
+    def reset_conversation(self, *, return_to_main=True) -> None:
+        """Forget this source's visitor content, preserving locale and capture preferences."""
         clear_session_history(self.sessionid)
+        self.attachments.clear()
+        self._composer_editing = False
+        self._composer_has_draft = False
         self._board_display_receipts.clear()
         self._conversation_dirty = False
+        self.greetings.reset()
         self._emit("board_clear")
+        self._emit("answer_clear")
         self._emit("conversation_reset")
         if self._role_coordinator is not None:
-            self._role_coordinator.visitor_reset(self)
+            self._role_coordinator.confirmed.pop(self.sessionid, None)
+            if return_to_main:
+                self._role_coordinator.visitor_reset(self)
+        self.greetings.refresh()
         logger.info("Visitor conversation reset session=%s", self.sessionid)
 
     def _close_gate(self) -> None:
@@ -1571,11 +1814,19 @@ class VoiceTurnSession:
         self._segmenter_reset_pending = True
 
     def _refresh_gate(self, *, refresh_greetings=True) -> None:
-        if self._role_coordinator is not None:
-            self._role_coordinator.reconcile_input_owner()
+        if (self._pending_history_limit is not None and self._turn_id is None
+                and self._turn_task is None and not self._output_active):
+            from src.llm.service import set_session_history_limit
+            limit = self._pending_history_limit
+            self._pending_history_limit = None
+            self._conversation['history_max_messages'] = limit
+            set_session_history_limit(self.sessionid, limit)
+            from src.server.conversations import configure_avatar
+            configure_avatar(self.avatar, self._conversation)
         was_open = self._gate_open
         allowed = (
             not self._closed
+            and not self._settings_switching
             and (self._role_coordinator is None or self._role_coordinator.input_allowed(self))
             and bool(getattr(self.config.vad, "enabled", True))
             and not self._preparing
@@ -1583,6 +1834,8 @@ class VoiceTurnSession:
             and self._event_sink is not None
             and self._capture_requested
             and not self._manual_pause
+            and not self._composer_editing
+            and not self._greeting_returning
             and not self._output_active
             and self._turn_task is None
             and self._finalize_task is None
@@ -1686,6 +1939,7 @@ class VoiceTurnSession:
             return
         if kind == "end":
             self._emit("board_end", turn_id=turn_id, board_id=board_id)
+
 
     def _emit(self, event_type: str, *, turn_id: Optional[str] = None, **payload) -> None:
         event = {

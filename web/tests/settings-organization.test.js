@@ -9,6 +9,11 @@ import { useRuntimeSettings } from '../src/composables/useRuntimeSettings.js'
 const saves = []
 const Profiles = { default: { setup: () => () => h('div', '數位人設定檔') } }
 const Panel = await loadComponent(new URL('../src/components/SettingsPanel.vue', import.meta.url), {
+  './ConversationComposer.vue': { default: { setup: () => () => h('div', '舞台文字輸入預覽') } },
+  './ConversationPanel.vue': { default: { props: ['sessionId'], emits: ['session-summary'], setup: (props, { emit }) => {
+    emit('session-summary', { sessionId: props.sessionId, locale: 'en-US' })
+    return () => h('div', `對話記憶設定 #${props.sessionId}`)
+  } } },
   './AvatarProfiles.vue': Profiles,
   './IdleGreetingSettings.vue': { default: { setup: () => () => h('div', '閒置招呼獨立設定頁') } },
   '../composables/useI18n': { useI18n: () => ({ t: key => key, setLocale() {} }) },
@@ -71,4 +76,24 @@ test('儲存排版頁只套用本頁，不提交訪客設定且不離開目前�
   assert.equal(closed, 0)
   assert.equal(button(view.root, '舞台與看板排版').props['aria-selected'], true)
   assert.equal(settings.selectedVisitorResetSeconds.value, 120)
+})
+
+test('對話設定分類沿用目前場次、轉送摘要並可返回控制台', async t => {
+  const previousWindow = globalThis.window, previousFetch = globalThis.fetch, previousStorage = globalThis.localStorage
+  globalThis.window = { ResizeObserver: null }
+  globalThis.localStorage = { getItem: () => null, setItem() {} }
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ code: 0, data: {} }) })
+  const summaries = []
+  let returned = 0
+  const view = mount(Panel, { initialTab: 'conversation', sessionId: 7,
+    onConversationSummary: value => summaries.push(value), onCloseSettings: () => returned++ })
+  t.after(() => { view.unmount(); globalThis.window = previousWindow; globalThis.fetch = previousFetch; globalThis.localStorage = previousStorage })
+  await settle()
+  assert.equal(button(view.root, '對話記憶與語系').props['aria-selected'], true)
+  assert.match(textContent(all(view.root, node => node.props.id === 'catPanel-conversation')[0]), /對話記憶設定 #7/)
+  assert.deepEqual(summaries, [{ sessionId: 7, locale: 'en-US' }])
+  assert.equal(all(view.root, node => node.props.class === 'settings-fixed-footer')[0].style.display, 'none',
+    '記憶與語系沿用自己的套用操作，不顯示其他分類的儲存鈕')
+  button(view.root, '返回控制台').props.onClick()
+  assert.equal(returned, 1)
 })

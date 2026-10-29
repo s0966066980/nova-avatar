@@ -14,12 +14,12 @@
         <legend>自動招呼</legend>
         <label class="check"><input id="greeting-enabled" type="checkbox" v-model="enabled">啟用閒置招呼</label>
         <label for="greeting-seconds">閒置多久開始準備招呼（秒）<input id="greeting-seconds" type="number" v-model.number="seconds" min="0" step="any" :aria-invalid="intervalInvalid" aria-describedby="greeting-interval-hint"></label>
-        <p id="greeting-interval-hint">預設 60 秒。訪客互動會重新計時；先完成上一位訪客的清場，再準備一次招呼。AI 準備最多 15 秒，語音合成另計。</p>
+        <p id="greeting-interval-hint">預設 30 秒。訪客互動會重新計時；先完成上一位訪客的清場，再準備一次招呼。AI 準備最多 15 秒，語音合成另計。</p>
       </fieldset>
       <IdleGreetingEditor :profile="profile" :disabled="busy" />
       <p v-if="validation" class="feedback" role="status">{{ validation }}</p>
       <div class="status-row"><span role="status">{{ statusText }}</span><button type="button" :disabled="busy" @click="refreshStatus">更新招呼狀態</button></div>
-      <details class="mode-help"><summary>訪客模式與控制台測試有何不同？</summary><p>訪客模式讓舞台接收現場提問，並在閒置時自動招呼。控制台測試讓管理者試播草稿，暫停舞台互動，避免測試與訪客同時發聲。編輯、儲存與預覽 Prompt 不需要切換模式；只有試播會暫時切換，完成後請返回訪客模式。</p></details>
+      <details class="mode-help"><summary>控制台試播會影響舞台嗎？</summary><p>控制台與舞台各自對話，試播草稿不暫停舞台收音或招呼。儲存的招呼內容由下一場舞台對話採用。</p></details>
       <div class="actions save-row"><span v-if="dirty">有尚未套用的招呼設定</span><button type="button" class="primary" :disabled="busy || Boolean(validation)" @click="save">{{ busy ? '處理中…' : '儲存並套用招呼設定' }}</button></div>
     </template>
   </section>
@@ -88,7 +88,7 @@ async function save() {
     await roleRequest('/greeting/apply', 'POST', { profile_id: profile.value.id, expected_revision: library.value.revision })
     await stageRequest({ idle_greeting_enabled: enabled.value, idle_greeting_seconds: seconds.value })
     published.value = snapshot()
-    notice.value = '招呼設定已儲存並套用。符合訪客舞台條件後，使用新的設定重新計時。'
+    notice.value = '招呼設定已儲存，內容由下一場舞台對話採用；開關與間隔已更新。'
     await refreshStatus()
   } catch (e) { error.value = `${savedContent ? '招呼內容已儲存，尚未完成全部套用，請重試。' : ''}${e.message}` }
   finally { busy.value = false }

@@ -13,6 +13,7 @@ import yaml
 
 from src.utils.logging import logger
 from src.utils.paths import get_config_dir
+from src.config.stage_composer import snapshot as composer_snapshot
 
 RUNTIME_OVERRIDES_FILE = get_config_dir() / "runtime_overrides.yaml"
 
@@ -34,8 +35,14 @@ def persist_runtime_overrides(config) -> None:
     # actually needed, rather than making every configuration read import it.
     from src.avatars.mouth_quality import quality_from_model
     from src.llm.rules import rules_from_config
+    from src.config.schema import ConversationConfig
+    conversation = getattr(config, 'conversation', ConversationConfig())
 
     payload = {
+        "conversation": {
+            key: getattr(conversation, key)
+            for key in ("locale", "history_max_messages", "voice_zh_tw", "voice_en_us")
+        },
         "llm": {
             "model": config.llm.model,
             "provider": getattr(config.llm, "provider", "ollama"),
@@ -64,6 +71,9 @@ def persist_runtime_overrides(config) -> None:
             "avatar_id": config.model.avatar_id,
             **quality_from_model(config.model),
         },
+        "video": {
+            "max_height": int(getattr(getattr(config, "video", None), "max_height", 0)),
+        },
         "reply_streaming": {
             "enabled": bool(
                 getattr(getattr(config, "reply_streaming", None), "enabled", False)
@@ -85,13 +95,15 @@ def persist_runtime_overrides(config) -> None:
         },
         "stage": {
             "idle_greeting_enabled": bool(getattr(getattr(config, "stage", None), "idle_greeting_enabled", False)),
-            "idle_greeting_seconds": float(getattr(getattr(config, "stage", None), "idle_greeting_seconds", 60)),
+            "idle_greeting_seconds": float(getattr(getattr(config, "stage", None), "idle_greeting_seconds", 30)),
+            "clear_display_seconds": int(getattr(getattr(config, "stage", None), "clear_display_seconds", 15)),
+            **composer_snapshot(getattr(config, 'stage', None)),
             "background_id": str(getattr(getattr(config, "stage", None), "background_id", "") or ""),
             "caption_max_chars": int(
                 getattr(getattr(config, "stage", None), "caption_max_chars", 120)
             ),
             "idle_reset_seconds": int(
-                getattr(getattr(config, "stage", None), "idle_reset_seconds", 10)
+                getattr(getattr(config, "stage", None), "idle_reset_seconds", 60)
             ),
             "caption_x": int(
                 getattr(getattr(config, "stage", None), "caption_x", 50)
@@ -181,7 +193,7 @@ def persist_runtime_overrides(config) -> None:
     RUNTIME_OVERRIDES_FILE.parent.mkdir(parents=True, exist_ok=True)
     header = (
         "# 由設定面板自動生成，請勿手改關鍵結構。\n"
-        "# 會在啟動時覆蓋主配置中的 llm（含 reply_rules）/ model / reply_streaming / vad / asr / tts。\n"
+        "# 會在啟動時覆蓋主配置中的 llm（含 reply_rules）/ model / video / reply_streaming / vad / asr / tts。\n"
     )
     text = yaml.safe_dump(payload, allow_unicode=True, sort_keys=False)
     # Write and replace in the same directory so a process restart sees either

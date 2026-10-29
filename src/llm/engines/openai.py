@@ -20,6 +20,9 @@ from src.llm.base import (
 )
 from src.utils.logging import logger
 from src.llm.history import HistoryTransaction, TransactionalHistory
+from src.llm.llamacpp_protocol import is_lfm25_reasoning
+from src.llm.reply_contract import auto_reply_grammar
+from src.llm.context_usage import ContextCapacityError, measure_request
 
 
 class OpenAILLM(BaseLLM):
@@ -44,6 +47,10 @@ class OpenAILLM(BaseLLM):
         self.model = model
         self.max_history = max_history
         self._history = TransactionalHistory(max_turns=max_history)
+        conversation = getattr(config, "conversation", None)
+        self._history.set_limit(int(getattr(conversation, "history_max_messages", max_history * 2)))
+        self.context_usage = None
+        self.observe_context = True
         
         # 從配置讀取額外請求體引數（如 Ollama 的 reasoning_effort）
         llm_cfg = getattr(config, "llm", None) if config is not None else None
@@ -116,6 +123,7 @@ class OpenAILLM(BaseLLM):
     def clear_history(self):
         """清空對話歷史"""
         self._history.clear()
+        self.context_usage = None
         logger.info("Conversation history cleared")
     
     def chat_stream(
@@ -134,14 +142,54 @@ class OpenAILLM(BaseLLM):
         
         completion = None
         try:
+            extra_body = dict(self.extra_body)
+            temperature = 0.6
+            llm_cfg = getattr(self.config, "llm", None)
+            if getattr(llm_cfg, "provider", "") == "llamacpp":
+                thinking = is_lfm25_reasoning(self.model)
+                board_cfg = getattr(llm_cfg, "board", None)
+                grammar = auto_reply_grammar(
+                    system_prompt, max_items=getattr(board_cfg, "max_items", 8),
+                    thinking=thinking,
+                )
+                if grammar:
+                    # The protocol is system-owned; stale custom grammars must
+                    # not replace it when the console switches models.
+                    extra_body["grammar"] = grammar
+                    temperature = 0.0
+                if thinking:
+                    extra_body.setdefault("repeat_penalty", 1.1)
+                    if not grammar:
+                        temperature = 0.1
             # 構建完整的訊息列表：system + 歷史對話
             messages = [{'role': 'system', 'content': system_prompt}]
             if history_transaction is None:
                 messages.extend(self._history.preview_messages(message))
             else:
                 messages.extend(self._history.request_messages(history_transaction))
+            request_message = history_transaction.user_text if history_transaction is not None else message
+            if hasattr(request_message, 'parts'):
+                messages[-1] = {**messages[-1], 'content': list(request_message.parts)}
+            profile = getattr(llm_cfg, 'assistant_profile', None)
+            if getattr(profile, 'output_locale', 'zh-TW') == 'en-US':
+                # Reinforce the session policy beside the current question. This
+                # is a request-only copy; never rewrite retained user messages.
+                content = messages[-1]['content']
+                hint = '\n\n[Session language: English. Answer in English.]'
+                messages[-1] = {**messages[-1], 'content': (
+                    [*content, {'type': 'text', 'text': hint}] if isinstance(content, list) else content + hint)}
             
             logger.info(f"Sending {len(messages)} messages to LLM (including system prompt and history)")
+            if self.observe_context:
+                self.context_usage = measure_request(
+                    self.base_url, messages, self.max_tokens,
+                    local=getattr(llm_cfg, 'provider', '') == 'llamacpp', model=self.model,
+                    template_options=extra_body,
+                )
+                if self.context_usage['over_capacity'] and not self.context_usage['estimated']:
+                    if history_transaction is not None:
+                        self._history.abort(history_transaction)
+                    raise ContextCapacityError('context_capacity')
             
             # 採用 OpenAI 相容流式介面，逐塊返回內容
             completion = self.client.chat.completions.create(
@@ -149,14 +197,28 @@ class OpenAILLM(BaseLLM):
                 messages=messages,
                 stream=True,
                 max_tokens=self.max_tokens,
-                temperature=0.6,
-                extra_body=self.extra_body or None,
+                temperature=temperature,
+                extra_body=extra_body or None,
+                **({'stream_options': {'include_usage': True}}
+                   if getattr(llm_cfg, 'provider', '') == 'llamacpp' else {}),
             )
             
             init_time = time.perf_counter()
             logger.info(f"LLM initialization time: {init_time - start_time:.3f}s")
             
             for chunk in completion:
+                usage = getattr(chunk, 'usage', None)
+                if self.context_usage is not None and usage is not None and isinstance(getattr(usage, 'prompt_tokens', None), int):
+                    self.context_usage.update(input_tokens=usage.prompt_tokens, estimated=False,
+                                              source='provider usage', visual_tokens_unknown=False)
+                    capacity = self.context_usage.get('capacity')
+                    used = usage.prompt_tokens + self.max_tokens
+                    self.context_usage.update(
+                        other_input_tokens=max(0, usage.prompt_tokens - self.context_usage['history_tokens']),
+                        remaining_tokens=max(0, capacity - used) if capacity else None,
+                        usage_percent=round(used / capacity * 100, 1) if capacity else None,
+                        over_capacity=bool(capacity and used > capacity),
+                    )
                 if not chunk.choices:
                     continue
                 choice = chunk.choices[0]
@@ -174,12 +236,18 @@ class OpenAILLM(BaseLLM):
                     )
             
         except OpenAIError as e:
+            code = str(getattr(e, 'code', '') or '')
+            if code in {'context_length_exceeded', 'context_window_exceeded'}:
+                if history_transaction is not None:
+                    self._history.abort(history_transaction)
+                raise ContextCapacityError('context_capacity') from e
             logger.error("LLM API failed: %s", type(e).__name__)
             raise
         except Exception as e:
             logger.error("Unexpected LLM failure: %s", type(e).__name__)
             raise
         finally:
+            # Cancellation and prewarm must release the HTTP stream too.
             close = getattr(completion, "close", None)
             if callable(close):
                 close()

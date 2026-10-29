@@ -1,7 +1,7 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""A stage session forgets the previous visitor after the conversation sits idle."""
+"""Console and stage sessions forget their own conversation after sitting idle."""
 from __future__ import annotations
 
 import asyncio
@@ -70,14 +70,14 @@ class StageIdleResetTests(unittest.IsolatedAsyncioTestCase):
 
         clear.assert_called_once_with(7)
 
-    async def test_console_session_never_resets(self):
+    async def test_console_session_resets_after_the_same_idle_deadline(self):
         session, events = self.make_session(presenter="console")
         with patch("src.server.voice_session.clear_session_history") as clear:
             await self.finish_one_turn(session)
             await self.settle()
 
-        clear.assert_not_called()
-        self.assertNotIn("conversation_reset", [event["type"] for event in events])
+        clear.assert_called_once_with(7)
+        self.assertIn("conversation_reset", [event["type"] for event in events])
 
     async def test_a_new_turn_cancels_the_countdown_and_restarts_it_afterwards(self):
         session, _events = self.make_session(seconds=0.2)

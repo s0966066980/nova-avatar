@@ -503,7 +503,7 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls[0][1]["datainfo"]["turn_id"], started["turn_id"])
         self.assertTrue(callable(calls[0][1]["datainfo"]["on_board"]))
         self.assertEqual(calls[0][1].get("chunk_guard"), None)
-        self.assertFalse(calls[0][1].get("defer_history_commit", False))
+        self.assertTrue(calls[0][1].get("defer_history_commit", False))
         responses = [item for item in events if item["type"] == "assistant_response"]
         self.assertEqual([item["text"] for item in responses], ["完整回覆"])
         self.assertEqual(len(avatar.messages), 1)

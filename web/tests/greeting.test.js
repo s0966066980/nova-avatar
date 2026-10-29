@@ -30,7 +30,7 @@ const Editor = await loadComponent(new URL('../src/components/IdleGreetingEditor
   } }) }
 })
 
-test('預覽與試播使用未儲存草稿，試播先切換控制台且可返回訪客模式', async t => {
+test('預覽與試播使用未儲存草稿，不切換舞台輸入', async t => {
   requests = []; runtime.mode = 'visitor'
   const previousDocument = globalThis.document
   globalThis.document = { activeElement: null, getElementById: () => ({ value: '7' }) }
@@ -47,12 +47,10 @@ test('預覽與試播使用未儲存草稿，試播先切換控制台且可返�
   assert.ok(textContent(view.root).includes('超出建議範圍'))
   await button(view.root, '試播草稿').props.onClick()
   await settle()
-  assert.deepEqual(requests.slice(1).map(request => request.path), ['/mode', '/greeting/try'])
+  assert.deepEqual(requests.slice(1).map(request => request.path), ['/greeting/try'])
   assert.equal(requests.at(-1).body.sessionid, 7)
   assert.equal(requests.at(-1).body.profile.greeting.scripts[0], '草稿')
-  await button(view.root, '返回訪客模式').props.onClick()
-  await settle()
-  assert.equal(requests.at(-1).body.mode, 'visitor')
+  assert.equal(all(view.root, node => node.type === 'button' && textContent(node).includes('返回訪客模式')).length, 0)
   assert.ok(requests.every(request => !['', '/apply'].includes(request.path)))
 })
 

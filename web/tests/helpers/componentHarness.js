@@ -2,14 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync } from 'node:fs'
-import { parse, compileScript } from '@vue/compiler-sfc'
+import { parse, compileScript, compileTemplate } from '@vue/compiler-sfc'
 import { createRenderer, h, nextTick, reactive } from 'vue'
 
 // Compile the real Vue component and render it in memory. No browser or extra
 // test dependencies are needed to exercise event handlers and async state.
-export async function loadComponent(url, stubs = {}) {
+export async function loadComponent(url, stubs = {}, { inlineTemplate = true } = {}) {
   const { descriptor } = parse(readFileSync(url, 'utf8'), { filename: url.pathname })
-  let source = compileScript(descriptor, { id: url.pathname, inlineTemplate: true, templateOptions: { compilerOptions: { hoistStatic: false } } }).content
+  const script = compileScript(descriptor, { id: url.pathname, inlineTemplate, templateOptions: { compilerOptions: { hoistStatic: false } } })
+  let source = script.content
+  if (!inlineTemplate) {
+    const template = compileTemplate({ id: url.pathname, source: descriptor.template.content,
+      compilerOptions: { bindingMetadata: script.bindings, hoistStatic: false } })
+    if (template.errors.length) throw new Error(template.errors.join('\n'))
+    source = source.replace('export default', 'const component =') + '\n' +
+      template.code.replace('export function render', 'function render') + '\ncomponent.render = render; return component;'
+  }
   const imports = []
   const declarations = []
   for (const match of source.matchAll(/import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g)) {

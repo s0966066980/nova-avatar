@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ref, reactive } from 'vue'
 
-const roleRuntime = reactive({ enabled: false, phase: 'disabled', mode: 'console' })
+const roleRuntime = reactive({ enabled: false, phase: 'disabled' })
+const libraryRuntime = reactive({ enabled: false, phase: 'disabled' })
 const roleLibrary = ref(null)
 export function useRoles() {
   async function request(path = '', method = 'GET', body) {
@@ -11,12 +12,12 @@ export function useRoles() {
     })
     const data = await response.json()
     if (!response.ok || data.code !== 0) throw new Error(data.msg || '角色操作失敗')
-    if (data.runtime) Object.assign(roleRuntime, data.runtime)
+    if (data.runtime) Object.assign(data.runtime.sessionid ? roleRuntime : libraryRuntime, data.runtime)
     if (data.library) roleLibrary.value = data.library
     return data
   }
   function event(message) {
     if (message.type === 'role_state') Object.assign(roleRuntime, message)
   }
-  return { roleRuntime, roleLibrary, roleRequest: request, roleEvent: event }
+  return { roleRuntime, libraryRuntime, roleLibrary, roleRequest: request, roleEvent: event }
 }

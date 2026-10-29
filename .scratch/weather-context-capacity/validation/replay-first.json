@@ -1,0 +1,13 @@
+[
+  {
+    "question": "未來一週天氣如何？",
+    "error": null,
+    "facts_chars": 4130,
+    "retained_messages": 4,
+    "previous_board_chars": 784,
+    "capacity": 8192,
+    "input_tokens": 3568,
+    "reserved_output_tokens": 788,
+    "estimated": false
+  }
+]

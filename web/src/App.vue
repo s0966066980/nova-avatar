@@ -28,6 +28,7 @@ See LICENSE and NOTICE.
         <button
           class="main-tab-link"
           id="btnViewConsole"
+          aria-label="即時演播控制台"
           :class="{ active: currentMainView === 'console' }"
           @click="switchMainView('console')"
         >
@@ -37,6 +38,7 @@ See LICENSE and NOTICE.
         <button
           class="main-tab-link"
           id="btnViewSettings"
+          aria-label="系統設定中心"
           :class="{ active: currentMainView === 'settings' }"
           @click="switchMainView('settings')"
         >
@@ -72,31 +74,35 @@ See LICENSE and NOTICE.
           <!-- 左側：對話調度與互動區 (studio-chat-panel) -->
           <div class="studio-chat-panel">
             <div class="chat-sub-toolbar">
-              <div class="mode-pills-wrap">
+              <div class="mode-pills-wrap" role="group" aria-label="控制台操作模式">
                 <button
                   class="mode-pill-btn"
-                  :class="{ active: activeMode === 'chat' && !showTestPanel }"
-                  @click="activeMode = 'chat'; showTestPanel = false"
+                  :class="{ active: activeMode === 'chat' }"
+                  :aria-pressed="activeMode === 'chat'"
+                  @click="selectMode('chat')"
                 >
                   <i class="bi bi-chat-text"></i> 對話模式
                 </button>
                 <button
                   class="mode-pill-btn"
-                  :class="{ active: activeMode === 'tts' && !showTestPanel }"
-                  @click="activeMode = 'tts'; showTestPanel = false"
+                  :class="{ active: activeMode === 'tts' }"
+                  :aria-pressed="activeMode === 'tts'"
+                  @click="selectMode('tts')"
                 >
                   <i class="bi bi-volume-up"></i> 朗讀模式
                 </button>
                 <button
                   class="mode-pill-btn"
-                  :class="{ active: showTestPanel }"
-                  @click="showTestPanel = !showTestPanel"
+                  :class="{ active: activeMode === 'validation' }"
+                  :aria-pressed="activeMode === 'validation'"
+                  @click="selectMode('validation')"
                 >
                   <i class="bi bi-speedometer2"></i> 語音驗證
                 </button>
               </div>
-              <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="console-toolbar-actions">
                 <button
+                  v-show="activeMode === 'chat'"
                   class="sample-btn"
                   @click="clearChatHistory"
                   :disabled="!isConnected || !roleInputAllowed"
@@ -107,33 +113,30 @@ See LICENSE and NOTICE.
                 </button>
                 <button
                   class="sample-btn"
-                  @click="switchMainView('settings', 'stage')"
+                  @click="switchMainView('settings', 'conversation')"
                   style="padding: 4px 10px;"
                 >
-                  <i class="bi bi-sliders"></i> 前往看板設定
+                  <i class="bi bi-sliders" aria-hidden="true"></i> 對話設定
                 </button>
               </div>
             </div>
 
-            <div v-if="roleRuntime.enabled || roleRuntime.input_mode_managed" class="role-console-controls" role="group" aria-label="角色與輸入來源">
-              <span role="status">{{ activeRoleName }} · {{ rolePhaseLabel(roleRuntime.phase) }}</span>
-              <button type="button" class="sample-btn" :disabled="roleBusy || roleRuntime.applying || !['ready', 'disabled'].includes(roleRuntime.phase)"
-                @click="roleAction('/mode', { mode: roleRuntime.mode === 'visitor' ? 'console' : 'visitor' })">
-                {{ roleRuntime.mode === 'visitor' ? '切到控制台測試' : '回到訪客模式' }}
-              </button>
+            <div class="role-console-controls" role="group" aria-label="目前控制台對話的角色操作">
+              <span>{{ activeRoleName }}<template v-if="roleRuntime.enabled"> · {{ rolePhaseLabel(roleRuntime.phase) }}</template></span>
+              <span class="console-locale-summary">回覆語系：{{ consoleLocaleLabel }}</span>
               <button v-if="roleRuntime.can_return" type="button" class="sample-btn" :disabled="roleBusy || !canRoleReturn(roleRuntime)" @click="roleAction('/return')">返回主數位人</button>
-              <button type="button" class="sample-btn" :disabled="roleBusy || roleRuntime.phase === 'transition'" @click="roleAction('/stop')">停止回答</button>
-              <label>對話紀錄
+              <button v-if="roleRuntime.enabled" type="button" class="sample-btn" :disabled="roleBusy || roleRuntime.phase === 'transition'" @click="roleAction('/stop')">停止回答</button>
+              <label v-if="roleRuntime.enabled && activeMode === 'chat'">對話紀錄
                 <select v-model="historyProfile" aria-label="查看角色對話紀錄">
                   <option value="">全部角色</option>
                   <option v-for="p in roleLibrary?.profiles || []" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
               </label>
-              <p v-if="!roleInputAllowed">{{ roleRuntime.mode === 'visitor' ? '目前由舞台接收訪客問題；控制台可返回或停止回答。' : '角色準備或轉場中，請稍候。' }}</p>
+              <p v-if="!roleInputAllowed">角色準備或轉場中，請稍候。</p>
             </div>
 
             <!-- 快捷提問膠囊列 -->
-            <div class="quick-chips-row">
+            <div v-show="activeMode === 'chat'" class="quick-chips-row">
               <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; white-space: nowrap;">⚡ 快捷指令:</span>
               <button class="chip-item board-chip" @click="quickSend('請整理 Nova Avatar 三大核心技術優勢並輸出看板')">
                 📋 核心技術優勢 (BOARD)
@@ -150,13 +153,14 @@ See LICENSE and NOTICE.
             </div>
 
             <VoiceTestPanel
-              v-if="showTestPanel"
+              v-if="voiceTestVisited"
+              v-show="activeMode === 'validation'"
               ref="voiceTestPanelRef"
               :session-id="sessionId"
               :connected="isConnected && roleInputAllowed"
               :busy="isThinking || ['avatar_speaking', 'tail_guard'].includes(voiceState)"
               :voice-state="voiceState"
-              @close="showTestPanel = false"
+              @close="selectMode('chat')"
               @started="handleVoiceTestStarted"
               @finished="handleVoiceTestFinished"
               @notification="showNotification"
@@ -177,6 +181,7 @@ See LICENSE and NOTICE.
                   <div v-if="msg.profileId" class="role-message-label">{{ profileName(msg.profileId) }}<span v-if="msg.handoffId"> · 交接 {{ msg.handoffId.slice(0, 8) }}</span></div>
                   <div v-if="appSettings.showTimestamp && msg.time" style="font-size: 10.5px; opacity: 0.6; margin-bottom: 4px; font-family: var(--font-mono);">{{ msg.time }}</div>
                   <div v-html="renderMarkdown(msg.text)"></div>
+                  <div v-if="msg.pending" role="status" aria-live="polite" style="font-size: 12px; color: var(--text-muted);">傳送中…</div>
                   <div
                     v-if="msg.type === 'ai' && msg.voiceTurnId && ragByTurn[msg.voiceTurnId]
                       && (ragByTurn[msg.voiceTurnId].status === 'unavailable'
@@ -222,7 +227,7 @@ See LICENSE and NOTICE.
             </div>
 
             <!-- 朗讀模式 -->
-            <div v-else-if="activeMode === 'tts'" style="flex: 1; display: flex; flex-direction: column; padding: 18px; gap: 12px; overflow-y: auto;">
+            <div v-else-if="activeMode === 'tts'" class="tts-mode-workspace">
               <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
                 <i class="bi bi-file-text" style="color: var(--brand-light);"></i> {{ t('chat.ttsTitle') }}
               </div>
@@ -246,18 +251,10 @@ See LICENSE and NOTICE.
             </div>
 
             <!-- 底部輸入操作塢 -->
-            <div class="studio-input-dock" v-if="activeMode === 'chat'">
-              <div class="input-box-row">
-                <textarea
-                  id="chatInputText"
-                  class="chat-text-entry"
-                  rows="1"
-                  v-model="chatInput"
-                  :placeholder="isConnected ? '輸入訊息，按 Enter 送出，Shift+Enter 換行...' : t('chat.inputPlaceholderDisconnected')"
-                  :disabled="!isConnected || !roleInputAllowed"
-                  @keydown.enter.exact.prevent="sendChatMessage"
-                ></textarea>
-              </div>
+            <div class="studio-input-dock" v-show="activeMode === 'chat'">
+              <ConversationComposer ref="composerRef" v-model="chatInput" :session-id="sessionId" :connected="isConnected && roleInputAllowed"
+                @submitting="onComposerSubmitting" @accepted="onComposerAccepted"
+                @submission-finished="onComposerSubmissionFinished" @editing="onComposerEditing" />
               <div class="input-actions-bar">
                 <div class="vad-status-label">
                   <i class="bi bi-check-circle-fill" :style="{ color: isConnected ? 'var(--success)' : 'var(--text-muted)' }"></i>
@@ -278,14 +275,6 @@ See LICENSE and NOTICE.
                     <i class="bi bi-mic-fill"></i>
                     <span id="voicePushText">{{ voiceButtonLabel }}</span>
                   </button>
-                  <button
-                    class="btn-send-main"
-                    @click="sendChatMessage"
-                    :disabled="!isConnected || !roleInputAllowed || !chatInput.trim()"
-                  >
-                    <i class="bi bi-send-fill"></i>
-                    <span>送出</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -296,9 +285,12 @@ See LICENSE and NOTICE.
             <div class="stage-sub-header">
               <div style="display: flex; align-items: center; gap: 6px;">
                 <i class="bi bi-camera-video-fill" style="color: var(--brand-light);"></i>
-                <span>數位人視訊舞台</span>
+                <span>數位人預覽</span>
               </div>
-              <span style="font-size: 11.5px; color: var(--text-tertiary);">{{ currentAvatarMeta }}</span>
+              <div class="console-toolbar-actions">
+                <span style="font-size: 11.5px; color: var(--text-tertiary);">{{ currentAvatarMeta }}</span>
+                <button type="button" class="sample-btn" @click="switchMainView('settings', 'stage')">看板設定</button>
+              </div>
             </div>
 
             <div class="stage-viewport-center">
@@ -387,6 +379,17 @@ See LICENSE and NOTICE.
                 </button>
 
                 <button
+                  v-if="isConnected && replyPlaybackState === 'blocked'"
+                  type="button"
+                  class="btn-stage-sub"
+                  @click="resumePlayback"
+                  :title="t('video.enableSoundHint')"
+                >
+                  <i class="bi bi-volume-up" aria-hidden="true"></i>
+                  {{ t('video.enableSound') }}
+                </button>
+
+                <button
                   class="btn-stage-sub"
                   @click="isRecording ? handleStopRecord() : handleStartRecord()"
                   :disabled="!isConnected"
@@ -421,6 +424,8 @@ See LICENSE and NOTICE.
           ref="settingsPanelRef"
           :is-connected="isConnected || connectionStatus === 'connecting'"
           :current-theme="currentTheme"
+          :session-id="sessionId"
+          @conversation-summary="conversationSummary = $event"
           @settings-changed="onSettingsChanged"
           @notification="showNotification"
           @request-disconnect="handleStopConnection"
@@ -464,11 +469,13 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import DebugPanel from './components/DebugPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import VoiceTestPanel from './components/VoiceTestPanel.vue'
+import ConversationComposer from './components/ConversationComposer.vue'
 import { useWebRTC } from './composables/useWebRTC'
 import { useI18n } from './composables/useI18n'
 import { useRuntimeSettings } from './composables/useRuntimeSettings'
 import { useRoles } from './composables/useRoles.js'
 import { canRoleInput, canRoleReturn, rolePhaseLabel } from './roleState.js'
+import { downloadMedia } from './mediaDownload.js'
 import { avatarScenePreviewUrl } from './scenePreview.js'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
@@ -502,7 +509,7 @@ const activeRoleName = computed(() => profileName(roleRuntime.active_profile_id)
 function profileName(id) { return roleLibrary.value?.profiles.find(p => p.id === id)?.name || id || '目前角色' }
 async function roleAction(path, body) {
   roleBusy.value = true
-  try { await roleRequest(path, 'POST', body) }
+  try { await roleRequest(path, 'POST', { ...body, sessionid: sessionId.value }) }
   catch (error) { showNotification(error.message, 'error') }
   finally { roleBusy.value = false }
 }
@@ -570,7 +577,42 @@ const sessionId = ref(0)
 const connectionStatus = ref('disconnected')
 const isRecording = ref(false)
 const activeMode = ref('chat')
+const voiceTestVisited = ref(false)
+const selectMode = (mode) => {
+  if (mode === 'validation') voiceTestVisited.value = true
+  activeMode.value = mode
+}
+const conversationSummary = ref(null)
+const consoleLocaleLabel = computed(() => {
+  if (!sessionId.value) return '待連線'
+  if (conversationSummary.value?.sessionId !== sessionId.value) return '讀取中'
+  return conversationSummary.value.locale === 'en-US' ? 'English' : '繁體中文'
+})
 const chatInput = ref('')
+const composerRef = ref(null)
+const onComposerSubmitting = ({ text, requestId }) => {
+  addMessage(text, 'user', { requestId, pending: true })
+}
+const onComposerAccepted = ({ text, requestId, turnId }) => {
+  const message = chatMessages.value.find(item => item.requestId === requestId && item.pending)
+  if (message) Object.assign(message, { text, pending: false, voiceTurnId: turnId })
+  else addMessage(text, 'user', { voiceTurnId: turnId })
+  isThinking.value = true
+}
+const onComposerSubmissionFinished = ({ requestId, error }) => {
+  chatMessages.value = chatMessages.value.filter(item => !(item.requestId === requestId && item.pending))
+  if (error) showNotification(error, 'error')
+}
+let composerCaptureBefore = null
+const onComposerEditing = (editing) => {
+  if (editing) {
+    if (composerCaptureBefore === null) composerCaptureBefore = getCaptureRequested()
+    setCaptureEnabled(false)
+  } else if (composerCaptureBefore !== null) {
+    if (isConnected.value) setCaptureEnabled(composerCaptureBefore)
+    composerCaptureBefore = null
+  }
+}
 const ttsInput = ref('')
 const isThinking = ref(false)
 const isRecordingVoice = ref(false)
@@ -606,8 +648,9 @@ const switchMainView = (viewKey, subTabKey = null) => {
   }
 }
 const quickSend = (txt) => {
+  selectMode('chat')
   chatInput.value = txt
-  sendChatMessage()
+  return sendChatMessage(txt)
 }
 const openStageWindow = () => {
   window.open('stage.html', '_blank')
@@ -702,12 +745,11 @@ const closeQuickCommandsOnOutsideClick = (e) => {
 
 function askPreset(query) {
   chatInput.value = query
-  sendChatMessage()
+  return sendChatMessage(query)
 }
 const backendReady = ref(false)  // 後端是否就緒
 const modelReady = ref(false)    // 是否已套用數字人引擎
 const stageBoard = reactive(createConsoleBoardState())
-const showTestPanel = ref(false)
 const voiceTestPanelRef = ref(null)
 const videoWrapperRef = ref(null)
 const videoSizeBox = reactive({ w: 400, h: 400 })
@@ -867,6 +909,9 @@ const getNotificationIcon = (type) => {
 }
 
 const handleVoiceEvent = (event) => {
+  if (event.mirrored) return
+  composerRef.value?.receive(event)
+  if (event.type === 'answer_clear') { captionEpoch.value += 1; return }
   if (event.type === 'presentation_reset' || event.type === 'conversation_reset') {
     chatMessages.value = []
     assistantStreamState.clear()
@@ -896,6 +941,7 @@ const handleVoiceEvent = (event) => {
     }
     return
   }
+  composerRef.value?.receive(event)
   voiceTestPanelRef.value?.handleVoiceEvent(event)
   if (event.type === 'state') {
     voiceState.value = event.state
@@ -1041,22 +1087,32 @@ const handleVoiceTestFinished = (record) => {
   )
 }
 
+const replyPlaybackState = ref('idle')
+
 const {
   startPlay,
   stopPlay,
+  resumePlayback,
   setCaptureEnabled,
+  getCaptureRequested,
   interruptVoice,
   acknowledgeBoardDisplay,
 } = useWebRTC({
   onNotification: showNotification,
   onVoiceEvent: handleVoiceEvent,
+  onPlaybackState: (state) => {
+    replyPlaybackState.value = state
+  },
   onSessionId: (id) => {
     sessionId.value = id
   },
   onConnectionState: (state) => {
     if (state === 'connected') connectionStatus.value = 'connected'
     if (state === 'failed') connectionStatus.value = 'disconnected'
-    if (state === 'reconnecting') voiceState.value = 'reconnecting'
+    if (state === 'preparing' || state === 'reconnecting') {
+      connectionStatus.value = 'connecting'
+      voiceState.value = 'reconnecting'
+    }
     if (state === 'text_only') voiceState.value = 'degraded'
   }
 })
@@ -1232,6 +1288,7 @@ const onAvatarReady = async () => {
   await checkBackendReady()
 }
 
+let connectionAttempt = 0
 const handleStartConnection = async () => {
   console.log('🚀 使用者點選"開始連線"按鈕')
   if (connectionStatus.value === 'connecting') return
@@ -1246,6 +1303,7 @@ const handleStartConnection = async () => {
     return
   }
   
+  const attempt = ++connectionAttempt
   connectionStatus.value = 'connecting'
   // Establish A/V first. Even with Silero VAD enabled, the user must press
   // the microphone before the console transmits any microphone audio.
@@ -1259,29 +1317,14 @@ const handleStartConnection = async () => {
       showNotification(t('notifications.connectSuccess'), 'success')
     }
     
-    const checkConnection = setInterval(() => {
-      const video = document.getElementById('video')
-      if (video && video.readyState >= 3 && video.videoWidth > 0) {
-        connectionStatus.value = 'connected'
-        clearInterval(checkConnection)
-        
-        // 自動錄製
-        if (appSettings.value.autoRecord) {
-          setTimeout(() => {
-            handleStartRecord()
-          }, 1000)
-        }
-      }
-    }, 2000)
-    
-    setTimeout(() => {
-      if (connectionStatus.value === 'connecting') {
-        connectionStatus.value = 'disconnected'
-        showNotification(t('notifications.connectTimeout'), 'error')
-      }
-      clearInterval(checkConnection)
-    }, 60000)
+    if (attempt !== connectionAttempt) return
+    if (appSettings.value.autoRecord) {
+      setTimeout(() => {
+        if (attempt === connectionAttempt && connectionStatus.value === 'connected') handleStartRecord()
+      }, 1000)
+    }
   } catch (error) {
+    if (attempt !== connectionAttempt || error.name === 'AbortError') return
     console.error('連線失敗:', error)
     connectionStatus.value = 'disconnected'
     showNotification(t('notifications.connectFailed'), 'error')
@@ -1289,6 +1332,7 @@ const handleStartConnection = async () => {
 }
 
 const handleStopConnection = () => {
+  connectionAttempt++
   handsFreePaused.value = false
   stopPlay()
   sessionId.value = 0
@@ -1381,21 +1425,17 @@ const handleStopRecord = async () => {
   }
 }
 
-const downloadRecord = () => {
+const downloadRecord = async () => {
   if (!lastRecordFile.value) {
     showNotification(t('notifications.noRecordFile'), 'warning')
     return
   }
   
-  const downloadUrl = `/download/${lastRecordFile.value.filename}`
-  const link = document.createElement('a')
-  link.href = downloadUrl
-  link.download = lastRecordFile.value.filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  
-  showNotification(t('notifications.downloading'), 'info')
+  const downloadUrl = lastRecordFile.value.url || `/download/${lastRecordFile.value.filename}`
+  try {
+    showNotification(t('notifications.downloading'), 'info')
+    await downloadMedia(downloadUrl, lastRecordFile.value.filename)
+  } catch (error) { showNotification(error.message, 'error') }
 }
 
 const scrollMessagesToEnd = () => {
@@ -1423,47 +1463,24 @@ const clearInput = () => {
   chatInput.value = ''
 }
 
-const sendChatMessage = async () => {
-  if (!chatInput.value.trim()) return
-  if (!roleInputAllowed.value) return
-  
-  // 檢查是否已連線
+const sendChatMessage = async (message) => {
+  // Let the connection/mode props settle; the question itself is passed
+  // explicitly instead of being read back through the v-model watchers.
+  await nextTick()
   if (!isConnected.value) {
     showNotification(t('notifications.connectFirst'), 'warning')
     return
   }
-  
-  const message = chatInput.value
-  addMessage(message, 'user')
-  chatInput.value = ''
-  
-  isThinking.value = true
-  
-  try {
-    const response = await fetch('/human', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: message,
-        type: 'chat',
-        interrupt: true,
-        sessionid: sessionId.value
-      })
-    })
-    
-    const data = await response.json().catch(() => ({}))
-    console.log('回覆輪次已接受:', data)
-    if (!response.ok || data.code === -1) {
-      throw new Error(data.msg || `HTTP ${response.status}`)
-    }
-  } catch (error) {
-    console.error('Failed to send message:', error)
-    const detail = error && error.message ? String(error.message) : ''
-    showNotification(
-      detail ? `${t('notifications.messageFailed')}：${detail}` : t('notifications.messageFailed'),
-      'error'
-    )
+  if (!roleInputAllowed.value) {
+    showNotification('角色準備或轉場中，請稍候再送出。', 'warning')
+    return
   }
+  const composer = composerRef.value
+  if (!composer) {
+    showNotification('對話輸入尚未就緒，請稍後再試。', 'warning')
+    return
+  }
+  return composer.send(message)
 }
 
 const sendTTSMessage = async () => {
@@ -1479,7 +1496,7 @@ const sendTTSMessage = async () => {
   const message = ttsInput.value
   
   try {
-    await fetch('/human', {
+    const response = await fetch('/human', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1489,6 +1506,10 @@ const sendTTSMessage = async () => {
         sessionid: sessionId.value
       })
     })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok || data.code === -1) {
+      throw new Error(data.msg || `HTTP ${response.status}`)
+    }
     
     addMessage(`已傳送朗讀請求：${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`, 'system')
     ttsInput.value = ''
@@ -1643,31 +1664,47 @@ onMounted(async () => {
 @import 'highlight.js/styles/atom-one-dark.css';
 
 .role-console-controls {
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
 }
+.role-console-controls label { display: flex; align-items: center; gap: 6px; }
+.console-locale-summary { color: var(--text-secondary); }
+.console-toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tts-mode-workspace { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; padding: 18px; gap: 12px; overflow: auto; }
+.tts-mode-workspace .std-textarea { min-height: 100px; }
+.studio-input-dock > .conversation-composer { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.studio-input-dock .composer-body { min-height: 0; overflow: auto; }
+.studio-input-dock .composer-label, .studio-input-dock .composer-actions, .studio-input-dock .input-actions-bar { flex-shrink: 0; }
+.bubble-card pre, .bubble-card table { display: block; max-width: 100%; overflow-x: auto; }
+.bubble-card pre { white-space: pre; }
+.bubble-card img { max-width: 100%; height: auto; }
 .role-console-controls p { width: 100%; margin: 0; color: var(--text-secondary); }
 .role-console-controls select {
-  background: var(--input-surface);
+  background: var(--bg-input);
   color: var(--text-primary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
   padding: 6px;
 }
 .role-message-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; }
 
 .app-root-shell {
-  height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
+}
+
+@media (max-width: 820px) {
+  .app-root-shell { height: auto; min-height: 100dvh; overflow: visible; }
 }
 
 .stage-ratio-box video {

@@ -33,6 +33,12 @@ def _playback_settings(config):
                 semantic_wait_seconds=config.reply_streaming.semantic_wait_seconds)
 
 
+RETURN_ANNOUNCEMENTS = {
+    "return_announcement": "接下來請主數位人接續回答您的問題。",
+    "return_announcement_en": "Our main avatar will help with your question next.",
+}
+
+
 class ProfileError(ValueError):
     def __init__(self, message: str, status: int = 400):
         super().__init__(message)
@@ -200,9 +206,14 @@ def validate_library(value: dict) -> dict:
             raise ProfileError("請選擇轉場影片")
         edges.append(dict(source=source, target=target, kind=kind, effect=effect,
                           duration=float(duration), asset_id=asset))
-    handoff = _object(value.get("handoff"), {"description", "rules", "announcement"}, "角色交接")
+    handoff = _object(value.get("handoff"), {"description", "rules", "announcement", "announcement_en", *RETURN_ANNOUNCEMENTS}, "角色交接")
+    announcement_en = _text(handoff.get("announcement_en", ""), "英文交接說明", 2000)
+    returns = {key: _text(handoff.get(key, default), "返回交接說明", 2000)
+               for key, default in RETURN_ANNOUNCEMENTS.items()}
     handoff = {key: _text(handoff.get(key), key, 12000 if key == "rules" else 2000, empty=False)
                for key in ("description", "rules", "announcement")}
+    handoff["announcement_en"] = announcement_en
+    handoff.update(returns)
     weather = _object(value.get("weather"), {"county", "town"}, "天氣地點")
     weather = {key: _text(weather.get(key, ""), key, 80) for key in ("county", "town")}
     weather = {key: value.replace("台", "臺") for key, value in weather.items()}
@@ -236,7 +247,7 @@ class ProfileStore:
             if self.path.exists() or self.path.is_symlink():
                 library = self.load()
                 raw = yaml.safe_load(self.path.read_text("utf-8"))
-                changed = False
+                changed = any(key not in raw['handoff'] for key in RETURN_ANNOUNCEMENTS)
                 for profile, original in zip(library["profiles"], raw["profiles"]):
                     for key, value in _playback_settings(config).items():
                         if key not in original["llm"]:

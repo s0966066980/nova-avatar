@@ -80,7 +80,7 @@ class IdleGreetingController:
         if host.is_greeting:
             self.report("playing" if host._greeting_started else "preparing")
             return
-        if not idle:
+        if not idle or not clear:
             self.reset()
             self.report("paused", self.error)
             return

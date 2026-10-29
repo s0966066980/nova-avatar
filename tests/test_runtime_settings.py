@@ -227,11 +227,13 @@ class OverridePersistTests(unittest.TestCase):
             self.assertEqual(
                 data["stage"],
                 {
+                    "clear_display_seconds": 15,
+                    **__import__("src.config.stage_composer", fromlist=["DEFAULTS"]).DEFAULTS,
                     "background_id": "",
                     "caption_max_chars": 120,
-                    "idle_reset_seconds": 10,
+                    "idle_reset_seconds": 60,
                     "idle_greeting_enabled": False,
-                    "idle_greeting_seconds": 60,
+                    "idle_greeting_seconds": 30,
                     "caption_x": 50,
                     "caption_y": 90,
                     "caption_width": 100,
@@ -412,9 +414,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         with self.assertRaises(SettingsError):
             apply_stage_settings(Config(), {"caption_width": 39})
 
-    def test_idle_reset_seconds_defaults_to_ten_and_persists_when_changed(self):
+    def test_idle_reset_seconds_defaults_to_sixty_and_persists_when_changed(self):
         config = Config()
-        self.assertEqual(stage_snapshot(config)["idle_reset_seconds"], 10)
+        self.assertEqual(stage_snapshot(config)["idle_reset_seconds"], 60)
 
         with patch("src.server.runtime_settings.persist_runtime_overrides") as persist:
             result = apply_stage_settings(config, {"idle_reset_seconds": 45})

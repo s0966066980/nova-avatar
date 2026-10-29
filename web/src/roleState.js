@@ -1,10 +1,8 @@
 // Copyright (c) 2026 HongXian0903
 // SPDX-License-Identifier: Apache-2.0
 
-export function canRoleInput(role, presenter) {
-  if (role?.applying) return false
-  return (!role?.enabled && !role?.input_mode_managed) || (!role.applying && ['ready', 'announcement', ...(role.enabled ? [] : ['disabled'])].includes(role.phase)
-    && (role.mode === 'visitor' ? presenter === 'stage' : presenter === 'console'))
+export function canRoleInput(role) {
+  return !role?.applying && ['ready', 'announcement', 'disabled'].includes(role?.phase || 'disabled')
 }
 
 export function canRoleReturn(role) {

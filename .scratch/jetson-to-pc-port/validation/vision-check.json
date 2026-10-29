@@ -1,0 +1,16 @@
+{
+  "vision_ready": true,
+  "capacity": 8192,
+  "invoice.png": {
+    "answer": "The order number is NOVA42 and the total amount is 1500 TWD. This information is shown on the invoice.\n\n*   Order number: NOVA42\n*   Total amount: 1500 TWD",
+    "seconds": 2.2017556550017616,
+    "has_order_number": true,
+    "has_amount": true
+  },
+  "invoice-scan.pdf": {
+    "answer": "The order number is NOVA42 and the total amount is 1500 TWD. This information is directly from the invoice scan. You can check the details on page 1.",
+    "seconds": 1.3750151559979713,
+    "has_order_number": true,
+    "has_amount": true
+  }
+}

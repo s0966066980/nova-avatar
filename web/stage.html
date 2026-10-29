@@ -14,6 +14,7 @@ See LICENSE and NOTICE.
 <meta name="description" content="Nova Avatar 數位人舞台">
 <title>數位人舞台 · Nova Avatar</title>
 <style>
+.stage-language{position:absolute;right:12px;top:12px;z-index:6;display:flex;flex-direction:column;gap:4px;max-width:45%}.stage-language select{min-height:44px;background:#121b2b;color:#fff;border:1px solid #64748b;border-radius:8px;padding:8px}.stage-language-status{font-size:12px}.entry-languages{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
   :root{
     --bg:#08090c;
     --stage-shadow: 0 40px 120px -20px rgba(0,0,0,.9);
@@ -359,7 +360,7 @@ See LICENSE and NOTICE.
 
     <section class="float-board" id="board" hidden aria-label="回答看板">
       <div class="board-head">
-        <span>回答看板</span>
+        <span id="boardLabel">回答看板</span>
         <span style="display:flex;align-items:center;gap:6px">
           <span class="count-pill" id="boardBadge">0 項</span>
           <button class="board-close" id="hideBoard" type="button" aria-label="關閉看板">✕</button>
@@ -379,16 +380,23 @@ See LICENSE and NOTICE.
     <button class="btn" id="roleReturn" type="button" hidden
       style="position:absolute;top:16px;left:16px;z-index:10;min-height:44px;max-width:calc(100% - 32px)">返回主數位人</button>
 
+    <div id="conversationComposer"></div>
+    <div class="stage-language"><select id="stageLocale" aria-label="舞台語系"><option value="zh-TW">繁體中文</option><option value="en-US">English</option></select><span id="languageStatus" class="stage-language-status" role="status" aria-live="polite"></span></div>
     <div class="veil" id="veil">
       <h1 id="veilTitle">數字人舞台</h1>
       <p id="veilText">點擊進入，瀏覽器會詢問麥克風權限。</p>
-      <button class="btn" id="veilBtn">進入</button>
+      <div id="entryLanguages" class="entry-languages"><button class="btn" type="button" data-locale="zh-TW">繁體中文</button><button class="btn" type="button" data-locale="en-US">English</button></div>
+      <button class="btn" id="veilBtn" hidden>進入</button>
       <button class="btn ghost" id="veilAlt" hidden>開啟控制台</button>
     </div>
   </main>
 </div>
 
 <script type="module">
+import { createApp, h, reactive } from 'vue';
+import ConversationComposer from '/src/components/ConversationComposer.vue';
+import { composerSettings } from '/src/conversationAttachments.js';
+import { stageText, stageItemCount } from '/src/stageLocale.js';
 import { canRoleInput, canRoleReturn } from '/src/roleState.js';
 import {
   DEFAULT_STAGE_CAPTION_MAX_CHARS,
@@ -426,6 +434,41 @@ import {
   // ── 連線狀態 ────────────────────────────────
   let pc=null, chan=null, micStream=null;
   let sessionId=0, lastSeq=0;
+  let stageLocale='zh-TW', languageSwitching=false, hasConnected=false;
+  let stageComposer=null, microphoneRequest=null, enablingMicrophonePress=false, composerCaptureBefore=null, composerBox=null;
+  const composerState=reactive({stage:true, sessionId:0, connected:false, enabled:false,
+    locale:'zh-TW', settings:composerSettings()});
+  createApp({render:()=>h(ConversationComposer, {...composerState,
+    ref: instance=>{stageComposer=instance;}, onLayout:box=>{composerBox=box;queueMicrotask(applyBoardLayout);}, onAccepted:({text})=>showSaid(text),
+    onEditing: editing=>{
+      if(editing){ if(composerCaptureBefore === null) composerCaptureBefore=Boolean(micStream?.getAudioTracks()[0]?.enabled); setCapture(false); }
+      else if(composerCaptureBefore !== null){setCapture(composerCaptureBefore);composerCaptureBefore=null;}
+    }})}).mount('#conversationComposer');
+  const languageSelect=$('stageLocale'), languageStatus=$('languageStatus'), entryLanguages=$('entryLanguages');
+  const t = text => stageText(text, stageLocale);
+  function applyLocale(locale){
+    stageLocale = locale === 'en-US' ? 'en-US' : 'zh-TW';
+    composerState.locale=stageLocale;
+    languageSelect.value = stageLocale;
+    document.documentElement?.setAttribute('lang', stageLocale);
+    document.title = `${t('數字人舞台')} · Nova Avatar`;
+    languageSelect.setAttribute('aria-label', stageLocale === 'en-US' ? 'Stage language' : '舞台語系');
+    mic.setAttribute('aria-label', t('收音'));
+    board.setAttribute('aria-label', t('回答看板'));
+    hideBoardBtn.setAttribute('aria-label', t('關閉看板'));
+    if($('boardLabel')) $('boardLabel').textContent=t('回答看板');
+    veilAlt.textContent=t('開啟控制台');
+    roleReturn.textContent=t('返回主數位人');
+    setMode(); refreshAffordance(); renderBoardItems(); applyBoardLayout();
+  }
+  function finishLanguageSwitch(locale, failed=false){
+    languageSwitching=false;
+    languageSelect.disabled=false;
+    applyLocale(locale);
+    languageStatus.textContent=failed ? t('語系切換失敗，已保留原設定') : '';
+    micStream?.getAudioTracks().forEach(track => { track.enabled=autoMode && !autoPaused && canRoleInput(roleState, 'stage'); });
+    refreshAffordance();
+  }
   let autoMode=false;        // 後台 VAD 開啟 → 自動收音
   let autoPaused=false;      // 自動模式下使用者主動暫停收音
   let holding=false;         // 按鍵收音進行中
@@ -477,15 +520,16 @@ import {
     }
     return {title:'', items:[], preview:false};
   }
+  const escapeText=value=>String(value || '').replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   function renderBoardItems(){
     if(!boardList) return;
     const shown=displayBoard();
     boardList.innerHTML=shown.items.map((item,n)=>
-      `<li class="board-item"><span class="item-number">${String(n+1).padStart(2,'0')}</span><div><div class="item-title">${item.title}</div><p class="item-body">${item.body||''}</p></div></li>`
+      `<li class="board-item"><span class="item-number">${String(n+1).padStart(2,'0')}</span><div><div class="item-title">${escapeText(item.title)}</div><p class="item-body">${escapeText(item.body)}</p></div></li>`
     ).join('');
-    if(boardBadge) boardBadge.textContent=shown.preview ? '預覽' : `${shown.items.length} 項`;
+    if(boardBadge) boardBadge.textContent=shown.preview ? t('預覽') : stageItemCount(shown.items.length,stageLocale);
     if(boardTitle) boardTitle.textContent=shown.title;
-    if(boardSource) boardSource.textContent=shown.preview ? '控制台預覽 · 對位置與大小，非本輪回答' : (shown.items.length ? '本輪條列 · 可關閉後再展開' : '');
+    if(boardSource) boardSource.textContent=shown.preview ? t('控制台預覽 · 對位置與大小，非本輪回答') : (shown.items.length ? t('本輪條列 · 可關閉後再展開') : '');
   }
   function clearLiveBoard(){
     liveBoard.title='';
@@ -519,7 +563,7 @@ import {
     if(boardReopen){
       boardReopen.hidden=!hasItems;
       boardReopen.setAttribute('aria-pressed', String(!liveBoard.hidden));
-      if(boardReopenLabel) boardReopenLabel.textContent=liveBoard.hidden ? '展開看板' : '收合看板';
+      if(boardReopenLabel) boardReopenLabel.textContent=t(liveBoard.hidden ? '展開看板' : '收合看板');
     }
     if(!hasItems) return;
     const scale=previewScale(stage.clientWidth, stage.clientHeight);
@@ -554,22 +598,24 @@ import {
   function setVisual(v){ stage.dataset.voice = v; }
 
   function refreshAffordance(){
-    if(!live){ mic.disabled=true; hint.textContent='準備中'; return; }
+    composerState.connected=live && !languageSwitching && canRoleInput(roleState,'stage');
+    if(!live || languageSwitching){ mic.disabled=true; hint.textContent=t('準備中'); return; }
     if(!canRoleInput(roleState,'stage')){
       mic.disabled=true;
-      hint.textContent=roleState.mode==='console' ? '控制台測試中' : '角色轉場中，請稍候';
+      hint.textContent=t('角色轉場中，請稍候');
       return;
     }
     mic.disabled=false;
-    if(speaking){ hint.textContent = autoMode ? '點一下插話' : '點一下插話'; return; }
-    if(autoMode){ hint.textContent = autoPaused ? '已暫停收音，點一下恢復' : '直接說話'; return; }
-    hint.textContent = holding ? '放開送出' : '按住說話';
+    if(!micStream){hint.textContent=t('啟用麥克風');return;}
+    if(speaking){ hint.textContent = t('點一下插話'); return; }
+    if(autoMode){ hint.textContent = t(autoPaused ? '已暫停收音，點一下恢復' : '直接說話'); return; }
+    hint.textContent = t(holding ? '放開送出' : '按住說話');
   }
 
   function setMode(){
-    modeText.textContent = !live ? '連線中'
+    modeText.textContent = t(!live ? '連線中'
       : autoMode ? (autoPaused ? '自動收音・已暫停' : '自動收音')
-      : '按鍵收音';
+      : '按鍵收音');
   }
 
   function showReply(text, turnId){
@@ -631,8 +677,8 @@ import {
   }
 
   function showVeil(title, text, {isError=false, btn='重試', onBtn=null, alt=false}={}){
-    veilTitle.textContent = title;
-    veilText.textContent = text;
+    veilTitle.textContent = t(title);
+    veilText.textContent = t(text);
     veilText.classList.toggle('err', isError);
     veilBtn.textContent = btn;
     veilBtn.hidden = !onBtn;
@@ -660,7 +706,7 @@ import {
     captureWanted=Boolean(enabled);
     micStream?.getAudioTracks().forEach(t => { t.enabled = captureWanted && canRoleInput(roleState,'stage'); });
     reportStageReady();
-    return send({type:'capture', enabled:Boolean(enabled), finalize});
+    return send({type:'capture', enabled:Boolean(enabled), finalize, manual_pause:autoPaused});
   }
   function interrupt(){
     autoPaused = false;
@@ -691,6 +737,7 @@ import {
       if(!r.ok) return;
       const payload = await r.json();
       const data = payload?.data || {};
+      composerState.settings={...composerSettings(data), idle_reset_seconds:Number(data.idle_reset_seconds || 60)}; composerState.enabled=Boolean(data.composer_enabled);
       const next = Number(data.caption_max_chars);
       if(Number.isInteger(next) && next >= 20 && next <= 2000){
         configuredCaptionMaxChars = next;
@@ -726,6 +773,17 @@ import {
 
   // ── 會話事件 ────────────────────────────────
   function onVoiceEvent(ev){
+    if(ev.mirrored) return;
+    stageComposer?.receive(ev);
+    if(ev.type === 'conversation_settings_pending'){
+      languageSwitching=true; languageSelect.disabled=true;
+      languageStatus.textContent=t('正在切換語系…'); holding=false;
+      micStream?.getAudioTracks().forEach(track=>{track.enabled=false;});
+      refreshAffordance(); return;
+    }
+    if(ev.type === 'conversation_settings'){ finishLanguageSwitch(ev.locale); return; }
+    if(ev.type === 'conversation_settings_error'){ finishLanguageSwitch(ev.locale || stageLocale,true); return; }
+    if(ev.type === 'answer_clear'){ clearReply(); said.textContent=''; said.classList.remove('on'); return; }
     if(ev.type==='role_state'){
       roleState=ev;
       if(ev.error) showSaid('角色暫時無法切換，請再試一次。');
@@ -831,6 +889,9 @@ import {
   async function connect(){
     clearTimeout(kioskTimer);
     teardown();
+    autoPaused = false;
+    entryLanguages.hidden=true;
+    await syncStageSettings();
     showVeil('連線中', '正在建立與數字人的即時通道。', {btn:'', onBtn:null});
     veilBtn.hidden = true;
 
@@ -874,8 +935,8 @@ import {
       micStream.getAudioTracks()[0].enabled = false;
     }catch(err){
       micStream = null;
-      pc.addTransceiver('audio', {direction:'recvonly'});
-      showSaid('麥克風無法使用，目前為純觀看');
+      pc.addTransceiver('audio', {direction:composerState.enabled ? 'sendrecv' : 'recvonly'});
+      if(!composerState.enabled) showSaid(t('麥克風無法使用，目前為純觀看'));
     }
     pc.addTransceiver('video', {direction:'recvonly'});
 
@@ -886,7 +947,7 @@ import {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          client_role:'stage',
+          client_role:'stage', locale:stageLocale, has_microphone:Boolean(micStream),
           sdp:pc.localDescription.sdp,
           type:pc.localDescription.type
         })
@@ -903,7 +964,8 @@ import {
         throw new Error(m);
       }
       const data = await res.json();
-      sessionId = data.sessionid;
+      sessionId = data.sessionid; composerState.sessionId=sessionId;
+      if(data.conversation) finishLanguageSwitch(data.conversation.locale);
       await pc.setRemoteDescription(new RTCSessionDescription({sdp:data.sdp, type:data.type}));
     }catch(err){
       teardown();
@@ -915,6 +977,7 @@ import {
   function teardown(){
     send({type:'stage_ready', audible:false, microphone:false, interaction:false});
     roleState={enabled:false};captureWanted=false;roleReturn.hidden=true;
+    composerState.connected=false;
     live = false; speaking = false; holding = false; interruptedPress = false; lastSeq = 0;
     clearReply();
     if(chan){ chan.onclose=null; chan.onerror=null; try{chan.close();}catch(_){} }
@@ -929,9 +992,25 @@ import {
   }
 
   // ── 中央按鈕：按鍵收音 / 自動模式開關 / 插話 ──
+  async function enableMicrophone(){
+    if(microphoneRequest || !pc) return;
+    const peer=pc;
+    microphoneRequest=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+    try{
+      const stream=await microphoneRequest;
+      if(peer !== pc){stream.getTracks().forEach(track=>track.stop());return;}
+      const sender=peer.getTransceivers().find(item=>item.receiver.track.kind === 'audio')?.sender;
+      if(!sender){stream.getTracks().forEach(track=>track.stop());throw new Error('Audio sender unavailable');}
+      await sender.replaceTrack(stream.getAudioTracks()[0]);
+      micStream=stream; autoPaused=false;
+      setCapture(autoMode); setMode(); refreshAffordance();
+    }catch(_){showSaid(stageLocale === 'en-US' ? 'Microphone unavailable. Text and attachments are still available.' : '無法啟用麥克風，仍可使用文字與附件。');}
+    finally{microphoneRequest=null;}
+  }
   mic.addEventListener('pointerdown', (e) => {
     if(mic.disabled) return;
     e.preventDefault();
+    if(!micStream){enablingMicrophonePress=true;enableMicrophone();return;}
     interruptedPress = false;
     if(speaking){ interruptedPress = true; interrupt(); return; }
     if(autoMode) return;                 // 自動模式在 pointerup 才切換
@@ -942,6 +1021,7 @@ import {
   });
 
   const release = () => {
+    if(enablingMicrophonePress){enablingMicrophonePress=false;return;}
     if(!holding) return;
     holding = false;
     setCapture(false, true);             // finalize：把這段發話收尾送去 STT
@@ -951,6 +1031,8 @@ import {
   mic.addEventListener('pointerup', (e) => {
     if(mic.disabled) return;
     e.preventDefault();
+    if(enablingMicrophonePress){enablingMicrophonePress=false;return;}
+    if(!micStream || microphoneRequest) return;
     if(interruptedPress){ interruptedPress = false; return; }
     if(autoMode && !speaking){
       autoPaused = !autoPaused;
@@ -979,14 +1061,25 @@ import {
   });
 
   // ── 開場：需要一次使用者手勢才能自動播放帶聲音的影片 ──
-  async function startSession(){
+  async function startSession(locale=stageLocale){
+    if(typeof locale !== "string") locale=stageLocale;
+    applyLocale(locale); entryLanguages.hidden=true;
     veilBtn.hidden = true;
     await syncVadMode();
     await syncStageSettings();
     await connect();
     try{ await video.play(); reportStageReady(); }catch(_){ reportStageReady(); }
   }
-  veilBtn.onclick = startSession;
+  veilBtn.onclick = () => startSession();
+  entryLanguages.querySelectorAll('[data-locale]').forEach(button=>{button.onclick=()=>startSession(button.dataset.locale);});
+  languageSelect.onchange=()=>{
+    const locale=languageSelect.value;
+    if(!live){applyLocale(locale);return;}
+    languageSelect.value=stageLocale; languageSwitching=true; languageSelect.disabled=true;
+    micStream?.getAudioTracks().forEach(track=>{track.enabled=false;});
+    refreshAffordance();
+    if(!send({type:'conversation_settings',settings:{locale}})) finishLanguageSwitch(stageLocale,true);
+  };
 
   addEventListener('beforeunload', teardown);
 

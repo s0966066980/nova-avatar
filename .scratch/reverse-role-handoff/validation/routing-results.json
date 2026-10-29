@@ -1,0 +1,120 @@
+{
+  "at": "2026-10-29T06:54:08.381196+00:00",
+  "model": "Qwen3.5-9B-UD-Q4_K_XL",
+  "passed": 14,
+  "total": 14,
+  "cases": [
+    {
+      "case": "services",
+      "current_role": "weather",
+      "expected": "answer",
+      "actual": "answer",
+      "passed": true,
+      "seconds": 1.389
+    },
+    {
+      "case": "outside_main_knowledge",
+      "current_role": "weather",
+      "expected": "answer",
+      "actual": "answer",
+      "passed": true,
+      "seconds": 0.347
+    },
+    {
+      "case": "two_cities_general",
+      "current_role": "weather",
+      "expected": "answer",
+      "actual": "answer",
+      "passed": true,
+      "seconds": 0.327
+    },
+    {
+      "case": "weather",
+      "current_role": "weather",
+      "expected": "specialist",
+      "actual": "specialist",
+      "passed": true,
+      "seconds": 0.603
+    },
+    {
+      "case": "hiking",
+      "current_role": "weather",
+      "expected": "specialist",
+      "actual": "specialist",
+      "passed": true,
+      "seconds": 0.943
+    },
+    {
+      "case": "weekend_followup",
+      "current_role": "weather",
+      "expected": "specialist",
+      "actual": "specialist",
+      "passed": true,
+      "seconds": 0.617
+    },
+    {
+      "case": "mixed",
+      "current_role": "weather",
+      "expected": "clarify",
+      "actual": "clarify",
+      "passed": true,
+      "seconds": 0.825
+    },
+    {
+      "case": "mixed_choose_main",
+      "current_role": "weather",
+      "expected": "answer",
+      "actual": "answer",
+      "passed": true,
+      "seconds": 0.363
+    },
+    {
+      "case": "mixed_choose_weather",
+      "current_role": "weather",
+      "expected": "specialist",
+      "actual": "specialist",
+      "passed": true,
+      "seconds": 0.627
+    },
+    {
+      "case": "forward_weather",
+      "current_role": "main",
+      "expected": "specialist",
+      "actual": "specialist",
+      "passed": true,
+      "seconds": 0.855
+    },
+    {
+      "case": "main_general",
+      "current_role": "main",
+      "expected": "answer",
+      "actual": "answer",
+      "passed": true,
+      "seconds": 0.324
+    },
+    {
+      "case": "english_services",
+      "current_role": "weather",
+      "expected": "answer",
+      "actual": "answer",
+      "passed": true,
+      "seconds": 0.4
+    },
+    {
+      "case": "english_hiking",
+      "current_role": "weather",
+      "expected": "specialist",
+      "actual": "specialist",
+      "passed": true,
+      "seconds": 0.683
+    },
+    {
+      "case": "english_mixed",
+      "current_role": "weather",
+      "expected": "clarify",
+      "actual": "clarify",
+      "passed": true,
+      "seconds": 0.704
+    }
+  ]
+}

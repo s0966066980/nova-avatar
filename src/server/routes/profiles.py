@@ -54,25 +54,25 @@ async def apply(request, roles):
     return web.json_response({"code": 0, "runtime": await roles.apply()})
 
 
-@endpoint
-async def mode(request, roles):
-    return web.json_response({"code": 0, "runtime": await roles.set_mode((await request.json())["mode"])})
+async def _requester(request):
+    body = await request.json()
+    voice = state.voice_sessions.get(int(body.get("sessionid", 0)))
+    if voice is None:
+        raise ProfileError("請指定已連線的對話", 404)
+    return voice
 
 
 @endpoint
 async def return_main(request, roles):
-    requester = next(iter(state.voice_sessions.values()), None)
-    if requester is None:
-        raise ProfileError("請先連線數位人", 409)
-    return web.json_response({"code": 0, "runtime": await roles.return_to_main(requester)})
+    voice = await _requester(request)
+    return web.json_response({"code": 0, "runtime": await roles.return_to_main(voice)})
 
 
 @endpoint
 async def stop(request, roles):
-    for voice in list(state.voice_sessions.values()):
-        if not voice._is_conversation_idle():
-            await voice.interrupt()
-    return web.json_response({"code": 0, "runtime": roles.snapshot()})
+    voice = await _requester(request)
+    await voice.interrupt()
+    return web.json_response({"code": 0, "runtime": voice._role_coordinator.snapshot()})
 
 
 @endpoint
@@ -114,7 +114,7 @@ async def preview(request, roles):
 
 @endpoint
 async def delete_media(request, roles):
-    referenced = {e.get("asset_id") for lib in (roles.store.load(), roles.library)
+    referenced = {e.get("asset_id") for lib in (roles.store.load(), roles.library, *(r.library for r in roles.sessions.values()))
                   for e in lib["transitions"] if e["kind"] == "video"}
     roles.media.delete(request.match_info["asset_id"], referenced=referenced)
     return web.json_response({"code": 0, "media": roles.media.list()})
@@ -142,8 +142,8 @@ async def greeting_preview(request, roles):
 async def greeting_try(request, roles):
     body = await request.json()
     voice = state.voice_sessions.get(int(body.get("sessionid", 0)))
-    if roles.mode != "console" or voice is None or voice._presenter != "console" or not voice.event_sink_ready:
-        raise ProfileError("請切換到控制台測試模式並建立播放連線", 409)
+    if voice is None or voice._presenter != "console" or not voice.event_sink_ready:
+        raise ProfileError("請先在控制台建立播放連線", 409)
     config = profile_config(state.config, validate_profile(body["profile"]))
     if config.tts.type != voice.config.tts.type:
         raise ProfileError("請先載入草稿使用的語音引擎，再執行試播", 409)
@@ -163,7 +163,7 @@ async def greeting_try(request, roles):
     finally:
         if voice._greeting_trial_preparation is preparing:
             voice._greeting_trial_preparation = None
-    if not still_owned or roles.mode != "console" or voice._closed or voice._generation != generation or not voice._is_conversation_idle():
+    if not still_owned or voice._closed or voice._generation != generation or not voice._is_conversation_idle():
         raise ProfileError("試播準備期間連線或對話狀態已改變，請再試一次", 409)
     try:
         turn_id = voice.start_greeting(result["text"], playback_config=config)
@@ -179,7 +179,6 @@ def register_profile_routes(app):
     app.router.add_get("/api/profiles", library)
     app.router.add_put("/api/profiles", save)
     app.router.add_post("/api/profiles/apply", apply)
-    app.router.add_post("/api/profiles/mode", mode)
     app.router.add_post("/api/profiles/return", return_main)
     app.router.add_post("/api/profiles/stop", stop)
     app.router.add_post("/api/profiles/media", upload)

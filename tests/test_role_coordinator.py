@@ -112,6 +112,47 @@ def async_test(function):
     return run
 
 
+@pytest.mark.parametrize('presenter', ['console', 'stage'])
+@async_test
+async def test_both_pages_accept_input_with_the_other_page_connected(field, presenter):
+    console, _ = connect(field, 7, 'console')
+    stage, _ = connect(field, 8, 'stage')
+    voice = console if presenter == 'console' else stage
+    try:
+        console._refresh_gate()
+        stage._refresh_gate()
+        assert console._gate_open and stage._gate_open
+        accepted = await voice.start_text_turn('各自朗讀', _speak_only=True)
+        await voice._turn_task
+        assert accepted['turn_id'] == voice._turn_id
+        other = stage if voice is console else console
+        assert other._gate_open
+    finally:
+        await console.close()
+        await stage.close()
+
+
+@async_test
+async def test_stage_role_switch_does_not_cancel_console_answer(field):
+    console, console_events = connect(field, 7, 'console')
+    stage, _ = connect(field, 8, 'stage')
+    console._media_player = stage._media_player = None
+    stage._role_coordinator.edge = lambda *_: dict(kind='effect', effect='fade', duration=.001)
+    try:
+        # Exercise role cancellation separately from input permission.
+        console._turn_id = 'console-answer'
+        generation = console._generation
+        await stage._role_coordinator._switch('weather', stage)
+        assert console._turn_id == 'console-answer'
+        assert console._generation == generation
+        assert console.config.profile_id == 'main'
+        assert stage.config.profile_id == 'weather'
+        assert not any(e['type'] == 'role_clear' for e in console_events)
+    finally:
+        await console.close()
+        await stage.close()
+
+
 @pytest.mark.parametrize('apply_waiting', [False, True])
 @pytest.mark.parametrize('question,town', [
     ('明天臺北市中正區會下雨嗎', '中正區'),
@@ -123,6 +164,7 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
     router = roles.router
     roles.router = lambda *args: {**router(*args), 'town': town}
     voice, events = connect(roles)
+    runtime = voice._role_coordinator
     weather = {'status': 'available', 'source': 'CWA', 'series': {}}
     async def query(_):
         return weather
@@ -132,8 +174,8 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
     try:
         accepted = await voice.start_text_turn(question)
         await voice._turn_task
-        assert roles.phase == 'announcement', voice.avatar.messages
-        assert roles.current_id == 'main'
+        assert runtime.phase == 'announcement', voice.avatar.messages
+        assert runtime.current_id == 'main'
         llm.assert_not_called()
         roles._apply_waiting = apply_waiting
         _, audio = voice.avatar.messages[0]
@@ -141,15 +183,15 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
         voice.on_output_audio(True)
         for _ in range(3):
             voice.on_output_audio(False)
-        await wait_until(lambda: roles.phase == 'transition')
-        assert roles.current_id == 'main'
+        await wait_until(lambda: runtime.phase == 'transition')
+        assert runtime.current_id == 'main'
         llm.assert_not_called()
-        roles.video_committed(voice.sessionid, {'role_transition_id': 'stale', 'role_transition_end': True})
-        assert not roles._transition_event.is_set()
-        roles.video_committed(voice.sessionid, {'role_transition_id': roles._transition_id, 'role_transition_end': True})
+        runtime.video_committed(voice.sessionid, {'role_transition_id': 'stale', 'role_transition_end': True})
+        assert not runtime._transition_event.is_set()
+        runtime.video_committed(voice.sessionid, {'role_transition_id': runtime._transition_id, 'role_transition_end': True})
         await voice._tail_task
         await wait_until(lambda: voice._turn_task is None)
-        assert roles.current_id == 'weather'
+        assert runtime.current_id == 'weather'
         llm.assert_called_once()
         assert llm.call_args.args[0] == question
         assert '本輪氣象工具資料' in llm.call_args.kwargs['rag_context']
@@ -167,10 +209,6 @@ async def test_read_aloud_obeys_owner_and_uses_turn_media_fences(field):
     roles = field
     voice, _ = connect(roles)
     try:
-        roles.mode = 'visitor'
-        with pytest.raises(RuntimeError, match='另一個輸入來源'):
-            await voice.start_text_turn('不能繞過收音模式', _speak_only=True)
-        roles.mode = 'console'
         result = await voice.start_text_turn('朗讀測試', _speak_only=True)
         await voice._turn_task
         text, media = voice.avatar.messages[-1]
@@ -188,6 +226,7 @@ async def test_read_aloud_obeys_owner_and_uses_turn_media_fences(field):
 async def test_cancelled_announcement_never_hands_off_and_recovers_input(field, failure):
     roles = field
     voice, _ = connect(roles)
+    runtime = voice._role_coordinator
     cancelled = asyncio.Event()
     async def slow_weather(_):
         try:
@@ -204,49 +243,25 @@ async def test_cancelled_announcement_never_hands_off_and_recovers_input(field, 
         else:
             voice._fail_playback_turn()
         await wait_until(cancelled.is_set)
-        assert not roles.pending
-        assert roles.phase == 'ready'
-        assert roles.current_id == 'main'
-        assert roles.input_allowed(voice)
+        assert not runtime.pending
+        assert runtime.phase == 'ready'
+        assert runtime.current_id == 'main'
+        assert runtime.input_allowed(voice)
     finally:
         await voice.close()
 
 
 @async_test
-async def test_mode_switch_keeps_memories_and_rejects_other_input(field):
-    roles = field
-    console, _ = connect(roles, 7, 'console')
-    stage, _ = connect(roles, 8, 'stage')
+async def test_stage_reset_is_scheduled_even_while_console_is_answering(field):
+    console, _ = connect(field, 7, 'console')
+    stage, _ = connect(field, 8, 'stage')
     try:
-        assert roles.mode == 'visitor'
-        with pytest.raises(RuntimeError, match='另一個輸入來源'):
-            await console.start_text_turn('不應接受')
-        await roles.set_mode('console')
-        assert roles.input_allowed(console)
-        assert not roles.input_allowed(stage)
+        console._turn_id = 'console-answer'
         stage._conversation_dirty = True
         stage._schedule_idle_reset()
-        assert stage._idle_reset_task is None
-        await roles.set_mode('visitor')
-        assert roles.input_allowed(stage)
-    finally:
-        await console.close()
-        await stage.close()
-
-
-@async_test
-async def test_opening_stage_keeps_explicit_console_test_mode(field):
-    roles = field
-    console, _ = connect(roles)
-    await roles.set_mode('console')
-    stage, _ = connect(roles, 8, 'stage')
-    try:
-        assert roles.mode == 'console'
-        assert roles.input_allowed(console)
-        assert not roles.input_allowed(stage)
-        await roles.set_mode('visitor')
-        assert roles.input_allowed(stage)
-        assert not roles.input_allowed(console)
+        assert stage._idle_reset_task is not None
+        assert stage._role_coordinator.input_allowed(stage)
+        assert console._role_coordinator.input_allowed(console)
     finally:
         await console.close()
         await stage.close()
@@ -255,9 +270,9 @@ async def test_opening_stage_keeps_explicit_console_test_mode(field):
 @async_test
 async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers(field, monkeypatch):
     roles = field
-    voice, _ = connect(roles)
+    voice, _ = connect(roles, presenter='stage')
     try:
-        roles._bind(voice, 'weather')
+        voice._role_coordinator._bind(voice, 'weather')
         disabled = dict(roles.library, enabled=False)
         # The saved main role may refer to material that was never preloaded.
         disabled['profiles'][0]['avatar_id'] = 'new_saved_material'
@@ -269,6 +284,9 @@ async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers
         monkeypatch.setattr('src.llm.llamacpp.ensure_server', lambda *_args, **_kwargs: 'http://localhost:8080/v1')
         await roles.apply(disabled)
         assert not roles.enabled
+        assert voice.config.profile_id == 'weather'
+        voice.reset_conversation()
+        await voice._role_reset_task
         assert voice.config.model.avatar_id == roles.config_for_session().model.avatar_id
         assert voice.config.profile_id == 'main'
         assert voice.config.llm.assistant_profile.assistant_name == '單角色接待員'
@@ -283,24 +301,16 @@ async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers
 
 
 @async_test
-async def test_stage_reconnect_waits_for_existing_console_work_then_restores_visitor_mode(field):
-    roles = field
-    console, _ = connect(roles)
+async def test_stage_reconnect_accepts_input_during_console_answer(field):
+    console, _ = connect(field)
     console._turn_id = 'ongoing-console-turn'
-    stage, events = connect(roles, 8, 'stage')
+    stage, events = connect(field, 8, 'stage')
     try:
-        assert roles.mode == 'console'
-        assert not roles.input_allowed(stage)
-        console._turn_id = None
-        # A handoff between its source and destination turns is still work.
-        roles.pending[7] = {'id': 'handoff'}
-        console._refresh_gate()
-        assert roles.mode == 'console'
-        roles.pending.clear()
-        console._refresh_gate()
-        assert roles.mode == 'visitor'
-        assert roles.input_allowed(stage)
-        assert any(e['type'] == 'role_state' and e['mode'] == 'visitor' for e in events)
+        assert field.input_allowed(stage)
+        assert field.input_allowed(console)
+        assert stage._gate_open
+        assert any(e['type'] == 'role_state' and e['active_profile_id'] == 'main' for e in events)
+        assert console._turn_id == 'ongoing-console-turn'
     finally:
         await console.close()
         await stage.close()
@@ -308,7 +318,7 @@ async def test_stage_reconnect_waits_for_existing_console_work_then_restores_vis
 
 def test_single_role_apply_blocks_new_input_until_settings_are_bound(field):
     field.library['enabled'] = False
-    voice = SimpleNamespace(_presenter='console')
+    voice = SimpleNamespace(_presenter='console', sessionid=99)
     assert field.input_allowed(voice)
     field._apply_waiting = True
     assert not field.input_allowed(voice)
@@ -331,7 +341,7 @@ def test_county_weather_question_handoffs_without_inventing_a_district(field, te
 
 
 @async_test
-async def test_idle_greeting_due_before_clear_waits_for_automatic_main_return(field):
+async def test_idle_greeting_starts_fresh_interval_after_automatic_main_return(field):
     roles = field
     roles.state.config.stage.idle_greeting_enabled = True
     roles.state.config.stage.idle_greeting_seconds = 60
@@ -341,59 +351,60 @@ async def test_idle_greeting_due_before_clear_waits_for_automatic_main_return(fi
     now = [0.]
     voice.greetings.clock = lambda: now[0]
     voice._media_player = None
-    roles.edge = lambda *_: dict(kind='effect', effect='fade', duration=.001)
+    voice._role_coordinator.edge = lambda *_: dict(kind='effect', effect='fade', duration=.001)
     try:
         voice.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
         assert voice.greetings.deadline == 60
-        roles.current_id = 'weather'
-        roles._bind(voice, 'weather')
+        voice._role_coordinator.current_id = 'weather'
+        voice._role_coordinator._bind(voice, 'weather')
         voice._conversation_dirty = True
         voice._refresh_gate()
         now[0] = 60
         voice.greetings.tick()
-        assert voice.greetings.status == 'waiting_clear'
+        assert voice.greetings.deadline is None
         voice.reset_conversation()
         assert voice._greeting_returning
+        await wait_until(lambda: voice._role_coordinator.current_id == 'main' and not voice._greeting_returning)
+        assert voice.greetings.deadline == 120
+        assert not voice.avatar.messages
+        now[0] = 120
+        voice.greetings.tick()
         await wait_until(lambda: bool(voice.avatar.messages))
-        assert roles.current_id == 'main'
+        assert voice._role_coordinator.current_id == 'main'
         assert voice.avatar.messages[-1][0] == '主角色的歡迎詞'
-        assert now[0] == 60  # no additional interval after the return transition
+        assert now[0] == 120  # a complete new interval after return
         assert not voice._conversation_dirty
     finally:
         await voice.close()
 
 
 @async_test
-async def test_single_role_greetings_follow_console_mode_and_cancel_playback(field):
+async def test_console_answer_does_not_cancel_stage_greeting(field):
     roles = field
     roles.library['enabled'] = False
     roles.phase = 'disabled'
     roles.profiles_applied = True
     roles.state.config.stage.idle_greeting_enabled = True
     roles.profiles['main']['greeting']['scripts'] = ['單角色也會招呼']
-    voice, _ = connect(roles, 8, 'stage')
+    stage, _ = connect(roles, 8, 'stage')
+    console, _ = connect(roles, 7, 'console')
     now = [0.]
-    voice.greetings.clock = lambda: now[0]
+    stage.greetings.clock = lambda: now[0]
     try:
-        assert roles.mode == 'visitor'
-        assert roles.input_allowed(voice)
-        voice.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
+        stage.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
         now[0] = 60
-        voice.greetings.tick()
-        await voice.greetings.preparation
-        old_media = dict(voice.avatar.messages[-1][1])
-        voice.on_output_audio_frame(old_media, True)
-        voice.on_output_audio(True)
-        await roles.set_mode('console')
-        assert not roles.input_allowed(voice)
-        assert voice._turn_id is None
-        assert not voice.accepts_media(old_media, 'late_audio')
-        assert voice.greetings.deadline is None
-        now[0] = 80
-        await roles.set_mode('visitor')
-        assert voice.greetings.deadline == 140
+        stage.greetings.tick()
+        await stage.greetings.preparation
+        media = dict(stage.avatar.messages[-1][1])
+        turn = stage._turn_id
+        await console.start_text_turn('控制台朗讀', _speak_only=True)
+        await console._turn_task
+        assert stage._turn_id == turn
+        assert stage.accepts_media(media, 'audio')
+        assert roles.input_allowed(stage)
     finally:
-        await voice.close()
+        await console.close()
+        await stage.close()
 
 
 @async_test
@@ -418,7 +429,8 @@ async def test_greeting_only_profile_apply_keeps_playing_media_and_avoids_rebind
         await roles.apply(target)
         assert voice._turn_id == old_turn
         assert voice.avatar._asset_epoch == old_epoch
-        assert voice.config.greeting.scripts == ['新招呼']
+        assert voice.config.greeting.scripts == ['舊招呼']
+        assert roles.profiles['main']['greeting']['scripts'] == ['新招呼']
         assert voice.greetings.status == 'playing'
     finally:
         await voice.close()
@@ -454,7 +466,7 @@ async def test_greeting_apply_preserves_unapplied_identity_model_and_playing_med
         assert roles.library['revision'] == 1  # full role revision is still pending
         assert voice._turn_id == old_turn
         assert voice.avatar._asset_epoch == old_epoch
-        assert voice.config.greeting.scripts == ['下一次的新招呼']
+        assert voice.config.greeting.scripts == ['正在播放的招呼']
         assert voice.config.llm.model == old_model
         assert roles.store.load()['profiles'][0]['llm']['model'] == 'unapplied-model'
     finally:
@@ -471,3 +483,89 @@ async def test_greeting_apply_requires_current_main_and_current_saved_revision(f
     with pytest.raises(ProfileError, match='設定已更新'):
         await roles.apply_greeting('main', expected_revision=999)
     assert roles.library == before
+
+
+@async_test
+async def test_two_role_transitions_run_independently(field):
+    console, console_events = connect(field, 7, 'console')
+    stage, stage_events = connect(field, 8, 'stage')
+    for voice in (console, stage):
+        voice._media_player = None
+        voice._role_coordinator.edge = lambda *_: dict(kind='effect', effect='fade', duration=.001)
+    try:
+        await asyncio.gather(*(v._role_coordinator._switch('weather', v) for v in (console, stage)))
+        assert console._role_coordinator.current_id == stage._role_coordinator.current_id == 'weather'
+        assert console._role_coordinator._lock is not stage._role_coordinator._lock
+        await console._role_coordinator.return_to_main(console)
+        assert console._role_coordinator.current_id == 'main'
+        assert stage._role_coordinator.current_id == 'weather'
+        assert len([e for e in console_events if e['type'] == 'role_transition_started']) == 2
+        assert len([e for e in stage_events if e['type'] == 'role_transition_started']) == 1
+    finally:
+        await console.close()
+        await stage.close()
+
+
+@async_test
+async def test_profile_model_change_stays_pending_until_both_pages_disconnect(field, monkeypatch):
+    console, _ = connect(field, 7, 'console')
+    stage, _ = connect(field, 8, 'stage')
+    target = deepcopy(field.library)
+    target['revision'] += 1
+    for profile in target['profiles']:
+        profile['llm']['model'] = 'new-local-model'
+        profile['llm']['provider'] = 'llamacpp'
+        profile['llm']['base_url'] = 'http://localhost:8080/v1'
+    loader = Mock()
+    monkeypatch.setattr('src.llm.llamacpp.ensure_server', loader)
+    try:
+        result = await field.apply(target)
+        assert result['pending']
+        assert field.library['revision'] != target['revision']
+        assert console.config.llm.model != 'new-local-model'
+        assert stage.config.llm.model != 'new-local-model'
+        loader.assert_not_called()
+        await console.close()
+        field.state.avatar_streams.pop(7)
+        field.state.voice_sessions.pop(7)
+        field.unregister(7)
+        await field.apply_pending()
+        loader.assert_not_called()
+        await stage.close()
+        field.state.avatar_streams.pop(8)
+        field.state.voice_sessions.pop(8)
+        field.unregister(8)
+        loader.return_value = 'http://localhost:8080/v1'
+        monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+        monkeypatch.setattr('src.avatars.catalog.avatar_uses_green_screen', lambda *_: True)
+        await field.apply_pending()
+        loader.assert_called_once()
+        assert not field.snapshot()['pending']
+        assert field.config_for_session().llm.model == 'new-local-model'
+    finally:
+        await console.close()
+        await stage.close()
+
+
+@async_test
+async def test_http_role_controls_require_and_affect_only_the_requested_session(field, monkeypatch):
+    from src.server.routes import profiles
+    from unittest.mock import AsyncMock
+    console, _ = connect(field, 7, 'console')
+    stage, _ = connect(field, 8, 'stage')
+    monkeypatch.setattr(profiles.state, 'roles', field)
+    monkeypatch.setattr(profiles.state, 'voice_sessions', field.state.voice_sessions)
+    try:
+        console.interrupt = AsyncMock()
+        stage.interrupt = AsyncMock()
+        request = SimpleNamespace(json=AsyncMock(return_value={'sessionid': 8}))
+        response = await profiles.stop(request)
+        assert response.status == 200
+        stage.interrupt.assert_awaited_once()
+        console.interrupt.assert_not_awaited()
+        request.json.return_value = {}
+        assert (await profiles.stop(request)).status == 404
+        assert stage.interrupt.await_count == 1
+    finally:
+        await console.close()
+        await stage.close()

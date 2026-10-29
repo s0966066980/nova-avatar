@@ -42,6 +42,7 @@ def prewarm_local_llm(config, *, timeout_seconds: float = 25.0) -> bool:
         engine._client = engine.client.with_options(
             timeout=timeout_seconds, max_retries=0,
         )
+        engine.observe_context = False
         engine.max_tokens = 16
         chunks = engine.chat_stream(
             "請用一句短句說明如何保持專注。", system_prompt=prompt,

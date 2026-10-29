@@ -15,7 +15,7 @@ from src.server.routes import webrtc
 def rtc(monkeypatch):
     config = Config()
     for name, value in dict(config=config, model_ready=True, model=object(), avatar=object(),
-                            switching=False, avatar_streams={},
+                            switching=False, settings_applying=False, shutting_down=False, avatar_streams={},
                             voice_sessions={}, session_roles={}, pcs=set(), presentation=None).items():
         monkeypatch.setattr(state, name, value, raising=False)
     peers, voices = [], []
@@ -40,6 +40,7 @@ def rtc(monkeypatch):
         async def close(self): self.connectionState = 'closed'
     def voice(*args, **kwargs):
         value = MagicMock()
+        value.sessionid = args[0]
         value.prepare = AsyncMock()
         value.close = AsyncMock()
         voices.append(value)
@@ -174,7 +175,7 @@ def test_single_profile_config_drives_new_voice_sessions_without_handoff(rtc, mo
         'document_scope': 'selected', 'document_ids': ['c'*32]}
     roles = SimpleNamespace(enabled=False, profiles_applied=True, phase='disabled', _apply_waiting=False,
         config_for_session=lambda: effective, data_for_session=lambda: object(),
-        register=Mock(), unregister=Mock())
+        register=Mock(), unregister=Mock(), apply_pending=AsyncMock())
     monkeypatch.setattr(state, 'roles', roles)
     monkeypatch.setattr(webrtc, 'create_avatar', lambda *args: SimpleNamespace(config=args[0]))
     original = webrtc.VoiceTurnSession
@@ -193,16 +194,15 @@ def test_single_profile_config_drives_new_voice_sessions_without_handoff(rtc, mo
     asyncio.run(run())
 
 
-@pytest.mark.parametrize('mode,source_role', [('console', 'console'), ('visitor', 'stage')])
+@pytest.mark.parametrize('source_role', ['console', 'stage'])
 @pytest.mark.parametrize('late_join', [False, True])
-def test_active_questions_and_played_answers_reach_both_pages(rtc, monkeypatch, mode, source_role, late_join):
+def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, source_role, late_join):
     from src.server.voice_session import VoiceTurnSession
 
-    roles = SimpleNamespace(enabled=False, profiles_applied=False, input_mode_managed=True,
-        phase='disabled', mode=mode, _apply_waiting=False, cancel=Mock(), unregister=Mock(), notify=Mock(),
-        reconcile_input_owner=Mock(),
+    roles = SimpleNamespace(enabled=False, profiles_applied=False, phase='disabled', _apply_waiting=False, cancel=Mock(), unregister=Mock(), notify=Mock(),
+        apply_pending=AsyncMock(),
         config_for_session=lambda: state.config, data_for_session=lambda: state.avatar,
-        input_allowed=lambda voice: voice._presenter == ('stage' if roles.mode == 'visitor' else 'console'))
+        input_allowed=lambda voice: True)
     roles.register = lambda voice: setattr(voice, '_role_coordinator', roles)
     monkeypatch.setattr(state, 'roles', roles)
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', VoiceTurnSession)
@@ -226,7 +226,8 @@ def test_active_questions_and_played_answers_reach_both_pages(rtc, monkeypatch, 
                 source._emit('assistant_fragment', turn_id='current-turn', text='實際播出的回答')
             for role in ['console', 'stage']:
                 messages = [(e['type'], e.get('text')) for e in events[role] if e['type'] in {'user_transcript', 'assistant_fragment'}]
-                assert messages == [('user_transcript', '目前的問題'), ('assistant_fragment', '實際播出的回答')]
+                expected = [('user_transcript', '目前的問題'), ('assistant_fragment', '實際播出的回答')] if role == source_role else []
+                assert messages == expected
             from unittest.mock import patch
             viewer = next(v for v in state.voice_sessions.values() if v is not source)
             receipt = json.dumps(dict(type='board_displayed', presenter=viewer._presenter,
@@ -234,11 +235,43 @@ def test_active_questions_and_played_answers_reach_both_pages(rtc, monkeypatch, 
             with patch('src.server.voice_session.acknowledge_session_board_item', return_value=True) as acknowledge:
                 viewer.handle_control(receipt)
                 viewer.handle_control(receipt)
-                acknowledge.assert_called_once_with(source.sessionid, turn_id='current-turn',
+                acknowledge.assert_called_once_with(viewer.sessionid, turn_id='current-turn',
                     board_id='current-turn', item_index=0, presenter=viewer._presenter)
         finally:
             for peer in rtc.peers:
                 peer.connectionState = 'failed'
                 await peer.handlers['connectionstatechange']()
 
+    asyncio.run(run())
+
+
+def test_new_offer_waits_for_deferred_resource_application(rtc, monkeypatch):
+    monkeypatch.setattr(state, 'settings_applying', True)
+    async def run():
+        response = await webrtc.offer(rtc.request())
+        assert response.status == 409
+        assert not state.avatar_streams
+        assert not rtc.peers
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('resource', ['engine', 'settings', 'profiles'])
+def test_offer_body_finishing_during_resource_update_does_not_create_peer(rtc, monkeypatch, resource):
+    async def run():
+        request = rtc.request()
+        payload = request.json.return_value
+        async def body():
+            if resource == 'engine':
+                monkeypatch.setattr(state, 'switching', True)
+            elif resource == 'settings':
+                monkeypatch.setattr(state, 'settings_applying', True)
+            else:
+                monkeypatch.setattr(state, 'roles', SimpleNamespace(phase='ready', _apply_waiting=True))
+            return payload
+        request.json.side_effect = body
+        response = await webrtc.offer(request)
+        assert response.status == 409
+        assert not state.avatar_streams
+        assert not rtc.peers
+        assert not rtc.voices
     asyncio.run(run())

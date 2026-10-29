@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import time
+import math
 from collections import Counter
 from typing import Callable, Optional
 
@@ -15,9 +16,11 @@ STAGE_NAMES = (
     "vad_endpoint",
     "asr",
     "llm_first_token",
+    "llm_first_speech",
     "llm_total",
     "first_fragment",
     "tts_first_encoded",
+    "tts_pcm_available",
     "tts_first_pcm",
     "musetalk_first_batch",
     "musetalk_inference_first_result",
@@ -62,6 +65,7 @@ class TurnMetrics:
         self._tts_retry_after_playback_commit_count = 0
         self._stage_started_at: dict[str, float] = {}
         self._stage_finished_at: dict[str, float] = {}
+        self._stage_durations: dict[str, float] = {}
 
     def mark_speech_end(self) -> None:
         if self._speech_end_at is None:
@@ -94,6 +98,13 @@ class TurnMetrics:
         self._validate_stage(stage)
         if stage not in self._stage_finished_at:
             self._stage_finished_at[stage] = self._clock()
+
+    def record_stage_duration(self, stage: str, seconds: float) -> None:
+        """Record a measured audio-timeline interval without inventing clocks."""
+        self._validate_stage(stage)
+        if not math.isfinite(seconds) or seconds < 0:
+            raise ValueError("stage duration must be finite and nonnegative")
+        self._stage_durations.setdefault(stage, round(float(seconds), 6))
 
     @staticmethod
     def _validate_stage(stage: str) -> None:
@@ -190,10 +201,10 @@ class TurnMetrics:
                 self._tts_retry_after_playback_commit_count
             ),
             "stage_seconds": {
-                stage: _duration(
+                stage: self._stage_durations.get(stage, _duration(
                     self._stage_started_at.get(stage),
                     self._stage_finished_at.get(stage),
-                )
+                ))
                 for stage in STAGE_NAMES
             },
         }

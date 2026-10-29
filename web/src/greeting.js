@@ -8,6 +8,6 @@ export function visibleLength(text) {
 export function greetingError(settings) {
   if (!Number.isInteger(settings.min_chars) || !Number.isInteger(settings.max_chars) || settings.min_chars <= 0 || settings.max_chars < settings.min_chars) return '請填寫有效的正整數字數範圍，最少字數不可大於最多字數。'
   if (settings.mode === 'ai' && !visibleLength(settings.prompt)) return '請填寫招呼 Prompt。'
-  if (settings.mode === 'scripts' && !settings.scripts.some(text => visibleLength(text))) return '請填寫至少一篇預寫文案。'
+  if (settings.mode === 'scripts' && ![...settings.scripts, ...(settings.scripts_en || [])].some(text => visibleLength(text))) return '請填寫至少一篇預寫文案。'
   return ''
 }

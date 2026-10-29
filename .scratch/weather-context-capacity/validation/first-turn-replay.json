@@ -1,0 +1,44 @@
+{
+  "history": [
+    {
+      "role": "user",
+      "content": "今天台北天氣如何？"
+    },
+    {
+      "role": "assistant",
+      "content": "根據交通部中央氣象署資料，臺北市今日（10月29日）白天至傍晚多為陰天，降雨機率較低，氣溫約在23至28度之間，適合外出活動。"
+    }
+  ],
+  "board": {
+    "turn_id": "weather-0",
+    "title": "臺北市今日天氣概況",
+    "summary": null,
+    "items": [
+      {
+        "title": "天氣狀況",
+        "content": "今日白天至傍晚多為陰天，夜間轉為多雲，無明顯降雨。",
+        "subtitle": null,
+        "badge": null
+      },
+      {
+        "title": "溫度變化",
+        "content": "氣溫從中午的28度逐漸下降，至深夜降至23度，體感溫度略高於實際溫度。",
+        "subtitle": null,
+        "badge": null
+      },
+      {
+        "title": "降雨機率",
+        "content": "中午至傍晚（12:00-18:00）每3小時降雨機率約10%，傍晚後降至0%。",
+        "subtitle": null,
+        "badge": null
+      },
+      {
+        "title": "資料來源與時間",
+        "content": "資料來自交通部中央氣象署，適用時間為2026年10月29日12:00至24:00。",
+        "subtitle": null,
+        "badge": null
+      }
+    ],
+    "created_at": 1793263871.3760948
+  }
+}

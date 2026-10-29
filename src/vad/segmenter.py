@@ -34,6 +34,7 @@ class SpeechSegment:
     audio: np.ndarray = field(repr=False)
     sample_rate: int = 16000
     speech_ms: int = 0  # 片段裡真正判定為語音的時長（不含 padding / 中間停頓）
+    endpoint_wait_ms: Optional[int] = None
 
     @property
     def duration_ms(self) -> int:
@@ -169,7 +170,7 @@ class VADSegmenter:
             self._silence_run += 1
 
         if self._silence_run >= self._silence_frames_needed:
-            return self._close_segment(trim_trailing_silence=True)
+            return self._close_segment(trim_trailing_silence=True, endpoint=True)
 
         if self.max_speech_ms and len(self._segment) * self.frame_ms >= self.max_speech_ms:
             logger.debug('[VAD] 達到 max_speech_ms，強制切斷片段')
@@ -177,7 +178,9 @@ class VADSegmenter:
 
         return None
 
-    def _close_segment(self, trim_trailing_silence: bool) -> Optional[SpeechSegment]:
+    def _close_segment(
+        self, trim_trailing_silence: bool, *, endpoint: bool = False
+    ) -> Optional[SpeechSegment]:
         """閉合當前片段，太短的直接丟棄"""
         frames = self._segment
         if trim_trailing_silence:
@@ -189,6 +192,7 @@ class VADSegmenter:
         start_frame = self._seg_start_frame
         end_frame = start_frame + len(frames)
         speech_ms = self._seg_speech_frames * self.frame_ms
+        endpoint_wait_ms = self._silence_run * self.frame_ms if endpoint else None
 
         self._triggered = False
         self._segment = []
@@ -211,6 +215,7 @@ class VADSegmenter:
             audio=np.concatenate(frames),
             sample_rate=self.vad.sample_rate,
             speech_ms=speech_ms,
+            endpoint_wait_ms=endpoint_wait_ms,
         )
 
 

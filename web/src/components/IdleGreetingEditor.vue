@@ -2,7 +2,7 @@
 <template>
   <section class="greeting-editor" aria-labelledby="greeting-title">
     <h3 id="greeting-title">招呼內容</h3>
-    <p>只有主數位人在訪客模式自動招呼。編輯與預覽不會影響現場；設定完成後，按本頁的「儲存並套用招呼設定」。</p>
+    <p>只有舞台的主數位人在空場時自動招呼。編輯與預覽不會影響現場；設定完成後，按本頁的「儲存並套用招呼設定」，由下一場舞台對話採用。</p>
     <fieldset :disabled="disabled || isPreparing">
       <legend>內容模式</legend>
       <div class="content-modes" role="group" aria-label="招呼來源">
@@ -21,6 +21,14 @@
           <div class="script-footer"><small>{{ visibleLength(text) }} 字<span v-if="outOfRange(text)"> · 超出建議範圍，仍可播放</span></small><button type="button" @click="settings.scripts.splice(index, 1)" :aria-label="`刪除文案 ${index + 1}`">刪除</button></div>
         </div>
         <button type="button" :disabled="settings.scripts.length >= 100" @click="settings.scripts.push('')">新增文案</button>
+        <h4>英文預寫招呼</h4>
+        <p>英文舞台只使用以下文案；沒有英文文案時略過招呼，不自動翻譯。</p>
+        <div v-for="(text, index) in settings.scripts_en || []" :key="`en-${index}`" class="script-entry">
+          <label :for="`greeting-script-en-${index}`">英文文案 {{ index + 1 }}</label>
+          <textarea :id="`greeting-script-en-${index}`" v-model="settings.scripts_en[index]" rows="3" maxlength="12000"></textarea>
+          <button type="button" @click="settings.scripts_en.splice(index, 1)">刪除英文文案</button>
+        </div>
+        <button type="button" @click="settings.scripts_en ||= []; settings.scripts_en.push('')">新增英文文案</button>
       </template>
       <div v-else>
         <label for="greeting-prompt">AI 招呼 Prompt<textarea id="greeting-prompt" v-model="settings.prompt" rows="5" maxlength="12000" aria-describedby="greeting-prompt-hint" placeholder="例如：用親切自然的繁體中文，介紹你能提供的服務，再邀請訪客提問。"></textarea></label>
@@ -31,9 +39,8 @@
     <div class="actions">
       <button type="button" :disabled="disabled || isPreparing || Boolean(validation)" @click="prepare(false)">{{ busy === 'preview' ? '產生預覽中…' : '預覽草稿' }}</button>
       <button type="button" :disabled="disabled || isPreparing || Boolean(validation)" @click="prepare(true)">{{ busy === 'try' ? '準備試播中…' : '試播草稿' }}</button>
-      <button type="button" :disabled="isPreparing || roleRuntime.mode !== 'console'" @click="returnVisitor">返回訪客模式</button>
     </div>
-    <p>試播會切換為控制台測試模式，請先在控制台建立播放連線。使用目前連線的人物，文案、身分 Prompt 與聲線採草稿；語音引擎類型須與連線一致。返回訪客模式後重新倒數。</p>
+    <p>試播只在控制台播放，請先在控制台建立播放連線。使用目前連線的人物，文案、身分 Prompt 與聲線採草稿；語音引擎類型須與連線一致。不影響舞台的收音或招呼。</p>
     <p v-if="error" class="feedback" role="alert">{{ error }}</p>
     <div v-if="preview" class="preview" aria-live="polite"><strong>{{ preview.length }} 字{{ preview.in_range ? '' : ' · 超出建議範圍' }}</strong><p>{{ preview.text }}</p></div>
     <p v-if="status" role="status">{{ status }}</p>
@@ -45,7 +52,7 @@ import { greetingError, visibleLength } from '../greeting.js'
 import { useRoles } from '../composables/useRoles.js'
 const props = defineProps({ profile: { type: Object, required: true }, disabled: Boolean })
 const settings = computed(() => props.profile.greeting)
-const { roleRequest, roleRuntime } = useRoles()
+const { roleRequest } = useRoles()
 const busy = ref(''), error = ref(''), preview = ref(null), status = ref('')
 // Boolean attributes treat an empty string as present, so never bind the
 // operation label directly to disabled.
@@ -60,17 +67,11 @@ async function prepare(trial) {
     if (trial) {
       sessionid = Number(document.getElementById('sessionid')?.value)
       if (!sessionid) throw new Error('請先在控制台建立播放連線。')
-      if (roleRuntime.mode !== 'console') await roleRequest('/mode', 'POST', { mode: 'console' })
     }
     preview.value = await roleRequest(`/greeting/${trial ? 'try' : 'preview'}`, 'POST', { profile: props.profile, sessionid })
-    if (trial) status.value = '已送出試播，請在控制台聆聽。完成後可返回訪客模式。'
+    if (trial) status.value = '已送出試播，請在控制台聆聽。舞台對話持續運作。'
   } catch (e) { error.value = e.message }
   finally { busy.value = '' }
-}
-async function returnVisitor() {
-  error.value = ''
-  try { await roleRequest('/mode', 'POST', { mode: 'visitor' }); status.value = '已返回訪客模式，符合舞台就緒條件後重新倒數。' }
-  catch (e) { error.value = e.message }
 }
 </script>
 <style scoped>

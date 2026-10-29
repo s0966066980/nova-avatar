@@ -18,16 +18,20 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from src.utils.logging import logger
 from src.utils.paths import get_project_root
+from src.llm.llamacpp_protocol import LFM_REASONING_BUDGET, is_lfm25_reasoning
 
 _server_proc: Optional[subprocess.Popen] = None
 _loaded_model: str = ""
-_CUDA_LIB_NAMES = ("libcudart.so.12", "libcublas.so.12")
+_CUDA_LIB_NAMES = ("libcudart.so.12", "libcublas.so.12", "libcudart.so.13", "libcublas.so.13")
 
 
 def default_model_dirs(extra_dir: str = "") -> List[Path]:
     dirs: List[Path] = []
     if extra_dir:
-        dirs.append(Path(extra_dir).expanduser())
+        configured = Path(extra_dir).expanduser()
+        if not configured.is_absolute():
+            configured = get_project_root() / configured
+        dirs.append(configured)
     dirs.append(get_project_root() / "llama")
     dirs.append(Path.home() / "llama")
     seen = set()
@@ -50,7 +54,7 @@ def has_cuda_backend(binary: Optional[Path] = None) -> bool:
 
 
 def cuda_library_dirs(extra_roots: Optional[Iterable[Path]] = None) -> List[Path]:
-    """Locate directories that contain CUDA 12 runtime libs needed by llama-server."""
+    """Locate CUDA runtime libraries on desktop Linux and Jetson."""
     roots: List[Path] = []
     if extra_roots:
         roots.extend(Path(p) for p in extra_roots)
@@ -65,6 +69,7 @@ def cuda_library_dirs(extra_roots: Optional[Iterable[Path]] = None) -> List[Path
             Path("/usr/local/cuda/lib"),
             Path("/usr/local/lib/ollama/cuda_v12"),
             Path("/usr/lib/x86_64-linux-gnu"),
+            Path("/usr/lib/aarch64-linux-gnu"),
         ]
     )
     try:
@@ -105,8 +110,11 @@ def build_server_env(binary: Path) -> Dict[str, str]:
 def find_llama_server() -> Optional[Path]:
     which = shutil.which("llama-server")
     if which:
-        return Path(which)
+        # User-local launchers may be symlinks; CUDA libraries sit next to
+        # the actual executable, not next to the launcher in ~/.local/bin.
+        return Path(which).resolve()
     candidates = [
+        get_project_root() / ".local" / "jetson" / "llama.cpp" / "build" / "bin" / "llama-server",
         Path.home() / "llama" / "llama.cpp" / "build" / "bin" / "llama-server",
         get_project_root() / "llama" / "llama.cpp" / "build" / "bin" / "llama-server",
         Path.home() / "llama.cpp" / "build" / "bin" / "llama-server",
@@ -124,7 +132,7 @@ def list_gguf_models(extra_dir: str = "") -> List[Dict[str, Any]]:
         if not folder.is_dir():
             continue
         for gguf in sorted(folder.glob("*.gguf")):
-            if not gguf.is_file():
+            if not gguf.is_file() or 'mmproj' in gguf.name.lower():
                 continue
             key = str(gguf.resolve())
             if key in seen:
@@ -150,10 +158,10 @@ def resolve_gguf(model: str, extra_dir: str = "") -> Optional[Path]:
         return None
     as_path = Path(raw).expanduser()
     if as_path.is_file() and as_path.suffix.lower() == ".gguf":
-        return as_path
+        return as_path.resolve()
     for item in list_gguf_models(extra_dir):
         if item["name"] == raw or Path(item["path"]).name == raw:
-            return Path(item["path"])
+            return Path(item["path"]).resolve()
     return None
 
 
@@ -238,9 +246,21 @@ def cuda_free_mb() -> int:
             timeout=5,
         )
         values = [int(line.strip()) for line in output.splitlines() if line.strip().isdigit()]
-        return max(values) if values else 0
+        if values:
+            return max(values)
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError):
-        return 0
+        pass
+    # Jetson's nvidia-smi reports memory as Not Supported. Query the driver
+    # through PyTorch instead; returning zero would disable all GPU layers.
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            free_bytes, _total_bytes = torch.cuda.mem_get_info()
+            return int(free_bytes // (1024 * 1024))
+    except (ImportError, RuntimeError):
+        pass
+    return 0
 
 
 def suggest_gpu_layers(model_bytes: int, free_mb: int, n_layers: int) -> int:
@@ -336,6 +356,13 @@ def ensure_server(
         same = (status["owned"] and _loaded_model == gguf.stem) or (
             (not status["owned"]) and _same_external_model(host, port, gguf.stem)
         )
+        if same and gguf.name == 'gemma-4-E2B_q4_0-it.gguf' and (gguf.parent / 'gemma-4-E2B-it-mmproj.gguf').is_file():
+            import requests
+            try:
+                props = requests.get(f'http://{host}:{int(port)}/props', timeout=2).json()
+                same = props.get('modalities', {}).get('vision') is True
+            except (requests.RequestException, ValueError):
+                same = False
         if same:
             return openai_base_url(host, port)
         if status["owned"]:
@@ -375,12 +402,19 @@ def ensure_server(
         "q8_0",
         "-ctv",
         "q8_0",
-        # LFM 等帶思考鏈的模型會把 max_tokens 全耗在 reasoning_content 上
+        # LFM 2.5 always thinks. Bound its thinking separately so speech and
+        # board data retain room in the shared output token budget.
         "--reasoning",
-        "off",
+        "on" if is_lfm25_reasoning(gguf.stem) else "off",
         "--reasoning-budget",
-        "0",
+        str(LFM_REASONING_BUDGET) if is_lfm25_reasoning(gguf.stem) else "0",
     ]
+    # Only the tested model/projector pairing is automatic. Never attach an
+    # arbitrary GGUF from the model directory to another language model.
+    if gguf.name == 'gemma-4-E2B_q4_0-it.gguf':
+        projector = gguf.parent / 'gemma-4-E2B-it-mmproj.gguf'
+        if projector.is_file():
+            base_cmd.extend(['--mmproj', str(projector)])
     n_layers = gguf_block_count(gguf) or 64
     if has_cuda_backend(binary):
         ngl = suggest_gpu_layers(gguf.stat().st_size, cuda_free_mb(), n_layers)

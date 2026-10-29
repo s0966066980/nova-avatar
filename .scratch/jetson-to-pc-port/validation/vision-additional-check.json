@@ -1,0 +1,17 @@
+{
+  "traditional_ocr": "訂單編號:NOVA42\n總金額:1500 元\n",
+  "traditional_image": {
+    "answer": "訂單編號是 NOVA42，總金額是 1500 元。\n\n檔案內容顯示了訂單編號和總金額這兩項資訊。您可以參考以下內容：\n\n*   訂單編號：NOVA42\n*   總金額：1500 元",
+    "has_order": true,
+    "has_amount": true
+  },
+  "followup": {
+    "answer": "訂單編號是 NOVA42。",
+    "retained_order": true
+  },
+  "text_pdf": {
+    "answer": "The order number is NOVA42 and the total amount is 1500 TWD.",
+    "has_order": true,
+    "has_amount": true
+  }
+}

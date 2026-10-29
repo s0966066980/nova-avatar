@@ -73,7 +73,7 @@ class EdgeResilienceTests(unittest.TestCase):
         tts = self.make_tts(parent)
         patches = [
             patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=edge),
-            patch("src.tts.engines.edge.random.uniform", side_effect=uniform or (lambda a, b: 0.0)),
+            patch("src.tts.engines.edge.EDGE_RATE_LIMIT_BACKOFF_SECONDS", 0.001),
         ]
         for item in patches:
             item.start()
@@ -81,31 +81,16 @@ class EdgeResilienceTests(unittest.TestCase):
         tts.txt_to_audio(("測試首音。", dict(textevent or {})))
         return parent
 
-    def test_a_429_is_retried_after_a_short_jittered_wait(self):
-        waits = []
-
-        def uniform(low, high):
-            waits.append((low, high))
-            return 0.0
-
+    def test_a_429_is_retried_after_the_shared_cooldown(self):
         edge = FakeEdge("429", "ok")
-        parent = self.speak(edge, uniform=uniform)
-
+        parent = self.speak(edge)
         self.assertTrue(parent.frames)
         self.assertEqual(edge.opened, 2)
-        self.assertEqual(waits, [(0.2, 0.4)])
+        self.assertEqual(edge.closed, [0, 1])
 
-    def test_repeated_429_earns_exactly_one_extra_attempt(self):
+    def test_repeated_429_cannot_expand_the_retry_budget(self):
         edge = FakeEdge("429", "429", "ok")
         parent = self.speak(edge)
-        self.assertTrue(parent.frames)
-        self.assertEqual(edge.opened, 3)
-
-        edge = FakeEdge("429", "429", "429", "ok")
-        parent = self.speak(edge)
         self.assertFalse(parent.frames)
-        self.assertEqual(edge.opened, 3)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assertEqual(edge.opened, 2)
+        self.assertEqual(edge.closed, [0, 1])

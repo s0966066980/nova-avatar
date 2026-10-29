@@ -23,14 +23,18 @@ from src.server.presentation import SessionPresentation
 
 async def offer(request):
     """Negotiate media while preparing speech only for an incoming audio track."""
+    params = await request.json()
+    # The body can arrive while a resource update starts. Check availability
+    # after reading it, without yielding again before reserving this session.
     if not getattr(state, "model_ready", False) or state.model is None or state.avatar is None:
         return web.json_response(
             {"code": -1, "msg": "請先在設定中選擇並套用數字人引擎與角色"}, status=409,
         )
+    if state.switching or state.settings_applying:
+        return web.json_response({"code": -1, "msg": "設定正在套用，請稍後連線"}, status=409)
     roles = getattr(state, "roles", None)
     if roles is not None and (roles.phase == "transition" or roles._apply_waiting):
         return web.json_response({"code": -1, "msg": "角色正在切換，請稍後連線"}, status=409)
-    params = await request.json()
     client_role = str(params.get("client_role", "console")).strip().lower()
     if client_role not in {"console", "stage"}:
         client_role = "console"
@@ -45,7 +49,7 @@ async def offer(request):
     sessionid = randN(6)
     while sessionid in state.avatar_streams:
         sessionid = randN(6)
-    # Reserve before the first await so concurrent requests cannot overbook.
+    # Reserve before the next await so concurrent requests cannot overbook.
     state.add_session(sessionid, None, role=client_role)
     logger.info("WebRTC session %d (%s) reserved", sessionid, client_role)
     pc = voice_session = prepare_task = player = presentation = None
@@ -84,6 +88,11 @@ async def offer(request):
             remove_llm_session(sessionid)
             if roles is not None:
                 roles.unregister(sessionid)
+            if not state.avatar_streams and not state.shutting_down:
+                from src.server.deferred_settings import apply_pending
+                await apply_pending()
+                if roles is not None:
+                    await roles.apply_pending()
 
     try:
         # Shield the worker so a cancelled HTTP request can settle its resources
@@ -105,13 +114,18 @@ async def offer(request):
             avatar_stream, presenter=client_role,
             test_result_sink=state.voice_test_history.complete,
         )
+        from src.server.conversations import validate, check_language_support
+        if 'locale' in params:
+            values = validate({'locale': params['locale']}, voice_session._conversation)
+            check_language_support(voice_session.config, values['locale'])
+            voice_session._conversation = values
+            voice_session.bind_conversation()
         # No capture may start before an actual microphone track is prepared.
-        voice_session._preparing = True
+        voice_session._preparing = bool(params.get("has_microphone", True))
         state.voice_sessions[sessionid] = voice_session
         if roles is not None:
             roles.register(voice_session)
-        ice_server = RTCIceServer(urls='stun:stun.miwifi.com:3478')
-        pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[ice_server]))
+        pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[]))
         state.add_peer_connection(pc)
 
         @pc.on("connectionstatechange")
@@ -148,7 +162,7 @@ async def offer(request):
         def on_track(track):
             nonlocal prepare_task
             if track.kind == "audio" and not cleaning:
-                if prepare_task is None:
+                if prepare_task is None and params.get("has_microphone", True):
                     voice_session._preparing = True
                     prepare_task = asyncio.create_task(voice_session.prepare())
                 voice_session.start_track(track)
@@ -185,7 +199,7 @@ async def offer(request):
         await pc.setLocalDescription(answer)
         return web.json_response({
             "sdp": pc.localDescription.sdp, "type": pc.localDescription.type,
-            "sessionid": sessionid,
+            "sessionid": sessionid, "conversation": dict(voice_session._conversation),
         })
     except BaseException:
         await cleanup()

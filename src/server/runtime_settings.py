@@ -16,11 +16,14 @@ from urllib.parse import urlparse
 
 from src.avatars.catalog import (
     ENGINE_META,
+    avatars_root,
     apply_engine_paths,
     is_safe_avatar_id,
     list_avatar_characters,
     list_engines,
+    find_preview_image,
 )
+from src.avatars.video_output import output_dimensions
 from src.avatars.mouth_quality import (
     QualityError,
     apply_quality_to_model,
@@ -59,7 +62,7 @@ _RULES_LOCK = threading.RLock()
 DEFAULT_STAGE_CAPTION_MAX_CHARS = 120
 MIN_STAGE_CAPTION_MAX_CHARS = 20
 MAX_STAGE_CAPTION_MAX_CHARS = 2000
-DEFAULT_STAGE_IDLE_RESET_SECONDS = 10
+DEFAULT_STAGE_IDLE_RESET_SECONDS = 60
 MIN_STAGE_IDLE_RESET_SECONDS = 3
 MAX_STAGE_IDLE_RESET_SECONDS = 300
 DEFAULT_CAPTION_X = 50
@@ -216,12 +219,56 @@ def current_snapshot(config) -> Dict[str, Any]:
             "avatar_id": model_cfg.avatar_id,
         },
         "avatar_quality": quality_from_model(model_cfg),
+        "video": video_output_snapshot(config),
         "engines": engines,
         "characters": characters,
         "vad": vad_snapshot(config),
         "speech": speech_snapshot(config),
         "stage": stage_snapshot(config),
     }
+
+
+def video_output_snapshot(config) -> Dict[str, Any]:
+    """Describe the next connection's output using the source image dimensions."""
+    max_height = int(getattr(getattr(config, "video", None), "max_height", 0))
+    source_width = source_height = output_width = output_height = None
+    avatar_id = getattr(config.model, "avatar_id", "")
+    if is_safe_avatar_id(avatar_id):
+        preview = find_preview_image(avatars_root() / avatar_id)
+        if preview is not None:
+            from PIL import Image
+
+            try:
+                with Image.open(preview) as image:
+                    source_width, source_height = image.size
+                output_width, output_height = output_dimensions(source_width, source_height, max_height)
+            except (OSError, ValueError):
+                pass
+    return {
+        "max_height": max_height,
+        "height_options": [450, 540, 720, 960, 1280, 1920, 0],
+        "source_width": source_width,
+        "source_height": source_height,
+        "output_width": output_width,
+        "output_height": output_height,
+    }
+
+
+def apply_video_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
+    """Persist output size for new sessions; existing recorders keep their size."""
+    if not isinstance(params, dict) or "max_height" not in params:
+        raise SettingsError("請指定數字人輸出解析度 max_height")
+    height = params["max_height"]
+    if isinstance(height, bool) or not isinstance(height, int) or (height != 0 and not 2 <= height <= 2160):
+        raise SettingsError("輸出高度必須為 0（原始尺寸），或 2–2160 的整數")
+    previous = config.video.max_height
+    config.video.max_height = height
+    try:
+        persist_runtime_overrides(config)
+    except Exception:
+        config.video.max_height = previous
+        raise
+    return video_output_snapshot(config)
 
 
 def reply_rules_snapshot(config) -> Dict[str, Any]:
@@ -278,6 +325,49 @@ def apply_reply_rules(config, values: Any, expected_revision: Any = None) -> Dic
             "rules": rules_from_config(config),
             "applied_revision": int(checked["revision"]),
         }
+
+
+def apply_llm_behavior(config, assistant_profile: Any, rules: Any, expected_revision: Any = None) -> Dict[str, Any]:
+    """Save the model-independent persona and Rules together, without loading a model."""
+    from src.config.schema import AssistantProfileConfig, ReplyRulesConfig
+
+    profile = validate_assistant_profile(assistant_profile)
+    with _RULES_LOCK:
+        current = snapshot_from_config(config)
+        if expected_revision is not None:
+            try:
+                expected = int(expected_revision)
+            except (TypeError, ValueError) as exc:
+                raise SettingsError("expected_revision 必須是整數") from exc
+            if isinstance(expected_revision, bool) or (
+                isinstance(expected_revision, float) and not expected_revision.is_integer()
+            ):
+                raise SettingsError("expected_revision 必須是整數")
+            if expected != current.revision:
+                raise SettingsError("Rule 版本已更新，請重新載入後再儲存", status=409,
+                                    extra={"current": current.as_dict()})
+        try:
+            checked = validate_rules(rules, revision=current.revision)
+        except ValueError as exc:
+            raise SettingsError(str(exc)) from exc
+        if any(checked[field] != getattr(current, field) for field in ("activation", "speech", "board")):
+            checked["revision"] = current.revision + 1
+        previous_profile = config.llm.assistant_profile
+        previous_rules = config.llm.reply_rules
+        profile_changed = assistant_profile_snapshot(config) != profile
+        config.llm.assistant_profile = AssistantProfileConfig(**profile)
+        config.llm.reply_rules = ReplyRulesConfig(**checked)
+        try:
+            persist_runtime_overrides(config)
+        except Exception as exc:
+            config.llm.assistant_profile = previous_profile
+            config.llm.reply_rules = previous_rules
+            raise SettingsError(f"儲存 Prompt 與規則失敗：{exc}", status=500) from exc
+        switch_llm_endpoint(model=config.llm.model, system_prompt=profile["system_prompt"],
+                            reset_history=profile_changed)
+        return {"assistant_profile": profile, "system_prompt": profile["system_prompt"],
+                "rules": checked, "applied_revision": checked["revision"],
+                "history_reset": profile_changed}
 
 
 def validate_stage_caption_max_chars(value) -> int:
@@ -345,13 +435,17 @@ def validate_board_preset(value) -> str:
 
 
 def stage_snapshot(config) -> Dict[str, Any]:
+    from src.config.stage_composer import snapshot as composer_snapshot
     stage = getattr(config, "stage", None)
     caption = getattr(stage, "caption_max_chars", DEFAULT_STAGE_CAPTION_MAX_CHARS)
     return {
+        **composer_snapshot(stage),
+        "clear_display_seconds": int(getattr(stage, "clear_display_seconds", 15)),
+        "full_reset_seconds": 120,
         "background_id": str(getattr(stage, "background_id", "") or ""),
         "caption_max_chars": validate_stage_caption_max_chars(caption),
         "idle_greeting_enabled": bool(getattr(stage, "idle_greeting_enabled", False)),
-        "idle_greeting_seconds": validate_interval(getattr(stage, "idle_greeting_seconds", 60)),
+        "idle_greeting_seconds": validate_interval(getattr(stage, "idle_greeting_seconds", 30)),
         "idle_reset_seconds": _validate_int_range(
             getattr(stage, "idle_reset_seconds", DEFAULT_STAGE_IDLE_RESET_SECONDS),
             field="舞台閒置清場時間",
@@ -445,7 +539,9 @@ def stage_snapshot(config) -> Dict[str, Any]:
 
 def apply_stage_settings(config, params: Dict[str, Any], *, greeting_content=None) -> Dict[str, Any]:
     """更新並持久化數字人舞台顯示設定。"""
-    if getattr(config, "stage", None) is None:
+    from src.config.stage_composer import validate as validate_composer
+    stage = getattr(config, "stage", None)
+    if stage is None:
         raise SettingsError("當前配置不支援舞台設定，請更新 config.yaml", status=400)
     params = dict(params)
     enabled = params.get("idle_greeting_enabled", config.stage.idle_greeting_enabled)
@@ -461,6 +557,10 @@ def apply_stage_settings(config, params: Dict[str, Any], *, greeting_content=Non
     stage = deepcopy(original_stage)
     payload = params or {}
     try:
+        composer_values = validate_composer(payload, stage)
+        if "clear_display_seconds" in payload:
+            stage.clear_display_seconds = _validate_int_range(payload['clear_display_seconds'],
+                field='舞台畫面清除時間', minimum=1, maximum=3600)
         if "caption_max_chars" in payload:
             stage.caption_max_chars = validate_stage_caption_max_chars(
                 payload["caption_max_chars"]
@@ -566,6 +666,8 @@ def apply_stage_settings(config, params: Dict[str, Any], *, greeting_content=Non
             stage.mic_preset = validate_board_preset(payload["mic_preset"])
     except ValueError as exc:
         raise SettingsError(str(exc)) from exc
+    for key, value in composer_values.items():
+        setattr(stage, key, value)
     stage.idle_greeting_enabled = enabled
     stage.idle_greeting_seconds = interval
     config.stage = stage
@@ -700,6 +802,7 @@ def apply_llm_model(
     provider = (provider or resolve_provider(config)).strip().lower()
     if provider not in {"ollama", "llamacpp"}:
         raise SettingsError("不支援的對話後端，請選擇 Ollama 或 llama.cpp")
+    profile_requested = assistant_profile is not None or system_prompt is not None
     previous_profile = assistant_profile_snapshot(config)
     profile_values = assistant_profile
     if profile_values is None:
@@ -780,34 +883,37 @@ def apply_llm_model(
         }
         api_key = config.llm.api_key or "ollama"
 
-    config.llm.provider = provider
-    config.llm.model = model
-    config.llm.base_url = base_url
-    config.llm.api_key = api_key
-    config.llm.max_tokens = next_max_tokens
-    config.llm.response_max_chars = next_response_max_chars
-    config.llm.board.max_items = next_board_max_items
-    from src.config.schema import AssistantProfileConfig
-    if getattr(config.llm, "assistant_profile", None) is None:
-        config.llm.assistant_profile = AssistantProfileConfig()
-    for key, value in next_profile.items():
-        setattr(config.llm.assistant_profile, key, value)
-    # Do not write the deprecated field; it remains readable only for migration.
-    profile_changed = previous_profile != next_profile
-    config.llm.extra_body = extra_body
-    config.reply_streaming.enabled = next_reply_mode == "streaming"
-    config.reply_streaming.semantic_wait_seconds = next_semantic_wait
-    switch_llm_endpoint(
-        model=model,
-        base_url=base_url,
-        extra_body=extra_body,
-        api_key=api_key,
-        max_tokens=next_max_tokens,
-        response_max_chars=next_response_max_chars,
-        system_prompt=next_system_prompt,
-        reset_history=profile_changed,
-    )
-    persist_runtime_overrides(config)
+    with _RULES_LOCK:
+        if not profile_requested:
+            next_profile = assistant_profile_snapshot(config)
+            next_system_prompt = next_profile["system_prompt"]
+        config.llm.provider = provider
+        config.llm.model = model
+        config.llm.base_url = base_url
+        config.llm.api_key = api_key
+        config.llm.max_tokens = next_max_tokens
+        config.llm.response_max_chars = next_response_max_chars
+        config.llm.board.max_items = next_board_max_items
+        if profile_requested:
+            from src.config.schema import AssistantProfileConfig
+            config.llm.assistant_profile = AssistantProfileConfig(**next_profile)
+        # Model loading may have overlapped a behavior save. Model-only requests
+        # always use the latest published profile instead of an earlier snapshot.
+        profile_changed = profile_requested and previous_profile != next_profile
+        config.llm.extra_body = extra_body
+        config.reply_streaming.enabled = next_reply_mode == "streaming"
+        config.reply_streaming.semantic_wait_seconds = next_semantic_wait
+        switch_llm_endpoint(
+            model=model,
+            base_url=base_url,
+            extra_body=extra_body,
+            api_key=api_key,
+            max_tokens=next_max_tokens,
+            response_max_chars=next_response_max_chars,
+            system_prompt=next_system_prompt,
+            reset_history=profile_changed,
+        )
+        persist_runtime_overrides(config)
     logger.info(f"LLM 已切換: {previous} -> {provider}/{model} @ {base_url}")
     return {
         "model": model,
@@ -886,7 +992,7 @@ def apply_avatar(config, engine: str, avatar_id: str, *, session_count: int) -> 
     from src.server.state import state as server_state
 
     already_selected = config.model.type == engine and config.model.avatar_id == avatar_id
-    if already_selected and getattr(server_state, "model_ready", False) and server_state.model is not None:
+    if already_selected and getattr(server_state, "model_ready", False):
         return {
             "type": engine,
             "avatar_id": avatar_id,
@@ -926,12 +1032,15 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
     from src.avatars.factory import load_avatar_data, prepare_avatar_model
     from src.server.state import state
 
-    type_changed = config.model.type != engine or state.model is None
     previous = f"{config.model.type}/{config.model.avatar_id}"
     pending = deepcopy(config)
     apply_engine_paths(pending, engine, avatar_id)
     pending.model.type = engine
     pending.model.avatar_id = avatar_id
+    type_changed = config.model.type != engine or state.model is None
+    old_settings = deepcopy(config.model)
+    from src.scene.service import scene_service
+    scene_changed = False
 
     state.switching = True
     try:
@@ -940,14 +1049,16 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
         else:
             new_model, new_avatar = state.model, load_avatar_data(pending)
 
-        old_model, old_avatar = state.model, state.avatar
-        state.model = new_model
-        state.avatar = new_avatar
-        state.model_ready = state.model is not None and state.avatar is not None
+        scene_service.select(getattr(pending.stage, "background_id", ""))
+        scene_changed = True
         apply_engine_paths(config, engine, avatar_id)
         config.model.type = engine
         config.model.avatar_id = avatar_id
         persist_runtime_overrides(config)
+
+        old_model, old_avatar = state.model, state.avatar
+        state.model, state.avatar = new_model, new_avatar
+        state.model_ready = new_avatar is not None and new_model is not None
 
         if type_changed and old_model is not new_model:
             del old_model, old_avatar
@@ -961,8 +1072,14 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
             "type_changed": type_changed,
         }
     except SettingsError:
+        config.model = old_settings
+        if scene_changed:
+            scene_service.select(getattr(config.stage, "background_id", ""))
         raise
     except Exception as exc:
+        config.model = old_settings
+        if scene_changed:
+            scene_service.select(getattr(config.stage, "background_id", ""))
         logger.exception("切換數字人失敗")
         raise SettingsError(f"切換數字人失敗: {exc}", status=500) from exc
     finally:
@@ -1175,7 +1292,7 @@ TTS_ENGINE_META = {
     },
 }
 
-STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3")
+STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3", "turbo")
 STT_MODELS_BY_ENGINE = {
     "whisper": STT_MODEL_SIZES,
     "funasr": ("paraformer-zh",),

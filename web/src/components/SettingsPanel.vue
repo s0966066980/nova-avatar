@@ -11,6 +11,9 @@
           <span>{{ t('settings.systemSettings') }}</span>
         </div>
         <div class="rail-desc">管理數位人的回答、知識與舞台體驗</div>
+        <button type="button" class="sample-btn settings-return-console" @click="closeSettings">
+          <i class="bi bi-arrow-left" aria-hidden="true"></i> 返回控制台
+        </button>
       </div>
       <nav class="rail-nav-list" role="tablist" :aria-label="t('settings.tabs.label')">
         <button
@@ -48,6 +51,17 @@
           <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
           <span>無法讀取目前設定：{{ settingsError }}</span>
           <button type="button" class="btn-retry" @click="loadRuntimePanel">重新載入</button>
+        </div>
+
+        <p v-if="runtime.pending_settings?.items?.length" role="status" class="settings-error-banner">
+          待套用：{{ runtime.pending_settings.items.join('、') }}。設定已儲存，控制台與舞台皆斷線後才更新。
+          {{ runtime.pending_settings.error }}
+        </p>
+
+        <div v-show="activeSettingsTab === 'conversation'" class="settings-category-panel unified-role-panel"
+          id="catPanel-conversation" role="tabpanel" aria-labelledby="railTab-conversation">
+          <button type="button" class="sample-btn conversation-return-console" @click="closeSettings">返回控制台</button>
+          <ConversationPanel :session-id="sessionId" @session-summary="emit('conversation-summary', $event)" />
         </div>
 
         <div v-show="activeSettingsTab === 'roles'" class="settings-category-panel unified-role-panel"
@@ -376,6 +390,20 @@
               </button>
             </div>
 
+            <div class="stage-composer-controls" style="border-top:1px solid var(--border-subtle);padding-top:14px">
+              <label class="field-main-label"><input type="checkbox" v-model="composerDraft.composer_enabled"> 開啟舞台文字與附件輸入</label>
+              <p class="field-sub-hint">套用所有舞台；各場對話與附件互相獨立。高度隨舞台等比縮放，內容較多時在框內捲動；預覽與舞台都會避開回覆文字區。</p>
+              <div class="stage-position-sliders">
+                <template v-for="field in composerFields" :key="field.key">
+                  <label :for="field.key">{{ field.label }} {{ composerDraft[field.key] }}{{ field.unit }}</label>
+                  <input :id="field.key" type="range" class="std-range" :min="field.min" :max="field.max" step="1" v-model.number="composerDraft[field.key]">
+                </template>
+              </div>
+              <label for="composer-placeholder-zh" class="field-main-label">中文輸入提示</label>
+              <input id="composer-placeholder-zh" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_zh">
+              <label for="composer-placeholder-en" class="field-main-label">英文輸入提示</label>
+              <input id="composer-placeholder-en" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_en">
+            </div>
             <!-- 看板風格卡片: glass / slate / cue -->
             <div class="grid-options-row" style="grid-template-columns: repeat(3, 1fr);">
               <div
@@ -575,7 +603,7 @@
               <i class="bi bi-eye-fill" style="color: var(--brand-light);"></i> 9:16 舞台即時對照全景 (所見即所得)
             </span>
             <div
-              ref="stagePreviewRef"
+              ref="stagePreviewRef" data-composer-canvas
               class="interactive-large-stage stage-direct-editor standalone-stage-preview"
               :data-board-style="selectedBoardStyle"
               @pointermove="moveStageDirectEdit"
@@ -621,6 +649,8 @@
                 aria-label="拖曳調整展開看板按鈕位置"
                 @pointerdown.stop.prevent="startStageDirectEdit('board-open', $event)"
               ><span class="stage-board-open-icon" aria-hidden="true">{{ stagePreviewBoardOpenPresentation.icon }}</span> 展開看板</button>
+              <ConversationComposer v-if="composerDraft.composer_enabled" stage preview :settings="composerDraft" :enabled="true"
+                style="z-index:6;cursor:grab;touch-action:none" @pointerdown.stop.prevent="startStageDirectEdit('composer', $event)" />
               <div class="stage-preview-mic-wrap" :style="stagePreviewMicStyle">
                 <button
                   type="button"
@@ -657,7 +687,7 @@
             <div class="setting-form-row">
               <div class="field-label-group">
                 <label for="visitor-idle-reset-seconds" class="field-main-label">訪客對話重置時間</label>
-                <span class="field-sub-hint">舞台上一輪對話結束後閒置多久，就清除畫面與對話上下文 (3–300 秒)</span>
+                <span class="field-sub-hint">完整重置清除本場記憶、附件與草稿並返回主角色；舞台空場後再等招呼間隔。</span>
               </div>
               <div class="field-control-area">
                 <div class="std-slider-combo">
@@ -676,8 +706,10 @@
               </div>
             </div>
 
+            <label class="field-main-label" for="clear-display-seconds">只清畫面時間（秒，保留記憶與附件）</label>
+            <input id="clear-display-seconds" type="number" min="1" :max="selectedVisitorResetSeconds" v-model.number="selectedClearDisplaySeconds" class="std-input">
             <p v-if="visitorError" role="alert">{{ visitorError }}</p>
-            <p>訪客模式由舞台接收現場語音；控制台測試模式由管理者發問或試播，避免兩邊同時操作。一般現場使用維持訪客模式即可。</p>
+            <p>控制台與舞台各自依上述時間清畫面、清空對話並返回主數位人，停止、返回與收音操作不影響另一邊；閒置招呼只在舞台播放。</p>
           </section>
           <!-- 左欄：Silero VAD 免持收音 -->
           <section class="setting-card">
@@ -1053,7 +1085,7 @@
       </div>
 
       <!-- 滿板固定底部動作條 -->
-      <footer v-show="!['roles', 'greeting'].includes(activeSettingsTab)" class="settings-fixed-footer">
+      <footer v-show="!['roles', 'greeting', 'conversation'].includes(activeSettingsTab)" class="settings-fixed-footer">
         <button v-if="activeSettingsTab === 'experience'" type="button" class="btn-restore-gray" @click="confirmKind = 'reset'">
           <i class="bi bi-arrow-counterclockwise"></i> 還原系統偏好預設
         </button>
@@ -1097,6 +1129,9 @@
 </template>
 
 <script setup>
+import ConversationComposer from './ConversationComposer.vue'
+import ConversationPanel from './ConversationPanel.vue'
+import { composerGeometry } from '../conversationAttachments.js'
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
@@ -1115,6 +1150,7 @@ import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../stora
 
 const { t, setLocale } = useI18n()
 const props = defineProps({
+  sessionId: { type: Number, default: 0 },
   isConnected: {
     type: Boolean,
     default: false
@@ -1135,7 +1171,8 @@ const emit = defineEmits([
   'request-disconnect',
   'avatar-ready',
   'switch-theme',
-  'close-settings'
+  'close-settings',
+  'conversation-summary'
 ])
 
 const showSettings = ref(true)
@@ -1201,6 +1238,8 @@ const {
   selectedAvatarId,
   selectedStageCaptionMaxChars,
   selectedVisitorResetSeconds,
+  selectedClearDisplaySeconds,
+  composerDraft,
   visitorResetError,
   visitorDirty,
   visitorError,
@@ -1316,6 +1355,7 @@ const currentBoardStyleLabel = computed(() => {
 })
 
 const settingsTabs = computed(() => [
+  { id: 'conversation', icon: 'bi bi-chat-square-text', label: '對話記憶與語系' },
   { id: 'roles', icon: 'bi bi-people-fill', label: '數位人、AI 與知識設定' },
   { id: 'greeting', icon: 'bi bi-chat-heart', label: '閒置招呼' },
   { id: 'interaction', icon: 'bi bi-mic', label: '訪客互動' },
@@ -1387,6 +1427,15 @@ const observeStagePreview = () => {
   measureStagePreview()
 }
 
+const composerFields = [
+  { key:'composer_x', label:'輸入框水平位置', min:0, max:100, unit:'%' },
+  { key:'composer_y', label:'輸入框垂直位置', min:0, max:100, unit:'%' },
+  { key:'composer_width', label:'輸入框寬度', min:40, max:100, unit:'%' },
+  { key:'composer_height', label:'輸入框高度', min:120, max:480, unit:'px' },
+  { key:'composer_font_size', label:'輸入框字級', min:12, max:28, unit:'px' },
+  { key:'composer_opacity', label:'輸入框背景不透明度', min:0, max:100, unit:'%' }
+]
+
 const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(value)))
 
 const startStageDirectEdit = (target, event) => {
@@ -1399,6 +1448,12 @@ const moveStageDirectEdit = (event) => {
   const rect = stagePreviewRef.value?.getBoundingClientRect()
   if (!target || !rect?.width || !rect?.height) return
 
+  if (target === 'composer') {
+    const box = composerGeometry(composerDraft, stagePreviewSize.value.width, stagePreviewSize.value.height)
+    composerDraft.composer_x = clampPercent(((event.clientX - rect.left) / rect.width * stagePreviewSize.value.width - box.width / 2 - box.pad) / Math.max(1, stagePreviewSize.value.width - box.width - box.pad * 2) * 100)
+    composerDraft.composer_y = clampPercent(((event.clientY - rect.top) / rect.height * stagePreviewSize.value.height - box.height / 2 - box.pad) / Math.max(1, stagePreviewSize.value.height - box.height - box.pad * 2) * 100)
+    return
+  }
   const x = ((event.clientX - rect.left) / rect.width) * 100
   const y = ((event.clientY - rect.top) / rect.height) * 100
   if (target === 'mic') {
@@ -1513,29 +1568,18 @@ const handleApplyStage = async () => {
   }
 }
 
-const handleApplyAvatar = () => {
-  if (props.isConnected) {
-    confirmKind.value = 'avatar'
-    return
-  }
-  applyAvatarChange()
-}
+const handleApplyAvatar = () => applyAvatarChange()
 
 const applyAvatarChange = async () => {
   try {
-    if (props.isConnected) {
-      emit('request-disconnect')
-      await new Promise((resolve) => setTimeout(resolve, 250))
+    const data = await applyAvatar()
+    if (data.pending) {
+      emit('notification', '設定已儲存，待控制台與舞台皆斷線後套用。', 'success')
+      return
     }
-    await applyAvatar()
     emit('avatar-ready')
     emit('notification', t('notifications.avatarSwitched'), 'success')
   } catch (error) {
-    if (error.status === 409 && error.payload?.need_disconnect) {
-      emit('request-disconnect')
-      emit('notification', t('settings.avatar.needDisconnect'), 'warning')
-      return
-    }
     emit('notification', error.message, 'error')
   }
 }
@@ -1551,6 +1595,10 @@ const handleApplyVad = async () => {
   try {
     vadDraft.type = 'silero'
     const data = await applyVadSettings()
+    if (data.pending) {
+      emit('notification', '收音設定已儲存，待兩端斷線後套用。', 'success')
+      return
+    }
     if (data.warmup_error) {
       emit('notification', data.warmup_error, 'warning')
       return
@@ -1561,33 +1609,17 @@ const handleApplyVad = async () => {
   }
 }
 
-const handleApplySpeech = (kind) => {
-  if (props.isConnected) {
-    confirmKind.value = kind
-    return
-  }
-  applySpeechChange(kind)
-}
+const handleApplySpeech = (kind) => applySpeechChange(kind)
 
 const applySpeechChange = async (kind) => {
   try {
-    if (props.isConnected) {
-      emit('request-disconnect')
-      await new Promise((resolve) => setTimeout(resolve, 250))
-    }
     const apply = kind === 'stt' ? applySttSettings : applyTtsSettings
-    try {
-      await apply()
-    } catch (error) {
-      if (!error.payload?.need_disconnect) throw error
-      await new Promise((resolve) => setTimeout(resolve, 750))
-      await apply()
+    const data = await apply()
+    if (data.pending) {
+      emit('notification', '設定已儲存，待控制台與舞台皆斷線後套用。', 'success')
+      return
     }
-    if (kind === 'stt') {
-      emit('notification', t('settings.speech.sttApplied'), 'success')
-    } else {
-      emit('notification', t('settings.speech.ttsApplied'), 'success')
-    }
+    emit('notification', t(kind === 'stt' ? 'settings.speech.sttApplied' : 'settings.speech.ttsApplied'), 'success')
   } catch (error) {
     emit('notification', error.message, 'error')
   }
@@ -1682,10 +1714,6 @@ const onImportFileChange = (event) => {
 const handleImportCharacter = async () => {
   if (!canStartImport.value) return
   try {
-    if (props.isConnected) {
-      emit('request-disconnect')
-      await new Promise((resolve) => setTimeout(resolve, 250))
-    }
     const result = await importCharacter({
       file: importFile.value,
       engine: selectedEngine.value,
@@ -1900,6 +1928,8 @@ defineExpose({
 
 <style scoped>
 .unified-role-panel { display: block; }
+.settings-return-console { margin-top: 12px; }
+.conversation-return-console { margin-bottom: 14px; }
 
 .confirm-dialog-overlay {
   position: fixed;

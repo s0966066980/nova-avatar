@@ -53,7 +53,8 @@
     <section v-show="section === 'voice'" class="profile-section">
       <h3>聲音與工具</h3><p>每位角色可選擇自己的聲線；即時組合共用同一語音合成引擎。</p>
       <div class="profile-grid"><label>語音引擎<select v-model="profile.tts.type"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ engine }}</option></select></label><label>聲線／參考音檔<input v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label></div>
-      <label v-if="['cosyvoice','fun-cosyvoice3'].includes(profile.tts.type)">參考語音逐字稿<textarea v-model="profile.tts.ref_text" rows="3"></textarea></label>
+      <label v-if="profile.tts.type === 'edgetts'">英文聲音<input v-model="profile.tts.voice_en_us" placeholder="en-US-JennyNeural"></label>
+      <label v-if="['cosyvoice' ,'fun-cosyvoice3'].includes(profile.tts.type)">參考語音逐字稿<textarea v-model="profile.tts.ref_text" rows="3"></textarea></label>
       <details><summary>其他聲音設定</summary><div class="profile-grid"><label v-for="(label,key) in voiceFields" :key="key">{{ label }}<input :value="profile.tts[key] || ''" @input="profile.tts[key] = $event.target.value"></label></div></details>
       <label class="profile-check"><input type="checkbox" v-model="profile.tools.weather">使用 CWA 即時天氣工具（臺灣，角色交接模式）</label>
     </section>

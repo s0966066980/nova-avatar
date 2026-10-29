@@ -126,13 +126,13 @@ test('重複 startPlay 共用 offer，分開抵達的音畫軌維持同一播放
       seq, type: 'role_state', enabled: true, phase: 'ready', mode
     }) })
     roleEvent(1, 'visitor')
-    assert.equal(microphoneTrack.enabled, false, 'visitor mode must mute console capture')
+    assert.equal(microphoneTrack.enabled, true, 'another page cannot mute console capture')
     roleEvent(2, 'console')
     assert.equal(microphoneTrack.enabled, true, 'restore the existing capture request')
     setCaptureEnabled(false)
     roleEvent(3, 'visitor')
     roleEvent(4, 'console')
-    assert.equal(microphoneTrack.enabled, false, 'mode changes cannot grant microphone consent')
+    assert.equal(microphoneTrack.enabled, false, 'role events cannot grant microphone consent')
     assert.equal(offerCount, 1)
     stopPlay()
   } finally {

@@ -18,9 +18,11 @@ from src.avatars.catalog import (
 )
 from src.server.import_jobs import VIDEO_EXTS, get_job, import_in_progress, start_import_job
 from src.server.runtime_settings import (
+    apply_video_settings,
     SettingsError,
     apply_avatar,
     apply_llm_model,
+    apply_llm_behavior,
     apply_mouth_quality,
     apply_stt_settings,
     apply_tts_settings,
@@ -36,6 +38,7 @@ from src.server.runtime_settings import (
     apply_reply_rules,
     reply_rules_snapshot,
 )
+from src.server.deferred_settings import defer_when_connected, snapshot as pending_snapshot
 from src.server.state import state
 from src.scene.service import (
     MAX_BACKGROUND_BYTES,
@@ -69,8 +72,9 @@ async def get_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     data = current_snapshot(state.config)
+    data["pending_settings"] = pending_snapshot()
     data["session_count"] = _active_session_count()
-    data["switching"] = bool(getattr(state, "switching", False))
+    data["switching"] = bool(state.switching or state.settings_applying)
     data["ready"] = bool(state.server_ready)
     data["model_ready"] = bool(getattr(state, "model_ready", False))
     roles = getattr(state, "roles", None)
@@ -109,6 +113,22 @@ async def list_llm_models(request):
     return _json({"code": 0, "data": result})
 
 
+async def set_llm_behavior(request):
+    if not state.config:
+        return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
+    try:
+        params = await request.json()
+        result = apply_llm_behavior(state.config, params.get("assistant_profile"),
+                                    params.get("rules"), params.get("expected_revision"))
+        return _json({"code": 0, "msg": "ok", "data": result})
+    except SettingsError as exc:
+        return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
+    except Exception as exc:
+        logger.exception("儲存 Prompt 與規則失敗")
+        return _json({"code": -1, "msg": str(exc)}, status=500)
+
+
+@defer_when_connected("對話模型", lambda config: current_snapshot(config)["llm"])
 async def set_llm_model(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -143,6 +163,7 @@ async def get_vad_settings(request):
     return _json({"code": 0, "data": vad_snapshot(state.config)})
 
 
+@defer_when_connected("收音設定", vad_snapshot)
 async def set_vad_settings(request):
     """更新 Silero VAD 端點引數。"""
     if not state.config:
@@ -191,10 +212,18 @@ async def set_stage_settings(request):
         result = apply_stage_settings(state.config, params, greeting_content=main.get("greeting") if main else None)
         for voice in state.voice_sessions.values():
             voice.config.stage = deepcopy(state.config.stage)
+            voice._cancel_idle_reset()
             voice.greetings.refresh()
             voice._refresh_gate()
         if roles is not None:
             roles.notify()
+        if not result['composer_enabled']:
+            for session in list(state.voice_sessions.values()):
+                if session._presenter == 'stage':
+                    session.attachments.clear(drafts_only=True)
+                    session._composer_editing = False
+                    session._emit('composer_disabled')
+                    session._refresh_gate()
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
@@ -315,6 +344,7 @@ async def restore_archived_background(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
+@defer_when_connected("語音辨識", lambda config: speech_snapshot(config)["stt"])
 async def set_stt_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -335,6 +365,7 @@ async def set_stt_settings(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
+@defer_when_connected("語音合成", lambda config: speech_snapshot(config)["tts"])
 async def set_tts_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -373,6 +404,7 @@ async def pick_speech_path(request):
         return _json({"code": -1, "msg": f"無法開啟本機檔案選擇器：{exc}"}, status=500)
 
 
+@defer_when_connected("數位人引擎", lambda config: current_snapshot(config)["avatar"])
 async def set_avatar(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -389,6 +421,20 @@ async def set_avatar(request):
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
     except Exception as exc:
         logger.exception("切換數字人失敗")
+        return _json({"code": -1, "msg": str(exc)}, status=500)
+
+
+async def set_video_output(request):
+    if not state.config:
+        return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
+    try:
+        result = apply_video_settings(state.config, await request.json())
+        result["requires_reconnect"] = bool(_active_session_count())
+        return _json({"code": 0, "msg": "ok", "data": result})
+    except SettingsError as exc:
+        return _json({"code": -1, "msg": exc.message}, status=exc.status)
+    except Exception as exc:
+        logger.exception("更新數字人輸出解析度失敗")
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 

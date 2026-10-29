@@ -77,7 +77,7 @@ test('同一招呼頁編輯開關、時間、Prompt、字數並預覽，儲存�
   assert.deepEqual(writes.map(request => request.url), ['/api/profiles', '/api/profiles/greeting/apply', '/api/stage'])
   assert.deepEqual(writes.at(-1).body, { idle_greeting_enabled: true, idle_greeting_seconds: 30 })
   assert.ok(input(root, 'greeting-prompt'), '套用後 Prompt 應留在原頁')
-  assert.match(textContent(root), /招呼設定已儲存並套用/)
+  assert.match(textContent(root), /招呼設定已儲存，內容由下一場舞台對話採用/)
 })
 
 test('停用與清空內容可在同一頁儲存，先停止招呼再套用空草稿', async t => {
@@ -94,7 +94,7 @@ test('停用與清空內容可在同一頁儲存，先停止招呼再套用空�
   assert.deepEqual(writes[0].body, { idle_greeting_enabled: false })
   assert.equal(field.stage.idle_greeting_enabled, false)
   assert.equal(field.library.profiles[0].greeting.prompt, '')
-  assert.match(textContent(root), /招呼設定已儲存並套用/)
+  assert.match(textContent(root), /招呼設定已儲存，內容由下一場舞台對話採用/)
 })
 
 test('套用失敗會保留同頁草稿並說明哪些步驟未完成', async t => {
@@ -125,6 +125,6 @@ test('套用舞台排版不會送出其他頁的招呼或清場草稿', async t 
   assert.equal(settings.visitorDirty.value, true)
   requests.length = 0
   await settings.applyVisitorSettings()
-  assert.deepEqual(requests[0], { idle_reset_seconds: 90 })
+  assert.deepEqual(requests[0], { idle_reset_seconds: 90, clear_display_seconds: 15 })
   assert.equal(settings.visitorDirty.value, false)
 })

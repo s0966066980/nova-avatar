@@ -4,19 +4,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { canRoleInput, canRoleReturn, directedTransition } from '../src/roleState.js'
 
-test('同時只有指定頁面能輸入，轉場及套用期間關閉兩端輸入', () => {
-  const role = { enabled: true, phase: 'ready', mode: 'visitor' }
-  assert.equal(canRoleInput(role, 'stage'), true)
-  assert.equal(canRoleInput(role, 'console'), false)
-  role.mode = 'console'
-  assert.equal(canRoleInput(role, 'stage'), false)
-  assert.equal(canRoleInput(role, 'console'), true)
-  for (const phase of ['transition', 'disabled']) {
-    assert.equal(canRoleInput({ ...role, phase }, 'console'), false)
+test('每一頁只依自己的角色狀態決定能否輸入', () => {
+  for (const presenter of ['console', 'stage']) {
+    for (const phase of ['ready', 'announcement', 'disabled']) {
+      assert.equal(canRoleInput({ enabled: true, phase }, presenter), true)
+    }
+    assert.equal(canRoleInput({ enabled: true, phase: 'transition' }, presenter), false)
+    assert.equal(canRoleInput({ phase: 'ready', applying: true }, presenter), false)
   }
-  assert.equal(canRoleInput({ ...role, applying: true }, 'console'), false)
-  assert.equal(canRoleInput({ enabled: false, applying: true }, 'console'), false)
-  assert.equal(canRoleInput({ ...role, phase: 'announcement' }, 'console'), true)
 })
 
 test('返回僅在專門角色就緒時可操作，正反向轉場分開保存', () => {
@@ -34,11 +29,8 @@ test('返回僅在專門角色就緒時可操作，正反向轉場分開保存',
 })
 
 
-test('單角色啟用閒置招呼時仍遵守訪客／控制台輸入模式', () => {
-  const role = { enabled: false, input_mode_managed: true, phase: 'disabled', mode: 'visitor' }
-  assert.equal(canRoleInput(role, 'stage'), true)
-  assert.equal(canRoleInput(role, 'console'), false)
-  assert.equal(canRoleInput({ ...role, mode: 'console' }, 'stage'), false)
-  assert.equal(canRoleInput({ ...role, mode: 'console' }, 'console'), true)
-  assert.equal(canRoleInput({ ...role, applying: true }, 'stage'), false)
+test('單角色與招呼不再引入跨頁輸入權', () => {
+  for (const presenter of ['console', 'stage']) {
+    assert.equal(canRoleInput({ enabled: false, phase: 'disabled' }, presenter), true)
+  }
 })

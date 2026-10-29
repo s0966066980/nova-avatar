@@ -68,7 +68,7 @@ class BaseASR(ABC):
         """
         pass
     
-    def transcribe(self, audio_bytes: bytes) -> Dict[str, Any]:
+    def transcribe(self, audio_bytes: bytes, *, language: str | None = None) -> Dict[str, Any]:
         """
         識別音訊位元組資料（統一入口）
         
@@ -85,7 +85,8 @@ class BaseASR(ABC):
         temp_audio_path = None
         try:
             temp_audio_path = self._save_temp_audio(audio_bytes)
-            result = self._transcribe(temp_audio_path)
+            options = {"language": language} if getattr(self, "supports_language_options", False) else {}
+            result = self._transcribe(temp_audio_path, **options)
             
             logger.info(
                 "[ASR] transcription completed language=%s",

@@ -1,0 +1,24 @@
+[
+  {
+    "question": "今天台北天氣如何？",
+    "error": null,
+    "facts_chars": 2890,
+    "retained_messages": 2,
+    "previous_board_chars": 497,
+    "capacity": 8192,
+    "input_tokens": 3115,
+    "reserved_output_tokens": 788,
+    "estimated": false
+  },
+  {
+    "question": "未來一週天氣如何？",
+    "error": "context_capacity",
+    "facts_chars": 8487,
+    "retained_messages": 2,
+    "previous_board_chars": 497,
+    "capacity": 8192,
+    "input_tokens": 7605,
+    "reserved_output_tokens": 788,
+    "estimated": false
+  }
+]

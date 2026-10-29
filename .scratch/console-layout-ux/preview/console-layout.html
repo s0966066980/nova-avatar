@@ -1,0 +1,178 @@
+<!-- Copyright (c) 2026 HongXian0903; SPDX-License-Identifier: Apache-2.0 -->
+<style>
+#nova-layout-proposal {
+  --nova-bg: light-dark(#f3f5fa, #0c111b);
+  --nova-surface: light-dark(#ffffff, #141b28);
+  --nova-raised: light-dark(#f0f2f8, #1e2738);
+  --nova-ink: light-dark(#22293b, #e4e9f5);
+  --nova-muted: light-dark(#53617b, #a2b0cb);
+  --nova-line: light-dark(#d5dcea, #354057);
+  --nova-brand: light-dark(#5b46d6, #ac9bff);
+  --nova-tint: light-dark(#ece8ff, #30294c);
+  color: var(--nova-ink); background: var(--nova-bg);
+  font: 14px/1.55 system-ui, sans-serif; border-radius: 14px;
+  overflow: hidden; color-scheme: light dark;
+}
+#nova-layout-proposal * { box-sizing: border-box; }
+#nova-layout-proposal [hidden] { display: none !important; }
+#nova-layout-proposal button, #nova-layout-proposal input, #nova-layout-proposal select, #nova-layout-proposal textarea { font: inherit; }
+#nova-layout-proposal button { border: 1px solid var(--nova-line); border-radius: 7px; background: var(--nova-surface); color: var(--nova-ink); padding: 7px 11px; min-height: 36px; }
+#nova-layout-proposal button:disabled { opacity: .55; }
+#nova-layout-proposal button[data-current="true"] { border-color: var(--nova-brand); background: var(--nova-tint); color: var(--nova-brand); }
+#nova-layout-proposal button.nova-primary { background: var(--nova-brand); color: var(--nova-surface); border-color: var(--nova-brand); }
+#nova-layout-proposal h2, #nova-layout-proposal h3, #nova-layout-proposal p { margin: 0; }
+#nova-layout-proposal h2 { font-size: 17px; font-weight: 600; }
+#nova-layout-proposal h3 { font-size: 14px; font-weight: 600; }
+#nova-layout-proposal .nova-muted { color: var(--nova-muted); font-size: 12px; }
+#nova-layout-proposal .nova-nav { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--nova-line); background: var(--nova-surface); }
+#nova-layout-proposal .nova-logo { font-size: 16px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+#nova-layout-proposal .nova-nav-links, #nova-layout-proposal .nova-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#nova-layout-proposal .nova-draft { font-size: 11px; border: 1px solid var(--nova-line); border-radius: 5px; padding: 2px 6px; color: var(--nova-muted); }
+#nova-layout-proposal .nova-console { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(230px, 1fr); gap: 14px; padding: 16px; }
+#nova-layout-proposal .nova-workspace, #nova-layout-proposal .nova-preview { min-width: 0; border: 1px solid var(--nova-line); border-radius: 10px; background: var(--nova-surface); }
+#nova-layout-proposal .nova-workspace { display: flex; flex-direction: column; }
+#nova-layout-proposal .nova-toolbar { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px solid var(--nova-line); }
+#nova-layout-proposal .nova-modes { display: flex; flex-wrap: wrap; gap: 4px; }
+#nova-layout-proposal .nova-mode { border-color: transparent; padding: 7px 9px; font-size: 13px; }
+#nova-layout-proposal .nova-context { padding: 10px 14px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--nova-line); color: var(--nova-muted); font-size: 12px; }
+#nova-layout-proposal .nova-mode-body { min-height: 410px; display: flex; flex-direction: column; }
+#nova-layout-proposal .nova-messages { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 18px; padding: 20px 16px; }
+#nova-layout-proposal .nova-bubble { max-width: 88%; background: var(--nova-raised); padding: 12px 14px; border-radius: 10px; overflow-wrap: anywhere; }
+#nova-layout-proposal .nova-bubble-user { align-self: flex-end; background: var(--nova-tint); }
+#nova-layout-proposal .nova-author { color: var(--nova-muted); font-size: 11px; margin-bottom: 5px; }
+#nova-layout-proposal .nova-composer { padding: 14px; border-top: 1px solid var(--nova-line); display: grid; gap: 10px; }
+#nova-layout-proposal textarea, #nova-layout-proposal input, #nova-layout-proposal select { width: 100%; min-width: 0; border: 1px solid var(--nova-line); background: var(--nova-bg); color: var(--nova-ink); border-radius: 7px; padding: 10px; }
+#nova-layout-proposal textarea { resize: vertical; }
+#nova-layout-proposal .nova-composer-actions { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+#nova-layout-proposal .nova-tts, #nova-layout-proposal .nova-validation { padding: 20px 16px; gap: 16px; }
+#nova-layout-proposal .nova-tts textarea { flex: 1; min-height: 220px; }
+#nova-layout-proposal .nova-validation label { display: grid; gap: 6px; }
+#nova-layout-proposal .nova-validation textarea { min-height: 110px; }
+#nova-layout-proposal .nova-test-record { border-top: 1px solid var(--nova-line); padding-top: 14px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+#nova-layout-proposal .nova-preview { display: flex; flex-direction: column; }
+#nova-layout-proposal .nova-preview-heading { padding: 14px; border-bottom: 1px solid var(--nova-line); }
+#nova-layout-proposal .nova-video { margin: 14px; min-height: 310px; flex: 1; display: flex; align-items: center; justify-content: center; background: var(--nova-bg); border-radius: 7px; color: var(--nova-muted); }
+#nova-layout-proposal .nova-video-label { text-align: center; display: grid; justify-items: center; gap: 12px; }
+#nova-layout-proposal .nova-preview-actions { padding: 14px; border-top: 1px solid var(--nova-line); display: flex; gap: 8px; flex-wrap: wrap; }
+#nova-layout-proposal .nova-settings { padding: 20px; }
+#nova-layout-proposal .nova-settings-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 20px; margin-top: 18px; }
+#nova-layout-proposal .nova-settings-nav { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+#nova-layout-proposal .nova-settings-content { min-height: 460px; padding: 24px; border: 1px solid var(--nova-line); border-radius: 10px; background: var(--nova-surface); display: grid; align-content: start; gap: 20px; }
+#nova-layout-proposal .nova-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+#nova-layout-proposal .nova-settings-grid label { display: grid; gap: 6px; }
+#nova-layout-proposal .nova-summary { padding: 14px; background: var(--nova-raised); border-radius: 8px; display: grid; gap: 6px; }
+@media (max-width: 720px) {
+  #nova-layout-proposal .nova-console { grid-template-columns: minmax(0, 1fr); }
+  #nova-layout-proposal .nova-video { min-height: 170px; }
+  #nova-layout-proposal .nova-settings-layout { grid-template-columns: minmax(0, 1fr); }
+  #nova-layout-proposal .nova-settings-nav { flex-direction: row; flex-wrap: wrap; }
+}
+@media (max-width: 460px) {
+  #nova-layout-proposal .nova-nav { padding: 12px; gap: 12px; }
+  #nova-layout-proposal .nova-settings-grid { grid-template-columns: minmax(0, 1fr); }
+  #nova-layout-proposal .nova-settings-content { padding: 16px; }
+  #nova-layout-proposal .nova-console { padding: 10px; }
+}
+@media (pointer: coarse) {
+  #nova-layout-proposal button { min-height: 44px; }
+  #nova-layout-proposal input, #nova-layout-proposal select, #nova-layout-proposal textarea { font-size: 16px; }
+}
+</style>
+<div id="nova-layout-proposal" aria-label="Nova Avatar 控制台排版提案">
+  <header class="nova-nav">
+    <div class="nova-logo"><i data-lucide="bot" aria-hidden="true"></i> Nova Avatar <span class="nova-draft">排版草案</span></div>
+    <nav class="nova-nav-links" aria-label="主要視圖">
+      <button type="button" data-page-link="console" data-current="true" class="cursor-interaction">即時演播控制台</button>
+      <button type="button" data-page-link="settings" data-current="false" class="cursor-interaction">系統設定中心</button>
+    </nav>
+  </header>
+  <div data-page="console" class="nova-console">
+    <section class="nova-workspace" aria-label="操作工作區">
+      <header class="nova-toolbar">
+        <div class="nova-modes" role="group" aria-label="操作模式">
+          <button type="button" class="nova-mode cursor-interaction" data-mode-link="chat" data-current="true" aria-pressed="true">對話模式</button>
+          <button type="button" class="nova-mode cursor-interaction" data-mode-link="tts" data-current="false" aria-pressed="false">朗讀模式</button>
+          <button type="button" class="nova-mode cursor-interaction" data-mode-link="validation" data-current="false" aria-pressed="false">語音驗證</button>
+        </div>
+        <button type="button" data-open-settings class="cursor-interaction">對話設定</button>
+      </header>
+      <div class="nova-context"><span>主數位人</span><span>回覆語系：繁體中文</span></div>
+      <section data-mode="chat" class="nova-mode-body" aria-label="對話模式工作區">
+        <div class="nova-messages">
+          <div class="nova-bubble nova-bubble-user"><div class="nova-author">管理者</div>請簡短介紹 Nova Avatar。</div>
+          <div class="nova-bubble"><div class="nova-author">主數位人</div>您好！我是 Nova Avatar 數位人，可以透過文字或語音與您對話，並依角色設定提供協助。</div>
+        </div>
+        <div class="nova-composer">
+          <textarea rows="2" aria-label="對話輸入" placeholder="輸入問題，或使用麥克風說話…"></textarea>
+          <div class="nova-composer-actions"><button type="button" disabled>加入附件</button><div class="nova-row"><button type="button" disabled>麥克風</button><button type="button" class="nova-primary" disabled>送出</button></div></div>
+        </div>
+      </section>
+      <section data-mode="tts" class="nova-mode-body nova-tts" aria-label="朗讀模式工作區" hidden>
+        <div><h2>文字朗讀</h2><p class="nova-muted">輸入要讓目前數位人朗讀的文字</p></div>
+        <textarea aria-label="朗讀文字" placeholder="在此輸入朗讀內容…">歡迎使用 Nova Avatar，現在示範文字朗讀模式。</textarea>
+        <div class="nova-row"><button type="button" class="nova-primary" disabled>開始朗讀</button></div>
+      </section>
+      <section data-mode="validation" class="nova-mode-body nova-validation" aria-label="語音驗證工作區" hidden>
+        <div><h2>語音一鍵驗證</h2><p class="nova-muted">以目前模型、語音與數位人設定實際播放</p></div>
+        <label>測試名稱<input value="首音複驗"></label>
+        <label>測試 Prompt<textarea rows="3">請只回答「語音測試正常」。不要補充其他內容。</textarea></label>
+        <div class="nova-row"><button type="button" class="nova-primary" disabled>執行一次完整測試</button></div>
+        <div class="nova-test-record"><h3>測試紀錄</h3><span class="nova-muted">尚無紀錄</span></div>
+      </section>
+    </section>
+    <aside class="nova-preview" aria-label="控制台數位人預覽">
+      <header class="nova-preview-heading"><h3>數位人預覽</h3><span class="nova-muted">目前控制台對話的影音</span></header>
+      <div class="nova-video"><div class="nova-video-label"><i data-lucide="video" aria-hidden="true"></i><span>數位人影像區</span></div></div>
+      <div class="nova-preview-actions"><button type="button" disabled>建立連線</button><button type="button" disabled>錄影</button><button type="button" disabled>開啟獨立舞台</button></div>
+    </aside>
+  </div>
+  <div data-page="settings" class="nova-settings" hidden>
+    <div class="nova-row" style="justify-content:space-between"><h2>系統設定中心</h2><button type="button" data-return-console class="cursor-interaction">返回控制台</button></div>
+    <div class="nova-settings-layout">
+      <nav class="nova-settings-nav" aria-label="設定分類"><button type="button" data-current="true">對話記憶與語系</button><button type="button" disabled>模型與角色</button><button type="button" disabled>語音設定</button><button type="button" disabled>舞台外觀</button></nav>
+      <section class="nova-settings-content" aria-label="對話記憶與語系設定">
+        <div><h2>對話記憶與語系</h2><p class="nova-muted">檢視記憶用量、調整保留上限與回覆語音</p></div>
+        <label>檢視與控制場次<select aria-label="檢視與控制場次"><option>目前控制台對話</option><option>數位人舞台</option><option>新對話預設</option></select></label>
+        <div class="nova-summary"><h3>記憶與 Context 用量</h3><p class="nova-muted">連線後顯示目前保留的訊息、模型用量及較早記憶。</p></div>
+        <div class="nova-settings-grid">
+          <label>歷史訊息保留上限<input type="number" min="1" max="2000" value="20"></label>
+          <label>回覆語系<select><option>繁體中文</option><option>English</option></select></label>
+          <label>中文聲音<select><option>目前設定的中文聲音</option></select></label>
+          <label>英文聲音<select><option>目前設定的英文聲音</option></select></label>
+        </div>
+        <div class="nova-row"><button type="button" class="nova-primary" disabled>套用至此場次</button><button type="button" disabled>清空此場對話</button></div>
+      </section>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('nova-layout-proposal');
+  const allowedModes = ['chat', 'tts', 'validation'];
+  const saved = window.openai?.widgetState?.privateContent || {};
+  const state = { page: saved.page === 'settings' ? 'settings' : 'console', mode: allowedModes.includes(saved.mode) ? saved.mode : 'chat' };
+  const render = () => {
+    root.querySelectorAll('[data-page]').forEach(el => { el.hidden = el.dataset.page !== state.page; });
+    root.querySelectorAll('[data-mode]').forEach(el => { el.hidden = el.dataset.mode !== state.mode; });
+    root.querySelectorAll('[data-page-link]').forEach(el => { el.dataset.current = String(el.dataset.pageLink === state.page); });
+    root.querySelectorAll('[data-mode-link]').forEach(el => {
+      const current = el.dataset.modeLink === state.mode;
+      el.dataset.current = String(current); el.setAttribute('aria-pressed', String(current));
+    });
+  };
+  const persist = () => {
+    if (window.openai?.setWidgetState) window.openai.setWidgetState({ modelContent: null, privateContent: { ...state } }).catch(() => {});
+  };
+  root.querySelectorAll('[data-mode-link]').forEach(el => el.addEventListener('click', () => { state.mode = el.dataset.modeLink; render(); persist(); }));
+  root.querySelectorAll('[data-page-link]').forEach(el => el.addEventListener('click', () => { state.page = el.dataset.pageLink; render(); persist(); }));
+  root.querySelector('[data-open-settings]').addEventListener('click', () => { state.page = 'settings'; render(); persist(); });
+  root.querySelector('[data-return-console]').addEventListener('click', () => { state.page = 'console'; render(); persist(); });
+  window.addEventListener('openai:set_globals', event => {
+    const next = event.detail?.globals?.widgetState?.privateContent;
+    if (!next) return;
+    state.page = next.page === 'settings' ? 'settings' : 'console';
+    state.mode = allowedModes.includes(next.mode) ? next.mode : 'chat'; render();
+  });
+  render();
+})();
+</script>

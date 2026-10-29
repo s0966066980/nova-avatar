@@ -17,6 +17,7 @@
       <span v-if="draft">草稿版本 {{ draft.revision }} · {{ roleRuntime.profiles_applied ? `生效版本 ${roleRuntime.active_revision}` : '尚未套用設定檔' }}</span>
       <strong v-if="dirty">有未儲存的修改</strong><strong v-else-if="pendingApply">已儲存，尚未套用</strong>
     </div>
+    <p v-if="roleRuntime.pending" class="role-alert" role="status">設定待套用，控制台與舞台皆斷線後才更新共用資源。</p>
     <p v-if="roleRuntime.error" class="role-alert" role="alert">{{ roleRuntime.error }}</p>
     <p v-if="!draft && busy" role="status">正在載入數位人設定檔…</p>
     <form v-if="draft" id="role-library-form" novalidate @submit.prevent="run(save)">
@@ -49,10 +50,16 @@
             <p>關閉交接時使用主數位人的完整設定檔。啟用時，兩位角色共用 MuseTalk、同一模型服務與語音合成引擎，各自保留 Prompt、RAG 文本、聲線、規則與訪客記憶。</p>
             <p v-if="pairError" class="role-alert" role="alert">{{ pairError }}</p>
           </section>
-          <section class="role-card"><h3>主數位人的交接規則</h3>
+          <section class="role-card"><h3>雙向角色交接規則</h3>
+            <p>專長內問題交給專門數位人，非專長問題自動交回主數位人；混合主題會先確認優先順序。兩個方向都會先播說明，再轉場並接續回答原問題。</p>
             <label>專門角色的專長介紹<textarea v-model="draft.handoff.description" rows="3" maxlength="2000"></textarea></label>
             <label>何時交接<textarea v-model="draft.handoff.rules" rows="4" maxlength="12000"></textarea></label>
-            <label>交接說明（播完後才轉場）<textarea v-model="draft.handoff.announcement" rows="3" maxlength="2000"></textarea></label>
+            <h4>主數位人交給專門數位人</h4>
+            <label>中文交接說明（播完後才轉場）<textarea v-model="draft.handoff.announcement" rows="3" maxlength="2000"></textarea></label>
+            <label>英文交接說明（空白使用內建說明）<textarea v-model="draft.handoff.announcement_en" rows="3" maxlength="2000"></textarea></label>
+            <h4>專門數位人交回主數位人</h4>
+            <label>中文返回交接說明（空白使用內建說明）<textarea v-model="draft.handoff.return_announcement" rows="3" maxlength="2000"></textarea></label>
+            <label>英文返回交接說明（空白使用內建說明）<textarea v-model="draft.handoff.return_announcement_en" rows="3" maxlength="2000"></textarea></label>
             <h4>場域預設查詢地點</h4><p>留白時會向訪客確認縣市與鄉鎮。{{ roleRuntime.weather_configured ? 'CWA 已設定授權碼。' : 'CWA 尚未設定授權碼。' }}</p>
             <div class="role-grid"><label>縣市<input v-model="draft.weather.county" placeholder="臺北市"></label><label>鄉鎮市區<input v-model="draft.weather.town" placeholder="中正區"></label></div>
             <p>氣象資料來源：<a href="https://opendata.cwa.gov.tw/" target="_blank" rel="noopener">交通部中央氣象署</a>。授權碼僅在服務端設定。</p>
@@ -82,7 +89,7 @@ import { directedTransition, rolePhaseLabel } from '../roleState.js'
 import { ragScopeLabel } from '../ragScope.js'
 import AvatarProfileEditor from './AvatarProfileEditor.vue'
 const props = defineProps({ initialSection: { type: String, default: 'identity' } })
-const { roleRuntime, roleRequest, roleLibrary } = useRoles()
+const { libraryRuntime: roleRuntime, roleRequest, roleLibrary } = useRoles()
 const { runtime } = useRuntimeSettings()
 const draft = ref(null), selected = ref(''), media = ref([]), providers = ref({}), defaults = ref(null)
 const busy = ref(false), error = ref(''), notice = ref(''), savedText = ref(''), edgeSource = ref(''), edgeTarget = ref('')
@@ -127,13 +134,13 @@ function requestReload() { if (dirty.value) reloadPending.value = true; else run
 async function save() {
   if (draft.value.pair.main === draft.value.pair.specialist) throw Error('主角色與專門角色需選擇不同設定檔')
   adopt(await roleRequest('', 'PUT', { library: draft.value, expected_revision: draft.value.revision }))
-  notice.value = '草稿已儲存；套用後才會更新舞台與控制台。'
+  notice.value = '草稿已儲存；套用後由下一場對話採用。'
 }
 async function saveAndApply() {
   if (pairError.value) throw Error(pairError.value)
   if (dirty.value) await save()
   await roleRequest('/apply', 'POST')
-  notice.value = roleRuntime.enabled ? '設定已套用，舞台與控制台回到主數位人。' : '主數位人的完整設定已套用。'
+  notice.value = roleRuntime.pending ? '設定已儲存，待兩端斷線後套用。' : '設定已儲存，下一場對話採用；目前對話繼續使用原設定。'
 }
 async function saveAndApplyFromParent() {
   busy.value = true; error.value = ''; notice.value = ''

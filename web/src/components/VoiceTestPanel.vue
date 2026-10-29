@@ -364,8 +364,8 @@ defineExpose({ handleVoiceEvent, loadHistory })
 </script>
 
 <style scoped>
-.voice-test-panel { margin: 0 16px 12px; padding: 18px; color: var(--text-primary); background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: auto; max-height: min(72vh, 760px); }
-.test-header, .result-heading, .history-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.voice-test-panel { flex: 1; min-height: 0; min-width: 0; margin: 0; padding: 18px; color: var(--text-primary); background: var(--bg-surface); overflow: auto; }
+.test-header, .result-heading, .history-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .test-eyebrow { color: var(--brand-light); font: 700 10px/1.4 var(--font-mono); letter-spacing: .12em; }
 h2, h3, p { margin-top: 0; }
 h2 { margin-bottom: 4px; font-size: 18px; }
@@ -373,6 +373,7 @@ h2 i { color: var(--brand-light); margin-right: 6px; }
 .test-header p, .baseline-card p, .privacy-note { color: var(--text-tertiary); font-size: 12px; margin-bottom: 0; }
 .icon-button { min-width: 36px; min-height: 36px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); color: var(--text-secondary); background: transparent; }
 .test-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); gap: 14px; margin-top: 16px; }
+.test-grid > *, .metric-grid > * { min-width: 0; }
 .test-form, .baseline-card, .result-card, .history-section { padding: 14px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: color-mix(in srgb, var(--bg-surface-elevated) 70%, transparent); }
 label, .field-heading { display: block; color: var(--text-secondary); font-size: 12px; font-weight: 700; }
 .field-heading { display: flex; justify-content: space-between; margin-top: 12px; }
@@ -404,7 +405,7 @@ dd { margin: 0; font-family: var(--font-mono); }
 .status-failed { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .status-running { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); }
 .status-interrupted { color: var(--text-tertiary); background: var(--bg-primary); }
-.metric-grid { display: grid; grid-template-columns: repeat(5, minmax(100px, 1fr)); gap: 8px; margin: 14px 0; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr)); gap: 8px; margin: 14px 0; }
 .metric-grid div { padding: 10px; border-radius: var(--radius-sm); background: var(--bg-primary); }
 .metric-grid span, .content-pair span { display: block; color: var(--text-muted); font-size: 10px; margin-bottom: 4px; }
 .metric-grid strong { font-family: var(--font-mono); font-size: 13px; }
@@ -427,5 +428,6 @@ details { margin-top: 12px; } summary { cursor: pointer; color: var(--brand-ligh
 .history-latency { font: 600 11px/1 var(--font-mono); color: var(--text-secondary); }
 .empty-state { padding: 22px; color: var(--text-muted); text-align: center; font-size: 12px; }
 @media (max-width: 900px) { .test-grid, .detail-grid, .content-pair { grid-template-columns: 1fr; }.metric-grid { grid-template-columns: repeat(2, 1fr); }.checks-grid { grid-template-columns: 1fr; } }
+@container (max-width: 680px) { .test-grid, .detail-grid, .content-pair, .checks-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) { .voice-test-panel { margin-inline: 8px; padding: 12px; }.history-heading { align-items: stretch; flex-direction: column; }.history-item { grid-template-columns: 24px minmax(0, 1fr) 14px; }.history-latency { display: none; } }
 </style>

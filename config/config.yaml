@@ -94,7 +94,7 @@ tts:
 asr:
   mode: server  # 互動麥克風固定經 WebRTC 送到服務端
   type: whisper  # whisper | funasr
-  model_size: base
+  model_size: small
   language: zh  # zh | en | auto
   output_script: traditional-tw  # FunASR: traditional-tw | simplified
   device: auto  # auto | cpu | cuda
@@ -136,9 +136,11 @@ reply_streaming:
 
 # 數字人舞台字幕顯示窗口；只影響舞台顯示，不限制模型生成長度
 stage:
+  clear_display_seconds: 15  # 只清畫面，保留追問記憶與附件
+  idle_reset_seconds: 60  # 清全部訪客內容並返回主角色
   caption_max_chars: 120
   idle_greeting_enabled: false  # 先在主數位人設定檔填寫招呼內容並儲存套用
-  idle_greeting_seconds: 60  # 閒置後開始準備；清場及返回主角色優先
+  idle_greeting_seconds: 30  # 空場成立後才開始倒數，不在有紀錄時預先計時
 
 # VAD 服務端語音端點檢測：固定使用 Silero；WebRTC 負責傳輸，不負責判定語音
 vad:

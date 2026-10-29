@@ -1,0 +1,35 @@
+{
+  "small": {
+    "source": "openai/whisper-small",
+    "revision": "973afd24965f72e36ca33b3055d56a652f456b4d",
+    "converted_sha256": "eef2cbde70d256f29b6e3432c85b92becd26f804650e855cc4ff7e66f12122b0",
+    "quantization": "float16",
+    "ctranslate2": "4.8.2",
+    "transformers": "4.46.0",
+    "conversion_compat": "temporary dtype→torch_dtype argument adapter; production dependencies unchanged"
+  },
+  "turbo": {
+    "source": "openai/whisper-large-v3-turbo",
+    "revision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+    "converted_sha256": "e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da",
+    "quantization": "float16",
+    "ctranslate2": "4.8.2",
+    "transformers": "4.46.0",
+    "conversion_compat": "temporary dtype→torch_dtype argument adapter; production dependencies unchanged"
+  },
+  "gemma-4-E2B_q4_0-it.gguf": {
+    "source": "google/gemma-4-E2B-it-qat-q4_0-gguf",
+    "revision": "675cff42a74c774d6cb76f76d8eacb49b48c9b93",
+    "sha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634"
+  },
+  "gemma-4-E2B-it-mmproj.gguf": {
+    "source": "google/gemma-4-E2B-it-qat-q4_0-gguf",
+    "revision": "675cff42a74c774d6cb76f76d8eacb49b48c9b93",
+    "sha256": "021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14"
+  },
+  "README.md": {
+    "source": "google/gemma-4-E2B-it-qat-q4_0-gguf",
+    "revision": "675cff42a74c774d6cb76f76d8eacb49b48c9b93",
+    "sha256": "942e93b96c2f7f2b5fdd8d5578f0f1215e4a354f12e202999b4fbc864bb02ef5"
+  }
+}

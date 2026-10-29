@@ -36,6 +36,36 @@ def test_migration_is_once_only_and_excludes_credentials(profiles):
     assert "api_key" not in json.dumps(data)
 
 
+def test_old_libraries_gain_return_announcements_once_without_overwriting_content(profiles):
+    import yaml
+    store, config, data = profiles
+    old = deepcopy(data)
+    old['handoff'].pop('return_announcement', None)
+    old['handoff'].pop('return_announcement_en', None)
+    store.path.write_text(yaml.safe_dump(old), encoding='utf8')
+    migrated = store.initialize(config)
+    assert migrated['handoff']['return_announcement']
+    assert migrated['handoff']['return_announcement_en']
+    assert migrated['handoff']['announcement'] == old['handoff']['announcement']
+    assert migrated['revision'] == old['revision'] + 1
+    assert store.initialize(config) == migrated
+    migrated['handoff']['return_announcement'] = '專用返回說明'
+    migrated['handoff']['return_announcement_en'] = 'Custom return message.'
+    saved = store.save(migrated, expected_revision=migrated['revision'])
+    assert store.initialize(config) == saved
+    assert saved['handoff']['return_announcement'] == '專用返回說明'
+
+
+@pytest.mark.parametrize('value', [42, 'x' * 2001])
+def test_invalid_return_announcements_do_not_replace_saved_settings(profiles, value):
+    store, _, data = profiles
+    before = store.path.read_bytes()
+    data['handoff']['return_announcement_en'] = value
+    with pytest.raises(ProfileError):
+        store.save(data, expected_revision=1)
+    assert store.path.read_bytes() == before
+
+
 def test_role_identity_is_independent_of_reused_visual_material(profiles):
     store, config, data = profiles
     data["profiles"][1]["avatar_id"] = data["profiles"][0]["avatar_id"]

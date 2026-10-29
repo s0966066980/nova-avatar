@@ -1,9 +1,11 @@
 // Copyright (c) 2026 HongXian0903
 // SPDX-License-Identifier: Apache-2.0
 
+import { composerDefaults, composerSettings } from '../conversationAttachments.js'
 import { computed, reactive, ref, watch } from 'vue'
 
 const runtime = reactive({
+  pending_settings: { items: [], error: '' },
   llm: {
     model: '',
     base_url: '',
@@ -19,9 +21,9 @@ const runtime = reactive({
   stage: {
     background_id: '',
     caption_max_chars: 120,
-    idle_reset_seconds: 10,
+    idle_reset_seconds: 60,
     idle_greeting_enabled: false,
-    idle_greeting_seconds: 60,
+    idle_greeting_seconds: 30,
     caption_x: 50,
     caption_y: 90,
     caption_width: 100,
@@ -42,6 +44,14 @@ const runtime = reactive({
   avatar: {
     type: '',
     avatar_id: ''
+  },
+  video: {
+    max_height: 0,
+    height_options: [450, 540, 720, 960, 1280, 1920, 0],
+    source_width: null,
+    source_height: null,
+    output_width: null,
+    output_height: null
   },
   avatar_quality: {
     mouth_sharpen: 0.5,
@@ -223,7 +233,9 @@ const rulesDirty = computed(() => JSON.stringify(rulesDraft) !== JSON.stringify(
   board: rulesApplied.board
 }))
 const selectedStageCaptionMaxChars = ref(120)
-const selectedVisitorResetSeconds = ref(10)
+const selectedVisitorResetSeconds = ref(60)
+const selectedClearDisplaySeconds = ref(15)
+const composerDraft = reactive({ ...composerDefaults })
 const selectedCaptionX = ref(50)
 const selectedCaptionY = ref(90)
 const selectedCaptionWidth = ref(100)
@@ -270,12 +282,12 @@ const stageCaptionLengthError = computed(() => {
 
 const visitorResetError = computed(() => {
   const value = Number(selectedVisitorResetSeconds.value)
-  return !Number.isInteger(value) || value < 3 || value > 300
+  return !Number.isInteger(value) || value < 3 || value > 300 || !Number.isInteger(selectedClearDisplaySeconds.value) || selectedClearDisplaySeconds.value < 1 || selectedClearDisplaySeconds.value > value
 })
 
 const applyingVisitor = ref(false)
 const visitorError = ref('')
-const visitorDirty = computed(() => !visitorResetError.value && selectedVisitorResetSeconds.value !== runtime.stage.idle_reset_seconds)
+const visitorDirty = computed(() => !visitorResetError.value && (selectedVisitorResetSeconds.value !== runtime.stage.idle_reset_seconds || selectedClearDisplaySeconds.value !== runtime.stage.clear_display_seconds))
 async function applyVisitorSettings() {
   if (visitorResetError.value) throw new Error('訪客對話重置時間必須介於 3–300 秒。')
   applyingVisitor.value = true
@@ -283,10 +295,12 @@ async function applyVisitorSettings() {
   try {
     const data = await parseJson(await fetch('/api/stage', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idle_reset_seconds: selectedVisitorResetSeconds.value })
+      body: JSON.stringify({ idle_reset_seconds: selectedVisitorResetSeconds.value, clear_display_seconds: selectedClearDisplaySeconds.value })
     }))
+    runtime.stage.clear_display_seconds = Number(data.clear_display_seconds)
     runtime.stage.idle_reset_seconds = Number(data.idle_reset_seconds)
     selectedVisitorResetSeconds.value = runtime.stage.idle_reset_seconds
+    selectedClearDisplaySeconds.value = Number(data.clear_display_seconds ?? 15)
     return data
   } catch (error) { visitorError.value = error.message; throw error }
   finally { applyingVisitor.value = false }
@@ -301,17 +315,20 @@ const currentProviderModels = computed(() => {
   return selectedProvider.value === 'llamacpp' ? llamacpp.models : ollama.models
 })
 
+const promptDirty = computed(() => (
+  selectedSystemPrompt.value !== (runtime.llm.system_prompt || '') ||
+  selectedRestrictionPrompt.value !== (runtime.llm.assistant_profile?.restriction_prompt || '') ||
+  selectedAssistantName.value !== (runtime.llm.assistant_profile?.assistant_name || '') ||
+  selectedOutputLocale.value !== (runtime.llm.assistant_profile?.output_locale || 'zh-TW') ||
+  Boolean(selectedEnforceOutputLocale.value) !== Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true) ||
+  selectedForbiddenSelfNames.value !== (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n')
+))
+
 const llmDirty = computed(() => {
-  if (!selectedLlm.value || !selectedSystemPrompt.value.trim() || responseLengthError.value || boardItemsError.value) return false
+  if (!selectedLlm.value || responseLengthError.value || boardItemsError.value) return false
   return (
     selectedProvider.value !== runtime.llm.provider ||
     selectedLlm.value !== runtime.llm.model ||
-    selectedSystemPrompt.value !== (runtime.llm.system_prompt || '') ||
-    selectedRestrictionPrompt.value !== (runtime.llm.assistant_profile?.restriction_prompt || '') ||
-    selectedAssistantName.value !== (runtime.llm.assistant_profile?.assistant_name || '') ||
-    selectedOutputLocale.value !== (runtime.llm.assistant_profile?.output_locale || 'zh-TW') ||
-    Boolean(selectedEnforceOutputLocale.value) !== Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true) ||
-    selectedForbiddenSelfNames.value !== (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n') ||
     Number(selectedResponseMaxChars.value) !== Number(runtime.llm.response_max_chars || 120) ||
     Number(selectedBoardMaxItems.value) !== Number(runtime.llm.board_max_items || 8) ||
     selectedReplyMode.value !== (runtime.llm.reply_mode || 'legacy') ||
@@ -341,6 +358,7 @@ const boardSizeError = computed(() => {
 })
 
 const stageDirty = computed(() => (
+    Object.keys(composerDefaults).some(key => composerDraft[key] !== (runtime.stage[key] ?? composerDefaults[key])) ||
   !stageCaptionLengthError.value &&
   !boardSizeError.value &&
   (
@@ -499,6 +517,27 @@ const qualityDraft = reactive(mergeQuality())
 const applyingQuality = ref(false)
 const qualityError = ref('')
 
+const selectedOutputHeight = ref(0)
+const applyingVideo = ref(false)
+const videoError = ref('')
+const videoDirty = computed(() => selectedOutputHeight.value !== runtime.video.max_height)
+const outputHeightOptions = computed(() => {
+  const values = [...runtime.video.height_options]
+  for (const height of [runtime.video.max_height, selectedOutputHeight.value]) {
+    if (!values.includes(height)) values.unshift(height)
+  }
+  return values
+})
+const outputDimensions = computed(() => {
+  const { source_width: width, source_height: height } = runtime.video
+  if (!width || !height) return ''
+  const limit = selectedOutputHeight.value
+  if (!limit || limit >= height) return `${width} × ${height}`
+  const outputHeight = Math.max(2, Math.floor(limit / 2) * 2)
+  const outputWidth = Math.max(2, Math.floor(Math.round(width * outputHeight / height) / 2) * 2)
+  return `${outputWidth} × ${outputHeight}`
+})
+
 function assignQualityDraft(value) {
   const merged = mergeQuality(value)
   qualityDraft.mouth_sharpen = merged.mouth_sharpen
@@ -532,7 +571,8 @@ async function parseJson(response) {
     error.payload = data
     throw error
   }
-  return data.data
+  if (data.pending_settings) runtime.pending_settings = data.pending_settings
+  return data.pending ? { ...data.data, pending: true } : data.data
 }
 
 function applyVadSnapshot(data) {
@@ -598,6 +638,7 @@ async function applySttSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sttDraft)
     }))
+    if (data.pending) return data
     applySpeechSnapshot({ stt: data })
     return data
   } catch (error) {
@@ -626,6 +667,7 @@ async function applyTtsSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(ttsDraft)
     }))
+    if (data.pending) return data
     applySpeechSnapshot({ tts: data })
     if (data.preview_audio) {
       const preview = new Audio(data.preview_audio)
@@ -644,6 +686,7 @@ async function loadVadSettings() {
   vadError.value = ''
   try {
     const data = await parseJson(await fetch('/api/vad'))
+    if (data.pending) return data
     applyVadSnapshot(data)
     return data
   } catch (error) {
@@ -689,6 +732,7 @@ async function applyVadSettings() {
         asr_mode: vadDraft.enabled ? 'server' : 'browser'
       })
     }))
+    if (data.pending) return data
     applyVadSnapshot(data)
     if (data.warmup_error) {
       vadError.value = data.warmup_error
@@ -699,6 +743,26 @@ async function applyVadSettings() {
     throw error
   } finally {
     applyingVad.value = false
+  }
+}
+
+async function applyVideoSettings() {
+  applyingVideo.value = true
+  videoError.value = ''
+  try {
+    const data = await parseJson(await fetch('/api/avatar/output', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_height: selectedOutputHeight.value })
+    }))
+    Object.assign(runtime.video, data)
+    selectedOutputHeight.value = data.max_height
+    return data
+  } catch (error) {
+    videoError.value = error.message
+    throw error
+  } finally {
+    applyingVideo.value = false
   }
 }
 
@@ -723,6 +787,7 @@ async function applyMouthQuality() {
 }
 
 function applySnapshot(data) {
+  runtime.pending_settings = data.pending_settings || { items: [], error: '' }
   runtime.llm = data.llm
   const snapshotRules = data.llm?.reply_rules
   if (snapshotRules) {
@@ -733,12 +798,14 @@ function applySnapshot(data) {
       board: snapshotRules.board || ''
     })
   }
+  Object.assign(composerDraft, composerSettings(data.stage))
   runtime.stage = {
+    ...composerSettings(data.stage),
     background_id: data.stage?.background_id || '',
     caption_max_chars: Number(data.stage?.caption_max_chars || 120),
-    idle_reset_seconds: Number(data.stage?.idle_reset_seconds || 10),
+    idle_reset_seconds: Number(data.stage?.idle_reset_seconds || 60),
     idle_greeting_enabled: Boolean(data.stage?.idle_greeting_enabled),
-    idle_greeting_seconds: Number(data.stage?.idle_greeting_seconds ?? 60),
+    idle_greeting_seconds: Number(data.stage?.idle_greeting_seconds ?? 30),
     caption_x: Number(data.stage?.caption_x ?? 50),
     caption_y: Number(data.stage?.caption_y ?? 90),
     caption_width: Number(data.stage?.caption_width ?? 100),
@@ -757,6 +824,8 @@ function applySnapshot(data) {
     mic_preset: data.stage?.mic_preset || 'custom'
   }
   runtime.avatar = data.avatar
+  Object.assign(runtime.video, data.video || {})
+  selectedOutputHeight.value = runtime.video.max_height
   runtime.avatar_quality = mergeQuality(data.avatar_quality)
   assignQualityDraft(runtime.avatar_quality)
   runtime.engines = data.engines || []
@@ -785,6 +854,7 @@ function applySnapshot(data) {
   selectedSemanticWaitSeconds.value = Number(data.llm?.semantic_wait_seconds || 0.5)
   selectedStageCaptionMaxChars.value = runtime.stage.caption_max_chars
   selectedVisitorResetSeconds.value = runtime.stage.idle_reset_seconds
+  selectedClearDisplaySeconds.value = Number(data.stage?.clear_display_seconds ?? 15)
   selectedCaptionX.value = runtime.stage.caption_x
   selectedCaptionY.value = runtime.stage.caption_y
   selectedCaptionWidth.value = runtime.stage.caption_width
@@ -875,6 +945,41 @@ async function applyReplyRules() {
   }
 }
 
+async function applyLlmBehavior() {
+  rulesSaving.value = true
+  rulesError.value = ''
+  rulesNotice.value = ''
+  try {
+    const data = await parseJson(await fetch('/api/llm/behavior', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expected_revision: rulesApplied.revision,
+        assistant_profile: {
+          assistant_name: selectedAssistantName.value,
+          system_prompt: selectedSystemPrompt.value,
+          restriction_prompt: selectedRestrictionPrompt.value,
+          output_locale: selectedOutputLocale.value,
+          enforce_output_locale: Boolean(selectedEnforceOutputLocale.value),
+          forbidden_self_names: selectedForbiddenSelfNames.value.split('\n').map((value) => value.trim()).filter(Boolean)
+        },
+        rules: { ...rulesDraft }
+      })
+    }))
+    runtime.llm.system_prompt = data.system_prompt
+    runtime.llm.assistant_profile = data.assistant_profile
+    Object.assign(rulesApplied, data.rules)
+    runtime.llm.reply_rules = { ...rulesApplied }
+    rulesNotice.value = '角色與規則已儲存，切換模型後繼續共用。'
+    return data
+  } catch (error) {
+    rulesError.value = error.message
+    throw error
+  } finally {
+    rulesSaving.value = false
+  }
+}
+
 function applyProviderBlock(target, block) {
   target.models = block.models || []
   target.reachable = Boolean(block.reachable)
@@ -954,6 +1059,7 @@ async function applyLlmModel(
         }
       })
     }))
+    if (data.pending) return data
     runtime.llm.model = data.model
     runtime.llm.provider = data.provider || provider
     runtime.llm.base_url = data.base_url || runtime.llm.base_url
@@ -1018,6 +1124,7 @@ async function applyStageSettings(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        ...composerDraft,
         caption_max_chars: Number(captionMaxChars),
         caption_x: Number(selectedCaptionX.value),
         caption_y: Number(selectedCaptionY.value),
@@ -1037,7 +1144,10 @@ async function applyStageSettings(
         mic_preset: selectedMicPreset.value
       })
     }))
+    Object.assign(runtime.stage, composerSettings(data))
+    Object.assign(composerDraft, composerSettings(data))
     runtime.stage.caption_max_chars = Number(data.caption_max_chars)
+    runtime.stage.idle_reset_seconds = Number(data.idle_reset_seconds ?? selectedVisitorResetSeconds.value)
     runtime.stage.caption_x = Number(data.caption_x ?? selectedCaptionX.value)
     runtime.stage.caption_y = Number(data.caption_y ?? selectedCaptionY.value)
     runtime.stage.caption_width = Number(data.caption_width ?? selectedCaptionWidth.value)
@@ -1262,6 +1372,7 @@ async function applyAvatar(engine = selectedEngine.value, avatarId = selectedAva
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: engine, avatar_id: avatarId })
     }))
+    if (data.pending) return data
     runtime.avatar.type = data.type
     runtime.avatar.avatar_id = data.avatar_id
     runtime.model_ready = true
@@ -1356,8 +1467,11 @@ export function useRuntimeSettings() {
     loadReplyRules,
     restoreDefaultRules,
     applyReplyRules,
+    applyLlmBehavior,
+    promptDirty,
     selectedStageCaptionMaxChars,
     selectedVisitorResetSeconds,
+    selectedClearDisplaySeconds,
     visitorResetError,
     visitorDirty,
     visitorError,
@@ -1391,6 +1505,7 @@ export function useRuntimeSettings() {
     filteredCharacters,
     llmDirty,
     stageDirty,
+    composerDraft,
     avatarDirty,
     selectedEngineInfo,
     loadRuntimeSettings,
@@ -1399,6 +1514,13 @@ export function useRuntimeSettings() {
     applyStageSettings,
     applyAvatar,
     applyMouthQuality,
+    selectedOutputHeight,
+    outputHeightOptions,
+    outputDimensions,
+    videoDirty,
+    applyingVideo,
+    videoError,
+    applyVideoSettings,
     qualityDraft,
     qualityDirty,
     applyingQuality,

@@ -1,0 +1,96 @@
+{
+  "small": {
+    "cold_prewarm_seconds": 1.2543453770013002,
+    "warm_median_seconds": 0.16655209000055038,
+    "peak_rss_mib": 1025.3984375,
+    "samples": [
+      {
+        "reference": "請問今天臺北市的天氣如何？",
+        "recognized": "請問今天台北市的天氣如何?",
+        "seconds": 0.20186455399743863
+      },
+      {
+        "reference": "請幫我整理這份文件的三個重點。",
+        "recognized": "請幫我整理這份文件的三個重點。",
+        "seconds": 0.2323012029992242
+      },
+      {
+        "reference": "What is the weather in Taipei today?",
+        "recognized": "What is the weather in Taipei today?",
+        "seconds": 0.17641523400016013
+      },
+      {
+        "reference": "Please summarize the three main points of this document.",
+        "recognized": "Please summarize the three main points of this document.",
+        "seconds": 0.18029849500089767
+      },
+      {
+        "reference": "請問今天臺北市的天氣如何？",
+        "recognized": "請問今天台北市的天氣如何?",
+        "seconds": 0.15491706600005273
+      },
+      {
+        "reference": "請幫我整理這份文件的三個重點。",
+        "recognized": "請幫我整理這份文件的三個重點。",
+        "seconds": 0.15668894600094063
+      },
+      {
+        "reference": "What is the weather in Taipei today?",
+        "recognized": "What is the weather in Taipei today?",
+        "seconds": 0.12918170599732548
+      },
+      {
+        "reference": "Please summarize the three main points of this document.",
+        "recognized": "Please summarize the three main points of this document.",
+        "seconds": 0.1376370069992845
+      }
+    ]
+  },
+  "turbo": {
+    "cold_prewarm_seconds": 1.4574852460027614,
+    "warm_median_seconds": 0.22754623149921827,
+    "peak_rss_mib": 2434.53125,
+    "samples": [
+      {
+        "reference": "請問今天臺北市的天氣如何？",
+        "recognized": "请问今天台北市的天气如何?",
+        "seconds": 0.22323511200011126
+      },
+      {
+        "reference": "請幫我整理這份文件的三個重點。",
+        "recognized": "请帮我整理这份文件的三个重点。",
+        "seconds": 0.35923155499767745
+      },
+      {
+        "reference": "What is the weather in Taipei today?",
+        "recognized": "What is the weather in Taipei today?",
+        "seconds": 0.22371095799826435
+      },
+      {
+        "reference": "Please summarize the three main points of this document.",
+        "recognized": "Please summarize the three main points of this document.",
+        "seconds": 0.2613852630020119
+      },
+      {
+        "reference": "請問今天臺北市的天氣如何？",
+        "recognized": "请问今天台北市的天气如何?",
+        "seconds": 0.20694170099886833
+      },
+      {
+        "reference": "請幫我整理這份文件的三個重點。",
+        "recognized": "请帮我整理这份文件的三个重点。",
+        "seconds": 0.23138150500017218
+      },
+      {
+        "reference": "What is the weather in Taipei today?",
+        "recognized": "What is the weather in Taipei today?",
+        "seconds": 0.2467538130003959
+      },
+      {
+        "reference": "Please summarize the three main points of this document.",
+        "recognized": "Please summarize the three main points of this document.",
+        "seconds": 0.18646470400199178
+      }
+    ]
+  }
+}

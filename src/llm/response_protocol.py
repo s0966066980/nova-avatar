@@ -30,9 +30,21 @@ TAG_MODE_SIMPLE_ZH = "模式：簡答"
 TAG_MODE_BOARD_ZH = "模式：看板"
 TAG_SPEECH_ZH = "口語："
 TAG_BOARD_ZH = "資料："
+
+
+def _bracket_tag(pattern: str) -> str:
+    """Match paired delimiters without accepting half a streamed double tag."""
+    return r"(?<!\[)(?:\[\[" + pattern + r"\]\]|\[" + pattern + r"\])"
+
+
+SPEECH_TAG_PATTERN = (
+    _bracket_tag(r"\s*SPEECH(?::\s*)?\s*")
+    + r"|(?<!\[)\[{1,2}\s*SPEECH\s*:\s*"
+    + r"|(?:^|[\r\n]+)\s*SPEECH\s*:\s*|(?:^|[\r\n]+)\s*口語\s*[:：]\s*"
+)
 BOARD_TAG_RE = re.compile(
-    r"\[{1,2}\s*BOARD(?:_JSON)?(?::\s*)?\]{1,2}"
-    r"|(?:^|[\r\n]+)\s*(?:資料|看板(?:資料)?)\s*[:：]",
+    _bracket_tag(r"\s*BOARD(?:_JSON)?(?::\s*)?")
+    + r"|(?:^|[\r\n]+)\s*(?:資料|看板(?:資料)?)\s*[:：]",
     re.IGNORECASE,
 )
 FORMAT_RECOVERY_MESSAGE = "抱歉，剛剛的回覆格式異常，請再說一次。"
@@ -44,6 +56,7 @@ THINK_TAG_PAIRS = (
     ("<|thought|>", "</|thought|>"),
     ("<thinking>", "</thinking>"),
     ("<|tool_call_start|>[think(", "<|tool_call_end|>"),
+    ("<|tool_call_start|>", "<|tool_call_end|>"),
     ("[think(", ")]"),
 )
 
@@ -159,6 +172,7 @@ class ThinkFilter:
         self._in_think = False
         self._active_close = ""
         self._buffer = ""
+        self.hidden_content_suppressed = False
 
     def feed(self, chunk: str) -> list[str]:
         if not chunk:
@@ -183,6 +197,7 @@ class ThinkFilter:
                     self._buffer = self._buffer[pos + len(open_tag) :]
                     self._in_think = True
                     self._active_close = close_tag
+                    self.hidden_content_suppressed = True
                     continue
 
                 # Buffer might end with a partial prefix of an open tag
@@ -253,7 +268,8 @@ class ResponseProtocolParser:
     """Streaming state machine for parsing speech and board channels.
 
     Guarantees:
-    1. Speech chunks are emitted immediately (zero waiting for the board).
+    1. Speech does not wait for board JSON; the optional summary guard checks
+       each complete sentence before emitting it.
     2. Thinking tags are suppressed across chunk boundaries.
     3. Protocol tags ([[SPEECH]], [[BOARD_JSON]], [[END]]) never leak into speech.
     4. Board JSON is buffered separately; complete item objects may be emitted
@@ -270,6 +286,8 @@ class ResponseProtocolParser:
         on_board: Optional[Callable[[BoardPayload], None]] = None,
         on_mode: Optional[Callable[[ReplyMode], None]] = None,
         on_board_item: Optional[Callable[[int, BoardItem], None]] = None,
+        guard_board_speech: bool = False,
+        output_locale: str = "zh-TW",
     ) -> None:
         self.mode = mode
         self.max_items = max_items
@@ -277,6 +295,10 @@ class ResponseProtocolParser:
         self.on_board = on_board
         self.on_mode = on_mode
         self.on_board_item = on_board_item
+        self._guard_board_speech = guard_board_speech
+        self._output_locale = output_locale
+        self._board_speech_pending = ""
+        self._board_summary_recovered = False
 
         self._think_filter = ThinkFilter()
         self._state = ParserState.WAIT_SPEECH if mode in (ReplyMode.BOARD, ReplyMode.AUTO) else ParserState.IN_SPEECH
@@ -296,6 +318,11 @@ class ResponseProtocolParser:
         return self._speech_accumulator
 
     @property
+    def speech_complete(self) -> bool:
+        """A complete channel boundary is safe to play without waiting for JSON."""
+        return self._state in (ParserState.IN_BOARD, ParserState.DONE)
+
+    @property
     def board_payload(self) -> Optional[BoardPayload]:
         return self._board_payload
 
@@ -307,9 +334,38 @@ class ResponseProtocolParser:
     @property
     def structured_payload_suppressed(self) -> bool:
         """Whether unmarked structured output was kept out of visible channels."""
-        return self._structured_payload_suppressed
+        return self._structured_payload_suppressed or self._think_filter.hidden_content_suppressed
 
     def _append_speech(self, text: str, *, is_board_mode: bool) -> list[str]:
+        if is_board_mode and self._guard_board_speech:
+            if self._board_summary_recovered:
+                return []
+            self._board_speech_pending += text
+            outputs = []
+            while end := re.search(r"[。！？.!?]", self._board_speech_pending):
+                sentence = self._board_speech_pending[:end.end()]
+                self._board_speech_pending = self._board_speech_pending[end.end():]
+                outputs.extend(self._flush_board_summary(sentence))
+                if self._board_summary_recovered:
+                    self._board_speech_pending = ""
+                    break
+            return outputs
+        return self._append_visible_speech(text, is_board_mode=is_board_mode)
+
+    def _flush_board_summary(self, text: Optional[str] = None) -> list[str]:
+        from src.llm.reply_contract import guard_board_summary
+        if text is None:
+            text, self._board_speech_pending = self._board_speech_pending, ""
+        candidate = text.strip()
+        if not candidate or self._board_summary_recovered:
+            return []
+        guarded = guard_board_summary(candidate, locale=self._output_locale)
+        self._board_summary_recovered = guarded != candidate
+        return self._append_visible_speech(
+            guarded if self._board_summary_recovered else text, is_board_mode=True,
+        )
+
+    def _append_visible_speech(self, text: str, *, is_board_mode: bool) -> list[str]:
         """Emit visible speech while withholding raw JSON across stream chunks."""
         text = clean_speech_text(text, is_board_mode=is_board_mode)
         if not text or self._structured_payload_suppressed:
@@ -336,11 +392,15 @@ class ResponseProtocolParser:
         return [visible]
 
     def _recovery_if_needed(self) -> list[str]:
-        if self._structured_payload_suppressed and not self._speech_accumulator:
-            self._speech_accumulator = FORMAT_RECOVERY_MESSAGE
+        # Empty/reasoning-only completions are a failed spoken reply too.
+        # Give the user feedback without treating recovery as a real answer.
+        if not self._speech_accumulator and self._structured_payload_suppressed:
+            recovery = ("Sorry, the reply could not be formatted. Please try again."
+                        if self._output_locale == 'en-US' else FORMAT_RECOVERY_MESSAGE)
+            self._speech_accumulator = recovery
             if self.on_speech:
-                self.on_speech(FORMAT_RECOVERY_MESSAGE)
-            return [FORMAT_RECOVERY_MESSAGE]
+                self.on_speech(recovery)
+            return [recovery]
         return []
 
     def feed(self, chunk: str) -> list[str]:
@@ -385,7 +445,14 @@ class ResponseProtocolParser:
             ("模式:簡答", ReplyMode.SIMPLE),
             (TAG_BOARD, ReplyMode.BOARD),
         )
-        found = [(self._buffer.find(tag), tag, mode) for tag, mode in candidates if self._buffer.find(tag) >= 0]
+        found = []
+        for tag, mode in candidates:
+            pos = self._buffer.find(tag)
+            if pos < 0:
+                continue
+            if tag.startswith("[") and not tag.startswith("[[") and pos > 0 and self._buffer[pos - 1] == "[":
+                continue
+            found.append((pos, tag, mode))
         if found:
             _, tag, mode = min(found, key=lambda item: item[0])
             self.mode = mode
@@ -443,7 +510,7 @@ class ResponseProtocolParser:
         self._buffer += chunk
         if self._state == ParserState.WAIT_SPEECH:
             speech_m = re.search(
-                r"(\[{1,2}\s*(?:SPEECH|speech)(?::\s*)?\]{1,2}|\[{1,2}\s*(?:SPEECH|speech)\s*:\s*|(?:^|[\r\n]+)\s*SPEECH\s*:\s*|(?:^|[\r\n]+)\s*口語\s*[:：]\s*)",
+                SPEECH_TAG_PATTERN,
                 self._buffer,
                 flags=re.IGNORECASE,
             )
@@ -475,7 +542,7 @@ class ResponseProtocolParser:
             self._buffer = ""
             return []
         end_m = re.search(
-            r"(\[{1,2}\s*/?\s*END\s*\]{1,2}|\[{1,2}\s*/\s*(?:SPEECH|speech)\s*\]{1,2})",
+            _bracket_tag(r"\s*/?\s*END\s*") + "|" + _bracket_tag(r"\s*/\s*SPEECH\s*"),
             self._buffer,
             flags=re.IGNORECASE,
         )
@@ -516,7 +583,7 @@ class ResponseProtocolParser:
                     continue
 
                 tag_m = re.search(
-                    r"(\[{1,2}\s*(?:SPEECH|speech)(?::\s*)?\]{1,2}|\[{1,2}\s*(?:SPEECH|speech)\s*:\s*|(?:^|[\r\n]+)\s*SPEECH\s*:\s*|(?:^|[\r\n]+)\s*口語\s*[:：]\s*)",
+                    SPEECH_TAG_PATTERN,
                     self._buffer,
                     flags=re.IGNORECASE,
                 )
@@ -558,6 +625,8 @@ class ResponseProtocolParser:
                 pos = self._buffer.find(board_tag)
                 board_match_len = len(board_tag)
                 if pos == -1:
+                    # A double-bracket tag is incomplete until both closing
+                    # brackets arrive. Do not match its inner single tag.
                     alt_pattern = re.compile(
                         r"(?<!\[)(?:\[\[\s*BOARD(?:_JSON)?(?::\s*)?\]\]"
                         r"|\[\s*BOARD(?:_JSON)?(?::\s*)?\])",
@@ -571,6 +640,7 @@ class ResponseProtocolParser:
                 if pos != -1:
                     speech_part = self._buffer[:pos]
                     speech_outputs.extend(self._append_speech(speech_part, is_board_mode=True))
+                    speech_outputs.extend(self._flush_board_summary())
                     self._buffer = self._buffer[pos + board_match_len:].lstrip("\r\n ")
                     self._state = ParserState.IN_BOARD
                     continue
@@ -683,6 +753,7 @@ class ResponseProtocolParser:
                 self._emit_partial_items()
                 self._state = ParserState.DONE
                 self._parse_and_emit_board()
+            speech_outputs.extend(self._flush_board_summary())
 
         speech_outputs.extend(self._recovery_if_needed())
         return speech_outputs, self._board_payload

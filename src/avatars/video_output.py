@@ -5,6 +5,14 @@
 import cv2
 
 
+def output_dimensions(width: int, height: int, max_height: int = 0):
+    """Return the encoder dimensions used by the renderer, without upscaling."""
+    if not max_height or height <= max_height:
+        return width, height
+    target_height = max(2, int(max_height) // 2 * 2)
+    target_width = max(2, round(width * target_height / height) // 2 * 2)
+    return target_width, target_height
+
 def limit_video_height(frame, max_height: int = 0):
     """Shrink only, preserving aspect ratio and even encoder dimensions."""
     height, width = frame.shape[:2]

@@ -35,6 +35,8 @@ class ServerState:
         self.prewarm_status = {}
         self.model_ready = False
         self.switching = False
+        self.settings_applying = False
+        self.shutting_down = False
     
     def add_session(
         self,

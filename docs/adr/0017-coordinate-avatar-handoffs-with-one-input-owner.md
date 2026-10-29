@@ -1,8 +1,12 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 
 ---
-status: accepted
+status: superseded by ADR-0020
 ---
+
+2026-10-29：單一輸入來源、全域角色及同步展示已由
+[ADR-0020](0020-independent-console-and-stage-conversations.md) 取代。
+以下保留當時採用的設計與背景。
 
 # 以單一輸入來源協調共用角色交接
 
