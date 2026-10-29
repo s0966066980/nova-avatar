@@ -275,3 +275,15 @@ def test_offer_body_finishing_during_resource_update_does_not_create_peer(rtc, m
         assert not rtc.peers
         assert not rtc.voices
     asyncio.run(run())
+
+
+def test_disconnect_discards_an_unfinished_recording(rtc, monkeypatch):
+    avatar = SimpleNamespace(discard_recording=AsyncMock())
+    monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: avatar)
+    async def run():
+        await webrtc.offer(rtc.request())
+        rtc.peers[0].connectionState = 'closed'
+        await rtc.peers[0].handlers['connectionstatechange']()
+        avatar.discard_recording.assert_awaited_once()
+        assert not state.avatar_streams
+    asyncio.run(run())

@@ -31,6 +31,7 @@ AREA_BY_FILE = {
     "test_edge_endpoint.py": "speech",
     "test_edge_resilience.py": "speech",
     "test_edge_tts_worker.py": "speech",
+    "test_event_loop_blocking.py": "runtime",
     "test_editable_llm_rules.py": "llm",
     "test_funasr.py": "speech",
     "test_health_route.py": "runtime",
