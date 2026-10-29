@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-import pickle
 import re
 import shutil
 import uuid
@@ -15,6 +14,7 @@ from typing import Callable, Optional
 import cv2
 import numpy as np
 
+from src.avatars.asset_io import save_coords
 from src.avatars.catalog import (
     IMPORTABLE_ENGINES,
     archive_avatar,
@@ -296,10 +296,8 @@ def _build_musetalk(
         if path.name not in keep:
             path.unlink(missing_ok=True)
 
-    with open(work_dir / "coords.pkl", "wb") as handle:
-        pickle.dump(kept_coords, handle)
-    with open(work_dir / "mask_coords.pkl", "wb") as handle:
-        pickle.dump(mask_coords, handle)
+    save_coords(work_dir / "coords.json", kept_coords)
+    save_coords(work_dir / "mask_coords.json", mask_coords)
     torch.save(latents, work_dir / "latents.pt")
     del fp
 
@@ -393,8 +391,7 @@ def _build_wav2lip(
         cv2.imwrite(str(face_imgs / f"{index:08d}.png"), resized)
         coords.append((y1, y2, x1, x2))
 
-    with open(work_dir / "coords.pkl", "wb") as handle:
-        pickle.dump(coords, handle)
+    save_coords(work_dir / "coords.json", coords)
 
 
 def _smooth_boxes(boxes: np.ndarray, window: int = 5) -> np.ndarray:

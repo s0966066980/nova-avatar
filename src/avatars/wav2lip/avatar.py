@@ -17,7 +17,6 @@ import os
 import time
 import cv2
 import glob
-import pickle
 import copy
 
 import queue
@@ -31,6 +30,7 @@ from src.avatars.wav2lip.audio_stream_handler import LipAudioStreamHandler
 import asyncio
 from av import AudioFrame, VideoFrame
 from src.avatars.wav2lip.models import Wav2Lip
+from src.avatars.asset_io import load_coords
 from src.avatars.base import BaseAvatar
 
 #from imgcache import ImgCache
@@ -43,10 +43,11 @@ print('Using {} for inference.'.format(device))
 
 def _load(checkpoint_path):
 	if device == 'cuda':
-		checkpoint = torch.load(checkpoint_path) #,weights_only=True
+		checkpoint = torch.load(checkpoint_path, weights_only=True)
 	else:
 		checkpoint = torch.load(checkpoint_path,
-								map_location=lambda storage, loc: storage)
+								map_location=lambda storage, loc: storage,
+								weights_only=True)
 	return checkpoint
 
 def load_model(path):
@@ -66,10 +67,8 @@ def load_avatar(avatar_id):
     avatar_path = f"./data/avatars/{avatar_id}"
     full_imgs_path = f"{avatar_path}/full_imgs" 
     face_imgs_path = f"{avatar_path}/face_imgs" 
-    coords_path = f"{avatar_path}/coords.pkl"
-    
-    with open(coords_path, 'rb') as f:
-        coord_list_cycle = pickle.load(f)
+
+    coord_list_cycle = load_coords(avatar_path, "coords")
     input_img_list = glob.glob(os.path.join(full_imgs_path, '*.[jpJP][pnPN]*[gG]'))
     input_img_list = sorted(input_img_list, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
     frame_list_cycle = read_imgs(input_img_list)

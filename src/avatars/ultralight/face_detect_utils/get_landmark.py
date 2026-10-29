@@ -1,3 +1,6 @@
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Existing third-party terms remain applicable; see THIRD_PARTY_NOTICES.md.
+
 import argparse
 from os import wait3
 
@@ -75,7 +78,7 @@ class Landmark:
         self.mean_face = np.asarray(mean_face.split(' '), dtype=np.float32)
         self.det_net = SCRFD('./face_detect_utils/scrfd_2.5g_kps.onnx', confThreshold=0.1, nmsThreshold=0.5)
 
-        checkpoint = torch.load('./face_detect_utils/checkpoint_epoch_335.pth.tar')
+        checkpoint = torch.load('./face_detect_utils/checkpoint_epoch_335.pth.tar', weights_only=True)
         self.pfld_backbone = PFLDInference().cuda()
         self.pfld_backbone.load_state_dict(checkpoint['pfld_backbone'])
         self.pfld_backbone.eval()

@@ -1,3 +1,8 @@
+# Portions derived from MuseTalk and bundled face-alignment code.
+# MuseTalk copyright (c) 2024 Tencent Music Entertainment Group; MIT License.
+# Modified by HongXian0903 for Nova Avatar integration, 2026.
+# Existing third-party author notices remain applicable.
+
 import os
 import cv2
 from torch.utils.model_zoo import load_url
@@ -19,9 +24,9 @@ class SFDDetector(FaceDetector):
 
         # Initialise the face detector
         if not os.path.isfile(path_to_detector):
-            model_weights = load_url(models_urls['s3fd'])
+            model_weights = load_url(models_urls['s3fd'], weights_only=True)
         else:
-            model_weights = torch.load(path_to_detector)
+            model_weights = torch.load(path_to_detector, weights_only=True)
 
         self.face_detector = s3fd()
         self.face_detector.load_state_dict(model_weights)
