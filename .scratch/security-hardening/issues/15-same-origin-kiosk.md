@@ -27,3 +27,4 @@ Blocked by: 03
 - `web/logs/` 從未納入版本控制，已由 `.gitignore` 的 `logs/` 排除，且後端不再提供 `web/` 原始樹；主工作目錄的 `web/logs/*.log`（上游舊日誌）需使用者自行刪除。
 - 測試：新增 `tests/test_frontend_serving.py`；更新 `test_kiosk_launcher.py`、`test_startup_scripts.py`（含 start-backend／start-frontend）、`web/tests/page-routing.test.js`；`tests/access_helpers.py::built_frontend()` 提供測試用建置目錄。README、`docs/installation.md` 已更新。
 - 驗證：ruff、check-integration、web lint/test(199)/build 通過；pytest 844 passed、3 skipped（另 2 項 worktree 環境既有失敗已排除）。
+- 合併 `security-hardening`（含 #06、#11、#17）後：解決 `docs/installation.md` 衝突，`setup-env.sh` 下一步改為先建置再開 8010；pytest 880 passed、3 skipped，web test 202 通過，lint/build/ruff/check-integration 通過。
