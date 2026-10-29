@@ -61,12 +61,14 @@ class UtteranceAudioTests(unittest.TestCase):
 
 
 class MeasureEngineTests(unittest.TestCase):
-    def test_each_round_times_one_recognition_in_the_fixture_language(self):
+    def test_each_round_times_one_recognition_detecting_chinese_or_english(self):
         engine = Mock(supports_language_options=True)
         engine.transcribe.side_effect = [
-            {"text": "請用一句話簡短介紹台湾"},
-            {"text": "What can you help me with today"},
-        ] * 2
+            {"text": "請用一句話簡短介紹台湾", "language": "zh"},
+            {"text": "What can you help me with today", "language": "en"},
+            {"text": "請用一句話簡短介紹台湾", "language": "zh"},
+            {"text": "灣餐可以幫我", "language": "zh"},
+        ]
         ticks = iter([0.0, 0.2, 1.0, 1.1, 2.0, 2.3, 3.0, 3.1])
         audio = {ZH.fixture_id: b"zh-wav", EN.fixture_id: b"en-wav"}
 
@@ -78,30 +80,36 @@ class MeasureEngineTests(unittest.TestCase):
             [(b"zh-wav",), (b"en-wav",)] * 2)
         self.assertEqual(
             [call.kwargs for call in engine.transcribe.call_args_list],
-            [{"language": "zh"}, {"language": "en"}] * 2)
+            [{"language": "auto"}] * 4)
         self.assertEqual([round(s["seconds"], 6) for s in samples], [0.2, 0.1, 0.3, 0.1])
         self.assertEqual([s["round"] for s in samples], [1, 1, 2, 2])
         first = samples[0]
         self.assertEqual((first["edits"], first["reference_tokens"]), (0, 11))
         self.assertEqual(first["raw_edits"], 2)  # 台/湾 vs 臺/灣
+        self.assertEqual(
+            [(s["expected_language"], s["detected_language"]) for s in samples],
+            [("zh", "zh"), ("en", "en"), ("zh", "zh"), ("en", "zh")])
 
     def test_engines_without_language_options_get_audio_only(self):
         engine = Mock(supports_language_options=False)
         engine.transcribe.return_value = {"text": "請用一句話簡短介紹臺灣"}
         ticks = iter([0.0, 0.05])
 
-        measure_engine("funasr", engine, [ZH], {ZH.fixture_id: b"wav"}, rounds=1,
-                       clock=lambda: next(ticks))
+        samples = measure_engine("funasr", engine, [ZH], {ZH.fixture_id: b"wav"}, rounds=1,
+                                 clock=lambda: next(ticks))
 
         engine.transcribe.assert_called_once_with(b"wav")
+        self.assertIsNone(samples[0]["expected_language"])
 
 
 class BuildReportTests(unittest.TestCase):
-    def sample(self, engine, language, seconds, edits, tokens, raw_edits=None):
+    def sample(self, engine, language, seconds, edits, tokens, raw_edits=None, detected=None):
+        expected = {"zh-TW": "zh", "en-US": "en"}[language] if engine == "whisper" else None
         return {"engine": engine, "fixture_id": f"{language}-x", "language": language,
                 "round": 1, "seconds": seconds, "edits": edits, "reference_tokens": tokens,
                 "raw_edits": edits if raw_edits is None else raw_edits,
-                "reference": "", "hypothesis": ""}
+                "reference": "", "hypothesis": "", "expected_language": expected,
+                "detected_language": detected or expected}
 
     def test_reports_latency_percentiles_and_corpus_error_rate_per_language(self):
         samples = [
@@ -132,6 +140,22 @@ class BuildReportTests(unittest.TestCase):
         self.assertEqual(report["engines"]["funasr"]["all"]["samples"], 1)
         self.assertEqual(report["environment"], {"device": "cuda"})
         self.assertEqual(len(report["samples"]), 6)
+        self.assertEqual(zh["language_accuracy"], 1.0)
+        self.assertIsNone(report["engines"]["funasr"]["languages"]["zh-TW"]["language_accuracy"])
+
+    def test_reports_how_often_chinese_or_english_was_detected_correctly(self):
+        samples = [
+            self.sample("whisper", "en-US", 0.10, 0, 5),
+            self.sample("whisper", "en-US", 0.10, 5, 5, detected="zh"),
+            self.sample("whisper", "zh-TW", 0.10, 0, 5),
+        ]
+
+        report = build_report(samples, engines={"whisper": {}}, environment={})
+
+        whisper = report["engines"]["whisper"]
+        self.assertEqual(whisper["languages"]["en-US"]["language_accuracy"], 0.5)
+        self.assertEqual(whisper["languages"]["zh-TW"]["language_accuracy"], 1.0)
+        self.assertAlmostEqual(whisper["all"]["language_accuracy"], 2 / 3)
 
 
 if __name__ == "__main__":

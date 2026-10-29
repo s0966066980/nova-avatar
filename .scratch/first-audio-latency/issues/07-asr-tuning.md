@@ -34,3 +34,21 @@ Blocked by: 01
 3. 預期：Whisper GPU P50 約 0.1–0.2 s（10/29 benchmark：auto＋beam 5 暖機中位 0.167 s）；FunASR zh P50 約 0.04–0.13 s。字錯率以 `error_rate` 比較，`raw_error_rate` 顯示 Whisper 簡體輸出對字幕的影響。
 4. 決策注意：選 FunASR 為預設時 en-US 對話會被 `check_language_support` 拒絕（`english_requires_whisper`）；Whisper 中文常輸出簡體，若選 Whisper 需另評估字幕轉繁。
 5. 選定後：更新 `config/config.yaml` 預設與 `docs/project-status.md`，重啟後端並以 `scripts/measure_first_audio.py` 驗證語音輪次 `asr` 階段，結果補在本 Comments，再設 `Status: resolved`。
+
+### 2026-10-30 中英自動偵測（Q24，分支 `fal/07b-asr-zh-en-detect`）
+
+實測（`after-06-2026-10-30.json`）固定 zh 時，zh-TW 對話裡的英文被辨識成中文亂碼，10 輪交接有 2 輪失敗；依 Q24 改為只在中英文間自動偵測。
+
+- `src.asr.base.SPEECH_LANGUAGES = ("zh", "en")`（取自對話語系對照）。Whisper `language="auto"` 改為限中英：先用 faster-whisper 內建偵測；最高者不是 zh／en 時，取 `all_language_probs` 中 zh、en 較高者重新解碼。faster-whisper 解碼是惰性的，錯誤語言的片段不會被產生，只多算一次特徵。beam 1、記憶體直傳不變；`BytesIO` 重試前 `seek(0)`。
+- 回報：結果 `language` 為實際採用的 zh／en，另加 `language_probability`；`[ASR] transcription completed language=` 照常記錄。固定語言時回報指定語言。
+- `voice_session` 語音輪次一律 `language="auto"`，不再依對話語系固定。Whisper 預熱改走偵測路徑。`/asr` 上傳路由仍用設定 `asr.language`；設為 `auto` 時同樣只偵測中英（應用只支援這兩種）。`asr_language` 保留給 `compare_asr` 計分與 `tts_bakeoff`（已知語言的 TTS 評分）。
+- `scripts/compare_asr.py`：Whisper 每句以 `auto` 辨識，記錄 `expected_language`／`detected_language`，報告新增各語系 `language_accuracy`（FunASR 為 null），結尾行印出。
+- 成本：faster-whisper 1.2.1 的非批次 `transcribe` 偵測時另跑一次編碼器（30 s 窗），解碼時不重用。CPU int8 small 同 6 句×2 輪：固定語言中位 1.057 s、偵測 2.049 s（CPU 上編碼器占大宗）。GPU 上多一次 small 編碼器，估計只多數 ms 至十多 ms，**待實機驗證**。若實測明顯超過 0.1 s，可改為自行編碼一次、以 `model.detect_language` 限中英後把同一份 encoder output 交給 `generate_segments`。這要用到 faster-whisper 內部 API，這次沒做。
+- CPU 冒煙（`compare_asr.py --engines whisper --device cpu --rounds 1`，32 句）：語言偵測 zh-TW 18/18、en-US 14/14 正確；CER 0.012（raw 0.107，簡體）、WER 0。
+- 測試：`tests/test_whisper_asr.py`（一次偵測、限中英重試且不解碼錯誤語言、容器重讀、固定語言回報、log、預熱）、`tests/test_voice_session.py`（各語系皆 `auto`）、`tests/test_asr_comparison.py`（偵測正確率）。全套 1271 passed，僅已知 2 項 worktree 基準失敗；ruff、pyright、`check-integration.py` 通過。
+
+#### 待實機驗證（中英偵測）
+
+1. 合併並重啟後端（由編排者執行）。
+2. GPU 有約 1.5 GB 可用時：`.venv/bin/python scripts/compare_asr.py --rounds 3 --note "whisper small 中英自動偵測 beam1 記憶體直傳 vs paraformer-zh" --output .scratch/first-audio-latency/asr-comparison-2026-10-30.json`。預期 whisper 兩語系 `language_accuracy` 接近 1.000，latency P50 約 0.1 s 以內（固定語言時為 0.065 s）。
+3. 以 `scripts/measure_first_audio.py` 用與 after-06 相同的 builtin 錄音集重跑（英文句在 zh-TW 對話中），確認 `asr` 階段 P50 約 0.1 s、英文不再被辨識成中文，交接不再失敗；`logs/` 中 `transcription completed language=en` 會出現在英文輪次。

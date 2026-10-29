@@ -107,7 +107,11 @@ def wav_bytes(samples: np.ndarray, sample_rate: int = SAMPLE_RATE) -> bytes:
 def measure_engine(name: str, engine, fixtures: Sequence[LatencyFixture],
                    audio: Mapping[str, bytes], *, rounds: int,
                    clock: Callable[[], float] = time.perf_counter) -> list[dict]:
-    """Time one ``transcribe`` call per fixture and round, as the voice session does."""
+    """Time one ``transcribe`` call per fixture and round, as the voice session does.
+
+    Engines with language options detect Chinese or English per utterance, as
+    speech turns do; the detected language is scored against the fixture's.
+    """
     samples = []
     language_options = getattr(engine, "supports_language_options", False) is True
     for round_index in range(1, rounds + 1):
@@ -115,7 +119,7 @@ def measure_engine(name: str, engine, fixtures: Sequence[LatencyFixture],
             payload = audio[fixture.fixture_id]
             started = clock()
             if language_options:
-                result = engine.transcribe(payload, language=asr_language(fixture.language))
+                result = engine.transcribe(payload, language="auto")
             else:
                 result = engine.transcribe(payload)
             seconds = clock() - started
@@ -127,6 +131,8 @@ def measure_engine(name: str, engine, fixtures: Sequence[LatencyFixture],
                 "language": fixture.language, "round": round_index,
                 "seconds": seconds, "reference": fixture.text, "hypothesis": hypothesis,
                 "edits": edits, "raw_edits": raw_edits, "reference_tokens": length,
+                "expected_language": asr_language(fixture.language) if language_options else None,
+                "detected_language": result.get("language"),
             })
     return samples
 
@@ -135,12 +141,16 @@ def _summary(samples: Iterable[Mapping]) -> dict:
     rows = list(samples)
     tokens = sum(row["reference_tokens"] for row in rows)
     seconds = [row["seconds"] for row in rows]
+    detected = [row for row in rows if row.get("expected_language")]
     return {
         "samples": len(rows),
         "utterances": len({row["fixture_id"] for row in rows}),
         "latency_seconds": {"p50": percentile(seconds, 50), "p95": percentile(seconds, 95)},
         "error_rate": sum(row["edits"] for row in rows) / tokens if tokens else None,
         "raw_error_rate": sum(row["raw_edits"] for row in rows) / tokens if tokens else None,
+        "language_accuracy": (
+            sum(row["detected_language"] == row["expected_language"] for row in detected)
+            / len(detected) if detected else None),
     }
 
 
@@ -169,6 +179,8 @@ def build_report(samples: Sequence[Mapping], *, engines: Mapping[str, Mapping],
             "error_rate": "語料層級：編輯距離總和 ÷ 參考長度總和；zh-TW 為 CER（中文逐字、英文字詞整體），"
                           "en-US 為 WER；忽略大小寫、標點與繁簡字形",
             "raw_error_rate": "同 error_rate，但繁簡字形不同也算錯（字幕直接顯示辨識文字）",
+            "language_accuracy": "只在中英文間自動偵測時，偵測語言與錄音語系相符的比例；"
+                                 "不支援語言選項的引擎為 null",
             "all": "僅計入此引擎在應用中可用的語系",
         },
         "engines": report_engines,
@@ -226,7 +238,7 @@ def run(args) -> dict:
             "model": info.get("model_size") or info.get("model_name"),
             "device": info.get("device"),
             "compute_type": info.get("compute_type"),
-            "language": "fixed per conversation locale" if name == "whisper" else "zh only",
+            "language": "auto, zh or en only" if name == "whisper" else "zh only",
             "beam_size": 1 if name == "whisper" else None,
             "input": "in-memory waveform" if name == "whisper" else "temp WAV file",
             "load_and_prewarm_seconds": round(load_seconds, 3),
@@ -279,9 +291,11 @@ def main() -> int:
     for name, summary in report["engines"].items():
         for language, row in summary["languages"].items():
             note = "" if row["supported_in_app"] else " (not usable in app)"
+            accuracy = row["language_accuracy"]
+            detection = "" if accuracy is None else f" language_accuracy={accuracy:.3f}"
             print(f"{name} {language}: n={row['samples']} latency={row['latency_seconds']} "
-                  f"{row['metric']}={row['error_rate']:.3f} raw={row['raw_error_rate']:.3f}{note}",
-                  flush=True)
+                  f"{row['metric']}={row['error_rate']:.3f} raw={row['raw_error_rate']:.3f}"
+                  f"{detection}{note}", flush=True)
     print(f"report: {args.output}")
     return 0
 

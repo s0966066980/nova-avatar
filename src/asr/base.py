@@ -21,13 +21,15 @@ from abc import ABC, abstractmethod
 
 from src.utils.logging import logger
 
-# Conversation locale -> recognizer language. A fixed language skips Whisper's
-# per-turn language detection; the conversation already says which to expect.
+# Conversation locale -> recognizer language.
 _LOCALE_LANGUAGES = {"zh-TW": "zh", "en-US": "en"}
+# Languages "auto" recognition chooses between. Visitors switch language within
+# one conversation, so speech turns detect rather than follow the locale (Q24).
+SPEECH_LANGUAGES = tuple(_LOCALE_LANGUAGES.values())
 
 
 def asr_language(locale: str) -> str:
-    """Recognizer language for a conversation locale."""
+    """Recognizer language for a conversation locale (scoring and fixed-language tools)."""
     try:
         return _LOCALE_LANGUAGES[locale]
     except KeyError:
@@ -213,4 +215,4 @@ class BaseASR(ABC):
         }
 
 
-__all__ = ["BaseASR"]
+__all__ = ["BaseASR", "SPEECH_LANGUAGES", "asr_language"]
