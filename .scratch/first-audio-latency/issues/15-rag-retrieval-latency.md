@@ -53,3 +53,10 @@ Blocked by: 06
    ```
 2. 預期：`rag_status` 為 `timeout` 的輪次由 22/24 降到約 1/5 以下（離線 83% 在 0.7 s 內；實際輪次與路由搶 GPU，可能略差）；RAG 類 `pre_answer` P50 約 0.55–0.7 s，首音約多 0.3 s。若逾時仍過半，記錄 `retrieval` P50／P95 並優先處理上方提案 1。
 3. 結果摘要補在本 Comments 後設 `Status: resolved`。
+
+### 2026-10-30 嵌入服務補充量測（orchestrator）
+同一台機器（MuseTalk＋E2B 已載入）以 30 句查詢量 bge-m3 `/api/embed`：
+- 現行 11435 服務（GPU、systemd `CPUQuota=200%`）：P50 0.50／P95 0.70 s；Ollama 回報每次 `load_duration` 約 0.19 s（模型已常駐仍有）。
+- 臨時 Ollama（GPU、無 CPU 配額，11499，測完已停）：P50 0.22–0.24／P95 0.27–0.30 s。CPU 配額約使嵌入時間加倍。
+- 臨時 Ollama CPU-only（`CPUQuota=200%`）：P50 5.3 s，不可行。llama.cpp CPU 0.044 s（實作者量測）顯示瓶頸在 Ollama 每次請求的固定開銷。
+提案（交使用者決定，未變更任何服務）：(a) 移除或放寬 `integrations/ragflow/nova-ragflow-embedding.service` 的 `CPUQuota`，檢索約可降到 0.25–0.3 s；(b) 改以 llama.cpp `llama-server --embedding` 提供 bge-m3（需把 RAGFlow 嵌入供應商改為 OpenAI 相容並重新驗證向量一致），檢索約 0.1 s。上限維持 0.7 s 直到決定。
