@@ -5,12 +5,30 @@
 """faster-whisper ASR adapter used by the server-side voice pipeline."""
 
 import math
+from io import BytesIO
 from pathlib import Path
 
-from typing import Dict, Any
+from typing import Any, BinaryIO, Dict
+
+import numpy as np
+import soundfile as sf
 
 from src.utils.logging import logger
 from src.asr.base import BaseASR
+
+WHISPER_SAMPLE_RATE = 16000
+
+
+def _decoded_audio(audio_bytes: bytes) -> BinaryIO | np.ndarray:
+    """16 kHz audio as a mono float32 waveform; anything else stays an in-memory file."""
+    try:
+        data, sample_rate = sf.read(BytesIO(audio_bytes), dtype="float32", always_2d=True)
+        if sample_rate == WHISPER_SAMPLE_RATE:
+            return data.mean(axis=1, dtype=np.float32)
+    except (RuntimeError, TypeError, ValueError):
+        pass  # not a libsndfile container (e.g. MP3/WebM uploads)
+    # faster-whisper decodes and resamples file-like input with PyAV.
+    return BytesIO(audio_bytes)
 
 
 class WhisperASR(BaseASR):
@@ -70,23 +88,26 @@ class WhisperASR(BaseASR):
         self.model_type = "faster-whisper"
         logger.info('[Whisper] faster-whisper 模型載入成功')
     
-    def _transcribe(self, audio_path: str, *, language: str | None = None) -> Dict[str, Any]:
-        """
-        使用 Whisper 識別音訊
-        
-        Args:
-            audio_path: 音訊檔案路徑
-            
-        Returns:
-            識別結果字典
-        """
+    def _transcribe_bytes(self, audio_bytes: bytes, **options) -> Dict[str, Any]:
+        """Decode in memory; a per-turn temp file costs latency and touches disk."""
+        return self._transcribe(_decoded_audio(audio_bytes), **options)
+
+    def _transcribe(
+        self,
+        audio: str | BinaryIO | np.ndarray,
+        *,
+        language: str | None = None,
+    ) -> Dict[str, Any]:
+        """Recognize a path, file-like object or 16 kHz mono float32 waveform."""
         selected_language = self.language if language is None else language
         language = None if selected_language == "auto" else selected_language
         segments, info = self.model.transcribe(
-            audio_path,
+            audio,
             language=language,
             vad_filter=False,
-            beam_size=5,
+            # Greedy decoding: utterances are one short sentence, where beam
+            # search adds latency without a measurable accuracy gain.
+            beam_size=1,
         )
         segment_list = list(segments)
         response = {

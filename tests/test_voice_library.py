@@ -293,6 +293,24 @@ def test_voice_library_routes_upload_list_and_delete(voices, server_config):
     assert sorted(path.name for path in voices.iterdir()) == [".deleted"]
 
 
+def test_voice_upload_keeps_its_transcript(voices, server_config):
+    async def scenario():
+        async with access_client() as client:
+            form = aiohttp.FormData()
+            form.add_field("transcript", "在密碼學中，加密是方法。")
+            form.add_field("voice", wav_bytes(), filename="ref.wav", content_type="audio/wav")
+            response = await client.post("/api/speech/voices", headers=same_origin(client), data=form)
+            assert response.status == 200, await response.text()
+            assert (await response.json())["data"]["transcript"] == "在密碼學中，加密是方法。"
+
+            form = aiohttp.FormData()
+            form.add_field("transcript", "字" * (voice_library.MAX_TRANSCRIPT_CHARS + 1))
+            form.add_field("voice", wav_bytes(2.0), filename="long.wav", content_type="audio/wav")
+            response = await client.post("/api/speech/voices", headers=same_origin(client), data=form)
+            assert response.status == 400
+    run(scenario())
+
+
 def test_oversized_voice_upload_is_rejected_and_cleaned(voices, server_config, monkeypatch):
     monkeypatch.setattr(voice_library, "MAX_UPLOAD_BYTES", 1024)
 

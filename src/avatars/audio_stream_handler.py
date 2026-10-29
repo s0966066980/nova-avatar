@@ -8,6 +8,7 @@ import numpy as np
 
 import queue
 from queue import Queue
+from threading import Event
 import torch.multiprocessing as mp
 
 from src.avatars.base import BaseAvatar
@@ -55,6 +56,9 @@ class BaseAudioStreamHandler:
         self.stride_right_size = config.audio.r
         #self.context_size = 10
         self.feat_queue = mp.Queue(2)
+        # Set whenever reply PCM is queued so an idle render throttle can end
+        # early instead of sleeping through the start of a reply.
+        self._audio_queued = Event()
 
         #self.warm_up()
 
@@ -68,11 +72,19 @@ class BaseAudioStreamHandler:
         while self._accepts_media(datainfo, "avatar_audio_enqueue"):
             try:
                 self.queue.put_nowait((audio_chunk, datainfo))
+                self._audio_queued.set()
                 return True
             except queue.Full:
                 time.sleep(0.01)
         self._record_stale_drop("avatar_audio_enqueue")
         return False
+
+    def wait_for_audio(self, timeout: float) -> bool:
+        """Idle-throttle wait that ends as soon as reply PCM is queued."""
+        self._audio_queued.clear()
+        if not self.queue.empty():
+            return True
+        return self._audio_queued.wait(timeout)
 
     def _accepts_media(self, eventpoint, stage: str) -> bool:
         if not (isinstance(eventpoint, dict) and eventpoint.get("turn_id")):

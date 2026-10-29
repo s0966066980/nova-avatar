@@ -899,6 +899,7 @@
                   <option value="edgetts">Edge TTS (Development only) · 開發用</option>
                   <option value="cosyvoice">CosyVoice (本機聲音複製 · 深度神經合成)</option>
                   <option value="fun-cosyvoice3">Fun-CosyVoice3 (最新多語神經模型)</option>
+                  <option value="breezyvoice">BreezyVoice (本機台灣華語 · 聲音複製)</option>
                 </select>
               </div>
             </div>
@@ -960,6 +961,31 @@
                 </div>
                 <div class="field-control-area">
                   <select id="tts-cosyvoice-model" class="std-select" v-model="ttsDraft.model">
+                    <option value="">{{ t('settings.speech.cosyvoiceModelAuto') }}</option>
+                    <option v-for="model in ttsModelOptions" :key="model.id" :value="model.id">{{ model.id }}</option>
+                  </select>
+                </div>
+              </div>
+            </template>
+
+            <!-- BreezyVoice：音訊庫的參考錄音＋逐字稿，整段合成 -->
+            <template v-if="ttsDraft.type === 'breezyvoice'">
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="tts-breezyvoice-ref-text" class="field-main-label">參考語音逐字稿 *</label>
+                  <span class="field-sub-hint">選取音訊庫錄音時會帶入它的逐字稿；上傳新錄音前先填好，逐字稿會一併存進音訊庫。錄音請用 8 秒內、乾淨的台灣華語，逐字稿須與整段錄音完全一致。</span>
+                </div>
+                <div class="field-control-area">
+                  <textarea id="tts-breezyvoice-ref-text" class="chat-text-entry" v-model.trim="ttsDraft.ref_text" rows="2" placeholder="例如：您好，歡迎使用 Nova Avatar。"></textarea>
+                </div>
+              </div>
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="tts-breezyvoice-model" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
+                  <span class="field-sub-hint">「自動」使用 models/BreezyVoice（由 scripts/breezyvoice_weights.py 下載）。</span>
+                </div>
+                <div class="field-control-area">
+                  <select id="tts-breezyvoice-model" class="std-select" v-model="ttsDraft.model">
                     <option value="">{{ t('settings.speech.cosyvoiceModelAuto') }}</option>
                     <option v-for="model in ttsModelOptions" :key="model.id" :value="model.id">{{ model.id }}</option>
                   </select>
@@ -1324,7 +1350,7 @@ async function onVoiceFileChosen(event) {
   event.target.value = ''
   if (!file) return
   try {
-    await uploadTtsVoice(file)
+    await uploadTtsVoice(file, '', ttsDraft.type === 'breezyvoice' ? ttsDraft.ref_text : '')
     emit('notification', '參考音訊已加入音訊庫', 'success')
   } catch (error) { emit('notification', error.message, 'error') }
 }

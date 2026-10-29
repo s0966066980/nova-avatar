@@ -27,6 +27,10 @@ from src.utils.logging import logger
 
 
 class CosyVoiceTTS(BaseTTS):
+    # PCM16 rate the owned server streams back; BreezyVoice (CosyVoice v1) differs.
+    SOURCE_SAMPLE_RATE = 24000
+    LOG_NAME = "cosy_voice"
+
     def txt_to_audio(self, msg: tuple[str, dict]):
         text, textevent = msg
         started_at = time.perf_counter()
@@ -146,7 +150,8 @@ class CosyVoiceTTS(BaseTTS):
                 continue
             if first:
                 logger.info(
-                    "cosy_voice first audio:%.4fs",
+                    "%s first audio:%.4fs",
+                    self.LOG_NAME,
                     time.perf_counter() - started_at,
                 )
                 first = False
@@ -168,7 +173,7 @@ class CosyVoiceTTS(BaseTTS):
             if not chunk:
                 continue
             stream = np.frombuffer(chunk, dtype=np.int16).astype(np.float32) / 32767.0
-            stream = resampy.resample(x=stream, sr_orig=24000, sr_new=self.sample_rate)
+            stream = resampy.resample(x=stream, sr_orig=self.SOURCE_SAMPLE_RATE, sr_new=self.sample_rate)
             remainder = np.concatenate((remainder, stream))
             while remainder.size >= self.chunk and self.state == State.RUNNING:
                 frame = remainder[: self.chunk].copy()

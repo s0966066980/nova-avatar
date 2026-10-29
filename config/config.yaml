@@ -80,7 +80,7 @@ model:
 
 # TTS 配置資訊，可以改對應的模型，建議edgetts
 tts:
-  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | indextts2 | xtts
+  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | breezyvoice | indextts2 | xtts
   mode: auto  # CosyVoice: auto | zero_shot | cross_lingual | instruct
   ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；其他引擎填控制台音訊庫的參考音訊 ID
   tts_server: http://127.0.0.1:9880  # 只接受本機位址；gpt-sovits 等；cosyvoice 系列套用時會改用 50000 並自動啟動
@@ -120,6 +120,11 @@ llm:
   api_key: ollama  # Ollama / llama-server 都不驗證，但不可為空
   base_url: http://localhost:11434/v1
   model: qwen3.5:4b
+  # llama.cpp 端點的模型是 llamacpp_dir 內的 GGUF 名稱，由數位人設定檔的 llm.model 選擇：
+  #   Qwen3.5-9B-UD-Q4_K_XL  目前主角色使用的模型
+  #   gemma-4-E2B_q4_0-it    Gemma 4 E2B（Apache-2.0），同目錄的 gemma-4-E2B-it-mmproj.gguf 會自動
+  #                          附掛供附件看圖；首音延遲改善的候選預設，品質報告經使用者接受後才切換
+  #   兩者都關閉思考模式（--reasoning off，請求也帶 enable_thinking: false）。
   llamacpp_dir: /home/oliver/llama
   llamacpp_host: 127.0.0.1
   llamacpp_port: 8080

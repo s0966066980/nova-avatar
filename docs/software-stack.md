@@ -32,6 +32,7 @@ the root Apache-2.0 grant.
 | LLM | Ollama / llama.cpp | Supported local OpenAI-compatible endpoints | Review the selected model and endpoint terms. |
 | TTS | Edge TTS | **Development only** | Non-public Microsoft endpoint with no formal commercial license; needs Internet access. Do not use it in a commercial deployment. |
 | TTS | GPT-SoVITS, CosyVoice, Fun-CosyVoice | Optional | Review code, model, voice, and checkpoint terms individually. |
+| TTS | BreezyVoice (MediaTek Research) with g2pW | Optional, local Taiwanese Mandarin; whole-fragment synthesis in the owned CosyVoice process | Code and weights Apache-2.0 (pinned in `scripts/breezyvoice_weights.py`); the reference voice needs its own consent. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 | TTS | Fish TTS | **Community License / Revenue < USD 500k** | Commercial use only below USD 500k annual revenue, customers included; no hosted service. |
 | TTS | IndexTTS2 | **bilibili Model License / Usage thresholds** | Separate license above 100M MAU or RMB 1B revenue; must not be used to improve other models. |
 | TTS | XTTS | **Research / Non-commercial** | Coqui Public Model License; no commercial license is available. |
