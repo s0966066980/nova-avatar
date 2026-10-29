@@ -17,12 +17,17 @@ import yaml
 
 from src.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig, GreetingConfig
 from src.greetings.content import validate_content
+from src.llm.endpoints import (EndpointError, active_endpoint_name, apply_endpoint,
+                               configured_endpoints, endpoint_for_url)
 from src.llm.rules import rules_from_config, validate_rules
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
+from src.utils.logging import logger
 
 _ID = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
-LLM_FIELDS = ("provider", "model", "base_url", "max_tokens", "response_max_chars")
+LLM_FIELDS = ("endpoint", "model", "max_tokens", "response_max_chars")
+# Profiles saved before the endpoint allowlist stored a URL instead of a name.
+LEGACY_LLM_FIELDS = ("provider", "base_url")
 LLM_PLAYBACK_DEFAULTS = {"board_max_items": 8, "reply_mode": "legacy", "semantic_wait_seconds": 0.5}
 EFFECTS = ("fade", "slide_left", "slide_right", "zoom")
 
@@ -72,21 +77,44 @@ def _endpoint(value):
     return value
 
 
+def _llm_endpoint(llm: dict, endpoints) -> str:
+    """Return the endpoint name, mapping a legacy URL to the listed endpoint."""
+    if "endpoint" in llm:
+        if set(LEGACY_LLM_FIELDS) & set(llm):
+            raise ProfileError("回答模型只能指定 LLM 端點名稱，不可另填服務或網址")
+        name = llm["endpoint"]
+        if not isinstance(name, str) or len(name) > 80:
+            raise ProfileError("LLM 端點名稱不正確")
+        return name
+    legacy = llm.get("base_url", "")
+    name = endpoint_for_url(endpoints or {}, legacy)
+    if not name:
+        logger.warning("數位人設定檔的模型服務網址 %s 不在 llm.endpoints 中，需改選端點", legacy)
+    return name
+
+
 def profile_config(base, profile: dict):
     """Keep server credentials and engine options private; apply a role snapshot."""
     result = deepcopy(base)
     result.profile_id = profile["id"]
     result.model.type = profile["engine"]
     result.model.avatar_id = profile["avatar_id"]
-    for key, value in profile["llm"].items():
-        if key == "board_max_items":
-            result.llm.board.max_items = value
-        elif key == "reply_mode":
-            result.reply_streaming.enabled = value == "streaming"
-        elif key == "semantic_wait_seconds":
-            result.reply_streaming.semantic_wait_seconds = value
-        else:
-            setattr(result.llm, key, value)
+    try:
+        # URL, provider and key come only from the configured allowlist.
+        apply_endpoint(result.llm, profile["llm"].get("endpoint", ""))
+    except EndpointError as exc:
+        raise ProfileError(f"角色「{profile.get('name', profile['id'])}」未選擇設定檔中的 LLM 端點，"
+                           "請在 AI 模型設定改選端點，或於設定檔 llm.endpoints 新增後再套用", 409) from exc
+    llm = profile["llm"]
+    for key in ("model", "max_tokens", "response_max_chars"):
+        if key in llm:
+            setattr(result.llm, key, llm[key])
+    if "board_max_items" in llm:
+        result.llm.board.max_items = llm["board_max_items"]
+    if "reply_mode" in llm:
+        result.reply_streaming.enabled = llm["reply_mode"] == "streaming"
+    if "semantic_wait_seconds" in llm:
+        result.reply_streaming.semantic_wait_seconds = llm["semantic_wait_seconds"]
     result.llm.assistant_profile = AssistantProfileConfig(**profile["assistant_profile"])
     result.llm.reply_rules = ReplyRulesConfig(**profile["reply_rules"])
     result.tts = TTSConfig(**profile["tts"])
@@ -95,7 +123,8 @@ def profile_config(base, profile: dict):
     return result
 
 
-def validate_profile(value: dict) -> dict:
+def validate_profile(value: dict, endpoints=None, *, require_endpoint=False) -> dict:
+    """Normalize a profile; ``require_endpoint`` also demands a listed endpoint name."""
     allowed = {"id", "name", "engine", "avatar_id", "assistant_profile", "llm",
                "tts", "rag", "reply_rules", "tools", "greeting"}
     value = _object(value, allowed, "角色設定檔")
@@ -115,18 +144,18 @@ def validate_profile(value: dict) -> dict:
     if not isinstance(names, list) or len(names) > 30:
         raise ProfileError("禁止自稱名稱格式不正確")
     identity["forbidden_self_names"] = [_text(x, "禁止自稱名稱", 80, empty=False) for x in names]
-    llm = _object(value.get("llm"), (*LLM_FIELDS, *LLM_PLAYBACK_DEFAULTS), "回答模型")
-    llm = {**LLM_PLAYBACK_DEFAULTS, **llm}
-    for key in ("provider", "model"):
-        llm[key] = _text(llm.get(key), key, 160, empty=False)
-    llm["base_url"] = _endpoint(llm.get("base_url", ""))
+    llm = _object(value.get("llm"), (*LLM_FIELDS, *LEGACY_LLM_FIELDS, *LLM_PLAYBACK_DEFAULTS), "回答模型")
+    endpoint = _llm_endpoint(llm, endpoints)
+    if require_endpoint and endpoint not in (endpoints or {}):
+        raise ProfileError(f"角色「{name}」請選擇設定檔中的 LLM 端點")
+    llm = {**LLM_PLAYBACK_DEFAULTS, **{k: v for k, v in llm.items() if k not in LEGACY_LLM_FIELDS},
+           "endpoint": endpoint}
+    llm["model"] = _text(llm.get("model"), "model", 160, empty=False)
     for key, lower, upper in (("max_tokens", 16, 8192), ("response_max_chars", 20, 2000)):
         number = llm.get(key, 128)
         if isinstance(number, bool) or not isinstance(number, int) or not lower <= number <= upper:
             raise ProfileError(f"{key} 必須介於 {lower}–{upper}")
         llm[key] = number
-    if llm["provider"] not in {"llamacpp", "ollama", "openai"}:
-        raise ProfileError("回答模型服務不正確")
     if type(llm["board_max_items"]) is not int or not 1 <= llm["board_max_items"] <= 12:
         raise ProfileError("看板項目上限必須介於 1–12")
     if not isinstance(llm["reply_mode"], str) or llm["reply_mode"] not in {"legacy", "streaming"}:
@@ -168,7 +197,7 @@ def validate_profile(value: dict) -> dict:
             "tools": dict(tools), "greeting": greeting}
 
 
-def validate_library(value: dict) -> dict:
+def validate_library(value: dict, endpoints=None, *, require_endpoint=False) -> dict:
     _object(value, {"version", "revision", "enabled", "profiles", "pair", "transitions",
                     "handoff", "weather", "migrated"}, "角色設定")
     if value.get("version") != 1 or not isinstance(value.get("enabled"), bool):
@@ -176,7 +205,7 @@ def validate_library(value: dict) -> dict:
     profiles = value.get("profiles")
     if not isinstance(profiles, list) or not 2 <= len(profiles) <= 30:
         raise ProfileError("請保存 2–30 份角色設定檔")
-    normalized = [validate_profile(p) for p in profiles]
+    normalized = [validate_profile(p, endpoints, require_endpoint=require_endpoint) for p in profiles]
     ids = {p["id"] for p in normalized}
     if len(ids) != len(normalized):
         raise ProfileError("角色識別碼不可重複")
@@ -226,16 +255,21 @@ def validate_library(value: dict) -> dict:
 
 
 class ProfileStore:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, endpoints=None):
         self.path = Path(path)
         self._lock = RLock()
+        # Callable returning the configured LLM endpoint table.
+        self.endpoints = endpoints
+
+    def _endpoints(self):
+        return self.endpoints() if self.endpoints else None
 
     def load(self) -> dict:
         with self._lock:
             if self.path.is_symlink():
                 raise ProfileError("角色設定不可使用符號連結")
             try:
-                return validate_library(yaml.safe_load(self.path.read_text("utf-8")))
+                return validate_library(yaml.safe_load(self.path.read_text("utf-8")), self._endpoints())
             except OSError as exc:
                 raise ProfileError("無法讀取角色設定", 503) from exc
             except yaml.YAMLError as exc:
@@ -244,16 +278,24 @@ class ProfileStore:
     def initialize(self, config, *, defaults_path: Path | None = None) -> dict:
         """Migrate missing settings once, preserving every explicit role choice."""
         with self._lock:
+            if self.endpoints is None:
+                self.endpoints = lambda: configured_endpoints(config.llm)
             if self.path.exists() or self.path.is_symlink():
                 library = self.load()
                 raw = yaml.safe_load(self.path.read_text("utf-8"))
                 changed = any(key not in raw['handoff'] for key in RETURN_ANNOUNCEMENTS)
+                legacy = [p for p, original in zip(library["profiles"], raw["profiles"])
+                          if "endpoint" not in original["llm"]]
+                # An unlisted legacy URL stays on disk until an admin picks an
+                # endpoint; applying that role is refused meanwhile.
+                unresolved = any(not p["llm"]["endpoint"] for p in legacy)
+                changed = changed or bool(legacy)
                 for profile, original in zip(library["profiles"], raw["profiles"]):
                     for key, value in _playback_settings(config).items():
                         if key not in original["llm"]:
                             profile["llm"][key] = value
                             changed = True
-                if changed:
+                if changed and not unresolved:
                     library["revision"] += 1
                     self._write(library)
                 return library
@@ -262,7 +304,8 @@ class ProfileStore:
             main = dict(id="main", name=config.llm.assistant_profile.assistant_name or config.model.avatar_id,
                         engine=config.model.type, avatar_id=config.model.avatar_id,
                         assistant_profile=asdict(config.llm.assistant_profile),
-                        llm={key: getattr(config.llm, key) for key in LLM_FIELDS},
+                        llm={"endpoint": active_endpoint_name(config.llm),
+                             **{key: getattr(config.llm, key) for key in LLM_FIELDS if key != "endpoint"}},
                         tts=asdict(config.tts), rag=avatar_settings(config.model.avatar_id),
                         reply_rules=rules_from_config(config), greeting=asdict(config.greeting))
             main["llm"].update(_playback_settings(config))
@@ -273,12 +316,13 @@ class ProfileStore:
                               rag={"enabled": False, "dataset_ids": []}, tools={"weather": True})
             library = validate_library(dict(version=1, revision=1, enabled=False, migrated=True,
                 profiles=[main, specialist], pair={"main": "main", "specialist": "weather"},
-                transitions=[], handoff=defaults["handoff"], weather={"county": "", "town": ""}))
+                transitions=[], handoff=defaults["handoff"], weather={"county": "", "town": ""}),
+                self._endpoints(), require_endpoint=True)
             self._write(library)
             return deepcopy(library)
 
     def save(self, value: dict, *, expected_revision: int) -> dict:
-        normalized = validate_library(value)
+        normalized = validate_library(value, self._endpoints(), require_endpoint=True)
         with self._lock:
             current = self.load()
             if type(expected_revision) is not int or current["revision"] != expected_revision:
@@ -309,7 +353,7 @@ def compatible_pair(library: dict, base=None) -> tuple[dict, dict]:
     main, specialist = (profiles[library["pair"][key]] for key in ("main", "specialist"))
     if main["engine"] != "musetalk" or specialist["engine"] != "musetalk":
         raise ProfileError("首版即時組合需要兩位 MuseTalk 數位人", 409)
-    if any(main["llm"].get(key) != specialist["llm"].get(key) for key in ("provider", "model", "base_url")):
+    if any(main["llm"].get(key) != specialist["llm"].get(key) for key in ("endpoint", "model")):
         raise ProfileError("即時組合必須共用同一 LLM 服務及模型", 409)
     if main["tts"]["type"] != specialist["tts"]["type"]:
         raise ProfileError("即時組合需共用語音合成引擎，可分別設定聲線", 409)

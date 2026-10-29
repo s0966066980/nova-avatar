@@ -35,7 +35,6 @@ from src.server.runtime_settings import (
     apply_avatar,
     current_snapshot,
     format_bytes,
-    is_ollama_endpoint,
     ollama_native_url,
     apply_stt_settings,
     apply_tts_settings,
@@ -128,11 +127,6 @@ class OllamaHelperTests(unittest.TestCase):
             ollama_native_url("http://127.0.0.1:11434/v1/"),
             "http://127.0.0.1:11434",
         )
-
-    def test_detect_ollama_endpoint(self):
-        self.assertTrue(is_ollama_endpoint("http://localhost:11434/v1"))
-        self.assertTrue(is_ollama_endpoint("http://127.0.0.1:11434/v1"))
-        self.assertFalse(is_ollama_endpoint("https://dashscope.aliyuncs.com/compatible-mode/v1"))
 
     def test_format_bytes(self):
         self.assertEqual(format_bytes(0), "")
