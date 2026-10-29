@@ -28,3 +28,5 @@ Status: resolved
 - 測試：`tests/test_route_access.py`（25 項含參數化）；共用 `tests/access_helpers.py::access_client(admin=, remote=, configured=)`，後續 issue 可直接取得已登入／區網／未設定的 client。前端 `web/tests/admin-session.test.js`。
 - 驗證：ruff、check-integration、web lint/test(175)/build 通過；pytest 823 passed，2 failed 為 worktree 缺 `models/musetalk` 與本機 OCR 套件的既有環境問題（`test_role_coordinator`、`test_conversation_attachments` 真實 PDF），與本變更無關。
 - 未處理：`start-all.sh` 仍印出舞台 Network 網址（區網開啟會 403），留給 #15 一併調整。
+- 合併 `security-hardening`（含 #01 lock）後以 `uv lock --offline` 移除 lock 內的 `aiohttp-cors`；`uv lock --check` 通過。合併後 pytest 828 passed（同上 2 項環境失敗），web test 199 通過。
+- 補充：舞台類也接受已登入管理者，因控制台同樣讀取 `GET /api/stage`、`GET /api/vad`；舞台 composer 用到的 `/human`、`/interrupt_talk` 依目標 session 歸類。
