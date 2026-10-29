@@ -43,17 +43,16 @@ This repository uses a single-context domain-doc layout. See `docs/agents/domain
   the root Apache-2.0 license.
 - Consult `NOTICE` and `THIRD_PARTY_NOTICES.md` before changing third-party code.
 
+## Trust boundary
+
+Before adding or changing a route, read `docs/adr/0021-stage-local-console-login.md`:
+every route is public, stage (loopback only), or admin (login required).
+
+## Review
+
+When reviewing a change, apply every rule in `CODING_STANDARDS.md`.
+
 ## Validation
 
-Run the relevant focused tests while editing, then complete the rebranding
-audit and full validation before handoff:
-
-```bash
-uv run ruff check .
-uv run python scripts/check-integration.py
-uv run pytest
-cd web
-npm run lint
-npm test
-npm run build
-```
+Before handoff, run every step in `.github/workflows/ci.yml`; its
+`scripts/check-integration.py` step is the rebranding audit.
