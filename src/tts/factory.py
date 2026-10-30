@@ -9,26 +9,12 @@
 
 from typing import Type
 
-from .engines import (
-    BaseTTS,
-    BreezyVoiceTTS,
-    CosyVoiceTTS,
-    EdgeTTS,
-    FishTTS,
-    IndexTTS2,
-    SovitsTTS,
-    XTTS,
-)
+from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS
 
+# Keep in step with src.tts.voice_library.TTS_ENGINES.
 _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
     "edgetts": EdgeTTS,
-    "gpt-sovits": SovitsTTS,
-    "xtts": XTTS,
-    "cosyvoice": CosyVoiceTTS,
-    "fun-cosyvoice3": CosyVoiceTTS,
     "breezyvoice": BreezyVoiceTTS,
-    "fishtts": FishTTS,
-    "indextts2": IndexTTS2,
 }
 
 

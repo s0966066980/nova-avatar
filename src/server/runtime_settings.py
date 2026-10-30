@@ -53,12 +53,6 @@ from src.llm.service import switch_llm_endpoint
 from src.llm.rules import default_rules, rules_from_config, snapshot_from_config, validate_rules
 from src.asr.factory import activate_asr_engine, create_asr_engine
 from src.asr.engines.funasr import local_funasr_model_ready
-from src.tts.cosyvoice_runtime import (
-    cosyvoice_family,
-    is_cosyvoice_engine,
-    languages_for_family,
-    normalize_language,
-)
 from src.utils.logging import logger
 
 _SWITCH_LOCK = threading.Lock()
@@ -1278,56 +1272,11 @@ TTS_ENGINE_META = {
         ),
         "setup": "",
     },
-    "gpt-sovits": {
-        "label": "GPT-SoVITS",
-        "module": "requests",
-        "description": "連線本機 GPT-SoVITS 服務",
-        "setup": "需要本機服務與音訊庫中的參考音訊",
-    },
-    "xtts": {
-        "label": "XTTS (Research / Non-commercial)",
-        "module": "requests",
-        "description": (
-            "Coqui Public Model License 僅限非商用，Coqui 已停業無法取得商用授權；"
-            "連線本機 XTTS 服務"
-        ),
-        "setup": "需要本機服務與音訊庫中的參考音訊",
-    },
-    "cosyvoice": {
-        "label": "CosyVoice 2",
-        "module": "requests",
-        "description": "本機 CosyVoice2-0.5B；套用時自動啟動獨立 GPU 服務",
-        "setup": "需要 conda 環境 cosyvoice、CosyVoice2-0.5B 與參考音訊",
-    },
-    "fun-cosyvoice3": {
-        "label": "Fun-CosyVoice 3.0",
-        "module": "requests",
-        "description": "本機 Fun-CosyVoice3-0.5B；九語加方言，套用時自動啟動獨立 GPU 服務",
-        "setup": "需要 conda 環境 cosyvoice、Fun-CosyVoice3-0.5B 與參考音訊",
-    },
     "breezyvoice": {
         "label": "BreezyVoice",
         "module": "requests",
         "description": "本機 BreezyVoice（聯發科，Apache-2.0）；台灣華語與注音讀音，整段合成不串流，套用時自動啟動獨立 GPU 服務",
         "setup": "需要 conda 環境 cosyvoice（另裝 g2pw）、scripts/breezyvoice_weights.py 下載的權重，以及音訊庫中附逐字稿的參考音訊",
-    },
-    "fishtts": {
-        "label": "Fish Speech (Community License / Revenue < USD 500k)",
-        "module": "requests",
-        "description": (
-            "Fish Audio Community License：授權方與其客戶年營收皆須低於 50 萬美元才可商用，"
-            "不得作託管服務；連線本機 Fish Speech 服務"
-        ),
-        "setup": "需要本機服務",
-    },
-    "indextts2": {
-        "label": "IndexTTS2 (bilibili Model License / Usage thresholds)",
-        "module": "gradio_client",
-        "description": (
-            "bilibili 模型授權：月活逾 1 億或年營收逾 10 億人民幣需另取授權，"
-            "不得用於改進其他模型，受中國法律管轄；連線本機 IndexTTS2 Gradio 服務"
-        ),
-        "setup": "需要 gradio_client、本機服務與音訊庫中的參考音訊",
     },
 }
 
@@ -1370,7 +1319,7 @@ def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
 
 def speech_snapshot(config) -> Dict[str, Any]:
     from src.tts.cosyvoice_runtime import local_models
-    from src.tts.voice_library import list_voices
+    from src.tts.voice_library import list_voices, removed_engine_notice
 
     asr = config.asr
     tts = config.tts
@@ -1393,35 +1342,17 @@ def speech_snapshot(config) -> Dict[str, Any]:
         },
         "tts": {
             "type": tts.type,
-            "mode": getattr(tts, "mode", "auto"),
             "ref_file": tts.ref_file,
             "ref_text": tts.ref_text or "",
             "tts_server": tts.tts_server,
             "model": tts.model,
-            "language": (
-                normalize_language(
-                    tts.language,
-                    family=cosyvoice_family(tts.type),
-                )
-                if is_cosyvoice_engine(tts.type)
-                else tts.language
-            ),
-            "speaker": tts.speaker,
-            "instruct": tts.instruct,
-            "device": tts.device,
             "engines": _catalog(TTS_ENGINE_META),
             # Reference audio and models are chosen from these server-side lists.
             "voices": list_voices(),
             "models": local_models(),
-            "languages": [
-                {"id": item_id, "label": label}
-                for item_id, label in languages_for_family(
-                    cosyvoice_family(tts.type)
-                )
-            ],
-            "speakers": [],
             "edge_voices": [dict(voice) for voice in EDGE_TTS_ZH_TW_VOICES],
-            "devices": list(STT_DEVICES),
+            # Saved settings that named a removed engine and now use Edge TTS.
+            "notice": removed_engine_notice(),
         },
     }
 
@@ -1500,7 +1431,7 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
 def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
     """Check the TTS fields that name files, models or servers.
 
-    ``ref_file`` must be a voice-library ID (or an Edge / Fish voice name),
+    ``ref_file`` must be a voice-library ID (or an Edge voice name),
     ``model`` a ``models/`` catalog ID and ``tts_server`` a loopback address.
     Runs before a request is applied or saved for later.
     """
@@ -1525,7 +1456,7 @@ def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
         if value is not None and not isinstance(value, str):
             raise SettingsError(f"{key} 格式不正確")
         values[key] = (value or "").strip()
-    if is_cosyvoice_engine(engine) and values["ref_file"] in EDGE_TTS_ZH_TW_VOICE_IDS:
+    if engine == "breezyvoice" and values["ref_file"] in EDGE_TTS_ZH_TW_VOICE_IDS:
         values["ref_file"] = ""
     try:
         values["ref_file"] = check_reference(engine, values["ref_file"])
@@ -1533,9 +1464,9 @@ def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
         values["model"] = check_model(values["model"])
     except VoiceLibraryError as exc:
         raise SettingsError(exc.message) from None
-    if is_cosyvoice_engine(engine) and values["model"]:
+    if engine == "breezyvoice" and values["model"]:
         try:
-            resolve_model_dir(values["model"], family=cosyvoice_family(engine))
+            resolve_model_dir(values["model"])
         except FileNotFoundError as exc:
             raise SettingsError(str(exc)) from None
     return {"type": engine, **values}
@@ -1556,66 +1487,24 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     ref_text = str(params.get("ref_text", config.tts.ref_text) or "").strip()
     tts_server = sources["tts_server"]
     model = sources["model"]
-    mode = str(params.get("mode", getattr(config.tts, "mode", "auto")) or "auto").strip().lower()
-    language = str(params.get("language", config.tts.language) or "Auto").strip()
-    speaker = str(params.get("speaker", config.tts.speaker) or "").strip()
-    instruct = str(params.get("instruct", config.tts.instruct) or "").strip()
-    device = str(params.get("device", config.tts.device) or "auto").strip().lower()
-    if engine == "edgetts" and ref_file not in EDGE_TTS_ZH_TW_VOICE_IDS:
-        raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線")
-    breezy = engine == "breezyvoice"
-    if breezy:
+    if engine == "edgetts":
+        if ref_file not in EDGE_TTS_ZH_TW_VOICE_IDS:
+            raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線")
+        tts_server, model = "", ""
+    else:
+        from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
         from src.tts.voice_library import voice_transcript
 
         # BreezyVoice only clones from a reference recording and its transcript.
-        mode, instruct = "zero_shot", ""
         if not ref_file:
             raise SettingsError("BreezyVoice 需要從音訊庫選擇參考音訊（自錄或有書面授權的台灣華語錄音）")
         if not ref_text and not voice_transcript(ref_file):
             raise SettingsError("BreezyVoice 需要參考音訊的逐字稿：上傳時填寫，或填入「參考語音逐字稿」")
-    if is_cosyvoice_engine(engine):
-        from src.tts.cosyvoice_runtime import (
-            DEFAULT_PROMPT_TEXT,
-            DEFAULT_PROMPT_WAV,
-            ensure_server,
-            parse_server_url,
-        )
-
-        family = cosyvoice_family(engine)
-        language = normalize_language(language, family=family)
-
-        if not tts_server:
-            tts_server = "http://127.0.0.1:50000"
-
-        if mode == "zero_shot" and ref_file and not ref_text and not breezy:
-            raise SettingsError(
-                "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
-            )
-
-        if not ref_file:
-            # An empty reference selects the bundled default prompt.
-            if not DEFAULT_PROMPT_WAV.is_file():
-                raise SettingsError(
-                    "未選擇參考音訊，且預設 data/tts/cosyvoice_prompt.wav 也不存在。"
-                )
-            if not ref_text:
-                ref_text = DEFAULT_PROMPT_TEXT
-        if mode == "zero_shot" and not ref_text and not breezy:
-            raise SettingsError(
-                "Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。"
-            )
         host, port = parse_server_url(tts_server)
         try:
-            tts_server = ensure_server(
-                model_dir=model,
-                family=family,
-                host=host,
-                port=port,
-            )
+            tts_server = ensure_server(model_dir=model, host=host, port=port)
         except FileNotFoundError as exc:
             raise SettingsError(str(exc)) from exc
-    elif engine != "edgetts" and not tts_server:
-        raise SettingsError("本地 TTS 必須填寫服務地址")
 
     preview_audio = _preview_tts(
         config,
@@ -1624,11 +1513,6 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         ref_text=ref_text,
         tts_server=tts_server,
         model=model,
-        mode=mode,
-        language=language,
-        speaker=speaker,
-        instruct=instruct,
-        device=device,
     )
 
     config.tts.type = engine
@@ -1636,12 +1520,10 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     config.tts.ref_text = ref_text or None
     config.tts.tts_server = tts_server
     config.tts.model = model
-    config.tts.mode = mode
-    config.tts.language = language
-    config.tts.speaker = speaker
-    config.tts.instruct = instruct
-    config.tts.device = device
     persist_runtime_overrides(config)
+    from src.tts.voice_library import clear_removed_engine_notice
+
+    clear_removed_engine_notice()
     result = speech_snapshot(config)["tts"]
     result["preview_audio"] = preview_audio
     return result
@@ -1655,27 +1537,14 @@ def _preview_tts(
     ref_text: str,
     tts_server: str,
     model: str,
-    mode: str,
-    language: str,
-    speaker: str,
-    instruct: str,
-    device: str,
 ) -> str:
     """Run the real engine against a bounded phrase and return a WAV data URI."""
-    if engine in {"gpt-sovits", "xtts", "indextts2"} and not ref_file:
-        raise SettingsError("請從音訊庫選擇或上傳參考音訊")
-
     pending = deepcopy(config)
     pending.tts.type = engine
     pending.tts.ref_file = ref_file
     pending.tts.ref_text = ref_text or None
     pending.tts.tts_server = tts_server
     pending.tts.model = model
-    pending.tts.mode = mode
-    pending.tts.language = language
-    pending.tts.speaker = speaker
-    pending.tts.instruct = instruct
-    pending.tts.device = device
 
     class PreviewSink:
         def __init__(self):

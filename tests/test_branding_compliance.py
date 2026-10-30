@@ -88,9 +88,7 @@ class BrandingComplianceTests(unittest.TestCase):
 
         expected = {
             "edgetts": ("Edge TTS (Development only)", "開發用"),
-            "fishtts": ("Fish Speech (Community License / Revenue < USD 500k)", "50 萬美元"),
-            "indextts2": ("IndexTTS2 (bilibili Model License / Usage thresholds)", "月活"),
-            "xtts": ("XTTS (Research / Non-commercial)", "非商用"),
+            "breezyvoice": ("BreezyVoice", "Apache-2.0"),
         }
         catalog = {item["id"]: item for item in _catalog(TTS_ENGINE_META)}
         for engine, (label, restriction) in expected.items():
@@ -104,9 +102,7 @@ class BrandingComplianceTests(unittest.TestCase):
 
         engine_files = {
             "edge.py": "Development only",
-            "fish.py": "Fish Audio Community License",
-            "indextts2.py": "bilibili",
-            "xtts.py": "Research / Non-commercial",
+            "breezyvoice.py": "Apache-2.0",
         }
         for name, marker in engine_files.items():
             with self.subTest(engine_file=name):
@@ -115,9 +111,7 @@ class BrandingComplianceTests(unittest.TestCase):
 
         third_party = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
         self.assertRegex(third_party, r"Edge TTS[\s\S]+Development only")
-        self.assertRegex(third_party, r"Fish[\s\S]+USD 500,000")
-        self.assertRegex(third_party, r"IndexTTS2[\s\S]+100 million monthly active users")
-        self.assertRegex(third_party, r"XTTS[\s\S]+Research / Non-commercial")
+        self.assertRegex(third_party, r"BreezyVoice[\s\S]+Apache-2\.0")
         self.assertRegex(third_party, r"Gemma 4[\s\S]+Gemma Terms of Use do not apply")
 
         stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")

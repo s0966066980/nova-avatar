@@ -23,7 +23,7 @@ from src.llm.rules import rules_from_config, validate_rules
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
 from src.tts.voice_library import (
-    VoiceLibraryError, check_model, check_reference, check_tts_server, migrate_tts_values,
+    TTS_ENGINES, VoiceLibraryError, check_model, check_reference, check_tts_server, migrate_tts_values,
 )
 from src.utils.logging import logger
 
@@ -175,6 +175,8 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False) -> 
                 raise ProfileError("聲音設定格式不正確")
         elif current is not None:
             tts[item.name] = _text(current, item.name, 4000)
+    if tts["type"] not in TTS_ENGINES:
+        raise ProfileError(f"聲音設定：不支援的 TTS 引擎「{tts['type'][:40]}」")
     try:
         tts["ref_file"] = check_reference(tts["type"], tts["ref_file"])
         tts["tts_server"] = check_tts_server(tts["tts_server"])
@@ -270,7 +272,9 @@ def _migrate_voice_settings(raw) -> bool:
         if isinstance(tts, dict):
             values = {"type": TTSConfig().type, **tts}
             if migrate_tts_values(values, where=f"角色設定檔 {profile.get('id')}"):
-                tts.update({key: values[key] for key in tts})
+                kept = {key: values[key] for key in tts if key in values}
+                tts.clear()
+                tts.update(kept)
                 changed = True
     return changed
 

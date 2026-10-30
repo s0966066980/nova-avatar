@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
-"""TTS bake-off (issue 10): BreezyVoice vs Fun-CosyVoice3.
+"""TTS bake-off (issue 10): BreezyVoice, the only local TTS engine.
 
-Every engine runs behind the owned zero-shot HTTP contract
+The engine runs behind the owned zero-shot HTTP contract
 (``GET /health`` with ``sample_rate``; ``POST /inference_zero_shot`` taking
-``tts_text``, ``prompt_text``, ``prompt_wav`` and returning raw PCM16):
-``scripts/cosyvoice_fastapi_server.py`` serves both engines. One server runs at
-a time.
+``tts_text``, ``prompt_text``, ``prompt_wav`` and returning raw PCM16) served by
+``scripts/cosyvoice_fastapi_server.py``. ``--engine`` only names the run.
 
 Subcommands:
 
@@ -135,27 +134,19 @@ class ZeroShotClient:
         self.session = session or requests.Session()
         self.timeout = timeout
         self.clock = clock
-        self.family = ""
         self.sample_rate = 0
 
     def health(self) -> dict:
         response = self.session.get(f"{self.url}/health", timeout=10)
         response.raise_for_status()
         info = response.json()
-        self.family = str(info.get("family", ""))
         self.sample_rate = int(info["sample_rate"])
         return info
-
-    def _prompt_text(self) -> str:
-        from src.tts.engines.cosyvoice import CosyVoiceTTS
-
-        # The same prompt text the app sends (Fun-CosyVoice3 needs its prefix).
-        return CosyVoiceTTS._zero_shot_request("", self.prompt_text, self.family)[1]["prompt_text"]
 
     def synthesize(self, text: str) -> SynthesisResult:
         if not self.sample_rate:
             self.health()
-        data = {"tts_text": text, "prompt_text": self._prompt_text()}
+        data = {"tts_text": text, "prompt_text": self.prompt_text}
         files = {"prompt_wav": ("prompt.wav", self.prompt_bytes, "application/octet-stream")}
         started = self.clock()
         first: float | None = None
@@ -1058,7 +1049,7 @@ def run_soak(args) -> dict:
 
 
 def _add_server_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--engine", required=True, help="short name, e.g. breezyvoice, cosyvoice3")
+    parser.add_argument("--engine", default="breezyvoice", help="run name (default: breezyvoice)")
     parser.add_argument("--url", required=True, help="the engine server, e.g. http://127.0.0.1:50000")
     parser.add_argument("--prompt-wav", type=Path, required=True, help="reference voice recording")
     parser.add_argument("--prompt-text", required=True, help="transcript of the reference recording")

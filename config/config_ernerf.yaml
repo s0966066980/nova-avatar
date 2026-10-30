@@ -21,7 +21,7 @@ model:
     # more config please refer to src/config/schema.py
 
 tts:
-  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | indextts2 | xtts
+  type: edgetts  # edgetts | breezyvoice
   ref_file: zh-TW-HsiaoChenNeural
 
 asr:

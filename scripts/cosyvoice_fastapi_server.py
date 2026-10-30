@@ -1,11 +1,12 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Owned CosyVoice FastAPI process. Run with the CosyVoice conda interpreter.
+"""Owned BreezyVoice FastAPI process. Run with the CosyVoice conda interpreter.
 
-Also serves BreezyVoice (a CosyVoice-v1 model): a model folder holding
-BreezyVoice's ``word_utils.py`` gets its 注音 text frontend and whole-fragment
-(non-streaming) synthesis.
+BreezyVoice is a CosyVoice-v1 model loaded through the upstream CosyVoice code
+(``~/CosyVoice``). The model folder must hold BreezyVoice's ``word_utils.py``;
+text goes through its 注音 frontend and each fragment is synthesized whole
+(non-streaming) with zero-shot voice cloning.
 """
 from __future__ import annotations
 
@@ -45,23 +46,12 @@ def _prepare_cosyvoice_path(model_dir: str) -> str:
 
 
 def load_model(model_dir: str):
-    """CosyVoice 2/3 through AutoModel; BreezyVoice with its YAML overrides."""
+    """BreezyVoice with its YAML overrides; any other model folder is refused."""
     from breezyvoice_frontend import is_breezyvoice_dir, load_breezyvoice_model
 
-    if is_breezyvoice_dir(model_dir):
-        return load_breezyvoice_model(model_dir)
-    from cosyvoice.cli.cosyvoice import AutoModel
-
-    return AutoModel(model_dir=model_dir)
-
-
-def load_frontend(cosyvoice, model_dir: str):
-    """The BreezyVoice text frontend, or None for other models."""
-    from breezyvoice_frontend import BreezyVoiceFrontend, is_breezyvoice_dir
-
     if not is_breezyvoice_dir(model_dir):
-        return None
-    return BreezyVoiceFrontend(model_dir)
+        raise SystemExit(f"不是 BreezyVoice 模型資料夾（缺 word_utils.py）：{model_dir}")
+    return load_breezyvoice_model(model_dir)
 
 
 def _pcm16_chunks(model_output):
@@ -120,13 +110,9 @@ def clip_prompt_wav(path: str, *, max_seconds: float = MAX_PROMPT_SECONDS) -> st
     return clipped
 
 
-def create_app(cosyvoice, frontend=None):
-    """``frontend`` (BreezyVoice) rewrites text and turns off streaming."""
+def create_app(cosyvoice, frontend):
+    """``frontend`` (BreezyVoice) rewrites text; synthesis does not stream."""
     app = FastAPI()
-    stream = frontend is None
-
-    def prepare(text: str) -> str:
-        return frontend.prepare(text) if frontend is not None else text
 
     app.add_middleware(
         CORSMiddleware,
@@ -138,15 +124,6 @@ def create_app(cosyvoice, frontend=None):
 
     @app.get("/health")
     def health():
-        model_dir = str(getattr(cosyvoice, "model_dir", "") or "")
-        if frontend is not None:
-            family = "breezyvoice"
-        elif os.path.isfile(os.path.join(model_dir, "cosyvoice3.yaml")):
-            family = "cosyvoice3"
-        elif os.path.isfile(os.path.join(model_dir, "cosyvoice2.yaml")):
-            family = "cosyvoice2"
-        else:
-            family = "cosyvoice"
         return JSONResponse(
             {
                 "status": "ok",
@@ -154,9 +131,9 @@ def create_app(cosyvoice, frontend=None):
                 "prompt_clip": True,
                 "prompt_prep": 3,
                 "max_prompt_seconds": MAX_PROMPT_SECONDS,
-                "model_dir": model_dir,
-                "family": family,
-                "streaming": stream,
+                "model_dir": str(getattr(cosyvoice, "model_dir", "") or ""),
+                "family": "breezyvoice",
+                "streaming": False,
             }
         )
 
@@ -174,82 +151,10 @@ def create_app(cosyvoice, frontend=None):
             clipped = clip_prompt_wav(uploaded)
             iterator = iter(
                 cosyvoice.inference_zero_shot(
-                    prepare(tts_text),
-                    prepare(prompt_text or ""),
+                    frontend.prepare(tts_text),
+                    frontend.prepare(prompt_text or ""),
                     clipped,
-                    stream=stream,
-                    text_frontend=False,
-                )
-            )
-            first = next(iterator, None)
-        except Exception as exc:
-            _remove_temporaries(uploaded, clipped)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-        def generate():
-            try:
-                if first is not None:
-                    yield from _pcm16_chunks([first])
-                if iterator is not None:
-                    yield from _pcm16_chunks(iterator)
-            finally:
-                _remove_temporaries(uploaded, clipped)
-
-        return StreamingResponse(generate(), media_type="application/octet-stream")
-
-    @app.post("/inference_cross_lingual")
-    async def inference_cross_lingual(
-        tts_text: str = Form(),
-        prompt_wav: UploadFile = File(),
-    ):
-        uploaded = _save_upload(prompt_wav)
-        clipped = None
-        iterator = None
-        first = None
-        try:
-            clipped = clip_prompt_wav(uploaded)
-            iterator = iter(
-                cosyvoice.inference_cross_lingual(
-                    prepare(tts_text),
-                    clipped,
-                    stream=stream,
-                    text_frontend=False,
-                )
-            )
-            first = next(iterator, None)
-        except Exception as exc:
-            _remove_temporaries(uploaded, clipped)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-        def generate():
-            try:
-                if first is not None:
-                    yield from _pcm16_chunks([first])
-                if iterator is not None:
-                    yield from _pcm16_chunks(iterator)
-            finally:
-                _remove_temporaries(uploaded, clipped)
-
-        return StreamingResponse(generate(), media_type="application/octet-stream")
-
-    @app.post("/inference_instruct2")
-    async def inference_instruct2(
-        tts_text: str = Form(),
-        instruct_text: str = Form(),
-        prompt_wav: UploadFile = File(),
-    ):
-        uploaded = _save_upload(prompt_wav)
-        clipped = None
-        iterator = None
-        first = None
-        try:
-            clipped = clip_prompt_wav(uploaded)
-            iterator = iter(
-                cosyvoice.inference_instruct2(
-                    prepare(tts_text),
-                    instruct_text,
-                    clipped,
-                    stream=stream,
+                    stream=False,
                     text_frontend=False,
                 )
             )
@@ -279,13 +184,14 @@ def main() -> None:
     parser.add_argument(
         "--model_dir",
         type=str,
-        default=os.path.expanduser("~/CosyVoice/pretrained_models/CosyVoice2-0.5B"),
+        default=os.path.join(os.path.dirname(ROOT_DIR), "models", "BreezyVoice"),
     )
     args = parser.parse_args()
     model_dir = _prepare_cosyvoice_path(args.model_dir)
     cosyvoice = load_model(model_dir)
-    frontend = load_frontend(cosyvoice, model_dir)
-    uvicorn.run(create_app(cosyvoice, frontend), host=args.host, port=int(args.port))
+    from breezyvoice_frontend import BreezyVoiceFrontend
+
+    uvicorn.run(create_app(cosyvoice, BreezyVoiceFrontend(model_dir)), host=args.host, port=int(args.port))
 
 
 if __name__ == "__main__":

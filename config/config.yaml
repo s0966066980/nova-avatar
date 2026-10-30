@@ -80,15 +80,10 @@ model:
 
 # TTS 配置資訊，可以改對應的模型，建議edgetts
 tts:
-  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | breezyvoice | indextts2 | xtts
-  mode: auto  # CosyVoice: auto | zero_shot | cross_lingual | instruct
-  ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；其他引擎填控制台音訊庫的參考音訊 ID
-  tts_server: http://127.0.0.1:9880  # 只接受本機位址；gpt-sovits 等；cosyvoice 系列套用時會改用 50000 並自動啟動
-  model: ''  # 空白為預設模型；其他 CosyVoice 模型放進 models/ 後填資料夾名稱
-  language: Chinese
-  speaker: Vivian
-  instruct: ''
-  device: auto
+  type: edgetts  # edgetts | breezyvoice（其他已移除的引擎在啟動時改用 edgetts）
+  ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；BreezyVoice 填控制台音訊庫的參考音訊 ID
+  tts_server: ''  # BreezyVoice 服務，只接受本機位址；空白為 127.0.0.1:50000，套用時自動啟動
+  model: ''  # 空白為 models/BreezyVoice；其他 BreezyVoice 模型放進 models/ 後填資料夾名稱
   edge_persistent_worker: true  # 重用 Edge 的本機 event loop，不是持久遠端連線
   edge_prefetch: true  # 第一片段出聲後最多預取下一段，降低片段間空窗
   edge_connection_reuse: true  # 保留並重用 Edge 連線，避開每段重新建立連線的停頓
@@ -177,7 +172,7 @@ vad:
   # Silero 端點檢測引數
   speech_start_ms: 100  # 連續多久算開口
   min_speech_ms: 250  # 太短的片段當噪聲丟掉
-  min_silence_ms: 300  # 連續靜音多久算說完
+  min_silence_ms: 192  # 連續靜音多久算說完；以 Silero 32 ms 幀向上取整，192＝6 幀（設 200 會進位成 7 幀＝224 ms）
   speech_pad_ms: 150  # 片段前後各留一點，避免吃字
   max_speech_ms: 15000  # 單段上限，0=不限制
 

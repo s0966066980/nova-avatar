@@ -558,37 +558,9 @@ class SpeechSettingsTests(unittest.TestCase):
         ids = {item["id"] for item in speech_snapshot(Config())["tts"]["engines"]}
         self.assertEqual(
             ids,
-            {
-                "edgetts", "gpt-sovits", "xtts",
-                "cosyvoice", "fun-cosyvoice3", "breezyvoice", "fishtts", "indextts2",
-            },
+            {"edgetts", "breezyvoice"},
         )
         self.assertTrue(ids.isdisjoint({"azuretts", "cosyvoice_api", "doubao", "tencent"}))
-
-    def test_snapshot_lists_cosyvoice_languages(self):
-        languages = speech_snapshot(Config())["tts"]["languages"]
-        self.assertEqual(
-            [item["id"] for item in languages],
-            ["zh", "en", "ja", "ko", "yue", "auto"],
-        )
-
-    def test_cosyvoice_snapshot_normalizes_language(self):
-        config = Config()
-        config.tts.type = "cosyvoice"
-        config.tts.language = "Chinese"
-        self.assertEqual(speech_snapshot(config)["tts"]["language"], "zh")
-
-    def test_fun_cosyvoice3_snapshot_lists_extra_languages(self):
-        config = Config()
-        config.tts.type = "fun-cosyvoice3"
-        config.tts.language = "Chinese"
-        snapshot = speech_snapshot(config)["tts"]
-        self.assertEqual(snapshot["language"], "zh")
-        self.assertTrue(
-            {"zh", "en", "de", "es", "fr", "it", "ru", "yue", "auto"}.issubset(
-                {item["id"] for item in snapshot["languages"]}
-            )
-        )
 
     def test_snapshot_lists_all_edge_tts_zh_tw_voices(self):
         voices = speech_snapshot(Config())["tts"]["edge_voices"]
@@ -625,136 +597,18 @@ class SpeechSettingsTests(unittest.TestCase):
         sf.write(source, np.full(16000, 0.1, dtype=np.float32), 16000)
         return voice_library.add_voice(source, "reference")["id"]
 
-    def test_zero_shot_requires_reference_transcript_before_starting_server(self):
-        voice = self._library_voice()
-        with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
-            "src.tts.cosyvoice_runtime.ensure_server"
-        ) as ensure:
-            with self.assertRaisesRegex(SettingsError, "參考語音逐字稿"):
-                apply_tts_settings(
-                    Config(),
-                    {
-                        "type": "fun-cosyvoice3",
-                        "mode": "zero_shot",
-                        "ref_file": voice,
-                        "ref_text": "",
-                    },
-                    session_count=0,
-                )
-        ensure.assert_not_called()
-
     def test_speech_engine_change_requires_disconnect(self):
         with self.assertRaises(SettingsError) as ctx:
             apply_stt_settings(Config(), {"type": "whisper"}, session_count=1)
         self.assertEqual(ctx.exception.status, 409)
         self.assertTrue(ctx.exception.extra["need_disconnect"])
 
-    def test_cosyvoice_auto_starts_local_server_and_uses_default_prompt(self):
-        config = Config()
-        with tempfile.TemporaryDirectory() as tmp:
-            default_wav = Path(tmp) / "cosyvoice_prompt.wav"
-            default_wav.write_bytes(b"RIFF")
-            with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
-                "src.tts.cosyvoice_runtime.ensure_server",
-                return_value="http://127.0.0.1:50000",
-            ) as ensure, patch(
-                "src.tts.cosyvoice_runtime.DEFAULT_PROMPT_WAV",
-                default_wav,
-            ), patch(
-                "src.server.runtime_settings._preview_tts",
-                return_value="data:audio/wav;base64,dGVzdA==",
-            ), patch("src.server.runtime_settings.persist_runtime_overrides"):
-                result = apply_tts_settings(
-                    config,
-                    {"type": "cosyvoice"},
-                    session_count=0,
-                )
-        self.assertEqual(config.tts.type, "cosyvoice")
-        self.assertEqual(config.tts.tts_server, "http://127.0.0.1:50000")
-        self.assertEqual(config.tts.ref_file, "")  # The bundled default prompt.
-        self.assertEqual(config.tts.ref_text, "你好，我是數字人助手。")
-        ensure.assert_called_once()
-        self.assertIn("preview_audio", result)
-        self.assertEqual(config.tts.language, "zh")
-        self.assertEqual(
-            {item["id"] for item in result["languages"]},
-            {"zh", "en", "ja", "ko", "yue", "auto"},
-        )
-
-    def test_cosyvoice_keeps_the_library_voice_id(self):
-        voice = self._library_voice()
-        config = Config()
-        with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
-            "src.tts.cosyvoice_runtime.ensure_server",
-            return_value="http://127.0.0.1:50000",
-        ), patch(
-            "src.server.runtime_settings._preview_tts",
-            return_value="data:audio/wav;base64,dGVzdA==",
-        ), patch("src.server.runtime_settings.persist_runtime_overrides"):
-            apply_tts_settings(
-                config,
-                {
-                    "type": "cosyvoice",
-                    "ref_file": voice,
-                    "ref_text": "test lyrics",
-                },
-                session_count=0,
-            )
-        self.assertEqual(config.tts.ref_file, voice)
-        self.assertEqual(config.tts.ref_text, "test lyrics")
-
-    def test_fun_cosyvoice3_auto_starts_local_server(self):
-        config = Config()
-        with tempfile.TemporaryDirectory() as tmp:
-            default_wav = Path(tmp) / "cosyvoice_prompt.wav"
-            default_wav.write_bytes(b"RIFF")
-            with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
-                "src.tts.cosyvoice_runtime.ensure_server",
-                return_value="http://127.0.0.1:50000",
-            ) as ensure, patch(
-                "src.tts.cosyvoice_runtime.DEFAULT_PROMPT_WAV",
-                default_wav,
-            ), patch(
-                "src.server.runtime_settings._preview_tts",
-                return_value="data:audio/wav;base64,dGVzdA==",
-            ), patch("src.server.runtime_settings.persist_runtime_overrides"):
-                result = apply_tts_settings(
-                    config,
-                    {"type": "fun-cosyvoice3", "language": "zh"},
-                    session_count=0,
-                )
-        self.assertEqual(config.tts.type, "fun-cosyvoice3")
-        self.assertEqual(config.tts.language, "zh")
-        self.assertEqual(config.tts.tts_server, "http://127.0.0.1:50000")
-        ensure.assert_called_once()
-        self.assertEqual(ensure.call_args.kwargs.get("family"), "cosyvoice3")
-        self.assertIn("preview_audio", result)
-
-    def test_fun_cosyvoice3_missing_model_is_explicit(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            default_wav = Path(tmp) / "cosyvoice_prompt.wav"
-            default_wav.write_bytes(b"RIFF")
-            with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
-                "src.tts.cosyvoice_runtime.DEFAULT_PROMPT_WAV",
-                default_wav,
-            ), patch(
-                "src.tts.cosyvoice_runtime.DEFAULT_COSYVOICE3_MODEL_DIRS",
-                (Path(tmp) / "missing-fun-cosyvoice3",),
-            ):
-                with self.assertRaises(SettingsError) as ctx:
-                    apply_tts_settings(
-                        Config(),
-                        {"type": "fun-cosyvoice3"},
-                        session_count=0,
-                    )
-        self.assertIn("Fun-CosyVoice 3.0", ctx.exception.message)
-
-    def test_cosyvoice_missing_reference_does_not_silently_fall_back(self):
+    def test_breezyvoice_missing_reference_does_not_silently_fall_back(self):
         with patch("src.server.runtime_settings._engine_available", return_value=True):
             with self.assertRaises(SettingsError) as ctx:
                 apply_tts_settings(
                     Config(),
-                    {"type": "cosyvoice", "ref_file": "0123456789abcdef"},
+                    {"type": "breezyvoice", "ref_file": "0123456789abcdef"},
                     session_count=0,
                 )
         self.assertIn("不在音訊庫中", ctx.exception.message)
@@ -773,21 +627,6 @@ class SpeechSettingsTests(unittest.TestCase):
         self.assertEqual(config.tts.type, "edgetts")
         self.assertIn("preview_audio", result)
         persist.assert_called_once()
-
-    def test_gpt_sovits_rejects_edge_voice_id_as_reference_path(self):
-        with patch("src.server.runtime_settings._engine_available", return_value=True):
-            with self.assertRaises(SettingsError) as ctx:
-                apply_tts_settings(
-                    Config(),
-                    {
-                        "type": "gpt-sovits",
-                        "ref_file": "zh-TW-YunJheNeural",
-                        "tts_server": "http://127.0.0.1:9880",
-                    },
-                    session_count=0,
-                )
-        self.assertIn("zh-TW-YunJheNeural", ctx.exception.message)
-        self.assertIn("音訊庫", ctx.exception.message)
 
     def test_edge_tts_rejects_non_zh_tw_voice(self):
         with patch("src.server.runtime_settings._engine_available", return_value=True):

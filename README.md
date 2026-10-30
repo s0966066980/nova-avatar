@@ -134,12 +134,17 @@ Ollama，停用方式見[安裝流程](docs/installation.md#停用預設-ollama1
 **以主機名稱連入**：除 `localhost` 與 IP 外，其他 `Host` 一律拒絕（防 DNS
 rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 `app.allowed_hosts`。
 
-**參考音訊**：GPT-SoVITS、CosyVoice 等引擎的參考音訊要先在控制台「語音」設定的
+**語音引擎**：只有 BreezyVoice 與 Edge TTS。設定檔或數位人設定檔若仍指向已移除的
+引擎（CosyVoice、Fun-CosyVoice3、Fish、GPT-SoVITS、IndexTTS2、XTTS），啟動時改用
+Edge TTS，並在日誌與控制台「語音」設定說明，請重新選擇後套用。
+
+**參考音訊**：BreezyVoice 的參考音訊要先在控制台「語音」設定的
 音訊庫上傳（60 秒、20 MB 內，轉存為 WAV），再從清單選擇；刪除會移入回收桶，
 使用中的音訊不能刪除。模型目錄只能從 `models/` 掃描結果選擇，TTS 服務只接受
 本機位址。舊設定中的路徑在載入時會遷移進音訊庫，無法遷移的會清空並記錄警告。
 
-**BreezyVoice（台灣華語）**：在 CosyVoice 的 conda 環境安裝
+**BreezyVoice（台灣華語）**：以 CosyVoice v1 程式碼執行，需 `~/CosyVoice` 與 conda 環境
+`cosyvoice`；在該環境安裝
 `python -m pip install --no-deps g2pw==0.1.1`，再執行
 `uv run --no-sync python scripts/breezyvoice_weights.py` 把權重與 g2pW 下載到
 `models/BreezyVoice`（固定版本並核對 SHA-256）。參考錄音須在 8 秒內，上傳音訊庫時

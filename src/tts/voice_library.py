@@ -33,10 +33,14 @@ VOICES_ROOT = get_project_root() / "data" / "voices"
 MIGRATION_ROOTS = (get_project_root() / "data", Path.home() / "CosyVoice" / "asset")
 
 VOICE_ID = re.compile(r"[0-9a-f]{16}")
-# Edge voice names and Fish Speech reference IDs name voices on the server side.
+# Edge voice names name voices on the server side.
 SERVER_SIDE_REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}")
-REFERENCE_AUDIO_ENGINES = frozenset({"gpt-sovits", "xtts", "indextts2", "cosyvoice", "fun-cosyvoice3", "breezyvoice"})
+# The only TTS engines; src.tts.factory builds exactly these.
+TTS_ENGINES = frozenset({"edgetts", "breezyvoice"})
+REFERENCE_AUDIO_ENGINES = frozenset({"breezyvoice"})
 DEFAULT_EDGE_VOICE = "zh-TW-HsiaoChenNeural"
+# Settings of TTS engines removed in 2026; dropped from saved settings on load.
+REMOVED_TTS_FIELDS = ("mode", "language", "speaker", "instruct", "device")
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 MAX_SECONDS = 60.0
@@ -73,17 +77,6 @@ def voice_path(voice_id: Any) -> Path:
     if path.is_symlink() or not path.is_file():
         raise VoiceLibraryError("參考音訊不在音訊庫中，請從音訊庫選擇或上傳", status=404)
     return path
-
-
-def reference_path(voice_id: Any) -> str:
-    """The stored WAV of ``voice_id``, or "" when no reference is selected.
-
-    check_reference accepts an empty reference and migration may leave one;
-    engines then fall back to their server's default instead of failing.
-    """
-    if voice_id is None or (isinstance(voice_id, str) and not voice_id.strip()):
-        return ""
-    return str(voice_path(voice_id))
 
 
 def _read_record(voice_id: str) -> dict:
@@ -334,6 +327,31 @@ def check_model(value: Any) -> str:
 
 # ------------------------------------------------------------------ saved settings
 
+# Why saved settings were switched to Edge TTS in this process, for the console.
+_removed_engine_notices: list[str] = []
+
+
+def removed_engine_notice() -> str:
+    """The console message for saved settings that named a removed TTS engine."""
+    return "；".join(dict.fromkeys(_removed_engine_notices))
+
+
+def clear_removed_engine_notice() -> None:
+    _removed_engine_notices.clear()
+
+
+def _fall_back_to_edge(values: dict, engine: str, where: str) -> None:
+    """Switch saved settings of a removed engine to Edge TTS instead of failing."""
+    message = (f"{where} 的 TTS 引擎「{engine[:40]}」已移除，已改用 Edge TTS（開發用）；"
+               "請到語音設定改選 BreezyVoice 或 Edge TTS 聲線並套用")
+    logger.warning(message)
+    _removed_engine_notices.append(message)
+    values["type"] = "edgetts"
+    for key, value in (("ref_file", DEFAULT_EDGE_VOICE), ("ref_text", None),
+                       ("tts_server", ""), ("model", "")):
+        if key in values:
+            values[key] = value
+
 
 def _import_saved_path(value: str, where: str) -> str:
     """Import a saved reference path under MIGRATION_ROOTS; "" when not allowed."""
@@ -355,14 +373,23 @@ def _import_saved_path(value: str, where: str) -> str:
 
 
 def migrate_tts_values(values: dict, *, where: str) -> bool:
-    """Bring saved ``ref_file`` / ``tts_server`` / ``model`` under the input rules.
+    """Bring saved TTS settings under the current engines and input rules.
 
-    Mutates ``values`` (only keys it already has) and returns whether anything
-    changed. Paths under MIGRATION_ROOTS move into the library; everything
-    else that breaks a rule is cleared and logged.
+    Mutates ``values`` and returns whether anything changed. A removed engine
+    becomes Edge TTS and REMOVED_TTS_FIELDS are dropped. Of ``ref_file`` /
+    ``tts_server`` / ``model`` only keys already present are touched: paths
+    under MIGRATION_ROOTS move into the library; everything else that breaks
+    a rule is cleared and logged.
     """
     changed = False
+    for key in REMOVED_TTS_FIELDS:
+        if key in values:
+            del values[key]
+            changed = True
     engine = str(values.get("type") or "edgetts").strip().lower()
+    if engine not in TTS_ENGINES:
+        _fall_back_to_edge(values, engine, where)
+        return True
     if "ref_file" in values:
         current = values["ref_file"]
         try:
@@ -394,10 +421,10 @@ def migrate_tts_values(values: dict, *, where: str) -> bool:
 
 def migrate_tts_config(tts, *, where: str) -> bool:
     """migrate_tts_values for a TTSConfig-like object."""
-    keys = ("type", "ref_file", "tts_server", "model")
+    keys = ("type", "ref_file", "ref_text", "tts_server", "model")
     values = {key: getattr(tts, key) for key in keys if hasattr(tts, key)}
     changed = migrate_tts_values(values, where=where)
-    for key in keys[1:]:
+    for key in keys:
         if key in values:
             setattr(tts, key, values[key])
     return changed
