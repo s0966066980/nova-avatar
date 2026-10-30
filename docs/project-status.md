@@ -12,7 +12,7 @@
 | 領域 | v1 已完成能力 |
 | --- | --- |
 | 對話與傳輸 | WebRTC 雙向音訊、Avatar 影像、事件通道、免按對話、按住說話、插話、斷線清理與伺服器擁有的單一有效輪次 |
-| 語音輸入 | Silero 服務端端點偵測（說完判定靜音 192 ms，6 個 32 ms 幀，約 0.2 s）、faster-whisper small（預設，語音輪次只在中英文間自動偵測、beam 1、記憶體直傳）／FunASR（可選，僅中文）、繁體轉換、STT 預熱、無效音訊品質閘門與執行期設定 |
+| 語音輸入 | Silero 服務端端點偵測（說完判定靜音 192 ms，6 個 32 ms 幀，約 0.2 s）、faster-whisper small（預設，語音輪次只在中英文間自動偵測、beam 1、記憶體直傳）／Fun-ASR-Nano-2512（可選，中英文，獨立本機服務）、繁體轉換、STT 預熱、無效音訊品質閘門與執行期設定 |
 | 回覆生成 | llama.cpp（預設 Gemma 4 E2B 全 GPU，Qwen3.5-9B 可選；放不下全部層數即啟動失敗並說明）／Ollama、路由與檢索和主回答並行、串流 token、交易式 history、柔性回覆長度、單一 LLM 可編輯回覆規則、控制台集中管理的助手身分與 Prompt |
 | 知識庫檢索 | 可選的本機 RAGFlow 檢索：依數位人選擇知識庫、控制台測試檢索、BGE-M3 嵌入（llama.cpp，CPU）；見 [`ragflow.md`](ragflow.md) |
 | 看板回答 | SIMPLE／BOARD 協定、口語摘要與看板項目分流、顯示確認、已顯示項目上下文與輪次隔離 |
@@ -172,7 +172,8 @@ stale-output Gate；generation fence、取消或提交前檢查丟棄的媒體�
 - `vad.min_silence_ms: 192`：連續靜音約 0.2 s 視為使用者說完。等待以 Silero 32 ms 幀向上取整，
   192 正好 6 幀＝0.192 s；設 200 會進位成 7 幀＝0.224 s。
 - `asr.type: whisper`、`model_size: small`：語音輪次一律只在中文與英文間自動偵測；
-  `asr.language` 只影響 `/asr` 上傳辨識。FunASR 可選，但只辨識中文。
+  `asr.language` 只影響 `/asr` 上傳辨識。FunASR 選項為 Fun-ASR-Nano-2512（中英文），
+  在自己的 venv 以本機服務執行，選用時才啟動。
 - `llm.provider: llamacpp`、`model: gemma-4-E2B_q4_0-it`：後端自行啟動 llama-server
   並附掛 mmproj 供附件看圖；Qwen3.5-9B 可選。`llamacpp_allow_partial_offload: false`
   時放不下全部層數即啟動失敗並說明。預設不需要 11434 的 Ollama。

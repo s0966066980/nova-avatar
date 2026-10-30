@@ -9,10 +9,11 @@ import warnings
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_funasr_and_musetalk_have_reproducible_root_extras():
+def test_musetalk_has_a_reproducible_root_extra():
     project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
-    assert 'funasr = [\n    "funasr>=1.1",\n]' in project
+    # Fun-ASR-Nano runs in its own venv (integrations/fun-asr-nano), not as a main-venv extra.
+    assert "funasr" not in project
     assert 'musetalk = [\n    "nova-avatar-musetalk",\n]' in project
     assert 'nova-avatar-musetalk = { path = "src/avatars/musetalk", editable = true }' in project
 

@@ -8,8 +8,8 @@ missing or altered file fails the run. Set ``HF_ENDPOINT`` for a mirror: the
 checksums still apply.
 
 The model class ships inside the ``funasr`` package (``funasr.models.fun_asr_nano``),
-so no model code is downloaded: the repository has none, and the engine loads
-it with ``trust_remote_code=False``. ``Qwen3-0.6B`` holds only the decoder's
+so no model code is downloaded: the repository has none, and the service
+(``scripts/fun_asr_nano_server.py``) loads it with ``trust_remote_code=False``. ``Qwen3-0.6B`` holds only the decoder's
 config and tokenizer; its weights are inside ``model.pt``.
 """
 from __future__ import annotations

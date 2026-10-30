@@ -207,7 +207,13 @@ npm test
 npm run build
 ```
 
-選用 FunASR 時加上 `--extra funasr`；未使用 TensorRT 時略過其 extra。
+未使用 TensorRT 時略過其 extra。選用 FunASR（Fun-ASR-Nano-2512）時不需主環境 extra，
+另建服務 venv 並下載權重：
+
+```bash
+bash scripts/setup-fun-asr-nano.sh          # 建立 ~/.venvs/fun-asr-nano（固定版本，torch 2.5.0+cu124）
+uv run --no-sync python scripts/fun_asr_nano_weights.py   # models/funasr/Fun-ASR-Nano-2512，核對 SHA-256
+```
 `uv sync` 預設會移除未選依賴，OpenMMLab 等手動安裝套件應使用
 `--inexact` 保留；一般 `uv run` 預設保留額外套件。不要對此環境執行
 `uv run --exact`。RAGFlow 為獨立選用部署，見 [RAGFlow 安裝](ragflow.md)。

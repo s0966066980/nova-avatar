@@ -5,7 +5,7 @@
 # 占用埠的其他程式一律報錯，不會被誤殺。先設定 PROJECT_ROOT 再 source。
 
 # SIGTERM 後等待程序自行結束的秒數，逾時才 SIGKILL。後端關閉連線、
-# llama-server 與 BreezyVoice（CosyVoice 伺服器）最多約 15 秒；SIGKILL 會略過其 atexit 清理。
+# llama-server、BreezyVoice（CosyVoice 伺服器）與 Fun-ASR-Nano 最多約 15 秒；SIGKILL 會略過其 atexit 清理。
 NOVA_STOP_GRACE_SECONDS="${NOVA_STOP_GRACE_SECONDS:-20}"
 if [[ ! "$NOVA_STOP_GRACE_SECONDS" =~ ^[0-9]+$ ]]; then
     echo "NOVA_STOP_GRACE_SECONDS 必須為非負整數秒數" >&2
@@ -138,20 +138,27 @@ nova_clear_port() {
     echo "✓ 埠 $port 已清理"
 }
 
-# BreezyVoice 的 CosyVoice 伺服器以獨立 session 啟動（src/tts/cosyvoice_runtime.py），後端被強制
-# 終止時會成孤兒繼續占用 GPU。停止本專案殘留的 CosyVoice 伺服器。
-nova_stop_cosyvoice() {
-    local script="$PROJECT_ROOT/scripts/cosyvoice_fastapi_server.py" proc
+# 後端自行啟動的模型服務以獨立 session 執行：BreezyVoice 的 CosyVoice 伺服器
+# （src/tts/cosyvoice_runtime.py）與 Fun-ASR-Nano 辨識服務（src/asr/fun_asr_nano_service.py）。
+# 後端被強制終止時它們會成孤兒繼續占用 GPU；停止本專案殘留的這些服務。
+nova_stop_model_servers() {
+    local proc script
     local -a args pids=()
+    local -a scripts=(
+        "$PROJECT_ROOT/scripts/cosyvoice_fastapi_server.py"
+        "$PROJECT_ROOT/scripts/fun_asr_nano_server.py"
+    )
     for proc in /proc/[0-9]*; do
         { mapfile -t -d '' args < "$proc/cmdline"; } 2>/dev/null || continue
         # 只比對「直譯器 腳本路徑 ...」，不誤殺正在檢視該檔的編輯器等程式。
-        [ "${args[1]:-}" = "$script" ] && pids+=("${proc#/proc/}")
+        for script in "${scripts[@]}"; do
+            [ "${args[1]:-}" = "$script" ] && pids+=("${proc#/proc/}")
+        done
     done
     [ "${#pids[@]}" -gt 0 ] || return 0
-    echo "⚠ 停止殘留的 BreezyVoice／CosyVoice 伺服器（PID ${pids[*]}）"
+    echo "⚠ 停止殘留的模型服務（BreezyVoice／Fun-ASR-Nano，PID ${pids[*]}）"
     if ! nova_stop_pids "${pids[@]}"; then
-        echo "❌ BreezyVoice／CosyVoice 伺服器（PID ${pids[*]}）仍在執行，請手動終止以釋放 GPU" >&2
+        echo "❌ 模型服務（PID ${pids[*]}）仍在執行，請手動終止以釋放 GPU" >&2
         return 1
     fi
 }

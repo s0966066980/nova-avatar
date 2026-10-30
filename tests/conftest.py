@@ -99,7 +99,6 @@ SLOW_TESTS = frozenset(
         "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_keeps_only_the_next_fragment_in_flight",
         "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request",
         "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio",
-        "tests/test_funasr.py::FunASRLocalModelTests::test_model_load_disables_network_update_check",
         "tests/test_media_fencing.py::MuseTalkEnvelopePropagationTests::test_batch_cancelled_during_gpu_inference_cannot_publish_results",
         "tests/test_reply_streaming.py::BaselineReplayHarnessTests::test_fake_replay_is_reproducible_content_free_and_judges_slos",
     }

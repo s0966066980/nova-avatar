@@ -78,6 +78,7 @@ def launcher(tmp_path):
     _write_fake_server(project / "src/server/app.py")
     _write_fake_server(project / "web/node_modules/.bin/vite")
     _write_fake_server(project / "scripts/cosyvoice_fastapi_server.py")
+    _write_fake_server(project / "scripts/fun_asr_nano_server.py")
     (project / "config/config.yaml").write_text("app:\n  ssl: false\n")
     (project / "config/ragflow.env").write_text("NOVA_RAGFLOW_API_KEY=test-private-key\n")
     (project / "scripts/ragflow_prepare.py").write_text("pass\n")
@@ -503,13 +504,14 @@ def test_stale_backend_ignoring_sigterm_is_killed_after_the_shared_grace(launche
     assert time.monotonic() - started < 15
 
 
-def test_start_all_stops_stale_cosyvoice_of_this_checkout_only(launcher, spawn, tmp_path):
+@pytest.mark.parametrize("script", ["cosyvoice_fastapi_server.py", "fun_asr_nano_server.py"])
+def test_start_all_stops_stale_model_servers_of_this_checkout_only(launcher, spawn, tmp_path, script):
     _, run = launcher
     project = run.project
-    ours = spawn([sys.executable, str(project / "scripts/cosyvoice_fastapi_server.py")], cwd=project)
+    ours = spawn([sys.executable, str(project / "scripts" / script)], cwd=project)
     other = tmp_path / "other-checkout"
-    _write_fake_server(other / "scripts/cosyvoice_fastapi_server.py")
-    theirs = spawn([sys.executable, str(other / "scripts/cosyvoice_fastapi_server.py")], cwd=other)
+    _write_fake_server(other / "scripts" / script)
+    theirs = spawn([sys.executable, str(other / "scripts" / script)], cwd=other)
     result, _ = run(NOVA_START_RAGFLOW="0")
     assert result.returncode == 0, result.stdout + result.stderr
     assert _wait_for(lambda: not _alive(ours.pid), timeout=2)

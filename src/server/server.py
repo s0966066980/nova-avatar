@@ -20,6 +20,7 @@ from src.server.state import state
 from src.server import routes
 from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
+from src.asr.fun_asr_nano_service import shutdown_fun_asr_server
 from src.scene.service import scene_service
 from src.profiles.coordinator import initialize_roles
 from src.ragflow.client import close_shared_session as close_ragflow_session
@@ -91,6 +92,7 @@ async def on_shutdown(app):
     await asyncio.to_thread(shutdown_edge_tts)
     shutdown_llama_server()
     shutdown_cosyvoice_server()
+    shutdown_fun_asr_server()
     scene_service.close()
 
 
@@ -268,6 +270,7 @@ def _force_exit(code: int) -> None:
     try:
         shutdown_llama_server()
         shutdown_cosyvoice_server()
+        shutdown_fun_asr_server()
     finally:
         os._exit(code)
 

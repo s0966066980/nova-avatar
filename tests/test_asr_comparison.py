@@ -10,6 +10,7 @@ from scripts.compare_asr import (
     build_report,
     error_counts,
     measure_engine,
+    parse_args,
     recognition_tokens,
     utterance_audio,
 )
@@ -122,7 +123,7 @@ class BuildReportTests(unittest.TestCase):
         ]
 
         report = build_report(samples, engines={"whisper": {"model": "small"},
-                                                "funasr": {"model": "paraformer-zh"}},
+                                                "funasr": {"model": "Fun-ASR-Nano-2512"}},
                               environment={"device": "cuda"})
 
         zh = report["engines"]["whisper"]["languages"]["zh-TW"]
@@ -134,10 +135,10 @@ class BuildReportTests(unittest.TestCase):
         self.assertEqual(report["engines"]["whisper"]["languages"]["en-US"]["metric"], "WER")
         self.assertEqual(report["engines"]["whisper"]["all"]["latency_seconds"]["p50"], 0.25)
         self.assertEqual(report["engines"]["whisper"]["settings"], {"model": "small"})
-        # English sessions require Whisper (conversations.check_language_support).
+        # Both engines serve English sessions (conversations.check_language_support).
         self.assertTrue(report["engines"]["whisper"]["languages"]["en-US"]["supported_in_app"])
-        self.assertFalse(report["engines"]["funasr"]["languages"]["en-US"]["supported_in_app"])
-        self.assertEqual(report["engines"]["funasr"]["all"]["samples"], 1)
+        self.assertTrue(report["engines"]["funasr"]["languages"]["en-US"]["supported_in_app"])
+        self.assertEqual(report["engines"]["funasr"]["all"]["samples"], 2)
         self.assertEqual(report["environment"], {"device": "cuda"})
         self.assertEqual(len(report["samples"]), 6)
         self.assertEqual(zh["language_accuracy"], 1.0)
@@ -156,6 +157,12 @@ class BuildReportTests(unittest.TestCase):
         self.assertEqual(whisper["languages"]["en-US"]["language_accuracy"], 0.5)
         self.assertEqual(whisper["languages"]["zh-TW"]["language_accuracy"], 1.0)
         self.assertAlmostEqual(whisper["all"]["language_accuracy"], 2 / 3)
+
+
+def test_funasr_compares_fun_asr_nano_by_default():
+    args = parse_args([])
+    assert args.engines == ["whisper", "funasr"]
+    assert args.funasr_model == "Fun-ASR-Nano-2512"
 
 
 if __name__ == "__main__":
