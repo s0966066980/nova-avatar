@@ -146,6 +146,19 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - Tested Ubuntu package copyright/license notices and upstream license texts:
   [`third_party/licenses/tesseract/`](third_party/licenses/tesseract/).
 
+## Console fonts
+
+- Plus Jakarta Sans (Tokotype) and JetBrains Mono (JetBrains), bundled into the
+  console build through `@fontsource/plus-jakarta-sans@5.3.0` and
+  `@fontsource/jetbrains-mono@5.3.0`.
+- License: SIL Open Font License 1.1 (OFL-1.1); the packaging is MIT. The OFL
+  text ships in each package's `LICENSE` file under `web/node_modules/` and must
+  be kept with any redistributed font files.
+- Sources: <https://github.com/tokotype/PlusJakartaSans>,
+  <https://github.com/JetBrains/JetBrainsMono>,
+  <https://github.com/fontsource/font-files>.
+- Chinese text uses the system's installed Noto Sans CJK TC; it is not bundled.
+
 ## Gemma 4 language model
 
 - Role: main local LLM (`gemma-4-E2B_q4_0-it.gguf`) and its vision projector
