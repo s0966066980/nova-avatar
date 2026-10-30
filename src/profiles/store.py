@@ -22,9 +22,10 @@ from src.llm.endpoints import (EndpointError, active_endpoint_name, apply_endpoi
 from src.llm.rules import rules_from_config, validate_rules
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
+from src.tts.cosyvoice_runtime import server_identity
 from src.tts.voice_library import (
     REFERENCE_AUDIO_ENGINES, TTS_ENGINES, VoiceLibraryError, check_model, check_reference, check_tts_server,
-    migrate_tts_values, voice_transcript,
+    drop_stale_transcript, migrate_tts_values, voice_transcript,
 )
 from src.utils.logging import logger
 
@@ -179,6 +180,7 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
             tts[item.name] = _text(current, item.name, 4000)
     if tts["type"] not in TTS_ENGINES:
         raise ProfileError(f"聲音設定：不支援的 TTS 引擎「{tts['type'][:40]}」")
+    drop_stale_transcript(tts, f"角色設定檔 {pid}")
     try:
         tts["ref_file"] = check_reference(tts["type"], tts["ref_file"])
         tts["tts_server"] = check_tts_server(tts["tts_server"])
@@ -214,7 +216,7 @@ def _require_reference(tts: dict, name: str) -> None:
     """BreezyVoice clones a library recording and needs what it says; none is chosen for the admin."""
     if not tts["ref_file"]:
         raise ProfileError(f"角色「{name}」使用 BreezyVoice，請在聲音與工具選擇有逐字稿的參考音檔")
-    if not (tts["ref_text"] or "").strip() and not voice_transcript(tts["ref_file"]):
+    if not voice_transcript(tts["ref_file"]):
         raise ProfileError(f"角色「{name}」的參考音檔沒有逐字稿，請改選有逐字稿的參考音檔或重新上傳並填寫逐字稿")
 
 
@@ -402,6 +404,11 @@ def compatible_pair(library: dict, base=None) -> tuple[dict, dict]:
         raise ProfileError("即時組合必須共用同一 LLM 服務及模型", 409)
     if main["tts"]["type"] != specialist["tts"]["type"]:
         raise ProfileError("即時組合需共用語音合成引擎，可分別設定聲線", 409)
+    # Only the main role's BreezyVoice server is started; both roles speak through it.
+    if main["tts"]["type"] == "breezyvoice" and len({
+            server_identity(p["tts"]["tts_server"], p["tts"]["model"]) for p in (main, specialist)}) > 1:
+        raise ProfileError("即時組合的兩位數位人共用一個 BreezyVoice 伺服器，請在「聲音與工具」的"
+                           "「其他 BreezyVoice 設定」選擇同一個 BreezyVoice 模型與服務網址；參考音檔可以不同", 409)
     if base is not None and main["tts"]["type"] != base.tts.type:
         raise ProfileError("語音引擎改變後請先在未連線時載入該引擎", 409)
     return main, specialist

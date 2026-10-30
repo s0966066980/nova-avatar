@@ -771,19 +771,20 @@
             <div class="setting-form-row">
               <div class="field-label-group">
                 <span class="field-main-label">最小靜音判定時間 (ms)</span>
-                <span class="field-sub-hint">停頓超過此毫秒數即視為發話完畢</span>
+                <span class="field-sub-hint">停頓超過此毫秒數即視為發話完畢；以 32 ms 為一格，192 ms＝6 格</span>
               </div>
               <div class="field-control-area">
                 <div class="std-slider-combo">
+                  <!-- Silero VAD counts silence in 32 ms frames, so the steps are whole frames. -->
                   <input
                     type="range"
                     class="std-range"
-                    min="200"
-                    max="1500"
-                    step="50"
-                    v-model.number="vadDraft.min_silence_duration_ms"
+                    min="128"
+                    max="1504"
+                    step="32"
+                    v-model.number="vadDraft.min_silence_ms"
                   >
-                  <span class="std-val-pill">{{ vadDraft.min_silence_duration_ms }}ms</span>
+                  <span class="std-val-pill">{{ vadDraft.min_silence_ms }}ms</span>
                 </div>
               </div>
             </div>

@@ -298,7 +298,8 @@ def test_engine_uses_library_audio_and_transcript_for_zero_shot(voices, tmp_path
     assert tts._prompt_text() == "參考逐字稿。"
     assert tts._tts_request("你好。", tts._prompt_text()) == (
         "inference_zero_shot", {"tts_text": "你好。", "prompt_text": "參考逐字稿。"})
-    assert engine(ref_file=voice, ref_text="設定的逐字稿")._prompt_text() == "設定的逐字稿"
+    # A stale profile-level override never replaces the library transcript.
+    assert engine(ref_file=voice, ref_text="設定的逐字稿")._prompt_text() == "參考逐字稿。"
 
 
 def test_engine_refuses_without_library_voice_or_transcript(voices, tmp_path):
@@ -307,6 +308,8 @@ def test_engine_refuses_without_library_voice_or_transcript(voices, tmp_path):
     voice = add_voice(tmp_path)
     with pytest.raises(ValueError, match="逐字稿"):
         engine(ref_file=voice)._prompt_text()
+    with pytest.raises(ValueError, match="逐字稿"):
+        engine(ref_file=voice, ref_text="覆寫的逐字稿")._prompt_text()
 
 
 def test_engine_resamples_breezyvoice_22050_hz_audio_per_fragment(voices, tmp_path):

@@ -1256,11 +1256,11 @@ STT_ENGINE_META = {
     "funasr": {
         "label": "Fun-ASR-Nano-2512",
         # Runs in its own venv, so availability is the service's, not a main-venv module.
-        "service": "fun-asr-nano",
+        "service": fun_asr_nano_service.FAMILY,
         "install": "bash scripts/setup-fun-asr-nano.sh",
         "description": "通義實驗室 Fun-ASR-Nano-2512（Apache-2.0），中文、英文與中英混說；獨立本機服務，套用時自動啟動",
         "setup": "bash scripts/setup-fun-asr-nano.sh 建立 venv，scripts/fun_asr_nano_weights.py 下載權重",
-        "output_scripts": ("traditional-tw", "simplified"),
+        "output_scripts": fun_asr_nano_service.OUTPUT_SCRIPTS,
         "local_model": "funasr",
     },
 }
@@ -1269,7 +1269,7 @@ STT_OUTPUT_SCRIPT_LABELS = {
     "traditional-tw": "繁體中文（台灣正體）",
     "simplified": "簡體中文",
 }
-STT_OUTPUT_SCRIPTS = tuple(STT_OUTPUT_SCRIPT_LABELS)
+STT_OUTPUT_SCRIPTS = fun_asr_nano_service.OUTPUT_SCRIPTS
 
 TTS_ENGINE_META = {
     "edgetts": {
@@ -1307,7 +1307,7 @@ EDGE_TTS_ZH_TW_VOICE_IDS = frozenset(
 
 
 def _engine_unavailable_reason(item: Dict[str, str]) -> str:
-    if item.get("service") == "fun-asr-nano":
+    if item.get("service") == fun_asr_nano_service.FAMILY:
         return fun_asr_nano_service.unavailable_reason()
     return "" if _module_installed(item["module"]) else f"缺少依賴：{item['module']}"
 
@@ -1414,7 +1414,8 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
     if unavailable:
         raise SettingsError(
             f"{STT_ENGINE_META[engine]['label']} 無法使用：{unavailable}",
-            extra={"missing_package": STT_ENGINE_META[engine].get("module", "")},
+            # Fun-ASR-Nano has no main-venv module: name its missing venv or weights.
+            extra={"missing_package": STT_ENGINE_META[engine].get("module") or unavailable},
         )
     if engine == "funasr":
         try:
@@ -1521,7 +1522,6 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
             extra={"missing_package": meta["module"]},
         )
     ref_file = sources["ref_file"]
-    ref_text = str(params.get("ref_text", config.tts.ref_text) or "").strip()
     tts_server = sources["tts_server"]
     model = sources["model"]
     if engine == "edgetts":
@@ -1535,8 +1535,8 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         # BreezyVoice only clones from a reference recording and its transcript.
         if not ref_file:
             raise SettingsError("BreezyVoice 需要從音訊庫選擇參考音訊（自錄或有書面授權的台灣華語錄音）")
-        if not ref_text and not voice_transcript(ref_file):
-            raise SettingsError("BreezyVoice 需要參考音訊的逐字稿：上傳時填寫，或填入「參考語音逐字稿」")
+        if not voice_transcript(ref_file):
+            raise SettingsError("BreezyVoice 需要附逐字稿的參考音訊，請在音訊庫重新上傳並填寫逐字稿")
         host, port = parse_server_url(tts_server)
         try:
             tts_server = ensure_server(model_dir=model, host=host, port=port)
@@ -1547,14 +1547,13 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         config,
         engine=engine,
         ref_file=ref_file,
-        ref_text=ref_text,
         tts_server=tts_server,
         model=model,
     )
 
     config.tts.type = engine
     config.tts.ref_file = ref_file
-    config.tts.ref_text = ref_text or None
+    config.tts.ref_text = None
     config.tts.tts_server = tts_server
     config.tts.model = model
     persist_runtime_overrides(config)
@@ -1571,15 +1570,15 @@ def _preview_tts(
     *,
     engine: str,
     ref_file: str,
-    ref_text: str,
     tts_server: str,
     model: str,
+    text: str = "語音設定完成",
 ) -> str:
     """Run the real engine against a bounded phrase and return a WAV data URI."""
     pending = deepcopy(config)
     pending.tts.type = engine
     pending.tts.ref_file = ref_file
-    pending.tts.ref_text = ref_text or None
+    pending.tts.ref_text = None
     pending.tts.tts_server = tts_server
     pending.tts.model = model
 
@@ -1597,7 +1596,7 @@ def _preview_tts(
     sink = PreviewSink()
     try:
         candidate = create_tts_engine(engine, pending, sink)
-        candidate.txt_to_audio(("語音設定完成", {"preview": True}))
+        candidate.txt_to_audio((text, {"preview": True}))
     except Exception as exc:
         raise SettingsError(f"TTS 連線或試聽失敗: {exc}", status=502) from exc
     if not sink.frames:
@@ -1608,3 +1607,61 @@ def _preview_tts(
 
     sf.write(wav, audio, 16000, format="WAV", subtype="PCM_16")
     return "data:audio/wav;base64," + base64.b64encode(wav.getvalue()).decode("ascii")
+
+
+# Short enough to fit the 5 s preview; what a visitor would hear first.
+PROFILE_PREVIEW_TEXT = "您好，歡迎光臨，很高興為您服務。"
+
+
+def breezyvoice_server_ready(config, params: Dict[str, Any]) -> bool:
+    """Whether a profile's BreezyVoice server is already up, so a preview need not start it."""
+    from src.tts import cosyvoice_runtime
+
+    sources = validate_tts_sources(config, {**params, "type": "breezyvoice"})
+    return cosyvoice_runtime.server_ready(sources["tts_server"], sources["model"])
+
+
+def preview_profile_voice(config, params: Dict[str, Any], *, session_count: int) -> str:
+    """Synthesize PROFILE_PREVIEW_TEXT with a profile's (unsaved) voice; a WAV data URI.
+
+    Only the voice fields are read, as server-managed IDs. BreezyVoice starts
+    its server when needed, but never while a conversation is connected and
+    never in place of the server the applied default voice is using.
+    """
+    from src.tts import cosyvoice_runtime
+    from src.tts.voice_library import voice_transcript
+
+    sources = validate_tts_sources(config, params)
+    engine, ref_file = sources["type"], sources["ref_file"]
+    tts_server, model = sources["tts_server"], sources["model"]
+    meta = TTS_ENGINE_META[engine]
+    if not _engine_available(meta):
+        raise SettingsError(f"{meta['label']} 依賴未安裝", extra={"missing_package": meta["module"]})
+    if engine == "edgetts":
+        if not ref_file:
+            raise SettingsError("請先填寫 Edge TTS 聲線")
+        tts_server, model = "", ""
+    else:
+        if not ref_file:
+            raise SettingsError("請先選擇有逐字稿的參考音檔")
+        if not voice_transcript(ref_file):
+            raise SettingsError("這段參考音檔沒有逐字稿，請改選或重新上傳並填寫逐字稿")
+        wanted = cosyvoice_runtime.server_identity(tts_server, model)
+        default = config.tts
+        if default.type == "breezyvoice" and wanted != cosyvoice_runtime.server_identity(
+                default.tts_server, default.model):
+            raise SettingsError("試聽這個 BreezyVoice 模型或服務網址會停止預設聲音正在使用的伺服器；"
+                                "請先套用此設定檔，或改用相同的模型與服務網址試聽", status=409)
+        host, port = wanted[:2]
+        if cosyvoice_runtime.server_ready(tts_server, model):
+            tts_server = cosyvoice_runtime.server_url(host, port)
+        elif session_count:
+            raise SettingsError("對話連線中，試聽不會啟動 BreezyVoice 伺服器；請在所有頁面斷線後再試聽",
+                                status=409, extra={"sessions": session_count, "need_disconnect": True})
+        else:
+            try:
+                tts_server = cosyvoice_runtime.ensure_server(model_dir=model, host=host, port=port)
+            except (FileNotFoundError, RuntimeError, TimeoutError) as exc:
+                raise SettingsError(f"BreezyVoice 啟動失敗：{exc}", status=503) from exc
+    return _preview_tts(config, engine=engine, ref_file=ref_file, tts_server=tts_server,
+                        model=model, text=PROFILE_PREVIEW_TEXT)

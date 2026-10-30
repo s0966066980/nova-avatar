@@ -630,3 +630,42 @@ async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_liv
         start.assert_not_called()
     finally:
         await console.close()
+
+
+@pytest.mark.parametrize('change', [{'model': 'tts/BreezyVoice-other'},
+                                    {'tts_server': 'http://127.0.0.1:50002'}])
+@async_test
+async def test_breezyvoice_server_change_waits_until_conversations_disconnect(field, monkeypatch, change):
+    field.state.config.tts.type = 'breezyvoice'
+    target = deepcopy(field.library)
+    target['enabled'] = False
+    main = next(p for p in target['profiles'] if p['id'] == target['pair']['main'])
+    main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
+                       tts_server='http://127.0.0.1:50001')
+    monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+    start = Mock(return_value='http://127.0.0.1:50001')
+    monkeypatch.setattr('src.tts.cosyvoice_runtime.ensure_server', start)
+    await field.apply(deepcopy(target))
+    start.reset_mock()
+
+    console, _ = connect(field, 7, 'console')
+    try:
+        changed = deepcopy(target)
+        changed['revision'] += 1
+        next(p for p in changed['profiles'] if p['id'] == changed['pair']['main'])['tts'].update(change)
+        result = await field.apply(changed)
+        assert result['pending'], '連線中的 BreezyVoice 伺服器不可被換掉，也不可未啟動就發布為預設'
+        start.assert_not_called()
+        assert field.state.config.tts.model == 'tts/BreezyVoice-tw'
+        assert field.state.config.tts.tts_server == 'http://127.0.0.1:50001'
+    finally:
+        await console.close()
+    field.state.avatar_streams.pop(7)
+    field.state.voice_sessions.pop(7)
+    field.unregister(7)
+    await field.apply_pending()
+    assert not field.snapshot()['pending']
+    start.assert_called_once()
+    applied = {'model': 'tts/BreezyVoice-tw', 'tts_server': 'http://127.0.0.1:50001', **change}
+    assert field.state.config.tts.model == applied['model']
+    assert field.state.config.tts.tts_server == applied['tts_server']

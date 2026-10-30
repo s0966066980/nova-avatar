@@ -62,6 +62,7 @@ AREA_BY_FILE = {
     "test_optional_runtime_extras.py": "runtime",
     "test_pinned_resources.py": "runtime",
     "test_playback_commit.py": "conversation",
+    "test_profile_voice_preview.py": "speech",
     "test_ragflow_integration.py": "ragflow",
     "test_ragflow_llamacpp_embedding.py": "ragflow",
     "test_reply_streaming.py": "conversation",

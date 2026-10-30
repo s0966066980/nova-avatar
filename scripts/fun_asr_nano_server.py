@@ -36,6 +36,8 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL_DIR = PROJECT_ROOT / "models" / "funasr" / "Fun-ASR-Nano-2512"
+# DEFAULT_PORT, FAMILY and OUTPUT_SCRIPTS mirror src/asr/fun_asr_nano_service.py
+# (this venv cannot import src); tests/test_funasr.py keeps them in agreement.
 DEFAULT_PORT = 50010
 FAMILY = "fun-asr-nano"
 SAMPLE_RATE = 16000

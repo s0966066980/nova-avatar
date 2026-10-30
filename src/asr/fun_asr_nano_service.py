@@ -22,8 +22,14 @@ from typing import Optional
 from src.utils.logging import logger
 from src.utils.paths import get_project_root
 
+# DEFAULT_PORT, FAMILY and OUTPUT_SCRIPTS are also defined in
+# scripts/fun_asr_nano_server.py, which runs in its own venv and cannot import
+# src; tests/test_funasr.py keeps the two in agreement.
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 50010
+FAMILY = "fun-asr-nano"
+# Output scripts the service accepts; OpenCC s2twp gives Taiwan Traditional.
+OUTPUT_SCRIPTS = ("traditional-tw", "simplified")
 # Settings name a model by ID; the folder is models/funasr/<ID>.
 MODEL_IDS = ("Fun-ASR-Nano-2512",)
 DEFAULT_MODEL = MODEL_IDS[0]
@@ -45,10 +51,11 @@ DEFAULT_PYTHON = Path.home() / ".venvs" / "fun-asr-nano" / "bin" / "python"
 SETUP_HINT = "執行 bash scripts/setup-fun-asr-nano.sh 建立 Fun-ASR-Nano venv"
 WEIGHTS_HINT = "執行 uv run --no-sync python scripts/fun_asr_nano_weights.py 下載權重"
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-FAMILY = "fun-asr-nano"
 
 _lock = threading.RLock()
 _server_proc: Optional[subprocess.Popen] = None
+# Set by stop_server() so a start holding _lock gives up instead of loading on.
+_start_cancelled = threading.Event()
 
 
 def resolve_model(name: str) -> str:
@@ -91,7 +98,8 @@ def unavailable_reason(name: str = DEFAULT_MODEL) -> str:
 
 
 def server_url(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> str:
-    return f"http://{host}:{int(port)}"
+    netloc = f"[{host}]" if ":" in host else host
+    return f"http://{netloc}:{int(port)}"
 
 
 def _health_payload(url: str) -> Optional[dict]:
@@ -165,10 +173,21 @@ def shutdown_fun_asr_server() -> None:
 
 
 def stop_server(port: int = DEFAULT_PORT) -> None:
-    """Free the GPU when another engine is selected, including a service left by an earlier backend."""
+    """Free the GPU when another engine is selected, including a service left by an earlier backend.
+
+    A start in progress is cancelled rather than waited out (it may take minutes).
+    """
+    _start_cancelled.set()
     with _lock:
+        _start_cancelled.clear()
         shutdown_fun_asr_server()
         _stop_stale_listener(port)
+
+
+def _abort_if_cancelled() -> None:
+    if _start_cancelled.is_set():
+        shutdown_fun_asr_server()
+        raise RuntimeError("Fun-ASR-Nano 啟動已取消：已改選其他語音辨識引擎")
 
 
 def ensure_server(
@@ -203,6 +222,7 @@ def ensure_server(
         _server_proc = proc
         deadline = time.time() + max(15.0, float(timeout_seconds))
         while time.time() < deadline:
+            _abort_if_cancelled()
             if proc.poll() is not None:
                 _server_proc = None
                 raise RuntimeError(f"Fun-ASR-Nano 啟動失敗，exit={proc.returncode}。請查看 {LOG_PATH}")

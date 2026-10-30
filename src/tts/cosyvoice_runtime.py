@@ -13,6 +13,7 @@ import os
 import re
 import signal
 import subprocess
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -37,6 +38,7 @@ PROMPT_CACHE_SUFFIX = ".cosy24k.v2.wav"
 
 _server_proc: Optional[subprocess.Popen] = None
 _loaded_model = ""
+_start_lock = threading.Lock()
 
 
 def default_python() -> Path:
@@ -108,7 +110,8 @@ def resolve_model_dir(model: str = "") -> Path:
 
 
 def server_url(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> str:
-    return f"http://{host}:{int(port)}"
+    netloc = f"[{host}]" if ":" in host else host
+    return f"http://{netloc}:{int(port)}"
 
 
 def parse_server_url(url: str) -> tuple[str, int]:
@@ -116,6 +119,21 @@ def parse_server_url(url: str) -> tuple[str, int]:
     host = parsed.hostname or DEFAULT_HOST
     port = parsed.port or DEFAULT_PORT
     return host, int(port)
+
+
+def server_identity(tts_server: str = "", model: str = "") -> tuple[str, int, str]:
+    """The BreezyVoice server a voice needs: host, port and model ID, defaults filled in."""
+    host, port = parse_server_url(tts_server)
+    return host, port, model or DEFAULT_BREEZYVOICE_MODEL_ID
+
+
+def server_ready(tts_server: str = "", model: str = "") -> bool:
+    """Whether a BreezyVoice server with ``model`` already answers at ``tts_server``."""
+    try:
+        resolved = resolve_model_dir(model)
+    except FileNotFoundError:
+        return False
+    return _health_ok(server_url(*parse_server_url(tts_server)), expected_model=str(resolved))
 
 
 def prepare_prompt_wav(
@@ -322,7 +340,14 @@ def ensure_server(
     """Start the BreezyVoice server if needed and return the HTTP base URL.
 
     ``model_dir`` is a ``models/`` catalog ID, or empty for ``models/BreezyVoice``.
+    Callers (profile apply, console preview) are serialized: one launches, the
+    next finds it healthy.
     """
+    with _start_lock:
+        return _ensure_server(model_dir=model_dir, host=host, port=port, timeout_seconds=timeout_seconds)
+
+
+def _ensure_server(*, model_dir: str, host: str, port: int, timeout_seconds: float) -> str:
     global _server_proc, _loaded_model
     resolved = resolve_model_dir(model_dir)
     url = server_url(host, port)

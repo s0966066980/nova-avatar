@@ -125,6 +125,21 @@ def test_different_model_can_be_saved_but_not_activated_as_live_pair(profiles):
         compatible_pair(saved, config)
 
 
+@pytest.mark.parametrize("field,value", [("model", "tts/BreezyVoice-other"),
+                                         ("tts_server", "http://127.0.0.1:50001")])
+def test_live_pair_shares_one_breezyvoice_model_and_server(profiles, field, value):
+    _, config, data = profiles
+    config.tts.type = "breezyvoice"
+    for index, profile in enumerate(data["profiles"]):
+        # Each role may clone its own recording; the server and model are shared.
+        profile["tts"].update(type="breezyvoice", ref_file=f"{index:016x}", model="", tts_server="")
+    data["profiles"][1]["tts"]["tts_server"] = "http://127.0.0.1:50000"  # the default, spelled out
+    assert compatible_pair(data, config)
+    data["profiles"][1]["tts"][field] = value
+    with pytest.raises(ProfileError, match="同一個 BreezyVoice 模型與服務網址"):
+        compatible_pair(data, config)
+
+
 def test_return_resumes_only_that_roles_played_history_and_reset_clears_both(profiles, monkeypatch):
     _, config, data = profiles
     monkeypatch.setattr(llm_service, "_session_llm_instances", {})

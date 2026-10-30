@@ -154,6 +154,8 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     ("POST", "/api/speech/voices"): ADMIN,
     ("DELETE", "/api/speech/voices/{voice_id}"): ADMIN,
     ("GET", "/api/speech/voices/{voice_id}/audio"): ADMIN,
+    ("GET", "/api/speech/breezyvoice/status"): ADMIN,
+    ("POST", "/api/speech/preview"): ADMIN,
     ("GET", "/api/llm/models"): ADMIN,
     ("POST", "/api/llm/model"): ADMIN,
     ("PUT", "/api/llm/behavior"): ADMIN,

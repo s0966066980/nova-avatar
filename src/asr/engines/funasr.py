@@ -24,7 +24,6 @@ from src.asr.base import BaseASR
 from src.utils.logging import logger
 
 SAMPLE_RATE = 16000
-FUNASR_OUTPUT_SCRIPTS = frozenset({"traditional-tw", "simplified"})
 FUNASR_DEVICES = frozenset({"auto", "cpu", "cuda"})
 FUNASR_LANGUAGES = frozenset({"auto", "zh", "en"})
 
@@ -69,7 +68,7 @@ class FunASR(BaseASR):
         asr = getattr(config, "asr", None)
         self.model_name = service.resolve_model(model_name)
         self.output_script = str(getattr(asr, "output_script", "traditional-tw") or "traditional-tw")
-        if self.output_script not in FUNASR_OUTPUT_SCRIPTS:
+        if self.output_script not in service.OUTPUT_SCRIPTS:
             raise ValueError(f"不支援的 FunASR 輸出文字: {self.output_script}")
         self.device = str(getattr(asr, "device", "auto") or "auto").lower()
         if self.device not in FUNASR_DEVICES:

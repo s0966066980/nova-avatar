@@ -140,3 +140,85 @@ test('設定檔編輯器：BreezyVoice 選單只列有逐字稿的音檔，切�
   assert.match(textContent(view.root), /請選擇有逐字稿的參考音檔/)
   assert.ok(button(view.root, '上傳到音訊庫'), '編輯器內可直接上傳參考音檔')
 })
+
+async function loadEditor(stub) {
+  const Manager = await loadManager(stub)
+  return loadComponent(new URL('../src/components/AvatarProfileEditor.vue', import.meta.url), {
+    '../composables/useRuntimeSettings': { useRuntimeSettings: () => stub },
+    './RagFlowSettings.vue': { default: { setup: () => () => h('div') } },
+    './VoiceLibraryManager.vue': { default: Manager }
+  })
+}
+
+function editorProfile(tts) {
+  return reactive({ id: 'main', name: '接待員', engine: 'musetalk', avatar_id: 'a',
+    assistant_profile: { assistant_name: '', system_prompt: '', restriction_prompt: '', forbidden_self_names: [], output_locale: 'zh-TW', enforce_output_locale: true }, llm: { endpoint: '', model: '' },
+    reply_rules: {}, rag: {}, tools: { weather: false },
+    tts: { ref_text: null, voice_en_us: 'en-US-JennyNeural', tts_server: '', model: '', ...tts } })
+}
+
+function previewStub(voices, { ready = true } = {}) {
+  const { calls, stub } = runtimeStub(voices)
+  const pending = []
+  stub.breezyVoiceServerReady = async tts => { calls.push(['status', { ...tts }]); return ready }
+  stub.previewProfileVoice = tts => {
+    calls.push(['preview', { ...tts }])
+    return new Promise((resolve, reject) => pending.push({ resolve, reject }))
+  }
+  return { calls, stub, pending }
+}
+
+test('設定檔編輯器試聽：以目前未儲存的 BreezyVoice 設定合成，伺服器未就緒時顯示啟動中', async t => {
+  const { calls, stub, pending } = previewStub([devVoice, ownVoice], { ready: false })
+  const Editor = await loadEditor(stub)
+  const profile = editorProfile({ type: 'breezyvoice', ref_file: '' })
+  const view = mount(Editor, { modelValue: profile, initialSection: 'voice' })
+  t.after(() => view.unmount())
+  await settle()
+  const preview = () => button(view.root, '試聽此設定檔的聲音')
+  assert.equal(preview().props.disabled, true, '未選參考音檔不能試聽')
+  profile.tts.ref_file = ownVoice.id
+  profile.tts.model = 'BreezyVoice'
+  await settle()
+  assert.equal(preview().props.disabled, false)
+  preview().props.onClick()
+  await settle()
+  assert.deepEqual(calls.find(c => c[0] === 'status')[1], { ...profile.tts })
+  assert.match(textContent(view.root), /BreezyVoice 伺服器啟動中/)
+  assert.equal(preview().props.disabled, true, '試聽進行中不可重複送出')
+  const sent = calls.find(c => c[0] === 'preview')[1]
+  assert.equal(sent.type, 'breezyvoice')
+  assert.equal(sent.ref_file, ownVoice.id)
+  assert.equal(sent.model, 'BreezyVoice')
+  pending[0].resolve('data:audio/wav;base64,AAAA')
+  await settle()
+  const audio = all(view.root, n => n.type === 'audio')
+  assert.equal(audio.length, 1)
+  assert.equal(audio[0].props.src, 'data:audio/wav;base64,AAAA')
+  assert.ok(audio[0].props.autoplay !== undefined && audio[0].props.autoplay !== false, '合成完成後自動播放')
+  assert.doesNotMatch(textContent(view.root), /啟動中/)
+
+  // A different voice makes the old sample stale.
+  profile.tts.ref_file = devVoice.id
+  await settle()
+  assert.equal(all(view.root, n => n.type === 'audio').length, 0)
+})
+
+test('設定檔編輯器試聽：Edge 聲線不查 BreezyVoice，失敗時顯示伺服器原因', async t => {
+  const { calls, stub, pending } = previewStub([])
+  const Editor = await loadEditor(stub)
+  const profile = editorProfile({ type: 'edgetts', ref_file: 'zh-TW-YunJheNeural' })
+  const view = mount(Editor, { modelValue: profile, initialSection: 'voice' })
+  t.after(() => view.unmount())
+  await settle()
+  button(view.root, '試聽此設定檔的聲音').props.onClick()
+  await settle()
+  assert.equal(calls.some(c => c[0] === 'status'), false)
+  assert.match(textContent(view.root), /合成試聽句中/)
+  assert.equal(calls.find(c => c[0] === 'preview')[1].ref_file, 'zh-TW-YunJheNeural')
+  pending[0].reject(new Error('TTS 連線或試聽失敗: offline'))
+  await settle()
+  const alert = all(view.root, n => n.props.role === 'alert' && textContent(n).includes('offline'))
+  assert.equal(alert.length, 1)
+  assert.equal(button(view.root, '試聽此設定檔的聲音').props.disabled, false)
+})
