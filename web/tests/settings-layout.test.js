@@ -6,46 +6,16 @@
 // own grid cells without overlapping, and long blocks scroll inside
 // themselves instead of stretching the page.
 //
-// Needs a Chrome or Chromium binary: the installed Google Chrome by default,
-// or CHROME_PATH. Without one the test is skipped, except under CI.
+// Needs Chrome (see helpers/browserHarness.js); skipped without it except under CI.
 // SETTINGS_LAYOUT_SCREENSHOTS=<dir> also saves a screenshot per tab and size.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { createServer } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import { chromium } from 'playwright-core'
-import { isBackendPath, settingsApi } from './fixtures/settingsApi.js'
+import { openConsoleHarness, openSettingsState, settingsStates as states, stubBackend } from './helpers/browserHarness.js'
 
-const webRoot = fileURLToPath(new URL('..', import.meta.url))
 const screenshotDir = process.env.SETTINGS_LAYOUT_SCREENSHOTS
 const viewports = [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }]
-
-// Each state opens one tab, optionally a sub-view, and names its blocks.
-const states = [
-  { id: 'conversation', select: ['#catPanel-conversation select', '11'], blocks: '.conversation-panel' },
-  { id: 'roles', blocks: '.role-list, .role-editor-card' },
-  { id: 'roles', view: 'voice', open: ['聲音與工具'], blocks: '.role-list, .role-editor-card' },
-  { id: 'roles', view: 'handoff', open: ['角色組合、交接與轉場'], blocks: '.role-handoff > .role-card' },
-  { id: 'greeting', blocks: '.greeting-side, .greeting-main' },
-  { id: 'interaction', blocks: '.setting-card' },
-  { id: 'avatar', blocks: '.setting-card' },
-  { id: 'stage', blocks: '.setting-card, .stage-live-preview-card' },
-  { id: 'experience', blocks: '.setting-card' }
-]
-
-async function launchBrowser() {
-  const executablePath = process.env.CHROME_PATH
-  // Keep classic scrollbars: a 100vw box only overflows when they take space.
-  const options = { ignoreDefaultArgs: ['--hide-scrollbars'] }
-  try {
-    return await chromium.launch(executablePath ? { ...options, executablePath } : { ...options, channel: 'chrome' })
-  } catch (error) {
-    return { error }
-  }
-}
 
 // Runs in the page: measures the visible tab panel and returns every problem found.
 /* global document, getComputedStyle, innerWidth */
@@ -107,20 +77,9 @@ function inspectPanel(blockSelector) {
 }
 
 test('系統設定中心各分頁在 1920×1080 與 1280×720 不橫向捲動、區塊不重疊且在格內捲動', { timeout: 120_000 }, async t => {
-  const browser = await launchBrowser()
-  if (browser.error) {
-    if (process.env.CI) throw browser.error
-    t.skip(`no Chrome available (${browser.error.message.split('\n')[0]}); set CHROME_PATH to run`)
-    return
-  }
-  // No proxy: every backend path is answered by the stubs below.
-  const server = await createServer({
-    configFile: false, root: webRoot, plugins: [vue()], logLevel: 'error',
-    server: { host: '127.0.0.1', port: 0, hmr: false }
-  })
-  t.after(async () => { await browser.close(); await server.close() })
-  await server.listen()
-  const origin = server.resolvedUrls.local[0]
+  const harness = await openConsoleHarness(t)
+  if (!harness) return
+  const { browser, origin } = harness
   if (screenshotDir) mkdirSync(screenshotDir, { recursive: true })
 
   const failures = []
@@ -128,18 +87,11 @@ test('系統設定中心各分頁在 1920×1080 與 1280×720 不橫向捲動、
     const page = await browser.newPage({ viewport })
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
-    await page.route('**/*', route => {
-      const url = new URL(route.request().url())
-      if (!isBackendPath(url.pathname)) return route.continue()
-      return route.fulfill(settingsApi(url.pathname))
-    })
+    await stubBackend(page)
     await page.goto(origin)
     await page.click('#btnViewSettings')
     for (const state of states) {
-      await page.click(`#railTab-${state.id}`)
-      for (const label of state.open || []) await page.getByRole('button', { name: label, exact: true }).click()
-      if (state.select) await page.selectOption(...state.select)
-      await page.waitForTimeout(300)
+      await openSettingsState(page, state)
       const label = `${state.id}${state.view ? `-${state.view}` : ''} @ ${viewport.width}×${viewport.height}`
       const problems = await page.evaluate(inspectPanel, state.blocks)
       if (problems.length) failures.push(`${label}:\n  ${problems.slice(0, 8).join('\n  ')}`)

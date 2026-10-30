@@ -245,9 +245,9 @@ test('數位人內容由設定檔頁套用，其他頁不跨頁儲存角色草�
   assert.doesNotMatch(panel, /promises\.push\(applyLlmModel/)
 })
 
-test('主題選擇會將執行中的 dark 或 white 狀態對應至可見樣式', () => {
-  assert.match(panel, /const normalizeThemeValue = \(theme\)/)
-  assert.match(panel, /normalizeThemeValue\(props\.currentTheme\)/)
+test('主題選擇提供跟隨系統、淺色與深色，並同步目前生效的偏好', () => {
+  for (const id of ['system', 'light', 'dark']) assert.match(panel, new RegExp(`id: '${id}'`))
+  assert.match(panel, /normalizeThemePreference\(props\.themePreference\)/)
   assert.match(panel, /@click="selectTheme\(theme\.id\)"/)
 })
 

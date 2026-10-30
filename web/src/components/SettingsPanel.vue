@@ -37,25 +37,35 @@
           <span class="rail-item-badge" v-if="tab.badge">{{ tab.badge }}</span>
         </button>
       </nav>
+      <section class="rail-status" aria-labelledby="railStatusTitle">
+        <h2 id="railStatusTitle" class="rail-status-title">系統狀態</h2>
+        <ul class="rail-status-list" aria-live="polite">
+          <li v-for="row in systemStatus" :key="row.id" class="sys-row" :data-tone="row.tone" :title="`${row.name}：${row.text}`">
+            <i :class="[row.icon, { spin: row.tone === 'busy' && row.icon.includes('arrow-repeat') }]" aria-hidden="true"></i>
+            <div><b>{{ row.name }}</b><span>{{ row.text }}</span></div>
+          </li>
+        </ul>
+      </section>
     </aside>
 
     <!-- ★ 右側主設定空間：100% 滿板自適應，無任何 1100px 截斷！ -->
     <main class="settings-main-container">
       <div class="settings-content-scroll" ref="settingsContentRef">
 
-        <div v-if="loadingSettings" class="runtime-state-banner" role="status">
+        <div v-if="loadingSettings" class="runtime-state-banner status-banner" role="status">
           <i class="bi bi-arrow-repeat spin" aria-hidden="true"></i>
           <span>正在載入目前 Prompt、數位人與執行設定…</span>
         </div>
-        <div v-else-if="settingsError" class="runtime-state-banner error" role="alert">
-          <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+        <div v-else-if="settingsError" class="runtime-state-banner status-banner is-danger" role="alert">
+          <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
           <span>無法讀取目前設定：{{ settingsError }}</span>
           <button type="button" class="btn-retry" @click="loadRuntimePanel">重新載入</button>
         </div>
 
-        <p v-if="runtime.pending_settings?.items?.length" role="status" class="settings-error-banner">
-          待套用：{{ runtime.pending_settings.items.join('、') }}。設定已儲存，控制台與舞台皆斷線後才更新。
-          {{ runtime.pending_settings.error }}
+        <p v-if="runtime.pending_settings?.items?.length" role="status" class="settings-error-banner status-banner is-warn">
+          <i class="bi bi-clock-history" aria-hidden="true"></i>
+          <span>待套用：{{ runtime.pending_settings.items.join('、') }}。設定已儲存，控制台與舞台皆斷線後才更新。
+          {{ runtime.pending_settings.error }}</span>
         </p>
 
         <div v-show="activeSettingsTab === 'conversation'" class="settings-category-panel unified-role-panel"
@@ -392,7 +402,7 @@
                   :class="{ selected: selectedBoardStyle === style.id }"
                   @click="selectedBoardStyle = style.id"
                 >
-                  <span class="opt-title">{{ style.icon }} {{ style.label }}</span>
+                  <span class="opt-title"><i :class="style.icon" aria-hidden="true"></i> {{ style.label }}</span>
                   <span class="opt-detail">{{ style.desc }}</span>
                 </div>
               </div>
@@ -892,7 +902,7 @@
             <div class="setting-form-row">
               <div class="field-label-group">
                 <span class="field-main-label">介面色彩主題</span>
-                <span class="field-sub-hint">目前套用的主題會以紫色外框標示。</span>
+                <span class="field-sub-hint">目前套用的主題以品牌色外框與勾選標示。</span>
               </div>
               <div class="field-control-area">
                 <div class="grid-options-row theme-choice-grid" role="radiogroup" aria-label="介面色彩主題">
@@ -906,8 +916,14 @@
                     role="radio"
                     @click="selectTheme(theme.id)"
                   >
-                    <span class="opt-title">{{ theme.icon }} {{ theme.label }}</span>
+                    <span class="opt-header-line">
+                      <span class="opt-title"><i :class="theme.icon" aria-hidden="true"></i> {{ theme.label }}</span>
+                      <i v-if="selectedThemeValue === theme.id" class="bi bi-check-circle-fill theme-choice-check" aria-hidden="true"></i>
+                    </span>
                     <span class="opt-detail">{{ theme.desc }}</span>
+                    <span class="theme-swatches" aria-hidden="true">
+                      <i v-for="color in theme.swatches" :key="color" :style="{ background: color }"></i>
+                    </span>
                   </button>
                 </div>
               </div>
@@ -1024,7 +1040,7 @@
 import ConversationComposer from './ConversationComposer.vue'
 import ConversationPanel from './ConversationPanel.vue'
 import { composerGeometry } from '../conversationAttachments.js'
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, nextTick, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
@@ -1039,6 +1055,8 @@ import {
   STAGE_CAPTION_RATIO
 } from '../stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
+import { normalizeThemePreference } from '../consoleTheme.js'
+import { systemStatusRows } from '../systemStatus.js'
 
 const { t, setLocale } = useI18n()
 const props = defineProps({
@@ -1047,9 +1065,17 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  currentTheme: {
+  themePreference: {
     type: String,
-    default: 'obsidian'
+    default: 'system'
+  },
+  connectionStatus: {
+    type: String,
+    default: 'disconnected'
+  },
+  llmPartialGpu: {
+    type: Boolean,
+    default: false
   },
   initialTab: {
     type: String,
@@ -1062,7 +1088,6 @@ const emit = defineEmits([
   'notification',
   'request-disconnect',
   'avatar-ready',
-  'switch-theme',
   'close-settings',
   'conversation-summary'
 ])
@@ -1081,14 +1106,15 @@ const stagePreviewSize = ref({ width: 405, height: 720 })
 let stagePreviewObserver = null
 const stageDirectEditTarget = ref('')
 const stageBoardStyles = [
-  { id: 'glass', icon: '🪟', label: '毛玻璃視窗', desc: '半透霧面高雅質感' },
-  { id: 'slate', icon: '🎬', label: '場記板', desc: '實色底與高對比色條' },
-  { id: 'cue', icon: '🏷️', label: '廣播字卡', desc: '獨立懸浮條目小卡' }
+  { id: 'glass', icon: 'bi bi-window-stack', label: '毛玻璃視窗', desc: '半透霧面高雅質感' },
+  { id: 'slate', icon: 'bi bi-film', label: '場記板', desc: '實色底與高對比色條' },
+  { id: 'cue', icon: 'bi bi-card-text', label: '廣播字卡', desc: '獨立懸浮條目小卡' }
 ]
 
 const themeOptions = [
-  { id: 'obsidian', icon: '🌙', label: '深色模式', desc: '低眩光的控制台深色介面' },
-  { id: 'bento', icon: '☀️', label: '淺色模式', desc: '明亮、高對比的設定介面' }
+  { id: 'system', icon: 'bi bi-circle-half', label: '跟隨系統', desc: '依作業系統的深淺色自動切換', swatches: ['#f3f5f9', '#08090c', '#3b5bdb', '#7c9cff'] },
+  { id: 'light', icon: 'bi bi-sun', label: '淺色模式', desc: '明亮、高對比的設定介面', swatches: ['#f3f5f9', '#ffffff', '#3b5bdb', '#8a5300'] },
+  { id: 'dark', icon: 'bi bi-moon-stars', label: '深色模式', desc: '低眩光，沿用舞台背景，適合現場暗場', swatches: ['#08090c', '#10141c', '#7c9cff', '#f2b544'] }
 ]
 
 const boardPresets = [
@@ -1179,6 +1205,7 @@ const {
   vadError,
   applyingVad,
   applyVadSettings,
+  speech,
   sttDraft,
   sttDirty,
   sttEngineOptions,
@@ -1353,17 +1380,23 @@ const defaultSettings = {
   recordFormat: 'mp4',
   showDebugPanel: false,
   showTimestamp: true,
-  theme: 'obsidian',
+  theme: 'system',
   uiLanguage: 'zh-TW',
   videoSize: 100
 }
 
-const normalizeThemeValue = (theme) => (
-  theme === 'bento' || theme === 'white' || theme === 'light' ? 'bento' : 'obsidian'
-)
-
 const settings = ref({ ...defaultSettings })
-const selectedThemeValue = ref(normalizeThemeValue(props.currentTheme))
+const selectedThemeValue = ref(normalizeThemePreference(props.themePreference))
+
+const systemStatus = computed(() => systemStatusRows({
+  connectionStatus: props.connectionStatus,
+  sessionId: props.sessionId,
+  llmPartialGpu: props.llmPartialGpu,
+  loading: loadingSettings.value,
+  error: settingsError.value,
+  runtime,
+  stt: speech.stt
+}))
 
 const selectSettingsTab = (tabId) => {
   if (tabId === 'greeting') greetingVisited.value = true
@@ -1386,7 +1419,10 @@ const handleTabKeydown = (event, currentIndex) => {
     return
   }
   event.preventDefault()
-  selectSettingsTab(settingsTabs.value[nextIndex].id)
+  const nextId = settingsTabs.value[nextIndex].id
+  selectSettingsTab(nextId)
+  // Roving tabindex: keyboard focus follows the selected tab.
+  nextTick(() => globalThis.document?.getElementById(`railTab-${nextId}`)?.focus())
 }
 
 const handleApplyMouthQuality = async () => {
@@ -1461,19 +1497,14 @@ const applySttChange = async () => {
   }
 }
 
+// The settings watcher reports the change; App applies and stores the theme.
 const selectTheme = (theme) => {
-  selectedThemeValue.value = theme
-  settings.value.theme = theme
-  emit('switch-theme', theme)
+  selectedThemeValue.value = normalizeThemePreference(theme)
+  settings.value.theme = selectedThemeValue.value
 }
 
 const onLanguageChange = () => {
   setLocale(settings.value.uiLanguage)
-}
-
-const syncTheme = (theme) => {
-  selectedThemeValue.value = normalizeThemeValue(theme)
-  settings.value.theme = selectedThemeValue.value
 }
 
 const savingSettings = ref(false)
@@ -1711,7 +1742,8 @@ onMounted(() => {
       console.error(e)
     }
   }
-  selectedThemeValue.value = normalizeThemeValue(props.currentTheme)
+  // The theme has its own storage key; an older settings blob must not override it.
+  selectTheme(props.themePreference)
 })
 
 onUnmounted(() => {
@@ -1726,8 +1758,8 @@ watch(settings, () => {
   emit('settings-changed', settings.value)
 }, { deep: true })
 
-watch(() => props.currentTheme, (t) => {
-  if (t) selectedThemeValue.value = normalizeThemeValue(t)
+watch(() => props.themePreference, (preference) => {
+  selectedThemeValue.value = normalizeThemePreference(preference)
 })
 
 const openSettings = (tab = 'roles') => {
@@ -1750,8 +1782,7 @@ defineExpose({
   showSettings,
   isFullBleed,
   activeSettingsTab,
-  selectSettingsTab,
-  syncTheme
+  selectSettingsTab
 })
 </script>
 
@@ -1813,7 +1844,7 @@ defineExpose({
 }
 .import-dropzone-icon {
   font-size: 26px;
-  color: var(--brand-light);
+  color: var(--brand);
   display: block;
   margin-bottom: 6px;
 }
@@ -1834,7 +1865,7 @@ defineExpose({
   align-items: center;
 }
 .background-upload-row input[type="file"] { min-width: 0; max-width: 100%; }
-.form-error-text { color: #e57070; }
+.form-error-text { color: var(--danger); font-weight: 600; }
 .background-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -1851,7 +1882,7 @@ defineExpose({
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 .background-label {
   display: block;
@@ -1875,13 +1906,13 @@ defineExpose({
   gap: 6px;
   text-align: center;
 }
-.preview-title i { color: var(--brand-light); }
+.preview-title i { color: var(--brand); }
 
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
+  background: var(--scrim);
+  backdrop-filter: blur(4px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -1927,6 +1958,11 @@ defineExpose({
   gap: 10px;
 }
 
+.theme-swatches { display: flex; gap: 4px; margin-top: 4px; }
+.theme-swatches i { width: 18px; height: 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); }
+.theme-choice-check { color: var(--brand); font-size: 16px; }
+.opt-title i { margin-right: 2px; }
+
 .btn-secondary {
   padding: 6px 14px;
   border-radius: var(--radius-sm);
@@ -1940,7 +1976,7 @@ defineExpose({
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   background: var(--danger);
-  color: #fff;
+  color: var(--on-danger);
   border: none;
   font-size: 13px;
   font-weight: 600;
@@ -1960,24 +1996,12 @@ defineExpose({
   margin-top: 4px;
 }
 
-.runtime-state-banner {
-  min-height: 44px;
+.runtime-state-banner,
+.settings-error-banner {
+  flex: none;
   margin-bottom: 16px;
-  padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-secondary);
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
 }
-
-.runtime-state-banner.error {
-  color: var(--warning);
-  background: var(--warning-surface);
-  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
-}
+.runtime-state-banner { align-items: center; }
 
 .btn-retry {
   margin-left: auto;
@@ -2005,7 +2029,7 @@ defineExpose({
   border-radius: var(--radius-md);
 }
 
-.empty-state-card i { font-size: 30px; color: var(--brand-light); }
+.empty-state-card i { font-size: 30px; color: var(--brand); }
 .empty-state-card strong { color: var(--text-primary); }
 
 .progress-track {

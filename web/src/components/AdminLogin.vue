@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903; SPDX-License-Identifier: Apache-2.0 -->
 <template>
-  <main class="admin-login" data-theme="dark">
+  <main class="admin-login">
     <form class="admin-login-card" aria-labelledby="admin-login-heading" @submit.prevent="submit">
       <h1 id="admin-login-heading">Nova Avatar 控制台</h1>
       <template v-if="adminSession.status === 'unconfigured'">
@@ -49,10 +49,18 @@ async function submit() {
 }
 .admin-login-card {
   width: min(380px, 100%); display: grid; gap: 12px; padding: 28px;
-  background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 12px;
+  background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-1);
 }
 .admin-login-card h1 { font-size: 20px; margin: 0 0 4px; }
 .admin-login-card p { margin: 0; color: var(--text-secondary); }
-.admin-login-card pre { margin: 0; padding: 10px; background: var(--bg-input); border-radius: 8px; white-space: pre-wrap; }
-.admin-login-error { color: #f87171 !important; }
+.admin-login-card pre { margin: 0; padding: 10px; background: var(--bg-input); border-radius: var(--radius-sm); white-space: pre-wrap; font-family: var(--font-mono); }
+.admin-login-error { color: var(--danger) !important; font-weight: 600; }
+.admin-login-card .btn-primary {
+  --bs-btn-bg: var(--brand); --bs-btn-border-color: var(--brand); --bs-btn-color: var(--on-brand);
+  --bs-btn-hover-bg: var(--brand-hover); --bs-btn-hover-border-color: var(--brand-hover); --bs-btn-hover-color: var(--on-brand);
+  --bs-btn-active-bg: var(--brand-hover); --bs-btn-active-border-color: var(--brand-hover); --bs-btn-active-color: var(--on-brand);
+  --bs-btn-disabled-bg: var(--brand); --bs-btn-disabled-border-color: var(--brand); --bs-btn-disabled-color: var(--on-brand);
+}
+.admin-login-card .form-control { background: var(--bg-input); color: var(--text); border-color: var(--border-strong); }
+.admin-login-card .form-control:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-surface); }
 </style>
