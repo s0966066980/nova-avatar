@@ -78,7 +78,7 @@ model:
   #   bg_img: "white" # 背景配置: white(白色) | black(黑色) | /path/to/bg.jpg(完整路徑)
   # 更多配置請參考 config_talkinggaussian.yaml
 
-# TTS 配置資訊，可以改對應的模型，建議edgetts
+# TTS：第一次建立數位人設定檔時成為主數位人的初始聲音；之後預設聲音由主數位人設定檔決定
 tts:
   type: edgetts  # edgetts | breezyvoice（其他已移除的引擎在啟動時改用 edgetts）
   ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；BreezyVoice 填控制台音訊庫的參考音訊 ID

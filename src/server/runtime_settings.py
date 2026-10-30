@@ -1258,9 +1258,16 @@ STT_ENGINE_META = {
         "module": "funasr",
         "install": "uv sync --extra funasr",
         "description": "paraformer-zh，中文優先",
+        "output_scripts": ("traditional-tw", "simplified"),
+        "local_model": "funasr",
     },
 }
-STT_OUTPUT_SCRIPTS = ("traditional-tw", "simplified")
+# Output scripts an engine may offer, with their console labels.
+STT_OUTPUT_SCRIPT_LABELS = {
+    "traditional-tw": "繁體中文（台灣正體）",
+    "simplified": "簡體中文",
+}
+STT_OUTPUT_SCRIPTS = tuple(STT_OUTPUT_SCRIPT_LABELS)
 
 TTS_ENGINE_META = {
     "edgetts": {
@@ -1317,12 +1324,27 @@ def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
     return items
 
 
+def _stt_catalog() -> list:
+    """STT engines with what the console form needs to render each of them."""
+    local_ready = {"funasr": local_funasr_model_ready}
+    items = _catalog(STT_ENGINE_META)
+    for item in items:
+        meta = STT_ENGINE_META[item["id"]]
+        item["models"] = list(STT_MODELS_BY_ENGINE.get(item["id"], ()))
+        item["output_scripts"] = [
+            {"id": script, "label": STT_OUTPUT_SCRIPT_LABELS[script]}
+            for script in meta.get("output_scripts", ())
+        ]
+        ready = local_ready.get(meta.get("local_model", ""))
+        item["local_model_ready"] = bool(ready and ready())
+    return items
+
+
 def speech_snapshot(config) -> Dict[str, Any]:
     from src.tts.cosyvoice_runtime import local_models
     from src.tts.voice_library import list_voices, removed_engine_notice
 
     asr = config.asr
-    tts = config.tts
     return {
         "stt": {
             "type": asr.type,
@@ -1332,7 +1354,7 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "device": asr.device,
             "mode": "server",
             "local_model_ready": local_funasr_model_ready(),
-            "engines": _catalog(STT_ENGINE_META),
+            "engines": _stt_catalog(),
             "model_sizes": list(STT_MODEL_SIZES),
             "models_by_engine": {
                 key: list(values) for key, values in STT_MODELS_BY_ENGINE.items()
@@ -1340,12 +1362,9 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "languages": list(STT_LANGUAGES),
             "devices": list(STT_DEVICES),
         },
+        # Only what a role profile's voice is chosen from: the default voice
+        # is the main role's, so there is no global voice to report.
         "tts": {
-            "type": tts.type,
-            "ref_file": tts.ref_file,
-            "ref_text": tts.ref_text or "",
-            "tts_server": tts.tts_server,
-            "model": tts.model,
             "engines": _catalog(TTS_ENGINE_META),
             # Reference audio and models are chosen from these server-side lists.
             "voices": list_voices(),

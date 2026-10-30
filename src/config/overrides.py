@@ -179,19 +179,11 @@ def persist_runtime_overrides(config) -> None:
             "output_script": getattr(asr, "output_script", "traditional-tw"),
             "device": asr.device,
         }
-    tts = getattr(config, "tts", None)
-    if tts is not None:
-        payload["tts"] = {
-            "type": tts.type,
-            "ref_file": tts.ref_file,
-            "ref_text": tts.ref_text,
-            "tts_server": tts.tts_server,
-            "model": tts.model,
-        }
+    # No tts block: the default voice is the main role profile's (see loader).
     RUNTIME_OVERRIDES_FILE.parent.mkdir(parents=True, exist_ok=True)
     header = (
         "# 由設定面板自動生成，請勿手改關鍵結構。\n"
-        "# 會在啟動時覆蓋主配置中的 llm（含 reply_rules）/ model / video / reply_streaming / vad / asr / tts。\n"
+        "# 會在啟動時覆蓋主配置中的 llm（含 reply_rules）/ model / video / reply_streaming / vad / asr。\n"
     )
     text = yaml.safe_dump(payload, allow_unicode=True, sort_keys=False)
     # Write and replace in the same directory so a process restart sees either

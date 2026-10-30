@@ -231,8 +231,6 @@ export default {
     speech: {
       sttTitle: '語音轉文字（STT）',
       sttDesc: '麥克風音訊通過 WebRTC 傳到伺服器後，由此引擎識別。',
-      ttsTitle: '文字轉語音（TTS）',
-      ttsDesc: '只列出不需要額外 API 金鑰的語音引擎。',
       engine: '引擎',
       model: '模型',
       language: '識別語言',
@@ -244,32 +242,14 @@ export default {
       device: '運算裝置',
       zh: '中文',
       auto: '自動',
-      voice: '語音名稱',
-      reference: '参考音频',
-      voiceLibraryDesc: '从音频库选择参考音频，或上传新的录音（WAV、MP3、FLAC、OGG、M4A、WebM，60 秒内）；上传后会验证并转成 WAV 存在服务器。BreezyVoice 请用干净、单人、8 秒内的台湾华语录音（不要歌曲或开头静音），逐字稿必须与这段录音逐字相同。',
-      voiceLibraryChoose: '请选择参考音频',
-      voiceLibraryUpload: '上传音档',
-      voiceLibraryDelete: '删除',
-      referenceText: '參考文字',
-      speaker: '內建聲線',
-      instruction: '聲音指令',
-      instructionDesc: 'CustomVoice 可留空；VoiceDesign 必填，例如“溫柔、沉穩、語速稍慢”。',
-      cloneReference: '聲音克隆參考音訊',
 
-      ttsModel: '模型',
-      ttsModelAuto: '自动（models/BreezyVoice）',
-      server: '本地服务地址',
       applyStt: '應用 STT',
-      applyTts: '應用 TTS',
       prewarming: '正在驗證並預熱...',
       prewarmProgressLabel: 'STT 模型預熱進度',
       prewarmProgressHint: '正在下載或載入模型；首次預熱按網絡和設備速度可能需要數分鐘。',
-      localPrewarmProgressHint: '正在加載本地 FunASR 模型，不會從網絡下載。',
+      localPrewarmProgressHint: '正在加載本地識別模型，不會從網絡下載。',
       applying: '正在驗證...',
-      sttApplied: 'STT 已應用，請重新連線',
-      ttsApplied: 'TTS 已應用，請重新連線',
-      confirmTitle: '切換語音引擎？',
-      confirmMessage: '當前連線和進行中的輪次會先停止。新引擎驗證成功後才會儲存，完成後請手動重新連線。'
+      sttApplied: 'STT 已應用，請重新連線'
     },
 
     vad: {

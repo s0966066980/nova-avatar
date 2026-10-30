@@ -783,49 +783,28 @@
             </div>
           </section>
 
-        </div>
-
-        <!-- ── 分類 4：語音活動與辨識 ── -->
-        <div
-          v-show="activeSettingsTab === 'voice'"
-          class="settings-category-panel"
-          id="catPanel-voice"
-          role="tabpanel"
-          aria-labelledby="railTab-voice"
-        >
-          <!-- 右欄：STT 與 TTS 雙引擎設定 -->
+          <!-- 語音辨識：引擎、模型與輸出字元集都依伺服器的引擎清單呈現 -->
           <section class="setting-card">
             <div class="card-title-row">
               <div>
-                <div class="card-title-text"><i class="bi bi-translate"></i> STT 語音辨識與 TTS 語音合成</div>
-                <div class="card-subtitle-desc">配置音訊轉換模型與數位人播音音色。</div>
+                <div class="card-title-text"><i class="bi bi-translate"></i> 語音辨識</div>
+                <div class="card-subtitle-desc">把訪客說的話轉成文字。數位人的聲音在各數位人設定檔的「聲音與工具」設定。</div>
               </div>
-              <div style="display: flex; gap: 8px;">
-                <button
-                  type="button"
-                  class="btn-apply-primary"
-                  style="padding: 6px 14px; font-size: 12px;"
-                  :disabled="applyingStt"
-                  @click="handleApplySpeech('stt')"
-                >
-                  <i class="bi bi-check2" :class="{ spin: applyingStt }"></i> 套用 STT
-                </button>
-                <button
-                  type="button"
-                  class="btn-apply-primary"
-                  style="padding: 6px 14px; font-size: 12px;"
-                  :disabled="applyingTts"
-                  @click="handleApplySpeech('tts')"
-                >
-                  <i class="bi bi-check2" :class="{ spin: applyingTts }"></i> 套用 TTS
-                </button>
-              </div>
+              <button
+                type="button"
+                class="btn-apply-primary"
+                style="padding: 6px 14px; font-size: 12px;"
+                :disabled="applyingStt"
+                @click="applySttChange"
+              >
+                <i class="bi bi-check2" :class="{ spin: applyingStt }"></i> 套用語音辨識
+              </button>
             </div>
 
-            <!-- STT 引擎 -->
             <div class="setting-form-row">
               <div class="field-label-group">
-                <span class="field-main-label">STT 語音辨識引擎</span>
+                <label for="stt-engine" class="field-main-label">辨識引擎</label>
+                <span v-if="selectedSttEngine?.description" class="field-sub-hint">{{ selectedSttEngine.description }}</span>
               </div>
               <div class="field-control-area">
                 <select id="stt-engine" class="std-select" v-model="sttDraft.type">
@@ -852,20 +831,18 @@
               </div>
             </div>
 
-            <!-- FunASR 繁簡字元集 -->
-            <div class="setting-form-row" v-if="sttDraft.type === 'funasr'">
+            <div class="setting-form-row" v-if="sttOutputScriptOptions.length">
               <div class="field-label-group">
-                <span class="field-main-label">輸出文字字元集</span>
+                <label for="stt-output-script" class="field-main-label">輸出文字字元集</label>
               </div>
               <div class="field-control-area">
-                <select class="std-select" v-model="sttDraft.output_script">
-                  <option value="traditional-tw">繁體中文 (台灣正體)</option>
-                  <option value="simplified">簡體中文</option>
+                <select id="stt-output-script" class="std-select" v-model="sttDraft.output_script">
+                  <option v-for="script in sttOutputScriptOptions" :key="script.id" :value="script.id">{{ script.label }}</option>
                 </select>
               </div>
             </div>
 
-            <!-- STT 預熱進度條 -->
+            <!-- 預熱進度條 -->
             <div
               v-if="applyingStt"
               class="stt-prewarm-progress"
@@ -882,86 +859,13 @@
                 <div class="progress-fill progress-fill-indeterminate"></div>
               </div>
               <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">
-                {{ speech.stt.local_model_ready && sttDraft.type === 'funasr'
+                {{ selectedSttEngine?.local_model_ready
                   ? t('settings.speech.localPrewarmProgressHint')
                   : t('settings.speech.prewarmProgressHint') }}
               </p>
             </div>
-
-            <!-- TTS 引擎 -->
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <span class="field-main-label">TTS 語音合成引擎</span>
-                <span v-if="ttsDraft.type === 'edgetts'" class="field-sub-hint">開發用：使用 Microsoft Edge 朗讀功能的非公開端點，無正式商用授權；場域斷網即無法發聲。</span>
-              </div>
-              <div class="field-control-area">
-                <select class="std-select" v-model="ttsDraft.type">
-                  <option value="edgetts">Edge TTS (Development only) · 開發用</option>
-                  <option value="breezyvoice">BreezyVoice (本機台灣華語 · 聲音複製)</option>
-                </select>
-              </div>
-            </div>
-            <!-- 設定檔或角色指到已移除的引擎時，伺服器已改用 Edge TTS -->
-            <p v-if="speech.tts.notice" class="settings-error-banner" role="status">{{ speech.tts.notice }}</p>
-
-            <!-- Edge TTS 聲線 -->
-            <div class="setting-form-row" v-if="ttsDraft.type === 'edgetts'">
-              <div class="field-label-group">
-                <span class="field-main-label">播音音色 (Voice)</span>
-              </div>
-              <div class="field-control-area">
-                <select class="std-select" v-model="ttsDraft.ref_file">
-                  <option v-for="voice in edgeVoiceOptions" :key="voice.id" :value="voice.id">
-                    {{ voice.name || voice.label || voice.id }}{{ voice.gender ? `（${voice.gender === 'female' ? '女聲' : '男聲'}）` : '' }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <!-- BreezyVoice：音訊庫的參考錄音＋逐字稿，整段合成 -->
-            <template v-if="ttsDraft.type === 'breezyvoice'">
-              <div class="setting-form-row">
-                <div class="field-label-group">
-                  <label for="tts-breezyvoice-ref-text" class="field-main-label">參考語音逐字稿 *</label>
-                  <span class="field-sub-hint">選取音訊庫錄音時會帶入它的逐字稿；上傳新錄音前先填好，逐字稿會一併存進音訊庫。錄音請用 8 秒內、乾淨的台灣華語，逐字稿須與整段錄音完全一致。</span>
-                </div>
-                <div class="field-control-area">
-                  <textarea id="tts-breezyvoice-ref-text" class="chat-text-entry" v-model.trim="ttsDraft.ref_text" rows="2" placeholder="例如：您好，歡迎使用 Nova Avatar。"></textarea>
-                </div>
-              </div>
-              <div class="setting-form-row">
-                <div class="field-label-group">
-                  <label for="tts-breezyvoice-model" class="field-main-label">{{ t('settings.speech.ttsModel') }}</label>
-                  <span class="field-sub-hint">「自動」使用 models/BreezyVoice（由 scripts/breezyvoice_weights.py 下載）。</span>
-                </div>
-                <div class="field-control-area">
-                  <select id="tts-breezyvoice-model" class="std-select" v-model="ttsDraft.model">
-                    <option value="">{{ t('settings.speech.ttsModelAuto') }}</option>
-                    <option v-for="model in ttsModelOptions" :key="model.id" :value="model.id">{{ model.id }}</option>
-                  </select>
-                </div>
-              </div>
-            </template>
-
-            <!-- 參考音訊（非 Edge-TTS 時）：只能從伺服器的音訊庫選擇或上傳 -->
-            <div class="setting-form-row" v-if="ttsDraft.type !== 'edgetts'">
-              <div class="field-label-group">
-                <label for="tts-voice-library" class="field-main-label">{{ t('settings.speech.reference') }}</label>
-                <span class="field-sub-hint">{{ t('settings.speech.voiceLibraryDesc') }}</span>
-              </div>
-              <div class="field-control-area">
-                <div class="input-group">
-                  <select id="tts-voice-library" class="std-select" v-model="ttsDraft.ref_file" :disabled="voiceLibraryBusy">
-                    <option value="">{{ t('settings.speech.voiceLibraryChoose') }}</option>
-                    <option v-for="voice in ttsVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}（{{ voice.seconds }} 秒）</option>
-                  </select>
-                  <button type="button" class="btn btn-outline-secondary" :disabled="voiceLibraryBusy" @click="voiceFileInput?.click()">{{ t('settings.speech.voiceLibraryUpload') }}</button>
-                  <button type="button" class="btn btn-outline-secondary" :disabled="voiceLibraryBusy || !ttsDraft.ref_file" @click="removeSelectedVoice">{{ t('settings.speech.voiceLibraryDelete') }}</button>
-                </div>
-                <input ref="voiceFileInput" type="file" accept="audio/*,.wav,.mp3,.flac,.ogg,.m4a,.webm" hidden @change="onVoiceFileChosen">
-              </div>
-            </div>
           </section>
+
         </div>
 
         <!-- ── 分類 5：系統偏好與自訂 ── -->
@@ -1270,44 +1174,15 @@ const {
   vadError,
   applyingVad,
   applyVadSettings,
-  speech,
   sttDraft,
-  ttsDraft,
   sttDirty,
   sttEngineOptions,
+  selectedSttEngine,
   sttModelOptions,
-  ttsDirty,
-  edgeVoiceOptions,
-  ttsVoiceOptions,
-  ttsModelOptions,
-  voiceLibraryBusy,
-  uploadTtsVoice,
-  deleteTtsVoice,
+  sttOutputScriptOptions,
   applyingStt,
-  applyingTts,
-  applySttSettings,
-  applyTtsSettings
+  applySttSettings
 } = useRuntimeSettings()
-
-const voiceFileInput = ref(null)
-
-async function onVoiceFileChosen(event) {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-  if (!file) return
-  try {
-    const voice = await uploadTtsVoice(file, '', ttsDraft.type === 'breezyvoice' ? ttsDraft.ref_text : '')
-    ttsDraft.ref_file = voice.id
-    emit('notification', '參考音訊已加入音訊庫', 'success')
-  } catch (error) { emit('notification', error.message, 'error') }
-}
-
-async function removeSelectedVoice() {
-  try {
-    await deleteTtsVoice(ttsDraft.ref_file)
-    emit('notification', '參考音訊已移入回收桶', 'success')
-  } catch (error) { emit('notification', error.message, 'error') }
-}
 
 const currentBoardStyleLabel = computed(() => {
   const s = stageBoardStyles.find(item => item.id === selectedBoardStyle.value)
@@ -1318,10 +1193,9 @@ const settingsTabs = computed(() => [
   { id: 'conversation', icon: 'bi bi-chat-square-text', label: '對話記憶與語系' },
   { id: 'roles', icon: 'bi bi-people-fill', label: '數位人、AI 與知識設定' },
   { id: 'greeting', icon: 'bi bi-chat-heart', label: '閒置招呼' },
-  { id: 'interaction', icon: 'bi bi-mic', label: '訪客互動' },
+  { id: 'interaction', icon: 'bi bi-mic', label: '訪客互動與語音辨識' },
   { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
-  { id: 'voice', icon: 'bi bi-soundwave', label: '語音辨識與合成' },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
 ])
 
@@ -1569,17 +1443,14 @@ const handleApplyVad = async () => {
   }
 }
 
-const handleApplySpeech = (kind) => applySpeechChange(kind)
-
-const applySpeechChange = async (kind) => {
+const applySttChange = async () => {
   try {
-    const apply = kind === 'stt' ? applySttSettings : applyTtsSettings
-    const data = await apply()
+    const data = await applySttSettings()
     if (data.pending) {
       emit('notification', '設定已儲存，待控制台與舞台皆斷線後套用。', 'success')
       return
     }
-    emit('notification', t(kind === 'stt' ? 'settings.speech.sttApplied' : 'settings.speech.ttsApplied'), 'success')
+    emit('notification', t('settings.speech.sttApplied'), 'success')
   } catch (error) {
     emit('notification', error.message, 'error')
   }
@@ -1607,9 +1478,8 @@ const hasUnsavedChanges = computed(() => {
     roles: profilesRef.value?.dirty || profilesRef.value?.pendingApply,
     greeting: greetingRef.value?.dirty,
     stage: stageDirty.value,
-    interaction: visitorDirty.value || vadDirty.value,
-    avatar: avatarDirty.value || qualityDirty.value,
-    voice: sttDirty.value || ttsDirty.value
+    interaction: visitorDirty.value || vadDirty.value || sttDirty.value,
+    avatar: avatarDirty.value || qualityDirty.value
   }
   return Boolean(states[activeSettingsTab.value])
 })
@@ -1623,14 +1493,11 @@ const saveActiveSettings = async () => {
     if (tab === 'interaction') {
       if (visitorDirty.value) await applyVisitorSettings()
       if (vadDirty.value) await applyVadSettings()
+      if (sttDirty.value) await applySttSettings()
     }
     if (tab === 'avatar') {
       if (qualityDirty.value) await applyMouthQuality()
       if (avatarDirty.value) await applyAvatarChange()
-    }
-    if (tab === 'voice') {
-      if (sttDirty.value) await applySpeechChange('stt')
-      if (ttsDirty.value) await applySpeechChange('tts')
     }
     if (tab === 'experience') persistLocalSettings()
     emit('notification', '本頁設定已儲存並套用', 'success')
@@ -1784,7 +1651,6 @@ const confirmDialogTitle = computed(() => {
   if (confirmKind.value === 'delete-avatar') return '刪除數字人'
   if (confirmKind.value === 'purge-avatar') return '永久刪除數字人'
   if (confirmKind.value === 'avatar') return t('settings.avatar.confirmTitle')
-  if (confirmKind.value === 'stt' || confirmKind.value === 'tts') return t('settings.speech.confirmTitle')
   return t('settings.confirmTitle')
 })
 
@@ -1793,7 +1659,6 @@ const confirmDialogMessage = computed(() => {
   if (confirmKind.value === 'delete-avatar') return `將 ${avatarToDelete.value?.label || avatarToDelete.value?.id || ''} 從角色庫移出並封存於本機？`
   if (confirmKind.value === 'purge-avatar') return `永久刪除 ${archivedAvatarToDelete.value?.avatar_id || ''}？回收區中的原片和角色素材都會移除，且無法復原。`
   if (confirmKind.value === 'avatar') return t('settings.avatar.confirmMessage')
-  if (confirmKind.value === 'stt' || confirmKind.value === 'tts') return t('settings.speech.confirmMessage')
   return t('settings.confirmMessage')
 })
 
@@ -1805,7 +1670,6 @@ const confirmAction = () => {
   else if (kind === 'delete-avatar') handleDeleteAvatar()
   else if (kind === 'purge-avatar') handlePermanentlyDeleteAvatar()
   else if (kind === 'avatar') applyAvatarChange()
-  else if (kind === 'stt' || kind === 'tts') applySpeechChange(kind)
 }
 
 const loadRuntimePanel = async () => {

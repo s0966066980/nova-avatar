@@ -577,6 +577,22 @@ class SpeechSettingsTests(unittest.TestCase):
             {"female", "male"},
         )
 
+    def test_stt_engines_describe_their_models_and_output_scripts(self):
+        # The console renders the speech-recognition form from these entries.
+        engines = {item["id"]: item for item in speech_snapshot(Config())["stt"]["engines"]}
+        self.assertEqual(engines["whisper"]["models"], ["tiny", "base", "small", "medium", "large-v3", "turbo"])
+        self.assertEqual(engines["whisper"]["output_scripts"], [])
+        self.assertFalse(engines["whisper"]["local_model_ready"])
+        scripts = engines["funasr"]["output_scripts"]
+        self.assertEqual([item["id"] for item in scripts], ["traditional-tw", "simplified"])
+        self.assertTrue(all(item["label"] for item in scripts))
+        self.assertIsInstance(engines["funasr"]["local_model_ready"], bool)
+
+    def test_tts_snapshot_has_no_global_voice(self):
+        # The default voice is the main role profile's, edited there.
+        tts = speech_snapshot(Config())["tts"]
+        self.assertFalse({"type", "ref_file", "ref_text", "tts_server", "model"} & set(tts))
+
     def test_tts_rejects_removed_provider(self):
         with self.assertRaises(SettingsError):
             apply_tts_settings(Config(), {"type": "azuretts"}, session_count=0)

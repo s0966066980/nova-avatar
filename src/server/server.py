@@ -65,7 +65,7 @@ async def profile_settings_guard(request, handler):
         return web.json_response({"code": -1, "msg": "角色組合請使用即時麥克風或文字對話"}, status=409)
     if roles and roles.enabled and request.method in {"POST", "PUT"} and request.path in {
         "/api/llm/model", "/api/llm/rules", "/api/llm/behavior", "/api/avatar", "/api/avatar/quality",
-        "/api/speech/tts", "/api/ragflow/settings",
+        "/api/ragflow/settings",
     }:
         return web.json_response({"code": -1, "msg": "角色組合啟用中，請至數位人設定檔修改並套用"}, status=409)
     return await handler(request)
@@ -154,7 +154,6 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
     app.router.add_post("/api/vad", routes.set_vad_settings)
     app.router.add_get("/api/speech", routes.get_speech_settings)
     app.router.add_post("/api/speech/stt", routes.set_stt_settings)
-    app.router.add_post("/api/speech/tts", routes.set_tts_settings)
     app.router.add_get("/api/speech/voices", routes.list_tts_voices)
     app.router.add_post("/api/speech/voices", routes.upload_tts_voice)
     app.router.add_delete("/api/speech/voices/{voice_id}", routes.delete_tts_voice)
