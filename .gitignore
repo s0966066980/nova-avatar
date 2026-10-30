@@ -54,6 +54,7 @@ config/ragflow.env
 config/cwa.env
 config/admin.env
 config/avatar_profiles.yaml
+config/avatar_profiles.yaml.*.bak
 .local/ragflow/
 outputs/
 *.pt

@@ -17,6 +17,7 @@ from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
 from src.profiles.routing import RoutingClients, route_question
 from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
+from src.profiles.composition import referenced_media, transition
 from src.profiles.store import RETURN_ANNOUNCEMENTS, ProfileError, ProfileStore, compatible_pair, profile_config
 from src.profiles.weather import CwaWeather, WeatherQuery
 from src.tts.cosyvoice_runtime import server_identity
@@ -222,9 +223,10 @@ class ConversationRoles:
         return {"fixed": announcement, "handoff_id": pending["id"]}
 
     def edge(self, source, target):
+        # Two-role view edges first (temporary adapter), then the composition default.
         return next((dict(e) for e in self.library["transitions"]
                      if e["source"] == source and e["target"] == target),
-                    dict(source=source, target=target, kind="effect", effect="fade", duration=.6))
+                    transition(self.library, source, target))
 
     def cancel(self, sid):
         pending = self.pending.pop(sid, None)
@@ -551,9 +553,8 @@ class RoleCoordinator:
                     cache[aid] = self.state.avatar
                 else:
                     cache[aid] = await asyncio.to_thread(self.loader, profile_config(self.state.config, profile))
-            for edge in target["transitions"]:
-                if edge["kind"] == "video":
-                    self.media.get(edge["asset_id"])
+            for asset_id in referenced_media(target):
+                self.media.get(asset_id)
             if config.llm.provider == "llamacpp" and not self.state.avatar_streams:
                 from src.llm.llamacpp import ensure_server
                 # The endpoint already fixed host and port; requests use its URL.
