@@ -1254,11 +1254,13 @@ STT_ENGINE_META = {
         "description": "CTranslate2 Whisper，GPU FP16 / CPU INT8",
     },
     "funasr": {
-        "label": "Fun-ASR-Nano-2512",
+        # Measured 2026-10-30 on the RTX 4090: P50 0.115 s vs Whisper small 0.045 s
+        # (.scratch/console-voice-settings/asr-comparison-2026-10-30.json).
+        "label": "Fun-ASR-Nano-2512（中英文，較慢）",
         # Runs in its own venv, so availability is the service's, not a main-venv module.
         "service": fun_asr_nano_service.FAMILY,
         "install": "bash scripts/setup-fun-asr-nano.sh",
-        "description": "通義實驗室 Fun-ASR-Nano-2512（Apache-2.0），中文、英文與中英混說；獨立本機服務，套用時自動啟動",
+        "description": "通義實驗室 Fun-ASR-Nano-2512（Apache-2.0），中文、英文與中英混說，辨識比 Whisper 慢約 2.5 倍、另占約 2.4 GB 顯存；獨立本機服務，套用時自動啟動",
         "setup": "bash scripts/setup-fun-asr-nano.sh 建立 venv，scripts/fun_asr_nano_weights.py 下載權重",
         "output_scripts": fun_asr_nano_service.OUTPUT_SCRIPTS,
         "local_model": "funasr",

@@ -39,3 +39,17 @@ Status: ready-for-agent
 2. 依結果把 `src/server/runtime_settings.py` 的 `STT_ENGINE_META["funasr"]["label"]` 改為「Fun-ASR-Nano-2512（中英文）」或「（較慢）」。
 3. 控制台套用 FunASR（device auto）：`logs/fun-asr-nano-server.log` 出現 `Fun-ASR-Nano ready http://127.0.0.1:50010 ... device=cuda`，`nvidia-smi` 多一個 `fun_asr_nano_server.py` 程序；舞台中文、英文各說一句，字幕為繁體／英文。記錄與 MuseTalk＋E2B 同時的顯存峰值。
 4. 改回 Whisper：`ss -ltn 'sport = :50010'` 無監聽、`nvidia-smi` 該程序消失。
+
+### 2026-10-30 GPU 實測（orchestrator）
+`asr-comparison-2026-10-30.json`：Edge TTS 持續 429，改用 TTS 評比的 BreezyVoice 合成句（中文 100、英文 30，各 2 輪；Nova 未執行）。
+
+| | Whisper small（中英偵測） | Fun-ASR-Nano-2512（服務） |
+|---|---|---|
+| 中文 P50／P95 | 0.045／0.052 s | 0.115／0.164 s |
+| 中文字錯率 | 7.6% | 10.9% |
+| 英文 P50／P95 | 0.042／0.048 s | 0.116／0.156 s |
+| 英文字錯率 | 6.0% | 2.8% |
+| 語言判斷 | 100% | 100% |
+| 額外顯存 | — | 約 2.4 GB（獨立服務） |
+
+依規格標為「較慢」：選單標籤改為「Fun-ASR-Nano-2512（中英文，較慢）」，預設維持 Whisper。測試語料是 TTS 合成音，實際口語結果可能不同。
