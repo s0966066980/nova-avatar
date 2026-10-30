@@ -46,6 +46,7 @@ Status: ready-for-human
 - **授權標示**：Fish（年營收 50 萬美元門檻）、IndexTTS2（用戶數／營收門檻）、XTTS（非商用）比照 Wav2Lip 標示；Edge TTS 標為開發用；補 Gemma 4 聲明（Q21）。
 - **停用 11434 的預設 Ollama**；不明 python 程序只調查回報，不自行終止（Q21）。
 - **實測後追加（2026-10-30）**：
+  - **最終決定（2026-10-30，使用者）**：TTS 只保留 BreezyVoice 與 Edge TTS，其餘引擎（CosyVoice／Fun-CosyVoice3、Fish、GPT-SoVITS、IndexTTS2、XTTS）全部移除（issue 18）；Edge TTS 暫為執行預設（開發用）。判定說完的靜音等待 300 → 200 ms；看板模式的口語摘要不受首句 15 字規則限制；issue 13 改動 A、C 保留；完成後合併回 `main` 並推上 GitHub。RAG 嵌入加速（issue 15）待使用者看完詳細說明後決定。
   - 主要 LLM 切換為 Gemma 4 E2B：30 題品質報告（`e2b-eval/report.md`）路由 30/30、首個片段 P50 0.24 s（9B 0.58 s），使用者接受（Q26）。
   - 檢索上限暫調為 700 ms：400 ms 下 24 輪中 22 輪逾時。先加速 RAGFlow 檢索（issue 15），再依實測定最終上限（Q25）。
   - 語音辨識改為只在中文與英文之間自動偵測，取代固定對話語系；固定語系會把中文對話裡的英文辨識成亂碼（Q24，issue 07）。
