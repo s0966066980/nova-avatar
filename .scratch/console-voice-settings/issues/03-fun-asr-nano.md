@@ -10,3 +10,6 @@ Status: ready-for-agent
 - `scripts/compare_asr.py` 支援新模型，GPU 實測交由 orchestrator（待實機驗證）；依結果在選單標「中英文」或「較慢」。
 
 ## Comments
+
+### 2026-10-30 使用者決定（Q12）
+選 (B)：Fun-ASR-Nano 以獨立本機服務執行（自己的 venv，transformers ≥ 4.51），比照 BreezyVoice 只綁 loopback、只在選 FunASR 時啟動；Nova 主環境的 transformers 維持 MuseTalk 相容版本。
