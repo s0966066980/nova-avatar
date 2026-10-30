@@ -31,7 +31,7 @@ Status: ready-for-agent
 - **移除 paraformer-zh**：引擎程式、`pyproject` 的 `funasr` extra（`uv.lock` 同步刪除 funasr 相依）、CI 安裝、`check-integration`（改查服務 venv 與權重）、文件。`THIRD_PARTY_NOTICES.md` 新增 Fun-ASR-Nano（Apache-2.0）、Qwen3-0.6B、FunASR（MIT）、OpenCC 條目。主 checkout 的 `models/funasr/paraformer-zh` 未刪，可自行移除。
 - **compare_asr**：預設 `--funasr-model Fun-ASR-Nano-2512`，FunASR 計入中英文，跑完停止服務。
 - **CPU 冒煙（模型卡範例音檔）**：`ensure_server` 啟動＋預熱 16.6 s；zh 0.7–0.8 s「開飯時間早上九點至下午五點。」、en 1.05 s 正確、靜音回空字串、`simplified` 保留簡體；`stop_server` 後服務已關。註：「开放／开饭」為邊界字，float 波形得「开放」、同一音訊量化為 int16 即得「开饭」，與傳輸無關（語音輪次本來就是 PCM16）。
-- **檢查**：pytest 1368 passed（僅兩個已知 worktree 基線失敗）、ruff、pyright、check-integration、`uv lock --check`、web lint／test（216）／build 通過。
+- **檢查**（合併整合分支後）：pytest 1362 passed、3 skipped（僅兩個已知 worktree 基線失敗）、ruff、pyright、check-integration、`uv lock --check`、web lint／test（217）／build 通過。
 
 ### 待實機驗證（orchestrator）
 
