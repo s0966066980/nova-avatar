@@ -338,6 +338,7 @@ def test_settings_offer_fun_asr_nano_from_the_service(installed):
     assert "Fun-ASR-Nano" in funasr["label"]
     assert funasr["available"] is True
     assert stt["models_by_engine"]["funasr"] == ["Fun-ASR-Nano-2512"]
+    assert funasr["models"] == ["Fun-ASR-Nano-2512"] and funasr["local_model_ready"] is True
     assert stt["local_model_ready"] is True
     assert "paraformer" not in json.dumps(stt)
 

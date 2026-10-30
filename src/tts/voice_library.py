@@ -348,7 +348,7 @@ def clear_removed_engine_notice() -> None:
 def _fall_back_to_edge(values: dict, engine: str, where: str) -> None:
     """Switch saved settings of a removed engine to Edge TTS instead of failing."""
     message = (f"{where} 的 TTS 引擎「{engine[:40]}」已移除，已改用 Edge TTS（開發用）；"
-               "請到語音設定改選 BreezyVoice 或 Edge TTS 聲線並套用")
+               "請到數位人設定檔的「聲音與工具」改選 BreezyVoice 或 Edge TTS 聲線並套用")
     logger.warning(message)
     _removed_engine_notices.append(message)
     values["type"] = "edgetts"

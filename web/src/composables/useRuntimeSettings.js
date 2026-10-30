@@ -149,12 +149,9 @@ const speech = reactive({
     languages: ['zh', 'en', 'auto'],
     devices: ['auto', 'cpu', 'cuda']
   },
+  // Catalogs a role profile's voice is chosen from; the default voice is the
+  // main role's, so there is no global voice here.
   tts: {
-    type: 'edgetts',
-    ref_file: 'zh-TW-HsiaoChenNeural',
-    ref_text: '',
-    tts_server: '',
-    model: '',
     engines: [],
     models: [],
     voices: [],
@@ -170,15 +167,7 @@ const sttDraft = reactive({
   output_script: 'traditional-tw',
   device: 'auto'
 })
-const ttsDraft = reactive({
-  type: 'edgetts',
-  ref_file: 'zh-TW-HsiaoChenNeural',
-  ref_text: '',
-  tts_server: '',
-  model: ''
-})
 const applyingStt = ref(false)
-const applyingTts = ref(false)
 const speechError = ref('')
 const voiceLibraryBusy = ref(false)
 
@@ -403,14 +392,6 @@ const sttDirty = computed(() => (
   sttDraft.device !== speech.stt.device
 ))
 
-const ttsDirty = computed(() => (
-  ttsDraft.type !== speech.tts.type ||
-  ttsDraft.ref_file !== speech.tts.ref_file ||
-  ttsDraft.ref_text !== speech.tts.ref_text ||
-  ttsDraft.tts_server !== speech.tts.tts_server ||
-  ttsDraft.model !== speech.tts.model
-))
-
 const STT_ENGINE_FALLBACK = [
   { id: 'whisper', label: 'Whisper' },
   { id: 'funasr', label: 'FunASR' }
@@ -425,47 +406,22 @@ const sttEngineOptions = computed(() => {
     : [{ id: sttDraft.type, label: sttDraft.type }, ...available]
 })
 
+// The form follows each engine's server entry (models, output scripts, local
+// model), so adding or replacing an engine needs no console change.
+const selectedSttEngine = computed(() => sttEngineOptions.value.find((engine) => engine.id === sttDraft.type) || null)
+
 const sttModelOptions = computed(() => (
-  speech.stt.models_by_engine?.[sttDraft.type] || speech.stt.model_sizes || []
+  selectedSttEngine.value?.models || speech.stt.models_by_engine?.[sttDraft.type] || []
 ))
 
-const edgeVoiceOptions = computed(() => {
-  const available = Array.isArray(speech.tts.edge_voices) ? speech.tts.edge_voices : []
-  const selected = ttsDraft.ref_file
-  if (!selected || available.some((voice) => voice.id === selected)) return available
-  return [{ id: selected, name: selected }, ...available]
-})
+const sttOutputScriptOptions = computed(() => selectedSttEngine.value?.output_scripts || [])
 
-// Reference audio and BreezyVoice models come from server-side lists, never typed paths.
+// Reference audio comes from the server-side voice library, never typed paths.
 const ttsVoiceOptions = computed(() => (Array.isArray(speech.tts.voices) ? speech.tts.voices : []))
-
-const ttsModelOptions = computed(() => (Array.isArray(speech.tts.models) ? speech.tts.models : []))
 
 watch(() => sttDraft.type, () => {
   if (sttModelOptions.value.length && !sttModelOptions.value.includes(sttDraft.model_size)) {
     sttDraft.model_size = sttModelOptions.value[0]
-  }
-})
-
-const EDGE_VOICE_ID = /^zh-TW-.+Neural$/
-
-// BreezyVoice clones from a library recording plus what it says.
-watch(() => ttsDraft.ref_file, (voiceId) => {
-  if (ttsDraft.type !== 'breezyvoice') return
-  const voice = ttsVoiceOptions.value.find((item) => item.id === voiceId)
-  if (voice?.transcript) ttsDraft.ref_text = voice.transcript
-})
-
-watch(() => ttsDraft.type, (type, previous) => {
-  if (previous === 'edgetts' && type !== 'edgetts' && EDGE_VOICE_ID.test(ttsDraft.ref_file)) {
-    ttsDraft.ref_file = ''
-  }
-  if (
-    type === 'edgetts' &&
-    speech.tts.edge_voices?.length &&
-    !speech.tts.edge_voices.some((voice) => voice.id === ttsDraft.ref_file)
-  ) {
-    ttsDraft.ref_file = speech.tts.edge_voices[0].id
   }
 })
 
@@ -595,16 +551,7 @@ function applySpeechSnapshot(data) {
       device: data.stt.device
     })
   }
-  if (data.tts) {
-    Object.assign(speech.tts, data.tts)
-    Object.assign(ttsDraft, {
-      type: data.tts.type,
-      ref_file: data.tts.ref_file || '',
-      ref_text: data.tts.ref_text || '',
-      tts_server: data.tts.tts_server || '',
-      model: data.tts.model || ''
-    })
-  }
+  if (data.tts) Object.assign(speech.tts, data.tts)
 }
 
 async function loadSpeechSettings() {
@@ -636,30 +583,6 @@ async function applySttSettings() {
     throw error
   } finally {
     applyingStt.value = false
-  }
-}
-
-async function applyTtsSettings() {
-  applyingTts.value = true
-  speechError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/speech/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ttsDraft)
-    }))
-    if (data.pending) return data
-    applySpeechSnapshot({ tts: data })
-    if (data.preview_audio) {
-      const preview = new Audio(data.preview_audio)
-      await preview.play()
-    }
-    return data
-  } catch (error) {
-    speechError.value = error.message
-    throw error
-  } finally {
-    applyingTts.value = false
   }
 }
 
@@ -696,7 +619,6 @@ async function deleteTtsVoice(voiceId) {
   try {
     await parseJson(await fetch(`/api/speech/voices/${encodeURIComponent(voiceId)}`, { method: 'DELETE' }))
     await refreshTtsVoices()
-    if (ttsDraft.ref_file === voiceId) ttsDraft.ref_file = ''
   } catch (error) {
     speechError.value = error.message
     throw error
@@ -1585,23 +1507,19 @@ export function useRuntimeSettings() {
     compareVadEngines,
     speech,
     sttDraft,
-    ttsDraft,
     sttDirty,
     sttEngineOptions,
+    selectedSttEngine,
     sttModelOptions,
-    ttsDirty,
-    edgeVoiceOptions,
+    sttOutputScriptOptions,
     ttsVoiceOptions,
-    ttsModelOptions,
     voiceLibraryBusy,
     refreshTtsVoices,
     uploadTtsVoice,
     deleteTtsVoice,
     applyingStt,
-    applyingTts,
     speechError,
     loadSpeechSettings,
-    applySttSettings,
-    applyTtsSettings
+    applySttSettings
   }
 }

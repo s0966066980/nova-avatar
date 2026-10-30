@@ -29,8 +29,6 @@ from src.server.runtime_settings import (
     apply_llm_behavior,
     apply_mouth_quality,
     apply_stt_settings,
-    apply_tts_settings,
-    validate_tts_sources,
     apply_vad_settings,
     apply_stage_settings,
     apply_stage_background,
@@ -370,41 +368,6 @@ async def set_stt_settings(request):
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
     except Exception as exc:
         logger.exception("切換 STT 失敗")
-        return _json({"code": -1, "msg": str(exc)}, status=500)
-
-
-async def set_tts_settings(request):
-    """Reject unsafe sources before the request is applied or saved for later."""
-    if state.config:
-        try:
-            params = await request.json()
-        except (ValueError, TypeError):
-            return _json({"code": -1, "msg": "設定格式不正確"}, status=400)
-        try:
-            await asyncio.to_thread(validate_tts_sources, state.config, params)
-        except SettingsError as exc:
-            return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
-    return await _apply_tts_settings(request)
-
-
-@defer_when_connected("語音合成", lambda config: speech_snapshot(config)["tts"])
-async def _apply_tts_settings(request):
-    if not state.config:
-        return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    try:
-        params = await request.json()
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: apply_tts_settings(
-                state.config, params, session_count=_active_session_count()
-            ),
-        )
-        return _json({"code": 0, "msg": "ok", "data": result})
-    except SettingsError as exc:
-        return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
-    except Exception as exc:
-        logger.exception("切換 TTS 失敗")
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 

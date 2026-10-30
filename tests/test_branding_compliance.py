@@ -96,9 +96,11 @@ class BrandingComplianceTests(unittest.TestCase):
                 self.assertEqual(catalog[engine]["label"], label)
                 self.assertIn(restriction, catalog[engine]["description"])
 
-        settings = (ROOT / "web/src/components/SettingsPanel.vue").read_text(encoding="utf-8")
-        self.assertIn("Edge TTS (Development only)", settings)
-        self.assertIn("開發用", settings)
+        # Voices are chosen only in the role profile editor, which shows the
+        # catalog label and the selected engine's restriction text above.
+        editor = (ROOT / "web/src/components/AvatarProfileEditor.vue").read_text(encoding="utf-8")
+        self.assertIn("{{ ttsEngineLabel(engine) }}", editor)
+        self.assertIn("{{ ttsEngineDescription }}", editor)
 
         engine_files = {
             "edge.py": "Development only",

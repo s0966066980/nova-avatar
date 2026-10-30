@@ -22,7 +22,8 @@ const Panel = await loadComponent(new URL('../src/components/SettingsPanel.vue',
     loadBackgrounds: async () => {}, loadArchivedCharacters: async () => {},
     applyStageSettings: async () => { saves.push('stage') },
     applyVisitorSettings: async () => { saves.push('interaction') },
-    applyVadSettings: async () => { saves.push('vad'); return {} }
+    applyVadSettings: async () => { saves.push('vad'); return {} },
+    applySttSettings: async () => { saves.push('stt'); return {} }
   }) }
 })
 
@@ -96,4 +97,48 @@ test('對話設定分類沿用目前場次、轉送摘要並可返回控制台',
     '記憶與語系沿用自己的套用操作，不顯示其他分類的儲存鈕')
   button(view.root, '返回控制台').props.onClick()
   assert.equal(returned, 1)
+})
+
+test('語音辨識併入訪客互動頁，依後端引擎資料呈現，且不再有全域語音合成設定', async t => {
+  const previousWindow = globalThis.window, previousFetch = globalThis.fetch, previousStorage = globalThis.localStorage
+  globalThis.window = { ResizeObserver: null }
+  globalThis.localStorage = { getItem: () => null, setItem() {} }
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ code: 0, data: {} }) })
+  const settings = useRuntimeSettings()
+  const old = { stt: { ...settings.speech.stt }, draft: { ...settings.sttDraft } }
+  Object.assign(settings.speech.stt, { type: 'whisper', model_size: 'small', engines: [
+    { id: 'whisper', label: 'faster-whisper', available: true, models: ['small', 'turbo'], output_scripts: [], local_model_ready: false },
+    { id: 'nano', label: '新的中英辨識', available: true, models: ['nano-v1'],
+      output_scripts: [{ id: 'traditional-tw', label: '臺灣正體輸出' }], local_model_ready: true }
+  ] })
+  Object.assign(settings.sttDraft, { type: 'whisper', model_size: 'small' })
+  const view = mount(Panel, { initialTab: 'interaction' })
+  t.after(() => {
+    view.unmount(); globalThis.window = previousWindow; globalThis.fetch = previousFetch; globalThis.localStorage = previousStorage
+    Object.assign(settings.speech.stt, old.stt); Object.assign(settings.sttDraft, old.draft)
+  })
+  await settle()
+  assert.ok(!button(view.root, '語音辨識與合成'), '全域語音頁已移除')
+  assert.equal(all(view.root, node => node.props.id === 'catPanel-voice').length, 0)
+  assert.equal(button(view.root, '訪客互動與語音辨識').props['aria-selected'], true)
+  const panel = () => all(view.root, node => node.props.id === 'catPanel-interaction')[0]
+  assert.match(textContent(panel()), /語音辨識/)
+  assert.doesNotMatch(textContent(panel()), /TTS|語音合成|參考音訊/)
+  const engines = all(panel(), node => node.props.id === 'stt-engine')[0]
+  assert.deepEqual(engines.options.map(textContent).map(s => s.trim()), ['faster-whisper', '新的中英辨識'])
+  const models = () => all(panel(), node => node.props.id === 'stt-model-size')[0].options.map(textContent)
+  assert.deepEqual(models(), ['small', 'turbo'])
+  assert.equal(all(panel(), node => node.props.id === 'stt-output-script').length, 0, '引擎沒有輸出字元集選項時不顯示')
+
+  settings.sttDraft.type = 'nano'
+  await settle()
+  assert.deepEqual(models(), ['nano-v1'])
+  const scripts = all(panel(), node => node.props.id === 'stt-output-script')[0]
+  assert.deepEqual(scripts.options.map(textContent), ['臺灣正體輸出'])
+
+  saves.length = 0
+  await button(view.root, '儲存並套用本頁設定').props.onClick()
+  await settle()
+  assert.ok(saves.includes('stt'), '本頁儲存會套用語音辨識草稿')
+  assert.ok(!saves.includes('stage'))
 })

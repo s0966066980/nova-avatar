@@ -19,6 +19,8 @@ from src.utils.logging import logger
 
 _handlers = {}
 _stores = {}
+# Changes saved by a console page that no longer exists; they are dropped.
+_RETIRED = {"語音合成": "預設聲音改由主數位人設定檔決定"}
 
 
 class PendingSettings:
@@ -130,6 +132,10 @@ async def apply_pending():
     state.settings_applying = True
     try:
         for label, payload in list(pending.values.items()):
+            if label in _RETIRED:
+                logger.warning('捨棄待套用的「%s」設定：%s', label, _RETIRED[label])
+                pending.save({key: value for key, value in pending.values.items() if key != label})
+                continue
             handler = _handlers.get(label)
             if handler is None:
                 pending.error = '待套用設定版本不相容，請重新儲存'

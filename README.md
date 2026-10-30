@@ -136,7 +136,12 @@ rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 
 
 **語音引擎**：只有 BreezyVoice 與 Edge TTS。設定檔或數位人設定檔若仍指向已移除的
 引擎（CosyVoice、Fun-CosyVoice3、Fish、GPT-SoVITS、IndexTTS2、XTTS），啟動時改用
-Edge TTS，並在日誌與控制台「語音」設定說明，請重新選擇後套用。
+Edge TTS，並在日誌與數位人設定檔「聲音與工具」說明，請重新選擇後套用。
+
+**預設聲音**：尚未套用數位人設定檔時，數位人使用主數位人設定檔的聲音；控制台沒有
+另外的全域語音合成設定。`config.yaml` 的 `tts` 只在第一次建立數位人設定檔時成為
+主數位人的初始聲音（設定檔無法讀取時暫用）。`runtime_overrides.yaml` 舊有的 `tts`
+區塊不再讀取，下次控制台儲存設定時移除。語音辨識在「訪客互動與語音辨識」設定。
 
 **參考音訊**：BreezyVoice 的參考音訊在數位人設定檔「聲音與工具」的音訊庫上傳
 （60 秒、20 MB 內，轉存為 WAV，須附逐字稿），可試聽與刪除；設定檔只能從有逐字稿的
@@ -371,7 +376,8 @@ git diff --cached
 
 `config/config.yaml` 設定服務埠、SSL、允許的主機名稱、Avatar、VAD、STT、LLM 端點、
 TTS、字幕與回覆模式；控制台可調整常用選項，並寫入 `config/runtime_overrides.yaml`
-（優先於 `config.yaml`）。切換 Avatar、STT 或 TTS 引擎前，先中斷目前 WebRTC 會話。
+（優先於 `config.yaml`，聲音除外，見上方「預設聲音」）。切換 Avatar、STT 或 TTS
+引擎前，先中斷目前 WebRTC 會話。
 
 開發與交付檢查與 [CI](.github/workflows/ci.yml) 相同：
 

@@ -67,39 +67,24 @@ test('設定面板可調整嘴型銳化、貼回插值與 MuseTalk 製作參數'
   assert.match(settings, /form\.append\('quality'/)
 })
 
-test('語音引擎只剩 BreezyVoice 與 Edge TTS，已移除引擎改用 Edge 時顯示說明', () => {
-  const options = [...panel.matchAll(/<option value="([a-z0-9-]+)">[^<]*TTS[^<]*<\/option>|<option value="(edgetts|breezyvoice|cosyvoice|fun-cosyvoice3|fishtts|gpt-sovits|indextts2|xtts)">/g)]
-    .map(match => match[1] || match[2])
-  assert.deepEqual([...new Set(options)].sort(), ['breezyvoice', 'edgetts'])
+test('語音引擎只在數位人設定檔選擇，只剩 BreezyVoice 與 Edge TTS，已移除引擎改用 Edge 時顯示說明', () => {
+  assert.match(editor, /const ttsEngines = \['edgetts', 'breezyvoice'\]/)
   for (const removed of ['cosyvoice', 'fishtts', 'gpt-sovits', 'indextts2', 'xtts', 'cosyvoiceLanguage', 'cosyvoiceInstruct']) {
     assert.doesNotMatch(panel + settings + editor, new RegExp(`'${removed}'|settings\\.speech\\.${removed}\\b`))
   }
-  assert.doesNotMatch(settings, /ttsDraft\.(mode|language|speaker|instruct|device)\b/)
-  assert.match(panel, /v-if="speech\.tts\.notice"[^>]*role="status"[^>]*>\{\{ speech\.tts\.notice \}\}/)
+  // The default voice is the main role's: no global TTS draft or apply call remains.
+  assert.doesNotMatch(panel + settings, /ttsDraft|applyTtsSettings|\/api\/speech\/tts/)
+  assert.match(editor, /v-if="speech\.tts\.notice"[^>]*role="status"[^>]*>\{\{ speech\.tts\.notice \}\}/)
 })
 
-test('BreezyVoice 可選，逐字稿與音訊庫錄音一起保存與帶入', () => {
-  assert.match(panel, /<option value="breezyvoice">/)
-  assert.match(panel, /id="tts-breezyvoice-ref-text"/)
-  assert.match(panel, /uploadTtsVoice\(file, '', ttsDraft\.type === 'breezyvoice' \? ttsDraft\.ref_text : ''\)/)
+test('BreezyVoice 參考音檔上傳時一併保存逐字稿', () => {
   assert.match(settings, /form\.append\('transcript', transcript\)/)
-  assert.match(settings, /if \(voice\?\.transcript\) ttsDraft\.ref_text = voice\.transcript/)
   assert.match(editor, /\['edgetts', 'breezyvoice'\]/)
-})
-
-test('從 Edge 切到本機 TTS 時會清掉聲線名稱並改從音訊庫選擇', () => {
-  assert.match(settings, /EDGE_VOICE_ID/)
-  assert.match(settings, /previous === 'edgetts'/)
-  assert.match(panel, /settings\.speech\.voiceLibraryDesc/)
 })
 
 test('參考音訊與模型只能從伺服器清單選擇，不再開本機路徑選擇器', () => {
   assert.doesNotMatch(panel, /path-picker|chooseSpeechPath/)
   assert.doesNotMatch(settings, /path-picker/)
-  assert.match(panel, /id="tts-voice-library"[\s\S]*v-model="ttsDraft\.ref_file"/)
-  assert.match(panel, /v-for="voice in ttsVoiceOptions"/)
-  assert.match(panel, /id="tts-breezyvoice-model"[\s\S]*v-for="model in ttsModelOptions"/)
-  assert.doesNotMatch(panel, /type="text"\s+v-model(\.trim)?="ttsDraft\.(ref_file|model)"/)
   assert.match(settings, /fetch\('\/api\/speech\/voices', \{ method: 'POST', body: form \}\)/)
   assert.match(settings, /\/api\/speech\/voices\/\$\{encodeURIComponent\(voiceId\)\}/)
   assert.match(editor, /v-for="voice in referenceVoiceOptions"/)
@@ -229,11 +214,8 @@ test('設定中心顯示載入失敗與角色空狀態', () => {
   assert.match(panel, /v-else-if="!filteredCharacters\.length && !loadingSettings"/)
 })
 
-test('語音設定保留目前 STT 引擎與 Edge-TTS 音色', () => {
+test('語音辨識設定保留目前 STT 引擎', () => {
   assert.match(panel, /v-for="engine in sttEngineOptions"/)
-  assert.match(panel, /v-model="ttsDraft\.ref_file"/)
-  assert.match(panel, /v-for="voice in edgeVoiceOptions"/)
-  assert.match(settings, /ref_file: data\.tts\.ref_file \|\| ''/)
   assert.match(settings, /const sttEngineOptions = computed/)
 })
 
