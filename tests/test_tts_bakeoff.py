@@ -265,13 +265,6 @@ class ZeroShotClientTests(unittest.TestCase):
         self.assertNotIn(b'name="language"', body)
         self.assertIn(b"RIFF-prompt-bytes", body)
 
-    def test_cosyvoice3_gets_the_same_prompt_prefix_the_app_sends(self):
-        with FakeTTSServer(family="cosyvoice3", sample_rate=24000) as server:
-            client = ZeroShotClient(server.url, self.prompt, "參考逐字稿")
-            client.health()
-            client.synthesize("Hello.")
-        self.assertIn("You are a helpful assistant.<|endofprompt|>參考逐字稿".encode(), server.bodies[0])
-
     def test_http_errors_are_recorded_not_raised(self):
         with FakeTTSServer(status=400) as server:
             client = ZeroShotClient(server.url, self.prompt, "")

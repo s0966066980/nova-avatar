@@ -8,11 +8,10 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-import sys
 from copy import deepcopy
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import aiohttp
 import numpy as np
@@ -130,20 +129,18 @@ def test_unknown_or_malformed_ids_do_not_resolve(voices, voice_id):
 # ---------------------------------------------------------------- input rules
 
 
-@pytest.mark.parametrize("engine", ["xtts", "gpt-sovits", "indextts2", "cosyvoice", "fun-cosyvoice3"])
 @pytest.mark.parametrize("reference", UNSAFE_REFERENCES)
-def test_reference_audio_engines_only_accept_library_ids(voices, stored_voice, engine, reference):
+def test_reference_audio_engines_only_accept_library_ids(voices, stored_voice, reference):
     with pytest.raises(VoiceLibraryError):
-        voice_library.check_reference(engine, reference)
-    assert voice_library.check_reference(engine, stored_voice) == stored_voice
+        voice_library.check_reference("breezyvoice", reference)
+    assert voice_library.check_reference("breezyvoice", stored_voice) == stored_voice
 
 
 @pytest.mark.parametrize("reference", UNSAFE_REFERENCES)
 def test_server_side_references_cannot_be_paths(reference):
-    for engine in ("edgetts", "fishtts"):
-        with pytest.raises(VoiceLibraryError):
-            voice_library.check_reference(engine, reference)
-    assert voice_library.check_reference("fishtts", "narrator_01") == "narrator_01"
+    with pytest.raises(VoiceLibraryError):
+        voice_library.check_reference("edgetts", reference)
+    assert voice_library.check_reference("edgetts", "zh-TW-YunJheNeural") == "zh-TW-YunJheNeural"
 
 
 @pytest.mark.parametrize("server", EXTERNAL_SERVERS)
@@ -166,22 +163,20 @@ def test_tts_models_come_from_the_models_folder(tmp_path, monkeypatch):
     from src.tts import cosyvoice_runtime as runtime
 
     models = tmp_path / "models"
-    (models / "Fun-CosyVoice3-0.5B").mkdir(parents=True)
+    for folder in ("BreezyVoice", "tts/BreezyVoice-tw"):
+        (models / folder).mkdir(parents=True)
+        (models / folder / "cosyvoice.yaml").write_text("")
+        (models / folder / "word_utils.py").write_text("")
+    (models / "Fun-CosyVoice3-0.5B").mkdir()
     (models / "Fun-CosyVoice3-0.5B" / "cosyvoice3.yaml").write_text("")
-    (models / "tts" / "CosyVoice2-0.5B").mkdir(parents=True)
-    (models / "tts" / "CosyVoice2-0.5B" / "cosyvoice2.yaml").write_text("")
     (models / "whisper-small").mkdir()
     monkeypatch.setattr(runtime, "MODELS_ROOT", models)
-    assert runtime.local_models() == [
-        {"id": "Fun-CosyVoice3-0.5B", "family": "cosyvoice3"},
-        {"id": "tts/CosyVoice2-0.5B", "family": "cosyvoice2"},
-    ]
-    assert runtime.resolve_model_dir("tts/CosyVoice2-0.5B") == models / "tts" / "CosyVoice2-0.5B"
-    for bad in ("/tmp", str(models / "whisper-small"), "../models/Fun-CosyVoice3-0.5B", "whisper-small"):
+    assert runtime.local_models() == [{"id": "BreezyVoice"}, {"id": "tts/BreezyVoice-tw"}]
+    assert runtime.resolve_model_dir("tts/BreezyVoice-tw") == models / "tts" / "BreezyVoice-tw"
+    for bad in ("/tmp", str(models / "whisper-small"), "../models/BreezyVoice", "whisper-small",
+                "Fun-CosyVoice3-0.5B"):
         with pytest.raises(FileNotFoundError):
             runtime.resolve_model_dir(bad)
-    with pytest.raises(FileNotFoundError):
-        runtime.resolve_model_dir("Fun-CosyVoice3-0.5B", family="cosyvoice2")
 
 
 # ---------------------------------------------------------------- HTTP regression
@@ -196,7 +191,7 @@ def tts_engine_spy():
 
 
 @pytest.mark.parametrize("reference", UNSAFE_REFERENCES)
-@pytest.mark.parametrize("engine", ["xtts", "gpt-sovits", "cosyvoice"])
+@pytest.mark.parametrize("engine", ["breezyvoice", "edgetts"])
 def test_tts_request_with_file_path_reference_is_rejected(voices, server_config, engine, reference):
     async def scenario():
         async with access_client() as client:
@@ -216,7 +211,7 @@ def test_tts_request_with_external_server_is_rejected(voices, stored_voice, serv
     async def scenario():
         async with access_client() as client:
             response = await client.post("/api/speech/tts", headers=same_origin(client), json={
-                "type": "xtts", "ref_file": stored_voice, "tts_server": server,
+                "type": "breezyvoice", "ref_file": stored_voice, "tts_server": server,
             })
             assert response.status == 400, await response.text()
     with tts_engine_spy(), patch("src.server.runtime_settings._engine_available", return_value=True):
@@ -228,7 +223,7 @@ def test_tts_request_with_model_directory_outside_catalog_is_rejected(voices, se
     async def scenario():
         async with access_client() as client:
             response = await client.post("/api/speech/tts", headers=same_origin(client), json={
-                "type": "cosyvoice", "model": "/tmp",
+                "type": "breezyvoice", "model": "/tmp",
             })
             assert response.status == 400, await response.text()
     with tts_engine_spy(), patch("src.tts.cosyvoice_runtime.subprocess.Popen") as popen, \
@@ -244,7 +239,7 @@ def test_unsafe_tts_request_is_rejected_even_while_peers_are_connected(voices, s
     async def scenario():
         async with access_client() as client:
             response = await client.post("/api/speech/tts", headers=same_origin(client), json={
-                "type": "xtts", "ref_file": "/etc/passwd", "tts_server": "http://127.0.0.1:8020",
+                "type": "breezyvoice", "ref_file": "/etc/passwd", "tts_server": "http://127.0.0.1:50000",
             })
             assert response.status == 400, await response.text()
     run(scenario())
@@ -279,7 +274,7 @@ def test_voice_library_routes_upload_list_and_delete(voices, server_config):
             response = await client.post("/api/speech/voices", headers=same_origin(client), data=form)
             assert response.status == 400
 
-            server_config.tts.type, server_config.tts.ref_file = "xtts", voice["id"]
+            server_config.tts.type, server_config.tts.ref_file = "breezyvoice", voice["id"]
             response = await client.delete(f"/api/speech/voices/{voice['id']}", headers=same_origin(client))
             assert response.status == 409
             server_config.tts.type, server_config.tts.ref_file = "edgetts", "zh-TW-HsiaoChenNeural"
@@ -335,16 +330,16 @@ def test_saved_paths_migrate_into_the_library_or_are_cleared(voices, tmp_path, m
     outside.write_bytes(wav_bytes(seconds=0.8))
     monkeypatch.setattr(voice_library, "MIGRATION_ROOTS", (tmp_path / "data",))
 
-    values = {"type": "xtts", "ref_file": str(allowed / "host.wav"), "tts_server": "http://127.0.0.1:8020", "model": ""}
+    values = {"type": "breezyvoice", "ref_file": str(allowed / "host.wav"), "tts_server": "http://127.0.0.1:50000", "model": ""}
     assert voice_library.migrate_tts_values(values, where="test") is True
     assert voice_library.voice_path(values["ref_file"]).is_file()
     assert voice_library.migrate_tts_values(values, where="test") is False
 
     with caplog.at_level(logging.WARNING):
         for reference in (str(outside), "/etc/passwd", str(allowed / ".." / ".." / "outside.wav")):
-            values = {"type": "cosyvoice", "ref_file": reference, "tts_server": "http://evil.example", "model": "/tmp"}
+            values = {"type": "breezyvoice", "ref_file": reference, "tts_server": "http://evil.example", "model": "/tmp"}
             assert voice_library.migrate_tts_values(values, where="test") is True
-            assert values == {"type": "cosyvoice", "ref_file": "", "tts_server": "", "model": ""}
+            assert values == {"type": "breezyvoice", "ref_file": "", "tts_server": "", "model": ""}
     assert "ref_file" in caplog.text and "tts_server" in caplog.text
     assert len(voice_library.list_voices()) == 1
 
@@ -353,7 +348,7 @@ def test_load_config_migrates_runtime_override_paths(voices, tmp_path, monkeypat
     from src.config import loader, overrides
 
     config_file = tmp_path / "config.yaml"
-    config_file.write_text(yaml.safe_dump({"tts": {"type": "xtts", "ref_file": "/etc/passwd",
+    config_file.write_text(yaml.safe_dump({"tts": {"type": "breezyvoice", "ref_file": "/etc/passwd",
                                                    "tts_server": "http://evil.example:8020"}}))
     monkeypatch.setattr(overrides, "RUNTIME_OVERRIDES_FILE", tmp_path / "missing.yaml")
     config = loader.load_config(str(config_file))
@@ -369,15 +364,15 @@ def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, st
     config.model.avatar_id = "musetalk_angela"
     store = ProfileStore(tmp_path / "profiles.yaml")
     library = store.initialize(config)
-    for change in ({"type": "xtts", "ref_file": "/etc/passwd"},
-                   {"type": "xtts", "ref_file": stored_voice, "tts_server": "http://evil.example:8020"},
-                   {"type": "cosyvoice", "ref_file": "", "model": "/tmp"}):
+    for change in ({"type": "breezyvoice", "ref_file": "/etc/passwd"},
+                   {"type": "breezyvoice", "ref_file": stored_voice, "tts_server": "http://evil.example:8020"},
+                   {"type": "breezyvoice", "ref_file": "", "model": "/tmp"}):
         attempt = deepcopy(library)
         attempt["profiles"][0]["tts"].update(change)
         with pytest.raises(ProfileError):
             store.save(attempt, expected_revision=library["revision"])
     good = deepcopy(library)
-    good["profiles"][0]["tts"].update(type="xtts", ref_file=stored_voice, tts_server="http://127.0.0.1:8020")
+    good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=stored_voice, tts_server="http://127.0.0.1:50000")
     library = store.save(good, expected_revision=library["revision"])
 
     raw = yaml.safe_load(store.path.read_text("utf-8"))
@@ -403,7 +398,7 @@ def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_p
     store = ProfileStore(tmp_path / "profiles.yaml")
     store.initialize(config)
     raw = yaml.safe_load(store.path.read_text("utf-8"))
-    raw["profiles"][0]["tts"].update(type="xtts", ref_file=str(allowed / "host.wav"))
+    raw["profiles"][0]["tts"].update(type="breezyvoice", ref_file=str(allowed / "host.wav"))
     # A legacy role whose URL is not a listed endpoint keeps the file unwritten
     # until an admin picks one; the voice migration must still be saved.
     raw["profiles"][1]["llm"].pop("endpoint")
@@ -427,78 +422,16 @@ def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_p
 # ---------------------------------------------------------------- engine clients
 
 
-def engine_config(**tts):
-    defaults = dict(ref_file="", ref_text="", tts_server="http://127.0.0.1:8020", type="xtts")
-    return SimpleNamespace(audio=SimpleNamespace(fps=50), tts=SimpleNamespace(**{**defaults, **tts}))
+def test_breezyvoice_prompt_comes_from_the_library(voices, stored_voice):
+    from src.tts.engines.breezyvoice import BreezyVoiceTTS
 
-
-def test_xtts_uploads_only_the_library_file_with_a_timeout(voices, stored_voice):
-    from src.tts.engines import xtts
-
-    opened = []
-    real_open = open
-
-    def tracking_open(*args, **kwargs):
-        handle = real_open(*args, **kwargs)
-        opened.append((args[0], handle))
-        return handle
-
-    response = MagicMock()
-    response.json.return_value = {"gpt_cond_latent": [], "speaker_embedding": []}
-    with patch.object(xtts.requests, "post", return_value=response) as post, \
-            patch("builtins.open", tracking_open):
-        engine = xtts.XTTS(engine_config(ref_file=stored_voice), MagicMock())
-    assert engine.speaker == response.json.return_value
-    assert post.call_args.kwargs.get("timeout")
-    assert [str(path) for path, _ in opened] == [str(voices / f"{stored_voice}.wav")]
-    assert all(handle.closed for _, handle in opened)
-
-    with patch.object(xtts.requests, "post") as post:
-        with pytest.raises(VoiceLibraryError):
-            xtts.XTTS(engine_config(ref_file="/etc/passwd"), MagicMock())
-    post.assert_not_called()
-
-    with patch.object(xtts.requests, "post", return_value=MagicMock(status_code=200, iter_content=lambda chunk_size=None: iter(()))) as post:
-        list(engine.xtts("你好", {}, "zh-cn", "http://127.0.0.1:8020", "20"))
-    assert post.call_args.kwargs.get("timeout")
-
-
-def test_fish_requests_have_a_timeout():
-    from src.tts.engines import fish
-
-    engine = fish.FishTTS(engine_config(type="fishtts", ref_file="narrator"), MagicMock())
-    with patch.object(fish.requests, "post", return_value=MagicMock(status_code=200, iter_content=lambda chunk_size=None: iter(()))) as post:
-        list(engine.fish_speech("你好", "narrator", "", "zh", "http://127.0.0.1:8080"))
-    assert post.call_args.kwargs.get("timeout")
-
-
-def test_indextts2_client_uses_a_timeout_and_the_library_file(voices, stored_voice, monkeypatch):
-    fake = ModuleType("gradio_client")
-    fake.Client = MagicMock()
-    fake.handle_file = lambda path: ("handled", path)
-    monkeypatch.setitem(sys.modules, "gradio_client", fake)
-    from src.tts.engines import indextts2
-
-    engine = indextts2.IndexTTS2(engine_config(type="indextts2", ref_file=stored_voice), MagicMock())
-    kwargs = fake.Client.call_args.kwargs
-    assert kwargs.get("httpx_kwargs", {}).get("timeout")
-    assert engine.ref_audio_path == str(voices / f"{stored_voice}.wav")
-    with pytest.raises(VoiceLibraryError):
-        indextts2.IndexTTS2(engine_config(type="indextts2", ref_file="/etc/passwd"), MagicMock())
-
-
-def test_cosyvoice_prompt_comes_from_the_library(voices, stored_voice, tmp_path, monkeypatch):
-    from src.tts.engines.cosyvoice import CosyVoiceTTS
-
-    monkeypatch.setattr("src.tts.cosyvoice_runtime.get_project_root", lambda: tmp_path)
-    engine = CosyVoiceTTS.__new__(CosyVoiceTTS)
-    engine.config = engine_config(type="cosyvoice", ref_file=stored_voice)
-    with patch("src.tts.engines.cosyvoice.prepare_prompt_wav", side_effect=lambda path: path) as prepare:
+    engine = BreezyVoiceTTS.__new__(BreezyVoiceTTS)
+    engine.config = SimpleNamespace(tts=SimpleNamespace(type="breezyvoice", ref_file=stored_voice))
+    with patch("src.tts.engines.breezyvoice.prepare_prompt_wav", side_effect=lambda path: path) as prepare:
         assert engine._prompt_wav() == str(voices / f"{stored_voice}.wav")
     prepare.assert_called_once()
-    engine.config = engine_config(type="cosyvoice", ref_file="/etc/passwd")
-    with patch("src.tts.engines.cosyvoice.prepare_prompt_wav") as prepare, \
-            patch("src.tts.engines.cosyvoice.DEFAULT_PROMPT_WAV", tmp_path / "missing.wav"):
+    engine.config = SimpleNamespace(tts=SimpleNamespace(type="breezyvoice", ref_file="/etc/passwd"))
+    with patch("src.tts.engines.breezyvoice.prepare_prompt_wav") as prepare:
         with pytest.raises(VoiceLibraryError):
             engine._prompt_wav()
     prepare.assert_not_called()

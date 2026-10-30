@@ -68,7 +68,7 @@ class EdgeTTSStartupTests(unittest.TestCase):
 
     def test_non_edge_engine_does_not_start_edge_prewarm(self):
         with patch("src.tts.engines.edge.prewarm_edge_tts") as prewarm:
-            worker = _start_edge_tts_prewarm(self._config("cosyvoice"))
+            worker = _start_edge_tts_prewarm(self._config("breezyvoice"))
             _await_edge_tts_prewarm(worker)
 
         self.assertIsNone(worker)

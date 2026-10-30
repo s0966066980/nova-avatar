@@ -109,7 +109,12 @@ def dict_to_config(config_dict: Dict) -> Config:
         wav2lip=wav2lip_config,
     )
     
-    tts_config = TTSConfig(**config_dict.get('tts', {}))
+    from src.tts.voice_library import REMOVED_TTS_FIELDS
+
+    # Settings of removed TTS engines may remain in saved files; ignore them.
+    tts_dict = {key: value for key, value in (config_dict.get('tts', {}) or {}).items()
+                if key not in REMOVED_TTS_FIELDS}
+    tts_config = TTSConfig(**tts_dict)
     asr_config = ASRConfig(**config_dict.get('asr', {}))
     vad_config = VADConfig(**config_dict.get('vad', {}))
     llm_dict = dict(config_dict.get('llm', {}) or {})

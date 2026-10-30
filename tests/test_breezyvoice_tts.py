@@ -257,19 +257,17 @@ def test_breezyvoice_models_are_listed_by_their_reading_tables(tmp_path, monkeyp
     plain.mkdir()
     (plain / "cosyvoice.yaml").write_text("")
     monkeypatch.setattr(runtime, "MODELS_ROOT", models)
-    assert runtime.local_models() == [{"id": "BreezyVoice", "family": "breezyvoice"}]
-    assert runtime.resolve_model_dir("", family="breezyvoice") == models / "BreezyVoice"
-    assert runtime.resolve_model_dir("BreezyVoice", family="breezyvoice") == models / "BreezyVoice"
+    assert runtime.local_models() == [{"id": "BreezyVoice"}]
+    assert runtime.resolve_model_dir("") == models / "BreezyVoice"
+    assert runtime.resolve_model_dir("BreezyVoice") == models / "BreezyVoice"
     with pytest.raises(FileNotFoundError):
-        runtime.resolve_model_dir("BreezyVoice", family="cosyvoice2")
-    assert runtime.cosyvoice_family("breezyvoice") == "breezyvoice"
-    assert runtime.is_cosyvoice_engine("breezyvoice")
+        runtime.resolve_model_dir("CosyVoice-300M")
 
 
 def test_missing_default_breezyvoice_model_names_the_download_script(tmp_path, monkeypatch):
     monkeypatch.setattr(runtime, "MODELS_ROOT", tmp_path / "models")
     with pytest.raises(FileNotFoundError, match="breezyvoice_weights.py"):
-        runtime.resolve_model_dir("", family="breezyvoice")
+        runtime.resolve_model_dir("")
 
 
 # ---------------------------------------------------------------- voice library transcript
@@ -289,8 +287,7 @@ def engine(ref_file: str = "", ref_text: str = "", parent=None):
     config = SimpleNamespace(
         audio=SimpleNamespace(fps=50),
         tts=SimpleNamespace(type="breezyvoice", ref_file=ref_file, ref_text=ref_text,
-                            tts_server="http://127.0.0.1:50000", mode="auto", language="zh",
-                            instruct=""),
+                            tts_server="http://127.0.0.1:50000"),
     )
     return create_tts_engine("breezyvoice", config, parent or MagicMock())
 
@@ -352,11 +349,27 @@ def test_apply_starts_the_owned_server_for_breezyvoice(voices, tmp_path):
             patch("src.tts.cosyvoice_runtime.ensure_server", return_value="http://127.0.0.1:50000") as ensure, \
             patch("src.server.runtime_settings._preview_tts", return_value="data:audio/wav;base64,dA==") as preview, \
             patch("src.server.runtime_settings.persist_runtime_overrides"):
-        apply_tts_settings(config, {"type": "breezyvoice", "ref_file": voice, "mode": "instruct"},
-                           session_count=0)
-    assert ensure.call_args.kwargs["family"] == "breezyvoice"
-    assert preview.call_args.kwargs["mode"] == "zero_shot"
+        apply_tts_settings(config, {"type": "breezyvoice", "ref_file": voice}, session_count=0)
+    ensure.assert_called_once_with(model_dir="", host="127.0.0.1", port=50000)
+    assert preview.call_args.kwargs["ref_file"] == voice
     assert config.tts.type == "breezyvoice"
     assert config.tts.ref_file == voice
-    assert config.tts.mode == "zero_shot"
-    assert config.tts.language == "zh"
+    assert config.tts.tts_server == "http://127.0.0.1:50000"
+
+
+def test_engine_reports_http_errors_and_empty_audio_after_notifying(voices, tmp_path):
+    voice = add_voice(tmp_path, transcript="參考逐字稿。")
+    for status, chunks, message in ((400, [], "HTTP 400"), (200, [], "no decodable audio")):
+        parent = MagicMock()
+        tts = engine(ref_file=voice, parent=parent)
+        tts.state = State.RUNNING
+        response = MagicMock(status_code=status, text="bad prompt",
+                             iter_content=lambda chunk_size=None, chunks=chunks: iter(chunks))
+        with patch("src.tts.engines.breezyvoice.prepare_prompt_wav", side_effect=lambda path: path), \
+                patch("src.tts.engines.breezyvoice.requests.post", return_value=response) as post:
+            with pytest.raises(RuntimeError, match=message):
+                tts.txt_to_audio(("你好", {"turn_id": "t1"}))
+        assert post.call_args.args[0] == "http://127.0.0.1:50000/inference_zero_shot"
+        assert post.call_args.kwargs["timeout"]
+        parent.notify_fragment_synthesis_failed.assert_called_once_with(
+            {"turn_id": "t1"}, "tts_exhausted_before_audio")

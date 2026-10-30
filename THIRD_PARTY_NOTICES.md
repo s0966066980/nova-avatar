@@ -78,7 +78,11 @@ must not be included in or used for a commercial Nova Avatar distribution.
   engine), served by the owned CosyVoice process
 - BreezyVoice code: Apache-2.0, MediaTek Research,
   <https://github.com/mtkresearch/BreezyVoice>; derived from CosyVoice
-  (Apache-2.0, Alibaba). [`scripts/breezyvoice_frontend.py`](scripts/breezyvoice_frontend.py)
+  (Apache-2.0, Alibaba).
+- CosyVoice code: Apache-2.0, Alibaba / FunAudioLLM,
+  <https://github.com/FunAudioLLM/CosyVoice>. The owned process imports it, with
+  its bundled Matcha-TTS, from a separate checkout (`~/CosyVoice`) in the
+  `cosyvoice` conda environment; it is not bundled here. [`scripts/breezyvoice_frontend.py`](scripts/breezyvoice_frontend.py)
   adapts its `get_bopomofo_rare` (commit `d592c9d3e8927a0f53f68616387060dcd32a05ea`)
   and carries a modification notice.
 - BreezyVoice weights: Apache-2.0, `MediaTek-Research/BreezyVoice` revision
@@ -178,13 +182,10 @@ terms remain controlling for those files.
 
 ## Optional TTS backends
 
-Edge TTS, GPT-SoVITS, CosyVoice, Fun-CosyVoice, Fish TTS, XTTS, and IndexTTS2
-are optional integrations. Verify the exact code, service, voice, model, and
-checkpoint terms before redistribution or commercial packaging.
-
-The engines below carry known usage restrictions (checked against their
-primary license sources on 2026-10-29). The Console engine catalog shows the
-same classification in each engine label.
+Edge TTS and BreezyVoice (above) are the only TTS engines. Verify the exact
+code, service, voice, model, and checkpoint terms before redistribution or
+commercial packaging. The Console engine catalog shows each engine's usage
+classification in its label.
 
 ### Edge TTS
 
@@ -194,37 +195,6 @@ same classification in each engine label.
   cannot synthesize speech without Internet access.
 - Do not use Edge TTS as the speech engine of a commercial or production
   deployment.
-
-### Fish Speech / OpenAudio
-
-- Usage classification: **Community License / Revenue < USD 500k**
-- License: Fish Audio Community License v1.0 (from 2026-10-13; earlier
-  releases used CC-BY-NC-SA-4.0 or the non-commercial Fish Audio Research
-  License, and `s1-mini` remains CC-BY-NC-SA-4.0)
-- Commercial use is licensed only while the licensee has annual revenue below
-  USD 500,000. Integrators and on-premises vendors also need each customer to
-  stay below that threshold. Hosted-service use is excluded.
-- Source: <https://github.com/fishaudio/fish-speech/blob/main/LICENSE>
-
-### IndexTTS2
-
-- Usage classification: **bilibili Model License / Usage thresholds**
-- License: bilibili IndexTTS Model Use License (repository `LICENSE`)
-- Commercial use is allowed only up to 100 million monthly active users and
-  RMB 1 billion annual revenue; above either threshold a separate license from
-  bilibili is required. The model and its outputs must not be used to improve
-  other models. Downstream recipients inherit the use restrictions. The license
-  is governed by PRC law with arbitration in Shanghai.
-- Source: <https://huggingface.co/IndexTeam/IndexTTS-2/blob/main/LICENSE.txt>
-
-### XTTS-v2
-
-- Usage classification: **Research / Non-commercial**
-- Code: MPL-2.0 (Coqui TTS); weights: Coqui Public Model License, which allows
-  only non-commercial use of the model and its outputs
-- Commercial use: **not permitted**. Coqui has shut down, so no commercial
-  license can be obtained.
-- Source: <https://huggingface.co/coqui/XTTS-v2/blob/main/LICENSE.txt>
 
 ## Models, weights, and datasets
 
