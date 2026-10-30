@@ -7,7 +7,8 @@ import json
 import pytest
 
 from src.config.schema import Config
-from src.profiles.store import ProfileError, ProfileStore, compatible_pair, profile_config
+from src.profiles.composition import incompatibility, live_members
+from src.profiles.store import ProfileError, ProfileStore, profile_config
 from src.llm import service as llm_service
 from types import SimpleNamespace
 
@@ -120,13 +121,15 @@ def test_invalid_save_does_not_damage_current_settings(profiles, change):
     assert store.path.read_bytes() == before
 
 
-def test_different_model_can_be_saved_but_not_activated_as_live_pair(profiles):
+def test_different_model_can_be_saved_but_not_activated_as_live_member(profiles):
     store, config, data = profiles
     data["profiles"][1]["llm"]["model"] = "another-local-model"
     saved = store.save(data, expected_revision=1)
     assert saved["profiles"][1]["llm"]["model"] == "another-local-model"
-    with pytest.raises(ProfileError, match="共用同一 LLM"):
-        compatible_pair(saved, config)
+    assert "即時組合必須共用同一 LLM 服務及模型" in incompatibility(*saved["profiles"][:2])
+    saved["composition"]["enabled"] = True
+    assert saved["composition"]["members"][0]["enabled"]
+    assert live_members(saved) == []
 
 
 @pytest.mark.parametrize("field,value", [("model", "tts/BreezyVoice-other"),
@@ -138,10 +141,9 @@ def test_live_pair_shares_one_breezyvoice_model_and_server(profiles, field, valu
         # Each role may clone its own recording; the server and model are shared.
         profile["tts"].update(type="breezyvoice", ref_file=f"{index:016x}", model="", tts_server="")
     data["profiles"][1]["tts"]["tts_server"] = "http://127.0.0.1:50000"  # the default, spelled out
-    assert compatible_pair(data, config)
+    assert incompatibility(*data["profiles"][:2]) == []
     data["profiles"][1]["tts"][field] = value
-    with pytest.raises(ProfileError, match="同一個 BreezyVoice 模型與服務網址"):
-        compatible_pair(data, config)
+    assert any("同一個 BreezyVoice 模型與服務網址" in reason for reason in incompatibility(*data["profiles"][:2]))
 
 
 def test_return_resumes_only_that_roles_played_history_and_reset_clears_both(profiles, monkeypatch):

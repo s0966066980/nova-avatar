@@ -2097,7 +2097,7 @@ class VoiceTurnSession:
                   and self._stage_ready and self._event_sink is not None
                   and self.config.stage.idle_greeting_enabled
                   and not self._manual_pause and not self._prepare_error and not self._preparing
-                  and (roles is None or roles.current_id == roles.library["pair"]["main"]))
+                  and (roles is None or roles.current_id == roles.main_id))
         idle = (self._is_conversation_idle()
                 and (roles is None or roles.all_idle())
                 and (roles is None or roles.phase in {"ready", "disabled"}))
