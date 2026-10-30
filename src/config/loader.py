@@ -222,6 +222,7 @@ def load_config(
     
     # 4. 合併設定面板寫入的執行時覆蓋（llm.model / 數字人引擎與角色）
     from src.config.overrides import load_runtime_overrides
+    from src.utils.logging import logger
 
     # An isolated diagnostic profile must not inherit the control panel's
     # selected local LLM or avatar. Saved preferences remain untouched.
@@ -229,6 +230,10 @@ def load_config(
     if overrides_enabled not in {"0", "1", "false", "true"}:
         raise ValueError("NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED must be 0, 1, false, or true")
     overrides = load_runtime_overrides() if overrides_enabled in {"1", "true"} else {}
+    # The main role profile is the only source of the default voice. A tts
+    # block an older console saved is ignored here and dropped on the next save.
+    if overrides.pop("tts", None) is not None:
+        logger.info("runtime_overrides.yaml 的 tts 區塊已不再使用：預設聲音改由主數位人設定檔決定")
     if overrides:
         config_dict = _merge_dicts(config_dict, overrides)
 

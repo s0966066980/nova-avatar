@@ -11,7 +11,7 @@ test('STT 預熱期間顯示可存取的不確定進度條', () => {
   assert.match(panel, /v-if="applyingStt"[\s\S]*class="stt-prewarm-progress"/)
   assert.match(panel, /role="progressbar"/)
   assert.match(panel, /prewarmProgressLabel/)
-  assert.match(panel, /speech\.stt\.local_model_ready/)
+  assert.match(panel, /selectedSttEngine\?\.local_model_ready/)
   assert.match(panel, /localPrewarmProgressHint/)
   assert.match(panel, /progress-fill-indeterminate/)
 })
@@ -20,9 +20,8 @@ test('STT 預熱進度尊重減少動態效果偏好', () => {
   assert.match(panel, /@media \(prefers-reduced-motion: reduce\)[\s\S]*progress-fill-indeterminate/)
 })
 
-test('FunASR 可選擇臺灣繁體或原始簡體輸出', () => {
-  assert.match(panel, /sttDraft\.type === 'funasr'/)
+test('輸出字元集選項來自伺服器的引擎資料，不寫死引擎名稱', () => {
+  assert.match(panel, /v-if="sttOutputScriptOptions\.length"/)
   assert.match(panel, /v-model="sttDraft\.output_script"/)
-  assert.match(panel, /value="traditional-tw"/)
-  assert.match(panel, /value="simplified"/)
+  assert.doesNotMatch(panel, /sttDraft\.type === '/)
 })

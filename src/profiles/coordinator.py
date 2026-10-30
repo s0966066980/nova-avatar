@@ -15,6 +15,7 @@ from src.avatars.factory import load_avatar_data
 from src.llm.service import select_session_profile, session_history
 from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
 from src.profiles.routing import RoutingClients, route_question
+from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
 from src.profiles.store import RETURN_ANNOUNCEMENTS, ProfileError, ProfileStore, compatible_pair, profile_config
 from src.profiles.weather import CwaWeather, WeatherQuery
@@ -393,6 +394,36 @@ class ConversationRoles:
             presentation.close()
 
 
+def profiles_path(config_path) -> Path:
+    """Where the role library lives: next to the configuration file."""
+    return Path(config_path or "config/config.yaml").parent / "avatar_profiles.yaml"
+
+
+def _adopt_main_voice(config, library) -> None:
+    """The default voice is the main role's; it is never saved anywhere else."""
+    main = next(p for p in library["profiles"] if p["id"] == library["pair"]["main"])
+    config.tts = TTSConfig(**deepcopy(main["tts"]))
+
+
+def adopt_saved_main_voice(config, path) -> bool:
+    """Speak with the saved main role's voice from startup on.
+
+    Keeps the configured voice when no role library is saved yet (the first
+    library is seeded from it) or the saved one cannot be read; roles start
+    later and report that themselves.
+    """
+    path = Path(path)
+    if not path.exists():
+        return False
+    try:
+        library = ProfileStore(path).load()
+        _adopt_main_voice(config, library)
+    except Exception as exc:
+        logger.warning("無法讀取主數位人的聲音，暫用設定檔的 TTS：%s", exc)
+        return False
+    return True
+
+
 def _start_breezyvoice(tts) -> None:
     from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
 
@@ -529,6 +560,11 @@ class RoleCoordinator:
                     threads=config.llm.llamacpp_threads,
                     allow_partial_offload=config.llm.llamacpp_allow_partial_offload)
             self.assets, self.library = cache, target
+            _adopt_main_voice(self.state.config, target)
+            if not startup:
+                from src.tts.voice_library import clear_removed_engine_notice
+                # The admin has chosen voices again since a removed engine fell back.
+                clear_removed_engine_notice()
             self.profiles_applied = True
             self.phase = "ready" if target["enabled"] else "disabled"
             self.error = ""
@@ -638,9 +674,10 @@ class RoleCoordinator:
 async def initialize_roles(state):
     if state.config is None:
         return None
-    path = Path(state.config_path or "config/config.yaml").parent / "avatar_profiles.yaml"
-    store = ProfileStore(path)
+    store = ProfileStore(profiles_path(state.config_path))
     library = await asyncio.to_thread(store.initialize, state.config)
+    # Even if applying the roles fails below, sessions speak with this voice.
+    _adopt_main_voice(state.config, library)
     coordinator = RoleCoordinator(state, store, library)
     state.roles = coordinator
     try:

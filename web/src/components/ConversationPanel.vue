@@ -106,7 +106,7 @@ async function save() {
   try {
     const response = await fetch(`/api/conversations/${target.value}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) })
     const result = await response.json()
-    if (!response.ok || result.code !== 0) throw new Error(({ english_requires_whisper: '英文對話需先套用 Whisper 辨識引擎', english_requires_edge_tts: '英文對話需先套用 Edge TTS', voice_controls_require_edge_tts: '此聲音選擇適用 Edge TTS，請先在語音設定套用 Edge TTS' })[result.msg] || result.msg || '套用失敗')
+    if (!response.ok || result.code !== 0) throw new Error(({ english_requires_whisper: '英文對話需先在「訪客互動與語音辨識」套用 Whisper 辨識引擎', english_requires_edge_tts: '英文對話需要目前數位人使用 Edge TTS，請在數位人設定檔的「聲音與工具」改選並套用', voice_controls_require_edge_tts: '此聲音選擇適用 Edge TTS，請在數位人設定檔的「聲音與工具」改選 Edge TTS 並套用' })[result.msg] || result.msg || '套用失敗')
     baseline.value = JSON.stringify(draft)
     feedback.value = target.value === 'defaults' ? '已儲存，之後的新對話會使用此預設。' : '已套用；保留上限若有變更，會在目前輪次結束後生效。'
   } catch (e) { error.value = e.message }

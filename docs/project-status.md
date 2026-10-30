@@ -177,7 +177,9 @@ stale-output Gate；generation fence、取消或提交前檢查丟棄的媒體�
   並附掛 mmproj 供附件看圖；Qwen3.5-9B 可選。`llamacpp_allow_partial_offload: false`
   時放不下全部層數即啟動失敗並說明。預設不需要 11434 的 Ollama。
 - `tts.type: edgetts`：僅供開發（非公開端點、無正式商用授權、斷網即無法發聲），
-  控制台標示 Development only；正式聲線待 TTS 評比決定。
+  控制台標示 Development only；正式聲線待 TTS 評比決定。`tts` 只是第一次建立數位人
+  設定檔時主數位人的初始聲音；之後預設聲音一律跟隨主數位人設定檔，
+  `runtime_overrides.yaml` 不再保存 `tts`。
 - 檢索上限 0.3 s（`RETRIEVAL_BUDGET_SECONDS`，issue 15 實測 P95 0.15 s 的兩倍）：逾時本輪不帶檢索並在控制台顯示。
 - `model.musetalk.mouth_continuity: true`、`mouth_continuity_idle_alignment: true`、
   `settling_enabled: true`、`avatar_transition: true`；settling 預設 5 影格，限制在 4–6 影格。

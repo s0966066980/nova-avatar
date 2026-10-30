@@ -217,64 +217,19 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def tts_engine_spy():
-    return patch("src.tts.factory.create_tts_engine", side_effect=AssertionError("engine must not start"))
-
-
-@pytest.mark.parametrize("reference", UNSAFE_REFERENCES)
-@pytest.mark.parametrize("engine", ["breezyvoice", "edgetts"])
-def test_tts_request_with_file_path_reference_is_rejected(voices, server_config, engine, reference):
-    async def scenario():
-        async with access_client() as client:
-            response = await client.post("/api/speech/tts", headers=same_origin(client), json={
-                "type": engine, "ref_file": reference, "tts_server": "http://127.0.0.1:8020",
-            })
-            assert response.status == 400, await response.text()
-    with tts_engine_spy(), patch("src.tts.cosyvoice_runtime.ensure_server") as ensure, \
-            patch("src.server.runtime_settings._engine_available", return_value=True):
-        run(scenario())
-    ensure.assert_not_called()
-    assert server_config.tts.ref_file == Config().tts.ref_file
-
-
-@pytest.mark.parametrize("server", EXTERNAL_SERVERS)
-def test_tts_request_with_external_server_is_rejected(voices, stored_voice, server_config, server):
-    async def scenario():
-        async with access_client() as client:
-            response = await client.post("/api/speech/tts", headers=same_origin(client), json={
-                "type": "breezyvoice", "ref_file": stored_voice, "tts_server": server,
-            })
-            assert response.status == 400, await response.text()
-    with tts_engine_spy(), patch("src.server.runtime_settings._engine_available", return_value=True):
-        run(scenario())
-    assert server_config.tts.tts_server == Config().tts.tts_server
-
-
-def test_tts_request_with_model_directory_outside_catalog_is_rejected(voices, server_config):
-    async def scenario():
-        async with access_client() as client:
-            response = await client.post("/api/speech/tts", headers=same_origin(client), json={
-                "type": "breezyvoice", "model": "/tmp",
-            })
-            assert response.status == 400, await response.text()
-    with tts_engine_spy(), patch("src.tts.cosyvoice_runtime.subprocess.Popen") as popen, \
-            patch("src.server.runtime_settings._engine_available", return_value=True):
-        run(scenario())
-    popen.assert_not_called()
-
-
-def test_unsafe_tts_request_is_rejected_even_while_peers_are_connected(voices, server_config, monkeypatch, tmp_path):
-    monkeypatch.setattr(state, "avatar_streams", {1: object()})
-    monkeypatch.setattr(state, "config_path", str(tmp_path / "config.yaml"))
+def test_global_tts_route_is_gone(server_config):
+    """The default voice is the main role profile's; there is no global TTS form."""
+    from src.server.access import ROUTE_ACCESS
 
     async def scenario():
         async with access_client() as client:
             response = await client.post("/api/speech/tts", headers=same_origin(client), json={
-                "type": "breezyvoice", "ref_file": "/etc/passwd", "tts_server": "http://127.0.0.1:50000",
+                "type": "breezyvoice", "ref_file": "/etc/passwd", "tts_server": "http://evil.example:8020",
             })
-            assert response.status == 400, await response.text()
+            assert response.status in {404, 405}
     run(scenario())
-    assert not (tmp_path / "pending_settings.json").exists()
+    assert ("POST", "/api/speech/tts") not in ROUTE_ACCESS
+    assert server_config.tts.ref_file == Config().tts.ref_file
 
 
 def test_path_picker_route_is_gone(server_config):

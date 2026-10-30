@@ -148,6 +148,10 @@ def main():
     # 載入配置
     state.config_path = args.config
     state.config = load_config(config_file=args.config)
+    # Prewarm and start the main role's voice, not the configuration file's.
+    from src.profiles.coordinator import adopt_saved_main_voice, profiles_path
+
+    adopt_saved_main_voice(state.config, profiles_path(state.config_path))
     logger.info(f"已載入配置: {state.config}")
     from src.scene.service import SceneError, scene_service
 
@@ -186,7 +190,7 @@ def main():
             )
             logger.info("BreezyVoice 已就緒: %s", state.config.tts.tts_server)
         except Exception:
-            logger.exception("啟動 BreezyVoice 失敗，請到設定重新套用 TTS")
+            logger.exception("啟動 BreezyVoice 失敗，請到數位人設定檔檢查聲音並重新套用")
 
     # Orin's disposable prompt/PCM warmups also apply to x86. Prime actual
     # recognizer inference here, so listening never spends its first turn on it.
