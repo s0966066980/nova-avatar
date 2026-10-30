@@ -897,12 +897,12 @@
               <div class="field-control-area">
                 <select class="std-select" v-model="ttsDraft.type">
                   <option value="edgetts">Edge TTS (Development only) · 開發用</option>
-                  <option value="cosyvoice">CosyVoice (本機聲音複製 · 深度神經合成)</option>
-                  <option value="fun-cosyvoice3">Fun-CosyVoice3 (最新多語神經模型)</option>
                   <option value="breezyvoice">BreezyVoice (本機台灣華語 · 聲音複製)</option>
                 </select>
               </div>
             </div>
+            <!-- 設定檔或角色指到已移除的引擎時，伺服器已改用 Edge TTS -->
+            <p v-if="speech.tts.notice" class="settings-error-banner" role="status">{{ speech.tts.notice }}</p>
 
             <!-- Edge TTS 聲線 -->
             <div class="setting-form-row" v-if="ttsDraft.type === 'edgetts'">
@@ -918,56 +918,6 @@
               </div>
             </div>
 
-            <!-- CosyVoice 專屬設定 -->
-            <template v-if="isCosyVoiceFamily">
-              <div class="setting-form-row">
-                <div class="field-label-group"><label for="tts-cosyvoice-mode" class="field-main-label">推理模式</label></div>
-                <div class="field-control-area"><select id="tts-cosyvoice-mode" class="std-select" v-model="ttsDraft.mode"><option value="auto">Auto</option><option value="zero_shot">Zero-shot（依參考語音）</option><option value="cross_lingual">Cross-lingual</option><option value="instruct">Instruct</option></select></div>
-              </div>
-              <div class="setting-form-row">
-                <div class="field-label-group">
-                  <label for="tts-cosyvoice-language" class="field-main-label">{{ t('settings.speech.cosyvoiceLanguage') }}</label>
-                </div>
-                <div class="field-control-area">
-                  <select id="tts-cosyvoice-language" class="std-select" v-model="ttsDraft.language">
-                    <option v-for="item in cosyvoiceLanguageOptions" :key="item.id" :value="item.id">{{ item.label }}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="setting-form-row">
-                <div class="field-label-group">
-                  <label for="tts-cosyvoice-prompt-text" class="field-main-label">{{ t('settings.speech.cosyvoiceInstruct') }}</label>
-                </div>
-                <div class="field-control-area">
-                  <input id="tts-cosyvoice-prompt-text" class="chat-text-entry" type="text" v-model="ttsDraft.instruct">
-                </div>
-              </div>
-
-              <div class="setting-form-row">
-                <div class="field-label-group">
-                  <label for="tts-cosyvoice-ref-text" class="field-main-label">參考語音逐字稿<span v-if="ttsDraft.mode === 'zero_shot'" aria-hidden="true"> *</span></label>
-                  <span class="field-sub-hint">Zero-shot 必填；請逐字填入選取音檔中實際說的內容，才能保留原本的語氣與韻律。</span>
-                </div>
-                <div class="field-control-area">
-                  <textarea id="tts-cosyvoice-ref-text" class="chat-text-entry" v-model.trim="ttsDraft.ref_text" :required="ttsDraft.mode === 'zero_shot'" rows="2" placeholder="例如：您好，歡迎使用 Nova Avatar。"></textarea>
-                </div>
-              </div>
-
-              <div class="setting-form-row">
-                <div class="field-label-group">
-                  <label for="tts-cosyvoice-model" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
-                  <span class="field-sub-hint">{{ t('settings.speech.cosyvoiceModelDesc') }}</span>
-                </div>
-                <div class="field-control-area">
-                  <select id="tts-cosyvoice-model" class="std-select" v-model="ttsDraft.model">
-                    <option value="">{{ t('settings.speech.cosyvoiceModelAuto') }}</option>
-                    <option v-for="model in ttsModelOptions" :key="model.id" :value="model.id">{{ model.id }}</option>
-                  </select>
-                </div>
-              </div>
-            </template>
-
             <!-- BreezyVoice：音訊庫的參考錄音＋逐字稿，整段合成 -->
             <template v-if="ttsDraft.type === 'breezyvoice'">
               <div class="setting-form-row">
@@ -981,12 +931,12 @@
               </div>
               <div class="setting-form-row">
                 <div class="field-label-group">
-                  <label for="tts-breezyvoice-model" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
+                  <label for="tts-breezyvoice-model" class="field-main-label">{{ t('settings.speech.ttsModel') }}</label>
                   <span class="field-sub-hint">「自動」使用 models/BreezyVoice（由 scripts/breezyvoice_weights.py 下載）。</span>
                 </div>
                 <div class="field-control-area">
                   <select id="tts-breezyvoice-model" class="std-select" v-model="ttsDraft.model">
-                    <option value="">{{ t('settings.speech.cosyvoiceModelAuto') }}</option>
+                    <option value="">{{ t('settings.speech.ttsModelAuto') }}</option>
                     <option v-for="model in ttsModelOptions" :key="model.id" :value="model.id">{{ model.id }}</option>
                   </select>
                 </div>
@@ -1002,7 +952,7 @@
               <div class="field-control-area">
                 <div class="input-group">
                   <select id="tts-voice-library" class="std-select" v-model="ttsDraft.ref_file" :disabled="voiceLibraryBusy">
-                    <option value="">{{ isCosyVoiceFamily ? t('settings.speech.voiceLibraryDefault') : t('settings.speech.voiceLibraryChoose') }}</option>
+                    <option value="">{{ t('settings.speech.voiceLibraryChoose') }}</option>
                     <option v-for="voice in ttsVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}（{{ voice.seconds }} 秒）</option>
                   </select>
                   <button type="button" class="btn btn-outline-secondary" :disabled="voiceLibraryBusy" @click="voiceFileInput?.click()">{{ t('settings.speech.voiceLibraryUpload') }}</button>
@@ -1339,10 +1289,6 @@ const {
   applyTtsSettings
 } = useRuntimeSettings()
 
-const isCosyVoiceFamily = computed(() => (
-  ttsDraft.type === 'cosyvoice' || ttsDraft.type === 'fun-cosyvoice3'
-))
-
 const voiceFileInput = ref(null)
 
 async function onVoiceFileChosen(event) {
@@ -1361,37 +1307,6 @@ async function removeSelectedVoice() {
     emit('notification', '參考音訊已移入回收桶', 'success')
   } catch (error) { emit('notification', error.message, 'error') }
 }
-
-const COSYVOICE_LANGUAGE_FALLBACK = [
-  { id: 'zh', label: '中文' },
-  { id: 'en', label: 'English' },
-  { id: 'ja', label: '日本語' },
-  { id: 'ko', label: '한국어' },
-  { id: 'yue', label: '粵語' },
-  { id: 'auto', label: '自動' }
-]
-const COSYVOICE3_LANGUAGE_FALLBACK = [
-  { id: 'zh', label: '中文' },
-  { id: 'en', label: 'English' },
-  { id: 'ja', label: '日本語' },
-  { id: 'ko', label: '한국어' },
-  { id: 'yue', label: '粵語' },
-  { id: 'de', label: 'Deutsch' },
-  { id: 'es', label: 'Español' },
-  { id: 'fr', label: 'Français' },
-  { id: 'it', label: 'Italiano' },
-  { id: 'ru', label: 'Русский' },
-  { id: 'auto', label: '自動' }
-]
-
-const cosyvoiceLanguageOptions = computed(() => {
-  if (speech.tts.languages.length && ttsDraft.type === speech.tts.type) {
-    return speech.tts.languages
-  }
-  return ttsDraft.type === 'fun-cosyvoice3'
-    ? COSYVOICE3_LANGUAGE_FALLBACK
-    : COSYVOICE_LANGUAGE_FALLBACK
-})
 
 const currentBoardStyleLabel = computed(() => {
   const s = stageBoardStyles.find(item => item.id === selectedBoardStyle.value)

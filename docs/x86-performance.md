@@ -29,7 +29,7 @@ Whisper beam 5、路由與檢索串行）的辨識為 0.41、主回答前 1.29�
 [目前專案基線](project-status.md#首音延遲實測2026-10-30)。
 
 本機 TTS 尚未納入上表：與 MuseTalk、E2B 共用 GPU 時，BreezyVoice 第一個片段
-P50／P95 2.48／2.94 s，Fun-CosyVoice3 1.77／1.89 s（Edge TTS 首段 PCM 約 0.16 s）。
+P50／P95 2.48／2.94 s，Fun-CosyVoice3（已移除）1.77／1.89 s（Edge TTS 首段 PCM 約 0.16 s）。
 E2B＋MuseTalk 共占 18.0 GB，再載 BreezyVoice 峰值 23.9／24.5 GB。
 
 以下 10 月 15–16 日的實測使用 Qwen3.5 9B 與 FunASR，首音從「伺服器接受 Prompt」

@@ -173,31 +173,20 @@ def main():
     
     _load_startup_models()
 
-    tts_type = str(getattr(state.config.tts, "type", "")).strip().lower()
-    from src.tts.cosyvoice_runtime import is_cosyvoice_engine
-
-    if is_cosyvoice_engine(tts_type):
+    if str(getattr(state.config.tts, "type", "")).strip().lower() == "breezyvoice":
         try:
-            from src.tts.cosyvoice_runtime import (
-                cosyvoice_family,
-                ensure_server,
-                family_label,
-                parse_server_url,
-            )
+            from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
 
-            family = cosyvoice_family(tts_type)
             host, port = parse_server_url(getattr(state.config.tts, "tts_server", "") or "")
-            label = family_label(family)
-            logger.info("正在啟動 %s: %s", label, getattr(state.config.tts, "model", "") or label)
+            logger.info("正在啟動 BreezyVoice: %s", getattr(state.config.tts, "model", "") or "models/BreezyVoice")
             state.config.tts.tts_server = ensure_server(
                 model_dir=getattr(state.config.tts, "model", "") or "",
-                family=family,
                 host=host,
                 port=port,
             )
-            logger.info("%s 已就緒: %s", label, state.config.tts.tts_server)
+            logger.info("BreezyVoice 已就緒: %s", state.config.tts.tts_server)
         except Exception:
-            logger.exception("啟動 CosyVoice 失敗，請到設定重新套用 TTS")
+            logger.exception("啟動 BreezyVoice 失敗，請到設定重新套用 TTS")
 
     # Orin's disposable prompt/PCM warmups also apply to x86. Prime actual
     # recognizer inference here, so listening never spends its first turn on it.

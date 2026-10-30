@@ -155,17 +155,11 @@ const speech = reactive({
     ref_text: '',
     tts_server: '',
     model: '',
-    language: 'Chinese',
-    speaker: 'Vivian',
-    instruct: '',
-    device: 'auto',
     engines: [],
     models: [],
     voices: [],
-    languages: [],
-    speakers: [],
     edge_voices: [],
-    devices: ['auto', 'cpu', 'cuda']
+    notice: ''
   }
 })
 
@@ -178,15 +172,10 @@ const sttDraft = reactive({
 })
 const ttsDraft = reactive({
   type: 'edgetts',
-  mode: 'auto',
   ref_file: 'zh-TW-HsiaoChenNeural',
   ref_text: '',
   tts_server: '',
-  model: '',
-  language: 'Chinese',
-  speaker: 'Vivian',
-  instruct: '',
-  device: 'auto'
+  model: ''
 })
 const applyingStt = ref(false)
 const applyingTts = ref(false)
@@ -416,15 +405,10 @@ const sttDirty = computed(() => (
 
 const ttsDirty = computed(() => (
   ttsDraft.type !== speech.tts.type ||
-  ttsDraft.mode !== speech.tts.mode ||
   ttsDraft.ref_file !== speech.tts.ref_file ||
   ttsDraft.ref_text !== speech.tts.ref_text ||
   ttsDraft.tts_server !== speech.tts.tts_server ||
-  ttsDraft.model !== speech.tts.model ||
-  ttsDraft.language !== speech.tts.language ||
-  ttsDraft.speaker !== speech.tts.speaker ||
-  ttsDraft.instruct !== speech.tts.instruct ||
-  ttsDraft.device !== speech.tts.device
+  ttsDraft.model !== speech.tts.model
 ))
 
 const STT_ENGINE_FALLBACK = [
@@ -452,15 +436,10 @@ const edgeVoiceOptions = computed(() => {
   return [{ id: selected, name: selected }, ...available]
 })
 
-// Reference audio and CosyVoice models come from server-side lists, never typed paths.
+// Reference audio and BreezyVoice models come from server-side lists, never typed paths.
 const ttsVoiceOptions = computed(() => (Array.isArray(speech.tts.voices) ? speech.tts.voices : []))
 
-const TTS_MODEL_FAMILIES = { 'fun-cosyvoice3': 'cosyvoice3', breezyvoice: 'breezyvoice' }
-
-const ttsModelOptions = computed(() => {
-  const family = TTS_MODEL_FAMILIES[ttsDraft.type] || 'cosyvoice2'
-  return (Array.isArray(speech.tts.models) ? speech.tts.models : []).filter((item) => item.family === family)
-})
+const ttsModelOptions = computed(() => (Array.isArray(speech.tts.models) ? speech.tts.models : []))
 
 watch(() => sttDraft.type, () => {
   if (sttModelOptions.value.length && !sttModelOptions.value.includes(sttDraft.model_size)) {
@@ -480,12 +459,6 @@ watch(() => ttsDraft.ref_file, (voiceId) => {
 watch(() => ttsDraft.type, (type, previous) => {
   if (previous === 'edgetts' && type !== 'edgetts' && EDGE_VOICE_ID.test(ttsDraft.ref_file)) {
     ttsDraft.ref_file = ''
-  }
-  if (
-    (type === 'cosyvoice' || type === 'fun-cosyvoice3') &&
-    (!ttsDraft.language || ttsDraft.language === 'Chinese')
-  ) {
-    ttsDraft.language = 'zh'
   }
   if (
     type === 'edgetts' &&
@@ -626,15 +599,10 @@ function applySpeechSnapshot(data) {
     Object.assign(speech.tts, data.tts)
     Object.assign(ttsDraft, {
       type: data.tts.type,
-      mode: data.tts.mode || 'auto',
       ref_file: data.tts.ref_file || '',
       ref_text: data.tts.ref_text || '',
       tts_server: data.tts.tts_server || '',
-      model: data.tts.model || '',
-      language: data.tts.language === 'Chinese' ? 'zh' : (data.tts.language || 'zh'),
-      speaker: data.tts.speaker || 'Vivian',
-      instruct: data.tts.instruct || '',
-      device: data.tts.device || 'auto'
+      model: data.tts.model || ''
     })
   }
 }
@@ -672,15 +640,6 @@ async function applySttSettings() {
 }
 
 async function applyTtsSettings() {
-  if (
-    ['cosyvoice', 'fun-cosyvoice3'].includes(ttsDraft.type) &&
-    ttsDraft.mode === 'zero_shot' &&
-    !ttsDraft.ref_text.trim()
-  ) {
-    const error = new Error('Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。')
-    speechError.value = error.message
-    throw error
-  }
   applyingTts.value = true
   speechError.value = ''
   try {

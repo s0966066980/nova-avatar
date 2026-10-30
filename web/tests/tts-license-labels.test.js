@@ -16,18 +16,18 @@ test('角色聲音引擎選單顯示伺服器目錄的授權限制標示', async
   const previous = speech.tts.engines
   speech.tts.engines = [
     { id: 'edgetts', label: 'Edge TTS (Development only)' },
-    { id: 'xtts', label: 'XTTS (Research / Non-commercial)' }
+    { id: 'breezyvoice', label: 'BreezyVoice' }
   ]
   const profile = { id: 'main', name: '接待員', avatar_id: '', engine: 'musetalk',
     llm: { endpoint: '', model: '' }, assistant_profile: { system_prompt: '', forbidden_self_names: [] }, reply_rules: {},
     tools: { weather: false },
-    tts: { type: 'xtts', ref_file: '' },
+    tts: { type: 'breezyvoice', ref_file: '' },
     rag: { enabled: false, dataset_ids: [], document_scope: 'all', document_ids: [] } }
   const view = mount(Editor.default ?? Editor, { modelValue: profile, initialSection: 'voice' })
   t.after(() => { view.unmount(); speech.tts.engines = previous })
   await settle()
   const options = all(view.root, node => node.type === 'option').map(textContent)
   assert.ok(options.includes('Edge TTS (Development only)'))
-  assert.ok(options.includes('XTTS (Research / Non-commercial)'))
-  assert.ok(options.includes('cosyvoice'), '目錄沒有的引擎退回顯示 ID')
+  assert.ok(options.includes('BreezyVoice'))
+  assert.ok(!options.some(option => /cosyvoice|piper|xtts/i.test(option)), '只列出 BreezyVoice 與 Edge TTS')
 })

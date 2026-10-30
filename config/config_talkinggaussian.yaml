@@ -29,7 +29,7 @@ model:
     bg_img: "white" # 背景配置: white(白色) | black(黑色) | /path/to/bg.jpg(完整路徑)
 
 tts:
-  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | indextts2 | xtts
+  type: edgetts  # edgetts | breezyvoice
   ref_file: zh-TW-HsiaoChenNeural
 
 asr:

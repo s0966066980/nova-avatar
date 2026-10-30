@@ -1,10 +1,10 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Start and stop an owned local CosyVoice FastAPI process.
+"""Start and stop the owned local CosyVoice FastAPI process that serves BreezyVoice.
 
-The same process serves CosyVoice 2, Fun-CosyVoice 3 and BreezyVoice (a
-CosyVoice-v1 model with its own text frontend); the model folder decides.
+BreezyVoice is a CosyVoice-v1 model with its own text frontend; the process
+runs from the ``cosyvoice`` conda environment and the upstream CosyVoice code.
 """
 from __future__ import annotations
 
@@ -23,84 +23,12 @@ from src.utils.paths import get_project_root
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 50000
-DEFAULT_MODEL_DIR = Path.home() / "CosyVoice" / "pretrained_models" / "CosyVoice2-0.5B"
-DEFAULT_COSYVOICE3_MODEL_DIRS = (
-    Path.home() / "CosyVoice" / "pretrained_models" / "Fun-CosyVoice3-0.5B",
-    Path.home() / "CosyVoice" / "pretrained_models" / "Fun-CosyVoice3-0.5B-2512",
-    Path("/home/oliver/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B"),
-    Path("/home/oliver/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B-2512"),
-)
-DEFAULT_PROMPT_WAV = get_project_root() / "data" / "tts" / "cosyvoice_prompt.wav"
 MODELS_ROOT = get_project_root() / "models"
-# Every listed file must exist. BreezyVoice ships the CosyVoice v1 YAML plus
-# its reading tables; a plain CosyVoice v1 folder is not served.
-MODEL_FAMILY_MARKERS = (
-    (("cosyvoice3.yaml",), "cosyvoice3"),
-    (("cosyvoice2.yaml",), "cosyvoice2"),
-    (("cosyvoice.yaml", "word_utils.py"), "breezyvoice"),
-)
+# Every listed file must exist: BreezyVoice ships the CosyVoice v1 YAML plus
+# its reading tables; a plain CosyVoice folder is not served.
+MODEL_MARKERS = ("cosyvoice.yaml", "word_utils.py")
 # Where scripts/breezyvoice_weights.py puts the weights, relative to models/.
 DEFAULT_BREEZYVOICE_MODEL_ID = "BreezyVoice"
-FAMILY_LABELS = {
-    "cosyvoice2": "CosyVoice 2",
-    "cosyvoice3": "Fun-CosyVoice 3.0",
-    "breezyvoice": "BreezyVoice",
-}
-DEFAULT_PROMPT_TEXT = "你好，我是數字人助手。"
-COSYVOICE_ENGINES = frozenset({"cosyvoice", "fun-cosyvoice3", "breezyvoice"})
-ENGINE_FAMILIES = {"fun-cosyvoice3": "cosyvoice3", "breezyvoice": "breezyvoice"}
-COSYVOICE_LANGUAGE_INSTRUCT = {
-    "zh": "用中文说这句话",
-    "chinese": "用中文说这句话",
-    "en": "Speak this in English",
-    "english": "Speak this in English",
-    "ja": "日本語で話してください",
-    "japanese": "日本語で話してください",
-    "ko": "한국어로 말해 주세요",
-    "korean": "한국어로 말해 주세요",
-    "yue": "用广东话说这句话",
-    "auto": "",
-}
-COSYVOICE3_LANGUAGE_INSTRUCT = {
-    "zh": "请用中文说这句话。",
-    "chinese": "请用中文说这句话。",
-    "en": "Please speak this in English.",
-    "english": "Please speak this in English.",
-    "ja": "日本語で話してください。",
-    "japanese": "日本語で話してください。",
-    "ko": "한국어로 말해 주세요.",
-    "korean": "한국어로 말해 주세요.",
-    "de": "Bitte sprechen Sie dies auf Deutsch.",
-    "es": "Por favor hable esto en español.",
-    "fr": "Veuillez dire ceci en français.",
-    "it": "Per favore dillo in italiano.",
-    "ru": "Пожалуйста, скажите это по-русски.",
-    "yue": "请用广东话表达。",
-    "auto": "",
-}
-COSYVOICE_LANGUAGES = (
-    ("zh", "中文"),
-    ("en", "English"),
-    ("ja", "日本語"),
-    ("ko", "한국어"),
-    ("yue", "粵語"),
-    ("auto", "自動"),
-)
-# BreezyVoice is trained for Taiwanese Mandarin (with English code-switching).
-BREEZYVOICE_LANGUAGES = (("zh", "台灣華語"),)
-COSYVOICE3_LANGUAGES = (
-    ("zh", "中文"),
-    ("en", "English"),
-    ("ja", "日本語"),
-    ("ko", "한국어"),
-    ("yue", "粵語"),
-    ("de", "Deutsch"),
-    ("es", "Español"),
-    ("fr", "Français"),
-    ("it", "Italiano"),
-    ("ru", "Русский"),
-    ("auto", "自動"),
-)
 PROMPT_SAMPLE_RATE = 24000
 PROMPT_MAX_SECONDS = 8.0
 PROMPT_SCAN_SECONDS = 20.0
@@ -136,35 +64,12 @@ def resolve_python() -> Path:
     return default_python()
 
 
-def is_cosyvoice_engine(engine: str) -> bool:
-    return str(engine or "").strip().lower() in COSYVOICE_ENGINES
-
-
-def cosyvoice_family(engine: str) -> str:
-    return ENGINE_FAMILIES.get(str(engine or "").strip().lower(), "cosyvoice2")
-
-
-def family_label(family: str) -> str:
-    return FAMILY_LABELS.get(family, FAMILY_LABELS["cosyvoice2"])
-
-
-def languages_for_family(family: str):
-    if family == "cosyvoice3":
-        return COSYVOICE3_LANGUAGES
-    if family == "breezyvoice":
-        return BREEZYVOICE_LANGUAGES
-    return COSYVOICE_LANGUAGES
-
-
-def _model_family(directory: Path) -> str:
-    for markers, family in MODEL_FAMILY_MARKERS:
-        if all((directory / marker).is_file() for marker in markers):
-            return family
-    return ""
+def _is_model_dir(directory: Path) -> bool:
+    return all((directory / marker).is_file() for marker in MODEL_MARKERS)
 
 
 def local_models() -> list[dict]:
-    """CosyVoice model folders under ``models/`` (one or two levels deep).
+    """BreezyVoice model folders under ``models/`` (one or two levels deep).
 
     Settings name a model by its ID here, the folder relative to ``models/``.
     """
@@ -176,126 +81,34 @@ def local_models() -> list[dict]:
         return []
     for child in children:
         candidates = [child]
-        if not _model_family(child):
+        if not _is_model_dir(child):
             try:
                 candidates = sorted(path for path in child.iterdir()
                                     if path.is_dir() and not path.name.startswith("."))
             except OSError:
                 continue
-        for directory in candidates:
-            family = _model_family(directory)
-            if family:
-                found.append({"id": directory.relative_to(root).as_posix(), "family": family})
+        found.extend({"id": directory.relative_to(root).as_posix()}
+                     for directory in candidates if _is_model_dir(directory))
     return sorted(found, key=lambda item: item["id"])
 
 
-def resolve_model_dir(model: str = "", family: str = "cosyvoice2") -> Path:
-    """The model folder for a ``models/`` catalog ID, or the default for ``family``."""
+def resolve_model_dir(model: str = "") -> Path:
+    """The model folder for a ``models/`` catalog ID, or ``models/BreezyVoice``."""
     if model:
-        match = next((item for item in local_models() if item["id"] == model), None)
-        if match is None:
+        if model not in {item["id"] for item in local_models()}:
             raise FileNotFoundError(f"TTS 模型「{model}」不在 models/ 清單中")
-        if match["family"] != family:
-            raise FileNotFoundError(f"TTS 模型「{model}」不是 {family_label(family)} 模型")
-        return MODELS_ROOT / match["id"]
-    if family == "breezyvoice":
-        default = MODELS_ROOT / DEFAULT_BREEZYVOICE_MODEL_ID
-        if _model_family(default) == "breezyvoice":
-            return default
-        raise FileNotFoundError(
-            f"找不到 BreezyVoice 模型：{default}。"
-            "請執行 uv run --no-sync python scripts/breezyvoice_weights.py 下載權重"
-        )
-    candidates = (
-        DEFAULT_COSYVOICE3_MODEL_DIRS
-        if family == "cosyvoice3"
-        else (DEFAULT_MODEL_DIR,)
-    )
-    for path in candidates:
-        if path.is_dir():
-            return path
-    expected = candidates[0]
-    if family == "cosyvoice3":
-        raise FileNotFoundError(
-            f"找不到 Fun-CosyVoice 3.0 模型：{expected}。"
-            "請下載 FunAudioLLM/Fun-CosyVoice3-0.5B-2512 到 "
-            "~/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B，"
-            "或放到 models/ 後從清單選擇"
-        )
+        return MODELS_ROOT / model
+    default = MODELS_ROOT / DEFAULT_BREEZYVOICE_MODEL_ID
+    if _is_model_dir(default):
+        return default
     raise FileNotFoundError(
-        f"找不到 CosyVoice 模型目錄: {DEFAULT_MODEL_DIR}"
+        f"找不到 BreezyVoice 模型：{default}。"
+        "請執行 uv run --no-sync python scripts/breezyvoice_weights.py 下載權重"
     )
 
 
 def server_url(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> str:
     return f"http://{host}:{int(port)}"
-
-
-def normalize_language(value: str, family: str = "cosyvoice2") -> str:
-    raw = str(value or "").strip().lower()
-    aliases = {
-        "zh-tw": "zh",
-        "zh-cn": "zh",
-        "cn": "zh",
-        "jp": "ja",
-        "kr": "ko",
-        "cantonese": "yue",
-        "german": "de",
-        "spanish": "es",
-        "french": "fr",
-        "italian": "it",
-        "russian": "ru",
-    }
-    raw = aliases.get(raw, raw)
-    mapping = {
-        "chinese": "zh",
-        "english": "en",
-        "japanese": "ja",
-        "korean": "ko",
-    }
-    raw = mapping.get(raw, raw)
-    if family == "breezyvoice":
-        return "zh"
-    table = (
-        COSYVOICE3_LANGUAGE_INSTRUCT
-        if family == "cosyvoice3"
-        else COSYVOICE_LANGUAGE_INSTRUCT
-    )
-    if raw in table:
-        return raw
-    if raw in COSYVOICE_LANGUAGE_INSTRUCT or raw in COSYVOICE3_LANGUAGE_INSTRUCT:
-        return raw
-    return "zh"
-
-
-def build_instruct(
-    language: str,
-    extra: str = "",
-    *,
-    family: str = "cosyvoice2",
-) -> str:
-    """instruct2 text that can force spoken language for CosyVoice 2/3."""
-    lang = normalize_language(language, family=family)
-    table = (
-        COSYVOICE3_LANGUAGE_INSTRUCT
-        if family == "cosyvoice3"
-        else COSYVOICE_LANGUAGE_INSTRUCT
-    )
-    extra_text = str(extra or "").replace("<|endofprompt|>", "").strip()
-    parts = []
-    lang_text = table.get(lang, "")
-    if lang_text:
-        parts.append(lang_text)
-    if extra_text:
-        parts.append(extra_text)
-    if not parts:
-        return ""
-    if family == "cosyvoice3":
-        body = " ".join(parts)
-        if not body.startswith("You are a helpful assistant"):
-            body = f"You are a helpful assistant. {body}"
-        return body.rstrip() + "<|endofprompt|>"
-    return "，".join(parts) + "<|endofprompt|>"
 
 
 def parse_server_url(url: str) -> tuple[str, int]:
@@ -305,24 +118,6 @@ def parse_server_url(url: str) -> tuple[str, int]:
     return host, int(port)
 
 
-def resolve_prompt_source(ref_file: str) -> Path:
-    """Resolve a user-supplied prompt path, including CosyVoice asset basenames."""
-    raw = Path(str(ref_file or "")).expanduser()
-    if raw.is_file():
-        return raw.resolve()
-    name = raw.name
-    if name:
-        for folder in (
-            Path.home() / "CosyVoice" / "asset",
-            get_project_root() / "data" / "tts",
-            Path("/home/oliver/CosyVoice/asset"),
-        ):
-            candidate = folder / name
-            if candidate.is_file():
-                return candidate.resolve()
-    raise FileNotFoundError(str(ref_file))
-
-
 def prepare_prompt_wav(
     source: str | Path,
     *,
@@ -330,14 +125,14 @@ def prepare_prompt_wav(
     sample_rate: int = PROMPT_SAMPLE_RATE,
     cache_dir: Path | None = None,
 ) -> Path:
-    """Convert MP3/WAV/etc. into a short 24 kHz mono WAV CosyVoice can load."""
+    """Convert a library recording into a short 24 kHz mono prompt WAV."""
     import av
     import numpy as np
     import soundfile as sf
 
     source_path = Path(source).expanduser()
     if not source_path.is_file():
-        source_path = resolve_prompt_source(str(source_path))
+        raise FileNotFoundError(str(source_path))
     cache_dir = Path(cache_dir) if cache_dir is not None else (
         get_project_root() / "data" / "tts" / "prompts"
     )
@@ -397,7 +192,7 @@ def prepare_prompt_wav(
     )
     sf.write(dest, audio, sample_rate, subtype="PCM_16")
     logger.info(
-        "CosyVoice prompt prepared source=%s dest=%s seconds=%.2f",
+        "BreezyVoice prompt prepared source=%s dest=%s seconds=%.2f",
         source_path,
         dest,
         audio.size / float(sample_rate),
@@ -520,17 +315,16 @@ def shutdown_cosyvoice_server() -> None:
 def ensure_server(
     *,
     model_dir: str = "",
-    family: str = "cosyvoice2",
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     timeout_seconds: float = 180.0,
 ) -> str:
-    """Start CosyVoice 2/3 if needed and return the HTTP base URL.
+    """Start the BreezyVoice server if needed and return the HTTP base URL.
 
-    ``model_dir`` is a ``models/`` catalog ID, or empty for the family default.
+    ``model_dir`` is a ``models/`` catalog ID, or empty for ``models/BreezyVoice``.
     """
     global _server_proc, _loaded_model
-    resolved = resolve_model_dir(model_dir, family=family)
+    resolved = resolve_model_dir(model_dir)
     url = server_url(host, port)
     if _health_ok(url, expected_model=str(resolved)) and _loaded_model in {
         "",

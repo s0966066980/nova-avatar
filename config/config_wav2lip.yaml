@@ -22,7 +22,7 @@ model:
   model_path: ./models
 
 tts:
-  type: edgetts  # edgetts | fishtts | gpt-sovits | cosyvoice | indextts2 | xtts
+  type: edgetts  # edgetts | breezyvoice
   ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）
 
 asr:

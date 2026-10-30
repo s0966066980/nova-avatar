@@ -205,16 +205,11 @@ class ModelConfig:
 class TTSConfig:
     voice_en_us: str = "en-US-JennyNeural"
     """TTS 配置"""
-    type: str = "edgetts"  # edgetts | fishtts | gpt-sovits | cosyvoice | fun-cosyvoice3 | breezyvoice | indextts2 | xtts
-    mode: str = "auto"  # auto | zero_shot | cross_lingual | instruct
-    ref_file: str = "zh-TW-HsiaoChenNeural"
-    ref_text: Optional[str] = None
-    tts_server: str = "http://127.0.0.1:9880"
-    model: str = ""
-    language: str = "Chinese"
-    speaker: str = "Vivian"
-    instruct: str = ""
-    device: str = "auto"  # auto | cpu | cuda
+    type: str = "edgetts"  # edgetts | breezyvoice
+    ref_file: str = "zh-TW-HsiaoChenNeural"  # Edge 聲線名稱，或 BreezyVoice 的音訊庫 ID
+    ref_text: Optional[str] = None  # BreezyVoice 參考音訊逐字稿；空白時用音訊庫記錄
+    tts_server: str = ""  # BreezyVoice 服務（只接受本機）；空白為 127.0.0.1:50000
+    model: str = ""  # BreezyVoice：models/ 清單 ID；空白為 models/BreezyVoice
     edge_persistent_worker: bool = True
     edge_prefetch: bool = True
     edge_connection_reuse: bool = True
