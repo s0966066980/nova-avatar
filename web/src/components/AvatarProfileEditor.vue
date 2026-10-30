@@ -63,6 +63,12 @@
       <p v-if="ttsEngineDescription">{{ ttsEngineDescription }}</p>
       <p v-if="voiceProblem" id="profile-voice-problem" class="profile-alert" role="alert">{{ voiceProblem }}</p>
       <p v-if="selectedVoice?.transcript">逐字稿：{{ selectedVoice.transcript }}</p>
+      <div class="profile-preview">
+        <button type="button" :disabled="previewDisabled" @click="previewVoice"><i class="bi bi-play-circle" aria-hidden="true"></i> 試聽此設定檔的聲音</button>
+        <span v-if="previewPhase" role="status">{{ previewPhase === 'starting' ? 'BreezyVoice 伺服器啟動中，首次載入約需 1–2 分鐘…' : '合成試聽句中…' }}</span>
+      </div>
+      <p v-if="previewError" class="profile-alert" role="alert">{{ previewError }}</p>
+      <audio v-if="previewAudio" :src="previewAudio" controls autoplay></audio>
       <label v-if="profile.tts.type === 'edgetts'">英文聲音<input v-model="profile.tts.voice_en_us" placeholder="en-US-JennyNeural"></label>
       <VoiceLibraryManager v-if="usesVoiceLibrary" :selected="profile.tts.ref_file" @uploaded="voice => chooseVoice(voice.id)" @deleted="id => { if (profile.tts.ref_file === id) chooseVoice('') }" />
       <details v-if="usesVoiceLibrary"><summary>其他 BreezyVoice 設定</summary><div class="profile-grid"><label v-for="(label,key) in voiceFields" :key="key">{{ label }}<input :value="profile.tts[key] || ''" @input="profile.tts[key] = $event.target.value"></label></div></details>
@@ -72,7 +78,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import RagFlowSettings from './RagFlowSettings.vue'
 import VoiceLibraryManager from './VoiceLibraryManager.vue'
 import { referenceAudioProblem, referenceVoices, switchTtsEngine, voiceLabel } from '../voiceSelection.js'
@@ -91,7 +97,7 @@ const sections = [
 const ruleFields = [{ key: 'activation', label: '何時使用看板' }, { key: 'speech', label: '口語回覆規則' }, { key: 'board', label: '看板內容規則' }]
 const voiceFields = { tts_server: 'BreezyVoice 服務網址（限本機，留空為預設）', model: 'models/ 內的 BreezyVoice 模型（留空為預設）' }
 // Reference audio is a voice-library ID; the server rejects file paths.
-const { ttsVoiceOptions, speech } = useRuntimeSettings()
+const { ttsVoiceOptions, speech, breezyVoiceServerReady, previewProfileVoice } = useRuntimeSettings()
 const referenceVoiceOptions = computed(() => referenceVoices(ttsVoiceOptions.value))
 const selectedVoice = computed(() => usesVoiceLibrary.value ? referenceVoiceOptions.value.find(v => v.id === profile.value.tts.ref_file) : null)
 const voiceProblem = computed(() => referenceAudioProblem(profile.value.tts, ttsVoiceOptions.value))
@@ -104,6 +110,30 @@ const ttsEngineDescription = computed(() => speech.tts.engines.find(engine => en
 const ttsEngines = ['edgetts', 'breezyvoice']
 // BreezyVoice clones a voice-library recording and needs what it says.
 const usesVoiceLibrary = computed(() => profile.value.tts.type === 'breezyvoice')
+// Preview the unsaved voice: '' idle, 'starting' (BreezyVoice server loading) or 'synthesizing'.
+const previewPhase = ref(''), previewAudio = ref(''), previewError = ref('')
+const previewDisabled = computed(() => Boolean(previewPhase.value || !profile.value.tts.ref_file || voiceProblem.value))
+let previewRequest = 0
+const voiceKey = computed(() => ['type', 'ref_file', 'tts_server', 'model'].map(key => profile.value.tts[key] || '').join('\n'))
+// A sample of another voice is stale; a late answer for it is dropped.
+watch(voiceKey, () => { previewRequest++; previewPhase.value = ''; previewAudio.value = ''; previewError.value = '' })
+async function previewVoice() {
+  const request = ++previewRequest
+  const tts = profile.value.tts
+  previewAudio.value = ''; previewError.value = ''
+  try {
+    previewPhase.value = 'synthesizing'
+    if (tts.type === 'breezyvoice' && !(await breezyVoiceServerReady(tts))) {
+      if (request === previewRequest) previewPhase.value = 'starting'
+    }
+    const audio = await previewProfileVoice(tts)
+    if (request === previewRequest) previewAudio.value = audio
+  } catch (error) {
+    if (request === previewRequest) previewError.value = error.message || String(error)
+  } finally {
+    if (request === previewRequest) previewPhase.value = ''
+  }
+}
 const endpointOptions = computed(() => {
   const listed = props.endpoints || []
   const current = profile.value.llm.endpoint
@@ -133,5 +163,6 @@ defineExpose({ openSection: value => { section.value = value } })
 
 <style scoped>
 .profile-sections{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border-default);padding-bottom:18px}.profile-sections button{display:flex;gap:7px;align-items:center}.profile-sections button[aria-pressed=true]{border-color:var(--brand-light);color:var(--brand-light);background:var(--bg-surface-elevated)}.profile-section{padding-top:24px}.profile-section h3{font-size:18px;margin:0 0 10px}.profile-section h4{font-size:15px;margin:16px 0}.profile-section p{font-size:13px;line-height:1.7;color:var(--text-secondary)}.profile-section label{display:flex;flex-direction:column;gap:8px;margin:16px 0;font-size:13px}.profile-section .profile-check{flex-direction:row;align-items:center}.profile-section .profile-alert{color:var(--warning)}.profile-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 20px}.profile-section input,.profile-section textarea,.profile-section select{width:100%;padding:10px 12px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface-elevated);color:var(--text-primary);font:inherit;box-sizing:border-box}.profile-section .profile-check input{width:auto}.profile-section textarea{resize:vertical;min-height:90px}.profile-section small{font-size:12px;color:var(--text-secondary)}.profile-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.profile-editor button{padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);color:var(--text-primary);font-size:13px;cursor:pointer}.profile-editor :focus-visible{outline:2px solid var(--brand-light);outline-offset:3px}.profile-editor summary{font-size:13px;cursor:pointer;padding:12px 0}@media(min-width:1280px) and (min-height:640px){.profile-sections{position:sticky;top:0;z-index:2;margin-top:-12px;padding-top:12px;background:var(--bg-surface)}}
+.profile-preview{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0;font-size:13px;color:var(--text-secondary)}.profile-preview button{display:flex;gap:7px;align-items:center}.profile-preview button:disabled{opacity:.55;cursor:not-allowed}.profile-section audio{display:block;width:100%;max-width:420px;margin:8px 0 16px}
 @media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-sections button{flex:1;justify-content:center}}
 </style>

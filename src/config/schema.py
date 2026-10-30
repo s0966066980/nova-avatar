@@ -207,7 +207,7 @@ class TTSConfig:
     """TTS 配置"""
     type: str = "edgetts"  # edgetts | breezyvoice
     ref_file: str = "zh-TW-HsiaoChenNeural"  # Edge 聲線名稱，或 BreezyVoice 的音訊庫 ID
-    ref_text: Optional[str] = None  # BreezyVoice 參考音訊逐字稿；空白時用音訊庫記錄
+    ref_text: Optional[str] = None  # 已停用：逐字稿只來自音訊庫，載入與儲存時清除
     tts_server: str = ""  # BreezyVoice 服務（只接受本機）；空白為 127.0.0.1:50000
     model: str = ""  # BreezyVoice：models/ 清單 ID；空白為 models/BreezyVoice
     edge_persistent_worker: bool = True

@@ -99,6 +99,37 @@ test('對話設定分類沿用目前場次、轉送摘要並可返回控制台',
   assert.equal(returned, 1)
 })
 
+test('最小靜音判定時間滑桿編輯 min_silence_ms，可選 192 ms（6 個 32 ms 幀）並顯示目前值', async t => {
+  const previousWindow = globalThis.window, previousFetch = globalThis.fetch, previousStorage = globalThis.localStorage
+  globalThis.window = { ResizeObserver: null }
+  globalThis.localStorage = { getItem: () => null, setItem() {} }
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ code: 0, data: {} }) })
+  const settings = useRuntimeSettings()
+  const old = settings.vadDraft.min_silence_ms
+  settings.vadDraft.min_silence_ms = 192
+  const view = mount(Panel, { initialTab: 'interaction' })
+  t.after(() => {
+    view.unmount(); globalThis.window = previousWindow; globalThis.fetch = previousFetch; globalThis.localStorage = previousStorage
+    settings.vadDraft.min_silence_ms = old
+  })
+  await settle()
+  const row = all(view.root, n => n.props.class === 'setting-form-row' && textContent(n).includes('最小靜音判定時間'))[0]
+  const slider = all(row, n => n.type === 'input' && n.props.type === 'range')[0]
+  const [min, max, step] = ['min', 'max', 'step'].map(key => Number(slider.props[key]))
+  assert.ok(min >= 100 && max <= 3000, '刻度在伺服器接受的 100–3000 ms 內')
+  assert.ok(min <= 192 && 192 <= max)
+  assert.equal(step % 32, 0, '分段器以 32 ms 幀計算')
+  assert.equal((192 - min) % step, 0, '192 ms 必須是可選刻度')
+  assert.equal((max - min) % step, 0, '最大值也落在刻度上')
+  assert.equal(slider.value, 192, '滑桿顯示目前的 min_silence_ms')
+  assert.match(textContent(row), /192\s*ms/)
+  slider.props['onUpdate:modelValue'](224)
+  await settle()
+  assert.equal(settings.vadDraft.min_silence_ms, 224)
+  assert.equal('min_silence_duration_ms' in settings.vadDraft, false, '不可寫入伺服器不認得的欄位')
+  assert.match(textContent(row), /224\s*ms/)
+})
+
 test('語音辨識併入訪客互動頁，依後端引擎資料呈現，且不再有全域語音合成設定', async t => {
   const previousWindow = globalThis.window, previousFetch = globalThis.fetch, previousStorage = globalThis.localStorage
   globalThis.window = { ResizeObserver: null }

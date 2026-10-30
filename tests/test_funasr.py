@@ -282,6 +282,64 @@ def test_ensure_server_refuses_non_loopback_hosts(installed):
         service.ensure_server(model="Fun-ASR-Nano-2512", device="cpu", host="0.0.0.0")
 
 
+def test_service_urls_bracket_ipv6_loopback():
+    assert service.server_url("::1", 50010) == "http://[::1]:50010"
+    assert service.server_url() == "http://127.0.0.1:50010"
+
+
+def test_stop_server_interrupts_a_start_in_progress(installed, tmp_path, monkeypatch):
+    """Choosing another engine must not wait out the 300 s model load."""
+    import time
+
+    monkeypatch.setattr(service, "LOG_PATH", tmp_path / "server.log")
+    process = MagicMock()
+    process.poll.return_value = None  # loads forever, never healthy
+    launched = threading.Event()
+
+    def popen(*_args, **_kwargs):
+        launched.set()
+        return process
+
+    outcome = {}
+
+    def start():
+        try:
+            service.ensure_server(model="Fun-ASR-Nano-2512", device="cpu", timeout_seconds=300)
+        except Exception as exc:  # noqa: BLE001 - the test inspects what the start raised
+            outcome["error"] = exc
+
+    with patch.object(service, "_health_payload", return_value=None), \
+            patch.object(service, "_stop_stale_listener"), \
+            patch.object(service.subprocess, "Popen", side_effect=popen):
+        starter = threading.Thread(target=start, daemon=True)
+        starter.start()
+        assert launched.wait(5)
+        began = time.monotonic()
+        service.stop_server()
+        assert time.monotonic() - began < 5
+        starter.join(5)
+    assert not starter.is_alive()
+    assert "取消" in str(outcome["error"])
+    process.terminate.assert_called()
+    # The next start is not cancelled by the earlier stop.
+    health = {"family": "fun-asr-nano", "model_dir": str(installed.folder), "requested_device": "cpu"}
+    with patch.object(service, "_health_payload", return_value=health):
+        assert service.ensure_server(model="Fun-ASR-Nano-2512", device="cpu") == "http://127.0.0.1:50010"
+
+
+def test_service_and_server_share_one_protocol_definition():
+    """The server runs in its own venv and cannot import src; the values must still agree."""
+    from src.server import runtime_settings
+
+    assert server.FAMILY == service.FAMILY
+    assert server.DEFAULT_PORT == service.DEFAULT_PORT
+    assert tuple(server.OUTPUT_SCRIPTS) == tuple(service.OUTPUT_SCRIPTS)
+    assert runtime_settings.STT_OUTPUT_SCRIPTS is service.OUTPUT_SCRIPTS
+    assert runtime_settings.STT_ENGINE_META["funasr"]["output_scripts"] is service.OUTPUT_SCRIPTS
+    assert runtime_settings.STT_ENGINE_META["funasr"]["service"] == service.FAMILY
+    assert set(runtime_settings.STT_OUTPUT_SCRIPT_LABELS) == set(service.OUTPUT_SCRIPTS)
+
+
 # -------------------------------------------------------------------- engine
 
 
@@ -350,6 +408,20 @@ def test_settings_report_a_missing_service_venv(installed, monkeypatch, tmp_path
     funasr = next(item for item in speech_snapshot(Config())["stt"]["engines"] if item["id"] == "funasr")
     assert funasr["available"] is False
     assert "setup-fun-asr-nano.sh" in funasr["message"]
+
+
+def test_applying_unavailable_fun_asr_names_what_is_missing(installed, monkeypatch, tmp_path):
+    from src.server.runtime_settings import SettingsError, apply_stt_settings
+
+    monkeypatch.setenv("FUN_ASR_NANO_PYTHON", str(tmp_path / "missing/python"))
+    with pytest.raises(SettingsError) as raised:
+        apply_stt_settings(Config(), {"type": "funasr"}, session_count=0)
+    assert "setup-fun-asr-nano.sh" in raised.value.extra["missing_package"]
+    monkeypatch.setenv("FUN_ASR_NANO_PYTHON", str(installed.python))
+    (installed.folder / "model.pt").unlink()
+    with pytest.raises(SettingsError) as raised:
+        apply_stt_settings(Config(), {"type": "funasr"}, session_count=0)
+    assert "fun_asr_nano_weights.py" in raised.value.extra["missing_package"]
 
 
 def test_applying_fun_asr_rejects_unlisted_models(installed):

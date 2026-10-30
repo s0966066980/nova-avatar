@@ -627,6 +627,29 @@ async function deleteTtsVoice(voiceId) {
   }
 }
 
+// The voice fields a preview sends; the server resolves them as library and model IDs.
+function previewVoiceFields(tts) {
+  return { type: tts.type, ref_file: tts.ref_file || '', tts_server: tts.tts_server || '', model: tts.model || '' }
+}
+
+// Whether a profile's BreezyVoice server already runs, so the console can say it is starting.
+async function breezyVoiceServerReady(tts) {
+  const { model, tts_server } = previewVoiceFields(tts)
+  const query = new URLSearchParams({ model, tts_server })
+  const data = await parseJson(await fetch(`/api/speech/breezyvoice/status?${query}`))
+  return Boolean(data?.ready)
+}
+
+// Synthesize a short sentence with a profile's unsaved voice; resolves to a WAV data URI.
+async function previewProfileVoice(tts) {
+  const data = await parseJson(await fetch('/api/speech/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tts: previewVoiceFields(tts) })
+  }))
+  return data.audio
+}
+
 async function loadVadSettings() {
   vadError.value = ''
   try {
@@ -1517,6 +1540,8 @@ export function useRuntimeSettings() {
     refreshTtsVoices,
     uploadTtsVoice,
     deleteTtsVoice,
+    breezyVoiceServerReady,
+    previewProfileVoice,
     applyingStt,
     speechError,
     loadSpeechSettings,

@@ -19,6 +19,7 @@ from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
 from src.profiles.store import RETURN_ANNOUNCEMENTS, ProfileError, ProfileStore, compatible_pair, profile_config
 from src.profiles.weather import CwaWeather, WeatherQuery
+from src.tts.cosyvoice_runtime import server_identity
 from src.utils.logging import logger
 
 # The plan of a turn the current main role answers itself. It is also the
@@ -489,8 +490,10 @@ class RoleCoordinator:
 
     @staticmethod
     def _resource_key(config):
-        llm = config.llm
-        return (config.model.type, config.tts.type, llm.provider, llm.model,
+        llm, tts = config.llm, config.tts
+        # The BreezyVoice server and model are shared by every conversation too.
+        voice_server = server_identity(tts.tts_server, tts.model) if tts.type == "breezyvoice" else None
+        return (config.model.type, tts.type, voice_server, llm.provider, llm.model,
                 llm.base_url, llm.llamacpp_ctx, llm.llamacpp_host, llm.llamacpp_port)
 
     async def apply(self, library=None, *, startup=False):

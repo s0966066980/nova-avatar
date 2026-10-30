@@ -59,13 +59,10 @@ class BreezyVoiceTTS(BaseTTS):
         return str(prepare_prompt_wav(voice_path(configured)))
 
     def _prompt_text(self) -> str:
-        """``tts.ref_text`` when set, else the transcript stored with the library voice."""
-        configured = str(getattr(self.config.tts, "ref_text", "") or "").strip()
-        if configured:
-            return configured
+        """The transcript stored with the library voice, its only source."""
         transcript = voice_transcript(getattr(self.config.tts, "ref_file", ""))
         if not transcript:
-            raise ValueError("BreezyVoice 需要參考音訊的逐字稿（音訊庫或「參考語音逐字稿」）")
+            raise ValueError("BreezyVoice 需要附逐字稿的參考音訊，請在音訊庫重新上傳並填寫逐字稿")
         return transcript
 
     def _tts_request(self, text: str, prompt_text: str = "") -> tuple[str, dict]:

@@ -377,11 +377,25 @@ def _import_saved_path(value: str, where: str) -> str:
     return ""
 
 
+def drop_stale_transcript(values: dict, where: str) -> bool:
+    """Clear a saved ``ref_text``: the transcript comes only from the voice library.
+
+    The console no longer edits a per-setting transcript, so a saved one would
+    silently override the library's. Returns whether one was dropped.
+    """
+    if not values.get("ref_text"):
+        return False
+    logger.warning("%s 的 tts.ref_text 已停用（逐字稿只來自音訊庫），已移除：%r", where, values["ref_text"])
+    values["ref_text"] = None
+    return True
+
+
 def migrate_tts_values(values: dict, *, where: str) -> bool:
     """Bring saved TTS settings under the current engines and input rules.
 
     Mutates ``values`` and returns whether anything changed. A removed engine
-    becomes Edge TTS and REMOVED_TTS_FIELDS are dropped. Of ``ref_file`` /
+    becomes Edge TTS, REMOVED_TTS_FIELDS are dropped and a stale ``ref_text``
+    is cleared (see drop_stale_transcript). Of ``ref_file`` /
     ``tts_server`` / ``model`` only keys already present are touched: paths
     under MIGRATION_ROOTS move into the library; everything else that breaks
     a rule is cleared and logged.
@@ -391,7 +405,9 @@ def migrate_tts_values(values: dict, *, where: str) -> bool:
         if key in values:
             del values[key]
             changed = True
-    engine = str(values.get("type") or "edgetts").strip().lower()
+    if drop_stale_transcript(values, where):
+        changed = True
+    engine =str(values.get("type") or "edgetts").strip().lower()
     if engine not in TTS_ENGINES:
         _fall_back_to_edge(values, engine, where)
         return True

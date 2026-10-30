@@ -371,9 +371,11 @@ def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, st
         attempt["profiles"][0]["tts"].update(change)
         with pytest.raises(ProfileError):
             store.save(attempt, expected_revision=library["revision"])
+    source = tmp_path / "spoken.wav"
+    source.write_bytes(wav_bytes(seconds=2.0))
+    spoken = voice_library.add_voice(source, "有逐字稿", "參考逐字稿。")["id"]
     good = deepcopy(library)
-    good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=stored_voice, ref_text="參考逐字稿。",
-                                      tts_server="http://127.0.0.1:50000")
+    good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=spoken, tts_server="http://127.0.0.1:50000")
     library = store.save(good, expected_revision=library["revision"])
 
     raw = yaml.safe_load(store.path.read_text("utf-8"))
@@ -405,6 +407,44 @@ def test_breezyvoice_profiles_need_a_transcribed_reference_before_saving(voices,
     good = deepcopy(library)
     good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=spoken, ref_text=None)
     assert store.save(good, expected_revision=library["revision"])["profiles"][0]["tts"]["ref_file"] == spoken
+
+
+def test_library_transcript_is_the_only_reference_transcript(voices, stored_voice, tmp_path, monkeypatch, caplog):
+    """The console no longer edits a profile transcript; a saved one is stale and dropped."""
+    from src.profiles.store import ProfileError, ProfileStore
+
+    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    config = Config()
+    config.model.avatar_id = "musetalk_angela"
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    store.initialize(config)
+    source = tmp_path / "spoken.wav"
+    source.write_bytes(wav_bytes(seconds=2.0))
+    spoken = voice_library.add_voice(source, "有逐字稿", "音訊庫逐字稿。")["id"]
+    raw = yaml.safe_load(store.path.read_text("utf-8"))
+    raw["profiles"][0]["tts"].update(type="breezyvoice", ref_file=spoken, ref_text="舊的覆寫逐字稿")
+    store.path.write_text(yaml.safe_dump(raw, allow_unicode=True), "utf-8")
+
+    with caplog.at_level(logging.INFO):
+        library = store.initialize(config)
+    assert library["profiles"][0]["tts"]["ref_text"] is None
+    assert "舊的覆寫逐字稿" not in store.path.read_text("utf-8")
+    assert "ref_text" in caplog.text and "main" in caplog.text
+
+    attempt = deepcopy(library)
+    attempt["profiles"][0]["tts"]["ref_text"] = "又一個覆寫"
+    caplog.clear()
+    with caplog.at_level(logging.INFO):
+        saved = store.save(attempt, expected_revision=library["revision"])
+    assert saved["profiles"][0]["tts"]["ref_text"] is None
+    assert "又一個覆寫" not in store.path.read_text("utf-8")
+    assert "ref_text" in caplog.text
+
+    # An override does not stand in for a library recording without a transcript.
+    attempt = deepcopy(saved)
+    attempt["profiles"][0]["tts"].update(ref_file=stored_voice, ref_text="覆寫逐字稿")
+    with pytest.raises(ProfileError, match="逐字稿"):
+        store.save(attempt, expected_revision=saved["revision"])
 
 
 def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_path, monkeypatch):

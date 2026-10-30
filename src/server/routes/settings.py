@@ -23,6 +23,8 @@ from src.server.import_jobs import (
 )
 from src.server.runtime_settings import (
     apply_video_settings,
+    breezyvoice_server_ready,
+    preview_profile_voice,
     SettingsError,
     apply_avatar,
     apply_llm_model,
@@ -382,6 +384,41 @@ async def tts_voice_audio(request):
     except voice_library.VoiceLibraryError as exc:
         return _json({"code": -1, "msg": exc.message}, status=exc.status)
     return web.FileResponse(path, headers={"Content-Type": "audio/wav", "Cache-Control": "no-store"})
+
+
+async def breezyvoice_status(request):
+    """Whether a profile's BreezyVoice server is up; the console shows "starting" otherwise."""
+    if not state.config:
+        return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
+    params = {key: request.query.get(key, "") for key in ("model", "tts_server")}
+    try:
+        ready = await asyncio.to_thread(breezyvoice_server_ready, state.config, params)
+    except SettingsError as exc:
+        return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
+    return _json({"code": 0, "data": {"ready": ready}})
+
+
+async def preview_voice(request):
+    """Synthesize a short sentence with a profile's unsaved voice for the profile editor."""
+    if not state.config:
+        return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+    tts = body.get("tts") if isinstance(body, dict) else None
+    if not isinstance(tts, dict):
+        return _json({"code": -1, "msg": "請提供要試聽的聲音設定"}, status=400)
+    try:
+        # Starting BreezyVoice and synthesizing both take seconds to minutes.
+        audio = await asyncio.to_thread(preview_profile_voice, state.config, tts,
+                                        session_count=_active_session_count())
+        return _json({"code": 0, "msg": "ok", "data": {"audio": audio}})
+    except SettingsError as exc:
+        return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
+    except Exception:
+        logger.exception("設定檔聲音試聽失敗")
+        return _json({"code": -1, "msg": "聲音試聽失敗"}, status=500)
 
 
 async def _read_field(part, limit: int = 1024) -> str:
