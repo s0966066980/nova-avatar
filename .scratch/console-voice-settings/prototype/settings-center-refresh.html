@@ -1,0 +1,1243 @@
+<!doctype html>
+<!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>設定中心翻新原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens ─────────────────────────────────────────────────────────
+   Light is the base set; dark follows the system unless data-theme pins it.
+   Brand = the stage's "speaking" periwinkle (#7c9cff); status hues come
+   from the stage's hear / think / bad colours. */
+:root{
+  --font-ui:"Plus Jakarta Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono","Noto Sans Mono CJK TC",ui-monospace,Consolas,monospace;
+  --fs-xs:.8125rem; --fs-sm:.875rem; --fs-md:1rem; --fs-lg:1.125rem; --fs-xl:1.375rem;
+  --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem; --s5:1.25rem; --s6:1.5rem; --s8:2rem;
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --t-fast:150ms cubic-bezier(.2,.8,.2,1);
+  --rail-w:clamp(13rem,15vw,17rem);
+
+  color-scheme:light;
+  --bg-page:#f3f5f9; --bg-surface:#ffffff; --bg-raised:#f7f8fb; --bg-sunken:#edf0f5; --bg-input:#ffffff; --bg-hover:#e8ecf3;
+  --border:#d6dce6; --border-strong:#aeb8c8;
+  --text:#111827; --text-2:#3b4556; --text-3:#5b6577;
+  --brand:#3b5bdb; --brand-hover:#2f4ac0; --brand-surface:#edf1ff; --brand-ink:#2a44b0; --on-brand:#ffffff;
+  --ok:#0b7a4b; --ok-surface:#e6f6ee; --ok-border:#9ed9bc;
+  --warn:#8a5300; --warn-bar:#e3a43a; --warn-surface:#fff4dc; --warn-border:#f0c46b;
+  --danger:#b42318; --danger-surface:#fdecea; --danger-border:#f3a49c;
+  --idle:#64748b;
+  --shadow-1:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+  --shadow-2:0 10px 30px rgba(16,24,40,.16);
+  --stage-bg:#08090c;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg-page:#08090c; --bg-surface:#10141c; --bg-raised:#161b25; --bg-sunken:#0b0e14; --bg-input:#0c1017; --bg-hover:#1d2431;
+    --border:#262e3c; --border-strong:#3e4a5e;
+    --text:#eef1f6; --text-2:#b9c2d0; --text-3:#8c97a8;
+    --brand:#7c9cff; --brand-hover:#9ab3ff; --brand-surface:rgba(124,156,255,.14); --brand-ink:#a9bdff; --on-brand:#0a0f1f;
+    --ok:#3ddc97; --ok-surface:rgba(61,220,151,.12); --ok-border:rgba(61,220,151,.38);
+    --warn:#f2b544; --warn-bar:#f2b544; --warn-surface:rgba(242,181,68,.12); --warn-border:rgba(242,181,68,.42);
+    --danger:#ff6b6b; --danger-surface:rgba(255,107,107,.12); --danger-border:rgba(255,107,107,.42);
+    --idle:#8fa3bf;
+    --shadow-1:0 1px 2px rgba(0,0,0,.4); --shadow-2:0 12px 36px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg-page:#08090c; --bg-surface:#10141c; --bg-raised:#161b25; --bg-sunken:#0b0e14; --bg-input:#0c1017; --bg-hover:#1d2431;
+  --border:#262e3c; --border-strong:#3e4a5e;
+  --text:#eef1f6; --text-2:#b9c2d0; --text-3:#8c97a8;
+  --brand:#7c9cff; --brand-hover:#9ab3ff; --brand-surface:rgba(124,156,255,.14); --brand-ink:#a9bdff; --on-brand:#0a0f1f;
+  --ok:#3ddc97; --ok-surface:rgba(61,220,151,.12); --ok-border:rgba(61,220,151,.38);
+  --warn:#f2b544; --warn-bar:#f2b544; --warn-surface:rgba(242,181,68,.12); --warn-border:rgba(242,181,68,.42);
+  --danger:#ff6b6b; --danger-surface:rgba(255,107,107,.12); --danger-border:rgba(255,107,107,.42);
+  --idle:#8fa3bf;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4); --shadow-2:0 12px 36px rgba(0,0,0,.6);
+}
+
+/* ── Base ───────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font-size:clamp(13px,calc(.36vw + 8px),15px);height:100%}
+body{margin:0;height:100dvh;overflow:hidden;background:var(--bg-page);color:var(--text);font-family:var(--font-ui);font-size:var(--fs-sm);line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,h4,p{margin:0}
+.mono,.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.icon{width:1.15em;height:1.15em;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.18em}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+*{scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent}
+
+/* ── Shell: top bar / rail / main ──────────────────────────────── */
+.shell{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.topbar{display:flex;align-items:center;gap:var(--s4);padding:0 var(--s5);height:3.5rem;border-bottom:1px solid var(--border);background:var(--bg-surface);min-width:0}
+.brand{display:flex;align-items:center;gap:var(--s2);font-weight:700;font-size:var(--fs-md);white-space:nowrap}
+.brand-mark{width:1.75rem;height:1.75rem;border-radius:8px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center}
+.brand small{font-weight:500;color:var(--text-3);font-size:var(--fs-xs)}
+.proto-tag{font-size:var(--fs-xs);padding:2px 8px;border-radius:999px;border:1px dashed var(--border-strong);color:var(--text-3);white-space:nowrap}
+.topbar .spacer{flex:1}
+.demo-group{display:flex;align-items:center;gap:var(--s1);padding:3px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised);min-width:0}
+.demo-group>span{font-size:var(--fs-xs);color:var(--text-3);padding:0 var(--s2);white-space:nowrap}
+.demo-group button{border:0;background:transparent;padding:4px 8px;border-radius:6px;font-size:var(--fs-xs);color:var(--text-2);cursor:pointer;white-space:nowrap}
+.demo-group button:hover{background:var(--bg-hover);color:var(--text)}
+
+.app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);min-height:0}
+.rail{display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-right:1px solid var(--border);background:var(--bg-surface);min-height:0}
+.rail-head{padding:var(--s4) var(--s4) var(--s3)}
+.rail-head h1{font-size:var(--fs-lg);font-weight:700}
+.rail-head p{font-size:var(--fs-xs);color:var(--text-3);margin-top:2px}
+.rail-nav{overflow:auto;padding:0 var(--s3) var(--s3);display:flex;flex-direction:column;gap:2px}
+.rail-tab{display:flex;align-items:center;gap:var(--s2);min-height:2.6rem;padding:var(--s2) var(--s3);border:1px solid transparent;border-radius:var(--r-md);background:none;text-align:left;cursor:pointer;color:var(--text-2);font-weight:500;position:relative}
+.rail-tab:hover{background:var(--bg-hover);color:var(--text)}
+.rail-tab[aria-selected="true"]{background:var(--brand-surface);color:var(--brand-ink);font-weight:700}
+.rail-tab[aria-selected="true"]::before{content:"";position:absolute;left:-.75rem;top:22%;bottom:22%;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.rail-tab .label{flex:1;min-width:0;line-height:1.3}
+.rail-tab .tag{font-size:.72rem;font-weight:600;padding:1px 6px;border-radius:5px;background:var(--bg-sunken);color:var(--text-3);white-space:nowrap}
+.rail-tab .tag.research{background:var(--warn-surface);color:var(--warn)}
+.rail-status{border-top:1px solid var(--border);padding:var(--s3) var(--s4) var(--s4);display:grid;gap:var(--s2)}
+.rail-status h2{font-size:var(--fs-xs);font-weight:700;color:var(--text-3);letter-spacing:.04em}
+.sys-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s2);align-items:start;font-size:var(--fs-xs);line-height:1.35}
+.sys-row b{font-weight:600;color:var(--text);display:block}
+.sys-row span{color:var(--text-3)}
+.sys-row[data-tone="ok"] .icon{color:var(--ok)}
+.sys-row[data-tone="warn"] .icon{color:var(--warn)}
+.sys-row[data-tone="warn"] span{color:var(--warn)}
+.sys-row[data-tone="danger"] .icon,.sys-row[data-tone="danger"] span{color:var(--danger)}
+.sys-row[data-tone="busy"] .icon{color:var(--brand)}
+.back-btn{margin-top:var(--s2)}
+
+.main{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-height:0;min-width:0}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s4);padding:var(--s5) var(--s6) var(--s3);min-width:0}
+.page-head h2{font-size:var(--fs-xl);font-weight:700;line-height:1.25}
+.page-head p{color:var(--text-3);margin-top:2px}
+.page-head .actions{display:flex;gap:var(--s2);flex:none}
+.alerts{display:grid;gap:var(--s2);padding:0 var(--s6)}
+.alerts:empty{display:none}
+.panels{min-height:0;padding:var(--s3) var(--s6) var(--s4);display:grid}
+.panel{min-height:0;min-width:0;display:grid;gap:var(--s4)}
+.panel[hidden]{display:none}
+
+/* ── Cards: each card scrolls inside its own cell ───────────────── */
+.card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-1);display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0;overflow:hidden}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);padding:var(--s4) var(--s5) var(--s3);border-bottom:1px solid var(--border)}
+.card-head h3{font-size:var(--fs-md);font-weight:700;display:flex;align-items:center;gap:var(--s2)}
+.card-head h3 .icon{color:var(--brand)}
+.card-head p{font-size:var(--fs-xs);color:var(--text-3);margin-top:2px}
+.card-body{overflow:auto;padding:var(--s4) var(--s5) var(--s5);min-height:0;display:flex;flex-direction:column;gap:var(--s4)}
+.sub-title{font-size:var(--fs-sm);font-weight:700;color:var(--text);display:flex;align-items:center;gap:var(--s2)}
+.divider{border:0;border-top:1px solid var(--border);margin:0}
+
+/* ── Form rows ──────────────────────────────────────────────────── */
+.row{display:grid;grid-template-columns:minmax(9rem,38%) minmax(0,1fr);gap:var(--s3) var(--s4);align-items:start}
+.row .lbl{display:flex;flex-direction:column;gap:2px;padding-top:.45rem}
+.row .lbl label,.row .lbl .l{font-weight:600}
+.hint{font-size:var(--fs-xs);color:var(--text-3);line-height:1.5}
+.field{display:flex;flex-direction:column;gap:var(--s1)}
+.field>label,.field>.l{font-weight:600}
+.grid-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s3) var(--s4)}
+.req{color:var(--danger);margin-left:2px}
+.input,select.input,textarea.input{width:100%;min-height:2.4rem;padding:.45rem .7rem;border:1px solid var(--border-strong);border-radius:var(--r-sm);background:var(--bg-input);color:var(--text);transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+textarea.input{resize:vertical;line-height:1.55}
+.input:hover{border-color:var(--text-3)}
+.input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-surface)}
+.input[aria-invalid="true"]{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-surface)}
+.field-error{display:flex;gap:var(--s1);align-items:flex-start;color:var(--danger);font-size:var(--fs-xs);font-weight:600}
+.counter{font-size:var(--fs-xs);color:var(--text-3);text-align:right}
+.slider{display:flex;align-items:center;gap:var(--s3)}
+.slider input{flex:1;accent-color:var(--brand);min-width:0}
+.pill{font-family:var(--font-mono);font-size:var(--fs-xs);padding:2px 8px;border-radius:999px;background:var(--bg-sunken);border:1px solid var(--border);min-width:4.2rem;text-align:center;white-space:nowrap}
+.check{display:flex;align-items:center;gap:var(--s2);cursor:pointer}
+.check input{accent-color:var(--brand);width:1.05rem;height:1.05rem}
+.switch{position:relative;display:inline-flex;align-items:center;gap:var(--s2);cursor:pointer}
+.switch input{appearance:none;width:2.6rem;height:1.5rem;border-radius:999px;background:var(--border-strong);position:relative;cursor:pointer;transition:background var(--t-fast);margin:0}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:calc(1.5rem - 6px);height:calc(1.5rem - 6px);border-radius:50%;background:#fff;transition:transform var(--t-fast);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch input:checked{background:var(--brand)}
+.switch input:checked::after{transform:translateX(1.1rem)}
+.switch .state{font-size:var(--fs-xs);color:var(--text-3);min-width:3em}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:2.4rem;padding:0 var(--s4);border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--bg-surface);color:var(--text);font-weight:600;cursor:pointer;white-space:nowrap;transition:background var(--t-fast),border-color var(--t-fast)}
+.btn:hover{background:var(--bg-hover)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.btn.primary:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}
+.btn.ghost:hover{background:var(--bg-hover);color:var(--text)}
+.btn.danger{color:var(--danger);border-color:var(--danger-border)}
+.btn.danger:hover{background:var(--danger-surface)}
+.btn.sm{min-height:2rem;padding:0 var(--s3);font-size:var(--fs-xs)}
+.btn.icon-only{padding:0;width:2.4rem}
+.btn.sm.icon-only{width:2rem}
+
+/* ── Status vocabulary ─────────────────────────────────────────────
+   1 banner (blocks or degrades the system)  2 inline field error
+   3 status chip (state of one service)       4 toast (result of an action) */
+.banner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s3) var(--s4);border:1px solid var(--border);border-left-width:4px;border-radius:var(--r-md);background:var(--bg-surface)}
+.banner>.icon{width:1.35rem;height:1.35rem}
+.banner b{font-weight:700}
+.banner .detail{color:var(--text-2);font-size:var(--fs-xs);margin-top:1px}
+.banner .acts{display:flex;gap:var(--s2)}
+.banner.warn{border-color:var(--warn-border);border-left-color:var(--warn-bar);background:var(--warn-surface)}
+.banner.warn>.icon,.banner.warn b{color:var(--warn)}
+.banner.danger{border-color:var(--danger-border);border-left-color:var(--danger);background:var(--danger-surface)}
+.banner.danger>.icon,.banner.danger b{color:var(--danger)}
+.banner.info{border-color:var(--border);border-left-color:var(--brand);background:var(--brand-surface)}
+.banner.info>.icon,.banner.info b{color:var(--brand-ink)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px 2px 8px;border-radius:999px;font-size:var(--fs-xs);font-weight:600;border:1px solid var(--border);background:var(--bg-raised);color:var(--text-2);white-space:nowrap}
+.chip .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--idle)}
+.chip.ok{color:var(--ok);border-color:var(--ok-border);background:var(--ok-surface)}.chip.ok .dot{background:var(--ok)}
+.chip.warn{color:var(--warn);border-color:var(--warn-border);background:var(--warn-surface)}.chip.warn .dot{background:var(--warn-bar)}
+.chip.danger{color:var(--danger);border-color:var(--danger-border);background:var(--danger-surface)}.chip.danger .dot{background:var(--danger)}
+.chip.busy{color:var(--brand-ink);border-color:var(--brand);background:var(--brand-surface)}
+.chip.neutral{color:var(--text-3)}
+.badge-dev{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:5px;font-size:.75rem;font-weight:700;color:var(--warn);background:var(--warn-surface);border:1px solid var(--warn-border);white-space:nowrap}
+.spin{animation:spin 1s linear infinite;transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+.progress{height:6px;border-radius:999px;background:var(--bg-sunken);overflow:hidden;border:1px solid var(--border)}
+.progress>i{display:block;height:100%;background:var(--brand);width:0;transition:width .4s linear}
+.progress.indet>i{width:35%;animation:indet 1.4s ease-in-out infinite}
+@keyframes indet{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+
+.toasts{position:fixed;right:var(--s6);bottom:calc(3.75rem + var(--s4));display:flex;flex-direction:column;gap:var(--s2);z-index:50;width:min(26rem,calc(100vw - 2rem))}
+.toast{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--s3);align-items:start;padding:var(--s3) var(--s4);border-radius:var(--r-md);background:var(--bg-surface);border:1px solid var(--border);border-left-width:4px;box-shadow:var(--shadow-2);animation:toast-in .22s cubic-bezier(.2,.8,.2,1)}
+.toast>.icon{width:1.3rem;height:1.3rem;margin-top:1px}
+.toast b{display:block}
+.toast .detail{font-size:var(--fs-xs);color:var(--text-2)}
+.toast .acts{display:flex;gap:var(--s1);margin-top:var(--s2)}
+.toast.ok{border-left-color:var(--ok)}.toast.ok>.icon{color:var(--ok)}
+.toast.danger{border-left-color:var(--danger);background:linear-gradient(var(--danger-surface),var(--danger-surface)),var(--bg-surface)}.toast.danger>.icon,.toast.danger b{color:var(--danger)}
+.toast.info{border-left-color:var(--brand)}.toast.info>.icon{color:var(--brand)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── Footer action bar ──────────────────────────────────────────── */
+.footer{display:flex;align-items:center;gap:var(--s3);padding:0 var(--s6);height:3.75rem;border-top:1px solid var(--border);background:var(--bg-surface);min-width:0}
+.footer .state{display:flex;align-items:center;gap:var(--s2);font-size:var(--fs-xs);color:var(--text-3);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.footer .state.dirty{color:var(--warn);font-weight:700}
+.footer .spacer{flex:1}
+
+/* ── Option cards (engine choice etc.) ─────────────────────────── */
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:var(--s3)}
+.opt{position:relative;display:flex;flex-direction:column;gap:var(--s1);padding:var(--s3) var(--s4);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised);cursor:pointer;transition:border-color var(--t-fast),background var(--t-fast)}
+.opt:hover{border-color:var(--border-strong)}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt:has(input:checked){border-color:var(--brand);background:var(--brand-surface);box-shadow:inset 0 0 0 1px var(--brand)}
+.opt:has(input:focus-visible){outline:2px solid var(--brand);outline-offset:2px}
+.opt .t{font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:var(--s2)}
+.opt .d{font-size:var(--fs-xs);color:var(--text-3)}
+.opt .tick{width:1.1rem;height:1.1rem;border-radius:50%;border:1.5px solid var(--border-strong);display:grid;place-items:center;flex:none}
+.opt:has(input:checked) .tick{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.opt .tick .icon{width:.75rem;height:.75rem;stroke-width:3;opacity:0}
+.opt:has(input:checked) .tick .icon{opacity:1}
+.lic{font-size:.72rem;font-weight:700;padding:1px 6px;border-radius:5px;white-space:nowrap}
+.lic.ok{background:var(--ok-surface);color:var(--ok)}
+.lic.warn{background:var(--warn-surface);color:var(--warn)}
+
+/* ── Panel layouts ──────────────────────────────────────────────── */
+#panel-conversation{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+#panel-greeting{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}
+#panel-interaction{grid-template-columns:repeat(3,minmax(0,1fr))}
+#panel-avatar{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+#panel-stage{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.95fr)}
+#panel-experience{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start}
+#panel-experience .card{max-height:100%}
+#panel-roles{grid-template-rows:auto minmax(0,1fr)}
+
+/* conversation */
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3)}
+.metric{padding:var(--s3) var(--s4);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised);display:flex;flex-direction:column;gap:2px;min-width:0}
+.metric span{font-size:var(--fs-xs);color:var(--text-3)}
+.metric strong{font-family:var(--font-mono);font-size:var(--fs-lg);font-variant-numeric:tabular-nums}
+.metric small{font-size:var(--fs-xs);color:var(--text-3);font-weight:500}
+.quote{padding:var(--s3) var(--s4);border-left:3px solid var(--border-strong);background:var(--bg-raised);border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:var(--fs-xs);color:var(--text-2)}
+
+/* roles */
+.role-bar{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding:var(--s2) var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-surface)}
+.role-bar .seg{display:inline-flex;padding:3px;border-radius:var(--r-md);background:var(--bg-sunken);border:1px solid var(--border)}
+.role-bar .seg button{border:0;background:none;padding:.35rem .9rem;border-radius:7px;cursor:pointer;color:var(--text-2);font-weight:600}
+.role-bar .seg button[aria-pressed="true"]{background:var(--bg-surface);color:var(--text);box-shadow:var(--shadow-1)}
+.role-bar .meta{font-size:var(--fs-xs);color:var(--text-3)}
+.role-bar .spacer{flex:1}
+.role-work{display:grid;grid-template-columns:clamp(13rem,16vw,17rem) minmax(0,1fr);gap:var(--s4);min-height:0}
+.role-work[hidden]{display:none}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s2)}
+.pitem{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s3);align-items:center;padding:var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised);cursor:pointer;text-align:left}
+.pitem:hover{border-color:var(--border-strong)}
+.pitem[aria-current="true"]{border-color:var(--brand);background:var(--brand-surface);box-shadow:inset 0 0 0 1px var(--brand)}
+.avatar-dot{width:2.3rem;height:2.3rem;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;font-size:var(--fs-sm)}
+.pitem b{display:block;line-height:1.3}
+.pitem small{display:flex;gap:4px;flex-wrap:wrap;color:var(--text-3);font-size:.75rem;margin-top:2px}
+.mini{font-size:.7rem;font-weight:700;padding:0 6px;border-radius:4px;background:var(--bg-sunken);border:1px solid var(--border);color:var(--text-2)}
+.mini.main{background:var(--brand-surface);color:var(--brand-ink);border-color:transparent}
+.editor{grid-template-rows:auto auto minmax(0,1fr)}
+.editor-title{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:var(--s4) var(--s5) var(--s3)}
+.editor-title h3{font-size:var(--fs-lg);font-weight:700}
+.editor-title p{font-size:var(--fs-xs);color:var(--text-3)}
+.subnav{display:flex;gap:2px;padding:0 var(--s5);border-bottom:1px solid var(--border);overflow-x:auto}
+.subnav button{display:inline-flex;align-items:center;gap:var(--s2);padding:.6rem .9rem;border:0;border-bottom:2px solid transparent;background:none;color:var(--text-2);font-weight:600;cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+.subnav button:hover{color:var(--text)}
+.subnav button[aria-selected="true"]{color:var(--brand-ink);border-bottom-color:var(--brand)}
+.editor-body{min-height:0;display:grid}
+.esec{min-height:0;overflow:auto;padding:var(--s4) var(--s5) var(--s5);display:flex;flex-direction:column;gap:var(--s4)}
+.esec[hidden]{display:none}
+.esec.split{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0;padding:0;overflow:hidden}
+.esec.split[hidden]{display:none}
+.col{min-height:0;overflow:auto;padding:var(--s4) var(--s5) var(--s5);display:flex;flex-direction:column;gap:var(--s4)}
+.col+.col{border-left:1px solid var(--border);background:var(--bg-raised)}
+.block{border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-surface);padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+.block-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);flex-wrap:wrap}
+
+/* clip picker */
+.clips{display:flex;flex-direction:column;gap:var(--s2);margin:0;padding:0;border:0}
+.clip{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--s3);align-items:start;padding:var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-surface);cursor:pointer}
+.clip:hover{border-color:var(--border-strong)}
+.clip:has(input:checked){border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand);background:var(--brand-surface)}
+.clip input{margin-top:.3rem;accent-color:var(--brand);width:1rem;height:1rem}
+.clip .name{font-weight:700;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
+.clip .secs{font-family:var(--font-mono);font-size:.75rem;color:var(--text-3);font-weight:500}
+.clip .tx{font-size:var(--fs-xs);color:var(--text-2);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.clip .tx::before{content:"逐字稿　";color:var(--text-3)}
+.clip .ops{display:flex;gap:var(--s1)}
+.clip .pbar{grid-column:2/4;height:4px}
+.clips-empty{padding:var(--s4);border:1px dashed var(--border-strong);border-radius:var(--r-md);text-align:center;color:var(--text-3);font-size:var(--fs-xs)}
+.drop{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border:1.5px dashed var(--border-strong);border-radius:var(--r-md);background:var(--bg-input);cursor:pointer;color:var(--text-2)}
+.drop:hover{border-color:var(--brand);color:var(--text)}
+.drop .icon{width:1.5rem;height:1.5rem;color:var(--brand)}
+.drop small{display:block;color:var(--text-3);font-size:var(--fs-xs)}
+.note{display:flex;gap:var(--s2);align-items:flex-start;font-size:var(--fs-xs);color:var(--text-2);padding:var(--s2) var(--s3);border-radius:var(--r-sm);background:var(--bg-sunken)}
+.note .icon{color:var(--brand);margin-top:1px}
+.note.warn{background:var(--warn-surface);color:var(--warn)}
+.note.warn .icon{color:var(--warn)}
+details.more summary{cursor:pointer;font-weight:600;color:var(--text-2);padding:var(--s1) 0}
+details.more[open] summary{margin-bottom:var(--s3)}
+
+/* avatar library */
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));gap:var(--s3)}
+.acard{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:var(--bg-raised);cursor:pointer;text-align:left;padding:0}
+.acard[aria-pressed="true"]{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.aface{display:grid;aspect-ratio:3/4;position:relative;background:linear-gradient(160deg,#1c2433,#0c1018);display:grid;place-items:end center;overflow:hidden}
+.aface svg{width:78%;height:auto}
+.aface .chip{position:absolute;top:6px;left:6px}
+.ameta{display:block;padding:var(--s2) var(--s3)}
+.ameta b{display:block;font-size:var(--fs-sm)}
+.ameta small{font-family:var(--font-mono);font-size:.72rem;color:var(--text-3)}
+
+/* stage preview */
+.stage-cell{container-type:size;display:grid;place-items:center;padding:var(--s3);background:var(--bg-sunken);min-height:0}
+.stage-frame{width:min(100cqw,calc(100cqh * 9 / 16));height:min(100cqh,calc(100cqw * 16 / 9));border-radius:12px;background:radial-gradient(120% 70% at 50% 30%,#1a2235 0%,var(--stage-bg) 70%);position:relative;overflow:hidden;box-shadow:0 20px 50px -18px rgba(0,0,0,.8);border:1px solid #20283a}
+.stage-frame .figure{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:78%}
+.stage-board{position:absolute;right:5%;top:5%;width:46%;padding:6% 5%;border-radius:10px;background:rgba(18,24,38,.62);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.14);color:#f4f6fa;font-size:clamp(7px,1.6cqh,12px);line-height:1.5}
+.stage-board .bt{font-size:.85em;color:#7c9cff;font-weight:700;display:flex;justify-content:space-between}
+.stage-board strong{display:block;margin:.4em 0;font-size:1.05em}
+.stage-board span{display:block;color:rgba(244,246,250,.8);margin-top:.3em}
+.stage-board span b{color:#f2b544;margin-right:.4em;font-family:var(--font-mono)}
+.stage-cap{position:absolute;left:6%;right:6%;bottom:14%;padding:3% 4%;border-radius:8px;background:rgba(8,9,12,.72);color:#f4f6fa;font-size:clamp(7px,1.7cqh,13px);text-align:center;border:1px dashed rgba(124,156,255,.6)}
+.stage-mic{position:absolute;left:50%;bottom:3.5%;transform:translateX(-50%);width:11%;aspect-ratio:1;border-radius:50%;background:#121b2b;border:2px solid #8fa3bf;display:grid;place-items:center;color:#f4f6fa;box-shadow:0 0 0 4px rgba(143,163,191,.18)}
+.stage-mic .icon{width:45%;height:45%}
+.stage-mode{position:absolute;left:5%;top:5%;display:flex;align-items:center;gap:6px;color:#f4f6fa;font-size:clamp(7px,1.4cqh,11px);background:rgba(8,9,12,.6);padding:3px 8px;border-radius:999px}
+.stage-mode i{width:6px;height:6px;border-radius:50%;background:#8fa3bf}
+.ninegrid{display:grid;grid-template-columns:repeat(3,2.4rem);gap:4px}
+.ninegrid button{height:2.4rem;border:1px solid var(--border);background:var(--bg-raised);border-radius:6px;cursor:pointer}
+.ninegrid button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand)}
+.bg-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
+.bg-item{border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden;cursor:pointer;background:var(--bg-raised);padding:0;text-align:left}
+.bg-item[aria-pressed="true"]{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.bg-item i{display:block;aspect-ratio:16/10}
+.bg-item span{display:block;padding:4px 6px;font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* swatches for theme choice */
+.theme-opts .opt .sw{display:flex;gap:3px;margin-top:var(--s1)}
+.theme-opts .opt .sw i{width:1.1rem;height:1.1rem;border-radius:4px;border:1px solid var(--border)}
+
+@media (max-width:1500px){
+  #panel-stage{grid-template-columns:minmax(0,1fr) minmax(0,.85fr)}
+  #panel-stage .card.stage-pos{display:none}
+  #panel-stage .card.stage-style .show-narrow{display:flex}
+}
+.show-narrow{display:none}
+@media (max-width:1366px){
+  .demo-group>span{display:none}
+  .row{grid-template-columns:minmax(0,1fr)}
+  .row .lbl{padding-top:0}
+  .page-head{padding-top:var(--s4)}
+}
+@media (max-height:820px){
+  .page-head{padding:var(--s3) var(--s6) var(--s2)}
+  .page-head h2{font-size:var(--fs-lg)}
+  .banner{padding:var(--s2) var(--s3)}
+  .panels{padding-top:var(--s2);padding-bottom:var(--s3)}
+  .panel{gap:var(--s3)}
+  .card-head{padding:var(--s3) var(--s4) var(--s2)}
+  .card-body{padding:var(--s3) var(--s4) var(--s4);gap:var(--s3)}
+  .editor-title{padding:var(--s3) var(--s4) var(--s2)}
+  .rail-head{padding:var(--s3) var(--s4) var(--s2)}
+  .rail-tab{min-height:2.3rem}
+  .rail-status{gap:var(--s1);padding-top:var(--s2);padding-bottom:var(--s3)}
+  .footer{height:3.25rem}
+}
+@media (max-width:1500px){.pending-note{display:none}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-greet" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 13.5s-3-1.8-3-3.6A1.6 1.6 0 0 1 12 9a1.6 1.6 0 0 1 3 .9c0 1.8-3 3.6-3 3.6z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4V8z"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a6 6 0 0 0 6-6c0-4.9-4.5-8.6-10-8.6z"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-octagon" viewBox="0 0 24 24"><path d="M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86z"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></symbol>
+    <symbol id="i-id" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h3M15 13h3M6 17c.7-1.3 1.8-2 3-2s2.3.7 3 2"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="i-file-audio" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 15v-2M11 17v-6M14 15v-2"/></symbol>
+    <symbol id="i-cast" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3-3a2 2 0 0 0-3 0l-9 9"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-figure" viewBox="0 0 120 150"><circle cx="60" cy="42" r="24"/><path d="M14 150c0-34 20-58 46-58s46 24 46 58z"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-wave"/></svg></span>Nova Avatar <small>控制台</small></div>
+    <span class="proto-tag">設定中心翻新原型 · 假資料</span>
+    <span class="spacer"></span>
+    <div class="demo-group" role="group" aria-label="狀態示範">
+      <span>狀態示範</span>
+      <button type="button" data-demo="ok">儲存成功</button>
+      <button type="button" data-demo="fail">儲存失敗</button>
+      <button type="button" data-demo="breezy">BreezyVoice 啟動</button>
+      <button type="button" data-demo="gpu">GPU 警示</button>
+    </div>
+    <button type="button" class="btn sm" id="themeBtn" aria-label="切換深淺色"><svg class="icon" aria-hidden="true"><use href="#i-monitor"/></svg><span>跟隨系統</span></button>
+  </header>
+
+  <div class="app">
+    <aside class="rail">
+      <div class="rail-head">
+        <h1>系統設定中心</h1>
+        <p>管理數位人的回答、知識與舞台體驗</p>
+        <button type="button" class="btn sm ghost back-btn"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>返回控制台</button>
+      </div>
+      <nav class="rail-nav" role="tablist" aria-label="設定分類" aria-orientation="vertical" id="railNav"></nav>
+      <section class="rail-status" aria-labelledby="sysTitle">
+        <h2 id="sysTitle">系統狀態</h2>
+        <div id="sysList" role="status" aria-live="polite"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <div><h2 id="pageTitle"></h2><p id="pageDesc"></p></div>
+        <div class="actions" id="pageActions"></div>
+      </div>
+      <div class="alerts" id="alerts"></div>
+
+      <div class="panels">
+        <!-- 1 對話記憶與語系 -->
+        <section class="panel" id="panel-conversation" role="tabpanel" aria-labelledby="tab-conversation" hidden>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg>場次與記憶</h3><p>檢視每一場對話目前保留的內容與 Context 用量。</p></div><span class="chip ok"><span class="dot"></span>2 個場次連線中</span></div>
+            <div class="card-body">
+              <div class="grid-2">
+                <div class="field"><label for="convSession">檢視與控制場次</label><select id="convSession" class="input"><option>新對話預設</option><option selected>數位人舞台 #7f3a</option><option>控制台對話 #2c91（目前控制台）</option></select></div>
+                <div class="field"><label for="convRole">檢視角色記憶</label><select id="convRole" class="input"><option>小諾（主數位人）</option><option>氣象小幫手（專門數位人）</option></select></div>
+              </div>
+              <div class="metrics">
+                <div class="metric"><span>目前保留的歷史訊息</span><strong>14 / 20 <small>則</small></strong></div>
+                <div class="metric"><span>較早已移出記憶</span><strong>6 <small>則</small></strong></div>
+                <div class="metric"><span>剩餘 Context</span><strong>12,060 <small>tokens</small></strong></div>
+              </div>
+              <div class="field">
+                <div class="block-head"><span class="l" style="font-weight:600">最近一次請求的 Context</span><span class="mono hint">3,812 + 512 / 16,384 tokens</span></div>
+                <div class="progress" role="progressbar" aria-label="輸入與預留回答占用的 Context 百分比" aria-valuenow="26" aria-valuemin="0" aria-valuemax="100"><i style="width:26%"></i></div>
+                <p class="hint">聊天歷史約 2,940 · 其他輸入約 872 · 預留回答 512 tokens · 剩餘 12,060（已占用 26%）</p>
+                <p class="hint mono">gemma-4-E2B_q4_0-it · llama.cpp · 14:31:52</p>
+              </div>
+              <p class="hint">此場對話閒置 45 秒清字幕與看板；120 秒清空記憶、附件與草稿並返回主數位人。</p>
+              <div class="quote">最早仍保留：第 7 則 · 使用者：請問今天展場幾點關門？下午有沒有導覽場次？</div>
+              <div><button type="button" class="btn danger sm"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>清空此場對話、附件與草稿</button></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg>保留上限與語音</h3><p>預設只套用之後建立的新對話；不改變其他已連線場次。</p></div></div>
+            <div class="card-body">
+              <div class="row"><div class="lbl"><label for="histMax">歷史訊息保留上限</label><span class="hint">使用者與助手各算一則，20 則通常約 10 組問答。</span></div><input id="histMax" class="input num" type="number" value="20" min="2" max="200"></div>
+              <div class="row"><div class="lbl"><label for="replyLocale">回覆語系</label></div><select id="replyLocale" class="input"><option>繁體中文</option><option>English</option></select></div>
+              <div class="row"><div class="lbl"><label for="convZh">中文聲音</label><span class="hint">適用使用 Edge TTS 的設定檔</span></div><select id="convZh" class="input"><option>zh-TW-HsiaoChenNeural（女聲）</option><option>zh-TW-HsiaoYuNeural（女聲）</option><option>zh-TW-YunJheNeural（男聲）</option></select></div>
+              <div class="row"><div class="lbl"><label for="convEn">英文聲音</label></div><select id="convEn" class="input"><option>en-US-JennyNeural（女聲）</option><option>en-US-GuyNeural（男聲）</option></select></div>
+              <p class="hint">調高上限不會恢復已移出的內容；Context 容量仍限制實際可用空間。</p>
+              <div><button type="button" class="btn primary" data-save>套用至此場次</button></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- 2 數位人、AI 與知識設定 -->
+        <section class="panel" id="panel-roles" role="tabpanel" aria-labelledby="tab-roles" hidden>
+          <div class="role-bar">
+            <div class="seg" role="group" aria-label="設定範圍">
+              <button type="button" aria-pressed="true" data-ws="profiles">數位人設定檔</button>
+              <button type="button" aria-pressed="false" data-ws="handoff">角色組合、交接與轉場</button>
+            </div>
+            <span class="chip neutral"><span class="dot"></span>單角色模式 · 待命</span>
+            <span class="meta mono">草稿版本 12 · 生效版本 11</span>
+            <span class="chip warn"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>已儲存，尚未套用</span>
+            <span class="meta pending-note">控制台與舞台皆斷線後才更新共用資源</span>
+          </div>
+
+          <div class="role-work" data-ws-panel="profiles">
+            <article class="card">
+              <div class="card-head"><div><h3>數位人設定檔 <span class="pill" style="min-width:0">3</span></h3></div></div>
+              <div class="card-body">
+                <ul class="plist" id="plist" aria-label="選擇要編輯的數位人"></ul>
+                <hr class="divider">
+                <button type="button" class="btn sm"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>複製為新設定檔</button>
+                <button type="button" class="btn sm danger" disabled>刪除所選設定檔</button>
+                <p class="hint">主數位人與專門數位人需保留。刪除前可先在角色組合中改選。</p>
+              </div>
+            </article>
+
+            <article class="card editor">
+              <div class="editor-title"><div><h3 id="edName">小諾</h3><p>目前編輯的數位人 · <span class="mono" id="edId">nova-main</span></p></div><span id="edActive" class="chip ok"><span class="dot"></span>目前作用中</span></div>
+              <div class="subnav" role="tablist" aria-label="數位人設定分區" id="subnav">
+                <button type="button" role="tab" data-sec="identity" aria-selected="false"><svg class="icon" aria-hidden="true"><use href="#i-id"/></svg>身分與素材</button>
+                <button type="button" role="tab" data-sec="model" aria-selected="false"><svg class="icon" aria-hidden="true"><use href="#i-cpu"/></svg>AI 模型與規則</button>
+                <button type="button" role="tab" data-sec="rag" aria-selected="false"><svg class="icon" aria-hidden="true"><use href="#i-db"/></svg>RAG 知識文本</button>
+                <button type="button" role="tab" data-sec="voice" aria-selected="true"><svg class="icon" aria-hidden="true"><use href="#i-wave"/></svg>聲音與工具</button>
+              </div>
+              <div class="editor-body">
+                <div class="esec" data-sec-panel="identity" role="tabpanel" hidden>
+                  <p class="hint">這些設定只屬於「<span data-pname>小諾</span>」。人物素材可供其他設定檔共用。</p>
+                  <div class="grid-2">
+                    <div class="field"><label for="idName">顯示名稱</label><input id="idName" class="input" value="小諾"></div>
+                    <div class="field"><label for="idAsset">人物素材</label><select id="idAsset" class="input"><option>nova_front_1080（綠幕）</option><option>guide_female_01</option></select></div>
+                    <div class="field"><label for="idEngine">推理引擎</label><select id="idEngine" class="input"><option>MuseTalk</option><option>Wav2Lip · Research / Non-commercial</option></select></div>
+                    <div class="field"><label for="idSelf">助手自稱</label><input id="idSelf" class="input" value="小諾"></div>
+                  </div>
+                  <div class="field"><label for="idPrompt">身分 Prompt</label><span class="hint">角色身分、專長、語氣與回答原則。</span><textarea id="idPrompt" class="input" rows="6">你是 Nova 展示中心的導覽員小諾，語氣親切、簡潔。回答以展場資訊、交通與活動為主；不確定時請訪客洽詢服務台。</textarea><span class="counter num">64 / 12000</span></div>
+                  <div class="field"><label for="idLimit">限制 Prompt</label><textarea id="idLimit" class="input" rows="3">不提供醫療、法律與投資建議。不評論政治議題。</textarea></div>
+                  <div class="grid-2">
+                    <div class="field"><label for="idLocale">輸出語系</label><select id="idLocale" class="input"><option>繁體中文（臺灣）</option><option>English (US)</option><option>自動</option></select></div>
+                    <div class="field"><label for="idForbid">禁止自稱名稱（逗號分隔）</label><input id="idForbid" class="input" value="Gemma, ChatGPT"></div>
+                  </div>
+                  <label class="check"><input type="checkbox" checked>限制輸出語系</label>
+                </div>
+
+                <div class="esec" data-sec-panel="model" role="tabpanel" hidden>
+                  <p class="hint">模型、回答長度、回覆模式與看板規則隨這份數位人設定檔一起儲存。</p>
+                  <div class="grid-2">
+                    <div class="field"><label for="mEp">LLM 端點<span class="req">*</span></label><select id="mEp" class="input"><option>local · llama.cpp</option><option>lan-gpu · vLLM</option></select></div>
+                    <div class="field"><label for="mModel">回答模型<span class="req">*</span></label><input id="mModel" class="input mono" value="gemma-4-E2B_q4_0-it"></div>
+                  </div>
+                  <p class="hint">服務網址：<span class="mono">http://127.0.0.1:8081/v1</span></p>
+                  <div class="note warn"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg><span>本機 LLM 未全部載入 GPU（24 / 36 層），回覆會明顯變慢；原因見 logs 中 llama-server 啟動訊息。</span></div>
+                  <div class="grid-2">
+                    <div class="field"><label for="mChars">口語字數上限</label><input id="mChars" class="input num" type="number" value="180"></div>
+                    <div class="field"><label for="mTok">模型 Token 預算</label><input id="mTok" class="input num" type="number" value="512"></div>
+                    <div class="field"><label for="mBoard">看板項目上限</label><input id="mBoard" class="input num" type="number" value="4"></div>
+                    <div class="field"><label for="mMode">回覆模式</label><select id="mMode" class="input"><option>回覆語音串流</option><option>完整生成後回覆</option></select></div>
+                  </div>
+                  <div class="field"><label for="mWait">語意等待上限（秒）</label><input id="mWait" class="input num" type="number" value="2.5" step="0.5" style="max-width:10rem"><span class="hint">串流回覆尚未形成完整句子時，最多等待多久才尋找下一個可朗讀子句。</span></div>
+                  <div class="block-head"><span class="sub-title">回答與看板規則</span><button type="button" class="btn sm ghost">還原此角色的預設規則</button></div>
+                  <div class="field"><label for="rAct">何時使用看板</label><textarea id="rAct" class="input" rows="3">訪客詢問步驟、清單、時間表或比較時使用看板。</textarea></div>
+                  <div class="field"><label for="rSpeech">口語回覆規則</label><textarea id="rSpeech" class="input" rows="3">口語一到三句；數字用中文唸法；不要唸出網址。</textarea></div>
+                </div>
+
+                <div class="esec" data-sec-panel="rag" role="tabpanel" hidden>
+                  <div class="block-head"><span class="sub-title">RAG 知識庫與文本</span><span class="chip ok"><span class="dot"></span>RAGFlow 已連線</span></div>
+                  <p class="hint">設定「<span data-pname>小諾</span>」可以參考的資料。選擇會隨這份數位人設定檔儲存；即使共用人物素材，也各自使用自己的文本。</p>
+                  <label class="check"><input type="checkbox" checked>為「<span data-pname>小諾</span>」啟用知識庫檢索</label>
+                  <fieldset class="clips" style="gap:6px"><legend class="sub-title" style="margin-bottom:6px">知識庫</legend>
+                    <label class="check"><input type="checkbox" checked>展場導覽手冊 2026 <span class="hint">· 42 份文件</span></label>
+                    <label class="check"><input type="checkbox" checked>交通與停車資訊 <span class="hint">· 6 份文件</span></label>
+                    <label class="check"><input type="checkbox">常見問答（舊版）<span class="hint">· 18 份文件</span></label>
+                  </fieldset>
+                  <label class="check"><input type="radio" name="ragScope" checked>使用所選知識庫的全部文件</label>
+                  <label class="check"><input type="radio" name="ragScope">只使用指定文本（最多 200 份）</label>
+                  <p class="hint">全部文件會包含之後新增的文件；指定文本只檢索勾選的文件。</p>
+                </div>
+
+                <div class="esec split" data-sec-panel="voice" role="tabpanel">
+                  <div class="col" id="voiceLeft"></div>
+                  <div class="col" id="voiceRight"></div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="role-work" data-ws-panel="handoff" hidden style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+            <article class="card">
+              <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>當次角色組合</h3><p>關閉交接時使用主數位人的完整設定檔。</p></div></div>
+              <div class="card-body">
+                <label class="check"><input type="checkbox">啟用即時角色交接</label>
+                <div class="grid-2">
+                  <div class="field"><label for="hMain">主數位人</label><select id="hMain" class="input"><option>小諾</option><option>氣象小幫手</option><option>展場導覽員</option></select></div>
+                  <div class="field"><label for="hSpec">專門數位人</label><select id="hSpec" class="input"><option>氣象小幫手</option><option>展場導覽員</option></select></div>
+                </div>
+                <p class="hint">啟用時，兩位角色共用 MuseTalk、同一模型服務與語音合成引擎，各自保留 Prompt、RAG 文本、聲線、規則與訪客記憶。</p>
+                <div class="note warn"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg><span>小諾使用 Edge TTS、氣象小幫手使用 BreezyVoice。啟用交接前請讓兩位角色使用同一語音合成引擎。</span></div>
+                <hr class="divider">
+                <span class="sub-title">場域預設查詢地點</span>
+                <p class="hint">留白時會向訪客確認縣市與鄉鎮。CWA 已設定授權碼。</p>
+                <div class="grid-2"><div class="field"><label for="wC">縣市</label><input id="wC" class="input" placeholder="臺北市" value="臺北市"></div><div class="field"><label for="wT">鄉鎮市區</label><input id="wT" class="input" placeholder="中正區" value="信義區"></div></div>
+              </div>
+            </article>
+            <article class="card">
+              <div class="card-head"><div><h3>雙向角色交接規則</h3><p>兩個方向都會先播說明，再轉場並接續回答原問題。</p></div></div>
+              <div class="card-body">
+                <div class="field"><label for="hDesc">專門角色的專長介紹</label><textarea id="hDesc" class="input" rows="3">氣象小幫手負責臺灣各地即時天氣、降雨機率與穿著建議。</textarea></div>
+                <div class="field"><label for="hRule">何時交接</label><textarea id="hRule" class="input" rows="3">訪客詢問天氣、氣溫、降雨或颱風時交給專門數位人。</textarea></div>
+                <div class="field"><label for="hAnn">中文交接說明（播完後才轉場）</label><textarea id="hAnn" class="input" rows="2">這題我請氣象小幫手來回答，請稍等一下。</textarea></div>
+                <div class="field"><label for="hRet">中文返回交接說明（空白使用內建說明）</label><textarea id="hRet" class="input" rows="2"></textarea></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- 3 閒置招呼 -->
+        <section class="panel" id="panel-greeting" role="tabpanel" aria-labelledby="tab-greeting" hidden>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>自動招呼</h3><p>開關與時間套用至整個舞台。</p></div></div>
+            <div class="card-body">
+              <div class="row"><div class="lbl"><span class="l">啟用閒置招呼</span></div><label class="switch"><input type="checkbox" checked aria-label="啟用閒置招呼"><span class="state">開啟</span></label></div>
+              <div class="row"><div class="lbl"><label for="gSec">閒置多久開始準備招呼（秒）</label><span class="hint">預設 30 秒。訪客互動會重新計時；先完成上一位訪客的清場，再準備一次招呼。AI 準備最多 15 秒，語音合成另計。</span></div><input id="gSec" class="input num" type="number" value="30" min="1"></div>
+              <hr class="divider">
+              <div class="block-head"><span class="sub-title">招呼狀態</span><button type="button" class="btn sm"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>更新招呼狀態</button></div>
+              <div class="block" role="status">
+                <div class="block-head"><span>數位人舞台 #7f3a</span><span class="chip busy"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>等待閒置間隔 · <span class="num">12</span> 秒</span></div>
+                <div class="block-head"><span>數位人舞台 #b204</span><span class="chip neutral"><span class="dot"></span>等待訪客清場及返回主角色</span></div>
+              </div>
+              <details class="more"><summary>控制台試播會影響舞台嗎？</summary><p class="hint">控制台與舞台各自對話，試播草稿不暫停舞台收音或招呼。儲存的招呼內容由下一場舞台對話採用。</p></details>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-greet"/></svg>招呼內容</h3><p>目前主數位人：<b>小諾</b>。招呼內容隨這位數位人保存。</p></div><button type="button" class="btn sm"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>在控制台試播</button></div>
+            <div class="card-body">
+              <div class="opts options" role="radiogroup" aria-label="招呼方式">
+                <label class="opt"><input type="radio" name="gMode" checked><span class="t">AI 依 Prompt 產生<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">每次招呼都略有不同。</span></label>
+                <label class="opt"><input type="radio" name="gMode"><span class="t">固定句子輪播<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">逐句輪流，不經過 LLM。</span></label>
+              </div>
+              <div class="field"><label for="gPrompt">招呼 Prompt</label><textarea id="gPrompt" class="input" rows="5">用一到兩句親切地邀請路過的訪客停下來聊聊，可提到今天的展覽主題或天氣。不要提問超過一題。</textarea></div>
+              <div class="grid-2">
+                <div class="field"><label for="gMin">最少字數</label><input id="gMin" class="input num" type="number" value="12"></div>
+                <div class="field"><label for="gMax">最多字數</label><input id="gMax" class="input num" type="number" value="40"></div>
+              </div>
+              <div class="field"><label for="gBackup">備用招呼句（AI 逾時時使用）</label><textarea id="gBackup" class="input" rows="2">您好，歡迎來到 Nova 展示中心！有什麼想了解的都可以問我。</textarea></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- 4 訪客互動與語音辨識 -->
+        <section class="panel" id="panel-interaction" role="tabpanel" aria-labelledby="tab-interaction" hidden>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>訪客清場</h3><p>上一場對話何時清除。</p></div><button type="button" class="btn sm" data-apply="訪客清場時間已套用">套用</button></div>
+            <div class="card-body">
+              <div class="field"><label for="vReset">訪客對話重置時間</label>
+                <div class="slider"><input id="vReset" type="range" min="30" max="600" step="10" value="120" data-pill="vResetV" data-unit=" 秒"><span class="pill" id="vResetV">120 秒</span></div>
+                <span class="hint">完整重置清除本場記憶、附件與草稿並返回主角色；舞台空場後再等招呼間隔。</span></div>
+              <div class="field"><label for="vClear">只清畫面時間（秒，保留記憶與附件）</label>
+                <div class="slider"><input id="vClear" type="range" min="10" max="300" step="5" value="45" data-pill="vClearV" data-unit=" 秒"><span class="pill" id="vClearV">45 秒</span></div></div>
+              <p class="hint">控制台與舞台各自依上述時間清畫面、清空對話並返回主數位人，停止、返回與收音操作不影響另一邊；閒置招呼只在舞台播放。</p>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-wave"/></svg>Silero VAD 語音端點偵測</h3><p>自動判斷發話開始與停頓；播放期間暫停收音，可點選插話。</p></div><button type="button" class="btn sm" data-apply="VAD 已更新">套用 VAD</button></div>
+            <div class="card-body">
+              <span class="chip ok" style="align-self:flex-start"><svg class="icon" aria-hidden="true"><use href="#i-circle-check"/></svg>Silero VAD 已生效</span>
+              <div class="row"><div class="lbl"><span class="l">啟用免持自動收音</span><span class="hint">開口即錄，停頓超過閥值自動送出</span></div><label class="switch"><input type="checkbox" checked aria-label="啟用免持自動收音"><span class="state">開啟</span></label></div>
+              <div class="field"><label for="vadTh">發話判定門檻 (Threshold)</label>
+                <div class="slider"><input id="vadTh" type="range" min="0.1" max="0.9" step="0.05" value="0.5" data-pill="vadThV"><span class="pill" id="vadThV">0.5</span></div>
+                <span class="hint">閥值愈高抗噪愈佳，建議 0.45–0.55</span></div>
+              <div class="field"><label for="vadMs">最小靜音判定時間 (ms)</label>
+                <div class="slider"><input id="vadMs" type="range" min="200" max="2000" step="50" value="600" data-pill="vadMsV" data-unit=" ms"><span class="pill" id="vadMsV">600 ms</span></div>
+                <span class="hint">停頓超過此毫秒數即視為發話完畢</span></div>
+              <p class="hint">連線後麥克風維持關閉；點擊後開始免持聆聽。Silero 判斷你說完一句就送出。</p>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-mic"/></svg>語音辨識</h3><p>麥克風音訊經 WebRTC 傳到伺服器後，由此引擎辨識。</p></div><button type="button" class="btn sm" id="applyStt">套用語音辨識</button></div>
+            <div class="card-body">
+              <div class="field"><span class="l" style="font-weight:600">語音辨識引擎</span>
+                <div class="options" role="radiogroup" aria-label="語音辨識引擎" style="grid-template-columns:1fr">
+                  <label class="opt"><input type="radio" name="stt" value="whisper" checked><span class="t">Whisper<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">預設 · 中英文 · MIT</span></label>
+                  <label class="opt"><input type="radio" name="stt" value="funasr"><span class="t">Fun-ASR-Nano-2512<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">中英混說 · Apache-2.0 · 速度待實測</span></label>
+                </div>
+              </div>
+              <div class="field"><label for="sttModel">辨識模型</label><select id="sttModel" class="input mono"><option>small</option><option>large-v3-turbo</option></select></div>
+              <div class="field" id="sttScript" hidden><span class="l" style="font-weight:600">輸出文字</span><div class="note"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>辨識結果一律經 OpenCC <span class="mono">s2twp</span> 轉為臺灣繁體。模型版本與 sha256 已釘選。</span></div></div>
+              <div class="field" id="sttWarm" hidden role="status">
+                <div class="block-head"><span class="l" style="font-weight:600">正在驗證並預熱...</span><span class="mono hint" id="sttPct">0%</span></div>
+                <div class="progress" aria-label="語音辨識模型預熱進度"><i id="sttBar"></i></div>
+                <span class="hint">正在下載或載入模型；首次預熱依網路與裝置速度可能需要數分鐘。</span>
+              </div>
+              <div class="note warn"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg><span>切換引擎時，目前連線與進行中的輪次會先停止。新引擎驗證成功後才會儲存，完成後請手動重新連線。</span></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- 5 數位人與畫質 -->
+        <section class="panel" id="panel-avatar" role="tabpanel" aria-labelledby="tab-avatar" hidden>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-layout"/></svg>唇形驅動引擎與畫質調優</h3><p>選擇驅動人臉口型的神經網路架構與高清貼回參數。</p></div><button type="button" class="btn sm" data-apply="嘴型參數已套用，下一句說話就會生效">套用畫質</button></div>
+            <div class="card-body">
+              <div class="options" role="radiogroup" aria-label="唇形驅動引擎">
+                <label class="opt"><input type="radio" name="lip" checked><span class="t">MuseTalk<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">潛空間擴散模型，口型細緻自然，邊緣連續無抖動。</span><span><span class="lic ok">Supported / Commercial</span></span></label>
+                <label class="opt"><input type="radio" name="lip"><span class="t">Wav2Lip<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">傳統 GAN 架構，顯存消耗低，適合輕量邊緣設備。</span><span><span class="lic warn">Research / Non-commercial</span></span></label>
+              </div>
+              <div class="row"><div class="lbl"><label for="qInterp">貼回插值</label><span class="hint">Lanczos 提供最佳邊緣文字級銳利度</span></div><select id="qInterp" class="input"><option>Lanczos (最佳高清晰度 · 推薦)</option><option>Bicubic (雙立方平滑)</option><option>Bilinear (傳統雙線性)</option></select></div>
+              <div class="row"><div class="lbl"><label for="qSharp">嘴部銳化</label><span class="hint">消除唇邊貼回模糊，建議 0.5–0.8</span></div><div class="slider"><input id="qSharp" type="range" min="0" max="2" step="0.1" value="0.6" data-pill="qSharpV"><span class="pill" id="qSharpV">0.6</span></div></div>
+              <div class="row"><div class="lbl"><label for="qBbox">唇部框偏移</label><span class="hint">調整唇部框選區域上下偏移</span></div><div class="slider"><input id="qBbox" type="range" min="-30" max="30" value="4" data-pill="qBboxV" data-unit="px"><span class="pill" id="qBboxV">4px</span></div></div>
+              <div class="row"><div class="lbl"><label for="qMargin">外擴邊距</label><span class="hint">外擴邊距控制</span></div><div class="slider"><input id="qMargin" type="range" min="0" max="50" value="10" data-pill="qMarginV" data-unit="px"><span class="pill" id="qMarginV">10px</span></div></div>
+              <p class="hint">唇部框偏移與外擴邊距變更後需重新建立角色快取。</p>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-video"/></svg>現有數位人角色庫</h3><p>點選角色後按「切換角色」。</p></div><button type="button" class="btn sm primary" data-apply="數位人已切換，請重新啟動連線">切換角色</button></div>
+            <div class="card-body">
+              <div class="agrid" id="agrid"></div>
+              <hr class="divider">
+              <span class="sub-title"><svg class="icon" aria-hidden="true" style="color:var(--brand)"><use href="#i-upload"/></svg>匯入自訂短影片以產生新角色</span>
+              <div class="drop" role="button" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#i-video"/></svg><div>拖曳 MP4 / MOV 正面影片至此，或點擊選取檔案<small>製作角色會佔用 GPU，請先中斷目前連線。</small></div></div>
+              <label class="check"><input type="checkbox">上傳影片為綠幕素材（建立後可使用舞台背景）</label>
+            </div>
+          </article>
+        </section>
+
+        <!-- 6 舞台與看板排版 -->
+        <section class="panel" id="panel-stage" role="tabpanel" aria-labelledby="tab-stage" hidden>
+          <article class="card stage-style">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>場景與看板風格</h3><p>共用同一場景；講話中也可切換。</p></div><button type="button" class="btn sm" data-apply="舞台設定已更新。看板視窗立即套用，字幕上限下一輪生效">套用舞台設定</button></div>
+            <div class="card-body">
+              <span class="sub-title">演播場景背景</span>
+              <div class="bg-list" id="bgList"></div>
+              <div style="display:flex;gap:var(--s2);flex-wrap:wrap"><button type="button" class="btn sm"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg>上傳背景</button><button type="button" class="btn sm ghost">顯示原始綠幕</button></div>
+              <hr class="divider">
+              <span class="sub-title">看板視覺風格樣式</span>
+              <div class="options" role="radiogroup" aria-label="看板風格">
+                <label class="opt"><input type="radio" name="board" checked><span class="t">毛玻璃視窗<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">半透霧面高雅質感</span></label>
+                <label class="opt"><input type="radio" name="board"><span class="t">場記板<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">實色底與高對比色條</span></label>
+                <label class="opt"><input type="radio" name="board"><span class="t">廣播字卡<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">獨立懸浮條目小卡</span></label>
+              </div>
+              <div class="field"><label for="bW">看板寬度 (Width px)</label><div class="slider"><input id="bW" type="range" min="200" max="720" value="420" data-pill="bWV" data-unit="px"><span class="pill" id="bWV">420px</span></div><span class="hint">舞台畫布內的橫向尺寸 (200–720px)</span></div>
+              <div class="field"><label for="bH">看板高度 (Height px)</label><div class="slider"><input id="bH" type="range" min="180" max="720" value="360" data-pill="bHV" data-unit="px"><span class="pill" id="bHV">360px</span></div><span class="hint">條列項目展開的縱向高度 (180–720px)</span></div>
+              <div class="field"><label for="bO">背景半透明度 (%)</label><div class="slider"><input id="bO" type="range" min="0" max="100" value="62" data-pill="bOV" data-unit="%"><span class="pill" id="bOV">62%</span></div></div>
+              <div class="show-narrow" style="flex-direction:column;gap:var(--s3)"><div class="note"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>視窗較窄時，字幕、麥克風與按鈕位置可直接在右側舞台拖曳調整。</span></div></div>
+            </div>
+          </article>
+          <article class="card stage-pos">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg>字幕與控制位置</h3><p>滑桿精準調整；也可在舞台預覽直接拖曳。</p></div></div>
+            <div class="card-body">
+              <div class="row"><div class="lbl"><label for="capMax">舞台字幕上限</label><span class="hint">保留最新字幕片段的最大字元數 (20–2000)</span></div><div class="slider"><input id="capMax" type="range" min="20" max="2000" step="10" value="120" data-pill="capMaxV" data-unit=" 字"><span class="pill" id="capMaxV">120 字</span></div></div>
+              <div class="row"><div class="lbl"><span class="l">常態預覽看板</span><span class="hint">在舞台與控制台中預設顯示示範看板</span></div><label class="switch"><input type="checkbox" aria-label="常態預覽看板"><span class="state">關閉</span></label></div>
+              <hr class="divider">
+              <span class="sub-title">舞台位置九宮格快速對齊</span>
+              <div style="display:flex;gap:var(--s4);align-items:center">
+                <div class="ninegrid" id="nine" role="group" aria-label="看板位置"></div>
+                <p class="hint">預設為「右上」，避免遮擋人物臉頰與底部字幕帶。</p>
+              </div>
+              <hr class="divider">
+              <span class="sub-title">即時字幕帶展示區域</span>
+              <div class="grid-2">
+                <div class="field"><label for="cX">水平位置</label><div class="slider"><input id="cX" type="range" value="50" data-pill="cXV" data-unit="%"><span class="pill" id="cXV">50%</span></div></div>
+                <div class="field"><label for="cY">垂直位置</label><div class="slider"><input id="cY" type="range" value="82" data-pill="cYV" data-unit="%"><span class="pill" id="cYV">82%</span></div></div>
+                <div class="field"><label for="cWd">展示寬度</label><div class="slider"><input id="cWd" type="range" value="88" data-pill="cWdV" data-unit="%"><span class="pill" id="cWdV">88%</span></div></div>
+              </div>
+              <span class="sub-title">麥克風位置</span>
+              <div class="grid-2">
+                <div class="field"><label for="mX">水平位置</label><div class="slider"><input id="mX" type="range" value="50" data-pill="mXV" data-unit="%"><span class="pill" id="mXV">50%</span></div></div>
+                <div class="field"><label for="mY">垂直位置</label><div class="slider"><input id="mY" type="range" value="94" data-pill="mYV" data-unit="%"><span class="pill" id="mYV">94%</span></div></div>
+              </div>
+              <span class="sub-title">展開看板按鈕位置</span>
+              <div class="grid-2">
+                <div class="field"><label for="oX">水平位置</label><div class="slider"><input id="oX" type="range" value="88" data-pill="oXV" data-unit="%"><span class="pill" id="oXV">88%</span></div></div>
+                <div class="field"><label for="oY">垂直位置</label><div class="slider"><input id="oY" type="range" value="6" data-pill="oYV" data-unit="%"><span class="pill" id="oYV">6%</span></div></div>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-cast"/></svg>9:16 舞台即時對照</h3><p>所見即所得；放開後會套用並保存到數位人舞台。</p></div></div>
+            <div class="stage-cell">
+              <div class="stage-frame" aria-label="舞台預覽">
+                <div class="stage-mode"><i></i>點擊開始收音</div>
+                <svg class="figure" viewBox="0 0 120 150" fill="#2b3550" aria-hidden="true"><use href="#i-figure"/></svg>
+                <div class="stage-board"><div class="bt"><span>回答看板</span><span>預覽</span></div><strong>第一次展示，準備這四件事</strong><span><b>01</b>選擇看板位置，避免遮擋人物與字幕。</span><span><b>02</b>拖曳整張看板即可移動。</span></div>
+                <div class="stage-cap">準備好後，直接開始對話</div>
+                <div class="stage-mic"><svg class="icon" aria-hidden="true"><use href="#i-mic"/></svg></div>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <!-- 7 系統偏好與自訂 -->
+        <section class="panel" id="panel-experience" role="tabpanel" aria-labelledby="tab-experience" hidden>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-palette"/></svg>外觀主題與操作語系</h3><p>自訂控制台視覺風格與介面語言。</p></div></div>
+            <div class="card-body">
+              <div class="field"><span class="l" style="font-weight:600">介面色彩主題</span>
+                <div class="options theme-opts" role="radiogroup" aria-label="介面色彩主題" id="themeOpts">
+                  <label class="opt"><input type="radio" name="theme" value="system"><span class="t">跟隨系統<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">依作業系統深淺色切換</span></label>
+                  <label class="opt"><input type="radio" name="theme" value="dark"><span class="t">深色模式<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">低眩光，適合現場暗場</span><span class="sw"><i style="background:#08090c"></i><i style="background:#10141c"></i><i style="background:#7c9cff"></i><i style="background:#f2b544"></i></span></label>
+                  <label class="opt"><input type="radio" name="theme" value="light"><span class="t">淺色模式<span class="tick"><svg class="icon"><use href="#i-check"/></svg></span></span><span class="d">明亮、高對比的設定介面</span><span class="sw"><i style="background:#f3f5f9"></i><i style="background:#ffffff"></i><i style="background:#3b5bdb"></i><i style="background:#8a5300"></i></span></label>
+                </div>
+              </div>
+              <div class="row"><div class="lbl"><label for="uiLang">介面語系 (Language)</label></div><select id="uiLang" class="input"><option>繁體中文 (台灣正體)</option><option>English</option></select></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-gauge"/></svg>診斷監控與錄製配置</h3><p>效能除錯輔助與本機影片封裝選項。</p></div></div>
+            <div class="card-body">
+              <div class="row"><div class="lbl"><span class="l">顯示即時除錯監控浮層</span><span class="hint">即時顯示 WebRTC 封包遺失率、FPS 與延遲統計</span></div><label class="switch"><input type="checkbox" aria-label="顯示即時除錯監控浮層"><span class="state">關閉</span></label></div>
+              <div class="row"><div class="lbl"><span class="l">訊息精確時間戳記</span><span class="hint">在每條對話氣泡旁標注發送與接收時間</span></div><label class="switch"><input type="checkbox" checked aria-label="訊息精確時間戳記"><span class="state">開啟</span></label></div>
+              <div class="row"><div class="lbl"><label for="recFmt">影片錄製封裝格式</label></div><select id="recFmt" class="input"><option>MP4 (H.264 · 廣泛相容)</option><option>WebM (VP9)</option></select></div>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <span class="state" id="saveState"><svg class="icon" aria-hidden="true"><use href="#i-circle-check"/></svg>所有變更已套用 · 上次套用 <span class="num">14:32:08</span></span>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="revertBtn"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>還原未儲存的變更</button>
+        <button type="button" class="btn primary" id="saveBtn" data-save><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>儲存並套用本頁設定</button>
+      </footer>
+    </main>
+  </div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s)
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)]
+  const ic = id => `<svg class="icon" aria-hidden="true"><use href="#${id}"/></svg>`
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+  /* ── Tabs (after spec 02: no 語音辨識與合成 tab) ─────────────── */
+  const tabs = [
+    { id: 'conversation', icon: 'i-chat', label: '對話記憶與語系', desc: '檢視各場對話保留的記憶、Context 用量，並調整保留上限與回覆語系。' },
+    { id: 'roles', icon: 'i-users', label: '數位人、AI 與知識設定', desc: '先選數位人，再設定身分、回答模型、回覆規則、RAG 文本與聲音；角色交接在同一處管理。' },
+    { id: 'greeting', icon: 'i-greet', label: '閒置招呼', desc: '設定自動招呼的開關、時間、內容與 AI Prompt，並預覽或試播。' },
+    { id: 'interaction', icon: 'i-mic', label: '訪客互動與語音辨識', desc: '管理訪客何時開始說話、何時送出、由哪個引擎辨識，以及上一場對話何時清除。' },
+    { id: 'avatar', icon: 'i-video', label: '數位人與畫質', tag: 'MuseTalk', desc: '選擇唇形驅動引擎、調整貼回畫質，並管理人物素材。' },
+    { id: 'stage', icon: 'i-layout', label: '舞台與看板排版', tag: '毛玻璃', desc: '設定場景背景、看板樣式，以及字幕、麥克風與按鈕在舞台上的位置。' },
+    { id: 'experience', icon: 'i-palette', label: '系統偏好與自訂', desc: '外觀主題、介面語系與診斷選項。' }
+  ]
+  const nav = $('#railNav')
+  nav.innerHTML = tabs.map(t => `<button type="button" class="rail-tab" role="tab" id="tab-${t.id}" aria-controls="panel-${t.id}" aria-selected="false" tabindex="-1" data-tab="${t.id}">${ic(t.icon)}<span class="label">${t.label}</span>${t.tag ? `<span class="tag" data-tag="${t.id}">${t.tag}</span>` : ''}</button>`).join('')
+  function selectTab(id, focus) {
+    const t = tabs.find(x => x.id === id)
+    $$('.rail-tab').forEach(b => { const on = b.dataset.tab === id; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus() })
+    $$('.panel').forEach(p => { p.hidden = p.id !== `panel-${id}` })
+    $('#pageTitle').textContent = t.label
+    $('#pageDesc').textContent = t.desc
+    $('#pageActions').innerHTML = id === 'roles'
+      ? `<button type="button" class="btn sm ghost">${ic('i-refresh')}重新載入</button><button type="button" class="btn sm">僅儲存草稿</button>`
+      : ''
+    renderAlerts()
+    try { localStorage.setItem('proto-tab', id) } catch {}
+  }
+  nav.addEventListener('click', e => { const b = e.target.closest('.rail-tab'); if (b) selectTab(b.dataset.tab) })
+  nav.addEventListener('keydown', e => {
+    const i = tabs.findIndex(t => t.id === document.activeElement.dataset.tab)
+    if (i < 0) return
+    const next = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: tabs.length - 1 }[e.key]
+    if (next === undefined) return
+    e.preventDefault(); selectTab(tabs[(next + tabs.length) % tabs.length].id, true)
+  })
+
+  /* ── System status (rail) ─────────────────────────────────────── */
+  const sys = {
+    stage: { tone: 'ok', icon: 'i-cast', name: '舞台連線', text: '2 個舞台已連線' },
+    llm: { tone: 'warn', icon: 'i-alert', name: '本機 LLM', text: '未全部載入 GPU · 24 / 36 層' },
+    asr: { tone: 'ok', icon: 'i-mic', name: '語音辨識', text: 'Whisper small 就緒' },
+    breezy: { tone: 'busy', icon: 'i-loader', name: 'BreezyVoice 伺服器', text: '啟動中…' },
+    rag: { tone: 'ok', icon: 'i-db', name: 'RAGFlow', text: '已連線' }
+  }
+  function renderSys() {
+    $('#sysList').innerHTML = Object.values(sys).map(s => `<div class="sys-row" data-tone="${s.tone}">${s.tone === 'busy' ? `<svg class="icon spin" aria-hidden="true"><use href="#i-loader"/></svg>` : ic(s.icon)}<div><b>${s.name}</b><span>${s.text}</span></div></div>`).join('')
+  }
+
+  /* ── Banners ──────────────────────────────────────────────────── */
+  let gpuBanner = true
+  function renderAlerts() {
+    const active = $('.rail-tab[aria-selected="true"]')?.dataset.tab
+    const out = []
+    if (gpuBanner) out.push(`<div class="banner warn" role="status">${ic('i-alert')}<div><b>本機 LLM 未全部載入 GPU，回覆會明顯變慢</b><div class="detail">目前 24 / 36 層在 GPU，其餘在 CPU 執行。原因見 <span class="mono">logs/</span> 中 llama-server 啟動訊息；釋放顯示卡記憶體後重新套用設定檔。</div></div><div class="acts"><button type="button" class="btn sm" data-copy>複製記錄位置</button><button type="button" class="btn sm ghost" data-hide-gpu>先隱藏</button></div></div>`)
+    $('#alerts').innerHTML = out.join('')
+  }
+  $('#alerts').addEventListener('click', e => {
+    if (e.target.closest('[data-hide-gpu]')) { gpuBanner = false; renderAlerts(); toast('info', '已隱藏 GPU 警示', '左側「系統狀態」仍會持續顯示。') }
+    if (e.target.closest('[data-copy]')) toast('info', '已複製記錄位置', 'logs/llama-server.log')
+  })
+
+  /* ── Toasts ───────────────────────────────────────────────────── */
+  function toast(kind, title, detail = '', actions = []) {
+    const el = document.createElement('div')
+    el.className = `toast ${kind}`
+    if (kind === 'danger') el.setAttribute('role', 'alert')
+    el.innerHTML = `${ic(kind === 'ok' ? 'i-circle-check' : kind === 'danger' ? 'i-octagon' : 'i-info')}<div><b>${esc(title)}</b>${detail ? `<div class="detail">${esc(detail)}</div>` : ''}${actions.length ? `<div class="acts">${actions.map((a, i) => `<button type="button" class="btn sm${i ? ' ghost' : ''}" data-i="${i}">${esc(a.label)}</button>`).join('')}</div>` : ''}</div><button type="button" class="btn sm ghost icon-only" aria-label="關閉通知">${ic('i-x')}</button>`
+    const close = () => el.remove()
+    el.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return
+      if (b.dataset.i !== undefined) actions[b.dataset.i].run?.()
+      close()
+    })
+    $('#toasts').prepend(el)
+    // Errors stay until dismissed; other results leave after 5 s.
+    if (kind !== 'danger') setTimeout(close, 5000)
+  }
+
+  /* ── Dirty / save ─────────────────────────────────────────────── */
+  let dirty = false
+  const now = () => new Date().toLocaleTimeString('zh-TW', { hour12: false })
+  function setDirty(v) {
+    dirty = v
+    const s = $('#saveState')
+    s.classList.toggle('dirty', v)
+    s.innerHTML = v ? `${ic('i-alert')}有未儲存的變更` : `${ic('i-circle-check')}所有變更已套用 · 上次套用 <span class="num">${now()}</span>`
+  }
+  $('.panels').addEventListener('input', e => {
+    const el = e.target
+    if (el.dataset.pill) $('#' + el.dataset.pill).textContent = el.value + (el.dataset.unit || '')
+    if (el.closest('.switch')) el.closest('.switch').querySelector('.state').textContent = el.checked ? '開啟' : '關閉'
+    if (!el.closest('#uploadForm')) setDirty(true)
+  })
+  $('#revertBtn').addEventListener('click', () => { if (!dirty) return; setDirty(false); toast('info', '已還原未儲存的變更') })
+  function save() {
+    const p = profiles[current]
+    const onRoles = $('.rail-tab[aria-selected="true"]').dataset.tab === 'roles'
+    if (onRoles && p.engine === 'breezyvoice' && !p.clip) {
+      selectSection('voice'); renderVoice(true)
+      toast('danger', '儲存失敗：尚未選擇參考音檔', `「${p.name}」使用 BreezyVoice，必須選擇一段有逐字稿的參考音檔。`, [{ label: '前往選擇', run: () => $('#clipList input')?.focus() }])
+      return
+    }
+    if (onRoles && p.engine === 'edgetts' && !p.voice) {
+      selectSection('voice'); renderVoice(true)
+      toast('danger', '儲存失敗：尚未選擇 Edge 聲線', `請替「${p.name}」選擇中文聲線。`)
+      return
+    }
+    setDirty(false)
+    toast('ok', '設定已儲存並套用', onRoles ? `「${p.name}」設定檔已生效。` : '下一輪對話開始使用新設定。')
+    if (onRoles && p.engine === 'breezyvoice' && breezy.state !== 'ready') startBreezy()
+  }
+  document.addEventListener('click', e => { if (e.target.closest('[data-save]')) save() })
+  document.addEventListener('click', e => { const b = e.target.closest('[data-apply]'); if (b) { setDirty(false); toast('ok', b.dataset.apply) } })
+
+  /* ── BreezyVoice server ───────────────────────────────────────── */
+  const breezy = { state: 'starting', t0: Date.now(), timer: null }
+  const themeOrder = ['system', 'light', 'dark']
+  function breezyChip() {
+    if (breezy.state === 'ready') return `<span class="chip ok"><span class="dot"></span>BreezyVoice 伺服器就緒</span>`
+    if (breezy.state === 'failed') return `<span class="chip danger">${ic('i-octagon')}BreezyVoice 伺服器啟動失敗</span>`
+    if (breezy.state === 'stopped') return `<span class="chip neutral"><span class="dot"></span>BreezyVoice 伺服器未啟動</span>`
+    const s = Math.floor((Date.now() - breezy.t0) / 1000)
+    return `<span class="chip busy"><svg class="icon spin" aria-hidden="true"><use href="#i-loader"/></svg>BreezyVoice 伺服器啟動中 · <span class="num">${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}</span></span>`
+  }
+  function syncBreezy() {
+    const s = Math.floor((Date.now() - breezy.t0) / 1000)
+    sys.breezy = breezy.state === 'ready' ? { tone: 'ok', icon: 'i-server', name: 'BreezyVoice 伺服器', text: '就緒 · 127.0.0.1:9880' }
+      : breezy.state === 'failed' ? { tone: 'danger', icon: 'i-octagon', name: 'BreezyVoice 伺服器', text: '啟動失敗' }
+      : { tone: 'busy', icon: 'i-loader', name: 'BreezyVoice 伺服器', text: `啟動中 · 已 ${s} 秒` }
+    renderSys()
+    $$('[data-breezy-chip]').forEach(el => { el.innerHTML = breezyChip() })
+  }
+  function startBreezy() {
+    clearInterval(breezy.timer)
+    breezy.state = 'starting'; breezy.t0 = Date.now()
+    syncBreezy()
+    breezy.timer = setInterval(() => {
+      if (Date.now() - breezy.t0 > 22000) { breezy.state = 'ready'; clearInterval(breezy.timer); syncBreezy(); toast('ok', 'BreezyVoice 伺服器已就緒', '可以試聽或開始對話。') ; return }
+      syncBreezy()
+    }, 1000)
+  }
+
+  /* ── Profiles & voice library (fake data) ─────────────────────── */
+  const DEV_TX = '在密碼學中，加密是將明文資訊改變為難以讀取的密文內容，使之不可讀的方法。'
+  let clips = [
+    { id: 'clip-nova', name: '小諾 · 開場招呼', sec: 6.2, text: '您好，歡迎來到 Nova 展示中心，我是導覽員小諾，有什麼想了解的嗎？' },
+    { id: 'clip-weather', name: '氣象主播 · 晴雨播報', sec: 7.1, text: '今天臺北市多雲時晴，午後山區有局部短暫陣雨，出門記得帶把傘。' },
+    { id: 'clip-dev', name: 'BreezyVoice 測試音檔（僅開發用）', sec: 7.8, text: DEV_TX, dev: true },
+    { id: 'clip-legacy', name: '舊錄音_0412', sec: 9.4, text: '' }
+  ]
+  const profiles = {
+    nova: { name: '小諾', id: 'nova-main', role: 'main', color: '#3b5bdb', engine: 'edgetts', voice: 'zh-TW-HsiaoChenNeural', en: 'en-US-JennyNeural', clip: '', active: true },
+    weather: { name: '氣象小幫手', id: 'weather-specialist', role: 'specialist', color: '#0e8a5f', engine: 'breezyvoice', voice: '', en: '', clip: 'clip-weather' },
+    guide: { name: '展場導覽員', id: 'expo-guide', role: '', color: '#b26b00', engine: 'breezyvoice', voice: '', en: '', clip: '' }
+  }
+  let current = 'nova'
+  let switchNote = ''
+  const engineLabel = { edgetts: 'Edge TTS', breezyvoice: 'BreezyVoice' }
+
+  function renderList() {
+    $('#plist').innerHTML = Object.entries(profiles).map(([k, p]) => `<li><button type="button" class="pitem" data-p="${k}" aria-current="${k === current}"><span class="avatar-dot" style="background:${p.color}" aria-hidden="true">${p.name[0]}</span><span><b>${p.name}</b><small>${p.role === 'main' ? '<span class="mini main">主數位人</span>' : p.role === 'specialist' ? '<span class="mini">專門數位人</span>' : ''}<span class="mini">${engineLabel[p.engine]}</span>${p.engine === 'breezyvoice' && !p.clip ? `<span class="mini" style="color:var(--danger)">缺參考音檔</span>` : ''}</small></span></button></li>`).join('')
+  }
+  $('#plist').addEventListener('click', e => {
+    const b = e.target.closest('.pitem'); if (!b) return
+    current = b.dataset.p; switchNote = ''
+    const p = profiles[current]
+    $('#edName').textContent = p.name; $('#edId').textContent = p.id
+    $('#edActive').hidden = !p.active
+    $$('[data-pname]').forEach(el => { el.textContent = p.name })
+    $('#idName').value = p.name
+    renderList(); renderVoice()
+  })
+
+  const playing = { id: null, timer: null }
+  function stopPlay() { clearInterval(playing.timer); playing.id = null }
+  function play(id, secs) {
+    const was = playing.id
+    stopPlay(); renderVoice()
+    if (was === id) return
+    playing.id = id
+    const t0 = Date.now()
+    renderVoice()
+    playing.timer = setInterval(() => {
+      const pct = Math.min(100, (Date.now() - t0) / (secs * 10))
+      const bar = document.querySelector(`[data-pbar="${id}"] i`)
+      if (bar) bar.style.width = pct + '%'
+      if (pct >= 100) { stopPlay(); renderVoice() }
+    }, 100)
+  }
+
+  function renderVoice(showErrors = false) {
+    const p = profiles[current]
+    const listed = clips.filter(c => c.text)
+    const hidden = clips.length - listed.length
+    const isB = p.engine === 'breezyvoice'
+    const clipErr = showErrors && isB && !p.clip
+    const voiceErr = showErrors && !isB && !p.voice
+    const left = []
+    left.push(`<p class="hint">每位角色可選擇自己的聲線；即時組合共用同一語音合成引擎。尚未套用設定檔時，舞台使用主數位人的聲音。</p>`)
+    left.push(`<div class="field"><span class="l" style="font-weight:600">語音引擎</span><div class="options" role="radiogroup" aria-label="語音引擎">
+      <label class="opt"><input type="radio" name="tts" value="edgetts" ${!isB ? 'checked' : ''}><span class="t">Edge TTS<span class="tick">${ic('i-check')}</span></span><span class="d">Microsoft Edge 朗讀的非公開端點；場域斷網即無法發聲。</span><span><span class="lic warn">Development only · 開發用</span></span></label>
+      <label class="opt"><input type="radio" name="tts" value="breezyvoice" ${isB ? 'checked' : ''}><span class="t">BreezyVoice<span class="tick">${ic('i-check')}</span></span><span class="d">本機台灣華語 · 以參考音檔複製聲音。</span><span><span class="lic ok">本機執行</span></span></label>
+    </div></div>`)
+    if (switchNote) left.push(`<div class="note">${ic('i-info')}<span>${switchNote}</span></div>`)
+    if (!isB) {
+      left.push(`<div class="grid-2">
+        <div class="field"><label for="edgeZh">中文聲線<span class="req">*</span></label><select id="edgeZh" class="input" ${voiceErr ? 'aria-invalid="true" aria-describedby="edgeErr"' : ''}><option value="" ${!p.voice ? 'selected' : ''}>請選擇聲線</option>${['zh-TW-HsiaoChenNeural|女聲', 'zh-TW-HsiaoYuNeural|女聲', 'zh-TW-YunJheNeural|男聲'].map(v => { const [id, g] = v.split('|'); return `<option value="${id}" ${p.voice === id ? 'selected' : ''}>${id}（${g}）</option>` }).join('')}</select>${voiceErr ? `<span class="field-error" id="edgeErr">${ic('i-octagon')}請選擇中文聲線，未選擇不能儲存。</span>` : ''}</div>
+        <div class="field"><label for="edgeEn">英文聲音</label><input id="edgeEn" class="input mono" value="${esc(p.en)}" placeholder="en-US-JennyNeural"></div>
+      </div>`)
+    } else {
+      left.push(`<div class="field"><div class="block-head"><span class="l" style="font-weight:600">參考音檔<span class="req">*</span></span><span class="hint">只列出有逐字稿的音檔 · ${listed.length} 個</span></div>
+        ${listed.length ? `<fieldset class="clips" id="clipList" ${clipErr ? 'aria-invalid="true" aria-describedby="clipErr"' : ''}><legend class="sr-only">參考音檔</legend>${listed.map(c => `<label class="clip"><input type="radio" name="clip" value="${c.id}" ${p.clip === c.id ? 'checked' : ''}><span><span class="name">${esc(c.name)}<span class="secs">${c.sec.toFixed(1)} 秒</span>${c.dev ? `<span class="badge-dev">${ic('i-shield')}開發用，未取得說話者授權</span>` : ''}</span><span class="tx">${esc(c.text)}</span></span><span class="ops"><button type="button" class="btn sm icon-only" data-play="${c.id}" aria-label="${playing.id === c.id ? '停止試聽' : '試聽'} ${esc(c.name)}">${ic(playing.id === c.id ? 'i-stop' : 'i-play')}</button><button type="button" class="btn sm icon-only danger" data-del="${c.id}" aria-label="刪除 ${esc(c.name)}">${ic('i-trash')}</button></span>${playing.id === c.id ? `<span class="progress pbar" data-pbar="${c.id}"><i></i></span>` : ''}</label>`).join('')}</fieldset>`
+          : `<div class="clips-empty">音訊庫還沒有可用的參考音檔。請在右側上傳錄音並附上逐字稿。</div>`}
+        ${clipErr ? `<span class="field-error" id="clipErr">${ic('i-octagon')}請選擇參考音檔，未選擇不能儲存。</span>` : ''}
+        ${hidden ? `<span class="hint">另有 ${hidden} 個音檔沒有逐字稿，BreezyVoice 無法使用，因此未列出。</span>` : ''}
+      </div>`)
+      const sel = clips.find(c => c.id === p.clip)
+      if (sel?.dev) left.push(`<div class="note warn">${ic('i-shield')}<span>此設定檔使用開發用測試音檔，未取得說話者授權，請勿用於正式展出。</span></div>`)
+    }
+    left.push(`<details class="more"><summary>其他聲音設定</summary><div class="grid-2"><div class="field"><label for="bvUrl">BreezyVoice 服務網址（限本機，留空為預設）</label><input id="bvUrl" class="input mono" placeholder="http://127.0.0.1:9880"></div><div class="field"><label for="bvModel">models/ 內的 BreezyVoice 模型（留空為預設）</label><input id="bvModel" class="input mono" placeholder="BreezyVoice"></div></div></details>`)
+    left.push(`<hr class="divider"><label class="check"><input type="checkbox" checked>使用 CWA 即時天氣工具（臺灣，角色交接模式）</label>`)
+
+    const right = []
+    right.push(`<div class="block"><div class="block-head"><span class="sub-title">${ic('i-play')}試聽此設定檔的聲音</span>${isB ? `<span data-breezy-chip>${breezyChip()}</span>` : `<span class="chip ok"><span class="dot"></span>Edge TTS 可用</span>`}</div>
+      <div class="field"><label for="pvText">試聽句子</label><input id="pvText" class="input" value="您好，我是${esc(p.name)}，今天想了解什麼呢？"></div>
+      <div style="display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap"><button type="button" class="btn primary sm" data-preview ${isB && !p.clip ? 'disabled' : ''}>${ic(playing.id === 'pv' ? 'i-stop' : 'i-play')}${playing.id === 'pv' ? '停止' : '試聽'}</button>
+      <span class="hint">${isB ? (!p.clip ? '先選擇參考音檔才能試聽。' : breezy.state === 'ready' ? '使用目前選擇的參考音檔合成。' : '伺服器就緒後自動開始試聽。') : '使用目前選擇的 Edge 聲線。'}</span></div>
+      ${playing.id === 'pv' ? `<span class="progress" data-pbar="pv"><i></i></span>` : ''}
+    </div>`)
+    right.push(`<form class="block" id="uploadForm" novalidate><div class="block-head"><span class="sub-title">${ic('i-upload')}上傳參考音檔到音訊庫</span><span class="hint">供 BreezyVoice 使用</span></div>
+      <label class="drop" for="upFile"><svg class="icon" aria-hidden="true"><use href="#i-file-audio"/></svg><div><span id="upFileName">選擇錄音檔</span><small>WAV、MP3、FLAC、OGG、M4A、WebM，60 秒內；上傳後轉成 WAV 存在伺服器。</small></div></label>
+      <input id="upFile" type="file" accept="audio/*" class="sr-only">
+      <div class="field"><label for="upName">名稱</label><input id="upName" class="input" placeholder="例如：小諾 · 活動介紹" maxlength="80"></div>
+      <div class="field"><label for="upText">逐字稿<span class="req">*</span></label><textarea id="upText" class="input" rows="3" maxlength="500" placeholder="例如：您好，歡迎使用 Nova Avatar。" aria-describedby="upHint"></textarea><span class="counter num" id="upCount">0 / 500</span>
+        <span class="hint" id="upHint">錄音請用 8 秒內、乾淨、單人的台灣華語（不要歌曲或開頭靜音）；逐字稿須與整段錄音逐字相同。</span><span id="upErr"></span></div>
+      <div><button type="submit" class="btn sm">${ic('i-upload')}上傳到音訊庫</button></div>
+    </form>`)
+    $('#voiceLeft').innerHTML = left.join('')
+    $('#voiceRight').innerHTML = right.join('')
+  }
+
+  $('#voiceLeft').addEventListener('change', e => {
+    const p = profiles[current]
+    if (e.target.name === 'tts') {
+      const to = e.target.value
+      if (to === 'breezyvoice' && p.voice) switchNote = `已清除 Edge 聲線「${p.voice}」。請選擇參考音檔。`
+      else if (to === 'edgetts' && p.clip) switchNote = `已清除參考音檔「${clips.find(c => c.id === p.clip)?.name}」。請選擇 Edge 聲線。`
+      else switchNote = ''
+      p.engine = to; p.voice = ''; p.clip = ''; p.en = to === 'edgetts' ? 'en-US-JennyNeural' : ''
+      if (to === 'breezyvoice' && breezy.state !== 'ready' && breezy.state !== 'starting') startBreezy()
+      stopPlay(); renderVoice(); renderList()
+    }
+    if (e.target.name === 'clip') { p.clip = e.target.value; switchNote = ''; renderVoice(); renderList() }
+    if (e.target.id === 'edgeZh') { p.voice = e.target.value; renderVoice() }
+  })
+  $('#voiceLeft').addEventListener('click', e => {
+    const pb = e.target.closest('[data-play]'); const db = e.target.closest('[data-del]')
+    if (pb) { e.preventDefault(); const c = clips.find(x => x.id === pb.dataset.play); play(c.id, c.sec) }
+    if (db) {
+      e.preventDefault()
+      const c = clips.find(x => x.id === db.dataset.del)
+      const idx = clips.indexOf(c)
+      clips = clips.filter(x => x !== c)
+      const users = Object.values(profiles).filter(p => p.clip === c.id)
+      users.forEach(p => { p.clip = '' })
+      renderVoice(); renderList()
+      toast('ok', '參考音訊已移入回收桶', users.length ? `${users.map(u => u.name).join('、')} 需重新選擇參考音檔。` : c.name, [{ label: '復原', run: () => { clips.splice(idx, 0, c); users.forEach(p => { p.clip = c.id }); renderVoice(); renderList() } }])
+    }
+  })
+  $('#voiceRight').addEventListener('click', e => {
+    if (!e.target.closest('[data-preview]')) return
+    const p = profiles[current]
+    if (playing.id === 'pv') { stopPlay(); renderVoice(); return }
+    if (p.engine === 'breezyvoice' && breezy.state !== 'ready') {
+      if (breezy.state !== 'starting') startBreezy()
+      toast('info', 'BreezyVoice 伺服器啟動中', '就緒後會自動開始試聽，首次載入約需 20–40 秒。')
+      return
+    }
+    play('pv', 4)
+  })
+  $('#voiceRight').addEventListener('input', e => {
+    if (e.target.id === 'upText') { $('#upCount').textContent = `${e.target.value.length} / 500`; e.target.removeAttribute('aria-invalid'); $('#upErr').innerHTML = '' }
+  })
+  $('#voiceRight').addEventListener('change', e => {
+    if (e.target.id === 'upFile') $('#upFileName').textContent = e.target.files[0]?.name || '選擇錄音檔'
+  })
+  $('#voiceRight').addEventListener('submit', e => {
+    e.preventDefault()
+    const file = $('#upFile').files[0]
+    const text = $('#upText').value.trim()
+    if (!file || !text) {
+      const msg = !file && !text ? '請選擇錄音檔並填寫逐字稿。' : !file ? '請選擇錄音檔。' : '請填寫逐字稿；BreezyVoice 需要逐字稿才能使用這段錄音。'
+      if (!text) $('#upText').setAttribute('aria-invalid', 'true')
+      $('#upErr').innerHTML = `<span class="field-error" role="alert">${ic('i-octagon')}${msg}</span>`
+      return
+    }
+    const name = $('#upName').value.trim() || file.name.replace(/\.[^.]+$/, '')
+    const id = 'clip-' + Date.now()
+    clips.unshift({ id, name, sec: 6.4, text })
+    const p = profiles[current]
+    if (p.engine === 'breezyvoice' && !p.clip) p.clip = id
+    renderVoice(); renderList()
+    toast('ok', '參考音訊已加入音訊庫', `${name} · 已轉成 WAV`)
+  })
+
+  /* ── Profile editor sections ──────────────────────────────────── */
+  function selectSection(id) {
+    $$('#subnav [role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.sec === id))
+    $$('[data-sec-panel]').forEach(p => { p.hidden = p.dataset.secPanel !== id })
+  }
+  $('#subnav').addEventListener('click', e => { const b = e.target.closest('[data-sec]'); if (b) selectSection(b.dataset.sec) })
+  $$('[data-ws]').forEach(b => b.addEventListener('click', () => {
+    $$('[data-ws]').forEach(x => x.setAttribute('aria-pressed', x === b))
+    $$('[data-ws-panel]').forEach(p => { p.hidden = p.dataset.wsPanel !== b.dataset.ws })
+  }))
+
+  /* ── ASR engine ───────────────────────────────────────────────── */
+  $$('input[name=stt]').forEach(r => r.addEventListener('change', () => {
+    const fun = r.value === 'funasr' && r.checked
+    $('#sttScript').hidden = !fun
+    $('#sttModel').innerHTML = fun ? '<option>Fun-ASR-Nano-2512（釘選版本）</option>' : '<option>small</option><option>large-v3-turbo</option>'
+  }))
+  $('#applyStt').addEventListener('click', () => {
+    const fun = $('input[name=stt]:checked').value === 'funasr'
+    $('#sttWarm').hidden = false
+    let pct = 0
+    sys.asr = { tone: 'busy', icon: 'i-loader', name: '語音辨識', text: '驗證並預熱中…' }; renderSys()
+    const t = setInterval(() => {
+      pct = Math.min(100, pct + 7 + Math.random() * 9)
+      $('#sttBar').style.width = pct + '%'; $('#sttPct').textContent = Math.round(pct) + '%'
+      if (pct >= 100) {
+        clearInterval(t); $('#sttWarm').hidden = true; setDirty(false)
+        sys.asr = { tone: 'ok', icon: 'i-mic', name: '語音辨識', text: fun ? 'Fun-ASR-Nano-2512 就緒' : 'Whisper small 就緒' }; renderSys()
+        toast('ok', '語音辨識已套用，請重新連線')
+      }
+    }, 280)
+  })
+
+  /* ── Avatar library & stage bits ──────────────────────────────── */
+  const avatars = [['nova_front_1080', '1080x1920 · 25fps', true], ['guide_female_01', '1080x1920 · 25fps', false], ['weather_anchor', '720x1280 · 25fps', false], ['host_male_02', '1080x1920 · 30fps', false]]
+  $('#agrid').innerHTML = avatars.map(([id, spec, on], i) => `<button type="button" class="acard" aria-pressed="${i === 0}"><span class="aface">${on ? '<span class="chip ok"><span class="dot"></span>使用中</span>' : ''}<svg viewBox="0 0 120 150" fill="hsl(${220 + i * 30} 25% 42%)" aria-hidden="true"><use href="#i-figure"/></svg></span><span class="ameta"><b>${id}</b><small>${spec}</small></span></button>`).join('')
+  $('#agrid').addEventListener('click', e => { const b = e.target.closest('.acard'); if (!b) return; $$('.acard').forEach(x => x.setAttribute('aria-pressed', x === b)); setDirty(true) })
+  const bgs = [['展場大廳', 'linear-gradient(135deg,#1f3a5f,#0d1b2a)'], ['城市夜景（循環影片）', 'linear-gradient(135deg,#2b1d4a,#0b1020)'], ['品牌漸層', 'linear-gradient(135deg,#7c9cff,#1b2440)']]
+  $('#bgList').innerHTML = bgs.map(([n, g], i) => `<button type="button" class="bg-item" aria-pressed="${i === 0}"><i style="background:${g}"></i><span>${n}</span></button>`).join('')
+  $('#bgList').addEventListener('click', e => { const b = e.target.closest('.bg-item'); if (!b) return; $$('.bg-item').forEach(x => x.setAttribute('aria-pressed', x === b)); setDirty(true) })
+  const posNames = ['左上', '上方', '右上', '左側', '中央', '右側', '左下', '下方', '右下']
+  $('#nine').innerHTML = posNames.map((n, i) => `<button type="button" aria-label="${n}" aria-pressed="${i === 2}"></button>`).join('')
+  $('#nine').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return
+    $$('#nine button').forEach(x => x.setAttribute('aria-pressed', x === b))
+    const i = $$('#nine button').indexOf(b); const s = $('.stage-board').style
+    s.left = s.right = s.top = s.bottom = 'auto'
+    const col = i % 3, row = Math.floor(i / 3)
+    if (col === 0) s.left = '5%'; else if (col === 2) s.right = '5%'; else s.left = '27%'
+    if (row === 0) s.top = '5%'; else if (row === 2) s.bottom = '28%'; else s.top = '30%'
+    setDirty(true)
+  })
+
+  /* ── Theme ────────────────────────────────────────────────────── */
+  const themeMeta = { system: ['i-monitor', '跟隨系統'], light: ['i-sun', '淺色'], dark: ['i-moon', '深色'] }
+  function setTheme(t) {
+    if (t === 'system') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.dataset.theme = t
+    $('#themeBtn').innerHTML = `${ic(themeMeta[t][0])}<span>${themeMeta[t][1]}</span>`
+    $$('#themeOpts input').forEach(r => { r.checked = r.value === t })
+    try { localStorage.setItem('proto-theme', t) } catch {}
+  }
+  $('#themeBtn').addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme || 'system'
+    setTheme(themeOrder[(themeOrder.indexOf(cur) + 1) % 3])
+  })
+  $('#themeOpts').addEventListener('change', e => { setTheme(e.target.value); e.stopPropagation() })
+
+  /* ── Demo controls ────────────────────────────────────────────── */
+  $('.demo-group').addEventListener('click', e => {
+    const d = e.target.closest('[data-demo]')?.dataset.demo
+    if (d === 'ok') { setDirty(false); toast('ok', '設定已儲存並套用', '下一輪對話開始使用新設定。') }
+    if (d === 'fail') toast('danger', '儲存失敗：無法連線到後端', '設定沒有變更。請確認服務正在執行後重試。', [{ label: '重試', run: () => toast('ok', '設定已儲存並套用') }, { label: '關閉' }])
+    if (d === 'breezy') { startBreezy(); toast('info', '正在啟動 BreezyVoice 伺服器', '套用使用 BreezyVoice 的設定檔時會自動啟動。') }
+    if (d === 'gpu') { gpuBanner = true; renderAlerts() }
+  })
+
+  /* ── Init ─────────────────────────────────────────────────────── */
+  let savedTheme = 'system', savedTab = 'roles'
+  try { savedTheme = localStorage.getItem('proto-theme') || 'system'; savedTab = localStorage.getItem('proto-tab') || 'roles' } catch {}
+  // Deep link for reviewers: #stage, #dark, #interaction,dark …
+  location.hash.slice(1).split(',').forEach(h => { if (themeOrder.includes(h)) savedTheme = h; if (tabs.some(t => t.id === h)) savedTab = h })
+  setTheme(themeOrder.includes(savedTheme) ? savedTheme : 'system')
+  renderList(); renderVoice(); selectSection('voice')
+  selectTab(tabs.some(t => t.id === savedTab) ? savedTab : 'roles')
+  startBreezy()
+  location.hash.slice(1).split(',').forEach(h => { if (profiles[h]) $(`.pitem[data-p="${h}"]`).click() })
+  setTimeout(() => toast('ok', '參考音訊已加入音訊庫', '氣象主播 · 晴雨播報 · 已轉成 WAV'), 600)
+  setTimeout(() => toast('danger', '儲存失敗：尚未選擇參考音檔', '「展場導覽員」使用 BreezyVoice，必須選擇一段有逐字稿的參考音檔。', [{ label: '前往修正', run: () => { selectTab('roles'); $('.pitem[data-p="guide"]').click(); renderVoice(true) } }, { label: '關閉' }]), 900)
+})()
+</script>
+</body>
+</html>
