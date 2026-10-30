@@ -583,3 +583,28 @@ def test_post_musetalk_install_fails_when_mmdet_is_missing(tmp_path):
     assert result.returncode != 0
     assert "mmdet" in result.stdout + result.stderr
     assert other.read_text() == "mmcv_maximum_version = '2.1.0'\n"
+
+
+def test_start_all_reinstalls_frontend_dependencies_when_the_lockfile_changed(launcher, tmp_path):
+    # node_modules from an older checkout lacked new packages and the build failed.
+    state, run = launcher
+    web = tmp_path / "project" / "web"
+    installed = web / "node_modules" / ".package-lock.json"
+    installed.write_text("{}")
+    os.utime(installed, (1_000_000_000, 1_000_000_000))
+    (web / "package-lock.json").write_text("{}")
+    result, events = run(NOVA_START_RAGFLOW="0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "npm install" in events
+    assert events.index("npm install") < events.index(" run build")
+
+
+def test_start_all_keeps_current_frontend_dependencies(launcher, tmp_path):
+    state, run = launcher
+    web = tmp_path / "project" / "web"
+    (web / "package-lock.json").write_text("{}")
+    os.utime(web / "package-lock.json", (1_000_000_000, 1_000_000_000))
+    (web / "node_modules" / ".package-lock.json").write_text("{}")
+    result, events = run(NOVA_START_RAGFLOW="0")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "npm install" not in events

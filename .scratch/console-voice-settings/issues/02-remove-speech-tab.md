@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 移除「語音辨識與合成」頁
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 依[規格](../spec.md)「移除語音辨識與合成頁」「預設聲音」。
@@ -29,3 +29,6 @@ Blocked by: 01
 2. 控制台設定中心：側欄沒有「語音辨識與合成」，有「訪客互動與語音辨識」；頁內「語音辨識」卡選 FunASR 時出現輸出字元集，Whisper 時不出現；「套用語音辨識」成功。
 3. 控制台任一設定儲存後，`config/runtime_overrides.yaml` 不再有 `tts:` 區塊。
 4. 數位人設定檔把主數位人聲線改成 YunJhe 並儲存套用 → 新連線（舞台或控制台）說話為男聲；重啟後端後未套用前也一樣。
+
+### 2026-10-30 實機驗證（orchestrator）
+日誌出現「runtime_overrides.yaml 的 tts 區塊已不再使用：預設聲音改由主數位人設定檔決定」；兩句舞台語音（中、英）以主數位人的 Edge 聲音正常回覆。`min_silence_ms: 192` 已在執行設定生效。

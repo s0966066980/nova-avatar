@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 實機驗證與收尾
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01, 02, 03, 04, 07
 
 依[規格](../spec.md)。orchestrator 執行：Fun-ASR-Nano 與 Whisper GPU 比較並決定選單標註；以 BreezyVoice 測試音檔套用設定檔、試聽；控制台在 1920×1080、1280×720 實際瀏覽器截圖檢查；首音延遲最終量測並更新 `docs/project-status.md` 數字（承接 first-audio-latency）。
@@ -29,3 +29,12 @@ Blocked by: 01, 02, 03, 04, 07
 - Edge TTS 角色試聽：數秒內播放所選聲線。
 - 「訪客互動與語音辨識」頁把最小靜音判定時間拖到 192 ms 儲存，`GET /api/vad` 回 `min_silence_ms: 192`，`config/runtime_overrides.yaml` 更新。
 - 兩個控制台分頁：A 分頁套用 FunASR，啟動完成前在 B 分頁套用 Whisper。B 應在 Whisper 載入後即完成（不等 FunASR 啟動），A 顯示「Fun-ASR-Nano 啟動已取消」，`ss -lptn 'sport = :50010'` 無殘留程序。
+
+### 2026-10-30 收尾（orchestrator）
+- 使用者決定：預設繼續用 Edge TTS，略過速度驗證，只確認能執行。
+- Showtime（約 11 GB 顯存）經使用者同意強制關閉；Nova＋E2B＋bge-m3 合計 14.3 GB。
+- 整合分支啟動成功，主控台載入新樣式（`light-dark`、Plus Jakarta Sans、JetBrains Mono）；`/health` 正常；兩句真實舞台語音（中、英）完成，Whisper 判斷 zh／en 正確，Edge TTS 回覆。
+- Fun-ASR-Nano 與 Whisper GPU 比較：見 issue 03（標為較慢，預設 Whisper）。
+- 控制台需管理者登入，瀏覽器手動點選檢查由使用者執行；自動版面與視覺檢查（`npm test`，含 1920×1080、1280×720 深淺兩套）全數通過。
+- 發現並修正：`start-all.sh` 只在缺少 `node_modules` 時安裝前端依賴，套件更新後建置失敗；改為 lockfile 較新時重新安裝（測試涵蓋）。
+- 未做：首音延遲最終量測（使用者略過）。

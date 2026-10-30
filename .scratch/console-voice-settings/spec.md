@@ -2,7 +2,7 @@
 
 # 控制台聲音設定與系統設定中心版面
 
-Status: ready-for-agent
+Status: resolved
 
 使用者 2026-10-30 確認 Q1–Q11。控制台現況與檔案位置見 `/tmp/claude-1000/-home-oliver-nova-avatar/f284899e-3e7d-40e8-bf07-77d0ecc09394/scratchpad/notes/console-ui-map.md`。術語：`CONTEXT.md` 的音訊庫、參考音檔、主數位人。
 

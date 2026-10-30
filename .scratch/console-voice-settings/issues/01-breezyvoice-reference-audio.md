@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # BreezyVoice 參考音檔選擇
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)「參考音檔」「開發用測試音檔」。
 
@@ -25,3 +25,6 @@ Status: ready-for-agent
 1. 主 checkout 合併後重建前端並重啟後端，登入控制台 →「數位人、AI 與知識設定」→ 任一設定檔 →「聲音與工具」，引擎改 BreezyVoice：選單只有「BreezyVoice 測試音檔（僅開發用）（7.9 秒） · 開發用，未取得說話者授權」，未選時儲存被擋。
 2. 音訊庫按「試聽」可播放錄音；選取後「儲存並套用」（無連線時）→ `logs/cosyvoice-server.log` 出現啟動紀錄，`curl -s http://127.0.0.1:50000/health` 回應正常。
 3. 舞台或控制台對話一輪，BreezyVoice 正常發聲。
+
+### 2026-10-30 實機驗證（orchestrator）
+整合分支 6965222 啟動：開發用測試音檔已在 `data/voices/`；兩個設定檔殘留的 `ref_text` 已自動移除並記錄。使用者決定預設繼續用 Edge TTS，BreezyVoice 試聽的實機操作略過（BreezyVoice GPU 合成已在 first-audio-latency 評比驗證；CPU 實測一句約 20–29 s，不可用）。

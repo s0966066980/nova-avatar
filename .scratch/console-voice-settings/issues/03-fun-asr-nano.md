@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # Fun-ASR-Nano-2512 取代 paraformer-zh
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)「語音辨識引擎」。調查摘要：Fun-ASR-Nano-2512（HF/ModelScope `FunAudioLLM/Fun-ASR-Nano-2512`，Apache-2.0，8 億參數，中文含方言、英文、日文，可中英混說，需 `trust_remote_code`）；輸出簡體，需 OpenCC `s2twp`。
 
@@ -53,3 +53,6 @@ Status: ready-for-agent
 | 額外顯存 | — | 約 2.4 GB（獨立服務） |
 
 依規格標為「較慢」：選單標籤改為「Fun-ASR-Nano-2512（中英文，較慢）」，預設維持 Whisper。測試語料是 TTS 合成音，實際口語結果可能不同。
+
+### 2026-10-30 實機驗證（orchestrator）
+GPU 比較見上段；使用者決定目前使用 Whisper（預設不變）。

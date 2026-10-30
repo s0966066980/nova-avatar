@@ -111,7 +111,12 @@ nova_clear_port 8010 '*src/server/app.py*' || exit 1
 nova_stop_model_servers || true
 
 cd "$FRONTEND_DIR"
-if [ ! -d node_modules ]; then
+# npm 安裝時會寫 node_modules/.package-lock.json；package.json 或 lockfile 比它新，
+# 代表換過版本或新增了套件，舊的 node_modules 會讓建置失敗。
+if [ ! -d node_modules ] \
+    || [ ! -f node_modules/.package-lock.json ] \
+    || [ package.json -nt node_modules/.package-lock.json ] \
+    || { [ -f package-lock.json ] && [ package-lock.json -nt node_modules/.package-lock.json ]; }; then
     echo -e "${YELLOW}📦 安裝前端依賴...${NC}"
     npm install
 fi
