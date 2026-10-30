@@ -299,8 +299,9 @@ uv run python scripts/run_role_soak.py --turns 50 --output .scratch/live-avatar-
 
 ## RAGFlow 文件檢索（選用）
 
-RAGFlow 使用獨立的 Docker Compose 專案、資料卷，以及主機上的 CPU 嵌入服務。需要
-Docker、Compose 2.40 以上、使用者層級 systemd 和 Ollama。部署腳本固定取得 RAGFlow
+RAGFlow 使用獨立的 Docker Compose 專案、資料卷，以及主機上的 CPU 嵌入服務
+（llama.cpp `llama-server` 提供 BGE-M3）。需要 Docker、Compose 2.40 以上、使用者
+層級 systemd、llama.cpp，以及首次取得權重用的 Ollama。部署腳本固定取得 RAGFlow
 `v0.27.2`，管理頁與 API 只開放在本機。未完成此節時，一般對話仍可使用。
 
 首次部署：
@@ -317,8 +318,9 @@ bash scripts/ragflow.sh up
 
 1. 建立管理帳號，並立即更改初始密碼。初始密碼在未納入版控的
    `.local/ragflow/upstream/docker/.env` 的 `ADMIN_DEFAULT_PASSWORD`。
-2. 在模型供應者設定新增 Ollama 執行個體：服務位址
-   `http://host.docker.internal:11435`，嵌入模型 `bge-m3`。
+2. 在模型供應者設定新增 `OpenAI-API-Compatible` 執行個體：服務位址
+   `http://host.docker.internal:11437/v1`，API 金鑰 `x`，嵌入模型 `bge-m3`
+   （或於第 5 步後執行 `bash scripts/ragflow.sh connect` 自動登記）。
 3. 建立知識庫，上傳文件並完成解析。文件上傳／解析只在 RAGFlow 介面管理。
 4. 建立 API 金鑰：點右上角頭像 → 設定 → **API** 頁，建立並複製金鑰。
 5. 把金鑰寫入本機後端環境檔，不要貼進控制台或瀏覽器：

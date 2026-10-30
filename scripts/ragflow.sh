@@ -9,17 +9,61 @@ DEPLOY_DIR="$ROOT/.local/ragflow/upstream"
 REF="v0.27.2"
 COMPOSE_FILE="$DEPLOY_DIR/docker/docker-compose.yml"
 OVERLAY_FILE="$ROOT/integrations/ragflow/compose.nova.yml"
-EMBEDDING_UNIT="$ROOT/integrations/ragflow/nova-ragflow-embedding.service"
+# RAGFlow embeds with BGE-M3 on a CPU-only llama.cpp server (issue 15). The
+# GPU Ollama unit it replaced stays in integrations/ragflow for rollback.
+EMBEDDING_UNIT="$ROOT/integrations/ragflow/nova-ragflow-llamacpp-embedding.service"
+EMBEDDING_SERVICE="nova-ragflow-llamacpp-embedding.service"
+LEGACY_EMBEDDING_SERVICE="nova-ragflow-embedding.service"
+EMBEDDING_PORT=11437
 # Ollama cannot pull by digest; verify the content-addressed weights blob of
-# bge-m3:latest instead (registry manifest sha256:79076464260700...).
+# bge-m3:latest instead (registry manifest sha256:79076464260700...). The
+# llama.cpp server reads a verified copy of the same GGUF.
 BGE_M3_BLOB="sha256-daec91ffb5dd0c27411bd71f29932917c49cf529a641d0168496c3a501e3062c"
+BGE_M3_GGUF="$ROOT/models/ragflow/bge-m3-f16.gguf"
 
-bge_m3_is_pinned() {
-    ollama show --modelfile bge-m3 2>/dev/null | grep -Eq "^FROM [^ ]*/${BGE_M3_BLOB}\$"
+bge_m3_blob_path() {
+    ollama show --modelfile bge-m3 2>/dev/null | sed -nE "s|^FROM ([^ ]*/${BGE_M3_BLOB})\$|\\1|p"
+}
+
+has_pinned_digest() {
+    [ "$(sha256sum "$1" | cut -d ' ' -f 1)" = "${BGE_M3_BLOB#sha256-}" ]
+}
+
+pull_model() {
+    if [ -e "$BGE_M3_GGUF" ]; then
+        if has_pinned_digest "$BGE_M3_GGUF"; then
+            printf 'BGE-M3 GGUF 已通過 sha256 驗證：%s\n' "$BGE_M3_GGUF"
+            return 0
+        fi
+        printf '%s 的 sha256 與固定的 %s 不符；請移到他處後重跑。\n' "$BGE_M3_GGUF" "$BGE_M3_BLOB" >&2
+        return 1
+    fi
+    if ollama show bge-m3 >/dev/null 2>&1; then
+        printf '已存在 BGE-M3 模型，檢查是否為固定版本。\n'
+    else
+        ollama pull bge-m3
+    fi
+    local blob
+    blob="$(bge_m3_blob_path || true)"
+    if [ -z "$blob" ]; then
+        printf 'bge-m3 權重與固定的 %s 不符；請移除後重跑，或確認上游是否更新。\n' "$BGE_M3_BLOB" >&2
+        return 1
+    fi
+    mkdir -p "$(dirname "$BGE_M3_GGUF")"
+    local partial="$BGE_M3_GGUF.partial"
+    cp "$blob" "$partial"
+    if ! has_pinned_digest "$partial"; then
+        rm -f "$partial"
+        printf '複製的 bge-m3 權重 sha256 不符 %s。\n' "$BGE_M3_BLOB" >&2
+        return 1
+    fi
+    chmod 0444 "$partial"
+    mv "$partial" "$BGE_M3_GGUF"
+    printf 'BGE-M3 權重已通過 digest 驗證並複製到 %s。\n' "$BGE_M3_GGUF"
 }
 
 usage() {
-    printf '用法：%s {install-docker|ensure-docker|prepare|connect|connect-chat [模型]|unify-models|sync-models|up|down|status|is-running|pull-model|validate}\n' "$0"
+    printf '用法：%s {install-docker|ensure-docker|prepare|connect|connect-chat [模型]|switch-embedding|unify-models|sync-models|up|down|status|is-running|pull-model|validate}\n' "$0"
 }
 
 prepare() {
@@ -131,20 +175,21 @@ ensure_docker() {
 }
 
 wait_for_services() {
-    local gateway deadline embedding_port=11435
-    if [ -f "$ROOT/.local/ragflow/shared-ollama" ]; then embedding_port=11436; fi
+    local gateway deadline
     gateway="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}')"
     deadline=$((SECONDS + STARTUP_TIMEOUT))
     printf '等待 RAGFlow 網頁、API 與嵌入服務就緒...\n'
     while [ "$SECONDS" -lt "$deadline" ]; do
         if curl --noproxy '*' -fsS --max-time 2 -o /dev/null http://127.0.0.1:8088/ 2>/dev/null && \
             curl --noproxy '*' -fsS --max-time 2 http://127.0.0.1:9380/api/v1/system/ping 2>/dev/null | grep -qx pong && \
-            curl --noproxy '*' -fsS --max-time 2 -o /dev/null "http://$gateway:$embedding_port/api/tags" 2>/dev/null; then
+            curl --noproxy '*' -fsS --max-time 2 -o /dev/null "http://$gateway:$EMBEDDING_PORT/health" 2>/dev/null && \
+            { [ ! -f "$ROOT/.local/ragflow/shared-ollama" ] || \
+                curl --noproxy '*' -fsS --max-time 2 -o /dev/null "http://$gateway:11436/api/tags" 2>/dev/null; }; then
             return 0
         fi
         sleep 1
     done
-    printf '等待 RAGFlow 或嵌入服務就緒逾時；請執行 bash "%s" status，並檢查 journalctl --user -u nova-ragflow-embedding.service。\n' "$0" >&2
+    printf '等待 RAGFlow 或嵌入服務就緒逾時；請執行 bash "%s" status，並檢查 journalctl --user -u %s。\n' "$0" "$EMBEDDING_SERVICE" >&2
     return 1
 }
 
@@ -193,6 +238,9 @@ case "${1:-}" in
     connect-chat)
         exec python3 "$ROOT/scripts/ragflow_connection.py" --chat-model "${2:-qwen3.5:4b}"
         ;;
+    switch-embedding)
+        exec python3 "$ROOT/scripts/ragflow_connection.py" --switch-embedding
+        ;;
     unify-models)
         exec python3 "$ROOT/scripts/ragflow_connection.py" --unify-models
         ;;
@@ -209,48 +257,39 @@ case "${1:-}" in
         prepare
         validate_compose
         compose up -d --wait --wait-timeout "$STARTUP_TIMEOUT"
+        systemctl --user link "$EMBEDDING_UNIT" >/dev/null 2>&1 || true
+        systemctl --user daemon-reload
+        systemctl --user enable --now "$EMBEDDING_SERVICE"
         if [ -f "$ROOT/.local/ragflow/shared-ollama" ]; then
             python3 "$ROOT/scripts/ragflow_connection.py" --setup-proxy
             systemctl --user enable --now nova-ragflow-model-sync.service
             systemctl --user enable --now nova-ragflow-chat-proxy.socket
-        else
-            systemctl --user link "$EMBEDDING_UNIT" >/dev/null 2>&1 || true
-            systemctl --user daemon-reload
-            systemctl --user enable --now nova-ragflow-embedding.service
         fi
         wait_for_services
         printf 'RAGFlow 網頁：http://127.0.0.1:8088；API：http://127.0.0.1:9380\n'
         ;;
     down)
         require_docker
-        systemctl --user disable --now nova-ragflow-embedding.service 2>/dev/null || true
+        systemctl --user disable --now "$EMBEDDING_SERVICE" 2>/dev/null || true
+        systemctl --user disable --now "$LEGACY_EMBEDDING_SERVICE" 2>/dev/null || true
         systemctl --user disable --now nova-ragflow-model-sync.service nova-ragflow-chat-proxy.socket nova-ragflow-chat-proxy.service 2>/dev/null || true
         compose down
         ;;
     status)
         require_docker
         compose ps
-        printf 'RAGFlow 嵌入服務：%s\n' "$(systemctl --user is-active nova-ragflow-embedding.service 2>/dev/null || true)"
+        printf 'RAGFlow 嵌入服務：%s\n' "$(systemctl --user is-active "$EMBEDDING_SERVICE" 2>/dev/null || true)"
         ;;
     is-running)
         require_docker
         if [ -n "$(docker ps --filter label=com.docker.compose.project=nova-ragflow --format '{{.ID}}')" ] || \
-            systemctl --user is-active --quiet nova-ragflow-embedding.service; then
+            systemctl --user is-active --quiet "$EMBEDDING_SERVICE"; then
             exit 0
         fi
         exit 1
         ;;
     pull-model)
-        if ollama show bge-m3 >/dev/null 2>&1; then
-            printf '已存在 BGE-M3 模型，檢查是否為固定版本。\n'
-        else
-            ollama pull bge-m3
-        fi
-        if ! bge_m3_is_pinned; then
-            printf 'bge-m3 權重與固定的 %s 不符；請移除後重跑，或確認上游是否更新。\n' "$BGE_M3_BLOB" >&2
-            exit 1
-        fi
-        printf 'BGE-M3 權重已通過 digest 驗證。\n'
+        pull_model
         ;;
     *)
         usage >&2

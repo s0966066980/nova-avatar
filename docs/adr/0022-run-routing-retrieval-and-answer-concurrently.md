@@ -34,3 +34,10 @@ status: accepted
 bge-m3 查詢嵌入（Ollama，與其他模型共用 GPU）；Elasticsearch 約 20 ms，其餘處理
 約 30 ms。RAGFlow API 不接受用戶端提供的查詢向量，`page_size`、相似度門檻、
 候選數等選項在量測誤差內，因此加速要在嵌入服務端進行。
+
+## 2026-10-30 補記：嵌入改用 llama.cpp CPU，檢索上限 300 ms
+
+使用者選擇以 llama.cpp `llama-server --embedding` 在 CPU 上提供 bge-m3（同一份
+GGUF，向量餘弦 1.0），RAGFlow 改用 OpenAI 相容供應者，停用 GPU 上的 Ollama 嵌入
+服務。RAGFlow 檢索端到端（30 句 × 6 輪）P50 0.11 s、P95 0.15 s，最大 0.17 s；
+上限取 P95 的兩倍定為 300 ms，仍低於本文原始決定的 400 ms。上方 700 ms 補記保留。

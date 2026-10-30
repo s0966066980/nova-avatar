@@ -344,7 +344,9 @@ def test_start_all_starts_docker_and_all_services_then_cleans_up(launcher):
     assert events.index("systemctl start docker") < events.index("docker ps")
     assert "--wait" in events
     assert "/api/v1/system/ping" in events
-    assert "11435/api/tags" in events
+    assert "11437/health" in events
+    assert "enable --now nova-ragflow-llamacpp-embedding.service" in events
+    assert "enable --now nova-ragflow-embedding.service" not in events
     assert (state / "backend").exists()
     assert (state / "frontend").exists()
     assert not (state / "containers").exists()

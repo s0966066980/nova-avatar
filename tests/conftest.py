@@ -62,6 +62,7 @@ AREA_BY_FILE = {
     "test_pinned_resources.py": "runtime",
     "test_playback_commit.py": "conversation",
     "test_ragflow_integration.py": "ragflow",
+    "test_ragflow_llamacpp_embedding.py": "ragflow",
     "test_reply_streaming.py": "conversation",
     "test_first_fragment_exception.py": "conversation",
     "test_reply_latency.py": "conversation",

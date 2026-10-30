@@ -180,18 +180,20 @@ bash scripts/start-all.sh config/config.yaml
 
    要恢復：`sudo systemctl enable --now ollama`。
 
-不要移除 Ollama 程式或模型目錄：RAGFlow 的嵌入服務
-（`nova-ragflow-embedding.service`，Docker 橋接位址的 `11435`）是另一個
-`ollama serve` 程序，沿用同一個執行檔與 `/usr/share/ollama/.ollama/models`，
-停用 11434 不影響它；llama-server 也可能從 `/usr/local/lib/ollama/cuda_v12`
-載入 CUDA 函式庫。以下 RAGFlow 指令會連 11434，執行前先
+RAGFlow 的嵌入服務（`nova-ragflow-llamacpp-embedding.service`，Docker 橋接位址的
+`11437`）是只用 CPU 的 llama.cpp，讀取 `models/ragflow/bge-m3-f16.gguf`，不依賴
+11434，也不占顯存（見 [RAGFlow](ragflow.md)）。不要移除 Ollama 程式或模型目錄：
+llama-server 可能從 `/usr/local/lib/ollama/cuda_v12` 載入 CUDA 函式庫，還原用的
+舊 GPU 嵌入服務（`nova-ragflow-embedding.service`，`11435`）也沿用同一個執行檔與
+`/usr/share/ollama/.ollama/models`。以下 RAGFlow 指令會連 11434，執行前先
 `sudo systemctl start ollama`，完成後再 `sudo systemctl stop ollama`：
-`ragflow.sh pull-model`（下載並核對 BGE-M3）、`connect-chat`、`unify-models`、
-`sync-models`；已啟用共用模式（`.local/ragflow/shared-ollama` 存在）時不要停用。
+`ragflow.sh pull-model`（只在 `models/ragflow/bge-m3-f16.gguf` 尚不存在時，下載並
+核對 BGE-M3）、`connect-chat`、`unify-models`、`sync-models`（三者只處理 RAGFlow
+的聊天模型）；已啟用共用模式（`.local/ragflow/shared-ollama` 存在）時不要停用。
 
 顯存：11434 沒有載入模型時幾乎不占 GPU，停用它主要是避免有人選到 Ollama 端點時
-再載入一份模型。`nvidia-smi` 中約 1.6 GB 的 `ollama` 是 11435 的 BGE-M3 嵌入
-（實測持續常駐），屬 `nova-ragflow-embedding.service`，不是 11434。
+再載入一份模型。2026-10-30 以前 `nvidia-smi` 中約 1.6 GB 的 `ollama` 是 11435 的
+BGE-M3 嵌入；改用 llama.cpp CPU 嵌入後已釋出。
 
 更新已啟用 TensorRT 的環境：
 

@@ -4,6 +4,7 @@
 
 # A separate GPU-backed Ollama process for RAGFlow. It reuses the locally
 # installed binary and read-only model files, not Nova's language-model server.
+# Superseded by ragflow_llamacpp_embedding.sh (issue 15); kept for rollback.
 set -euo pipefail
 
 GATEWAY="$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}')"

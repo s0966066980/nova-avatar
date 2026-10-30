@@ -9,7 +9,7 @@
 
 目前預設組合：llama.cpp 的 Gemma 4 E2B（全部層數放進 GPU，Qwen3.5-9B 可選）、
 faster-whisper small（語音輪次只在中英文間偵測、beam 1、記憶體直傳）、Edge TTS
-（僅供開發）、MuseTalk。路由、檢索與主回答同時開始，檢索上限 0.7 s；MuseTalk
+（僅供開發）、MuseTalk。路由、檢索與主回答同時開始，檢索上限 0.3 s；MuseTalk
 待機節流可被回覆音訊喚醒，每輪第一批用啟動批次。
 
 RTX 4090、舞台 WebRTC 量測 3 輪 96 句（`scripts/measure_first_audio.py`），P50／P95。

@@ -7,11 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 
 Nova Avatar 只向 RAGFlow 查找文件片段，並由 Nova 現有的模型、回覆規則、字幕、
 語音與看板流程產生、交付回答。RAGFlow 使用獨立的 Compose 專案與資料庫；
-完成本機準備後，`scripts/start-all.sh` 會一併啟動它。嵌入服務沿用主機已安裝
-的 Ollama 程式與 BGE-M3 模型檔，但另開一個使用 GPU 的程序（預設 CUDA 裝置 0，
-可用 `NOVA_RAGFLOW_CUDA_VISIBLE_DEVICES` 覆寫），不需要系統的 11434 Ollama 服務
-（`pull-model` 等例外見[停用預設 Ollama](installation.md#停用預設-ollama11434)）；
-llama.cpp 語言模型服務不變。首次安裝與每位數位人的檢索設定均預設關閉。
+完成本機準備後，`scripts/start-all.sh` 會一併啟動它。嵌入服務是只用 CPU 的
+llama.cpp `llama-server --embedding`（使用者層級服務
+`nova-ragflow-llamacpp-embedding.service`），載入 `models/ragflow/bge-m3-f16.gguf`
+（與 Ollama `bge-m3:latest` 同一份權重，sha256 固定），不占 GPU 顯存；查詢嵌入
+約 0.05 s，RAGFlow 檢索端到端約 0.1 s。執行檔預設依序找 `PATH` 上的
+`llama-server` 與 `~/llama/llama.cpp/build/bin/llama-server`，可用
+`NOVA_RAGFLOW_LLAMA_SERVER` 指定；執行緒數預設 4（`NOVA_RAGFLOW_EMBEDDING_THREADS`）。
+不需要系統的 11434 Ollama 服務（`pull-model` 首次取得權重等例外見
+[停用預設 Ollama](installation.md#停用預設-ollama11434)）；Nova 自己的 llama.cpp
+語言模型服務（8080）不變。首次安裝與每位數位人的檢索設定均預設關閉。
 
 ## 本機安裝
 
@@ -31,10 +36,12 @@ bash scripts/ragflow.sh status
 繼續。`prepare` 會在忽略版本控制的 `.local/ragflow/upstream` 取得固定的
 RAGFlow `v0.27.2`，並產生檔案權限 `0600` 的獨立隨機密碼；重跑不會覆蓋現有
 密碼。RAGFlow 映像以 tag 加 digest 固定（`validate` 會拒絕不符者，既有設定
-重跑 `prepare` 時只更新映像欄位）；`pull-model` 驗證 BGE-M3 權重 blob 的
-sha256，主機現有或新拉取的版本不符即中止。`up` 啟動 `nova-ragflow` Compose 專案與獨立的使用者層級嵌入服務；
-`down` 停止兩者，但不刪除資料卷或模型。首次拉取映像、模型及建立索引可能需要
-較長時間和磁碟空間。
+重跑 `prepare` 時只更新映像欄位）；`pull-model` 以 Ollama 取得 BGE-M3，驗證權重
+blob 的 sha256 後複製為唯讀的 `models/ragflow/bge-m3-f16.gguf` 並再次驗證，主機
+現有或新拉取的版本不符即中止。GGUF 已存在且通過驗證時直接沿用，不需要 Ollama；
+存在但內容不符時保留原檔並中止，請移到他處後重跑。`up` 啟動 `nova-ragflow`
+Compose 專案與 llama.cpp 嵌入服務；`down` 停止兩者，但不刪除資料卷或模型。
+首次拉取映像、模型及建立索引可能需要較長時間和磁碟空間。
 
 首次設定完成後，可用 `bash scripts/ragflow.sh down` 停止手動啟動的服務；
 日常執行 `bash scripts/start-all.sh config/config.yaml` 時會自動重新啟動。
@@ -51,29 +58,37 @@ Docker 啟動時自動恢復的既有容器也會沿用；退出 Nova 不會停�
 `NOVA_START_RAGFLOW=0` 可暫時略過自動啟動。尚未執行 `prepare` 的主機
 直接啟動 Nova 時，RAGFlow 會被略過。
 
-首次匯入文件後的第一筆檢索可能比後續查詢慢；改用 GPU 前的 CPU 嵌入實測曾達約
-31 秒，超過 Nova 的 8 秒檢索上限。此時 Nova 會標示檢索逾時並繼續原本回答，
-不會把未取得的文件當作依據。匯入後請先在控制台使用「測試檢索」預熱並確認
-命中，再啟用數位人的 RAG。
+每輪主回答最多等檢索 0.3 s（`RETRIEVAL_BUDGET_SECONDS`，見 ADR 0022）；逾時時
+Nova 標示本輪未取得檢索並繼續原本回答，不會把未取得的文件當作依據。匯入後請先在
+控制台使用「測試檢索」確認命中，再啟用數位人的 RAG。
+
+文件解析也在 CPU 上嵌入，比查詢慢得多：4 執行緒約每 1,000 token 5 秒（512 token
+的預設切片約 2.5 秒），請在低流量時段匯入。BGE-M3 一段輸入須一次算完，伺服器上限
+2,048 token；超過的切片會解析失敗，請維持預設切片大小（512）或不超過 2,048。
+上限與記憶體相關：2,048 token 的切片峰值約 3.5 GB，服務記憶體上限 4 GB。
 
 部署使用官方 Compose 與 Nova 疊加設定。生效服務為 RAGFlow、Elasticsearch、
 MySQL、MinIO、Redis。只有 RAGFlow 網頁
 `http://127.0.0.1:8088` 和 API `http://127.0.0.1:9380` 發布至主機
 loopback；其他容器只在 Compose 網路上。嵌入程序只綁定 Docker 本機橋接位址
-的 `11435`，RAGFlow 容器透過 `host.docker.internal` 存取。RAGFlow、搜尋
-引擎和嵌入程序設有 CPU／記憶體上限（嵌入程序另會使用 GPU 顯存，需與
-MuseTalk、STT 和語言模型一起估算），文件批量解析降至一次一份。即使如此，
-解析大量文件仍可能爭用磁碟與記憶體；應在低流量時段匯入，並實測對話延遲。
+的 `11437`，RAGFlow 容器透過 `host.docker.internal` 存取；它與先前的 Ollama
+一樣不驗證金鑰（RAGFlow 的 OpenAI 用戶端要求非空金鑰，因此登記為 `x`），也不提供
+網頁介面。RAGFlow、搜尋引擎和嵌入程序設有 CPU／記憶體上限（嵌入程序
+`CPUQuota=400%`、`MemoryMax=4G`，不使用 GPU），文件批量解析降至一次一份。即使如此，
+解析大量文件仍可能爭用 CPU、磁碟與記憶體；應在低流量時段匯入，並實測對話延遲。
 
 ## 建立知識庫與連接 Nova
 
 1. 在這台主機開啟 `http://127.0.0.1:8088`，建立 RAGFlow 管理帳號，
    立即更改初始密碼。初始管理密碼保存在忽略版控的
    `.local/ragflow/upstream/docker/.env` 中 `ADMIN_DEFAULT_PASSWORD` 欄位。
-2. 在 RAGFlow 模型供應者設定中新增 Ollama 執行個體：服務位址
-   `http://host.docker.internal:11435`，嵌入模型 `bge-m3`。此嵌入程序
-   與系統的 `127.0.0.1:11434` Ollama 服務分開，但讀取同一份本機模型檔，
-   不另下載 Ollama 映像。建立知識庫前，請核對模型卡與權重授權。
+2. 執行 `bash scripts/ragflow.sh connect`：建立或沿用 Nova 的 API 金鑰（無法
+   自動建立時改用第 3–4 步手動建立後重跑），並在 RAGFlow
+   登記 `OpenAI-API-Compatible` 供應者的 `nova-llamacpp` 執行個體（服務位址
+   `http://host.docker.internal:11437/v1`、嵌入模型 `bge-m3`、上限 2,048 token），
+   尚無預設嵌入模型時設為預設。RAGFlow 登記前會實際呼叫一次嵌入服務，請先
+   `up`。要手動登記時，在 RAGFlow 模型供應者設定填相同的值，API 金鑰填 `x`。
+   建立知識庫前，請核對模型卡與權重授權。
 3. 在 RAGFlow 建立知識庫，上傳文件、完成解析。文件上傳／解析只在
    RAGFlow 原生介面管理。接著點右上角頭像 → 設定 → **API** 頁，
    建立並複製 API 金鑰。
@@ -128,9 +143,57 @@ MuseTalk、STT 和語言模型一起估算），文件批量解析降至一次�
 RAGFlow 與 BGE-M3 是第三方元件，相關來源與授權界限見
 [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)。
 
+## 從 GPU Ollama 嵌入切換到 llama.cpp
+
+2026-10-30 以前的部署以 `nova-ragflow-embedding.service`（GPU 上的 Ollama，
+`11435`）提供嵌入，每次查詢約 0.5 s，並常駐約 1.6 GB 顯存。已有知識庫的主機：
+
+```bash
+bash scripts/ragflow.sh pull-model        # 驗證並複製 GGUF（不必重新下載）
+bash scripts/ragflow.sh up                # 啟動 llama.cpp 嵌入服務
+bash scripts/ragflow.sh switch-embedding
+```
+
+`switch-embedding` 依序：
+
+1. 把所有知識庫、其文件清單與預設模型存到 `.local/ragflow/backups/embedding-switch-*.json`
+   （權限 `0600`）。
+2. 登記 `nova-llamacpp` 執行個體（同 `connect`）。
+3. 對每個使用 BGE-M3 且已有切片的知識庫，以 RAGFlow 的
+   `/datasets/<id>/embedding/check` 比對已存向量與新服務的向量；最小餘弦低於
+   0.99 即中止，不改任何設定。兩邊是同一份權重，實測為 1.0，所以不重新解析、
+   不刪除文件；使用其他嵌入模型的知識庫不動。
+4. 把這些知識庫與租戶預設嵌入模型改為 llama.cpp 的 BGE-M3。
+5. 經每個知識庫各做一次檢索；全部成功才停用 `nova-ragflow-embedding.service`。
+   單元檔保留在 `integrations/ragflow/` 供還原。
+
+停用後，RAGFlow 裡掛在舊 Ollama 執行個體（`11435`）上的聊天模型也無法使用；Nova
+只用 RAGFlow 檢索，不受影響。需要 RAGFlow 自己的聊天功能時，改用
+`connect-chat` 或下一節的 `unify-models`（走主機 11434 的 Ollama）。
+
+### 還原為 GPU Ollama 嵌入
+
+1. 重新啟用舊服務並確認就緒：
+
+   ```bash
+   systemctl --user link "$PWD/integrations/ragflow/nova-ragflow-embedding.service"
+   systemctl --user enable --now nova-ragflow-embedding.service
+   curl --noproxy '*' -fsS "http://$(docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'):11435/api/tags"
+   ```
+
+2. 在 RAGFlow 網頁把知識庫的嵌入模型改回備份中的原值（備份檔
+   `datasets[].embedding_model` 與 `embedding_model_name`，例如
+   `bge-m3:latest@bge-m3@Ollama`），並在模型供應者設定把預設嵌入模型改回備份中
+   `defaults` 的 `embedding` 項。兩邊向量相同，不必重新解析文件。
+3. 確認「測試檢索」命中後，可停用 llama.cpp 嵌入服務：
+   `systemctl --user disable --now nova-ragflow-llamacpp-embedding.service`。
+   之後 `up` 仍會啟動它（只用 CPU，閒置時不耗資源）；要長期還原，`up` 後再停用一次。
+4. 把 `src/server/voice_session.py` 的 `RETRIEVAL_BUDGET_SECONDS` 改回 0.7，
+   否則約 0.5 s 的 GPU Ollama 檢索幾乎每輪逾時。
+
 ## PC 與主機 Ollama 模型統一（選用）
 
-此移植保留既有獨立嵌入服務；不會自動改變工作區、知識庫或預設模型。
+此移植保留既有獨立服務；不會自動改變工作區、知識庫或預設模型。
 管理者明確執行以下命令才啟用共用服務：
 
 ```bash
@@ -139,9 +202,11 @@ bash scripts/ragflow.sh unify-models
 bash scripts/ragflow.sh sync-models
 ```
 
-啟用前檢查 BGE-M3 嵌入維度與原服務向量一致，保留既有模型引用，再將
-服務指向 `http://host.docker.internal:11436`，透過本機 Docker bridge
-轉送至主機 Ollama。主機既有 Ollama 仍由原服務管理。
-背景同步每 30 秒只加入新模型，不刪模型、不改管理者已選預設。
-`up`／`down` 同時管理已啟用的轉送與同步服務；本次不搬 Jetson 的資料卷。
-共用模式的 GPU 駐留由主機 Ollama 管理，須與即時數位人及 STT 一起評估。
+只統一聊天模型：RAGFlow 的 Ollama 聊天模型改經
+`http://host.docker.internal:11436`，透過本機 Docker bridge 轉送至主機 Ollama
+（11434）；嵌入仍由 llama.cpp 提供。仍有知識庫使用 Ollama 嵌入時拒絕執行，請先
+`switch-embedding`。舊 GPU 嵌入服務上的執行個體會改指向轉送位址，保留其中的
+聊天模型。主機既有 Ollama 仍由原服務管理。背景同步每 30 秒只加入新的聊天模型
+（不加入僅供嵌入的模型），不刪模型、不改管理者已選預設。`connect-chat` 同樣只
+登記聊天模型。`up`／`down` 同時管理已啟用的轉送與同步服務；本次不搬 Jetson 的
+資料卷。共用模式的 GPU 駐留由主機 Ollama 管理，須與即時數位人及 STT 一起評估。
