@@ -57,13 +57,13 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}🛑 正在停止所有服務...${NC}"
     if [ -n "$BACKEND_PGID" ]; then
-        # 先 SIGTERM 讓後端關閉連線、llama-server 與 CosyVoice，寬限期後才 SIGKILL。
+        # 先 SIGTERM 讓後端關閉連線、llama-server 與模型服務，寬限期後才 SIGKILL。
         if ! nova_stop_group "$BACKEND_PGID"; then
             echo -e "${RED}⚠ 後端程序群組 $BACKEND_PGID 未能停止，請手動處理${NC}"
         fi
     fi
-    # 後端被強制終止時 atexit 不會執行；確認 CosyVoice 也已停止。
-    nova_stop_cosyvoice || true
+    # 後端被強制終止時 atexit 不會執行；確認 CosyVoice、Fun-ASR-Nano 也已停止。
+    nova_stop_model_servers || true
     if [ "$RAGFLOW_OWNED" -eq 1 ]; then
         if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" down; then
             echo -e "${RED}⚠ RAGFlow 未能自動停止，請執行 bash scripts/ragflow.sh status${NC}"
@@ -106,9 +106,9 @@ fi
 echo -e "${GREEN}✓${NC} 配置檔案: $CONFIG_FILE"
 
 # 建置與帶起 RAGFlow 前先確認 8010：只停止本專案殘留的後端（與其孤兒
-# CosyVoice）；其他程式占用時報錯退出，不誤殺。
+# CosyVoice、Fun-ASR-Nano）；其他程式占用時報錯退出，不誤殺。
 nova_clear_port 8010 '*src/server/app.py*' || exit 1
-nova_stop_cosyvoice || true
+nova_stop_model_servers || true
 
 cd "$FRONTEND_DIR"
 if [ ! -d node_modules ]; then

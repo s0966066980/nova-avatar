@@ -1,0 +1,13 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+#
+# Fun-ASR-Nano-2512 service venv (scripts/fun_asr_nano_server.py), kept apart
+# from Nova's main venv: the Qwen3 decoder needs transformers>=4.51, while
+# MuseTalk pins transformers<4.47. torch matches the main venv (CUDA 12.4).
+# requirements.txt is compiled from this file; see scripts/setup-fun-asr-nano.sh.
+torch==2.5.0+cu124
+torchaudio==2.5.0+cu124
+funasr==1.4.15
+transformers==4.51.3
+OpenCC==1.4.2
+numpy<2

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
-"""Compare Whisper and FunASR speed and accuracy on the first-audio fixtures.
+"""Compare Whisper and FunASR (Fun-ASR-Nano-2512) speed and accuracy on the first-audio fixtures.
 
 Each fixture utterance from ``scripts/measure_first_audio.py`` (or a site
 ``--fixtures`` file) is synthesized in memory with Edge TTS, cut where the
 stage VAD would end the turn, encoded as the voice session encodes it, and
 recognized by each engine through the same ``transcribe`` call the voice
-session times as its ``asr`` stage. Engines load one at a time.
+session times as its ``asr`` stage. Engines load one at a time; FunASR runs in
+its own service process (``scripts/setup-fun-asr-nano.sh``), stopped after its run.
 
 Reports per engine and language: latency P50/P95 and the corpus error rate
 (CER for zh-TW, WER for en-US; mixed text scores Chinese per character and
@@ -52,8 +53,8 @@ SAMPLE_RATE = 16000
 # the recognizer receives that silence too.
 ENDPOINT_SILENCE_SECONDS = 0.32
 METRICS = {"zh-TW": "CER", "en-US": "WER"}
-# English sessions require Whisper (src/server/conversations.check_language_support).
-APP_LANGUAGES = {"whisper": set(LANGUAGES), "funasr": {"zh-TW"}}
+# Both engines serve Chinese and English sessions (src/server/conversations.check_language_support).
+APP_LANGUAGES = {"whisper": set(LANGUAGES), "funasr": set(LANGUAGES)}
 
 _TOKEN = re.compile(r"[㐀-鿿豈-﫿]|[a-z0-9]+(?:'[a-z0-9]+)*")
 
@@ -180,7 +181,7 @@ def build_report(samples: Sequence[Mapping], *, engines: Mapping[str, Mapping],
                           "en-US 為 WER；忽略大小寫、標點與繁簡字形",
             "raw_error_rate": "同 error_rate，但繁簡字形不同也算錯（字幕直接顯示辨識文字）",
             "language_accuracy": "只在中英文間自動偵測時，偵測語言與錄音語系相符的比例；"
-                                 "不支援語言選項的引擎為 null",
+                                 "Fun-ASR-Nano 由輸出文字判定（含漢字為 zh）；不支援語言選項的引擎為 null",
             "all": "僅計入此引擎在應用中可用的語系",
         },
         "engines": report_engines,
@@ -214,7 +215,11 @@ def _load_engine(name: str, args):
     return engine, time.perf_counter() - started
 
 
-def _free_gpu_memory() -> None:
+def _free_gpu_memory(name: str) -> None:
+    if name == "funasr":
+        from src.asr.fun_asr_nano_service import stop_server
+
+        stop_server()
     gc.collect()
     try:
         import torch
@@ -238,9 +243,9 @@ def run(args) -> dict:
             "model": info.get("model_size") or info.get("model_name"),
             "device": info.get("device"),
             "compute_type": info.get("compute_type"),
-            "language": "auto, zh or en only" if name == "whisper" else "zh only",
+            "language": "auto, zh or en only" if name == "whisper" else "auto (zh, en, mixed)",
             "beam_size": 1 if name == "whisper" else None,
-            "input": "in-memory waveform" if name == "whisper" else "temp WAV file",
+            "input": "in-memory waveform" if name == "whisper" else "16 kHz PCM16 over loopback HTTP",
             "load_and_prewarm_seconds": round(load_seconds, 3),
         }
         rows = measure_engine(name, engine, fixtures, audio, rounds=args.rounds)
@@ -248,7 +253,7 @@ def run(args) -> dict:
         print(f"{name}: {len(rows)} recognitions", flush=True)
         # Engines run one at a time so both fit beside the live services.
         del engine
-        _free_gpu_memory()
+        _free_gpu_memory(name)
     return build_report(samples, engines=settings, environment={
         "measured_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
         "gpu": args.gpu,
@@ -266,7 +271,7 @@ def parse_args(argv=None):
     parser.add_argument("--engines", default="whisper,funasr",
                         type=lambda value: [item.strip() for item in value.split(",") if item.strip()])
     parser.add_argument("--whisper-model", default="small")
-    parser.add_argument("--funasr-model", default="paraformer-zh")
+    parser.add_argument("--funasr-model", default="Fun-ASR-Nano-2512")
     parser.add_argument("--device", default="cuda", choices=("cuda", "cpu"))
     parser.add_argument("--rounds", type=int, default=3, help="recognitions per fixture after prewarm")
     parser.add_argument("--fixtures", type=Path, help="site fixture JSON replacing the builtin set")

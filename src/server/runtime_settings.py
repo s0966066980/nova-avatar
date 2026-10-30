@@ -52,7 +52,7 @@ from src.llm.endpoints import (
 from src.llm.service import switch_llm_endpoint
 from src.llm.rules import default_rules, rules_from_config, snapshot_from_config, validate_rules
 from src.asr.factory import activate_asr_engine, create_asr_engine
-from src.asr.engines.funasr import local_funasr_model_ready
+from src.asr import fun_asr_nano_service
 from src.utils.logging import logger
 
 _SWITCH_LOCK = threading.Lock()
@@ -1254,10 +1254,12 @@ STT_ENGINE_META = {
         "description": "CTranslate2 Whisper，GPU FP16 / CPU INT8",
     },
     "funasr": {
-        "label": "FunASR",
-        "module": "funasr",
-        "install": "uv sync --extra funasr",
-        "description": "paraformer-zh，中文優先",
+        "label": "Fun-ASR-Nano-2512",
+        # Runs in its own venv, so availability is the service's, not a main-venv module.
+        "service": "fun-asr-nano",
+        "install": "bash scripts/setup-fun-asr-nano.sh",
+        "description": "通義實驗室 Fun-ASR-Nano-2512（Apache-2.0），中文、英文與中英混說；獨立本機服務，套用時自動啟動",
+        "setup": "bash scripts/setup-fun-asr-nano.sh 建立 venv，scripts/fun_asr_nano_weights.py 下載權重",
         "output_scripts": ("traditional-tw", "simplified"),
         "local_model": "funasr",
     },
@@ -1290,7 +1292,7 @@ TTS_ENGINE_META = {
 STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3", "turbo")
 STT_MODELS_BY_ENGINE = {
     "whisper": STT_MODEL_SIZES,
-    "funasr": ("paraformer-zh",),
+    "funasr": fun_asr_nano_service.MODEL_IDS,
 }
 STT_LANGUAGES = ("zh", "en", "auto")
 STT_DEVICES = ("auto", "cpu", "cuda")
@@ -1304,21 +1306,27 @@ EDGE_TTS_ZH_TW_VOICE_IDS = frozenset(
 )
 
 
+def _engine_unavailable_reason(item: Dict[str, str]) -> str:
+    if item.get("service") == "fun-asr-nano":
+        return fun_asr_nano_service.unavailable_reason()
+    return "" if _module_installed(item["module"]) else f"缺少依賴：{item['module']}"
+
+
 def _engine_available(item: Dict[str, str]) -> bool:
-    return _module_installed(item["module"])
+    return not _engine_unavailable_reason(item)
 
 
 def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
     items = []
     for engine_id, item in meta.items():
-        available = _engine_available(item)
+        reason = _engine_unavailable_reason(item)
         items.append({
             "id": engine_id,
             "label": item["label"],
             "description": item.get("description", ""),
             "setup": item.get("setup", ""),
-            "available": available,
-            "message": "" if available else f"缺少依賴：{item['module']}",
+            "available": not reason,
+            "message": reason,
             "install": item.get("install", ""),
         })
     return items
@@ -1326,7 +1334,7 @@ def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
 
 def _stt_catalog() -> list:
     """STT engines with what the console form needs to render each of them."""
-    local_ready = {"funasr": local_funasr_model_ready}
+    local_ready = {"funasr": fun_asr_nano_service.model_ready}
     items = _catalog(STT_ENGINE_META)
     for item in items:
         meta = STT_ENGINE_META[item["id"]]
@@ -1353,7 +1361,7 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "output_script": getattr(asr, "output_script", "traditional-tw"),
             "device": asr.device,
             "mode": "server",
-            "local_model_ready": local_funasr_model_ready(),
+            "local_model_ready": fun_asr_nano_service.model_ready(),
             "engines": _stt_catalog(),
             "model_sizes": list(STT_MODEL_SIZES),
             "models_by_engine": {
@@ -1402,13 +1410,20 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
     device = str(params.get("device", config.asr.device)).strip().lower()
     if engine not in STT_ENGINE_META:
         raise SettingsError(f"不支援的 STT 引擎: {engine}")
-    if not _engine_available(STT_ENGINE_META[engine]):
+    unavailable = _engine_unavailable_reason(STT_ENGINE_META[engine])
+    if unavailable:
         raise SettingsError(
-            f"{STT_ENGINE_META[engine]['label']} 依賴未安裝",
-            extra={"missing_package": STT_ENGINE_META[engine]["module"]},
+            f"{STT_ENGINE_META[engine]['label']} 無法使用：{unavailable}",
+            extra={"missing_package": STT_ENGINE_META[engine].get("module", "")},
         )
-    if engine == "whisper" and model_size not in STT_MODEL_SIZES:
-        raise SettingsError(f"不支援的 faster-whisper 模型: {model_size}")
+    if engine == "funasr":
+        try:
+            # Saved settings may still name the removed paraformer-zh.
+            model_size = fun_asr_nano_service.resolve_model(model_size)
+        except ValueError as exc:
+            raise SettingsError(str(exc)) from exc
+    if model_size not in STT_MODELS_BY_ENGINE[engine]:
+        raise SettingsError(f"不支援的 {STT_ENGINE_META[engine]['label']} 模型: {model_size}")
     if language not in STT_LANGUAGES:
         raise SettingsError(f"不支援的識別語言: {language}")
     if output_script not in STT_OUTPUT_SCRIPTS:
@@ -1443,6 +1458,9 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
         model_size=model_size,
         config=config,
     )
+    if engine != "funasr":
+        # The Fun-ASR-Nano service starts only for FunASR; release its GPU memory.
+        fun_asr_nano_service.stop_server()
     persist_runtime_overrides(config)
     return speech_snapshot(config)["stt"]
 

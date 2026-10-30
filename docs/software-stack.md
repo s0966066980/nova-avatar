@@ -28,7 +28,7 @@ the root Apache-2.0 grant.
 | Layer | Engine | Project status | Distribution boundary |
 | --- | --- | --- | --- |
 | STT | faster-whisper | Supported, default: `small`; voice turns auto-detect between Chinese and English only, beam 1, in-memory audio | Review the selected Whisper model artifacts. |
-| STT | FunASR | Optional, Mandarin only (English turns need Whisper) | Review the exact code release and model. |
+| STT | Fun-ASR-Nano-2512 (`funasr` engine) | Optional; Chinese, English and mixed speech, output converted with OpenCC `s2twp`. Runs as an owned loopback service in its own venv (`scripts/setup-fun-asr-nano.sh`; its Qwen3 decoder needs transformers ≥ 4.51, MuseTalk keeps the main venv below 4.47), started only while FunASR is selected | Weights Apache-2.0 (pinned in `scripts/fun_asr_nano_weights.py`), FunASR code MIT. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 | LLM | llama.cpp | Supported, default: Gemma 4 E2B (`gemma-4-E2B_q4_0-it`, with its mmproj for attachments), all layers on the GPU; Qwen3.5-9B optional | Gemma 4 is Apache-2.0 (see [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)); review any other selected model. |
 | LLM | Ollama | Optional local OpenAI-compatible endpoint; not needed by default | Review the selected model and endpoint terms. |
 | TTS | Edge TTS | **Development only** | Still the checked-in runtime default for development. Non-public Microsoft endpoint with no formal commercial license; needs Internet access. Do not use it in a commercial deployment. |

@@ -66,11 +66,23 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - Copyright: Copyright (c) 2022 OpenAI
 - Source: <https://github.com/openai/whisper>
 
-## FunASR
+## Fun-ASR-Nano-2512 and FunASR (optional STT)
 
-- Role: optional automatic speech recognition backend
-- Source: <https://github.com/modelscope/FunASR>
-- License: verify the exact FunASR release and model license before redistribution
+- Role: optional Chinese/English speech recognition (`funasr` engine), served
+  by the owned loopback process `scripts/fun_asr_nano_server.py` in its own
+  venv (`integrations/fun-asr-nano/requirements.txt`); not bundled here.
+- Fun-ASR-Nano-2512 weights: Apache-2.0, Tongyi Lab / FunAudioLLM,
+  `FunAudioLLM/Fun-ASR-Nano-2512` revision
+  `272c57b82523ada6fd87095e955f8e29100979ab`. Its decoder is Qwen3-0.6B
+  (Apache-2.0, Alibaba Qwen team); the repository ships only that decoder's
+  config and tokenizer, the weights are inside `model.pt`.
+  [`scripts/fun_asr_nano_weights.py`](scripts/fun_asr_nano_weights.py) fetches
+  the files at that revision and checks SHA-256. No model code is downloaded.
+- FunASR code: MIT, Copyright (c) 2025 FunASR, <https://github.com/modelscope/FunASR>;
+  the service venv installs `funasr==1.4.15`, whose bundled `FunASRNano` class
+  loads the weights with `trust_remote_code=False`.
+- OpenCC (`s2twp` Taiwan Traditional conversion): Apache-2.0,
+  <https://github.com/BYVoid/OpenCC>.
 
 ## BreezyVoice and g2pW (optional TTS)
 

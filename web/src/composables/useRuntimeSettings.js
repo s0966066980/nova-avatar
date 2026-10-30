@@ -144,7 +144,7 @@ const speech = reactive({
     model_sizes: ['tiny', 'base', 'small', 'medium', 'large-v3'],
     models_by_engine: {
       whisper: ['tiny', 'base', 'small', 'medium', 'large-v3'],
-      funasr: ['paraformer-zh']
+      funasr: ['Fun-ASR-Nano-2512']
     },
     languages: ['zh', 'en', 'auto'],
     devices: ['auto', 'cpu', 'cuda']

@@ -50,8 +50,7 @@ def validate(values: dict, current: dict) -> dict:
 
 
 def check_language_support(config, locale: str) -> None:
-    if locale == 'en-US' and getattr(config.asr, 'type', '') != 'whisper':
-        raise ValueError('english_requires_whisper')
+    # Both recognizers (faster-whisper, Fun-ASR-Nano) accept Chinese and English.
     if locale == 'en-US' and getattr(config.tts, 'type', '') != 'edgetts':
         raise ValueError('english_requires_edge_tts')
 

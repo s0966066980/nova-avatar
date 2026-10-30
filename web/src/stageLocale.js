@@ -42,7 +42,6 @@ const english = {
   '已重新連線，已建立新的對話，先前記憶已清空': 'Reconnected to a new conversation. Previous conversation memory was cleared.',
   'context_capacity': 'Conversation context is full. Reduce the history limit, shorten your question or clear the conversation from the console.',
   'pipeline_error': 'The reply could not be completed. Please try again.',
-  'english_requires_whisper': 'English conversation requires Whisper speech recognition. Select it in the console first.',
   'english_requires_edge_tts': 'English conversation requires Edge TTS. Select it in the console first.',
   '請先在設定中選擇並套用數字人引擎與角色': 'Select and apply an avatar in the console first.',
   '正在準備對話，請稍後再連線': 'Preparing conversation. Please try again shortly.',
@@ -52,7 +51,6 @@ const chineseErrors = {
   context_capacity: 'Context 容量不足，請由控制台降低保留上限、縮短問題或清空對話。',
   pipeline_error: '回覆未能完成，請重試。',
   voice_unavailable: '所選聲音暫時無法使用，已保留原設定，請重試。',
-  english_requires_whisper: '英文對話需先在控制台套用 Whisper 語音辨識。',
   english_requires_edge_tts: '英文對話需先在控制台套用 Edge TTS。',
 }
 export function stageText(text, locale = 'zh-TW') {
