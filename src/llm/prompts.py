@@ -160,7 +160,9 @@ def compose_system_prompt(
 
     parts.append(rule_instruction)
     # Fixed like the speech length: saved Rules predate it and cannot drop it.
-    parts.append(first_sentence_prompt(output_locale))
+    # Board speech is exempt, so a BOARD-only turn does not carry it.
+    if reply_mode != ReplyMode.BOARD:
+        parts.append(first_sentence_prompt(output_locale))
     # Finish with the actual editable policy and channel boundaries, rather
     # than a template that small models may mistake for a preferred mode.
     if reply_mode == ReplyMode.AUTO or reply_mode is None:

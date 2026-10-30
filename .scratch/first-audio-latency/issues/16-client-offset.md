@@ -77,3 +77,10 @@ Blocked by: 01
 - 依新定義（伺服器送出第一個可聽幀）感知首音延遲 P50／P95：一般 1.99／2.22 s、RAG 2.05／2.17 s、交接 1.57／1.92 s；舊定義（用戶端收到）一般 2.12 s。
 - 一般輪次 P50 組成：拖尾 0.07＋靜音等待 0.32＋上行 0.09＋辨識 0.08＋檢索等待 0.57＋首片段 0.43＋片段到送出 0.36＋可聽起點 0.10 s。
 可再節省的選項（靜音等待、抖動緩衝、Edge 開頭無聲段、推測式端點）列於上方，交使用者決定，預設未變。
+
+### 2026-10-30 靜音等待改為約 0.2 s（分支 `fal/19-vad-board`）
+依使用者最終決定（300 → 200 ms）：`config/config.yaml` 的 `vad.min_silence_ms` 改為 **192**。分段器以 Silero 32 ms 幀向上取整（`ceil(ms/32)`），192＝6 幀＝0.192 s；若寫 200 會進位成 7 幀＝0.224 s。`vad_endpoint` 預期由 0.32 降到 0.19 s，約省 0.13 s。
+- 結構預設（`src/config/schema.py`、`src/vad/service.py`、`VADSegmenter`）與 `config_musetalk.yaml`／`config_wav2lip.yaml` 原本就是 500，不是舞台用的 300，未改。
+- 主機的 `config/runtime_overrides.yaml`（不進版控）第 174 行 `vad.min_silence_ms: 300` 會覆蓋新預設；需由使用者在控制台改為 192 或刪除該行後重啟，新值才會生效。
+- 句中停頓被當成說完的風險未評估（fixture 無句中停頓），待現場試用。
+- 驗證：`tests/test_vad.py` 新增以出貨設定計算端點等待＝192 ms 的測試（先失敗後修正）；`docs/project-status.md` 已更新。
