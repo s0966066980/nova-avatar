@@ -82,3 +82,11 @@ Blocked by: 04
 
 ### 2026-10-30 實機（orchestrator）
 E2B＋首句規則＋首個片段例外（08b）：`first_fragment` P50 0.45 s（`after-e2b`）→ 0.39 s（`after-followups`）→ 0.43 s（`offset-split`，在雜訊範圍）。首句 15 字規則遵循率低（E2B 7/29），首個片段例外已依 Q27 實作。首片段後的停頓需使用者試聽確認（列入最終報告）。
+
+### 2026-10-30 看板口語不受首句規則限制（分支 `fal/19-vad-board`）
+依使用者最終決定（規格「最終決定」）：首句 15 字規則（英文 12 詞）只約束簡答（SIMPLE）與 AUTO 下選簡答的口語，看板口語改依已存口語 Rule（例如「搭配看板時先用 50~200字」）。
+- `FIRST_SENTENCE_PROMPT`／`FIRST_SENTENCE_PROMPT_EN`：「看板模式的口語摘要也遵守這條」改為「不受這條限制，依口語回答規則」。AUTO 每輪才選模式，所以 AUTO 仍帶這段規則並在規則內寫明例外；指定 BOARD 時 `compose_system_prompt` 不再附加。prewarm 用 AUTO，前綴快取不受影響。
+- `CHANNEL_SPLIT_PROMPT` 的正確口語範例恢復為 `main` 的「先確保系統能安全穩定運作，具體檢查項目已整理在看板。」。
+- `scripts/eval_llm_quality.py`：BOARD 回覆不再做 `first_sentence` 檢查，`first-sentence` 遵循率只計非看板回覆。
+- 未改：GBNF 與分工規則仍要求 BOARD 口語為一句完整結論（`main` 即如此），所以看板口語是一句、但不受 15 字限制。
+- 驗證：`tests/test_first_sentence_rule.py`、`tests/test_llm_quality_eval.py` 先寫失敗測試再修正。
