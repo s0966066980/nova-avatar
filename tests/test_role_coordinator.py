@@ -42,6 +42,17 @@ class Avatar:
         self._asset_epoch += 1
 
 
+def route_to(target, **fields):
+    """A router decision in ticket 02's shape: a member id, or None to clarify."""
+    today = datetime.now().date().isoformat()
+    route = dict(target=target, clarification='', context='', county='', town='', kind='',
+                 start_date='', end_date='', accepted_at=datetime.now().isoformat(), decided_by='model')
+    route.update(fields)
+    if route['kind'] and not route['start_date']:
+        route.update(start_date=today, end_date=today)
+    return route
+
+
 @pytest.fixture
 def field(tmp_path, monkeypatch):
     monkeypatch.setattr(service, '_session_llm_instances', {})
@@ -53,14 +64,12 @@ def field(tmp_path, monkeypatch):
     config.reply_streaming.enabled = False
     store = ProfileStore(tmp_path / 'profiles.yaml')
     library = store.initialize(config)
-    library['enabled'] = True
+    library['composition']['enabled'] = True
     state = SimpleNamespace(config=config, voice_sessions={}, avatar_streams={},
         avatar=object(),
         count_sessions=lambda kind: sum(v._presenter == kind for v in state.voice_sessions.values()))
     weather = SimpleNamespace(configured=True, query=Mock())
-    route = {'route': 'specialist', 'county': '臺北市', 'town': '中正區', 'kind': 'forecast',
-        'start_date': datetime.now().date().isoformat(), 'end_date': datetime.now().date().isoformat(),
-        'context': '已確認臺北市中正區'}
+    route = route_to('weather', county='臺北市', town='中正區', kind='forecast', context='已確認臺北市中正區')
     roles = RoleCoordinator(state, store, library, router=lambda *_: dict(route), weather=weather)
     roles.phase = 'ready'
     roles.assets = {'musetalk_angela': object(), 'musetalk_1': object()}
@@ -303,7 +312,8 @@ async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers
     voice, _ = connect(roles, presenter='stage')
     try:
         voice._role_coordinator._bind(voice, 'weather')
-        disabled = dict(roles.library, enabled=False)
+        disabled = deepcopy(roles.library)
+        disabled['composition']['enabled'] = False
         # The saved main role may refer to material that was never preloaded.
         disabled['profiles'][0]['avatar_id'] = 'new_saved_material'
         disabled['profiles'][0]['assistant_profile']['assistant_name'] = '單角色接待員'
@@ -347,7 +357,7 @@ async def test_stage_reconnect_accepts_input_during_console_answer(field):
 
 
 def test_single_role_apply_blocks_new_input_until_settings_are_bound(field):
-    field.library['enabled'] = False
+    field.library['composition']['enabled'] = False
     voice = SimpleNamespace(_presenter='console', sessionid=99)
     assert field.input_allowed(voice)
     field._apply_waiting = True
@@ -410,7 +420,7 @@ async def test_idle_greeting_starts_fresh_interval_after_automatic_main_return(f
 @async_test
 async def test_console_answer_does_not_cancel_stage_greeting(field):
     roles = field
-    roles.library['enabled'] = False
+    roles.library['composition']['enabled'] = False
     roles.phase = 'disabled'
     roles.profiles_applied = True
     roles.state.config.stage.idle_greeting_enabled = True
@@ -608,8 +618,8 @@ async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_liv
 
     field.state.config.tts.type = 'breezyvoice'
     target = deepcopy(field.library)
-    target['enabled'] = False
-    main = next(p for p in target['profiles'] if p['id'] == target['pair']['main'])
+    target['composition']['enabled'] = False
+    main = next(p for p in target['profiles'] if p['id'] == 'main')
     main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
                        tts_server='http://127.0.0.1:50001')
     monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
@@ -638,8 +648,8 @@ async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_liv
 async def test_breezyvoice_server_change_waits_until_conversations_disconnect(field, monkeypatch, change):
     field.state.config.tts.type = 'breezyvoice'
     target = deepcopy(field.library)
-    target['enabled'] = False
-    main = next(p for p in target['profiles'] if p['id'] == target['pair']['main'])
+    target['composition']['enabled'] = False
+    main = next(p for p in target['profiles'] if p['id'] == 'main')
     main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
                        tts_server='http://127.0.0.1:50001')
     monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
@@ -652,7 +662,7 @@ async def test_breezyvoice_server_change_waits_until_conversations_disconnect(fi
     try:
         changed = deepcopy(target)
         changed['revision'] += 1
-        next(p for p in changed['profiles'] if p['id'] == changed['pair']['main'])['tts'].update(change)
+        next(p for p in changed['profiles'] if p['id'] == 'main')['tts'].update(change)
         result = await field.apply(changed)
         assert result['pending'], '連線中的 BreezyVoice 伺服器不可被換掉，也不可未啟動就發布為預設'
         start.assert_not_called()
