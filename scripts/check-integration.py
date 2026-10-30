@@ -36,7 +36,6 @@ REQUIRED_FILES = {
 }
 REQUIRED_MODULES = ("openai", "edge_tts", "yaml")
 RUNTIME_MODULES = {
-    "funasr": ("funasr",),
     "musetalk": ("einops", "ffmpeg"),
 }
 
@@ -77,21 +76,26 @@ def check_project_contract() -> None:
 
 def check_selected_runtime_dependencies(cfg) -> None:
     """Ensure the engines selected by the effective config have their modules."""
-    required = set(RUNTIME_MODULES.get(cfg.asr.type, ()))
-    required.update(RUNTIME_MODULES.get(cfg.model.type, ()))
+    if cfg.asr.type == "funasr":
+        # Fun-ASR-Nano runs in its own venv, not as a main-venv module.
+        from src.asr.fun_asr_nano_service import unavailable_reason
+
+        try:
+            reason = unavailable_reason(cfg.asr.model_size)
+        except ValueError as exc:
+            reason = str(exc)
+        if reason:
+            _fail(f"目前設定所選的 Fun-ASR-Nano 無法使用：{reason}")
+        print(f"{OK} Fun-ASR-Nano 服務 venv 與權重就緒")
+    required = set(RUNTIME_MODULES.get(cfg.model.type, ()))
     missing = sorted(name for name in required if importlib.util.find_spec(name) is None)
     if missing:
-        extras = []
-        if cfg.asr.type == "funasr":
-            extras.append("uv sync --extra funasr")
-        if cfg.model.type == "musetalk":
-            extras.append("uv sync --extra musetalk")
         _fail(
             "目前設定所選引擎缺少依賴: "
-            f"{', '.join(missing)}。執行：{'；'.join(extras)}"
+            f"{', '.join(missing)}。執行：uv sync --extra musetalk"
         )
     if required:
-        print(f"{OK} 目前 ASR／Avatar 引擎依賴可匯入")
+        print(f"{OK} 目前 Avatar 引擎依賴可匯入")
 
 
 def check_commercial_profile() -> None:

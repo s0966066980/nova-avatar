@@ -50,9 +50,6 @@ dependencies = [
 vad = [
     "silero-vad>=5.1",           # Silero VAD，pip 包自帶模型，可離線使用
 ]
-funasr = [
-    "funasr>=1.1",
-]
 musetalk = [
     "nova-avatar-musetalk",
 ]

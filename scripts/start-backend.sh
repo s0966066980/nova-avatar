@@ -96,8 +96,8 @@ check_and_kill_port() {
 
     echo -e "${BLUE}🔍 檢查埠 $port 是否被佔用...${NC}"
     nova_clear_port "$port" '*src/server/app.py*' || exit 1
-    # 舊後端若曾被強制終止，其 CosyVoice 會成孤兒占用 GPU。
-    nova_stop_cosyvoice || true
+    # 舊後端若曾被強制終止，其 CosyVoice、Fun-ASR-Nano 會成孤兒占用 GPU。
+    nova_stop_model_servers || true
     echo -e "${GREEN}✓${NC} 埠 $port 可用"
 }
 

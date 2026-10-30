@@ -55,7 +55,7 @@ belong in `.scratch/` under the repository's issue-tracker convention.
 
 GitHub Actions runs these offline checks on pushes and pull requests through
 `.github/workflows/ci.yml`. Its Python job uses Python 3.11, CPU PyTorch wheels,
-the `funasr` and `vad` extras, and the `dev` and `ci` dependency groups. The `ci`
+the `vad` extra, and the `dev` and `ci` dependency groups. The `ci`
 group supplies the MuseTalk import probes required by the offline check without
 loading models. To reproduce the Python job in a separate environment:
 
@@ -63,7 +63,7 @@ loading models. To reproduce the Python job in a separate environment:
 export UV_PROJECT_ENVIRONMENT=/tmp/nova-avatar-ci-venv
 uv venv --python 3.11 "$UV_PROJECT_ENVIRONMENT"
 uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" \
-  --no-sources --torch-backend cpu --group dev --group ci -e '.[funasr,vad]'
+  --no-sources --torch-backend cpu --group dev --group ci -e '.[vad]'
 uv run --no-sync ruff check .
 uv run --no-sync pyright
 uv run --no-sync python scripts/check-integration.py
