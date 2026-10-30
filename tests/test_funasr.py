@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
+
 from src.asr import factory
 from src.asr.engines.funasr import (
     REQUIRED_MODEL_FILES,
@@ -74,6 +76,46 @@ class FunASRLocalModelTests(unittest.TestCase):
             )
 
         self.assertEqual(engine.device, "cpu")
+
+
+# ------------------------------------------------- Fun-ASR-Nano-2512 weights
+
+
+def test_fun_asr_nano_download_is_pinned_and_complete():
+    from scripts import fun_asr_nano_weights
+
+    (source,) = fun_asr_nano_weights.MODELS
+    assert source.repo == "FunAudioLLM/Fun-ASR-Nano-2512"
+    assert len(source.revision) == 40 and int(source.revision, 16) >= 0
+    assert all(len(digest) == 64 and int(digest, 16) >= 0 for digest in source.files.values())
+    # Everything funasr's FunASRNano loader reads from a local model folder.
+    assert {
+        "config.yaml", "configuration.json", "model.pt", "multilingual.tiktoken",
+        "Qwen3-0.6B/config.json", "Qwen3-0.6B/tokenizer.json", "Qwen3-0.6B/tokenizer_config.json",
+        "Qwen3-0.6B/vocab.json", "Qwen3-0.6B/merges.txt",
+    } <= set(source.files)
+    # No model code is fetched: the model class comes from the pinned funasr package.
+    assert not any(name.endswith(".py") for name in source.files)
+
+
+def test_fun_asr_nano_download_passes_pinned_revision_and_files(tmp_path):
+    from scripts import fun_asr_nano_weights
+
+    calls = []
+    fun_asr_nano_weights.download(tmp_path, snapshot=lambda repo, **kwargs: calls.append((repo, kwargs)))
+    (source,) = fun_asr_nano_weights.MODELS
+    assert calls == [(source.repo, {
+        "revision": source.revision,
+        "local_dir": str(tmp_path / source.local_dir),
+        "allow_patterns": sorted(source.files),
+    })]
+
+
+def test_fun_asr_nano_check_fails_when_weights_are_missing(tmp_path):
+    from scripts import fun_asr_nano_weights
+
+    with pytest.raises(SystemExit, match=r"model\.pt \(missing\)"):
+        fun_asr_nano_weights.main(["--check", "--root", str(tmp_path)])
 
 
 if __name__ == "__main__":
