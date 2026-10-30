@@ -87,10 +87,11 @@ import { useRoles } from '../composables/useRoles.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings.js'
 import { directedTransition, rolePhaseLabel } from '../roleState.js'
 import { ragScopeLabel } from '../ragScope.js'
+import { referenceAudioProblem } from '../voiceSelection.js'
 import AvatarProfileEditor from './AvatarProfileEditor.vue'
 const props = defineProps({ initialSection: { type: String, default: 'identity' } })
 const { libraryRuntime: roleRuntime, roleRequest, roleLibrary } = useRoles()
-const { runtime } = useRuntimeSettings()
+const { runtime, ttsVoiceOptions, refreshTtsVoices } = useRuntimeSettings()
 const draft = ref(null), selected = ref(''), media = ref([]), endpoints = ref([]), defaults = ref(null)
 const busy = ref(false), error = ref(''), notice = ref(''), savedText = ref(''), edgeSource = ref(''), edgeTarget = ref('')
 const workspace = ref('profiles'), editorRef = ref(null), reloadPending = ref(false)
@@ -129,15 +130,28 @@ async function load() {
   // Model discovery is optional; a manual model name remains editable offline.
   try { const r = await fetch('/api/llm/models'); const j = await r.json(); endpoints.value = j.data?.endpoints || [] } catch { /* Keep manual entry available. */ }
   try { const r = await fetch('/api/llm/rules'); const j = await r.json(); defaults.value = j.data?.defaults || null } catch { /* The editor retains existing rules. */ }
+  // Reference audio choices are checked before saving; the server checks again.
+  try { await refreshTtsVoices() } catch { /* The voice editor shows its own load error. */ }
+}
+// Open the first profile whose voice cannot be saved and explain why.
+function requireVoices() {
+  for (const p of draft.value.profiles) {
+    const problem = referenceAudioProblem(p.tts, ttsVoiceOptions.value)
+    if (!problem) continue
+    workspace.value = 'profiles'; selected.value = p.id; editorRef.value?.openSection('voice')
+    throw Error(`「${p.name}」${problem}`)
+  }
 }
 function requestReload() { if (dirty.value) reloadPending.value = true; else run(load) }
 async function save() {
   if (draft.value.pair.main === draft.value.pair.specialist) throw Error('主角色與專門角色需選擇不同設定檔')
+  requireVoices()
   adopt(await roleRequest('', 'PUT', { library: draft.value, expected_revision: draft.value.revision }))
   notice.value = '草稿已儲存；套用後由下一場對話採用。'
 }
 async function saveAndApply() {
   if (pairError.value) throw Error(pairError.value)
+  requireVoices()
   if (dirty.value) await save()
   await roleRequest('/apply', 'POST')
   notice.value = roleRuntime.pending ? '設定已儲存，待兩端斷線後套用。' : '設定已儲存，下一場對話採用；目前對話繼續使用原設定。'

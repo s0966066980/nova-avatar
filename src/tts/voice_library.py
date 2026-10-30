@@ -94,6 +94,8 @@ def _read_record(voice_id: str) -> dict:
         "name": name if isinstance(name, str) and name else voice_id,
         "seconds": float(seconds) if isinstance(seconds, (int, float)) else 0.0,
         "transcript": transcript if isinstance(transcript, str) else "",
+        # Recordings without the speaker's consent, for development only.
+        "development": record.get("development") is True,
     }
 
 
@@ -195,11 +197,12 @@ def _decode(path: Path):
     return np.concatenate(chunks)[:limit], rate
 
 
-def add_voice(source: Path, name: Any = "", transcript: Any = "") -> dict:
+def add_voice(source: Path, name: Any = "", transcript: Any = "", *, development: bool = False) -> dict:
     """Validate ``source`` as audio, store it as a mono WAV and return its record.
 
     The ID is derived from the stored audio, so adding the same audio again
-    returns the existing voice. ``transcript`` is what the recording says.
+    returns the existing voice. ``transcript`` is what the recording says;
+    ``development`` marks a recording whose speaker has not consented.
     """
     import soundfile as sf
 
@@ -218,6 +221,8 @@ def add_voice(source: Path, name: Any = "", transcript: Any = "") -> dict:
             return _read_record(voice_id)
         record = {"id": voice_id, "name": _clean_name(name, voice_id),
                   "seconds": round(samples.size / rate, 2), "transcript": spoken}
+        if development:
+            record["development"] = True
         _write_text(_record_path(voice_id), json.dumps(record, ensure_ascii=False))
         os.replace(temporary, target)
     finally:

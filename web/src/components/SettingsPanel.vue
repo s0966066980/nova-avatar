@@ -1296,7 +1296,8 @@ async function onVoiceFileChosen(event) {
   event.target.value = ''
   if (!file) return
   try {
-    await uploadTtsVoice(file, '', ttsDraft.type === 'breezyvoice' ? ttsDraft.ref_text : '')
+    const voice = await uploadTtsVoice(file, '', ttsDraft.type === 'breezyvoice' ? ttsDraft.ref_text : '')
+    ttsDraft.ref_file = voice.id
     emit('notification', '參考音訊已加入音訊庫', 'success')
   } catch (error) { emit('notification', error.message, 'error') }
 }

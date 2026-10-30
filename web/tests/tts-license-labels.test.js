@@ -8,6 +8,7 @@ import { useRuntimeSettings } from '../src/composables/useRuntimeSettings.js'
 
 const Editor = await loadComponent(new URL('../src/components/AvatarProfileEditor.vue', import.meta.url), {
   './RagFlowSettings.vue': { default: { setup: () => () => h('div') } },
+  './VoiceLibraryManager.vue': { default: { setup: () => () => h('div') } },
   '../composables/useRuntimeSettings': { useRuntimeSettings }
 })
 

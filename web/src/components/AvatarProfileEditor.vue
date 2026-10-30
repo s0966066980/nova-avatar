@@ -53,11 +53,16 @@
     </section>
     <section v-show="section === 'voice'" class="profile-section">
       <h3>聲音與工具</h3><p>每位角色可選擇自己的聲線；即時組合共用同一語音合成引擎。</p>
-      <div class="profile-grid"><label>語音引擎<select v-model="profile.tts.type"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ ttsEngineLabel(engine) }}</option></select></label><label>聲線／參考音檔<select v-if="usesVoiceLibrary" v-model="profile.tts.ref_file"><option value="">請選擇參考音訊</option><option v-for="voice in ttsVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}</option></select><input v-else v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label></div>
+      <div class="profile-grid">
+        <label>語音引擎<select :value="profile.tts.type" @change="switchTtsEngine(profile.tts, $event.target.value)"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ ttsEngineLabel(engine) }}</option></select></label>
+        <label v-if="usesVoiceLibrary">參考音檔<select v-model="profile.tts.ref_file" :aria-invalid="Boolean(voiceProblem)" :aria-describedby="voiceProblem ? 'profile-voice-problem' : undefined" @change="profile.tts.ref_text = null"><option value="" disabled>請選擇參考音檔</option><option v-for="voice in referenceVoiceOptions" :key="voice.id" :value="voice.id">{{ voiceLabel(voice) }}</option></select></label>
+        <label v-else>聲線<input v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label>
+      </div>
+      <p v-if="voiceProblem" id="profile-voice-problem" class="profile-alert" role="alert">{{ voiceProblem }}</p>
+      <p v-if="selectedVoice?.transcript">逐字稿：{{ selectedVoice.transcript }}</p>
       <label v-if="profile.tts.type === 'edgetts'">英文聲音<input v-model="profile.tts.voice_en_us" placeholder="en-US-JennyNeural"></label>
-      <p v-if="usesVoiceLibrary">參考音檔請先在「語音」設定的音訊庫上傳，再於此選擇。</p>
-      <label v-if="usesReferenceText">參考語音逐字稿<textarea v-model="profile.tts.ref_text" rows="3"></textarea></label>
-      <details><summary>其他聲音設定</summary><div class="profile-grid"><label v-for="(label,key) in voiceFields" :key="key">{{ label }}<input :value="profile.tts[key] || ''" @input="profile.tts[key] = $event.target.value"></label></div></details>
+      <VoiceLibraryManager v-if="usesVoiceLibrary" :selected="profile.tts.ref_file" @uploaded="voice => chooseVoice(voice.id)" @deleted="id => { if (profile.tts.ref_file === id) chooseVoice('') }" />
+      <details v-if="usesVoiceLibrary"><summary>其他 BreezyVoice 設定</summary><div class="profile-grid"><label v-for="(label,key) in voiceFields" :key="key">{{ label }}<input :value="profile.tts[key] || ''" @input="profile.tts[key] = $event.target.value"></label></div></details>
       <label class="profile-check"><input type="checkbox" v-model="profile.tools.weather">使用 CWA 即時天氣工具（臺灣，角色交接模式）</label>
     </section>
   </div>
@@ -66,6 +71,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import RagFlowSettings from './RagFlowSettings.vue'
+import VoiceLibraryManager from './VoiceLibraryManager.vue'
+import { referenceAudioProblem, referenceVoices, switchTtsEngine, voiceLabel } from '../voiceSelection.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
 const profile = defineModel({ type: Object, required: true })
@@ -82,13 +89,17 @@ const ruleFields = [{ key: 'activation', label: '何時使用看板' }, { key: '
 const voiceFields = { tts_server: 'BreezyVoice 服務網址（限本機，留空為預設）', model: 'models/ 內的 BreezyVoice 模型（留空為預設）' }
 // Reference audio is a voice-library ID; the server rejects file paths.
 const { ttsVoiceOptions, speech } = useRuntimeSettings()
+const referenceVoiceOptions = computed(() => referenceVoices(ttsVoiceOptions.value))
+const selectedVoice = computed(() => usesVoiceLibrary.value ? referenceVoiceOptions.value.find(v => v.id === profile.value.tts.ref_file) : null)
+const voiceProblem = computed(() => referenceAudioProblem(profile.value.tts, ttsVoiceOptions.value))
+// The library transcript describes the chosen recording; drop any older override.
+function chooseVoice(id) { profile.value.tts.ref_file = id; profile.value.tts.ref_text = null }
 // Server catalog labels carry each engine's usage restriction (e.g. Edge TTS is development only).
 const ttsEngineLabel = id => speech.tts.engines.find(engine => engine.id === id)?.label || id
 // The only TTS engines; the server switches saved roles of removed engines to Edge TTS.
 const ttsEngines = ['edgetts', 'breezyvoice']
 // BreezyVoice clones a voice-library recording and needs what it says.
 const usesVoiceLibrary = computed(() => profile.value.tts.type === 'breezyvoice')
-const usesReferenceText = usesVoiceLibrary
 const endpointOptions = computed(() => {
   const listed = props.endpoints || []
   const current = profile.value.llm.endpoint
@@ -117,5 +128,5 @@ defineExpose({ openSection: value => { section.value = value } })
 </script>
 
 <style scoped>
-.profile-sections{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border-default);padding-bottom:18px}.profile-sections button{display:flex;gap:7px;align-items:center}.profile-sections button[aria-pressed=true]{border-color:var(--brand-light);color:var(--brand-light);background:var(--bg-surface-elevated)}.profile-section{padding-top:24px}.profile-section h3{font-size:18px;margin:0 0 10px}.profile-section h4{font-size:15px;margin:16px 0}.profile-section p{font-size:13px;line-height:1.7;color:var(--text-secondary)}.profile-section label{display:flex;flex-direction:column;gap:8px;margin:16px 0;font-size:13px}.profile-section .profile-check{flex-direction:row;align-items:center}.profile-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 20px}.profile-section input,.profile-section textarea,.profile-section select{width:100%;padding:10px 12px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface-elevated);color:var(--text-primary);font:inherit;box-sizing:border-box}.profile-section .profile-check input{width:auto}.profile-section textarea{resize:vertical;min-height:90px}.profile-section small{font-size:12px;color:var(--text-secondary)}.profile-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.profile-editor button{padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);color:var(--text-primary);font-size:13px;cursor:pointer}.profile-editor :focus-visible{outline:2px solid var(--brand-light);outline-offset:3px}.profile-editor summary{font-size:13px;cursor:pointer;padding:12px 0}@media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-sections button{flex:1;justify-content:center}}
+.profile-sections{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border-default);padding-bottom:18px}.profile-sections button{display:flex;gap:7px;align-items:center}.profile-sections button[aria-pressed=true]{border-color:var(--brand-light);color:var(--brand-light);background:var(--bg-surface-elevated)}.profile-section{padding-top:24px}.profile-section h3{font-size:18px;margin:0 0 10px}.profile-section h4{font-size:15px;margin:16px 0}.profile-section p{font-size:13px;line-height:1.7;color:var(--text-secondary)}.profile-section label{display:flex;flex-direction:column;gap:8px;margin:16px 0;font-size:13px}.profile-section .profile-check{flex-direction:row;align-items:center}.profile-section .profile-alert{color:var(--warning)}.profile-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 20px}.profile-section input,.profile-section textarea,.profile-section select{width:100%;padding:10px 12px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface-elevated);color:var(--text-primary);font:inherit;box-sizing:border-box}.profile-section .profile-check input{width:auto}.profile-section textarea{resize:vertical;min-height:90px}.profile-section small{font-size:12px;color:var(--text-secondary)}.profile-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.profile-editor button{padding:9px 12px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);color:var(--text-primary);font-size:13px;cursor:pointer}.profile-editor :focus-visible{outline:2px solid var(--brand-light);outline-offset:3px}.profile-editor summary{font-size:13px;cursor:pointer;padding:12px 0}@media(max-width:700px){.profile-grid{grid-template-columns:1fr}.profile-sections button{flex:1;justify-content:center}}
 </style>
