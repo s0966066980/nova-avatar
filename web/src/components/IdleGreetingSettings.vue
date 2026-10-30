@@ -9,17 +9,24 @@
     <p v-if="notice" role="status">{{ notice }}</p>
     <p v-if="!profile && busy" role="status">正在載入招呼設定…</p>
     <template v-if="profile">
-      <p class="profile-context">目前主數位人：<strong>{{ profile.name }}</strong>。招呼內容隨這位數位人保存，開關與時間套用至整個舞台。</p>
-      <fieldset :disabled="busy" class="schedule-fields">
-        <legend>自動招呼</legend>
-        <label class="check"><input id="greeting-enabled" type="checkbox" v-model="enabled">啟用閒置招呼</label>
-        <label for="greeting-seconds">閒置多久開始準備招呼（秒）<input id="greeting-seconds" type="number" v-model.number="seconds" min="0" step="any" :aria-invalid="intervalInvalid" aria-describedby="greeting-interval-hint"></label>
-        <p id="greeting-interval-hint">預設 30 秒。訪客互動會重新計時；先完成上一位訪客的清場，再準備一次招呼。AI 準備最多 15 秒，語音合成另計。</p>
-      </fieldset>
-      <IdleGreetingEditor :profile="profile" :disabled="busy" />
+      <!-- 16:9: schedule and status beside the content editor, each scrolling on its own. -->
+      <div class="greeting-layout">
+        <div class="greeting-side">
+          <p class="profile-context">目前主數位人：<strong>{{ profile.name }}</strong>。招呼內容隨這位數位人保存，開關與時間套用至整個舞台。</p>
+          <fieldset :disabled="busy" class="schedule-fields">
+            <legend>自動招呼</legend>
+            <label class="check"><input id="greeting-enabled" type="checkbox" v-model="enabled">啟用閒置招呼</label>
+            <label for="greeting-seconds">閒置多久開始準備招呼（秒）<input id="greeting-seconds" type="number" v-model.number="seconds" min="0" step="any" :aria-invalid="intervalInvalid" aria-describedby="greeting-interval-hint"></label>
+            <p id="greeting-interval-hint">預設 30 秒。訪客互動會重新計時；先完成上一位訪客的清場，再準備一次招呼。AI 準備最多 15 秒，語音合成另計。</p>
+          </fieldset>
+          <div class="status-row"><span role="status">{{ statusText }}</span><button type="button" :disabled="busy" @click="refreshStatus">更新招呼狀態</button></div>
+          <details class="mode-help"><summary>控制台試播會影響舞台嗎？</summary><p>控制台與舞台各自對話，試播草稿不暫停舞台收音或招呼。儲存的招呼內容由下一場舞台對話採用。</p></details>
+        </div>
+        <div class="greeting-main">
+          <IdleGreetingEditor :profile="profile" :disabled="busy" />
+        </div>
+      </div>
       <p v-if="validation" class="feedback" role="status">{{ validation }}</p>
-      <div class="status-row"><span role="status">{{ statusText }}</span><button type="button" :disabled="busy" @click="refreshStatus">更新招呼狀態</button></div>
-      <details class="mode-help"><summary>控制台試播會影響舞台嗎？</summary><p>控制台與舞台各自對話，試播草稿不暫停舞台收音或招呼。儲存的招呼內容由下一場舞台對話採用。</p></details>
       <div class="actions save-row"><span v-if="dirty">有尚未套用的招呼設定</span><button type="button" class="primary" :disabled="busy || Boolean(validation)" @click="save">{{ busy ? '處理中…' : '儲存並套用招呼設定' }}</button></div>
     </template>
   </section>
@@ -103,5 +110,7 @@ onUnmounted(() => clearInterval(statusTimer))
 defineExpose({ dirty })
 </script>
 <style scoped>
-.idle-greeting-settings{color:var(--text-primary);max-width:1100px}.page-heading,.actions,.status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.page-heading h2{font-size:24px;margin:0 0 10px}.idle-greeting-settings p{font-size:13px;line-height:1.8;color:var(--text-secondary)}.idle-greeting-settings button{min-height:40px;padding:10px 14px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);color:var(--text-primary);cursor:pointer}.idle-greeting-settings button.primary{background:var(--brand-light);color:var(--bg-base,#111827);font-weight:600}.idle-greeting-settings button:disabled{opacity:.5;cursor:default}.profile-context,.schedule-fields,.status-row,.mode-help{padding:18px;margin-top:20px;border:1px solid var(--border-default);border-radius:12px;background:var(--bg-surface)}.schedule-fields legend{font-size:16px}.schedule-fields label{display:flex;flex-direction:column;gap:10px;margin:12px 0;font-size:14px}.schedule-fields .check{flex-direction:row;align-items:center}.schedule-fields input[type=number]{max-width:260px;padding:10px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface-elevated);color:var(--text-primary);font:inherit}.feedback{padding:12px;border-left:3px solid var(--warning);color:var(--text-primary)}.save-row{margin-top:24px;justify-content:flex-end}.mode-help summary{cursor:pointer}.idle-greeting-settings :focus-visible{outline:2px solid var(--brand-light);outline-offset:3px}@media(max-width:700px){.page-heading .actions{width:100%}.schedule-fields input[type=number]{max-width:none;width:100%;box-sizing:border-box}}
+.idle-greeting-settings{color:var(--text-primary);min-width:0}.page-heading,.actions,.status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.page-heading h2{font-size:24px;margin:0 0 10px}.idle-greeting-settings p{font-size:13px;line-height:1.8;color:var(--text-secondary)}.idle-greeting-settings button{min-height:40px;padding:10px 14px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface);color:var(--text-primary);cursor:pointer}.idle-greeting-settings button.primary{background:var(--brand-light);color:var(--bg-base,#111827);font-weight:600}.idle-greeting-settings button:disabled{opacity:.5;cursor:default}.profile-context,.schedule-fields,.status-row,.mode-help{padding:18px;margin-top:20px;border:1px solid var(--border-default);border-radius:12px;background:var(--bg-surface)}.schedule-fields legend{font-size:16px}.schedule-fields label{display:flex;flex-direction:column;gap:10px;margin:12px 0;font-size:14px}.schedule-fields .check{flex-direction:row;align-items:center}.schedule-fields input[type=number]{max-width:260px;padding:10px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-surface-elevated);color:var(--text-primary);font:inherit}.feedback{padding:12px;border-left:3px solid var(--warning);color:var(--text-primary)}.save-row{margin-top:24px;justify-content:flex-end}.mode-help summary{cursor:pointer}.idle-greeting-settings :focus-visible{outline:2px solid var(--brand-light);outline-offset:3px}.greeting-layout{min-width:0}.greeting-side,.greeting-main{min-width:0}.greeting-main{margin-top:20px;padding:0 18px 18px;border:1px solid var(--border-default);border-radius:12px;background:var(--bg-surface)}
+@media(min-width:1280px) and (min-height:640px){.idle-greeting-settings{display:flex;flex-direction:column}.greeting-layout{flex:1 1 0;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-rows:minmax(0,1fr);gap:20px;margin-top:20px}.greeting-side,.greeting-main{min-height:0;overflow-y:auto;overscroll-behavior:contain}.greeting-side>:first-child,.greeting-main{margin-top:0}.save-row{flex:none;margin-top:16px}.idle-greeting-settings>.feedback{flex:none}}
+@media(max-width:700px){.page-heading .actions{width:100%}.schedule-fields input[type=number]{max-width:none;width:100%;box-sizing:border-box}}
 </style>

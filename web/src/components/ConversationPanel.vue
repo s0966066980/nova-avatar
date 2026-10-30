@@ -1,6 +1,7 @@
 <!-- Copyright (c) 2026 HongXian0903; SPDX-License-Identifier: Apache-2.0 -->
 <template>
   <section class="conversation-panel" aria-labelledby="conversation-heading" :aria-busy="saving">
+    <div class="conversation-overview">
     <div class="conversation-heading">
       <h2 id="conversation-heading">對話記憶與語系</h2>
       <label>檢視與控制場次
@@ -32,7 +33,9 @@
       </div>
     </div>
     <p v-else class="memory-note">預設只套用之後建立的新對話；不改變其他已連線場次。</p>
-    <details>
+    </div>
+    <!-- Open by default: on a 16:9 screen it fills the second column. -->
+    <details class="conversation-settings" open>
     <summary>調整保留上限與語音</summary>
     <form class="conversation-form" @submit.prevent="save">
       <label>歷史訊息保留上限
@@ -129,9 +132,10 @@ onUnmounted(() => { disposed = true; clearInterval(timer) })
 <style scoped>
 .conversation-panel{min-width:0;padding:24px;border:1px solid var(--border-default,#303642);border-radius:var(--radius-lg,14px);color:var(--text-primary,#dbe0e9);background:var(--bg-surface,transparent)}
 summary{min-height:44px;padding:12px 0;font-size:13px;cursor:pointer}summary:focus-visible{outline:2px solid #83a8ff}
-.conversation-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.conversation-heading h2{font-size:15px;margin:0;font-weight:700}.conversation-heading label{display:flex;align-items:center;gap:8px;font-size:12px}
+.conversation-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.conversation-heading h2{font-size:15px;margin:0;font-weight:700}.conversation-heading label{display:flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap}
 .std-select{min-height:44px;max-width:100%;width:100%;padding:8px;border:1px solid var(--border-default,#697386);border-radius:8px;background:var(--bg-input,#161b26);color:inherit}.std-select:focus-visible,.sample-btn:focus-visible{outline:2px solid #83a8ff;outline-offset:2px}
 .memory-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}.metric-label{display:block;font-size:12px;opacity:.8}.memory-summary strong{display:block;font-size:24px}.memory-summary small{font-size:13px;font-weight:400}.memory-note{font-size:12px;line-height:1.6;opacity:.85;margin:0}.oldest-message{font-size:12px;line-height:1.6;margin:0;overflow-wrap:anywhere;max-height:4.8em;overflow:auto;grid-column:1/-1}.context-meter{grid-column:1/-1}.context-meter>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}.context-meter progress{display:block;width:100%;height:10px;margin:8px 0;accent-color:#7c9cff}.memory-summary>.memory-note{grid-column:1/-1}
 .conversation-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.conversation-form label{display:flex;flex-direction:column;gap:6px;font-size:12px}.form-hint,.conversation-feedback{grid-column:1/-1}.conversation-form button{min-height:44px;justify-self:start}.conversation-feedback{font-size:12px;margin:0}.conversation-error{color:var(--danger,#d85b50);opacity:1}.sample-btn:disabled{opacity:.55;cursor:default}
+@media(min-width:1280px) and (min-height:640px){.conversation-panel{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:0 28px;align-items:start}.conversation-settings{padding-left:28px;border-left:1px solid var(--border-subtle,#262c38)}.conversation-settings>summary{padding-top:0}}
 @media(max-width:560px){.conversation-panel{padding:14px}.conversation-heading label{width:100%;flex-wrap:wrap}.conversation-form{grid-template-columns:1fr}.memory-summary strong{font-size:20px}}
 </style>
