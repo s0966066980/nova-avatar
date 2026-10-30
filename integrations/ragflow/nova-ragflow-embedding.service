@@ -1,6 +1,9 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
+# Superseded by nova-ragflow-llamacpp-embedding.service (issue 15). Kept only
+# for rolling back; see "還原為 GPU Ollama 嵌入" in docs/ragflow.md.
+
 [Unit]
 Description=Nova Avatar RAGFlow GPU embedding endpoint
 

@@ -154,7 +154,10 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - RAGFlow role: optional, separately deployed document retrieval service
 - RAGFlow version: v0.27.2; code license: Apache-2.0
 - RAGFlow source: <https://github.com/infiniflow/ragflow>
-- Ollama role: existing host installation, with a separate CPU embedding process
+- Embedding server: the host's llama.cpp `llama-server`, run CPU-only for BGE-M3
+  (MIT; <https://github.com/ggml-org/llama.cpp>)
+- Ollama role: existing host installation; fetches the pinned BGE-M3 GGUF and
+  can serve RAGFlow chat models
 - Ollama source: <https://github.com/ollama/ollama>
 - BGE-M3 role: recommended multilingual embedding model
 - BGE-M3 source and model card: <https://huggingface.co/BAAI/bge-m3>

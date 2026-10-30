@@ -14,7 +14,7 @@
 | 對話與傳輸 | WebRTC 雙向音訊、Avatar 影像、事件通道、免按對話、按住說話、插話、斷線清理與伺服器擁有的單一有效輪次 |
 | 語音輸入 | Silero 服務端端點偵測（說完判定靜音 300 ms，實際 0.32 s）、faster-whisper small（預設，語音輪次只在中英文間自動偵測、beam 1、記憶體直傳）／FunASR（可選，僅中文）、繁體轉換、STT 預熱、無效音訊品質閘門與執行期設定 |
 | 回覆生成 | llama.cpp（預設 Gemma 4 E2B 全 GPU，Qwen3.5-9B 可選；放不下全部層數即啟動失敗並說明）／Ollama、路由與檢索和主回答並行、串流 token、交易式 history、柔性回覆長度、單一 LLM 可編輯回覆規則、控制台集中管理的助手身分與 Prompt |
-| 知識庫檢索 | 可選的本機 RAGFlow 檢索：依數位人選擇知識庫、控制台測試檢索、GPU BGE-M3 嵌入；見 [`ragflow.md`](ragflow.md) |
+| 知識庫檢索 | 可選的本機 RAGFlow 檢索：依數位人選擇知識庫、控制台測試檢索、BGE-M3 嵌入（llama.cpp，CPU）；見 [`ragflow.md`](ragflow.md) |
 | 看板回答 | SIMPLE／BOARD 協定、口語摘要與看板項目分流、顯示確認、已顯示項目上下文與輪次隔離 |
 | 語音與字幕 | 多 TTS adapter（Edge TTS 為執行預設但僅供開發；BreezyVoice 本機台灣華語已整合）、可靠語意切片（每輪第一個片段可在 8 字以上的子句處提早釋放）、播放提交、字幕顯示窗口；字幕在播放結束或輪次提交後才淡出 |
 | 數字人 | MuseTalk（Supported / Commercial）、Wav2Lip（Research / Non-commercial）、Ultralight、ER-NeRF、TalkingGaussian；MuseTalk 段落連續、待機相位匹配與 4–6 影格回答收尾 settling |
@@ -95,7 +95,7 @@ P50／P95 1.96／2.30 → 1.09／1.71 s。
 
 | 段 | P50 | 下一步 | 狀態 |
 | --- | ---: | --- | --- |
-| 檢索等待 | 0.56 s | RAGFlow 的 bge-m3 查詢嵌入占大部分（Ollama 每次請求固定開銷，加上 systemd `CPUQuota=200%`）。(a) 放寬 `CPUQuota`，檢索約 0.25–0.3 s；(b) 改用 llama.cpp `--embedding` 提供 bge-m3，約 0.1 s。選定後重量並定最終上限 | 待使用者決定（issue 15） |
+| 檢索等待 | 0.56 s | 已改用 llama.cpp CPU 提供 bge-m3（issue 15）：RAGFlow 檢索 P50 0.11／P95 0.15 s，上限 0.7 → 0.3 s；實際輪次待重量 | 已完成，待 `measure_first_audio.py` 重量 |
 | 首片段 | 0.42 s | E2B 首 token 0.25 s；首句 15 字規則遵循率低（7/29） | 已實作首個片段例外，停頓聽感待使用者確認 |
 | 片段到送出 | 0.36 s | Edge TTS 首段 PCM 0.16 s＋MuseTalk 首批 0.19 s；換本機 TTS 後會變大（見下） | 每輪啟動批次的嘴型同步待使用者目視確認 |
 | 靜音等待 | 0.32 s | `min_silence_ms` 300 → 288 省 0.03 s；再短可能截斷句中停頓，需真人錄音評估；預判端點最多省 0.16 s，需新 ADR | 待使用者決定（issue 16） |
@@ -177,7 +177,7 @@ stale-output Gate；generation fence、取消或提交前檢查丟棄的媒體�
   時放不下全部層數即啟動失敗並說明。預設不需要 11434 的 Ollama。
 - `tts.type: edgetts`：僅供開發（非公開端點、無正式商用授權、斷網即無法發聲），
   控制台標示 Development only；正式聲線待 TTS 評比決定。
-- 檢索上限 0.7 s（`RETRIEVAL_BUDGET_SECONDS`）：逾時本輪不帶檢索並在控制台顯示。
+- 檢索上限 0.3 s（`RETRIEVAL_BUDGET_SECONDS`，issue 15 實測 P95 0.15 s 的兩倍）：逾時本輪不帶檢索並在控制台顯示。
 - `model.musetalk.mouth_continuity: true`、`mouth_continuity_idle_alignment: true`、
   `settling_enabled: true`、`avatar_transition: true`；settling 預設 5 影格，限制在 4–6 影格。
 - 音訊是媒體主時鐘；視訊不得讓音訊等待，也不得以 catch-up burst 追趕。

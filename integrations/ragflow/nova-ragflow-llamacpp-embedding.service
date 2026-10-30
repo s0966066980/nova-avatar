@@ -1,0 +1,18 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Nova Avatar RAGFlow CPU embedding endpoint (llama.cpp BGE-M3)
+
+[Service]
+Type=simple
+WorkingDirectory=%h/nova-avatar
+ExecStart=/usr/bin/bash %h/nova-avatar/scripts/ragflow_llamacpp_embedding.sh
+Restart=always
+RestartSec=5
+MemoryMax=4G
+CPUQuota=400%
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target
