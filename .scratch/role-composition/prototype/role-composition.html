@@ -1,0 +1,1145 @@
+<!doctype html>
+<!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>角色組合原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens: same names and values as web/src/console-prototype.css ── */
+:root{
+  --font-ui:"Plus Jakarta Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono","Noto Sans Mono CJK TC",ui-monospace,Consolas,monospace;
+  --fs-xs:.8125rem; --fs-sm:.875rem; --fs-md:1rem; --fs-lg:1.125rem; --fs-xl:1.375rem;
+  --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem; --s5:1.25rem; --s6:1.5rem; --s8:2rem;
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --t-fast:150ms cubic-bezier(.2,.8,.2,1);
+  --rail-w:clamp(13rem,14vw,16rem);
+
+  color-scheme:light;
+  --bg-page:#f3f5f9; --bg-surface:#ffffff; --bg-raised:#f7f8fb; --bg-sunken:#edf0f5; --bg-input:#ffffff; --bg-hover:#e8ecf3; --bg-active:#dfe4ec;
+  --border:#d6dce6; --border-strong:#aeb8c8;
+  --text:#111827; --text-2:#3b4556; --text-3:#5b6577;
+  --brand:#3b5bdb; --brand-hover:#2f4ac0; --brand-surface:#edf1ff; --brand-ink:#2a44b0; --on-brand:#ffffff;
+  --ok:#0b7a4b; --ok-surface:#e6f6ee; --ok-border:#9ed9bc;
+  --warn:#8a5300; --warn-bar:#e3a43a; --warn-surface:#fff4dc; --warn-border:#f0c46b;
+  --danger:#b42318; --danger-surface:#fdecea; --danger-border:#f3a49c;
+  --idle:#64748b;
+  --shadow-1:0 1px 2px rgba(16,24,40,.08),0 1px 3px rgba(16,24,40,.08);
+  --shadow-2:0 10px 30px rgba(16,24,40,.16);
+  --scrim:rgba(16,24,40,.45);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg-page:#08090c; --bg-surface:#10141c; --bg-raised:#161b25; --bg-sunken:#0b0e14; --bg-input:#0c1017; --bg-hover:#1d2431; --bg-active:#253042;
+    --border:#262e3c; --border-strong:#3e4a5e;
+    --text:#eef1f6; --text-2:#b9c2d0; --text-3:#8c97a8;
+    --brand:#7c9cff; --brand-hover:#9ab3ff; --brand-surface:#1c2440; --brand-ink:#a9bdff; --on-brand:#0a0f1f;
+    --ok:#3ddc97; --ok-surface:#0f2a22; --ok-border:#1f6b4c;
+    --warn:#f2b544; --warn-bar:#f2b544; --warn-surface:#2a2414; --warn-border:#725b26;
+    --danger:#ff6b6b; --danger-surface:#2d1a20; --danger-border:#7d3a40;
+    --idle:#8fa3bf;
+    --shadow-1:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.4); --shadow-2:0 10px 30px rgba(0,0,0,.6);
+    --scrim:rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg-page:#08090c; --bg-surface:#10141c; --bg-raised:#161b25; --bg-sunken:#0b0e14; --bg-input:#0c1017; --bg-hover:#1d2431; --bg-active:#253042;
+  --border:#262e3c; --border-strong:#3e4a5e;
+  --text:#eef1f6; --text-2:#b9c2d0; --text-3:#8c97a8;
+  --brand:#7c9cff; --brand-hover:#9ab3ff; --brand-surface:#1c2440; --brand-ink:#a9bdff; --on-brand:#0a0f1f;
+  --ok:#3ddc97; --ok-surface:#0f2a22; --ok-border:#1f6b4c;
+  --warn:#f2b544; --warn-bar:#f2b544; --warn-surface:#2a2414; --warn-border:#725b26;
+  --danger:#ff6b6b; --danger-surface:#2d1a20; --danger-border:#7d3a40;
+  --idle:#8fa3bf;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.4); --shadow-2:0 10px 30px rgba(0,0,0,.6);
+  --scrim:rgba(0,0,0,.7);
+}
+
+/* ── Base ───────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font-size:clamp(13px,calc(.36vw + 8px),15px);height:100%}
+body{margin:0;height:100dvh;overflow:hidden;background:var(--bg-page);color:var(--text);font-family:var(--font-ui);font-size:var(--fs-sm);line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,h4,p{margin:0}
+.mono,.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.icon{width:1.15em;height:1.15em;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.18em}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+*{scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent}
+
+/* ── Shell ──────────────────────────────────────────────────────── */
+.shell{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.topbar{display:flex;align-items:center;gap:var(--s4);padding:0 var(--s5);height:3.5rem;border-bottom:1px solid var(--border);background:var(--bg-surface);min-width:0}
+.brand{display:flex;align-items:center;gap:var(--s2);font-weight:700;font-size:var(--fs-md);white-space:nowrap}
+.brand-mark{width:1.75rem;height:1.75rem;border-radius:8px;background:var(--brand);color:var(--on-brand);display:grid;place-items:center}
+.brand small{font-weight:500;color:var(--text-3);font-size:var(--fs-xs)}
+.proto-tag{font-size:var(--fs-xs);padding:2px 8px;border-radius:999px;border:1px dashed var(--border-strong);color:var(--text-3);white-space:nowrap}
+.topbar .spacer{flex:1}
+.demo-group{display:flex;align-items:center;gap:var(--s1);padding:3px;border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised);min-width:0}
+.demo-group>span{font-size:var(--fs-xs);color:var(--text-3);padding:0 var(--s2);white-space:nowrap}
+.demo-group button{border:0;background:transparent;padding:4px 8px;border-radius:6px;font-size:var(--fs-xs);color:var(--text-2);cursor:pointer;white-space:nowrap}
+.demo-group button:hover{background:var(--bg-hover);color:var(--text)}
+.demo-group button[aria-pressed="true"]{background:var(--danger-surface);color:var(--danger)}
+
+.app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);min-height:0}
+.rail{display:grid;grid-template-rows:auto minmax(0,1fr) auto;border-right:1px solid var(--border);background:var(--bg-surface);min-height:0}
+.rail-head{padding:var(--s4) var(--s4) var(--s3)}
+.rail-head h1{font-size:var(--fs-lg);font-weight:700}
+.rail-head p{font-size:var(--fs-xs);color:var(--text-3);margin-top:2px}
+.rail-nav{overflow:auto;padding:0 var(--s3) var(--s3);display:flex;flex-direction:column;gap:2px}
+.rail-tab{display:flex;align-items:center;gap:var(--s2);min-height:2.6rem;padding:var(--s2) var(--s3);border:1px solid transparent;border-radius:var(--r-md);background:none;text-align:left;cursor:pointer;color:var(--text-2);font-weight:500;position:relative}
+.rail-tab:hover{background:var(--bg-hover);color:var(--text)}
+.rail-tab[aria-current="page"]{background:var(--brand-surface);color:var(--brand-ink);font-weight:700}
+.rail-tab[aria-current="page"]::before{content:"";position:absolute;left:-.75rem;top:22%;bottom:22%;width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+.rail-tab .label{flex:1;min-width:0;line-height:1.3}
+.rail-tab .tag{font-size:.72rem;font-weight:600;padding:1px 6px;border-radius:5px;background:var(--bg-sunken);color:var(--text-3);white-space:nowrap}
+.rail-status{border-top:1px solid var(--border);padding:var(--s3) var(--s4) var(--s4);display:grid;gap:var(--s2)}
+.rail-status h2{font-size:var(--fs-xs);font-weight:700;color:var(--text-3);letter-spacing:.04em}
+.sys-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s2);align-items:start;font-size:var(--fs-xs);line-height:1.35}
+.sys-row b{font-weight:600;color:var(--text);display:block}
+.sys-row span{color:var(--text-3)}
+.sys-row[data-tone="ok"] .icon{color:var(--ok)}
+.sys-row[data-tone="busy"] .icon{color:var(--brand)}
+.sys-row[data-tone="idle"] .icon{color:var(--idle)}
+
+.main{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);padding:var(--s4) var(--s6) var(--s3);min-width:0;flex-wrap:wrap}
+.page-head h2{font-size:var(--fs-xl);font-weight:700;line-height:1.25}
+.page-head p{color:var(--text-3);margin-top:2px;font-size:var(--fs-xs)}
+.segs{display:inline-flex;padding:3px;border-radius:var(--r-md);background:var(--bg-sunken);border:1px solid var(--border);flex:none}
+.segs button{border:0;background:none;padding:.4rem 1rem;border-radius:7px;cursor:pointer;color:var(--text-2);font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:var(--s2)}
+.segs button:hover{color:var(--text)}
+.segs button[aria-selected="true"]{background:var(--bg-surface);color:var(--text);box-shadow:var(--shadow-1)}
+.segs .cnt{font-size:.72rem;padding:0 6px;border-radius:999px;background:var(--warn-surface);color:var(--warn);border:1px solid var(--warn-border)}
+.panels{min-height:0;padding:0 var(--s6) var(--s4);display:grid}
+.seg-panel{min-height:0;min-width:0;display:grid;gap:var(--s3)}
+
+/* ── Cards ──────────────────────────────────────────────────────── */
+.card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-1);display:grid;grid-template-rows:auto minmax(0,1fr);min-height:0;min-width:0;overflow:hidden}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);padding:var(--s3) var(--s4) var(--s3);border-bottom:1px solid var(--border)}
+.card-head h3{font-size:var(--fs-md);font-weight:700;display:flex;align-items:center;gap:var(--s2)}
+.card-head h3 .icon{color:var(--brand)}
+.card-head p{font-size:var(--fs-xs);color:var(--text-3);margin-top:2px}
+.card-body{overflow:auto;padding:var(--s3) var(--s4) var(--s4);min-height:0;display:flex;flex-direction:column;gap:var(--s3)}
+.sub-title{font-size:var(--fs-sm);font-weight:700;color:var(--text);display:flex;align-items:center;gap:var(--s2)}
+.sub-title .icon{color:var(--brand)}
+.divider{border:0;border-top:1px solid var(--border);margin:0}
+
+/* ── Forms ──────────────────────────────────────────────────────── */
+.hint{font-size:var(--fs-xs);color:var(--text-3);line-height:1.5}
+.field{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
+.field>label,.field>.l{font-weight:600}
+.field>label .opt-tag{font-weight:500;color:var(--text-3);font-size:var(--fs-xs);margin-left:4px}
+.grid-2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s3)}
+.req{color:var(--danger);margin-left:2px}
+.input,select.input,textarea.input{width:100%;min-height:2.3rem;padding:.4rem .65rem;border:1px solid var(--border-strong);border-radius:var(--r-sm);background:var(--bg-input);color:var(--text);transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+textarea.input{resize:vertical;line-height:1.55}
+.input:hover{border-color:var(--text-3)}
+.input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-surface)}
+.input:disabled{opacity:.5;cursor:not-allowed}
+.input[aria-invalid="true"]{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-surface)}
+.field-error{display:flex;gap:var(--s1);align-items:flex-start;color:var(--danger);font-size:var(--fs-xs);font-weight:600}
+.check{display:flex;align-items:flex-start;gap:var(--s2);cursor:pointer}
+.check input{accent-color:var(--brand);width:1.05rem;height:1.05rem;margin:.15rem 0 0;flex:none}
+.check:has(input:disabled){cursor:not-allowed}
+.check:has(input:disabled) .ct{opacity:.55}
+.check .ct b{display:block}
+.switch{position:relative;display:inline-flex;align-items:center;gap:var(--s2);cursor:pointer}
+.switch input{appearance:none;width:2.6rem;height:1.5rem;border-radius:999px;background:var(--border-strong);position:relative;cursor:pointer;transition:background var(--t-fast);margin:0;flex:none}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:calc(1.5rem - 6px);height:calc(1.5rem - 6px);border-radius:50%;background:#fff;transition:transform var(--t-fast);box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch input:checked{background:var(--brand)}
+.switch input:checked::after{transform:translateX(1.1rem)}
+.switch input:disabled{opacity:.45;cursor:not-allowed}
+.switch .state{font-size:var(--fs-xs);color:var(--text-2);font-weight:600}
+.pill{font-family:var(--font-mono);font-size:var(--fs-xs);padding:2px 8px;border-radius:999px;background:var(--bg-sunken);border:1px solid var(--border);white-space:nowrap}
+.slider{display:flex;align-items:center;gap:var(--s3)}
+.slider input{flex:1;accent-color:var(--brand);min-width:0}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:2.3rem;padding:0 var(--s4);border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--bg-surface);color:var(--text);font-weight:600;cursor:pointer;white-space:nowrap;transition:background var(--t-fast),border-color var(--t-fast)}
+.btn:hover{background:var(--bg-hover)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{background:var(--bg-surface)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+.btn.primary:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+.btn.primary:disabled:hover{background:var(--brand)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}
+.btn.ghost:hover{background:var(--bg-hover);color:var(--text)}
+.btn.danger{color:var(--danger);border-color:var(--danger-border)}
+.btn.danger:hover{background:var(--danger-surface)}
+.btn.sm{min-height:2rem;padding:0 var(--s3);font-size:var(--fs-xs)}
+.btn.link{border:0;background:none;padding:0;min-height:0;color:var(--brand-ink);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.btn.link:hover{background:none;color:var(--brand)}
+
+/* ── Status vocabulary: banner · inline error · chip · toast ────── */
+.banner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s2) var(--s3);border:1px solid var(--border);border-left-width:4px;border-radius:var(--r-md);background:var(--bg-surface)}
+.banner>.icon{width:1.3rem;height:1.3rem}
+.banner b{font-weight:700}
+.banner .detail{color:var(--text-2);font-size:var(--fs-xs);margin-top:1px}
+.banner.warn{border-color:var(--warn-border);border-left-color:var(--warn-bar);background:var(--warn-surface)}
+.banner.warn>.icon,.banner.warn b{color:var(--warn)}
+.banner.danger{border-color:var(--danger-border);border-left-color:var(--danger);background:var(--danger-surface)}
+.banner.danger>.icon,.banner.danger b{color:var(--danger)}
+.banner.info{border-color:var(--border);border-left-color:var(--brand);background:var(--brand-surface)}
+.banner.info>.icon,.banner.info b{color:var(--brand-ink)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:1px 9px 1px 7px;border-radius:999px;font-size:.75rem;font-weight:600;border:1px solid var(--border);background:var(--bg-raised);color:var(--text-2);white-space:nowrap}
+.chip .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--idle)}
+.chip .icon{width:.95rem;height:.95rem}
+.chip.ok{color:var(--ok);border-color:var(--ok-border);background:var(--ok-surface)}.chip.ok .dot{background:var(--ok)}
+.chip.warn{color:var(--warn);border-color:var(--warn-border);background:var(--warn-surface)}.chip.warn .dot{background:var(--warn-bar)}
+.chip.danger{color:var(--danger);border-color:var(--danger-border);background:var(--danger-surface)}.chip.danger .dot{background:var(--danger)}
+.chip.busy{color:var(--brand-ink);border-color:var(--brand);background:var(--brand-surface)}
+.chip.neutral{color:var(--text-3)}
+button.chip{cursor:pointer}
+.spin{animation:spin 1s linear infinite;transform-origin:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toasts{position:fixed;right:var(--s6);bottom:var(--s5);display:flex;flex-direction:column;gap:var(--s2);z-index:50;width:min(26rem,calc(100vw - 2rem))}
+.toast{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--s3);align-items:start;padding:var(--s3) var(--s4);border-radius:var(--r-md);background:var(--bg-surface);border:1px solid var(--border);border-left-width:4px;box-shadow:var(--shadow-2);animation:toast-in .22s cubic-bezier(.2,.8,.2,1)}
+.toast>.icon{width:1.3rem;height:1.3rem;margin-top:1px}
+.toast b{display:block}
+.toast .detail{font-size:var(--fs-xs);color:var(--text-2)}
+.toast .acts{display:flex;gap:var(--s1);margin-top:var(--s2)}
+.toast.ok{border-left-color:var(--ok)}.toast.ok>.icon{color:var(--ok)}
+.toast.danger{border-left-color:var(--danger);background:linear-gradient(var(--danger-surface),var(--danger-surface)),var(--bg-surface)}.toast.danger>.icon,.toast.danger b{color:var(--danger)}
+.toast.info{border-left-color:var(--brand)}.toast.info>.icon{color:var(--brand)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.note{display:flex;gap:var(--s2);align-items:flex-start;font-size:var(--fs-xs);color:var(--text-2);padding:var(--s2) var(--s3);border-radius:var(--r-sm);background:var(--bg-sunken)}
+.note .icon{color:var(--brand);margin-top:1px}
+.note.warn{background:var(--warn-surface);color:var(--warn)}
+.note.warn .icon{color:var(--warn)}
+.note.lock .icon{color:var(--text-3)}
+.mini{font-size:.7rem;font-weight:700;padding:0 6px;border-radius:4px;background:var(--bg-sunken);border:1px solid var(--border);color:var(--text-2);white-space:nowrap}
+.mini.main{background:var(--brand-surface);color:var(--brand-ink);border-color:transparent}
+.mini.tool{background:var(--ok-surface);color:var(--ok);border-color:transparent}
+.mini.dirty{background:var(--warn-surface);color:var(--warn);border-color:var(--warn-border)}
+.av{width:2.2rem;height:2.2rem;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;font-size:var(--fs-sm);flex:none}
+.av.lg{width:2.8rem;height:2.8rem;font-size:var(--fs-md)}
+.av.off{background:var(--bg-sunken)!important;color:var(--text-3);border:1.5px dashed var(--border-strong)}
+.av.bad{background:var(--danger-surface)!important;color:var(--danger);border:1.5px dashed var(--danger)}
+
+/* ── Composition segment layout ────────────────────────────────── */
+#seg-compose{grid-template-rows:auto minmax(0,1fr)}
+.comp-bar{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap;padding:var(--s2) var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-surface);box-shadow:var(--shadow-1)}
+.comp-bar label{font-weight:700;white-space:nowrap}
+.comp-bar select{width:auto;min-width:9rem}
+.comp-bar .meta{font-size:var(--fs-xs);color:var(--text-3);white-space:nowrap}
+.comp-bar .spacer{flex:1}
+.count-chip{font-size:var(--fs-xs);font-weight:700;padding:3px 10px;border-radius:999px;background:var(--brand-surface);color:var(--brand-ink);white-space:nowrap}
+.count-chip .num{font-size:var(--fs-sm)}
+.compose-work{display:grid;grid-template-columns:clamp(15rem,17vw,19.5rem) minmax(0,1fr) clamp(16rem,19vw,22rem);gap:var(--s3);min-height:0}
+.aside{display:grid;grid-template-rows:max-content minmax(13rem,1fr);gap:var(--s3);min-height:0;min-width:0;overflow:auto}
+
+/* slot list */
+.slot-group{font-size:var(--fs-xs);font-weight:700;color:var(--text-3);letter-spacing:.04em;display:flex;justify-content:space-between;align-items:center;margin-top:var(--s1)}
+.slots{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s2)}
+.slot{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s3);align-items:start;padding:var(--s2) var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised);cursor:pointer;text-align:left;transition:border-color var(--t-fast),background var(--t-fast)}
+.slot:hover{border-color:var(--border-strong)}
+.slot[aria-current="true"]{border-color:var(--brand);background:var(--brand-surface);box-shadow:inset 0 0 0 1px var(--brand)}
+.slot .top{display:flex;align-items:center;gap:var(--s2);min-width:0}
+.slot .top b{line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot .top .mini{margin-left:auto}
+.slot .sub{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:3px}
+.slot .sub small{color:var(--text-3);font-size:.75rem}
+.slot .why{font-size:.75rem;color:var(--danger);margin-top:3px;line-height:1.4}
+.slot.empty{border-style:dashed;background:transparent;align-items:center}
+.slot.empty .av{background:transparent;border:1.5px dashed var(--border-strong);color:var(--text-3)}
+.slot.empty b{color:var(--text-2);font-weight:600}
+
+/* detail editor */
+.editor{grid-template-rows:auto auto minmax(0,1fr)}
+.ed-head{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--border);min-width:0;flex-wrap:wrap}
+.ed-head .who{display:flex;align-items:center;gap:var(--s3);min-width:0;flex:1}
+.ed-head h3{font-size:var(--fs-lg);font-weight:700;line-height:1.25;display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.ed-head p{font-size:var(--fs-xs);color:var(--text-3)}
+.ed-head .acts{display:flex;align-items:center;gap:var(--s2);flex:none}
+.save-state{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-xs);color:var(--text-3);white-space:nowrap}
+.save-state .icon{color:var(--ok)}
+.save-state.dirty{color:var(--warn);font-weight:700}
+.save-state.dirty .icon{color:var(--warn)}
+.save-state.err{color:var(--danger);font-weight:700}
+.save-state.err .icon{color:var(--danger)}
+.save-state.busy .icon{color:var(--brand)}
+.ed-alerts{display:grid;gap:var(--s2);padding:var(--s3) var(--s4) 0}
+.ed-alerts:empty{padding:0}
+.ed-body{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);min-height:0}
+.col{min-height:0;overflow:auto;padding:var(--s3) var(--s4) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+.col+.col{border-left:1px solid var(--border);background:var(--bg-raised)}
+.block{border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-surface);padding:var(--s3) var(--s4);display:flex;flex-direction:column;gap:var(--s3)}
+.block-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);flex-wrap:wrap}
+.sec-title{display:flex;align-items:center;gap:var(--s2);font-size:var(--fs-sm);font-weight:700;padding-bottom:var(--s1);border-bottom:1px solid var(--border)}
+.sec-title .icon{color:var(--brand)}
+.sec-title .step{font-family:var(--font-mono);font-size:.72rem;color:var(--text-3);font-weight:500;margin-left:auto}
+.compat{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.compat li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s2);font-size:var(--fs-xs);align-items:start}
+.compat li b{font-weight:600;color:var(--text)}
+.compat li span{color:var(--text-3)}
+.compat li.ok>.icon{color:var(--ok)}
+.compat li.bad>.icon{color:var(--danger)}
+.compat li.bad span{color:var(--danger)}
+.trans{display:grid;gap:var(--s2);padding:var(--s2) var(--s3);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-raised)}
+.trans .dir{display:flex;align-items:center;gap:6px;font-weight:700;font-size:var(--fs-xs)}
+.trans .dir .icon{color:var(--brand)}
+.trans .row3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) 5.2rem;gap:var(--s2)}
+.trans .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.2fr);gap:var(--s2)}
+.trans .input{min-height:2rem;padding:.25rem .5rem;font-size:var(--fs-xs)}
+.trans .rm{justify-self:end}
+.aside .trans .row3{grid-template-columns:minmax(0,1fr) 4.5rem}
+.aside .trans .row3>:first-child,.aside .trans .row2>:first-child{grid-column:1/-1}
+.aside .trans .row2{grid-template-columns:minmax(0,1fr)}
+.empty-state{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4)}
+.cand{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:var(--s3);align-items:center;padding:var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised)}
+.cand b{display:block}
+.cand small{color:var(--text-3);font-size:var(--fs-xs)}
+.info-list{margin:0;padding:0;list-style:none;display:grid;gap:var(--s2)}
+.info-list li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s2);font-size:var(--fs-xs);color:var(--text-2)}
+.info-list li .icon{color:var(--brand);margin-top:2px}
+.info-list li b{color:var(--text)}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px var(--s3);font-size:var(--fs-xs)}
+.kv dt{color:var(--text-3)}
+.kv dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+
+/* topology */
+.topo-wrap{padding:var(--s2) var(--s3) var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
+.topo{width:100%;height:auto;max-height:13.5rem;display:block}
+.topo .edge{stroke:var(--brand);stroke-width:1.5;opacity:.45}
+.topo .edge.hot{stroke:var(--ok);stroke-width:2.6;opacity:1}
+.topo marker path{fill:var(--ok)}
+.topo .node{cursor:pointer}
+.topo .node circle.body{stroke-width:1.5}
+.topo .node.live circle.body{stroke:none}
+.topo .node.off circle.body{fill:var(--bg-sunken);stroke:var(--border-strong);stroke-dasharray:3 3}
+.topo .node.bad circle.body{fill:var(--danger-surface);stroke:var(--danger);stroke-dasharray:3 3}
+.topo .node.empty circle.body{fill:transparent;stroke:var(--border-strong);stroke-dasharray:2 3}
+.topo .node .ring{fill:none;stroke:var(--brand);stroke-width:2;opacity:0}
+.topo .node.sel .ring{opacity:1}
+.topo .node:focus{outline:none}
+.topo .node:focus-visible .ring{opacity:1;stroke-dasharray:3 2}
+.topo .ini{font-size:12px;font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.topo .node.off .ini,.topo .node.empty .ini{fill:var(--text-3)}
+.topo .node.bad .ini{fill:var(--danger)}
+.topo .lbl{font-size:10.5px;fill:var(--text-2);font-weight:600;dominant-baseline:central;pointer-events:none}
+.topo .lbl.dim{fill:var(--text-3);font-weight:500}
+.topo .lbl .tg{fill:var(--brand-ink);font-weight:700;font-size:9.5px}
+.legend{display:flex;flex-wrap:wrap;gap:4px var(--s3);font-size:.75rem;color:var(--text-3)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--brand)}
+.legend i.e{opacity:.6}
+.legend i.h{border-top:3px solid var(--ok)}
+.legend i.o{width:10px;height:10px;border-radius:50%;border:1.5px dashed var(--border-strong)}
+.legend i.x{width:10px;height:10px;border-radius:50%;border:1.5px dashed var(--danger)}
+details.adv{border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-surface)}
+details.adv>summary{cursor:pointer;padding:var(--s2) var(--s3);font-weight:700;display:flex;align-items:center;gap:var(--s2);list-style:none}
+details.adv>summary::-webkit-details-marker{display:none}
+details.adv>summary .chev{transition:transform var(--t-fast);color:var(--text-3)}
+details.adv[open]>summary .chev{transform:rotate(90deg)}
+details.adv>summary .pill{margin-left:auto}
+details.adv .adv-body{padding:0 var(--s3) var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
+.add-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto;gap:var(--s2);align-items:center}
+.add-row .icon{color:var(--text-3)}
+.add-row .input{min-height:2rem;padding:.25rem .5rem;font-size:var(--fs-xs)}
+.tag-off{font-size:.7rem;color:var(--text-3);font-weight:500}
+
+/* handoff trial (交接試算) */
+.sim{display:flex;flex-direction:column;gap:var(--s2);border-top:1px solid var(--border);padding-top:var(--s2);margin-top:2px}
+.sim .sub-title small{font-weight:500;color:var(--text-3);font-size:var(--fs-xs)}
+.sim-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:var(--s2)}
+.sim .field{gap:2px}
+.sim .field>label{font-size:var(--fs-xs);font-weight:600;color:var(--text-3)}
+.sim .input{min-height:2rem;padding:.25rem .5rem;font-size:var(--fs-xs)}
+.presets{display:flex;flex-wrap:wrap;gap:4px}
+.presets .chip{font-weight:500;font-size:.72rem;padding:1px 7px}
+.presets .chip[aria-pressed="true"]{color:var(--brand-ink);border-color:var(--brand);background:var(--brand-surface)}
+.sim-out{border:1px solid var(--border);border-left-width:3px;border-radius:var(--r-sm);background:var(--bg-raised);padding:var(--s2) var(--s3);display:grid;gap:3px;font-size:var(--fs-xs);color:var(--text-2)}
+.sim-out.hand{border-left-color:var(--ok)}
+.sim-out.stay{border-left-color:var(--idle)}
+.sim-out.ask{border-left-color:var(--warn-bar)}
+.sim-out .path{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-weight:700;color:var(--text)}
+.sim-out .path .icon{color:var(--text-3)}
+.sim-out .av{width:1.35rem;height:1.35rem;font-size:.68rem}
+.sim-out .path .chip{margin-left:auto}
+.sim-out .say{color:var(--text-3)}
+
+/* other segments */
+#seg-profiles{grid-template-columns:clamp(15rem,18vw,20rem) minmax(0,1fr)}
+#seg-interaction{grid-template-columns:repeat(3,minmax(0,1fr));align-content:start}
+#seg-interaction .card{max-height:100%}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s2)}
+.subnav{display:flex;gap:2px;padding:0 var(--s4);border-bottom:1px solid var(--border);overflow-x:auto}
+.subnav span{display:inline-flex;align-items:center;gap:var(--s2);padding:.55rem .8rem;border-bottom:2px solid transparent;color:var(--text-2);font-weight:600;white-space:nowrap;margin-bottom:-1px}
+.subnav span.on{color:var(--brand-ink);border-bottom-color:var(--brand)}
+.options{display:grid;gap:var(--s2)}
+.opt{position:relative;display:flex;flex-direction:column;gap:2px;padding:var(--s2) var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--bg-raised);cursor:pointer}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt:has(input:checked){border-color:var(--brand);background:var(--brand-surface);box-shadow:inset 0 0 0 1px var(--brand)}
+.opt:has(input:focus-visible){outline:2px solid var(--brand);outline-offset:2px}
+.opt .t{font-weight:700}
+.opt .d{font-size:var(--fs-xs);color:var(--text-3)}
+
+dialog{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--bg-surface);color:var(--text);padding:0;width:min(30rem,calc(100vw - 2rem));box-shadow:var(--shadow-2)}
+dialog::backdrop{background:var(--scrim)}
+dialog .dl-body{padding:var(--s5);display:flex;flex-direction:column;gap:var(--s3)}
+dialog h3{font-size:var(--fs-lg)}
+dialog .dl-acts{display:flex;justify-content:flex-end;gap:var(--s2);padding:var(--s3) var(--s5);border-top:1px solid var(--border);background:var(--bg-raised)}
+
+@media (max-width:1560px){
+  .ed-body{grid-template-columns:minmax(0,1fr);grid-auto-rows:auto;align-content:start;overflow:auto}
+  .ed-body .col{overflow:visible;min-height:auto}
+  .col+.col{border-left:0;border-top:1px solid var(--border)}
+  .comp-bar .meta.wide{display:none}
+}
+@media (max-width:1366px){
+  .demo-group>span{display:none}
+  .proto-tag{display:none}
+  .page-head p{display:none}
+}
+@media (max-height:820px){
+  .page-head{padding:var(--s2) var(--s6) var(--s2)}
+  .page-head h2{font-size:var(--fs-lg)}
+  .panels{padding-bottom:var(--s3)}
+  .rail-head{padding:var(--s3) var(--s4) var(--s2)}
+  .rail-tab{min-height:2.3rem}
+  .rail-status{gap:var(--s1);padding-top:var(--s2);padding-bottom:var(--s3)}
+  .topo{max-height:11rem}
+  .slot{padding:6px var(--s3)}
+}
+@media (max-width:1180px){
+  .panels{overflow:auto}
+  .compose-work{grid-template-columns:minmax(14rem,16rem) minmax(0,1fr)}
+  .aside{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:none;overflow:visible}
+  #seg-interaction{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-greet" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 13.5s-3-1.8-3-3.6A1.6 1.6 0 0 1 12 9a1.6 1.6 0 0 1 3 .9c0 1.8-3 3.6-3 3.6z"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4V8z"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16a6 6 0 0 0 6-6c0-4.9-4.5-8.6-10-8.6z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-circle-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-octagon" viewBox="0 0 24 24"><path d="M7.86 2h8.28L22 7.86v8.28L16.14 22H7.86L2 16.14V7.86z"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></symbol>
+    <symbol id="i-id" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 9h3M15 13h3M6 17c.7-1.3 1.8-2 3-2s2.3.7 3 2"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9z"/></symbol>
+    <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-l" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+    <symbol id="i-user-x" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5M22 8l-5 5"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-wave"/></svg></span>Nova Avatar <small>控制台</small></div>
+    <span class="proto-tag">角色組合原型 · 假資料 · 不連後端</span>
+    <span class="spacer"></span>
+    <div class="demo-group" role="group" aria-label="狀態示範">
+      <span>狀態示範</span>
+      <button type="button" id="demoFail" aria-pressed="false">下一次儲存失敗</button>
+      <button type="button" id="demoReset">重設示範資料</button>
+    </div>
+    <button type="button" class="btn sm" id="themeBtn" aria-label="切換深淺色"></button>
+  </header>
+
+  <div class="app">
+    <aside class="rail">
+      <div class="rail-head">
+        <h1>系統設定中心</h1>
+        <p>管理數位人的回答、知識與舞台體驗</p>
+      </div>
+      <nav class="rail-nav" aria-label="設定分類" id="railNav"></nav>
+      <section class="rail-status" aria-labelledby="sysTitle">
+        <h2 id="sysTitle">系統狀態</h2>
+        <div class="sys-row" data-tone="busy"><svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg><div><b>數位人舞台 #7f3a</b><span>對話中 · 目前由天氣助手回答</span></div></div>
+        <div class="sys-row" data-tone="ok"><svg class="icon" aria-hidden="true"><use href="#i-server"/></svg><div><b>回答模型服務</b><span>llama.cpp 已連線</span></div></div>
+        <div class="sys-row" data-tone="idle"><svg class="icon" aria-hidden="true"><use href="#i-wave"/></svg><div><b>BreezyVoice</b><span>未啟動 · 組合中無人使用</span></div></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="page-head">
+        <div><h2>數位人、AI 與知識設定</h2><p>先建立數位人設定檔，再組成當次角色組合；每位成員（含主數位人）的交接設定與工具各自儲存，角色轉場另外統一設定。</p></div>
+        <div class="segs" role="tablist" aria-label="設定範圍" id="segs">
+          <button type="button" role="tab" id="tab-profiles" aria-controls="seg-profiles" aria-selected="false" tabindex="-1" data-seg="profiles"><svg class="icon" aria-hidden="true"><use href="#i-id"/></svg>數位人設定檔</button>
+          <button type="button" role="tab" id="tab-compose" aria-controls="seg-compose" aria-selected="true" data-seg="compose"><svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>角色組合與交接<span class="cnt" id="segDirty" hidden></span></button>
+          <button type="button" role="tab" id="tab-interaction" aria-controls="seg-interaction" aria-selected="false" tabindex="-1" data-seg="interaction"><svg class="icon" aria-hidden="true"><use href="#i-mic"/></svg>訪客互動與語音辨識</button>
+        </div>
+      </div>
+
+      <div class="panels">
+        <!-- ═══ 1 數位人設定檔（簡示） ═══ -->
+        <section class="seg-panel" id="seg-profiles" role="tabpanel" aria-labelledby="tab-profiles" hidden>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-id"/></svg>數位人設定檔 <span class="pill" id="profCount"></span></h3><p>設定檔是素材；在「角色組合與交接」決定誰上場。</p></div></div>
+            <div class="card-body">
+              <ul class="plist" id="profList" aria-label="選擇要編輯的設定檔"></ul>
+              <hr class="divider">
+              <button type="button" class="btn sm"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>複製為新設定檔</button>
+            </div>
+          </article>
+          <article class="card editor" style="grid-template-rows:auto auto minmax(0,1fr)">
+            <div class="ed-head"><div class="who"><span class="av lg" id="pfAv"></span><div><h3 id="pfName"></h3><p class="mono" id="pfId"></p></div></div><span id="pfRole"></span></div>
+            <div class="subnav" aria-hidden="true"><span class="on"><svg class="icon"><use href="#i-id"/></svg>身分與素材</span><span><svg class="icon"><use href="#i-cpu"/></svg>AI 模型與規則</span><span><svg class="icon"><use href="#i-db"/></svg>RAG 知識文本</span><span><svg class="icon"><use href="#i-wave"/></svg>聲音</span></div>
+            <div class="col">
+              <div class="note"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span>設定檔編輯器沿用已核可的設定中心原型，此處只示意。差異：<b>工具（CWA 天氣）</b>與<b>交接文字</b>移到「角色組合與交接」中的那一位成員，不再放在設定檔裡。</span></div>
+              <dl class="kv" id="pfKv"></dl>
+              <div id="pfCompat"></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- ═══ 2 角色組合與交接 ═══ -->
+        <section class="seg-panel" id="seg-compose" role="tabpanel" aria-labelledby="tab-compose">
+          <div class="comp-bar">
+            <label for="mainSel"><svg class="icon" aria-hidden="true" style="color:var(--brand)"><use href="#i-home"/></svg> 主數位人</label>
+            <select id="mainSel" class="input"></select>
+            <span class="count-chip" id="countChip"></span>
+            <span class="meta wide" id="baseMeta"></span>
+            <button type="button" class="chip warn" id="dirtyChip" hidden></button>
+            <span class="spacer"></span>
+            <span class="meta wide">已儲存的變更由下一場對話採用</span>
+            <button type="button" class="btn sm primary" id="addBtn"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>加入專門數位人</button>
+          </div>
+
+          <div class="compose-work">
+            <!-- master list -->
+            <article class="card">
+              <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>當次角色組合</h3><p>點選一位，在右側編輯並單獨儲存。</p></div></div>
+              <div class="card-body" style="gap:var(--s2)">
+                <div class="slot-group">主數位人</div>
+                <ul class="slots" id="mainList" aria-label="主數位人"></ul>
+                <div class="slot-group"><span>專門數位人</span><span class="mono" id="slotMeta"></span></div>
+                <ul class="slots" id="slotList" aria-label="專門數位人席位"></ul>
+                <p class="hint">任一位可直接交給任一位（含主數位人）。組合成員共用同一套語音合成引擎與回答模型服務；不相容者保留設定但無法啟用。</p>
+              </div>
+            </article>
+
+            <!-- detail -->
+            <article class="card editor" id="detail" aria-live="off"></article>
+
+            <!-- aside: topology + handoff trial + role transitions -->
+            <div class="aside">
+              <article class="card" style="grid-template-rows:auto auto">
+                <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-share"/></svg>交接路線</h3><p>任一位可直接交給任一位；點節點可編輯。</p></div></div>
+                <div class="topo-wrap">
+                  <svg class="topo" id="topo" viewBox="0 0 300 214" role="img" aria-labelledby="topoDesc"><desc id="topoDesc"></desc></svg>
+                  <div class="legend"><span><i class="e"></i>可直接交接</span><span><i class="h"></i>試算路徑</span><span><i class="o"></i>未啟用</span><span><i class="x"></i>不相容</span></div>
+                  <div class="sim" id="simCard"></div>
+                </div>
+              </article>
+              <article class="card" id="interCard"></article>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ 3 訪客互動與語音辨識（全域，簡示） ═══ -->
+        <section class="seg-panel" id="seg-interaction" role="tabpanel" aria-labelledby="tab-interaction" hidden>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>訪客清場</h3><p>全域設定，不隨角色組合變動。</p></div><button type="button" class="btn sm" data-apply="訪客清場時間已套用">套用</button></div>
+            <div class="card-body">
+              <div class="field"><label for="vReset">訪客對話重置時間</label>
+                <div class="slider"><input id="vReset" type="range" min="30" max="600" step="10" value="120" data-pill="vResetV" data-unit=" 秒"><span class="pill" id="vResetV">120 秒</span></div>
+                <span class="hint">清除本場記憶、附件與草稿，並返回主數位人。</span></div>
+              <div class="field"><label for="vClear">只清畫面時間（保留記憶與附件）</label>
+                <div class="slider"><input id="vClear" type="range" min="10" max="300" step="5" value="45" data-pill="vClearV" data-unit=" 秒"><span class="pill" id="vClearV">45 秒</span></div></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-wave"/></svg>Silero VAD 語音端點偵測</h3><p>自動判斷發話開始與停頓。</p></div><button type="button" class="btn sm" data-apply="VAD 已更新">套用 VAD</button></div>
+            <div class="card-body">
+              <span class="chip ok" style="align-self:flex-start"><svg class="icon" aria-hidden="true"><use href="#i-circle-check"/></svg>Silero VAD 已生效</span>
+              <div class="field"><label for="vadTh">發話判定門檻</label>
+                <div class="slider"><input id="vadTh" type="range" min="0.1" max="0.9" step="0.05" value="0.5" data-pill="vadThV"><span class="pill" id="vadThV">0.5</span></div>
+                <span class="hint">閥值愈高抗噪愈佳，建議 0.45–0.55</span></div>
+              <div class="field"><label for="vadMs">最小靜音判定時間</label>
+                <div class="slider"><input id="vadMs" type="range" min="200" max="2000" step="50" value="600" data-pill="vadMsV" data-unit=" ms"><span class="pill" id="vadMsV">600 ms</span></div></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-mic"/></svg>語音辨識</h3><p>所有角色共用同一個辨識引擎。</p></div><button type="button" class="btn sm" data-apply="語音辨識已套用">套用語音辨識</button></div>
+            <div class="card-body">
+              <div class="options" role="radiogroup" aria-label="語音辨識引擎">
+                <label class="opt"><input type="radio" name="stt" checked><span class="t">Whisper</span><span class="d">預設 · 中英文 · MIT</span></label>
+                <label class="opt"><input type="radio" name="stt"><span class="t">Fun-ASR-Nano-2512</span><span class="d">中英混說 · Apache-2.0 · 較慢</span></label>
+              </div>
+              <div class="field"><label for="sttModel">辨識模型</label><select id="sttModel" class="input mono"><option>small</option><option>large-v3-turbo</option></select></div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<dialog id="dlg"><form method="dialog"><div class="dl-body"><h3 id="dlgTitle"></h3><div id="dlgText" class="hint" style="font-size:var(--fs-sm);color:var(--text-2)"></div></div><div class="dl-acts"><button class="btn ghost" value="cancel">取消</button><button class="btn primary" value="ok" id="dlgOk"></button></div></form></dialog>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s)
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)]
+  const ic = id => `<svg class="icon" aria-hidden="true"><use href="#${id}"/></svg>`
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+  const clone = o => o == null ? o : JSON.parse(JSON.stringify(o))
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  const now = () => new Date().toTimeString().slice(0, 5)
+
+  /* ── Fake profiles (數位人設定檔) ─────────────────────────────── */
+  const LLM = 'llama.cpp · gemma-4-E2B'
+  const P = {
+    reception: { name: '接待員', tts: 'Edge TTS', voice: 'zh-TW-HsiaoChenNeural', llm: LLM, color: '#3b5bdb', avatar: 'nova-front-desk' },
+    weather:   { name: '天氣助手', tts: 'Edge TTS', voice: 'zh-TW-YunJheNeural', llm: LLM, color: '#0e7d63', avatar: 'nova-weather' },
+    transit:   { name: '交通導覽', tts: 'Edge TTS', voice: 'zh-TW-HsiaoYuNeural', llm: LLM, color: '#b0521a', avatar: 'nova-transit' },
+    exhibit:   { name: '展覽介紹', tts: 'Edge TTS', voice: 'zh-TW-HsiaoChenNeural', llm: LLM, color: '#7647c2', avatar: 'nova-gallery' },
+    multi:     { name: '多語導覽', tts: 'BreezyVoice', voice: '參考音檔：導覽員女聲', llm: LLM, color: '#a33a63', avatar: 'nova-guide' },
+    service:   { name: '客服小幫手', tts: 'Edge TTS', voice: 'zh-TW-HsiaoYuNeural', llm: LLM, color: '#2f7a99', avatar: 'nova-service' },
+    english:   { name: 'English Host', tts: 'Edge TTS', voice: 'en-US-JennyNeural', llm: LLM, color: '#5b6577', avatar: 'nova-host-en' }
+  }
+  const EFFECTS = { fade: '淡入淡出', slide_left: '向左滑動', slide_right: '向右滑動', zoom: '縮放' }
+  const VIDEOS = ['雲層轉場.mp4 · 0.80 秒', '城市街景.mp4 · 1.20 秒', '展廳光暈.webm · 1.00 秒']
+  const fx = (effect = 'fade', dur = 0.6) => ({ kind: 'effect', effect, dur, asset: '' })
+
+  function seed() {
+    const slot = (profile, o) => ({ profile, enabled: true, desc: '', when: '', ann: '', annEn: '', weather: false, county: '', town: '', ...o })
+    const S = [
+      slot('weather', { desc: '負責臺灣各地即時天氣、降雨機率、氣溫與穿著建議。', when: '訪客詢問天氣、氣溫、降雨、颱風或「要不要帶傘」時交給天氣助手。', ann: '這題我請天氣助手來回答，請稍等一下。', annEn: "Let me hand you over to our weather assistant.", weather: true, county: '臺北市', town: '信義區' }),
+      slot('transit', { desc: '熟悉捷運、公車、YouBike 與停車資訊，說明如何抵達與離開展場。', when: '訪客詢問怎麼到達、搭車、停車或附近站點時交給交通導覽。', ann: '交通的問題我請交通導覽說明。', annEn: '' }),
+      slot('service', { desc: '處理訂單查詢、退換貨、發票與會員點數。', when: '訪客詢問訂單、退貨、退款、發票或會員點數時交給客服小幫手。', ann: '這部分我請客服小幫手協助您。', annEn: 'Let me get our customer service helper for you.' }),
+      slot('exhibit', { enabled: false, desc: '介紹本季常設展與特展的展品故事與導覽場次。', when: '訪客詢問展品、展區或導覽場次時交給展覽介紹。', ann: '展覽的部分我請展覽介紹來說明。' }),
+      null
+    ]
+    const mainCfg = { handoff: true, desc: '一般接待，以及其他角色都不負責的問題', when: '問題不屬於任何其他角色的專長，或訪客要求回到接待員時，交給接待員。', ann: '這題我請接待員來回答。', annEn: '' }
+    return {
+      main: 'reception',
+      mainCfg: { saved: clone(mainCfg), draft: clone(mainCfg), savedAt: '14:20', status: 'idle', err: '' },
+      slots: S.map(s => ({ saved: clone(s), draft: clone(s), savedAt: s ? '14:20' : '', status: 'idle', err: '' })),
+      inter: { saved: { def: fx('fade', 0.5), ov: [{ src: 'service', dst: 'weather', ...fx(), kind: 'video', asset: VIDEOS[1] }, { src: 'main', dst: 'weather', ...fx(), kind: 'video', asset: VIDEOS[0] }] }, savedAt: '14:20', status: 'idle', err: '' }
+    }
+  }
+  let st = seed(); st.inter.draft = clone(st.inter.saved)
+  let sel = 'main'           // 'main' | 0..4
+  let failNext = false
+
+  /* ── Derived rules ────────────────────────────────────────────── */
+  const inUse = () => new Set([st.main, ...st.slots.flatMap(s => [s.saved?.profile, s.draft?.profile]).filter(Boolean)])
+  function compat(pid) {
+    const p = P[pid], m = P[st.main], r = []
+    if (p.tts !== m.tts) r.push({ k: '語音合成引擎', bad: `${p.tts}，組合使用 ${m.tts}` })
+    else r.push({ k: '語音合成引擎', ok: `${p.tts}（與${m.name}相同）` })
+    if (p.llm !== m.llm) r.push({ k: '回答模型服務', bad: `${p.llm}，組合使用 ${m.llm}` })
+    else r.push({ k: '回答模型服務', ok: `${p.llm}（與${m.name}相同）` })
+    r.push({ k: '唇形引擎', ok: 'MuseTalk · 綠幕素材' })
+    return { ok: !r.some(x => x.bad), rows: r, reason: r.filter(x => x.bad).map(x => `${x.k}不同：${x.bad}`).join('；') }
+  }
+  const live = s => !!(s.saved && s.saved.enabled && compat(s.saved.profile).ok && st.mainCfg.saved.handoff)
+  const enabledCount = () => st.slots.filter(live).length
+  const weatherHolder = () => st.slots.findIndex(s => s.saved?.weather)
+  const dirty = s => !same(s.saved, s.draft)
+  const dirtyList = () => [...(dirty(st.mainCfg) ? ['main'] : []), ...st.slots.map((s, i) => dirty(s) ? i : -1).filter(i => i >= 0), ...(dirty(st.inter) ? ['inter'] : [])]
+  const nameOf = k => k === 'main' ? P[st.main].name : k === 'inter' ? '角色轉場' : P[st.slots[k].draft?.profile]?.name
+
+  /* ── Rail (no 返回控制台; 訪客互動與語音辨識 is now a segment here) ── */
+  const rail = [['i-chat', '對話記憶與語系'], ['i-users', '數位人、AI 與知識設定', true], ['i-greet', '閒置招呼'], ['i-video', '數位人與畫質', 'MuseTalk'], ['i-layout', '舞台與看板排版'], ['i-palette', '系統偏好與自訂']]
+  $('#railNav').innerHTML = rail.map(([i, l, x]) => `<button type="button" class="rail-tab" ${x === true ? 'aria-current="page"' : ''}>${ic(i)}<span class="label">${l}</span>${typeof x === 'string' ? `<span class="tag">${x}</span>` : ''}</button>`).join('')
+  $('#railNav').addEventListener('click', e => { const b = e.target.closest('.rail-tab'); if (b && !b.hasAttribute('aria-current')) toast('info', '原型只包含這一頁', '其他分類沿用已核可的設定中心原型。') })
+
+  /* ── Segments ─────────────────────────────────────────────────── */
+  function selectSeg(id, focus) {
+    $$('#segs [role=tab]').forEach(b => { const on = b.dataset.seg === id; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus() })
+    $$('.seg-panel').forEach(p => { p.hidden = p.id !== 'seg-' + id })
+    if (id === 'profiles') renderProfiles()
+  }
+  $('#segs').addEventListener('click', e => { const b = e.target.closest('[role=tab]'); if (b) selectSeg(b.dataset.seg) })
+  $('#segs').addEventListener('keydown', e => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return
+    const t = $$('#segs [role=tab]'), i = t.findIndex(b => b.getAttribute('aria-selected') === 'true')
+    selectSeg(t[(i + (e.key === 'ArrowRight' ? 1 : t.length - 1)) % t.length].dataset.seg, true)
+  })
+
+  /* ── Composition bar ──────────────────────────────────────────── */
+  function renderBar() {
+    const used = new Set(st.slots.map(s => s.saved?.profile).filter(Boolean))
+    $('#mainSel').innerHTML = Object.entries(P).map(([id, p]) => `<option value="${id}" ${id === st.main ? 'selected' : ''} ${used.has(id) ? 'disabled' : ''}>${p.name}${used.has(id) ? '（已是專門數位人）' : ''}</option>`).join('')
+    $('#countChip').innerHTML = `已啟用 <span class="num">${enabledCount()}</span>／5`
+    const m = P[st.main]
+    $('#baseMeta').textContent = `共用：${m.tts} · ${m.llm}`
+    const empty = st.slots.findIndex(s => !s.draft)
+    $('#addBtn').disabled = empty < 0
+    $('#addBtn').title = empty < 0 ? '已有 5 位專門數位人；先移出一位才能加入' : ''
+    const d = dirtyList()
+    $('#dirtyChip').hidden = !d.length
+    $('#dirtyChip').innerHTML = `${ic('i-alert')}${d.length} 處未儲存：${d.map(nameOf).join('、')}`
+    $('#segDirty').hidden = !d.length
+    $('#segDirty').textContent = d.length
+  }
+  $('#dirtyChip').addEventListener('click', () => { const d = dirtyList()[0]; if (d === 'inter') $('#interCard').scrollIntoView({ block: 'nearest' }); else select(d) })
+  $('#addBtn').addEventListener('click', () => { const i = st.slots.findIndex(s => !s.draft); if (i >= 0) select(i) })
+  $('#mainSel').addEventListener('change', async e => {
+    const to = e.target.value, prev = st.main
+    st.main = to
+    const broken = st.slots.filter(s => s.saved?.enabled && !compat(s.saved.profile).ok).map(s => P[s.saved.profile].name)
+    st.main = prev
+    const ok = await ask('更換主數位人？', `改由「${P[to].name}」為每場對話開場，並在沒有其他角色適合時接手（開場／兜底）。主數位人的專長介紹、交接規則與交接說明保留，請確認仍適用。<br>${broken.length ? `<b style="color:var(--danger)">${broken.join('、')}</b> 與新的主數位人不相容，將改為未啟用（設定保留）。` : '所有已啟用的專門數位人仍相容。'}<br>正在進行的對話維持原組合，下一場對話開始生效。`, '更換並儲存')
+    if (!ok) { e.target.value = prev; return }
+    st.main = to
+    st.slots.forEach(s => { if (s.saved?.enabled && !compat(s.saved.profile).ok) { s.saved.enabled = false; s.draft.enabled = false } })
+    toast('ok', `主數位人已改為「${P[to].name}」`, broken.length ? `${broken.join('、')} 已改為未啟用。` : '專門數位人的草稿不受影響。')
+    renderAll()
+  })
+
+  /* ── Master list ──────────────────────────────────────────────── */
+  function slotItem(s, i) {
+    if (!s.draft) return `<li><button type="button" class="slot empty" data-sel="${i}" ${sel === i ? 'aria-current="true"' : ''}><span class="av">${ic('i-plus')}</span><span><b>空位 ${i + 1}</b><span class="sub"><small>加入專門數位人</small></span></span></button></li>`
+    const d = s.draft, p = P[d.profile], c = compat(d.profile)
+    const state = !c.ok ? `<span class="chip danger">${ic('i-circle-x')}不相容</span>` : s.saved?.enabled ? (live(s) ? `<span class="chip ok"><span class="dot"></span>已啟用</span>` : `<span class="chip neutral"><span class="dot"></span>交接已關閉</span>`) : s.saved ? `<span class="chip neutral"><span class="dot"></span>未啟用 · 保留設定</span>` : `<span class="chip neutral"><span class="dot"></span>尚未儲存</span>`
+    const avCls = !c.ok ? 'bad' : (s.saved?.enabled ? '' : 'off')
+    return `<li><button type="button" class="slot" data-sel="${i}" ${sel === i ? 'aria-current="true"' : ''}>
+      <span class="av ${avCls}" style="background:${p.color}">${p.name[0]}</span>
+      <span style="min-width:0"><span class="top"><b>${p.name}</b>${dirty(s) ? '<span class="mini dirty">未儲存</span>' : ''}</span>
+      <span class="sub">${state}${s.saved?.weather ? `<span class="mini tool">${ic('i-cloud')} 天氣</span>` : ''}<small>${p.tts}</small></span>
+      ${!c.ok ? `<span class="why">${esc(c.reason)}</span>` : ''}</span></button></li>`
+  }
+  function renderList() {
+    const m = P[st.main]
+    $('#mainList').innerHTML = `<li><button type="button" class="slot" data-sel="main" ${sel === 'main' ? 'aria-current="true"' : ''}><span class="av" style="background:${m.color}">${m.name[0]}</span><span style="min-width:0"><span class="top"><b>${m.name}</b>${dirty(st.mainCfg) ? '<span class="mini dirty">未儲存</span>' : '<span class="mini main">開場／兜底</span>'}</span><span class="sub"><small>相容基準：${m.tts} · ${m.llm.split(' · ')[1]}</small></span></span></button></li>`
+    $('#slotList').innerHTML = st.slots.map(slotItem).join('')
+    $('#slotMeta').textContent = `${st.slots.filter(s => s.draft).length}／5 席`
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('[data-sel]'); if (b) select(b.dataset.sel === 'main' ? 'main' : +b.dataset.sel) })
+  function select(k) { sel = k; renderList(); renderDetail(); renderTopo() }
+
+  /* ── Detail helpers ───────────────────────────────────────────── */
+  const fid = k => 'f-' + k.replace(/\./g, '-')
+  function saveState(o) {
+    if (o.status === 'saving') return `<span class="save-state busy" role="status"><svg class="icon spin" aria-hidden="true"><use href="#i-loader"/></svg>儲存中…</span>`
+    if (o.status === 'error') return `<span class="save-state err" role="status">${ic('i-octagon')}儲存失敗，草稿仍保留</span>`
+    if (dirty(o)) return `<span class="save-state dirty" role="status">${ic('i-alert')}有未儲存的變更</span>`
+    return o.savedAt ? `<span class="save-state" role="status">${ic('i-circle-check')}已儲存 · <span class="num">${o.savedAt}</span></span>` : ''
+  }
+  const saveBtns = (o, scope, label = '儲存這位') => `<button type="button" class="btn sm ghost" data-revert="${scope}" ${dirty(o) && o.status !== 'saving' ? '' : 'disabled'}>${ic('i-refresh')}還原</button><button type="button" class="btn sm primary" data-save="${scope}" ${dirty(o) && o.status !== 'saving' ? '' : 'disabled'}>${ic('i-check')}${label}</button>`
+  const ta = (k, v, label, o = {}) => `<div class="field"><label for="${fid(k)}">${label}${o.req ? '<span class="req" aria-hidden="true">*</span>' : ''}${o.opt ? '<span class="opt-tag">選填</span>' : ''}</label><textarea id="${fid(k)}" class="input" rows="${o.rows || 2}" data-k="${k}" placeholder="${esc(o.ph || '')}" ${o.err ? `aria-invalid="true" aria-describedby="${fid(k)}-e"` : ''}>${esc(v)}</textarea>${o.err ? `<span class="field-error" id="${fid(k)}-e">${ic('i-alert')}${o.err}</span>` : ''}${o.hint ? `<span class="hint">${o.hint}</span>` : ''}</div>`
+  function transEditor(k, t, from, to, extra = '') {
+    const opts = Object.entries(EFFECTS).map(([v, l]) => `<option value="${v}" ${t.effect === v ? 'selected' : ''}>${l}</option>`).join('')
+    return `<div class="trans"><div class="dir">${esc(from)} ${ic('i-arrow-r')} ${esc(to)}${extra}</div>
+      <div class="${t.kind === 'effect' ? 'row3' : 'row2'}">
+        <select class="input" data-k="${k}.kind" id="${fid(k + '.kind')}" aria-label="${esc(from)}到${esc(to)}的轉場類型"><option value="effect" ${t.kind === 'effect' ? 'selected' : ''}>內建特效</option><option value="video" ${t.kind === 'video' ? 'selected' : ''}>自訂影片</option></select>
+        ${t.kind === 'effect'
+          ? `<select class="input" data-k="${k}.effect" id="${fid(k + '.effect')}" aria-label="特效">${opts}</select><input class="input num" type="number" min="0.2" max="2" step="0.1" value="${t.dur}" data-k="${k}.dur" id="${fid(k + '.dur')}" aria-label="時長（秒，0.2–2）" title="時長（秒）">`
+          : `<select class="input" data-k="${k}.asset" id="${fid(k + '.asset')}" aria-label="轉場影片">${VIDEOS.map(v => `<option ${t.asset === v ? 'selected' : ''}>${v}</option>`).join('')}</select>`}
+      </div></div>`
+  }
+
+  /* ── Handoff fields: identical for every member, main included ── */
+  function handoffFields(o, name, isMain) {
+    const d = o.draft
+    return `<div class="sec-title">${ic('i-arrow-r')}交給${name}<span class="step">任一位 → ${name}</span></div>
+        ${ta('desc', d.desc, '專長介紹', { rows: 2, ph: isMain ? '例：一般接待，以及其他角色都不負責的問題' : '例：負責天氣、降雨與氣溫問題。', hint: '每一輪判斷時，組合中所有已啟用的角色（含主數位人）都會讀到。' })}
+        ${ta('when', d.when, '何時交給它（交接規則）', { rows: 3, ph: isMain ? '例：問題不屬於任何其他角色的專長時交給這位。' : '例：訪客詢問天氣、降雨或氣溫時交給這位。' })}
+        <div class="grid-2">
+          ${ta('ann', d.ann, '交接說明 · 中文', { req: true, err: o.errAnn ? '請填寫中文交接說明；交接前會先說這句。' : '', hint: `由目前的角色說出；不論從哪一位交給${name}都用這一句。` })}
+          ${ta('annEn', d.annEn, '交接說明 · 英文', { opt: true, ph: '空白時使用內建英文說明' })}
+        </div>`
+  }
+
+  /* ── Detail: main role ────────────────────────────────────────── */
+  function mainDetail() {
+    const m = P[st.main], o = st.mainCfg, d = o.draft
+    return `<div class="ed-head"><div class="who"><span class="av lg" style="background:${m.color}">${m.name[0]}</span><div><h3>${m.name}<span class="mini main">主數位人 · 開場／兜底</span></h3><p>設定檔 <span class="mono">${st.main}</span> · 在上方「主數位人」更換</p></div></div><div class="acts"><span class="ss">${saveState(o)}</span>${saveBtns(o, 'main')}</div></div>
+    <div class="ed-alerts">${!d.handoff ? `<div class="banner warn">${ic('i-alert')}<div><b>角色交接已關閉</b><div class="detail">只有${m.name}回答訪客；其他角色保留設定但不接手。</div></div><span></span></div>` : ''}${o.status === 'error' ? `<div class="banner danger">${ic('i-octagon')}<div><b>儲存失敗：設定已被另一個控制台更新</b><div class="detail">${esc(o.err)} 你的草稿仍保留；其他位不受影響。</div></div><button type="button" class="btn sm" data-save="main">重試</button></div>` : ''}</div>
+    <div class="ed-body">
+      <div class="col">
+        ${handoffFields(o, m.name, true)}
+        <div class="sec-title">${ic('i-info')}何時交接</div>
+        <ul class="info-list">
+          <li>${ic('i-chat')}<span><b>追問留在目前的角色</b>：延續上一題的追問（例如「那後天呢？」）由正在回答的角色繼續。</span></li>
+          <li>${ic('i-arrow-r')}<span><b>明確換了主題才交接</b>：每一輪都考量所有已啟用的角色（含${m.name}），直接交給最適合的一位，不必先回到${m.name}。</span></li>
+          <li>${ic('i-alert')}<span><b>主題混雜時先問訪客</b>：同時涉及多位角色又無法判斷時，先請訪客確認優先主題。</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="block">
+          <div class="block-head"><span class="sub-title">${ic('i-share')}角色交接</span>
+            <label class="switch"><input type="checkbox" data-k="handoff" id="f-handoff" ${d.handoff ? 'checked' : ''}><span class="state">${d.handoff ? '啟用角色交接' : '角色交接已關閉'}</span></label></div>
+          <p class="hint">關閉後只由${m.name}回答，等同單角色模式；各角色的設定都保留，重新開啟即恢復。</p></div>
+        <div class="block"><div class="sub-title">${ic('i-home')}開場／兜底</div>
+          <ul class="info-list">
+            <li>${ic('i-chat')}<span>每場對話由<b>${m.name}</b>開場。</span></li>
+            <li>${ic('i-arrow-l')}<span><b>反向角色交接</b>：問題不屬於組合中任何一位專門數位人時，自動交回${m.name}接續回答原問題。</span></li>
+            <li>${ic('i-arrow-l')}<span>訪客選擇返回，或<b>訪客對話重置</b>（閒置 120 秒）時，回到${m.name}。</span></li>
+          </ul></div>
+        <div class="block"><div class="sub-title">${ic('i-lock')}組合共用服務（相容基準）</div>
+          <dl class="kv"><dt>語音合成引擎</dt><dd>${m.tts}</dd><dt>回答模型服務</dt><dd class="mono">${m.llm}</dd><dt>唇形引擎</dt><dd>MuseTalk</dd></dl>
+          <p class="hint">專門數位人必須與這三項相同才能啟用。要改基準，請到「數位人設定檔」修改${m.name}。</p></div>
+        <div class="block"><div class="sub-title">${ic('i-wave')}預設聲音</div>
+          <p class="hint" style="color:var(--text-2)">尚未套用任何數位人設定檔時，數位人也使用${m.name}的聲音：<span class="mono">${m.tts} · ${m.voice}</span>。</p>
+          <button type="button" class="btn link" data-goto-profile="${st.main}">到數位人設定檔編輯聲音</button></div>
+        <div class="note">${ic('i-greet')}<span>閒置招呼只由主數位人播放；內容在「閒置招呼」頁設定。</span></div>
+      </div>
+    </div>`
+  }
+
+  /* ── Detail: empty slot ───────────────────────────────────────── */
+  function emptyDetail(i) {
+    const used = inUse()
+    const cands = Object.keys(P).filter(id => !used.has(id))
+    return `<div class="ed-head"><div class="who"><span class="av lg" style="background:transparent;border:1.5px dashed var(--border-strong);color:var(--text-3)">${ic('i-plus')}</span><div><h3>空位 ${i + 1}</h3><p>選一份數位人設定檔加入當次角色組合</p></div></div></div>
+    <div class="ed-alerts"></div>
+    <div class="col"><div class="empty-state" style="padding:0">
+      ${cands.length ? cands.map(id => { const p = P[id], c = compat(id); return `<div class="cand"><span class="av" style="background:${p.color}">${p.name[0]}</span><div><b>${p.name}</b><small>${p.tts} · ${p.llm}</small>${c.ok ? '' : `<div class="field-error" style="margin-top:2px">${ic('i-circle-x')}${esc(c.reason)}</div>`}</div><button type="button" class="btn sm ${c.ok ? 'primary' : ''}" data-add="${id}" data-slot="${i}">${ic('i-plus')}加入${c.ok ? '' : '（無法啟用）'}</button></div>` }).join('') : '<p class="hint">所有設定檔都已在組合中。先到「數位人設定檔」複製一份。</p>'}
+      <p class="hint">加入後預設為未啟用；填好交接規則與交接說明並按「儲存這位」，再開啟啟用。</p>
+    </div></div>`
+  }
+
+  /* ── Detail: specialist slot ──────────────────────────────────── */
+  function slotDetail(i) {
+    const s = st.slots[i], d = s.draft, p = P[d.profile], c = compat(d.profile), m = P[st.main]
+    const holder = weatherHolder(), lockedWeather = holder >= 0 && holder !== i
+    const used = inUse()
+    const profOpts = Object.keys(P).filter(id => id === d.profile || !used.has(id)).map(id => `<option value="${id}" ${id === d.profile ? 'selected' : ''}>${P[id].name}</option>`).join('')
+    const alerts = []
+    if (!c.ok) alerts.push(`<div class="banner danger">${ic('i-octagon')}<div><b>無法啟用：與主數位人不相容</b><div class="detail">${esc(c.reason)}。設定仍可編輯與儲存，但不參與交接。</div></div><button type="button" class="btn sm" data-goto-profile="${d.profile}">修改設定檔</button></div>`)
+    else if (!s.saved) alerts.push(`<div class="banner info">${ic('i-info')}<div><b>新加入，尚未儲存</b><div class="detail">按「儲存這位」後才會出現在交接路線中。</div></div><span></span></div>`)
+    if (s.status === 'error') alerts.push(`<div class="banner danger">${ic('i-octagon')}<div><b>儲存失敗：設定已被另一個控制台更新</b><div class="detail">${esc(s.err)} 你的草稿仍保留；其他位不受影響。</div></div><button type="button" class="btn sm" data-save="${i}">重試</button></div>`)
+    const enabledState = d.enabled && c.ok
+    return `<div class="ed-head"><div class="who"><span class="av lg ${!c.ok ? 'bad' : d.enabled ? '' : 'off'}" style="background:${p.color}">${p.name[0]}</span><div><h3>${p.name}<span class="mini">專門 #${i + 1}</span></h3><p>設定檔 <span class="mono">${d.profile}</span> · ${p.tts} · ${p.voice}</p></div></div><div class="acts"><span class="ss">${saveState(s)}</span>${saveBtns(s, i)}</div></div>
+    <div class="ed-alerts">${alerts.join('')}</div>
+    <div class="ed-body">
+      <div class="col">
+        ${handoffFields(s, p.name, false)}
+        <p class="hint">專長內的追問留在這位；不屬於任何角色的問題自動交回${m.name}（反向角色交接）。</p>
+      </div>
+      <div class="col">
+        <div class="block">
+          <div class="block-head"><span class="sub-title">啟用與相容</span>
+            <label class="switch"><input type="checkbox" data-k="enabled" id="f-enabled" ${enabledState ? 'checked' : ''} ${c.ok ? '' : 'disabled aria-describedby="enWhy"'}><span class="state">${!c.ok ? '無法啟用' : d.enabled ? '已啟用' : '未啟用'}</span></label></div>
+          ${!c.ok ? `<span class="hint" id="enWhy" style="color:var(--danger)">先讓這份設定檔改用 ${m.tts} 與相同回答模型服務。</span>` : !d.enabled ? '<span class="hint">未啟用：保留全部設定，但不參與交接。</span>' : ''}
+          <div class="field"><label for="f-profile">使用的數位人設定檔</label><select class="input" id="f-profile" data-k="profile">${profOpts}</select></div>
+          <ul class="compat" aria-label="與主數位人的相容性">${c.rows.map(r => `<li class="${r.bad ? 'bad' : 'ok'}">${ic(r.bad ? 'i-circle-x' : 'i-circle-check')}<div><b>${r.k}</b> <span>${esc(r.bad || r.ok)}</span></div></li>`).join('')}</ul>
+        </div>
+        <div class="block">
+          <span class="sub-title">${ic('i-cloud')}工具</span>
+          <label class="check"><input type="checkbox" data-k="weather" id="f-weather" ${d.weather && !lockedWeather ? 'checked' : ''} ${lockedWeather ? 'disabled aria-describedby="wxWhy"' : ''}><span class="ct"><b>CWA 天氣查詢</b><span class="hint">中央氣象署開放資料 · 授權碼已設定</span></span></label>
+          ${lockedWeather
+            ? `<div class="note lock" id="wxWhy">${ic('i-lock')}<span>天氣工具目前由「${P[st.slots[holder].saved.profile].name}」提供，一個組合同時只限一位。要改給這位，請先在${P[st.slots[holder].saved.profile].name}取消並儲存。 <button type="button" class="btn link" data-sel="${holder}">前往${P[st.slots[holder].saved.profile].name}</button></span></div>`
+            : d.weather ? `<div class="field"><span class="l" style="font-weight:600">${ic('i-pin')} 場域預設地點</span>
+                <div class="grid-2"><div class="field"><label for="f-county" class="hint">縣市</label><select class="input" id="f-county" data-k="county">${['', '臺北市', '新北市', '桃園市', '臺中市', '臺南市', '高雄市'].map(v => `<option value="${v}" ${d.county === v ? 'selected' : ''}>${v || '（不設定）'}</option>`).join('')}</select></div>
+                <div class="field"><label for="f-town" class="hint">鄉鎮市區</label><input class="input" id="f-town" data-k="town" value="${esc(d.town)}" placeholder="例：信義區"></div></div>
+                <span class="hint">訪客沒說地點時查這裡；訪客臨時指定的地點只屬於該場對話。留白時會先向訪客確認。</span></div>`
+            : '<span class="hint">組合中目前沒有人提供天氣查詢。勾選後由這位負責，其他位會鎖定。</span>'}
+        </div>
+        <div class="note">${ic('i-film')}<span>交給或離開${p.name}時的視覺銜接，在右側「角色轉場」統一設定。</span></div>
+        <button type="button" class="btn sm danger" style="align-self:flex-start" data-remove="${i}">${ic('i-user-x')}移出組合</button>
+      </div>
+    </div>`
+  }
+
+  function renderDetail(keepFocus) {
+    const f = keepFocus && document.activeElement?.id
+    $('#detail').innerHTML = sel === 'main' ? mainDetail() : st.slots[sel].draft ? slotDetail(sel) : emptyDetail(sel)
+    if (f && document.getElementById(f)) document.getElementById(f).focus()
+  }
+  function syncActs(root, o) {
+    if (!root) return
+    $$('[data-save],[data-revert]', root).forEach(b => { b.disabled = !(dirty(o) && o.status !== 'saving') })
+    const ss = $('.ss', root); if (ss) ss.innerHTML = saveState(o)
+  }
+  const refreshHeader = () => syncActs($('#detail .ed-head .acts'), sel === 'main' ? st.mainCfg : st.slots[sel])
+
+  /* ── Draft editing (only the edited role becomes dirty) ──────── */
+  function setPath(obj, path, v) { const ks = path.split('.'); const last = ks.pop(); const t = ks.reduce((a, k) => a[k], obj); t[last] = v }
+  function readVal(el) { return el.type === 'checkbox' ? el.checked : el.type === 'number' ? Math.min(2, Math.max(0.2, +el.value || 0.2)) : el.value }
+  $('#detail').addEventListener('input', e => {
+    const el = e.target.closest('[data-k]'); if (!el || el.tagName === 'SELECT' || el.type === 'checkbox') return
+    const o = sel === 'main' ? st.mainCfg : st.slots[sel]
+    setPath(o.draft, el.dataset.k, el.type === 'number' ? +el.value : el.value)
+    if (el.dataset.k === 'ann' && el.value.trim() && o.errAnn) { o.errAnn = false; renderDetail(true) }
+    if (o.status === 'error') o.status = 'idle'
+    refreshHeader(); renderList(); renderBar()
+  })
+  $('#detail').addEventListener('change', e => {
+    const el = e.target.closest('[data-k]'); if (!el) return
+    const o = sel === 'main' ? st.mainCfg : st.slots[sel]
+    let v = readVal(el)
+    if (el.dataset.k === 'town') { v = v.replace(/台/g, '臺'); el.value = v }
+    setPath(o.draft, el.dataset.k, v)
+    if (el.tagName === 'TEXTAREA' || el.type === 'text' || el.type === 'number') { if (el.type === 'number') el.value = v; refreshHeader(); renderList(); renderBar(); return }
+    if (el.dataset.k.endsWith('.kind') && v === 'video') setPath(o.draft, el.dataset.k.replace('kind', 'asset'), VIDEOS[0])
+    renderDetail(true); renderList(); renderBar()
+  })
+
+  /* ── Save / revert / add / remove ─────────────────────────────── */
+  function doSave(scope) {
+    const o = scope === 'main' ? st.mainCfg : scope === 'inter' ? st.inter : st.slots[scope]
+    const label = nameOf(scope)
+    if (scope !== 'inter' && !o.draft.ann.trim()) { o.errAnn = true; renderDetail(); $('#f-ann')?.focus(); return }
+    o.status = 'saving'; rerenderScope(scope)
+    setTimeout(() => {
+      if (failNext) {
+        failNext = false; $('#demoFail').setAttribute('aria-pressed', 'false')
+        o.status = 'error'; o.err = `修訂版本 12 已被「控制台 #2c91」於 ${now()} 儲存。`
+        rerenderScope(scope)
+        toast('danger', `「${label}」儲存失敗`, '設定已被另一個控制台更新。草稿仍保留，其他位不受影響。', [{ label: '重試', run: () => doSave(scope) }, { label: '關閉' }])
+        return
+      }
+      o.saved = clone(o.draft); o.savedAt = now(); o.status = 'idle'; o.err = ''
+      renderAll()
+      toast('ok', `已儲存「${label}」`, '只更新這一項；其他位的草稿保持原樣。下一場對話開始採用。')
+    }, 650)
+  }
+  function rerenderScope(scope) { if (scope === 'inter') renderInter(); else if (scope === sel) renderDetail(true); renderList(); renderBar() }
+  document.addEventListener('click', async e => {
+    const sv = e.target.closest('[data-save]'); if (sv) { const k = sv.dataset.save; doSave(k === 'main' || k === 'inter' ? k : +k); return }
+    const rv = e.target.closest('[data-revert]')
+    if (rv) { const k = rv.dataset.revert; const o = k === 'main' ? st.mainCfg : k === 'inter' ? st.inter : st.slots[+k]; o.draft = clone(o.saved); o.status = 'idle'; o.errAnn = false; o.err = ''; renderAll(); toast('info', `已還原「${nameOf(k === 'main' || k === 'inter' ? k : +k) || '空位'}」的未儲存變更`); return }
+    const ad = e.target.closest('[data-add]')
+    if (ad) { const i = +ad.dataset.slot, id = ad.dataset.add, p = P[id]; st.slots[i].draft = { profile: id, enabled: false, desc: '', when: '', ann: `這題我請${p.name}來回答。`, annEn: '', weather: false, county: '', town: '' }; renderAll(); $('#f-desc')?.focus(); return }
+    const rm = e.target.closest('[data-remove]')
+    if (rm) {
+      const i = +rm.dataset.remove, s = st.slots[i], name = P[s.draft.profile].name
+      if (!await ask(`把「${name}」移出組合？`, `設定檔本身保留，但這一席的專長介紹、交接規則、交接說明與工具會一併移除${s.saved?.weather ? '，天氣工具將沒有人提供' : ''}；角色轉場中涉及這位的個別方向保留但暫不使用。`, '移出組合')) return
+      const backup = clone(s); st.slots[i] = { saved: null, draft: null, savedAt: '', status: 'idle', err: '' }
+      renderAll(); toast('info', `已將「${name}」移出組合`, '', [{ label: '復原', run: () => { st.slots[i] = backup; renderAll() } }])
+      return
+    }
+    const gp = e.target.closest('[data-goto-profile]')
+    if (gp) { profSel = gp.dataset.gotoProfile; selectSeg('profiles') }
+  })
+
+  /* ── Members: 'main' or a specialist's profile id ─────────────── */
+  const memberName = k => k === 'main' ? P[st.main].name : P[k]?.name
+  const memberColor = k => k === 'main' ? P[st.main].color : P[k]?.color
+  const liveMembers = () => ['main', ...(st.mainCfg.saved.handoff ? st.slots.filter(live).map(s => s.saved.profile) : [])]
+  const isLiveMember = k => liveMembers().includes(k)
+
+  /* ── Topology: full mesh between every enabled member, main included ── */
+  function renderTopo() {
+    const cx = 150, cy = 110, R = 68, svg = $('#topo'), m = P[st.main], on = st.mainCfg.saved.handoff
+    const pos = k => { const a = (-90 + 60 * k) * Math.PI / 180; return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a), ca: Math.cos(a), sa: Math.sin(a) } }
+    const mainN = { key: 'main', r: 20, ...pos(0), x: cx }
+    const nodes = st.slots.map((s, i) => ({ i, s, key: s.saved?.profile, r: 15, ...pos(i + 1) }))
+    const L = [mainN, ...nodes.filter(n => on && live(n.s))]
+    const trim = (a, b, r1, r2) => { const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy); return [a.x + dx / d * r1, a.y + dy / d * r1, b.x - dx / d * r2, b.y - dy / d * r2].map(v => v.toFixed(1)) }
+    const names = L.map(n => memberName(n.key))
+    let out = `<desc id="topoDesc">${on && L.length > 1 ? `${names.join('、')}彼此都可直接交接；${m.name}負責開場／兜底` : `目前只有${m.name}回答`}。</desc>
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto"><path d="M0 0 10 5 0 10z"/></marker></defs>`
+    for (let a = 0; a < L.length; a++) for (let b = a + 1; b < L.length; b++) {
+      const [x1, y1, x2, y2] = trim(L[a], L[b], L[a].r + 3, L[b].r + 3)
+      out += `<line class="edge" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`
+    }
+    const r = simResult(), hf = L.find(n => n.key === r?.from), ht = L.find(n => n.key === r?.to)
+    if (hf && ht && hf !== ht) { const [x1, y1, x2, y2] = trim(hf, ht, hf.r + 3, ht.r + 4); out += `<line class="edge hot" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#ah)"/>` }
+    out += `<g class="node live ${sel === 'main' ? 'sel' : ''}" tabindex="0" role="button" aria-label="編輯主數位人${m.name}（開場／兜底）" data-sel="main"><circle class="ring" cx="${mainN.x}" cy="${mainN.y.toFixed(1)}" r="24"/><circle class="body" cx="${mainN.x}" cy="${mainN.y.toFixed(1)}" r="20" fill="${m.color}"/><text class="ini" x="${mainN.x}" y="${mainN.y.toFixed(1)}" style="font-size:11px">${m.name.length > 3 ? m.name[0] : m.name}</text>
+      <text class="lbl" x="${mainN.x}" y="${(mainN.y - 31).toFixed(1)}" text-anchor="middle">${m.name}<tspan class="tg" dx="5">開場／兜底</tspan></text></g>`
+    nodes.forEach(n => {
+      const s = n.s, d = s.saved || s.draft, empty = !d
+      const p = d && P[d.profile], c = d && compat(d.profile)
+      const cls = empty ? 'empty' : !c.ok ? 'bad' : (on && live(s)) ? 'live' : 'off'
+      const lx = n.x + n.ca * 24, ly = n.y + n.sa * 24 + (n.sa > .5 ? 4 : 0)
+      const anchor = Math.abs(n.ca) < .3 ? 'middle' : n.ca > 0 ? 'start' : 'end'
+      const label = empty ? `空位 ${n.i + 1}` : p.name
+      out += `<g class="node ${cls} ${sel === n.i ? 'sel' : ''}" tabindex="0" role="button" aria-label="${empty ? `空位 ${n.i + 1}，加入專門數位人` : `編輯${p.name}，${cls === 'live' ? '已啟用' : cls === 'bad' ? '不相容' : '未啟用'}`}" data-sel="${n.i}">
+        <circle class="ring" cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="19"/>
+        <circle class="body" cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${empty ? 11 : 15}" ${cls === 'live' ? `fill="${p.color}"` : ''}/>
+        <text class="ini" x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}">${empty ? '+' : p.name[0]}</text>
+        <text class="lbl ${cls === 'live' ? '' : 'dim'}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}">${label}</text></g>`
+    })
+    svg.innerHTML = out
+  }
+  $('#topo').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.node')) { e.preventDefault(); e.target.closest('.node').dispatchEvent(new MouseEvent('click', { bubbles: true })) } })
+
+  /* ── 交接試算: fake keyword rules stand in for the model's judgement ── */
+  const TOPIC = {
+    reception: /洗手間|服務台|開放時間|寄物/,
+    weather: /天氣|下雨|降雨|氣溫|颱風|帶傘|冷不冷|熱不熱/,
+    transit: /捷運|公車|YouBike|停車|怎麼去|怎麼到|搭車|車站/,
+    service: /訂單|退貨|退款|發票|會員|寄送|客服/,
+    exhibit: /展覽|展品|展區|導覽場次|特展/,
+    multi: /[぀-ヿ가-힯]/,
+    english: /[A-Za-z]{4,}/
+  }
+  const FOLLOW = /^(那|那麼|還有|然後|再來)|呢[？?]?$/
+  const PRESETS = ['明天臺北會下雨嗎？', '我的訂單在哪裡？', '那後天呢？']
+  let simFrom = 'service', simQ = PRESETS[0]
+  const profileOf = k => k === 'main' ? st.main : k
+  const annOf = k => k === 'main' ? st.mainCfg.saved.ann : st.slots.find(s => s.saved?.profile === k)?.saved.ann
+  function simResult() {
+    const q = simQ.trim(); if (!q) return null
+    const from = isLiveMember(simFrom) ? simFrom : 'main', fromN = memberName(from), m = P[st.main].name
+    if (!st.mainCfg.saved.handoff) return { from, to: 'main', kind: 'stay', tag: '交接已關閉', why: `角色交接已關閉，一律由${m}回答。` }
+    const hits = liveMembers().filter(k => TOPIC[profileOf(k)]?.test(q))
+    const idle = st.slots.filter(s => s.saved && !live(s) && TOPIC[s.saved.profile]?.test(q)).map(s => P[s.saved.profile].name)
+    const idleNote = idle.length ? `（${idle.join('、')}未啟用，不參與判斷）` : ''
+    if (hits.length > 1) return { from, to: from, kind: 'ask', tag: '先問訪客', why: `同時涉及${hits.map(memberName).join('與')}，先請訪客確認優先主題。` }
+    if (hits.length === 1 && hits[0] === from) return { from, to: from, kind: 'stay', tag: '留在目前角色', why: `仍在${fromN}的專長內，繼續回答。` }
+    if (hits.length === 1) {
+      const to = hits[0], direct = from !== 'main' && to !== 'main'
+      return { from, to, kind: 'hand', tag: '角色交接', why: from === 'main' ? `屬於${memberName(to)}的專長，交給${memberName(to)}。` : `換了主題，直接交給${memberName(to)}${direct ? `，不必先回到${m}` : ''}。`, say: annOf(to) }
+    }
+    if (FOLLOW.test(q)) return { from, to: from, kind: 'stay', tag: '留在目前角色', why: `延續上一題的追問，留在${fromN}。${idleNote}` }
+    if (from === 'main') return { from, to: from, kind: 'stay', tag: '兜底', why: `不屬於任何其他角色的專長，由${m}回答。${idleNote}` }
+    return { from, to: 'main', kind: 'hand', tag: '反向角色交接', why: `不屬於組合中任何一位專門數位人，自動交回${m}接續回答原問題。${idleNote}`, say: annOf('main') }
+  }
+  function renderSimOut() {
+    const r = simResult(), av = k => `<span class="av" style="background:${memberColor(k)}">${memberName(k)[0]}</span>`
+    $('#simOut').className = 'sim-out ' + (r?.kind || 'stay')
+    $('#simOut').innerHTML = !r ? '<span class="hint">輸入或選一個訪客問題。</span>'
+      : `<div class="path">${av(r.from)}${memberName(r.from)}${r.to !== r.from ? `${ic('i-arrow-r')}${av(r.to)}${memberName(r.to)}` : ''}<span class="chip ${r.kind === 'hand' ? 'ok' : r.kind === 'ask' ? 'warn' : 'neutral'}">${r.tag}</span></div>
+        <div>${esc(r.why)}</div>${r.say ? `<div class="say">${esc(memberName(r.from))}先說：「${esc(r.say)}」</div>` : ''}`
+    $$('#simCard [data-preset]').forEach(b => b.setAttribute('aria-pressed', b.dataset.preset === simQ))
+  }
+  function renderSim() {
+    const ms = liveMembers(); if (!ms.includes(simFrom)) simFrom = 'main'
+    $('#simCard').innerHTML = `<span class="sub-title">${ic('i-chat')}交接試算<small>以關鍵字示意模型判斷</small></span>
+      <div class="sim-row">
+        <div class="field"><label for="simFrom">目前角色</label><select class="input" id="simFrom">${ms.map(k => `<option value="${k}" ${k === simFrom ? 'selected' : ''}>${memberName(k)}</option>`).join('')}</select></div>
+        <div class="field"><label for="simQ">訪客問題</label><input class="input" id="simQ" value="${esc(simQ)}" placeholder="例：捷運怎麼去？"></div>
+      </div>
+      <div class="presets" role="group" aria-label="範例問題">${PRESETS.map(q => `<button type="button" class="chip" data-preset="${q}">${q}</button>`).join('')}</div>
+      <div class="sim-out" id="simOut" aria-live="polite"></div>`
+    renderSimOut()
+  }
+  $('#simCard').addEventListener('input', e => { if (e.target.id === 'simQ') { simQ = e.target.value; renderSimOut(); renderTopo() } })
+  $('#simCard').addEventListener('change', e => { if (e.target.id === 'simFrom') { simFrom = e.target.value; renderSimOut(); renderTopo() } })
+  $('#simCard').addEventListener('click', e => { const b = e.target.closest('[data-preset]'); if (b) { simQ = b.dataset.preset; $('#simQ').value = simQ; renderSimOut(); renderTopo() } })
+
+  /* ── 角色轉場: one default for every handoff + per-direction overrides ── */
+  let addSrc = '', addDst = '', addErr = ''
+  function renderInter(keepFocus) {
+    const f = keepFocus && document.activeElement?.id
+    const o = st.inter, d = o.draft
+    const members = ['main', ...st.slots.filter(s => s.saved).map(s => s.saved.profile)]
+    const opts = v => `<option value="">選擇</option>` + members.map(k => `<option value="${k}" ${v === k ? 'selected' : ''}>${memberName(k)}${k === 'main' ? '（主）' : ''}</option>`).join('')
+    $('#interCard').innerHTML = `<div class="card-head"><div><h3><svg class="icon" aria-hidden="true"><use href="#i-film"/></svg>角色轉場</h3><p>所有角色交接共用預設；個別方向可另外指定。</p></div></div>
+    <div class="card-body" style="gap:var(--s2)">
+      <div class="block-head"><span class="ss">${saveState(o)}</span><span style="display:flex;gap:var(--s1)">${saveBtns(o, 'inter', '儲存轉場')}</span></div>
+      ${o.status === 'error' ? `<div class="field-error">${ic('i-octagon')}${esc(o.err)}</div>` : ''}
+      <span class="sub-title">預設轉場</span>
+      ${transEditor('def', d.def, '任一位', '另一位')}
+      <details class="adv" ${d.ov.length || addErr ? 'open' : ''}><summary>${ic('i-chev').replace('class="icon"', 'class="icon chev"')}進階：個別方向<span class="pill">${d.ov.length}</span></summary>
+        <div class="adv-body">
+          ${d.ov.map((v, k) => transEditor(`ov.${k}`, v, memberName(v.src), memberName(v.dst), `${!isLiveMember(v.src) || !isLiveMember(v.dst) ? '<span class="tag-off">（含未啟用者，暫不使用）</span>' : ''}<button type="button" class="btn sm ghost rm" style="margin-left:auto;min-height:1.6rem" data-ov-rm="${k}" aria-label="刪除 ${memberName(v.src)} 到 ${memberName(v.dst)} 的個別轉場">${ic('i-x')}</button>`)).join('') || '<p class="hint">尚無個別方向，全部使用預設轉場。</p>'}
+          <div class="add-row"><select class="input" id="ovSrc" aria-label="來源角色">${opts(addSrc)}</select>${ic('i-arrow-r')}<select class="input" id="ovDst" aria-label="目的角色">${opts(addDst)}</select><button type="button" class="btn sm" id="ovAdd">${ic('i-plus')}新增</button></div>
+          ${addErr ? `<span class="field-error" role="alert">${ic('i-alert')}${addErr}</span>` : '<span class="hint">任兩位之間（含主數位人）都可指定；每個方向各自一份，反方向需另外新增。</span>'}
+        </div></details>
+    </div>`
+    if (f && document.getElementById(f)) document.getElementById(f).focus()
+  }
+  $('#interCard').addEventListener('change', e => {
+    if (e.target.id === 'ovSrc') { addSrc = e.target.value; return }
+    if (e.target.id === 'ovDst') { addDst = e.target.value; return }
+    const el = e.target.closest('[data-k]'); if (!el) return
+    setPath(st.inter.draft, el.dataset.k, readVal(el))
+    if (st.inter.status === 'error') st.inter.status = 'idle'
+    if (el.type === 'number') { el.value = readVal(el); syncActs($('#interCard'), st.inter); renderBar(); return }
+    if (el.dataset.k.endsWith('.kind') && el.value === 'video') setPath(st.inter.draft, el.dataset.k.replace('kind', 'asset'), VIDEOS[0])
+    renderInter(true); renderBar()
+  })
+  $('#interCard').addEventListener('input', e => {
+    const el = e.target.closest('input[type=number][data-k]'); if (!el) return
+    setPath(st.inter.draft, el.dataset.k, +el.value); syncActs($('#interCard'), st.inter); renderBar()
+  })
+  $('#interCard').addEventListener('click', e => {
+    const rmb = e.target.closest('[data-ov-rm]'); if (rmb) { st.inter.draft.ov.splice(+rmb.dataset.ovRm, 1); renderInter(); renderBar(); return }
+    if (e.target.closest('#ovAdd')) {
+      addErr = !addSrc || !addDst ? '請選擇來源與目的。' : addSrc === addDst ? '來源與目的不能是同一位。' : st.inter.draft.ov.some(v => v.src === addSrc && v.dst === addDst) ? `「${memberName(addSrc)} → ${memberName(addDst)}」已有個別設定，請直接修改上方那一列。` : ''
+      if (!addErr) { st.inter.draft.ov.push({ src: addSrc, dst: addDst, ...fx() }); addSrc = addDst = '' }
+      renderInter(); renderBar(); (addErr ? $('#ovSrc') : $('#ovAdd'))?.focus()
+    }
+  })
+
+  /* ── Segment 1: profiles (brief) ─────────────────────────────── */
+  let profSel = 'reception'
+  function roleTag(id) {
+    if (id === st.main) return '<span class="mini main">主數位人</span>'
+    const i = st.slots.findIndex(s => s.saved?.profile === id)
+    if (i < 0) return '<span class="mini">未加入組合</span>'
+    return `<span class="mini">專門 #${i + 1}${live(st.slots[i]) ? '' : ' · 未啟用'}</span>`
+  }
+  function renderProfiles() {
+    $('#profCount').textContent = Object.keys(P).length
+    $('#profList').innerHTML = Object.entries(P).map(([id, p]) => `<li><button type="button" class="slot" data-prof="${id}" ${profSel === id ? 'aria-current="true"' : ''}><span class="av" style="background:${p.color}">${p.name[0]}</span><span style="min-width:0"><span class="top"><b>${p.name}</b></span><span class="sub">${roleTag(id)}<small>${p.tts}</small></span></span></button></li>`).join('')
+    const p = P[profSel], c = compat(profSel)
+    $('#pfAv').style.background = p.color; $('#pfAv').textContent = p.name[0]
+    $('#pfName').textContent = p.name; $('#pfId').textContent = profSel; $('#pfRole').innerHTML = roleTag(profSel)
+    $('#pfKv').innerHTML = `<dt>人物素材</dt><dd class="mono">${p.avatar}</dd><dt>語音合成引擎</dt><dd>${p.tts}</dd><dt>聲音</dt><dd>${p.voice}</dd><dt>回答模型服務</dt><dd class="mono">${p.llm}</dd>`
+    $('#pfCompat').innerHTML = profSel === st.main ? '<div class="note">' + ic('i-lock') + '<span>這位是主數位人：它的語音合成引擎與回答模型服務就是組合的相容基準。</span></div>' : c.ok ? '' : `<div class="note warn">${ic('i-alert')}<span>與主數位人不相容（${esc(c.reason)}），在角色組合中無法啟用。</span></div>`
+  }
+  $('#profList').addEventListener('click', e => { const b = e.target.closest('[data-prof]'); if (b) { profSel = b.dataset.prof; renderProfiles() } })
+
+  /* ── Segment 3: sliders + apply ──────────────────────────────── */
+  $$('input[type=range][data-pill]').forEach(r => r.addEventListener('input', () => { $('#' + r.dataset.pill).textContent = r.value + (r.dataset.unit || '') }))
+  $$('[data-apply]').forEach(b => b.addEventListener('click', () => toast('ok', b.dataset.apply, '全域設定，所有角色共用。')))
+
+  /* ── Dialog / toast / theme ──────────────────────────────────── */
+  function ask(title, html, okLabel) {
+    const dlg = $('#dlg'); $('#dlgTitle').textContent = title; $('#dlgText').innerHTML = html; $('#dlgOk').textContent = okLabel
+    $('#dlgOk').className = 'btn ' + (okLabel === '移出組合' ? 'danger' : 'primary')
+    dlg.returnValue = ''; dlg.showModal()
+    return new Promise(res => dlg.addEventListener('close', () => res(dlg.returnValue === 'ok'), { once: true }))
+  }
+  function toast(tone, title, detail = '', acts = []) {
+    const el = document.createElement('div')
+    el.className = 'toast ' + tone
+    el.innerHTML = `${ic(tone === 'ok' ? 'i-circle-check' : tone === 'danger' ? 'i-octagon' : 'i-info')}<div><b>${esc(title)}</b>${detail ? `<div class="detail">${esc(detail)}</div>` : ''}${acts.length ? `<div class="acts">${acts.map((a, i) => `<button type="button" class="btn sm ${i ? 'ghost' : ''}" data-i="${i}">${a.label}</button>`).join('')}</div>` : ''}</div><button type="button" class="btn sm ghost" aria-label="關閉通知" data-x style="padding:0 6px">${ic('i-x')}</button>`
+    el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.i) acts[+b.dataset.i].run?.(); el.remove() })
+    $('#toasts').append(el)
+    setTimeout(() => el.remove(), tone === 'danger' ? 9000 : 4500)
+  }
+  const themeOrder = ['system', 'light', 'dark'], themeMeta = { system: ['i-monitor', '跟隨系統'], light: ['i-sun', '淺色'], dark: ['i-moon', '深色'] }
+  function setTheme(t) {
+    if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t
+    $('#themeBtn').innerHTML = `${ic(themeMeta[t][0])}<span>${themeMeta[t][1]}</span>`
+    try { localStorage.setItem('role-proto-theme', t) } catch {}
+  }
+  $('#themeBtn').addEventListener('click', () => setTheme(themeOrder[(themeOrder.indexOf(document.documentElement.dataset.theme || 'system') + 1) % 3]))
+  $('#demoFail').addEventListener('click', e => { failNext = !failNext; e.currentTarget.setAttribute('aria-pressed', failNext); if (failNext) toast('info', '下一次按「儲存」會失敗', '示範版本衝突：只有那一位顯示錯誤，其他位不受影響。') })
+  $('#demoReset').addEventListener('click', () => { st = seed(); st.inter.draft = clone(st.inter.saved); sel = 'main'; addErr = ''; simFrom = 'service'; simQ = PRESETS[0]; renderAll(); toast('info', '示範資料已重設') })
+
+  function renderAll() { renderBar(); renderList(); renderDetail(); renderSim(); renderTopo(); renderInter(); if (!$('#seg-profiles').hidden) renderProfiles() }
+
+  /* ── Init: preload a little unsaved state so per-slot dirty is visible ── */
+  let theme = 'system'
+  try { theme = localStorage.getItem('role-proto-theme') || 'system' } catch {}
+  location.hash.slice(1).split(',').forEach(h => { if (themeOrder.includes(h)) theme = h })
+  setTheme(themeOrder.includes(theme) ? theme : 'system')
+  st.slots[1].draft.annEn = 'Let me pass you to our transit guide.'
+  sel = 0
+  renderAll()
+  location.hash.slice(1).split(',').forEach(h => { if (['profiles', 'compose', 'interaction'].includes(h)) selectSeg(h); if (h === 'main') select('main'); if (/^slot[1-5]$/.test(h)) select(+h[4] - 1) })
+})()
+</script>
+</body>
+</html>
