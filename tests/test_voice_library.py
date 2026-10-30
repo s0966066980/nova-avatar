@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import logging
+import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -124,6 +127,34 @@ def test_overlong_audio_is_rejected_from_its_header(voices, tmp_path, monkeypatc
 def test_unknown_or_malformed_ids_do_not_resolve(voices, voice_id):
     with pytest.raises(VoiceLibraryError):
         voice_library.voice_path(voice_id)
+
+
+def test_development_voices_are_marked_for_the_console(voices, tmp_path):
+    source = tmp_path / "sample.wav"
+    source.write_bytes(wav_bytes())
+    voice = voice_library.add_voice(source, "測試音檔", "逐字稿。", development=True)
+    assert voice["development"] is True
+    assert voice_library.list_voices() == [voice]
+    other = tmp_path / "own.wav"
+    other.write_bytes(wav_bytes(seconds=2.0))
+    assert voice_library.add_voice(other, "自錄", "逐字稿。")["development"] is False
+
+
+def test_dev_voice_import_script_is_repeatable(tmp_path):
+    source = tmp_path / "prompt.wav"
+    source.write_bytes(wav_bytes(seconds=1.5))
+    root = tmp_path / "voices"
+    command = [sys.executable, str(PROJECT_ROOT / "scripts" / "import-dev-voice.py"),
+               str(source), "--voices-dir", str(root)]
+    for _ in range(2):
+        result = subprocess.run(command, capture_output=True, text=True, timeout=60, cwd=tmp_path)
+        assert result.returncode == 0, result.stderr
+    records = list(root.glob("*.json"))
+    assert len(records) == 1 and len(list(root.glob("*.wav"))) == 1
+    record = json.loads(records[0].read_text("utf-8"))
+    assert record["name"] == "BreezyVoice 測試音檔（僅開發用）"
+    assert record["transcript"] == "在密碼學中，加密是將明文資訊改變為難以讀取的密文內容，使之不可讀的方法。"
+    assert record["development"] is True
 
 
 # ---------------------------------------------------------------- input rules
@@ -288,6 +319,20 @@ def test_voice_library_routes_upload_list_and_delete(voices, server_config):
     assert sorted(path.name for path in voices.iterdir()) == [".deleted"]
 
 
+def test_voice_library_audio_can_be_previewed_by_administrators_only(voices, stored_voice, server_config):
+    async def scenario():
+        async with access_client() as client:
+            response = await client.get(f"/api/speech/voices/{stored_voice}/audio")
+            assert response.status == 200, await response.text()
+            assert response.content_type == "audio/wav"
+            assert await response.read() == voice_library.voice_path(stored_voice).read_bytes()
+            for bad in ("0" * 16, "..%2F..%2Fetc%2Fpasswd", "ABCDEF0123456789"):
+                assert (await client.get(f"/api/speech/voices/{bad}/audio")).status == 404
+        async with access_client(admin=False) as client:
+            assert (await client.get(f"/api/speech/voices/{stored_voice}/audio")).status == 401
+    run(scenario())
+
+
 def test_voice_upload_keeps_its_transcript(voices, server_config):
     async def scenario():
         async with access_client() as client:
@@ -372,7 +417,8 @@ def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, st
         with pytest.raises(ProfileError):
             store.save(attempt, expected_revision=library["revision"])
     good = deepcopy(library)
-    good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=stored_voice, tts_server="http://127.0.0.1:50000")
+    good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=stored_voice, ref_text="參考逐字稿。",
+                                      tts_server="http://127.0.0.1:50000")
     library = store.save(good, expected_revision=library["revision"])
 
     raw = yaml.safe_load(store.path.read_text("utf-8"))
@@ -382,6 +428,28 @@ def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, st
     assert loaded["profiles"][0]["tts"]["ref_file"] == ""
     assert loaded["profiles"][0]["tts"]["tts_server"] == ""
     assert "/etc/passwd" not in store.path.read_text("utf-8")
+
+
+def test_breezyvoice_profiles_need_a_transcribed_reference_before_saving(voices, stored_voice, tmp_path, monkeypatch):
+    from src.profiles.store import ProfileError, ProfileStore
+
+    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    config = Config()
+    config.model.avatar_id = "musetalk_angela"
+    store = ProfileStore(tmp_path / "profiles.yaml")
+    library = store.initialize(config)
+    for change, message in (({"type": "breezyvoice", "ref_file": ""}, "參考音檔"),
+                            ({"type": "breezyvoice", "ref_file": stored_voice, "ref_text": ""}, "逐字稿")):
+        attempt = deepcopy(library)
+        attempt["profiles"][0]["tts"].update(change)
+        with pytest.raises(ProfileError, match=message):
+            store.save(attempt, expected_revision=library["revision"])
+    source = tmp_path / "spoken.wav"
+    source.write_bytes(wav_bytes(seconds=2.0))
+    spoken = voice_library.add_voice(source, "有逐字稿", "參考逐字稿。")["id"]
+    good = deepcopy(library)
+    good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=spoken, ref_text=None)
+    assert store.save(good, expected_revision=library["revision"])["profiles"][0]["tts"]["ref_file"] == spoken
 
 
 def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_path, monkeypatch):

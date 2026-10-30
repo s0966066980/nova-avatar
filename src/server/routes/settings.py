@@ -412,6 +412,15 @@ async def list_tts_voices(request):
     return _json({"code": 0, "data": {"items": await asyncio.to_thread(voice_library.list_voices)}})
 
 
+async def tts_voice_audio(request):
+    """The stored WAV of a library voice, for previewing it in the console."""
+    try:
+        path = await asyncio.to_thread(voice_library.voice_path, request.match_info.get("voice_id", ""))
+    except voice_library.VoiceLibraryError as exc:
+        return _json({"code": -1, "msg": exc.message}, status=exc.status)
+    return web.FileResponse(path, headers={"Content-Type": "audio/wav", "Cache-Control": "no-store"})
+
+
 async def _read_field(part, limit: int = 1024) -> str:
     data = bytearray()
     while chunk := await part.read_chunk(size=limit):

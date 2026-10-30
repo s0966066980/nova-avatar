@@ -600,3 +600,33 @@ async def test_http_role_controls_require_and_affect_only_the_requested_session(
     finally:
         await console.close()
         await stage.close()
+
+
+@async_test
+async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_live_peers(field, monkeypatch):
+    from src.profiles.store import ProfileError
+
+    field.state.config.tts.type = 'breezyvoice'
+    target = deepcopy(field.library)
+    target['enabled'] = False
+    main = next(p for p in target['profiles'] if p['id'] == target['pair']['main'])
+    main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
+                       tts_server='http://127.0.0.1:50001')
+    monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+    start = Mock(return_value='http://127.0.0.1:50001')
+    monkeypatch.setattr('src.tts.cosyvoice_runtime.ensure_server', start)
+    await field.apply(deepcopy(target))
+    start.assert_called_once_with(model_dir='tts/BreezyVoice-tw', host='127.0.0.1', port=50001)
+
+    start.side_effect = RuntimeError('exit=1')
+    with pytest.raises(ProfileError, match='BreezyVoice'):
+        await field.apply(deepcopy(target))
+
+    # A connected conversation keeps using the running server.
+    start.reset_mock(side_effect=True)
+    console, _ = connect(field, 7, 'console')
+    try:
+        await field.apply(deepcopy(target))
+        start.assert_not_called()
+    finally:
+        await console.close()

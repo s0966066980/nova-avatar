@@ -393,6 +393,16 @@ class ConversationRoles:
             presentation.close()
 
 
+def _start_breezyvoice(tts) -> None:
+    from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
+
+    host, port = parse_server_url(tts.tts_server)
+    try:
+        ensure_server(model_dir=tts.model, host=host, port=port)
+    except Exception as exc:
+        raise ProfileError(f"BreezyVoice 啟動失敗：{exc}", 503) from exc
+
+
 class RoleCoordinator:
     """Publish defaults without mutating any connected conversation."""
 
@@ -486,6 +496,11 @@ class RoleCoordinator:
                 from src.server.runtime_settings import apply_tts_settings
                 await asyncio.to_thread(apply_tts_settings, self.state.config,
                     main["tts"], session_count=0)
+            elif config.tts.type == "breezyvoice" and not self.state.avatar_streams:
+                # Same engine: still start the profile's server and model, which
+                # may differ from (or have stopped since) the last apply. A
+                # connected conversation keeps the server it is using.
+                await asyncio.to_thread(_start_breezyvoice, config.tts)
             config = profile_config(self.state.config, main)
             cache = {}
             for profile in selected:

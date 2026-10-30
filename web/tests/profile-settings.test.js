@@ -6,9 +6,13 @@ import { readFileSync } from 'node:fs'
 import { h } from 'vue'
 import { loadComponent, mount, all, button, textContent, settle } from './helpers/componentHarness.js'
 
+const openedSections = []
 const Editor = { default: {
   props: ['modelValue'],
-  setup(props) { return () => h('input', { id: 'profile-name', value: props.modelValue.name, onInput: e => { props.modelValue.name = e.target.value } }) }
+  setup(props, { expose }) {
+    expose({ openSection: section => openedSections.push(section) })
+    return () => h('input', { id: 'profile-name', value: props.modelValue.name, onInput: e => { props.modelValue.name = e.target.value } })
+  }
 } }
 const Component = await loadComponent(new URL('../src/components/AvatarProfiles.vue', import.meta.url), { './AvatarProfileEditor.vue': Editor })
 
@@ -88,4 +92,38 @@ test('數位人設定檔只選擇伺服器設定的 LLM 端點，不能填寫服
   assert.doesNotMatch(editor, /v-model="profile\.llm\.(base_url|provider)"/)
   const profiles = readFileSync(new URL('../src/components/AvatarProfiles.vue', import.meta.url), 'utf8')
   assert.match(profiles, /\['endpoint','model'\]/)
+})
+
+test('BreezyVoice 設定檔未選參考音檔時阻擋儲存並提示，不送出儲存或套用', async t => {
+  const previousFetch = globalThis.fetch
+  const makeProfile = (id, name, tts) => ({ id, name, avatar_id: 'shared_visual', engine: 'musetalk',
+    llm: { endpoint: 'local', model: 'local-model' }, tts,
+    rag: { enabled: false, dataset_ids: [], document_scope: 'all', document_ids: [] } })
+  const library = { enabled: false, revision: 1, pair: { main: 'main', specialist: 'weather' }, transitions: [],
+    handoff: { description: '', rules: '', announcement: '' }, weather: { county: '', town: '' },
+    profiles: [makeProfile('main', '接待員', { type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural' }),
+      makeProfile('weather', '氣象員', { type: 'breezyvoice', ref_file: '' })] }
+  const requests = []
+  globalThis.fetch = async (url, options = {}) => {
+    const result = data => ({ ok: true, json: async () => data })
+    if (url === '/api/profiles' && options.method === 'GET') return result({ code: 0, library: structuredClone(library), runtime: { profiles_applied: true, active_revision: 1 }, media: [] })
+    if (url === '/api/speech/voices') return result({ code: 0, data: { items: [] } })
+    if (url === '/api/llm/models' || url === '/api/llm/rules') return result({ code: 0, data: {} })
+    requests.push(url)
+    return result({ code: 0, library, runtime: {} })
+  }
+  const view = mount(Component, {})
+  t.after(() => { view.unmount(); globalThis.fetch = previousFetch })
+  await settle()
+  all(view.root, n => n.props.id === 'profile-name')[0].props.onInput({ target: { value: '新接待員' } })
+  await settle()
+  button(view.root, '儲存並套用').props.onClick()
+  await settle()
+  assert.deepEqual(requests, [])
+  assert.match(textContent(view.root), /「氣象員」請選擇有逐字稿的參考音檔/)
+  assert.equal(all(view.root, n => n.props.id === 'profile-name')[0].props.value, '氣象員', '切到需要修正的設定檔')
+  assert.equal(openedSections.at(-1), 'voice')
+  all(view.root, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} })
+  await settle()
+  assert.deepEqual(requests, [])
 })

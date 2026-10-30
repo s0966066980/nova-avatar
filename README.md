@@ -138,10 +138,14 @@ rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 
 引擎（CosyVoice、Fun-CosyVoice3、Fish、GPT-SoVITS、IndexTTS2、XTTS），啟動時改用
 Edge TTS，並在日誌與控制台「語音」設定說明，請重新選擇後套用。
 
-**參考音訊**：BreezyVoice 的參考音訊要先在控制台「語音」設定的
-音訊庫上傳（60 秒、20 MB 內，轉存為 WAV），再從清單選擇；刪除會移入回收桶，
-使用中的音訊不能刪除。模型目錄只能從 `models/` 掃描結果選擇，TTS 服務只接受
-本機位址。舊設定中的路徑在載入時會遷移進音訊庫，無法遷移的會清空並記錄警告。
+**參考音訊**：BreezyVoice 的參考音訊在數位人設定檔「聲音與工具」的音訊庫上傳
+（60 秒、20 MB 內，轉存為 WAV，須附逐字稿），可試聽與刪除；設定檔只能從有逐字稿的
+音檔中選擇，未選擇不能儲存。刪除會移入回收桶，使用中的音訊不能刪除。套用使用
+BreezyVoice 的設定檔時會自動啟動 BreezyVoice 服務。模型目錄只能從 `models/` 掃描
+結果選擇，TTS 服務只接受本機位址。舊設定中的路徑在載入時會遷移進音訊庫，無法遷移的
+會清空並記錄警告。開發用錄音以
+`python scripts/import-dev-voice.py <錄音> [--name … --transcript …]` 加入，
+控制台標示「開發用，未取得說話者授權」，不會自動選用；重複執行不會重複加入。
 
 **BreezyVoice（台灣華語）**：以 CosyVoice v1 程式碼執行，需 `~/CosyVoice` 與 conda 環境
 `cosyvoice`；在該環境安裝

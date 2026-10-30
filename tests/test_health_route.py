@@ -109,6 +109,7 @@ class ServerRouteRegistrationTests(unittest.TestCase):
         self.assertIn(("GET", "/api/speech/voices"), registered)
         self.assertIn(("POST", "/api/speech/voices"), registered)
         self.assertIn(("DELETE", "/api/speech/voices/{voice_id}"), registered)
+        self.assertIn(("GET", "/api/speech/voices/{voice_id}/audio"), registered)
         self.assertIn(("GET", "/api/voice-tests"), registered)
         self.assertIn(("POST", "/api/voice-tests/run"), registered)
         self.assertIn(("DELETE", "/api/voice-tests"), registered)

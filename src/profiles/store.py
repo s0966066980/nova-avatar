@@ -23,7 +23,8 @@ from src.llm.rules import rules_from_config, validate_rules
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
 from src.tts.voice_library import (
-    TTS_ENGINES, VoiceLibraryError, check_model, check_reference, check_tts_server, migrate_tts_values,
+    REFERENCE_AUDIO_ENGINES, TTS_ENGINES, VoiceLibraryError, check_model, check_reference, check_tts_server,
+    migrate_tts_values, voice_transcript,
 )
 from src.utils.logging import logger
 
@@ -126,8 +127,9 @@ def profile_config(base, profile: dict):
     return result
 
 
-def validate_profile(value: dict, endpoints=None, *, require_endpoint=False) -> dict:
-    """Normalize a profile; ``require_endpoint`` also demands a listed endpoint name."""
+def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, require_voice=False) -> dict:
+    """Normalize a profile; ``require_endpoint`` also demands a listed endpoint name and
+    ``require_voice`` a transcribed reference recording for BreezyVoice."""
     allowed = {"id", "name", "engine", "avatar_id", "assistant_profile", "llm",
                "tts", "rag", "reply_rules", "tools", "greeting"}
     value = _object(value, allowed, "角色設定檔")
@@ -183,6 +185,8 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False) -> 
         tts["model"] = check_model(tts["model"])
     except VoiceLibraryError as exc:
         raise ProfileError(f"聲音設定：{exc.message}") from None
+    if require_voice and tts["type"] in REFERENCE_AUDIO_ENGINES:
+        _require_reference(tts, name)
     try:
         rag = validate_selection(value.get("rag"))
     except ValueError as exc:
@@ -206,7 +210,15 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False) -> 
             "tools": dict(tools), "greeting": greeting}
 
 
-def validate_library(value: dict, endpoints=None, *, require_endpoint=False) -> dict:
+def _require_reference(tts: dict, name: str) -> None:
+    """BreezyVoice clones a library recording and needs what it says; none is chosen for the admin."""
+    if not tts["ref_file"]:
+        raise ProfileError(f"角色「{name}」使用 BreezyVoice，請在聲音與工具選擇有逐字稿的參考音檔")
+    if not (tts["ref_text"] or "").strip() and not voice_transcript(tts["ref_file"]):
+        raise ProfileError(f"角色「{name}」的參考音檔沒有逐字稿，請改選有逐字稿的參考音檔或重新上傳並填寫逐字稿")
+
+
+def validate_library(value: dict, endpoints=None, *, require_endpoint=False, require_voice=False) -> dict:
     _object(value, {"version", "revision", "enabled", "profiles", "pair", "transitions",
                     "handoff", "weather", "migrated"}, "角色設定")
     if value.get("version") != 1 or not isinstance(value.get("enabled"), bool):
@@ -214,7 +226,8 @@ def validate_library(value: dict, endpoints=None, *, require_endpoint=False) -> 
     profiles = value.get("profiles")
     if not isinstance(profiles, list) or not 2 <= len(profiles) <= 30:
         raise ProfileError("請保存 2–30 份角色設定檔")
-    normalized = [validate_profile(p, endpoints, require_endpoint=require_endpoint) for p in profiles]
+    normalized = [validate_profile(p, endpoints, require_endpoint=require_endpoint, require_voice=require_voice)
+                  for p in profiles]
     ids = {p["id"] for p in normalized}
     if len(ids) != len(normalized):
         raise ProfileError("角色識別碼不可重複")
@@ -354,7 +367,7 @@ class ProfileStore:
             return deepcopy(library)
 
     def save(self, value: dict, *, expected_revision: int) -> dict:
-        normalized = validate_library(value, self._endpoints(), require_endpoint=True)
+        normalized = validate_library(value, self._endpoints(), require_endpoint=True, require_voice=True)
         with self._lock:
             current = self.load()
             if type(expected_revision) is not int or current["revision"] != expected_revision:

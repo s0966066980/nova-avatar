@@ -680,7 +680,6 @@ async function uploadTtsVoice(file, name = '', transcript = '') {
     form.append('voice', file)
     const voice = await parseJson(await fetch('/api/speech/voices', { method: 'POST', body: form }))
     await refreshTtsVoices()
-    ttsDraft.ref_file = voice.id
     return voice
   } catch (error) {
     speechError.value = error.message

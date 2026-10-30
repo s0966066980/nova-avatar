@@ -102,7 +102,7 @@ test('參考音訊與模型只能從伺服器清單選擇，不再開本機路�
   assert.doesNotMatch(panel, /type="text"\s+v-model(\.trim)?="ttsDraft\.(ref_file|model)"/)
   assert.match(settings, /fetch\('\/api\/speech\/voices', \{ method: 'POST', body: form \}\)/)
   assert.match(settings, /\/api\/speech\/voices\/\$\{encodeURIComponent\(voiceId\)\}/)
-  assert.match(editor, /v-for="voice in ttsVoiceOptions"/)
+  assert.match(editor, /v-for="voice in referenceVoiceOptions"/)
 })
 
 test('套用舞台設定時會送出看板視窗樣式', () => {
