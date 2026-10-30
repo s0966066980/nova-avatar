@@ -107,6 +107,7 @@ def first_sentence_check(speech: str, *, locale: str = "zh-TW") -> dict:
     """Issue 08 rule: a complete first sentence of at most 15 content characters.
 
     English counts words (at most 12), as the first-fragment exception does.
+    Board speech is exempt (user decision 2026-10-30); callers skip BOARD replies.
     """
     from src.llm.reply_contract import FIRST_SENTENCE_MAX_CHARS, FIRST_SENTENCE_MAX_WORDS
     from src.server.reply_streaming.fragmenter import content_length, speech_units
@@ -223,8 +224,9 @@ def check_answer(raw: str, *, max_chars: int, expected_mode: str | None = None,
         "format": {"passed": not reply["error"], "value": reply["error"]},
         "simplified": {"passed": not simplified, "value": simplified},
         "length": {"passed": spoken <= max_chars, "value": spoken},
-        "first_sentence": first_sentence_check(reply["speech"], locale=locale),
     }
+    if reply["mode"] != "BOARD":
+        checks["first_sentence"] = first_sentence_check(reply["speech"], locale=locale)
     if expected_mode:
         checks["mode"] = {"passed": reply["mode"] == expected_mode, "value": reply["mode"]}
     if expected_terms:
@@ -552,8 +554,9 @@ def build_first_sentence_report(result: dict) -> str:
     from src.server.reply_streaming.fragmenter import FIRST_FRAGMENT_MIN_UNITS, content_length
 
     answers = [(item, item["answer"]) for item in result["items"] if item["answer"] is not None]
-    checked = [(item, first_sentence_check(parse_reply(answer["raw"])["speech"]))
-               for item, answer in answers]
+    replies = [(item, parse_reply(answer["raw"])) for item, answer in answers]
+    checked = [(item, first_sentence_check(reply["speech"]))
+               for item, reply in replies if reply["mode"] != "BOARD"]
     failed = [(item, check) for item, check in checked if not check["passed"]]
     compared = [(item, compare_first_fragment(answer)) for item, answer in answers]
     estimated = any(comparison["estimated"] for _, comparison in compared)

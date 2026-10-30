@@ -255,6 +255,25 @@ class ConfigTests(unittest.TestCase):
         self.assertFalse(vad.enabled)
 
 
+    def test_shipped_end_of_speech_wait_is_about_200_ms_in_silero_frames(self):
+        # User decision (first-audio-latency, 2026-10-30): wait ~0.2 s of
+        # silence before the turn ends. The wait is counted in whole Silero
+        # frames (32 ms) and rounded up, so 192 ms = 6 frames; 200 would
+        # round up to 7 frames = 224 ms.
+        from src.config.loader import load_yaml_config
+
+        shipped = dict_to_config(load_yaml_config(PROJECT_ROOT / "config" / "config.yaml")).vad
+        frame_ms = SileroVAD(sample_rate=SR).frame_ms
+        segmenter = VADSegmenter(EnergyVAD(sample_rate=SR, frame_ms=frame_ms),
+                                 speech_start_ms=64, min_speech_ms=200,
+                                 min_silence_ms=shipped.min_silence_ms,
+                                 speech_pad_ms=0, max_speech_ms=0)
+        audio = np.concatenate([silence(320), tone(640), silence(640)])
+        seg = list(segmenter.process(audio))[0]
+        self.assertEqual(frame_ms, 32)
+        self.assertEqual(seg.endpoint_wait_ms, 192)
+
+
 class AudioUtilTests(unittest.TestCase):
     def test_wav_roundtrip(self):
         pcm = tone(500)

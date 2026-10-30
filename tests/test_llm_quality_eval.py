@@ -255,9 +255,11 @@ def test_first_sentence_must_be_complete_and_at_most_fifteen_characters():
     passed = check_answer(_speech("好的，在 M87 星雲。後面再補充比較長的說明內容。"), max_chars=200)
     assert passed["first_sentence"] == {"passed": True, "value": "好的，在 M87 星雲。"}
     # 16 content characters: one too many, although the sentence is complete.
-    too_long = check_answer(BOARD, max_chars=200)
+    too_long = check_answer(_speech("安裝分成三個步驟，細節已整理在看板。"), max_chars=200)
     assert too_long["first_sentence"] == {
         "passed": False, "value": "安裝分成三個步驟，細節已整理在看板。"}
+    # Board speech is exempt from the rule (user decision 2026-10-30).
+    assert "first_sentence" not in check_answer(BOARD, max_chars=200)
     # No sentence end: the first fragment would wait for the semantic timer or the end.
     unfinished = check_answer(_speech("好的，我想想看"), max_chars=200)
     assert unfinished["first_sentence"] == {"passed": False, "value": ""}
@@ -339,3 +341,6 @@ def test_runs_record_first_sentence_and_first_fragment_for_both_reports(
     assert main(["first-sentence", "--results", str(path),
                  "--output", str(tmp_path / "first.md")]) == 0
     assert "遵循率：28/29" in (tmp_path / "first.md").read_text("utf-8")
+    # A board reply is not counted, however long its spoken summary.
+    item["answer"]["raw"] = BOARD
+    assert "遵循率：28/28" in build_first_sentence_report(result)
