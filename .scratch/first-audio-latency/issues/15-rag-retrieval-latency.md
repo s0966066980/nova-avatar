@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # RAGFlow 檢索速度
-Status: ready-for-human
+Status: ready-for-agent
 Blocked by: 06
 
 依[規格](../spec.md)與 [ADR 0022](../../../docs/adr/0022-run-routing-retrieval-and-answer-concurrently.md)。issue 06 實測（`after-06-2026-10-30.json`）：檢索上限 400 ms，24 輪中 22 輪 `timeout`；串行時期檢索本身 P50 0.50–0.58 s、P95 0.77–0.85 s。上限幾乎每輪落空，等於關閉 RAG。
@@ -63,3 +63,6 @@ Blocked by: 06
 
 ### 2026-10-30 待使用者決定（orchestrator）
 上限 0.7 s 下（`offset-split`）檢索等待 P50 0.57 s，是一般輪次最大的一段。嵌入服務提案 (a)／(b) 見上一段；選定後重測並定最終上限。
+
+### 2026-10-30 使用者決定
+選 (b)：改以 llama.cpp `llama-server --embedding` 在 CPU 上提供 bge-m3，RAGFlow 嵌入供應商改為 OpenAI 相容，停用 11435 的 GPU Ollama 嵌入服務以釋出約 1.3 GB 顯存；完成後依實測 P95 調低檢索上限。
