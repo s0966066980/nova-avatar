@@ -7,7 +7,7 @@
     <aside class="settings-sidebar-rail">
       <div class="rail-header">
         <div class="rail-title">
-          <i class="bi bi-sliders2" style="color: var(--brand-light);"></i>
+          <i class="bi bi-sliders2" aria-hidden="true"></i>
           <span>{{ t('settings.systemSettings') }}</span>
         </div>
         <div class="rail-desc">管理數位人的回答、知識與舞台體驗</div>
@@ -90,8 +90,7 @@
               </div>
               <button
                 type="button"
-                class="btn-apply-primary"
-                style="padding: 6px 14px; font-size: 12px;"
+                class="btn-apply-primary btn-apply-compact"
                 :disabled="applyingQuality"
                 @click="handleApplyMouthQuality"
               >
@@ -118,7 +117,7 @@
               >
                 <div class="opt-header-line">
                   <span class="opt-title">Wav2Lip (Research / Non-commercial)</span>
-                  <span class="opt-badge" style="background: rgba(14,165,233,0.15); color: #38bdf8;">極速輕量</span>
+                  <span class="opt-badge opt-badge-info">極速輕量</span>
                 </div>
                 <span class="opt-detail">傳統 GAN 架構，顯存消耗低，適合輕量邊緣設備。</span>
               </div>
@@ -205,9 +204,7 @@
               </div>
             </div>
 
-            <div style="font-size: 11.5px; color: var(--text-tertiary); margin-top: 10px; line-height: 1.5;">
-              {{ t('settings.quality.rebuildHint') }}
-            </div>
+            <p class="card-footnote">{{ t('settings.quality.rebuildHint') }}</p>
           </section>
 
           <!-- 右欄：滿板大縮圖角色相簿與匯入 -->
@@ -219,8 +216,7 @@
               </div>
               <button
                 type="button"
-                class="btn-apply-primary"
-                style="padding: 6px 14px; font-size: 12px;"
+                class="btn-apply-primary btn-apply-compact"
                 :disabled="applyingAvatar"
                 @click="handleApplyAvatar"
               >
@@ -237,7 +233,7 @@
                 @click="selectCharacter(char.id)"
               >
                 <div class="avatar-preview-face">
-                  <img v-if="char.preview_url || char.thumbnail" :src="char.preview_url || char.thumbnail" :alt="char.label || char.name || char.id" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm);">
+                  <img v-if="char.preview_url || char.thumbnail" class="avatar-preview-img" :src="char.preview_url || char.thumbnail" :alt="char.label || char.name || char.id">
                   <i v-else class="bi bi-person-fill"></i>
                   <span class="avatar-badge-active" v-if="runtime.avatar.avatar_id === char.id">使用中</span>
                 </div>
@@ -245,9 +241,9 @@
                   <div class="avatar-name-txt">{{ char.label || char.name || char.id }}</div>
                   <div class="avatar-specs-txt">{{ char.resolution || '1080x1920' }} · {{ char.fps || 25 }}fps · {{ selectedEngine }}</div>
                 </div>
-                <div style="padding: 0 10px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <div class="avatar-card-footer">
                   <small>{{ char.green_screen ? '綠幕角色 · 可換背景' : '既有角色' }}</small>
-                  <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;"
+                  <button type="button" class="btn-secondary btn-xs"
                     :disabled="runtime.avatar.avatar_id === char.id || importing"
                     :aria-label="`刪除 ${char.label || char.id}`"
                     @click.stop="requestDeleteAvatar(char)">刪除</button>
@@ -261,27 +257,26 @@
               <span v-else>{{ t('settings.avatar.emptyCharacters') }}</span>
             </div>
 
-            <details v-if="archivedCharacters.items.length" style="margin-top: 14px;">
-              <summary style="cursor: pointer; font-size: 12px;">本機回收區（{{ archivedCharacters.items.length }}）</summary>
-              <div v-for="item in archivedCharacters.items" :key="item.archive_name"
-                style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0;">
-                <span style="font-size: 12px;">{{ item.avatar_id }}</span>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;"
+            <details v-if="archivedCharacters.items.length" class="recycle-bin">
+              <summary>本機回收區（{{ archivedCharacters.items.length }}）</summary>
+              <div v-for="item in archivedCharacters.items" :key="item.archive_name" class="recycle-row">
+                <span>{{ item.avatar_id }}</span>
+                <div class="recycle-actions">
+                  <button type="button" class="btn-secondary btn-xs"
                     @click="handleRestoreAvatar(item.archive_name)">復原</button>
-                  <button type="button" class="btn-danger" style="padding: 3px 8px; font-size: 11px;"
+                  <button type="button" class="btn-danger btn-xs"
                     :aria-label="`永久刪除 ${item.avatar_id}`"
                     @click="requestPermanentlyDeleteAvatar(item)">刪除</button>
                 </div>
               </div>
             </details>
 
-            <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 12px;">
-              <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
-                <i class="bi bi-cloud-arrow-up-fill" style="color: var(--brand-light);"></i> 匯入自訂短影片以產生新角色
+            <div class="card-section">
+              <span class="card-section-title">
+                <i class="bi bi-cloud-arrow-up-fill" aria-hidden="true"></i> 匯入自訂短影片以產生新角色
               </span>
               <div
-                style="border: 1.5px dashed var(--border-default); border-radius: var(--radius-md); padding: 18px; text-align: center; color: var(--text-tertiary); background: var(--bg-input); cursor: pointer;"
+                class="import-dropzone"
                 @dragover.prevent="onImportDragOver"
                 @drop.prevent="onImportDrop"
                 @click="importFileInput?.click()"
@@ -290,23 +285,22 @@
                   ref="importFileInput"
                   type="file"
                   accept="video/mp4,video/quicktime,video/webm"
-                  style="display: none;"
+                  hidden
                   @change="onImportFileChange"
                 >
-                <i class="bi bi-film" style="font-size: 26px; color: var(--brand-light); display: block; margin-bottom: 6px;"></i>
+                <i class="bi bi-film import-dropzone-icon" aria-hidden="true"></i>
                 <span v-if="importFile">{{ importFile.name }} (點擊替換)</span>
                 <span v-else>拖曳 MP4 / MOV 正面影片至此，或點擊選取檔案</span>
               </div>
-              <label v-if="selectedEngine === 'musetalk'" style="display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 12px;">
+              <label v-if="selectedEngine === 'musetalk'" class="import-check">
                 <input type="checkbox" v-model="importGreenScreen"> 上傳影片為綠幕素材（建立後可使用舞台背景）
               </label>
-              <div v-if="importFile" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+              <div v-if="importFile" class="import-row">
                 <input
                   type="text"
                   class="chat-text-entry"
                   v-model="importAvatarId"
                   :placeholder="importNamePlaceholder"
-                  style="flex: 1;"
                 >
                 <button
                   type="button"
@@ -321,7 +315,7 @@
           </section>
         </div>
 
-        <!-- ── 分類 3：舞台與看板排版 (滿板大尺寸 9:16 對照視窗) ── -->
+        <!-- ── 分類 3：舞台與看板排版（背景與看板樣式｜元素位置｜9:16 預覽） ── -->
         <div
           v-show="activeSettingsTab === 'stage'"
           class="settings-category-panel"
@@ -329,197 +323,192 @@
           role="tabpanel"
           aria-labelledby="railTab-stage"
         >
-          <section class="setting-card" style="grid-column: 1 / -1;">
-            <div class="card-title-row">
-              <div>
-                <div class="card-title-text"><i class="bi bi-image"></i> 演播場景背景</div>
-                <div class="card-subtitle-desc">共用同一場景；圖片、循環影片及 GIF 均可作為背景。講話中也可切換。</div>
+          <div class="stage-settings">
+          <div class="settings-column">
+            <section class="setting-card">
+              <div class="card-title-row">
+                <div>
+                  <div class="card-title-text"><i class="bi bi-image"></i> 演播場景背景</div>
+                  <div class="card-subtitle-desc">共用同一場景；圖片、循環影片及 GIF 均可作為背景。講話中也可切換。</div>
+                </div>
+                <button type="button" class="btn-secondary" :disabled="backgrounds.busy || !backgrounds.background_id"
+                  @click="handleSelectBackground('')">顯示原始綠幕</button>
               </div>
-              <button type="button" class="btn-secondary" :disabled="backgrounds.busy || !backgrounds.background_id"
-                @click="handleSelectBackground('')">顯示原始綠幕</button>
-            </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px;">
-              <input ref="backgroundFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" aria-label="選擇舞台背景">
-              <button type="button" class="btn-apply-primary" :disabled="backgrounds.busy" @click="handleUploadBackground">上傳背景</button>
-              <small v-if="backgrounds.error" role="alert" style="color: #e57070;">{{ backgrounds.error }}</small>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px;">
-              <div v-for="item in backgrounds.items" :key="item.id" style="min-width: 0;">
-                <button type="button" class="option-card-btn"
-                  :class="{ selected: backgrounds.background_id === item.id }"
-                  :disabled="backgrounds.busy" @click="handleSelectBackground(item.id)"
-                  style="padding: 6px; text-align: left; overflow: hidden; width: 100%;">
-                  <img v-if="item.preview_url" :src="item.preview_url" :alt="item.label"
-                    style="width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px;">
-                  <span class="opt-title" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ item.label }}</span>
-                  <small>{{ item.kind === 'video' ? '循環影片' : item.kind === 'gif' ? 'GIF' : '圖片' }}</small>
+              <div class="background-upload-row">
+                <input ref="backgroundFileInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" aria-label="選擇舞台背景">
+                <button type="button" class="btn-apply-primary" :disabled="backgrounds.busy" @click="handleUploadBackground">上傳背景</button>
+                <small v-if="backgrounds.error" role="alert" class="form-error-text">{{ backgrounds.error }}</small>
+              </div>
+              <div class="background-grid">
+                <div v-for="item in backgrounds.items" :key="item.id" class="background-item">
+                  <button type="button" class="option-card-btn background-option"
+                    :class="{ selected: backgrounds.background_id === item.id }"
+                    :disabled="backgrounds.busy" @click="handleSelectBackground(item.id)">
+                    <img v-if="item.preview_url" :src="item.preview_url" :alt="item.label" class="background-thumb">
+                    <span class="opt-title background-label">{{ item.label }}</span>
+                    <small>{{ item.kind === 'video' ? '循環影片' : item.kind === 'gif' ? 'GIF' : '圖片' }}</small>
+                  </button>
+                  <button type="button" class="btn-secondary btn-xs background-delete"
+                    :disabled="backgrounds.busy || backgrounds.background_id === item.id"
+                    :title="backgrounds.background_id === item.id ? '請先切換背景再刪除' : `刪除 ${item.label}`"
+                    @click="requestDeleteBackground(item)">刪除背景</button>
+                </div>
+              </div>
+              <p v-if="!backgrounds.items.length && !backgrounds.loading" class="card-footnote">尚無背景，請先上傳。</p>
+              <details v-if="backgrounds.archivedItems.length" class="recycle-bin">
+                <summary>背景回收區（{{ backgrounds.archivedItems.length }}）</summary>
+                <div v-for="item in backgrounds.archivedItems" :key="item.archive_name" class="recycle-row">
+                  <span>{{ item.label }}</span>
+                  <button type="button" class="btn-secondary btn-xs"
+                    :disabled="backgrounds.busy" @click="handleRestoreBackground(item.archive_name)">復原</button>
+                </div>
+              </details>
+            </section>
+
+            <!-- 看板外觀與尺寸 -->
+            <section class="setting-card">
+              <div class="card-title-row">
+                <div>
+                  <div class="card-title-text"><i class="bi bi-layout-wtf"></i> 看板視覺風格樣式</div>
+                  <div class="card-subtitle-desc">設定浮動看板的材質外觀、尺寸、透明度與字幕上限。</div>
+                </div>
+                <button
+                  type="button"
+                  class="btn-apply-primary btn-apply-compact"
+                  :disabled="applyingStage"
+                  @click="handleApplyStage"
+                >
+                  <i class="bi bi-check2" :class="{ spin: applyingStage }"></i> 套用舞台設定
                 </button>
-                <button type="button" class="btn-secondary"
-                  style="width: 100%; margin-top: 5px; padding: 4px 8px; font-size: 11px;"
-                  :disabled="backgrounds.busy || backgrounds.background_id === item.id"
-                  :title="backgrounds.background_id === item.id ? '請先切換背景再刪除' : `刪除 ${item.label}`"
-                  @click="requestDeleteBackground(item)">刪除背景</button>
               </div>
-            </div>
-            <p v-if="!backgrounds.items.length && !backgrounds.loading" style="font-size: 12px; color: var(--text-tertiary);">尚無背景，請先上傳。</p>
-            <details v-if="backgrounds.archivedItems.length" style="margin-top: 14px;">
-              <summary style="cursor: pointer; font-size: 12px;">背景回收區（{{ backgrounds.archivedItems.length }}）</summary>
-              <div v-for="item in backgrounds.archivedItems" :key="item.archive_name"
-                style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0;">
-                <span style="font-size: 12px;">{{ item.label }}</span>
-                <button type="button" class="btn-secondary" style="padding: 3px 8px; font-size: 11px;"
-                  :disabled="backgrounds.busy" @click="handleRestoreBackground(item.archive_name)">復原</button>
+
+              <!-- 看板風格卡片: glass / slate / cue -->
+              <div class="grid-options-row board-style-grid">
+                <div
+                  v-for="style in stageBoardStyles"
+                  :key="style.id"
+                  :id="`stage-board-style-${style.id}`"
+                  class="option-card-btn"
+                  :class="{ selected: selectedBoardStyle === style.id }"
+                  @click="selectedBoardStyle = style.id"
+                >
+                  <span class="opt-title">{{ style.icon }} {{ style.label }}</span>
+                  <span class="opt-detail">{{ style.desc }}</span>
+                </div>
               </div>
-            </details>
-          </section>
-          <!-- 左欄：看板排版參數與九宮格 -->
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label class="field-main-label">看板寬度 (Width px)</label>
+                  <span class="field-sub-hint">舞台畫布內的橫向尺寸 (200–720px)</span>
+                </div>
+                <div class="field-control-area">
+                  <div class="std-slider-combo">
+                    <input
+                      type="range"
+                      class="std-range"
+                      min="200"
+                      max="720"
+                      step="10"
+                      v-model.number="selectedBoardWidth"
+                    >
+                    <span class="std-val-pill">{{ selectedBoardWidth }}px</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label class="field-main-label">看板高度 (Height px)</label>
+                  <span class="field-sub-hint">條列項目展開的縱向高度 (180–720px)</span>
+                </div>
+                <div class="field-control-area">
+                  <div class="std-slider-combo">
+                    <input
+                      type="range"
+                      class="std-range"
+                      min="180"
+                      max="720"
+                      step="10"
+                      v-model.number="selectedBoardHeight"
+                    >
+                    <span class="std-val-pill">{{ selectedBoardHeight }}px</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label class="field-main-label">背景半透明度 (%)</label>
+                  <span class="field-sub-hint">透出人物背景同時維持字型對比</span>
+                </div>
+                <div class="field-control-area">
+                  <div class="std-slider-combo">
+                    <input
+                      type="range"
+                      class="std-range"
+                      min="0"
+                      max="90"
+                      step="5"
+                      v-model.number="selectedBoardTransparency"
+                    >
+                    <span class="std-val-pill">{{ selectedBoardTransparency }}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="stage-caption-max-chars" class="field-main-label">舞台字幕上限</label>
+                  <span class="field-sub-hint">保留最新字幕片段的最大字元數 (20–2000)</span>
+                </div>
+                <div class="field-control-area">
+                  <div class="std-slider-combo">
+                    <input
+                      id="stage-caption-max-chars"
+                      type="number"
+                      class="std-range"
+                      min="20"
+                      max="2000"
+                      step="10"
+                      v-model.number="selectedStageCaptionMaxChars"
+                    >
+                    <span class="std-val-pill">{{ selectedStageCaptionMaxChars }} 字</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="stage-board-preview" class="field-main-label">常態預覽看板</label>
+                  <span class="field-sub-hint">在舞台與控制台中預設顯示示範看板</span>
+                </div>
+                <div class="field-control-area">
+                  <label class="std-switch">
+                    <input
+                      id="stage-board-preview"
+                      type="checkbox"
+                      v-model="selectedBoardPreview"
+                    >
+                    <span class="std-slider-track"></span>
+                  </label>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- 舞台元素位置：字幕帶、看板九宮格、麥克風、展開看板按鈕、文字輸入框 -->
           <section class="setting-card">
             <div class="card-title-row">
               <div>
-                <div class="card-title-text"><i class="bi bi-layout-wtf"></i> 看板視覺風格樣式</div>
-                <div class="card-subtitle-desc">設定浮動看板的材質外觀、尺寸與九宮格定位。</div>
-              </div>
-              <button
-                type="button"
-                class="btn-apply-primary"
-                style="padding: 6px 14px; font-size: 12px;"
-                :disabled="applyingStage"
-                @click="handleApplyStage"
-              >
-                <i class="bi bi-check2" :class="{ spin: applyingStage }"></i> 套用舞台設定
-              </button>
-            </div>
-
-            <div class="stage-composer-controls" style="border-top:1px solid var(--border-subtle);padding-top:14px">
-              <label class="field-main-label"><input type="checkbox" v-model="composerDraft.composer_enabled"> 開啟舞台文字與附件輸入</label>
-              <p class="field-sub-hint">套用所有舞台；各場對話與附件互相獨立。高度隨舞台等比縮放，內容較多時在框內捲動；預覽與舞台都會避開回覆文字區。</p>
-              <div class="stage-position-sliders">
-                <template v-for="field in composerFields" :key="field.key">
-                  <label :for="field.key">{{ field.label }} {{ composerDraft[field.key] }}{{ field.unit }}</label>
-                  <input :id="field.key" type="range" class="std-range" :min="field.min" :max="field.max" step="1" v-model.number="composerDraft[field.key]">
-                </template>
-              </div>
-              <label for="composer-placeholder-zh" class="field-main-label">中文輸入提示</label>
-              <input id="composer-placeholder-zh" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_zh">
-              <label for="composer-placeholder-en" class="field-main-label">英文輸入提示</label>
-              <input id="composer-placeholder-en" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_en">
-            </div>
-            <!-- 看板風格卡片: glass / slate / cue -->
-            <div class="grid-options-row" style="grid-template-columns: repeat(3, 1fr);">
-              <div
-                v-for="style in stageBoardStyles"
-                :key="style.id"
-                :id="`stage-board-style-${style.id}`"
-                class="option-card-btn"
-                :class="{ selected: selectedBoardStyle === style.id }"
-                @click="selectedBoardStyle = style.id"
-              >
-                <span class="opt-title">{{ style.icon }} {{ style.label }}</span>
-                <span class="opt-detail">{{ style.desc }}</span>
+                <div class="card-title-text"><i class="bi bi-arrows-move"></i> 舞台元素位置</div>
+                <div class="card-subtitle-desc">可直接拖曳右側預覽，或用滑桿精準調整；按「套用舞台設定」或底部儲存後生效。</div>
               </div>
             </div>
 
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label class="field-main-label">看板寬度 (Width px)</label>
-                <span class="field-sub-hint">舞台畫布內的橫向尺寸 (200–720px)</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    type="range"
-                    class="std-range"
-                    min="200"
-                    max="720"
-                    step="10"
-                    v-model.number="selectedBoardWidth"
-                  >
-                  <span class="std-val-pill">{{ selectedBoardWidth }}px</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label class="field-main-label">看板高度 (Height px)</label>
-                <span class="field-sub-hint">條列項目展開的縱向高度 (180–720px)</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    type="range"
-                    class="std-range"
-                    min="180"
-                    max="720"
-                    step="10"
-                    v-model.number="selectedBoardHeight"
-                  >
-                  <span class="std-val-pill">{{ selectedBoardHeight }}px</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label class="field-main-label">背景半透明度 (%)</label>
-                <span class="field-sub-hint">透出人物背景同時維持字型對比</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    type="range"
-                    class="std-range"
-                    min="0"
-                    max="90"
-                    step="5"
-                    v-model.number="selectedBoardTransparency"
-                  >
-                  <span class="std-val-pill">{{ selectedBoardTransparency }}%</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="stage-caption-max-chars" class="field-main-label">舞台字幕上限</label>
-                <span class="field-sub-hint">保留最新字幕片段的最大字元數 (20–2000)</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    id="stage-caption-max-chars"
-                    type="number"
-                    class="std-range"
-                    min="20"
-                    max="2000"
-                    step="10"
-                    v-model.number="selectedStageCaptionMaxChars"
-                  >
-                  <span class="std-val-pill">{{ selectedStageCaptionMaxChars }} 字</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="stage-board-preview" class="field-main-label">常態預覽看板</label>
-                <span class="field-sub-hint">在舞台與控制台中預設顯示示範看板</span>
-              </div>
-              <div class="field-control-area">
-                <label class="std-switch">
-                  <input
-                    id="stage-board-preview"
-                    type="checkbox"
-                    v-model="selectedBoardPreview"
-                  >
-                  <span class="std-slider-track"></span>
-                </label>
-              </div>
-            </div>
-
-            <div class="stage-caption-controls" style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
-              <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
-                <i class="bi bi-badge-cc-fill" style="color: var(--brand-light);"></i> 即時字幕帶展示區域
+            <div class="stage-caption-controls">
+              <span class="card-section-title">
+                <i class="bi bi-badge-cc-fill" aria-hidden="true"></i> 即時字幕帶展示區域
               </span>
               <div class="stage-position-sliders">
                 <label for="stage-caption-x">水平位置 {{ selectedCaptionX }}%</label>
@@ -533,9 +522,9 @@
             </div>
 
             <!-- 九宮格定位器 -->
-            <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
-              <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
-                <i class="bi bi-grid-3x3" style="color: var(--brand-light);"></i> 舞台位置九宮格快速對齊
+            <div class="card-section">
+              <span class="card-section-title">
+                <i class="bi bi-grid-3x3" aria-hidden="true"></i> 舞台位置九宮格快速對齊
               </span>
               <div class="position-alignment-box">
                 <div class="grid-9-matrix" id="gridMatrix9">
@@ -549,16 +538,16 @@
                     :title="t(preset.labelKey)"
                   ></button>
                 </div>
-                <div style="font-size: 12px; color: var(--text-tertiary); line-height: 1.5;">
+                <div class="stage-hint-text">
                   點選九宮格定位，即時觀察右側 9:16 大尺寸舞台縮圖連動。<br>
                   預設為「右上」，避免遮擋人物臉頰與底部字幕帶。
                 </div>
               </div>
             </div>
 
-            <div class="stage-mic-controls" style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
-              <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
-                <i class="bi bi-mic-fill" style="color: var(--brand-light);"></i> 麥克風位置
+            <div class="stage-mic-controls card-section">
+              <span class="card-section-title">
+                <i class="bi bi-mic-fill" aria-hidden="true"></i> 麥克風位置
               </span>
               <div class="position-alignment-box">
                 <div class="grid-9-matrix" id="stageMicGridMatrix">
@@ -572,7 +561,7 @@
                     @click="selectMicPreset(preset.id)"
                   ></button>
                 </div>
-                <div style="font-size: 12px; color: var(--text-tertiary); line-height: 1.5;">
+                <div class="stage-hint-text">
                   麥克風按鈕的位置會與右側舞台預覽同步，避免遮擋人物或看板。
                 </div>
               </div>
@@ -584,9 +573,9 @@
               </div>
             </div>
 
-            <div class="stage-open-board-controls" style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
-              <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
-                <i class="bi bi-layout-sidebar-inset-reverse" style="color: var(--brand-light);"></i> 展開看板按鈕位置
+            <div class="stage-open-board-controls card-section">
+              <span class="card-section-title">
+                <i class="bi bi-layout-sidebar-inset-reverse" aria-hidden="true"></i> 展開看板按鈕位置
               </span>
               <div class="stage-position-sliders">
                 <label for="stage-board-open-x">水平位置 {{ selectedBoardOpenX }}%</label>
@@ -595,87 +584,105 @@
                 <input id="stage-board-open-y" type="range" class="std-range" min="0" max="100" step="1" v-model.number="selectedBoardOpenY">
               </div>
             </div>
-          </section>
 
-          <!-- 右欄：大尺寸 9:16 舞台即時對照全景視窗 (滿板震撼) -->
-          <section class="stage-live-preview-card stage-layout-preview">
-            <span style="font-size: 14px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-              <i class="bi bi-eye-fill" style="color: var(--brand-light);"></i> 9:16 舞台即時對照全景 (所見即所得)
-            </span>
-            <div
-              ref="stagePreviewRef" data-composer-canvas
-              class="interactive-large-stage stage-direct-editor standalone-stage-preview"
-              :data-board-style="selectedBoardStyle"
-              @pointermove="moveStageDirectEdit"
-              @pointerup="finishStageDirectEdit"
-              @pointercancel="finishStageDirectEdit"
-            >
-              <img
-                v-if="stageScenePreviewUrl"
-                class="stage-preview-avatar"
-                :src="stageScenePreviewUrl"
-                :alt="`${stagePreviewAvatarName} 數位人舞台預覽`"
-              >
-              <div v-else class="mini-avatar-shape"></div>
-              <div class="stage-preview-mode"><span class="stage-preview-mode-dot"></span><span>點擊開始收音</span></div>
-              <!-- 即時同步的浮動看板 -->
-              <div
-                class="mini-board-rect stage-preview-float-board"
-                id="miniBoardRect"
-                :class="`board-style-${selectedBoardStyle}`"
-                :style="stagePreviewBoardStyle"
-                role="button"
-                tabindex="0"
-                aria-label="拖曳調整看板位置"
-                @pointerdown.stop.prevent="startStageDirectEdit('board', $event)"
-              >
-                <div class="stage-preview-board-header">
-                  <span>回答看板</span>
-                  <span class="stage-preview-count-pill">預覽</span>
-                </div>
-                <div class="stage-preview-board-content">
-                  <span class="stage-preview-kicker">ON SCREEN</span>
-                  <strong>第一次展示，準備這四件事</strong>
-                  <span class="stage-preview-source">控制台預覽 · 對位置與大小</span>
-                  <span class="stage-preview-item"><b>01</b> 選擇看板位置，避免遮擋人物與字幕。</span>
-                  <span class="stage-preview-item"><b>02</b> 拖曳整張看板即可移動。</span>
-                </div>
+            <div class="stage-composer-controls card-section">
+              <label class="field-main-label"><input type="checkbox" v-model="composerDraft.composer_enabled"> 開啟舞台文字與附件輸入</label>
+              <p class="field-sub-hint">套用所有舞台；各場對話與附件互相獨立。高度隨舞台等比縮放，內容較多時在框內捲動；預覽與舞台都會避開回覆文字區。</p>
+              <div class="stage-position-sliders">
+                <template v-for="field in composerFields" :key="field.key">
+                  <label :for="field.key">{{ field.label }} {{ composerDraft[field.key] }}{{ field.unit }}</label>
+                  <input :id="field.key" type="range" class="std-range" :min="field.min" :max="field.max" step="1" v-model.number="composerDraft[field.key]">
+                </template>
               </div>
-              <button
-                type="button"
-                class="stage-preview-board-open"
-                :style="stagePreviewBoardOpenPresentation.style"
-                :data-edge="stagePreviewBoardOpenPresentation.edge"
-                aria-label="拖曳調整展開看板按鈕位置"
-                @pointerdown.stop.prevent="startStageDirectEdit('board-open', $event)"
-              ><span class="stage-board-open-icon" aria-hidden="true">{{ stagePreviewBoardOpenPresentation.icon }}</span> 展開看板</button>
-              <ConversationComposer v-if="composerDraft.composer_enabled" stage preview :settings="composerDraft" :enabled="true"
-                style="z-index:6;cursor:grab;touch-action:none" @pointerdown.stop.prevent="startStageDirectEdit('composer', $event)" />
-              <div class="stage-preview-mic-wrap" :style="stagePreviewMicStyle">
+              <label for="composer-placeholder-zh" class="field-main-label">中文輸入提示</label>
+              <input id="composer-placeholder-zh" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_zh">
+              <label for="composer-placeholder-en" class="field-main-label">英文輸入提示</label>
+              <input id="composer-placeholder-en" class="std-input" maxlength="200" v-model="composerDraft.composer_placeholder_en">
+            </div>
+          </section>
+          </div>
+
+          <!-- 9:16 舞台即時對照（所見即所得），尺寸隨格子高度縮放 -->
+          <section class="stage-live-preview-card stage-layout-preview">
+            <span class="preview-title">
+              <i class="bi bi-eye-fill" aria-hidden="true"></i> 9:16 舞台即時對照全景 (所見即所得)
+            </span>
+            <div class="stage-preview-viewport">
+              <div
+                ref="stagePreviewRef" data-composer-canvas
+                class="interactive-large-stage stage-direct-editor standalone-stage-preview"
+                :data-board-style="selectedBoardStyle"
+                @pointermove="moveStageDirectEdit"
+                @pointerup="finishStageDirectEdit"
+                @pointercancel="finishStageDirectEdit"
+              >
+                <img
+                  v-if="stageScenePreviewUrl"
+                  class="stage-preview-avatar"
+                  :src="stageScenePreviewUrl"
+                  :alt="`${stagePreviewAvatarName} 數位人舞台預覽`"
+                >
+                <div v-else class="mini-avatar-shape"></div>
+                <div class="stage-preview-mode"><span class="stage-preview-mode-dot"></span><span>點擊開始收音</span></div>
+                <!-- 即時同步的浮動看板 -->
+                <div
+                  class="mini-board-rect stage-preview-float-board"
+                  id="miniBoardRect"
+                  :class="`board-style-${selectedBoardStyle}`"
+                  :style="stagePreviewBoardStyle"
+                  role="button"
+                  tabindex="0"
+                  aria-label="拖曳調整看板位置"
+                  @pointerdown.stop.prevent="startStageDirectEdit('board', $event)"
+                >
+                  <div class="stage-preview-board-header">
+                    <span>回答看板</span>
+                    <span class="stage-preview-count-pill">預覽</span>
+                  </div>
+                  <div class="stage-preview-board-content">
+                    <span class="stage-preview-kicker">ON SCREEN</span>
+                    <strong>第一次展示，準備這四件事</strong>
+                    <span class="stage-preview-source">控制台預覽 · 對位置與大小</span>
+                    <span class="stage-preview-item"><b>01</b> 選擇看板位置，避免遮擋人物與字幕。</span>
+                    <span class="stage-preview-item"><b>02</b> 拖曳整張看板即可移動。</span>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  class="stage-preview-mic"
-                  aria-label="拖曳調整麥克風位置"
-                  @pointerdown.stop.prevent="startStageDirectEdit('mic', $event)"
+                  class="stage-preview-board-open"
+                  :style="stagePreviewBoardOpenPresentation.style"
+                  :data-edge="stagePreviewBoardOpenPresentation.edge"
+                  aria-label="拖曳調整展開看板按鈕位置"
+                  @pointerdown.stop.prevent="startStageDirectEdit('board-open', $event)"
+                ><span class="stage-board-open-icon" aria-hidden="true">{{ stagePreviewBoardOpenPresentation.icon }}</span> 展開看板</button>
+                <ConversationComposer v-if="composerDraft.composer_enabled" stage preview :settings="composerDraft" :enabled="true"
+                  style="z-index:6;cursor:grab;touch-action:none" @pointerdown.stop.prevent="startStageDirectEdit('composer', $event)" />
+                <div class="stage-preview-mic-wrap" :style="stagePreviewMicStyle">
+                  <button
+                    type="button"
+                    class="stage-preview-mic"
+                    aria-label="拖曳調整麥克風位置"
+                    @pointerdown.stop.prevent="startStageDirectEdit('mic', $event)"
+                  >
+                    <span class="stage-preview-ring"></span><span class="stage-preview-ring second"></span>
+                    <i class="bi bi-mic-fill"></i>
+                  </button>
+                  <span class="stage-preview-mic-hint">直接說話</span>
+                </div>
+                <div
+                  class="stage-preview-captions"
+                  :style="stagePreviewCaptionStyle"
+                  role="button"
+                  tabindex="0"
+                  aria-label="拖曳調整即時字幕帶展示區域"
+                  @pointerdown.stop.prevent="startStageDirectEdit('caption', $event)"
                 >
-                  <span class="stage-preview-ring"></span><span class="stage-preview-ring second"></span>
-                  <i class="bi bi-mic-fill"></i>
-                </button>
-                <span class="stage-preview-mic-hint">直接說話</span>
-              </div>
-              <div
-                class="stage-preview-captions"
-                :style="stagePreviewCaptionStyle"
-                role="button"
-                tabindex="0"
-                aria-label="拖曳調整即時字幕帶展示區域"
-                @pointerdown.stop.prevent="startStageDirectEdit('caption', $event)"
-              >
-                <span class="stage-preview-said">準備好後，直接開始對話</span>
-                <div class="stage-preview-reply">「即時字幕帶展示區域」</div>
+                  <span class="stage-preview-said">準備好後，直接開始對話</span>
+                  <div class="stage-preview-reply">「即時字幕帶展示區域」</div>
+                </div>
               </div>
             </div>
-            <span style="font-size: 11.5px; color: var(--text-tertiary);">
+            <span class="card-footnote">
               可直接拖曳看板、麥克風或展開看板按鈕；放開後會套用並保存到數位人舞台。亦可用左側滑桿微調。
             </span>
           </section>
@@ -720,8 +727,7 @@
               </div>
               <button
                 type="button"
-                class="btn-apply-primary"
-                style="padding: 6px 14px; font-size: 12px;"
+                class="btn-apply-primary btn-apply-compact"
                 :disabled="applyingVad"
                 @click="handleApplyVad"
               >
@@ -792,8 +798,7 @@
               </div>
               <button
                 type="button"
-                class="btn-apply-primary"
-                style="padding: 6px 14px; font-size: 12px;"
+                class="btn-apply-primary btn-apply-compact"
                 :disabled="applyingStt"
                 @click="applySttChange"
               >
@@ -848,7 +853,6 @@
               class="stt-prewarm-progress"
               role="status"
               aria-live="polite"
-              style="margin-bottom: 12px;"
             >
               <div
                 class="progress-track"
@@ -858,7 +862,7 @@
               >
                 <div class="progress-fill progress-fill-indeterminate"></div>
               </div>
-              <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">
+              <p class="stt-prewarm-hint">
                 {{ selectedSttEngine?.local_model_ready
                   ? t('settings.speech.localPrewarmProgressHint')
                   : t('settings.speech.prewarmProgressHint') }}
@@ -1755,6 +1759,123 @@ defineExpose({
 .settings-return-console { margin-top: 12px; }
 .conversation-return-console { margin-bottom: 14px; }
 
+/* 16:9 一屏版面：整頁元件填滿分頁高度，由元件內的區塊各自捲動 */
+@media (min-width: 1280px) and (min-height: 640px) {
+  .unified-role-panel { display: flex; flex-direction: column; }
+  .conversation-return-console { align-self: flex-start; flex: none; }
+  .unified-role-panel > .conversation-panel { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+  .unified-role-panel > .role-settings,
+  .unified-role-panel > .idle-greeting-settings { flex: 1 1 0; min-height: 0; }
+}
+
+.btn-xs { padding: 3px 8px; font-size: 11px; }
+
+/* Absolute so a portrait preview cannot stretch the 4:3 frame. */
+.avatar-preview-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+.avatar-card-footer {
+  padding: 0 10px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recycle-bin summary { cursor: pointer; font-size: 12px; }
+.recycle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.recycle-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
+.import-dropzone {
+  border: 1.5px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  text-align: center;
+  color: var(--text-tertiary);
+  background: var(--bg-input);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.import-dropzone-icon {
+  font-size: 26px;
+  color: var(--brand-light);
+  display: block;
+  margin-bottom: 6px;
+}
+.import-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.import-row { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+.import-row input { flex: 1; min-width: 0; }
+
+.background-upload-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.background-upload-row input[type="file"] { min-width: 0; max-width: 100%; }
+.form-error-text { color: #e57070; }
+.background-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+.background-item { min-width: 0; }
+.background-option {
+  padding: 6px;
+  text-align: left;
+  overflow: hidden;
+  width: 100%;
+}
+.background-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.background-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.background-delete { width: 100%; margin-top: 5px; padding: 4px 8px; }
+
+.stage-hint-text {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+.preview-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.preview-title i { color: var(--brand-light); }
+
 .confirm-dialog-overlay {
   position: fixed;
   inset: 0;
@@ -1825,10 +1946,17 @@ defineExpose({
 }
 
 .stt-prewarm-progress {
+  margin-bottom: 12px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
+}
+
+.stt-prewarm-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
 }
 
 .runtime-state-banner {
