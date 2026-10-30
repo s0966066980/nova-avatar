@@ -7,7 +7,7 @@ Substantially modified by HongXian0903, 2026.
 See LICENSE and NOTICE.
 -->
 <template>
-  <div class="app-root-shell" :data-sample="currentTheme">
+  <div class="app-root-shell">
 
     <!-- ══════════════════════════════════════════════════════════════
          1. 應用主頂部導航列 (App Top Navbar)
@@ -48,10 +48,10 @@ See LICENSE and NOTICE.
       </nav>
 
       <div class="nav-status-group">
-        <div class="webrtc-chip">
-          <span class="live-dot" :class="{ 'connected': isConnected }"></span>
+        <div class="webrtc-chip" :class="{ 'is-ok': isConnected, 'is-busy': connectionStatus === 'connecting' }" role="status">
+          <span class="live-dot" :class="{ 'connected': isConnected }" aria-hidden="true"></span>
           <span>{{ isConnected ? 'WebRTC 已連線' : (connectionStatus === 'connecting' ? '連線中...' : 'WebRTC 未連線') }}</span>
-          <span style="color: var(--text-muted); font-family: var(--font-mono); font-size: 11px;">{{ sessionId > 0 ? '#' + sessionId : '—' }}</span>
+          <span class="webrtc-session-id">{{ sessionId > 0 ? '#' + sessionId : '—' }}</span>
         </div>
         <div class="voice-badge-pill" id="voiceStatusBadge">
           <i :class="isRecordingVoice ? 'bi bi-mic-fill' : 'bi bi-soundwave'"></i>
@@ -67,8 +67,8 @@ See LICENSE and NOTICE.
          2. 頁面視圖容器 (Page Views)
          ══════════════════════════════════════════════════════════════ -->
     <div class="app-viewport">
-      <div v-if="llmPartialGpu" class="llm-gpu-warning" role="alert">
-        <i class="bi bi-exclamation-triangle-fill"></i>
+      <div v-if="llmPartialGpu" class="llm-gpu-warning status-banner is-warn" role="alert">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
         <span>{{ t('notifications.llmPartialGpu') }}</span>
       </div>
 
@@ -144,18 +144,18 @@ See LICENSE and NOTICE.
 
             <!-- 快捷提問膠囊列 -->
             <div v-show="activeMode === 'chat'" class="quick-chips-row">
-              <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; white-space: nowrap;">⚡ 快捷指令:</span>
+              <span class="quick-chips-label"><i class="bi bi-lightning-charge" aria-hidden="true"></i> 快捷指令:</span>
               <button class="chip-item board-chip" @click="quickSend('請整理 Nova Avatar 三大核心技術優勢並輸出看板')">
-                📋 核心技術優勢 (BOARD)
+                <i class="bi bi-layout-text-sidebar" aria-hidden="true"></i> 核心技術優勢 (BOARD)
               </button>
               <button class="chip-item board-chip" @click="quickSend('請列出系統安裝部署四步驟')">
-                📋 部署步驟 (BOARD)
+                <i class="bi bi-layout-text-sidebar" aria-hidden="true"></i> 部署步驟 (BOARD)
               </button>
               <button class="chip-item" @click="quickSend('你好！請簡短自我介紹')">
-                💬 自我介紹 (SIMPLE)
+                <i class="bi bi-chat-dots" aria-hidden="true"></i> 自我介紹 (SIMPLE)
               </button>
               <button class="chip-item" @click="quickSend('今天台北天氣如何？')">
-                💬 日常天氣問候
+                <i class="bi bi-chat-dots" aria-hidden="true"></i> 日常天氣問候
               </button>
             </div>
 
@@ -436,14 +436,15 @@ See LICENSE and NOTICE.
         <SettingsPanel
           ref="settingsPanelRef"
           :is-connected="isConnected || connectionStatus === 'connecting'"
-          :current-theme="currentTheme"
+          :theme-preference="themePreference"
+          :connection-status="connectionStatus"
+          :llm-partial-gpu="llmPartialGpu"
           :session-id="sessionId"
           @conversation-summary="conversationSummary = $event"
           @settings-changed="onSettingsChanged"
           @notification="showNotification"
           @request-disconnect="handleStopConnection"
           @avatar-ready="onAvatarReady"
-          @switch-theme="setDesignSample"
           @close-settings="switchMainView('console')"
         />
       </div>
@@ -459,8 +460,8 @@ See LICENSE and NOTICE.
       :session-id="sessionId"
     />
 
-    <!-- 通知提示 -->
-    <div class="notification-container">
+    <!-- 通知提示（狀態第四層）：圖示＋文字，左側色條依語氣 -->
+    <div class="notification-container" role="status" aria-live="polite">
       <transition-group name="notification">
         <div
           v-for="notification in notifications"
@@ -468,7 +469,7 @@ See LICENSE and NOTICE.
           class="notification"
           :class="notification.type"
         >
-          <i :class="getNotificationIcon(notification.type)"></i>
+          <i :class="getNotificationIcon(notification.type)" aria-hidden="true"></i>
           <span>{{ notification.message }}</span>
         </div>
       </transition-group>
@@ -494,7 +495,7 @@ import { avatarScenePreviewUrl } from './scenePreview.js'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
-import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from './storageKeys.js'
+import { applyThemePreference, readThemePreference, saveThemePreference } from './consoleTheme.js'
 import { renderMarkdown, stripProtocolMarkers } from './markdown.js'
 import { readBackendHealth } from './backendHealth.js'
 
@@ -568,7 +569,12 @@ const lastRecordFile = ref(null)  // 最後一次錄製的檔案資訊
 // 設定中心與導航參照
 const settingsPanelRef = ref(null)
 const currentMainView = ref('console')
-const currentTheme = ref('obsidian')
+// 跟隨系統、淺色或深色；配色全在 console-prototype.css 的 token
+const themePreference = ref(readThemePreference(globalThis.localStorage))
+const setThemePreference = (preference) => {
+  themePreference.value = applyThemePreference(preference)
+  saveThemePreference(globalThis.localStorage, themePreference.value)
+}
 
 const isSettingsCenterActive = computed(() => {
   return currentMainView.value === 'settings'
@@ -595,18 +601,6 @@ const quickSend = (txt) => {
 }
 const openStageWindow = () => {
   window.open('stage.html', '_blank')
-}
-const setDesignSample = (sampleKey) => {
-  const isWhite = (sampleKey === 'bento' || sampleKey === 'white' || sampleKey === 'light')
-  const resolvedKey = isWhite ? 'bento' : 'obsidian'
-  currentTheme.value = resolvedKey
-  document.body.setAttribute('data-sample', resolvedKey)
-  document.documentElement.setAttribute('data-theme', isWhite ? 'light' : 'dark')
-  localStorage.setItem(STORAGE_KEYS.designSample, resolvedKey)
-  updateTheme(isWhite ? 'white' : 'dark')
-  if (settingsPanelRef.value?.syncTheme) {
-    settingsPanelRef.value.syncTheme(resolvedKey)
-  }
 }
 const stageCaptionText = computed(() => {
   const lastAi = [...chatMessages.value].reverse().find(m => m.type === 'ai' && m.captionEpoch === captionEpoch.value)
@@ -742,7 +736,7 @@ const appSettings = ref({
   recordFormat: 'mp4',
   showDebugPanel: false,
   showTimestamp: true,
-  theme: 'dark',
+  theme: 'system',
   uiLanguage: 'zh-TW',
   videoSize: 100
 })
@@ -1083,7 +1077,7 @@ const onSettingsChanged = (newSettings) => {
   updateVideoSize(newSettings.videoSize)
   
   // 更新主題
-  updateTheme(newSettings.theme)
+  if (newSettings.theme) setThemePreference(newSettings.theme)
   
   // 更新介面語言
   if (newSettings.uiLanguage) {
@@ -1095,115 +1089,6 @@ const updateVideoSize = (size) => {
   const video = document.getElementById('video')
   if (video) {
     video.style.width = `${size}%`
-  }
-}
-
-// 更新主題 (樣式 A: Obsidian Dark vs 樣式 C: Bento White)
-const updateTheme = (theme) => {
-  const root = document.documentElement
-
-  if (theme === 'auto') {
-    // 跟隨系統
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    theme = prefersDark ? 'dark' : 'white'
-  }
-
-  const isWhite = (theme === 'light' || theme === 'white' || theme === 'bento')
-  currentTheme.value = isWhite ? 'white' : 'dark'
-  const sampleKey = isWhite ? 'bento' : 'obsidian'
-
-  if (typeof document !== 'undefined' && document.body) {
-    document.body.setAttribute('data-theme', currentTheme.value)
-    document.body.setAttribute('data-sample', sampleKey)
-  }
-
-  if (isWhite) {
-    // 樣式 C：Bento 淺色模式 (純淨明亮、灰階微階層)
-    root.style.setProperty('--primary', '#6366f1')
-    root.style.setProperty('--primary-dark', '#4f46e5')
-    root.style.setProperty('--primary-light', '#818cf8')
-    root.style.setProperty('--brand', '#6366f1')
-    root.style.setProperty('--brand-light', '#818cf8')
-    root.style.setProperty('--brand-dark', '#4f46e5')
-    root.style.setProperty('--brand-surface', 'rgba(99, 102, 241, 0.08)')
-    root.style.setProperty('--success', '#059669')
-    root.style.setProperty('--success-surface', 'rgba(5, 150, 105, 0.1)')
-    root.style.setProperty('--warning', '#d97706')
-    root.style.setProperty('--warning-surface', 'rgba(217, 119, 6, 0.1)')
-    root.style.setProperty('--danger', '#dc2626')
-    root.style.setProperty('--danger-surface', 'rgba(220, 38, 38, 0.1)')
-    root.style.setProperty('--bg-primary', '#f8fafc')
-    root.style.setProperty('--bg-secondary', '#ffffff')
-    root.style.setProperty('--bg-tertiary', '#f1f5f9')
-    root.style.setProperty('--bg-surface', '#ffffff')
-    root.style.setProperty('--bg-surface-elevated', '#f1f5f9')
-    root.style.setProperty('--bg-surface-hover', '#e2e8f0')
-    root.style.setProperty('--bg-surface-active', '#cbd5e1')
-    root.style.setProperty('--text-primary', '#0f172a')
-    root.style.setProperty('--text-secondary', '#334155')
-    root.style.setProperty('--text-tertiary', '#64748b')
-    root.style.setProperty('--text-muted', '#94a3b8')
-    root.style.setProperty('--border', 'rgba(0, 0, 0, 0.12)')
-    root.style.setProperty('--border-subtle', 'rgba(0, 0, 0, 0.06)')
-    root.style.setProperty('--border-emphasis', 'rgba(99, 102, 241, 0.5)')
-    root.style.setProperty('--shadow-sm', '0 1px 2px rgba(0, 0, 0, 0.05)')
-    root.style.setProperty('--shadow', '0 4px 12px rgba(0, 0, 0, 0.06)')
-    root.style.setProperty('--shadow-lg', '0 12px 30px rgba(0, 0, 0, 0.08)')
-    root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%)')
-    root.style.setProperty('--surface', '#ffffff')
-    root.style.setProperty('--surface-elevated', '#f1f5f9')
-    root.style.setProperty('--surface-hover', '#e2e8f0')
-    root.style.setProperty('--input-surface', '#ffffff')
-    root.style.setProperty('--focus-ring', 'rgba(99, 102, 241, 0.25)')
-  } else {
-    // 樣式 A：Obsidian 深色模式（預設）
-    root.style.setProperty('--primary', '#6366f1')
-    root.style.setProperty('--primary-dark', '#4f46e5')
-    root.style.setProperty('--primary-light', '#818cf8')
-    root.style.setProperty('--brand', '#6366f1')
-    root.style.setProperty('--brand-light', '#818cf8')
-    root.style.setProperty('--brand-dark', '#4f46e5')
-    root.style.setProperty('--brand-surface', 'rgba(99, 102, 241, 0.14)')
-    root.style.setProperty('--success', '#10b981')
-    root.style.setProperty('--success-surface', 'rgba(16, 185, 129, 0.14)')
-    root.style.setProperty('--warning', '#f59e0b')
-    root.style.setProperty('--warning-surface', 'rgba(245, 158, 11, 0.14)')
-    root.style.setProperty('--danger', '#ef4444')
-    root.style.setProperty('--danger-surface', 'rgba(239, 68, 68, 0.14)')
-    root.style.setProperty('--bg-primary', '#080b11')
-    root.style.setProperty('--bg-secondary', '#0e131f')
-    root.style.setProperty('--bg-tertiary', '#151d2f')
-    root.style.setProperty('--bg-surface', '#0e131f')
-    root.style.setProperty('--bg-surface-elevated', '#151d2f')
-    root.style.setProperty('--bg-surface-hover', '#1d273e')
-    root.style.setProperty('--bg-surface-active', '#253350')
-    root.style.setProperty('--text-primary', '#f8fafc')
-    root.style.setProperty('--text-secondary', '#cbd5e1')
-    root.style.setProperty('--text-tertiary', '#94a3b8')
-    root.style.setProperty('--text-muted', '#64748b')
-    root.style.setProperty('--border', 'rgba(255, 255, 255, 0.13)')
-    root.style.setProperty('--border-subtle', 'rgba(255, 255, 255, 0.07)')
-    root.style.setProperty('--border-emphasis', 'rgba(99, 102, 241, 0.55)')
-    root.style.setProperty('--shadow-sm', '0 1px 3px rgba(0, 0, 0, 0.3)')
-    root.style.setProperty('--shadow', '0 4px 14px rgba(0, 0, 0, 0.4)')
-    root.style.setProperty('--shadow-lg', '0 12px 36px rgba(0, 0, 0, 0.6)')
-    root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #080b11 0%, #0e131f 100%)')
-    root.style.setProperty('--surface', '#0e131f')
-    root.style.setProperty('--surface-elevated', '#151d2f')
-    root.style.setProperty('--surface-hover', '#1d273e')
-    root.style.setProperty('--input-surface', '#0a0e18')
-    root.style.setProperty('--focus-ring', 'rgba(129, 140, 248, 0.34)')
-  }
-}
-
-const toggleTheme = () => {
-  const next = currentTheme.value === 'dark' ? 'white' : 'dark'
-  appSettings.value.theme = next
-  updateTheme(next)
-  try {
-    localStorage.setItem(STORAGE_KEYS.theme, next)
-  } catch (e) {
-    // Ignore storage issues
   }
 }
 
@@ -1556,13 +1441,6 @@ onMounted(async () => {
   // 載入語言設定
   loadLocale()
   
-  // 應用初始主題
-  const savedSample = readMigratedStorage(
-    localStorage,
-    STORAGE_KEYS.designSample,
-    LEGACY_STORAGE_KEYS.designSample
-  ) || 'obsidian'
-  setDesignSample(savedSample)
   
   const wrap = videoWrapperRef.value
   if (wrap && window.ResizeObserver) {
@@ -1608,16 +1486,8 @@ onMounted(async () => {
 </script>
 
 <style>
-.llm-gpu-warning {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 16px 0;
-  padding: 8px 12px;
-  border-radius: 8px;
-  color: var(--warning);
-  background: var(--warning-surface);
-}
+.llm-gpu-warning { margin: 12px 24px 0; }
+.quick-chips-label { font-size: 12px; color: var(--text-3); font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
 
 .role-console-controls {
   flex-shrink: 0;
@@ -1694,7 +1564,7 @@ onMounted(async () => {
 
 .notification-container {
   position: fixed;
-  top: 48px;
+  top: 68px;
   right: 24px;
   z-index: 10000;
   display: flex;
@@ -1705,55 +1575,46 @@ onMounted(async () => {
 
 .notification {
   pointer-events: auto;
-  padding: 10px 18px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-default);
-  box-shadow: var(--shadow-lg);
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--brand);
+  box-shadow: var(--shadow-2);
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
   font-size: 13px;
+  line-height: 1.5;
   color: var(--text-primary);
-  animation: slideIn 0.2s ease-out;
+  animation: slideIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.notification i { font-size: 18px; line-height: 1.2; color: var(--brand); flex: none; }
 
-.notification.success {
-  border-color: var(--success);
-}
-.notification.success i {
-  color: var(--success);
-}
+.notification.success { border-left-color: var(--ok); }
+.notification.success i { color: var(--ok); }
 
-.notification.warning {
-  border-color: var(--warning);
-}
-.notification.warning i {
-  color: var(--warning);
-}
+.notification.warning { border-left-color: var(--warn-bar); }
+.notification.warning i { color: var(--warn); }
 
-.notification.error {
-  border-color: var(--danger);
-}
-.notification.error i {
-  color: var(--danger);
-}
+.notification.error { border-left-color: var(--danger); background: var(--danger-surface); border-color: var(--danger-border); border-left-color: var(--danger); }
+.notification.error i { color: var(--danger); }
 
 .rag-turn-status { margin-top: 12px; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px; }
 .rag-turn-warning { color: var(--warning); display: flex; align-items: center; gap: 6px; }
-.rag-turn-references summary { cursor: pointer; color: var(--brand-light); font-weight: 700; }
-.rag-turn-references summary:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
+.rag-turn-references summary { cursor: pointer; color: var(--brand-ink); font-weight: 700; }
 .rag-turn-references ol { padding-left: 20px; display: grid; gap: 8px; max-height: 240px; overflow: auto; }
 .rag-turn-references li { overflow-wrap: anywhere; }
 .rag-turn-references p { white-space: pre-wrap; color: var(--text-secondary); margin: 3px 0 0; line-height: 1.45; }
 
 @keyframes slideIn {
   from {
-    transform: translateX(100%);
+    transform: translateY(8px);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: none;
     opacity: 1;
   }
 }

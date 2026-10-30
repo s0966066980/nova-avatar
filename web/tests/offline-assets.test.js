@@ -22,3 +22,9 @@ test('Bootstrap 與 bootstrap-icons 由 npm 套件打包', () => {
   // 專案樣式需在 Bootstrap 之後載入才能覆寫預設值
   assert.ok(main.indexOf('bootstrap.min.css') < main.indexOf('console-prototype.css'))
 })
+
+test('介面字型 Plus Jakarta Sans 與 JetBrains Mono 由 npm 套件打包', () => {
+  assert.match(main, /import\s+['"]@fontsource\/plus-jakarta-sans\/latin-400\.css['"]/)
+  assert.match(main, /import\s+['"]@fontsource\/jetbrains-mono\/latin-400\.css['"]/)
+  assert.ok(main.indexOf('@fontsource') < main.indexOf('console-prototype.css'))
+})
