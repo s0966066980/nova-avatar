@@ -8,6 +8,7 @@ from pathlib import Path
 import tempfile
 
 from aiohttp import web
+from src.profiles.composition import compatibility_report, profile_ids, referenced_media
 from src.profiles.media import MAX_BYTES
 from src.profiles.store import ProfileError, validate_profile, profile_config
 from src.greetings.content import prepare_greeting, GreetingError
@@ -23,7 +24,7 @@ def endpoint(handler):
                 raise ProfileError("角色設定服務尚未初始化", 503)
             return await handler(request, roles)
         except ProfileError as exc:
-            return web.json_response({"code": -1, "msg": str(exc)}, status=exc.status)
+            return web.json_response({"code": -1, "msg": str(exc), **exc.extra}, status=exc.status)
         except (ValueError, TypeError, KeyError):
             return web.json_response({"code": -1, "msg": "角色設定格式不正確"}, status=400)
     return wrapped
@@ -31,22 +32,85 @@ def endpoint(handler):
 
 @endpoint
 async def library(request, roles):
-    return web.json_response({"code": 0, "library": roles.store.load(),
+    saved = await asyncio.to_thread(roles.store.load)
+    return web.json_response({"code": 0, "library": saved, "compatibility": compatibility_report(saved),
                               "runtime": roles.snapshot(), "media": roles.media.list(),
                               "greeting_profile": roles.profiles[roles.library["pair"]["main"]]})
+
+
+def _saved(library, roles, **extra):
+    return web.json_response({"code": 0, "library": library, "runtime": roles.snapshot(), **extra})
 
 
 @endpoint
 async def save(request, roles):
     body = await request.json()
-    value = body["library"]
-    # Applied profiles must remain addressable until a different pair is applied.
+    # The two-role console sends {library, expected_revision} (temporary adapter);
+    # the profile editor sends {profiles, expected_profiles_revision}.
+    profiles = body["library"]["profiles"] if "library" in body else body["profiles"]
+    # Applied profiles must remain addressable until another composition is applied.
     if roles.enabled:
-        ids = {p["id"] for p in value["profiles"]}
-        if not set(roles.library["pair"].values()) <= ids:
+        ids = {p["id"] for p in profiles}
+        if not ({*roles.library["pair"].values()} | profile_ids(roles.library, enabled_only=True)) <= ids:
             raise ProfileError("請先套用其他角色組合，再刪除使用中的設定檔", 409)
-    saved = roles.store.save(value, expected_revision=body["expected_revision"])
-    return web.json_response({"code": 0, "library": saved, "runtime": roles.snapshot()})
+    if "library" in body:
+        saved = await asyncio.to_thread(roles.store.save, body["library"],
+                                        expected_revision=body["expected_revision"])
+    else:
+        saved = await asyncio.to_thread(roles.store.save_profiles, profiles,
+                                        expected_revision=body.get("expected_profiles_revision"))
+    return _saved(saved, roles)
+
+
+@endpoint
+async def save_composition(request, roles):
+    body = await request.json()
+    saved, disabled = await asyncio.to_thread(
+        roles.store.update_composition, expected_revision=body.get("expected_revision"),
+        main=body.get("main"), enabled=body.get("enabled"), confirm_disable=body.get("confirm_disable", False))
+    return _saved(saved, roles, disabled_members=disabled)
+
+
+@endpoint
+async def save_main(request, roles):
+    body = await request.json()
+    saved = await asyncio.to_thread(roles.store.save_main, body["main"],
+                                    expected_revision=body.get("expected_revision"))
+    return _saved(saved, roles)
+
+
+@endpoint
+async def add_member(request, roles):
+    body = await request.json()
+    saved = await asyncio.to_thread(roles.store.add_member, body["member"],
+                                    expected_revision=body.get("expected_revision"))
+    return _saved(saved, roles)
+
+
+@endpoint
+async def save_member(request, roles):
+    body = await request.json()
+    saved = await asyncio.to_thread(
+        roles.store.save_member, request.match_info["profile_id"], body["member"],
+        expected_revision=body.get("expected_revision"),
+        expected_composition_revision=body.get("expected_composition_revision"))
+    return _saved(saved, roles)
+
+
+@endpoint
+async def remove_member(request, roles):
+    body = await request.json()
+    saved = await asyncio.to_thread(roles.store.remove_member, request.match_info["profile_id"],
+                                    expected_revision=body.get("expected_revision"))
+    return _saved(saved, roles)
+
+
+@endpoint
+async def save_transitions(request, roles):
+    body = await request.json()
+    saved = await asyncio.to_thread(roles.store.save_transitions, body["transitions"],
+                                    expected_revision=body.get("expected_revision"))
+    return _saved(saved, roles)
 
 
 @endpoint
@@ -114,8 +178,8 @@ async def preview(request, roles):
 
 @endpoint
 async def delete_media(request, roles):
-    referenced = {e.get("asset_id") for lib in (roles.store.load(), roles.library, *(r.library for r in roles.sessions.values()))
-                  for e in lib["transitions"] if e["kind"] == "video"}
+    referenced = {asset for lib in (roles.store.load(), roles.library, *(r.library for r in roles.sessions.values()))
+                  for asset in referenced_media(lib)}
     roles.media.delete(request.match_info["asset_id"], referenced=referenced)
     return web.json_response({"code": 0, "media": roles.media.list()})
 
@@ -178,6 +242,12 @@ def register_profile_routes(app):
     app.router.add_post("/api/profiles/greeting/try", greeting_try)
     app.router.add_get("/api/profiles", library)
     app.router.add_put("/api/profiles", save)
+    app.router.add_put("/api/profiles/composition", save_composition)
+    app.router.add_put("/api/profiles/composition/main", save_main)
+    app.router.add_post("/api/profiles/composition/members", add_member)
+    app.router.add_put("/api/profiles/composition/members/{profile_id}", save_member)
+    app.router.add_delete("/api/profiles/composition/members/{profile_id}", remove_member)
+    app.router.add_put("/api/profiles/composition/transitions", save_transitions)
     app.router.add_post("/api/profiles/apply", apply)
     app.router.add_post("/api/profiles/return", return_main)
     app.router.add_post("/api/profiles/stop", stop)

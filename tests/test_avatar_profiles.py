@@ -39,13 +39,17 @@ def test_migration_is_once_only_and_excludes_credentials(profiles):
 def test_old_libraries_gain_return_announcements_once_without_overwriting_content(profiles):
     import yaml
     store, config, data = profiles
-    old = deepcopy(data)
+    # A version 1 file saved before return announcements existed.
+    old = {key: deepcopy(data[key]) for key in ('revision', 'enabled', 'profiles', 'pair', 'transitions',
+                                                'handoff', 'weather')}
+    old['version'] = 1
     old['handoff'].pop('return_announcement', None)
     old['handoff'].pop('return_announcement_en', None)
     store.path.write_text(yaml.safe_dump(old), encoding='utf8')
     migrated = store.initialize(config)
     assert migrated['handoff']['return_announcement']
     assert migrated['handoff']['return_announcement_en']
+    assert migrated['composition']['main']['announcement'] == migrated['handoff']['return_announcement']
     assert migrated['handoff']['announcement'] == old['handoff']['announcement']
     assert migrated['revision'] == old['revision'] + 1
     assert store.initialize(config) == migrated
