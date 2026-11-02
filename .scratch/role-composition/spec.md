@@ -2,7 +2,7 @@
 
 # 當次角色組合：一主多專、任意角色直接交接
 
-Status: ready-for-agent
+Status: resolved
 
 使用者 2026-10-30 確認 Q1–Q14（Q3 依原型 https://claude.ai/artifact/4mU4t5YbEDPTQv9FUSmhMy 新版）。決策紀錄：[ADR 0023](../../docs/adr/0023-role-composition-with-any-to-any-handoff.md)。術語：`CONTEXT.md` 的主數位人、專門數位人、當次角色組合、角色交接、反向角色交接、交接規則、交接說明、角色轉場、場域預設地點。現況與寫死兩角色的位置：`/tmp/claude-1000/-home-oliver-nova-avatar/f284899e-3e7d-40e8-bf07-77d0ecc09394/scratchpad/notes/role-pair-map.md`。原型檔：[`prototype/role-composition.html`](prototype/role-composition.html)。
 

@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 路由評估、實機驗證與文件
-Status: ready-for-human
+Status: resolved
 Blocked by: 01, 02, 03, 04, 05
 
 orchestrator 執行：以 02 擴充的題組量 E2B 路由正確率；實機建立至少三位成員的組合（可用既有設定檔複製）測試任意直接交接（含客服 → 天氣）、追問留在原角色、返回主數位人、轉場覆寫；記錄顯存。更新 README、`docs/project-status.md`、ADR 0016 的後續註記。
@@ -27,3 +27,7 @@ orchestrator 執行：以 02 擴充的題組量 E2B 路由正確率；實機建�
 2. 舞台按「返回主數位人」、閒置重置後回到主數位人，閒置招呼只由主數位人播出（需要管理者登入／等待閒置，未自動化）。
 3. 混合主題 2/5 是否另開票改善。
 4. 確認後移除測試成員 `rc06_service`、`rc06_traffic`（可在新版頁面「移出」並在數位人設定檔刪除，順便驗證介面）。
+
+### 2026-11-02 使用者確認
+
+使用者確認控制台與舞台的人工檢查都沒問題。測試成員 `rc06_service`、`rc06_traffic` 已移出組合並刪除設定檔，組合回到主數位人＋天氣助手。`role-composition` 已合併進 `main`（ba3f691），`main` 上 CI 全部通過（pytest 1465 passed、3 skipped；web 257 passed）。混合主題 2/5 尚未決定是否另開票。
