@@ -4,6 +4,7 @@
 # Existing third-party author notices remain applicable.
 
 from __future__ import print_function
+import importlib
 import os
 import torch
 from torch.utils.model_zoo import load_url
@@ -68,9 +69,9 @@ class FaceAlignment:
 
 
         # Get the face detector
-        face_detector_module = __import__('face_detection.detection.' + face_detector,
-                                          globals(), locals(), [face_detector], 0)
-        
+        module_prefix = f"{__package__}.detection." if __package__ else "face_detection.detection."
+        face_detector_module = importlib.import_module(module_prefix + face_detector)
+
         self.face_detector = face_detector_module.FaceDetector(device=device, verbose=verbose)
 
     def get_detections_for_batch(self, images):

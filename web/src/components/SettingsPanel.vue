@@ -255,9 +255,6 @@
               <div class="field-control-area"><input id="assistant-name" class="std-input" v-model.trim="selectedAssistantName" maxlength="200" placeholder="例如：服務助手" aria-describedby="assistant-name-hint"></div>
             </div>
             <div class="setting-form-row">
-              <div class="field-label-group"><span class="field-main-label">回覆語系與聲音</span><span class="field-sub-hint">請在即時演播控制台的「對話記憶與語系」選擇要控制的場次，或儲存新對話預設。切換語系會保留對話記憶。</span></div>
-            </div>
-            <div class="setting-form-row">
               <div class="field-label-group"><span class="field-main-label">強制語系正規化</span><span class="field-sub-hint">預設開啟。協定解析後統一轉換 Speech、看板、字幕與 History 的可見文字。</span></div>
               <div class="field-control-area"><label class="std-switch"><input type="checkbox" v-model="selectedEnforceOutputLocale"><span class="std-slider-track"></span></label></div>
             </div>
@@ -591,6 +588,7 @@
                   class="chat-text-entry"
                   v-model="importAvatarId"
                   :placeholder="importNamePlaceholder"
+                  :disabled="importing"
                   style="flex: 1;"
                 >
                 <button
@@ -599,8 +597,41 @@
                   :disabled="!canStartImport"
                   @click="handleImportCharacter"
                 >
-                  開始建立
+                  {{ importing ? '建立中…' : '開始建立' }}
                 </button>
+              </div>
+              <div
+                v-if="importing && importJob"
+                class="stt-prewarm-progress"
+                role="status"
+                aria-live="polite"
+                style="margin-top: 10px;"
+              >
+                <div
+                  class="progress-track"
+                  role="progressbar"
+                  aria-label="角色建立進度"
+                  :aria-valuenow="importJob.progress ?? 0"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                >
+                  <div
+                    class="progress-fill"
+                    :style="{ width: `${Math.max(4, Math.min(100, Number(importJob.progress) || 0))}%`, height: '100%', background: 'linear-gradient(90deg, var(--brand), var(--brand-light))', borderRadius: '2px', transition: 'width 0.25s ease' }"
+                  ></div>
+                </div>
+                <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 6px; margin-bottom: 0;">
+                  {{ importJob.progress ?? 0 }}% · {{ importJob.message || '正在處理角色素材' }}
+                </p>
+              </div>
+              <div
+                v-if="importError"
+                class="runtime-state-banner error"
+                role="alert"
+                style="margin-top: 10px; margin-bottom: 0; min-height: 0; padding: 8px 12px; font-size: 12px;"
+              >
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                <span>{{ importError }}</span>
               </div>
             </div>
           </section>
@@ -2155,11 +2186,15 @@ const canStartImport = computed(() => !!importFile.value && !importing.value && 
 const onImportDragOver = () => {}
 const onImportDrop = (event) => {
   const file = event.dataTransfer?.files?.[0]
-  if (file) importFile.value = file
+  if (file) {
+    importFile.value = file
+    importError.value = ''
+  }
 }
 const onImportFileChange = (event) => {
   const file = event.target.files?.[0]
   importFile.value = file || null
+  importError.value = ''
 }
 
 const handleImportCharacter = async () => {

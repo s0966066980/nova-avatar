@@ -8,6 +8,7 @@ import json
 import pickle
 import re
 import shutil
+import uuid
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -17,12 +18,13 @@ import numpy as np
 from src.avatars.catalog import (
     IMPORTABLE_ENGINES,
     avatars_root,
+    detect_avatar_type,
     is_safe_avatar_id,
     list_avatar_characters,
 )
 from src.avatars.mouth_quality import QualityError, normalize_quality
 from src.utils.logging import logger
-from src.utils.paths import get_data_dir
+from src.utils.paths import get_data_dir, get_models_dir
 
 ProgressCb = Optional[Callable[[int, str], None]]
 
@@ -86,6 +88,29 @@ def extract_frames(video_path: Path, dest_dir: Path, max_frames: int = MAX_FRAME
     return count
 
 
+def _is_usable_avatar_dir(avatar_dir: Path) -> bool:
+    if not avatar_dir.is_dir() or avatar_dir.is_symlink():
+        return False
+    detected = detect_avatar_type(avatar_dir)
+    if detected is None:
+        return False
+    if detected == "musetalk":
+        return (
+            (avatar_dir / "latents.pt").is_file()
+            and (avatar_dir / "coords.pkl").is_file()
+            and (avatar_dir / "mask_coords.pkl").is_file()
+            and (avatar_dir / "full_imgs").is_dir()
+            and (avatar_dir / "mask").is_dir()
+        )
+    if detected == "wav2lip":
+        return (
+            (avatar_dir / "coords.pkl").is_file()
+            and (avatar_dir / "face_imgs").is_dir()
+            and (avatar_dir / "full_imgs").is_dir()
+        )
+    return True
+
+
 def build_character(
     engine: str,
     video_path: Path,
@@ -105,8 +130,11 @@ def build_character(
     if not video_path.is_file():
         raise BuildError("找不到上傳的影片")
 
-    dest = avatars_root() / avatar_id
-    if dest.exists() and not overwrite:
+    root = avatars_root()
+    dest = root / avatar_id
+    if dest.is_symlink():
+        raise BuildError(f"角色 {avatar_id} 為符號連結，無法覆蓋")
+    if dest.exists() and not overwrite and _is_usable_avatar_dir(dest):
         raise BuildError(f"角色 {avatar_id} 已存在，請換一個名稱")
 
     def report(percent: int, message: str) -> None:
@@ -114,10 +142,9 @@ def build_character(
             progress(percent, message)
         logger.info(f"[import {avatar_id}] {percent}% {message}")
 
-    work_dir = dest
-    if dest.exists() and overwrite:
-        shutil.rmtree(dest)
-    work_dir.mkdir(parents=True, exist_ok=True)
+    root.mkdir(parents=True, exist_ok=True)
+    work_dir = root / f".building-{avatar_id}-{uuid.uuid4().hex[:8]}"
+    work_dir.mkdir(parents=True, exist_ok=False)
 
     try:
         # Keep the exact uploaded source with the generated avatar. Import jobs
@@ -139,16 +166,18 @@ def build_character(
         else:
             _build_wav2lip(work_dir, report, options)
 
+        if dest.exists():
+            shutil.rmtree(dest)
+        work_dir.rename(dest)
         report(100, "角色製作完成")
         return {
             "type": engine,
             "avatar_id": avatar_id,
             "frames": frame_count,
         }
-    except Exception:
-        if dest.exists():
-            shutil.rmtree(dest, ignore_errors=True)
-        raise
+    finally:
+        if work_dir.exists():
+            shutil.rmtree(work_dir, ignore_errors=True)
 
 
 def _sorted_images(folder: Path) -> list[Path]:
@@ -275,10 +304,10 @@ def _musetalk_vae():
 
     import torch
 
-    from src.avatars.musetalk.utils.utils import load_all_model
+    from src.avatars.musetalk.models.vae import VAE
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    vae, _unet, _pe = load_all_model(device=device)
+    vae = VAE(model_path=str(get_models_dir() / "sd-vae"))
     vae.vae = vae.vae.half().to(device)
     return vae
 
@@ -309,7 +338,8 @@ def _build_wav2lip(
                 chunk = np.array(frames[start:start + batch_size])
                 predictions.extend(detector.get_detections_for_batch(chunk))
                 start += batch_size
-                report(35 + int(40 * start / len(frames)), f"人臉檢測 {min(start, len(frames))}/{len(frames)}")
+                done = min(start, len(frames))
+                report(35 + int(40 * done / len(frames)), f"人臉檢測 {done}/{len(frames)}")
             except RuntimeError:
                 if batch_size == 1:
                     raise BuildError("畫面太大，無法做人臉檢測")

@@ -1,7 +1,9 @@
 # Bundled with the Wav2Lip integration; upstream non-commercial restrictions apply.
+# Modified by HongXian0903 for integration with Nova Avatar, 2026.
 # See THIRD_PARTY_NOTICES.md.
 
 from __future__ import print_function
+import importlib
 import os
 import torch
 from torch.utils.model_zoo import load_url
@@ -60,8 +62,8 @@ class FaceAlignment:
             torch.backends.cudnn.benchmark = True
 
         # Get the face detector
-        face_detector_module = __import__('face_detection.detection.' + face_detector,
-                                          globals(), locals(), [face_detector], 0)
+        module_prefix = f"{__package__}.detection." if __package__ else "face_detection.detection."
+        face_detector_module = importlib.import_module(module_prefix + face_detector)
         self.face_detector = face_detector_module.FaceDetector(device=device, verbose=verbose)
 
     def get_detections_for_batch(self, images):

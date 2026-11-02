@@ -103,3 +103,10 @@ test('控制台不會把舊模式完整回覆與播放提交片段重複顯示',
   assert.match(app, /replyMode:\s*event\.mode\s*\|\|\s*'legacy'/)
   assert.match(app, /lastMessage\.replyMode === 'legacy'/)
 })
+
+test('即時演播控制台不顯示對話記憶與語系面板', () => {
+  const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')
+  assert.doesNotMatch(app, /ConversationPanel/)
+  assert.doesNotMatch(app, /對話記憶與語系/)
+  assert.doesNotMatch(settingsPanel, /對話記憶與語系/)
+})

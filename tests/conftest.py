@@ -16,6 +16,7 @@ AREA_BY_FILE = {
     "test_answer_board.py": "conversation",
     "test_assistant_profile.py": "llm",
     "test_auto_response_protocol.py": "conversation",
+    "test_avatar_builder.py": "avatar",
     "test_avatar_transition.py": "avatar",
     "test_avatar_performance.py": "avatar",
     "test_branding_compliance.py": "governance",

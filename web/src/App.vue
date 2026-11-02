@@ -115,8 +115,6 @@ See LICENSE and NOTICE.
               </div>
             </div>
 
-            <ConversationPanel :session-id="sessionId" />
-
             <!-- 快捷提問膠囊列 -->
             <div class="quick-chips-row">
               <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; white-space: nowrap;">⚡ 快捷指令:</span>
@@ -442,7 +440,6 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import DebugPanel from './components/DebugPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import VoiceTestPanel from './components/VoiceTestPanel.vue'
-import ConversationPanel from './components/ConversationPanel.vue'
 import ConversationComposer from './components/ConversationComposer.vue'
 import { useWebRTC } from './composables/useWebRTC'
 import { useI18n } from './composables/useI18n'
