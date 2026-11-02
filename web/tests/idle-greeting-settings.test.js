@@ -11,10 +11,10 @@ const Page = await loadComponent(new URL('../src/components/IdleGreetingSettings
 })
 function fixture(t, { enabled = false, failApply = false } = {}) {
   const previousFetch = globalThis.fetch
-  let library = { version: 1, revision: 7, enabled: false, pair: { main: 'main', specialist: 'specialist' }, profiles: [
+  let library = { version: 2, revision: 7, profiles_revision: 3, profiles: [
     { id: 'main', name: '接待員', tts: { type: 'edgetts' }, greeting: { mode: 'scripts', scripts: ['歡迎光臨'], prompt: '', min_chars: 20, max_chars: 60 } },
     { id: 'specialist', name: '氣象員', greeting: { mode: 'scripts', scripts: ['未修改的專門角色文案'], prompt: '', min_chars: 20, max_chars: 60 } }
-  ] }
+  ], composition: { revision: 2, enabled: false, main: { profile_id: 'main', revision: 1 }, members: [{ profile_id: 'specialist', revision: 1, enabled: true }] } }
   let stage = { idle_greeting_enabled: enabled, idle_greeting_seconds: 60, idle_reset_seconds: 10, caption_max_chars: 120 }
   const requests = []
   globalThis.fetch = async (url, options = {}) => {
@@ -23,8 +23,10 @@ function fixture(t, { enabled = false, failApply = false } = {}) {
     const ok = data => ({ ok: true, json: async () => ({ code: 0, ...data }) })
     if (url === '/api/profiles') {
       if (options.method === 'PUT') {
-        assert.equal(body.expected_revision, library.revision)
-        library = { ...body.library, revision: library.revision + 1 }
+        // Only the profile list is saved; the composition keeps its own revisions.
+        assert.deepEqual(Object.keys(body).sort(), ['expected_profiles_revision', 'profiles'])
+        assert.equal(body.expected_profiles_revision, library.profiles_revision)
+        library = { ...library, profiles: body.profiles, revision: library.revision + 1, profiles_revision: library.profiles_revision + 1 }
       }
       return ok({ library: structuredClone(library), runtime: { mode: 'visitor', phase: 'disabled', active_revision: library.revision, profiles_applied: true } })
     }

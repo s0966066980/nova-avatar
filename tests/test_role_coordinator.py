@@ -215,7 +215,7 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
         # The main answer generated beside routing (ADR 0022) is never delivered.
         source_calls = llm.call_count
         assert source_calls <= 1
-        assert [text for text, _ in voice.avatar.messages] == [roles.library['handoff']['announcement']]
+        assert [text for text, _ in voice.avatar.messages] == [roles.library['composition']['members'][0]['announcement']]
         roles._apply_waiting = apply_waiting
         _, audio = voice.avatar.messages[0]
         voice.on_output_audio_frame({**audio, 'fragment_end': True}, True)
@@ -236,7 +236,7 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
         assert '本輪氣象工具資料' in llm.call_args.kwargs['rag_context']
         assert voice.config.llm.assistant_profile.assistant_name == '天氣助手'
         assert len([e for e in events if e['type'] == 'role_handoff']) == 1
-        assert service.session_history(7, 'main')[-1]['content'] == roles.library['handoff']['announcement']
+        assert service.session_history(7, 'main')[-1]['content'] == roles.library['composition']['members'][0]['announcement']
         assert accepted['turn_id'] != voice._turn_id
     finally:
         await voice.close()
@@ -497,7 +497,7 @@ async def test_greeting_apply_preserves_unapplied_identity_model_and_playing_med
         pending['profiles'][0]['assistant_profile']['assistant_name'] = '尚未套用的新身分'
         pending['profiles'][0]['llm']['model'] = 'unapplied-model'
         pending['profiles'][0]['greeting']['scripts'] = ['下一次的新招呼']
-        saved = roles.store.save(pending, expected_revision=1)
+        saved = roles.store.save_profiles(pending['profiles'], expected_revision=pending['profiles_revision'])
         await roles.apply_greeting('main', expected_revision=saved['revision'])
         assert roles.profiles['main']['greeting']['scripts'] == ['下一次的新招呼']
         assert roles.profiles['main']['assistant_profile'] == old_identity

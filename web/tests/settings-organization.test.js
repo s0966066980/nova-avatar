@@ -15,6 +15,7 @@ const Panel = await loadComponent(new URL('../src/components/SettingsPanel.vue',
     return () => h('div', `對話記憶設定 #${props.sessionId}`)
   } } },
   './AvatarProfiles.vue': Profiles,
+  './RoleComposition.vue': { default: { setup: (_, { expose }) => { expose({ dirtyCount: 2 }); return () => h('div', '角色組合與交接編輯器') } } },
   './IdleGreetingSettings.vue': { default: { setup: () => () => h('div', '閒置招呼獨立設定頁') } },
   '../composables/useI18n': { useI18n: () => ({ t: key => key, setLocale() {} }) },
   '../composables/useRuntimeSettings': { useRuntimeSettings: () => ({ ...useRuntimeSettings(),
@@ -27,7 +28,7 @@ const Panel = await loadComponent(new URL('../src/components/SettingsPanel.vue',
   }) }
 })
 
-test('設定導覽直接提供閒置招呼與訪客互動，排版頁只含視覺設定', async t => {
+test('設定導覽直接提供閒置招呼；訪客互動是數位人設定的第三個分頁，排版頁只含視覺設定', async t => {
   const oldWindow = globalThis.window, oldStorage = globalThis.localStorage, oldFetch = globalThis.fetch
   globalThis.window = { ResizeObserver: null }
   globalThis.localStorage = { getItem: () => null, setItem() {} }
@@ -36,7 +37,10 @@ test('設定導覽直接提供閒置招呼與訪客互動，排版頁只含視�
   t.after(() => { view.unmount(); globalThis.window = oldWindow; globalThis.localStorage = oldStorage; globalThis.fetch = oldFetch })
   await settle()
   assert.ok(button(view.root, '閒置招呼'), '側欄應有可直接找到的閒置招呼入口')
-  assert.ok(button(view.root, '訪客互動'), '收音與清場應有獨立的互動設定入口')
+  const rail = all(view.root, node => node.props.class === 'rail-nav-list')[0]
+  assert.deepEqual(all(rail, node => node.type === 'button').map(node => node.props.id), [
+    'railTab-conversation', 'railTab-roles', 'railTab-greeting', 'railTab-avatar', 'railTab-stage', 'railTab-experience'])
+  assert.ok(!button(rail, '訪客互動'), '訪客互動與語音辨識不在左側選單')
   const layout = all(view.root, node => node.props.id === 'settings-panel-stage')[0]
   assert.doesNotMatch(textContent(layout), /閒置招呼|招呼間隔|訪客對話重置/)
   assert.match(textContent(layout), /字幕|背景|看板/)
@@ -79,7 +83,7 @@ test('儲存排版頁只套用本頁，不提交訪客設定且不離開目前�
   assert.equal(settings.selectedVisitorResetSeconds.value, 120)
 })
 
-test('對話設定分類沿用目前場次、轉送摘要並可返回控制台', async t => {
+test('對話設定分類沿用目前場次、轉送摘要，設定中心不再有返回控制台按鈕', async t => {
   const previousWindow = globalThis.window, previousFetch = globalThis.fetch, previousStorage = globalThis.localStorage
   globalThis.window = { ResizeObserver: null }
   globalThis.localStorage = { getItem: () => null, setItem() {} }
@@ -95,8 +99,48 @@ test('對話設定分類沿用目前場次、轉送摘要並可返回控制台',
   assert.deepEqual(summaries, [{ sessionId: 7, locale: 'en-US' }])
   assert.equal(all(view.root, node => node.props.class === 'settings-fixed-footer')[0].style.display, 'none',
     '記憶與語系沿用自己的套用操作，不顯示其他分類的儲存鈕')
-  button(view.root, '返回控制台').props.onClick()
-  assert.equal(returned, 1)
+  assert.ok(!button(view.root, '返回控制台'), '回到控制台改用頂列的檢視切換')
+  assert.equal(returned, 0)
+})
+
+test('數位人、AI 與知識設定分成三個分頁，方向鍵切換，組合分頁顯示未儲存數', async t => {
+  const previousWindow = globalThis.window, previousFetch = globalThis.fetch, previousStorage = globalThis.localStorage
+  const previousDocument = globalThis.document
+  globalThis.window = { ResizeObserver: null }
+  globalThis.localStorage = { getItem: () => null, setItem() {} }
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ code: 0, data: {} }) })
+  // Keyboard focus follows the selected tab.
+  const focused = []
+  globalThis.document = { activeElement: null, getElementById: id => ({ focus: () => focused.push(id) }) }
+  const view = mount(Panel, { initialTab: 'roles' })
+  t.after(() => {
+    view.unmount(); globalThis.window = previousWindow; globalThis.fetch = previousFetch; globalThis.localStorage = previousStorage
+    globalThis.document = previousDocument
+  })
+  await settle()
+  const segments = () => all(view.root, node => node.props.class === 'role-segs')[0]
+  const tabs = () => all(segments(), node => node.props.role === 'tab')
+  // Comment nodes stand in for v-if branches that are not rendered.
+  const visibleText = node => all(node, n => n.type === '#text').map(n => n.text).join('').trim()
+  assert.deepEqual(tabs().map(visibleText), ['數位人設定檔', '角色組合與交接', '訪客互動與語音辨識'])
+  assert.deepEqual(tabs().map(node => node.props['aria-selected']), [true, false, false])
+  const panel = id => all(view.root, node => node.props.id === id)[0]
+  assert.match(textContent(panel('roleSeg-profiles')), /數位人設定檔/)
+  assert.equal(visibleText(panel('roleSeg-compose')), '', '組合編輯器第一次開啟分頁時才載入')
+  tabs()[0].props.onKeydown({ key: 'ArrowRight', preventDefault() {} })
+  await settle()
+  assert.deepEqual(tabs().map(node => node.props['aria-selected']), [false, true, false])
+  assert.match(textContent(panel('roleSeg-compose')), /角色組合與交接編輯器/)
+  assert.match(textContent(tabs()[1]), /2/, '組合分頁顯示未儲存的成員數')
+  tabs()[1].props.onKeydown({ key: 'ArrowRight', preventDefault() {} })
+  await settle()
+  assert.equal(button(view.root, '訪客互動與語音辨識').props['aria-selected'], true)
+  assert.equal(button(view.root, '數位人、AI 與知識設定').props['aria-selected'], true, '仍在同一個左側分類')
+  assert.match(textContent(panel('catPanel-interaction')), /訪客對話重置/)
+  tabs()[2].props.onKeydown({ key: 'ArrowRight', preventDefault() {} })
+  await settle()
+  assert.equal(tabs()[0].props['aria-selected'], true, '方向鍵循環')
+  assert.deepEqual(focused, ['roleSegTab-compose', 'roleSegTab-interaction', 'roleSegTab-profiles'])
 })
 
 test('最小靜音判定時間滑桿編輯 min_silence_ms，可選 192 ms（6 個 32 ms 幀）並顯示目前值', async t => {

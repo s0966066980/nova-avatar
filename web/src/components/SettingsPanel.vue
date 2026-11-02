@@ -11,9 +11,6 @@
           <span>{{ t('settings.systemSettings') }}</span>
         </div>
         <div class="rail-desc">管理數位人的回答、知識與舞台體驗</div>
-        <button type="button" class="sample-btn settings-return-console" @click="closeSettings">
-          <i class="bi bi-arrow-left" aria-hidden="true"></i> 返回控制台
-        </button>
       </div>
       <nav class="rail-nav-list" role="tablist" :aria-label="t('settings.tabs.label')">
         <button
@@ -70,13 +67,224 @@
 
         <div v-show="activeSettingsTab === 'conversation'" class="settings-category-panel unified-role-panel"
           id="catPanel-conversation" role="tabpanel" aria-labelledby="railTab-conversation">
-          <button type="button" class="sample-btn conversation-return-console" @click="closeSettings">返回控制台</button>
           <ConversationPanel :session-id="sessionId" @session-summary="emit('conversation-summary', $event)" />
         </div>
 
-        <div v-show="activeSettingsTab === 'roles'" class="settings-category-panel unified-role-panel"
+        <div v-show="activeSettingsTab === 'roles'" class="settings-category-panel unified-role-panel role-workspace"
           id="catPanel-roles" role="tabpanel" aria-labelledby="railTab-roles">
-          <AvatarProfiles ref="profilesRef" :initial-section="roleInitialSection" />
+          <header class="role-page-head">
+            <div class="role-page-title">
+              <h2>數位人、AI 與知識設定</h2>
+              <p>先建立數位人設定檔，再組成當次角色組合；每位成員（含主數位人）的交接設定與工具各自儲存，角色轉場另外統一設定。</p>
+            </div>
+            <div class="role-segs" role="tablist" aria-label="設定範圍">
+              <button
+                v-for="(segment, index) in roleSegments"
+                :key="segment.id"
+                :id="`roleSegTab-${segment.id}`"
+                type="button"
+                role="tab"
+                :aria-selected="roleSegment === segment.id"
+                :aria-controls="segment.panel"
+                :tabindex="roleSegment === segment.id ? 0 : -1"
+                @click="selectRoleSegment(segment.id)"
+                @keydown="handleSegmentKeydown($event, index)"
+              >
+                <i :class="segment.icon" aria-hidden="true"></i>{{ segment.label }}
+                <span v-if="segment.id === 'compose' && compositionDirtyCount" class="role-seg-count" :aria-label="`${compositionDirtyCount} 處未儲存`">{{ compositionDirtyCount }}</span>
+              </button>
+            </div>
+          </header>
+          <div v-show="roleSegment === 'profiles'" class="role-seg-panel" id="roleSeg-profiles" role="tabpanel" aria-labelledby="roleSegTab-profiles">
+            <AvatarProfiles ref="profilesRef" :initial-section="roleInitialSection" />
+          </div>
+          <div v-show="roleSegment === 'compose'" class="role-seg-panel" id="roleSeg-compose" role="tabpanel" aria-labelledby="roleSegTab-compose">
+            <RoleComposition v-if="composeVisited" ref="compositionRef" @edit-profile="editRoleProfile" @notification="(message, type) => emit('notification', message, type)" />
+          </div>
+          <div v-show="roleSegment === 'interaction'" class="settings-category-panel role-seg-panel" id="catPanel-interaction" role="tabpanel" aria-labelledby="roleSegTab-interaction">
+            <section class="setting-card">
+              <div class="card-title-row"><div><h2 class="card-title-text">訪客互動</h2><p class="card-subtitle-desc">管理訪客何時開始說話、何時送出，以及上一場對話何時清除。</p></div><button type="button" class="btn-apply-primary" :disabled="applyingVisitor || visitorResetError" @click="handleApplyVisitorSettings">套用訪客清場時間</button></div>
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="visitor-idle-reset-seconds" class="field-main-label">訪客對話重置時間</label>
+                  <span class="field-sub-hint">完整重置清除本場記憶、附件與草稿並返回主角色；舞台空場後再等招呼間隔。</span>
+                </div>
+                <div class="field-control-area">
+                  <div class="std-slider-combo">
+                    <input
+                      id="visitor-idle-reset-seconds"
+                      type="number"
+                      class="std-range"
+                      min="3"
+                      max="300"
+                      step="1"
+                      v-model.number="selectedVisitorResetSeconds"
+                      :aria-invalid="visitorResetError"
+                    >
+                    <span class="std-val-pill">{{ selectedVisitorResetSeconds }} 秒</span>
+                  </div>
+                </div>
+              </div>
+
+              <label class="field-main-label" for="clear-display-seconds">只清畫面時間（秒，保留記憶與附件）</label>
+              <input id="clear-display-seconds" type="number" min="1" :max="selectedVisitorResetSeconds" v-model.number="selectedClearDisplaySeconds" class="std-input">
+              <p v-if="visitorError" role="alert">{{ visitorError }}</p>
+              <p>控制台與舞台各自依上述時間清畫面、清空對話並返回主數位人，停止、返回與收音操作不影響另一邊；閒置招呼只在舞台播放。</p>
+            </section>
+            <!-- 左欄：Silero VAD 免持收音 -->
+            <section class="setting-card">
+              <div class="card-title-row">
+                <div>
+                  <div class="card-title-text"><i class="bi bi-soundwave"></i> Silero VAD 語音端點偵測</div>
+                  <div class="card-subtitle-desc">自動判斷發話開始與停頓；播放期間暫停收音，可點選插話。</div>
+                </div>
+                <button
+                  type="button"
+                  class="btn-apply-primary btn-apply-compact"
+                  :disabled="applyingVad"
+                  @click="handleApplyVad"
+                >
+                  <i class="bi bi-check2" :class="{ spin: applyingVad }"></i> 套用 VAD
+                </button>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <span class="field-main-label">啟用免持自動收音</span>
+                  <span class="field-sub-hint">開口即錄，停頓超過閥值自動送出</span>
+                </div>
+                <div class="field-control-area">
+                  <label class="std-switch">
+                    <input type="checkbox" v-model="vadDraft.enabled">
+                    <span class="std-slider-track"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <span class="field-main-label">發話判定門檻 (Threshold)</span>
+                  <span class="field-sub-hint">閥值愈高抗噪愈佳，建議 0.45–0.55</span>
+                </div>
+                <div class="field-control-area">
+                  <div class="std-slider-combo">
+                    <input
+                      type="range"
+                      class="std-range"
+                      min="0.1"
+                      max="0.9"
+                      step="0.05"
+                      v-model.number="vadDraft.threshold"
+                    >
+                    <span class="std-val-pill">{{ vadDraft.threshold }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <span class="field-main-label">最小靜音判定時間 (ms)</span>
+                  <span class="field-sub-hint">停頓超過此毫秒數即視為發話完畢；以 32 ms 為一格，192 ms＝6 格</span>
+                </div>
+                <div class="field-control-area">
+                  <div class="std-slider-combo">
+                    <!-- Silero VAD counts silence in 32 ms frames, so the steps are whole frames. -->
+                    <input
+                      type="range"
+                      class="std-range"
+                      min="128"
+                      max="1504"
+                      step="32"
+                      v-model.number="vadDraft.min_silence_ms"
+                    >
+                    <span class="std-val-pill">{{ vadDraft.min_silence_ms }}ms</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 語音辨識：引擎、模型與輸出字元集都依伺服器的引擎清單呈現 -->
+            <section class="setting-card">
+              <div class="card-title-row">
+                <div>
+                  <div class="card-title-text"><i class="bi bi-translate"></i> 語音辨識</div>
+                  <div class="card-subtitle-desc">把訪客說的話轉成文字。數位人的聲音在各數位人設定檔的「聲音」設定。</div>
+                </div>
+                <button
+                  type="button"
+                  class="btn-apply-primary btn-apply-compact"
+                  :disabled="applyingStt"
+                  @click="applySttChange"
+                >
+                  <i class="bi bi-check2" :class="{ spin: applyingStt }"></i> 套用語音辨識
+                </button>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="stt-engine" class="field-main-label">辨識引擎</label>
+                  <span v-if="selectedSttEngine?.description" class="field-sub-hint">{{ selectedSttEngine.description }}</span>
+                </div>
+                <div class="field-control-area">
+                  <select id="stt-engine" class="std-select" v-model="sttDraft.type">
+                    <option
+                      v-for="engine in sttEngineOptions"
+                      :key="engine.id"
+                      :value="engine.id"
+                      :disabled="engine.available === false && engine.id !== sttDraft.type"
+                    >
+                      {{ engine.label || engine.id }}{{ engine.available === false ? '（未安裝）' : '' }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-form-row" v-if="sttModelOptions.length">
+                <div class="field-label-group">
+                  <label for="stt-model-size" class="field-main-label">辨識模型</label>
+                </div>
+                <div class="field-control-area">
+                  <select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
+                    <option v-for="model in sttModelOptions" :key="model" :value="model">{{ model }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="setting-form-row" v-if="sttOutputScriptOptions.length">
+                <div class="field-label-group">
+                  <label for="stt-output-script" class="field-main-label">輸出文字字元集</label>
+                </div>
+                <div class="field-control-area">
+                  <select id="stt-output-script" class="std-select" v-model="sttDraft.output_script">
+                    <option v-for="script in sttOutputScriptOptions" :key="script.id" :value="script.id">{{ script.label }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- 預熱進度條 -->
+              <div
+                v-if="applyingStt"
+                class="stt-prewarm-progress"
+                role="status"
+                aria-live="polite"
+              >
+                <div
+                  class="progress-track"
+                  role="progressbar"
+                  :aria-label="t('settings.speech.prewarmProgressLabel')"
+                  :aria-valuetext="t('settings.speech.prewarming')"
+                >
+                  <div class="progress-fill progress-fill-indeterminate"></div>
+                </div>
+                <p class="stt-prewarm-hint">
+                  {{ selectedSttEngine?.local_model_ready
+                    ? t('settings.speech.localPrewarmProgressHint')
+                    : t('settings.speech.prewarmProgressHint') }}
+                </p>
+              </div>
+            </section>
+
+          </div>
         </div>
 
         <div v-show="activeSettingsTab === 'greeting'" class="settings-category-panel unified-role-panel" id="catPanel-greeting" role="tabpanel" aria-labelledby="railTab-greeting">
@@ -698,191 +906,6 @@
           </section>
         </div>
 
-        <div v-show="activeSettingsTab === 'interaction'" class="settings-category-panel" id="catPanel-interaction" role="tabpanel" aria-labelledby="railTab-interaction">
-          <section class="setting-card">
-            <div class="card-title-row"><div><h2 class="card-title-text">訪客互動</h2><p class="card-subtitle-desc">管理訪客何時開始說話、何時送出，以及上一場對話何時清除。</p></div><button type="button" class="btn-apply-primary" :disabled="applyingVisitor || visitorResetError" @click="handleApplyVisitorSettings">套用訪客清場時間</button></div>
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="visitor-idle-reset-seconds" class="field-main-label">訪客對話重置時間</label>
-                <span class="field-sub-hint">完整重置清除本場記憶、附件與草稿並返回主角色；舞台空場後再等招呼間隔。</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    id="visitor-idle-reset-seconds"
-                    type="number"
-                    class="std-range"
-                    min="3"
-                    max="300"
-                    step="1"
-                    v-model.number="selectedVisitorResetSeconds"
-                    :aria-invalid="visitorResetError"
-                  >
-                  <span class="std-val-pill">{{ selectedVisitorResetSeconds }} 秒</span>
-                </div>
-              </div>
-            </div>
-
-            <label class="field-main-label" for="clear-display-seconds">只清畫面時間（秒，保留記憶與附件）</label>
-            <input id="clear-display-seconds" type="number" min="1" :max="selectedVisitorResetSeconds" v-model.number="selectedClearDisplaySeconds" class="std-input">
-            <p v-if="visitorError" role="alert">{{ visitorError }}</p>
-            <p>控制台與舞台各自依上述時間清畫面、清空對話並返回主數位人，停止、返回與收音操作不影響另一邊；閒置招呼只在舞台播放。</p>
-          </section>
-          <!-- 左欄：Silero VAD 免持收音 -->
-          <section class="setting-card">
-            <div class="card-title-row">
-              <div>
-                <div class="card-title-text"><i class="bi bi-soundwave"></i> Silero VAD 語音端點偵測</div>
-                <div class="card-subtitle-desc">自動判斷發話開始與停頓；播放期間暫停收音，可點選插話。</div>
-              </div>
-              <button
-                type="button"
-                class="btn-apply-primary btn-apply-compact"
-                :disabled="applyingVad"
-                @click="handleApplyVad"
-              >
-                <i class="bi bi-check2" :class="{ spin: applyingVad }"></i> 套用 VAD
-              </button>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <span class="field-main-label">啟用免持自動收音</span>
-                <span class="field-sub-hint">開口即錄，停頓超過閥值自動送出</span>
-              </div>
-              <div class="field-control-area">
-                <label class="std-switch">
-                  <input type="checkbox" v-model="vadDraft.enabled">
-                  <span class="std-slider-track"></span>
-                </label>
-              </div>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <span class="field-main-label">發話判定門檻 (Threshold)</span>
-                <span class="field-sub-hint">閥值愈高抗噪愈佳，建議 0.45–0.55</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <input
-                    type="range"
-                    class="std-range"
-                    min="0.1"
-                    max="0.9"
-                    step="0.05"
-                    v-model.number="vadDraft.threshold"
-                  >
-                  <span class="std-val-pill">{{ vadDraft.threshold }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <span class="field-main-label">最小靜音判定時間 (ms)</span>
-                <span class="field-sub-hint">停頓超過此毫秒數即視為發話完畢；以 32 ms 為一格，192 ms＝6 格</span>
-              </div>
-              <div class="field-control-area">
-                <div class="std-slider-combo">
-                  <!-- Silero VAD counts silence in 32 ms frames, so the steps are whole frames. -->
-                  <input
-                    type="range"
-                    class="std-range"
-                    min="128"
-                    max="1504"
-                    step="32"
-                    v-model.number="vadDraft.min_silence_ms"
-                  >
-                  <span class="std-val-pill">{{ vadDraft.min_silence_ms }}ms</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- 語音辨識：引擎、模型與輸出字元集都依伺服器的引擎清單呈現 -->
-          <section class="setting-card">
-            <div class="card-title-row">
-              <div>
-                <div class="card-title-text"><i class="bi bi-translate"></i> 語音辨識</div>
-                <div class="card-subtitle-desc">把訪客說的話轉成文字。數位人的聲音在各數位人設定檔的「聲音與工具」設定。</div>
-              </div>
-              <button
-                type="button"
-                class="btn-apply-primary btn-apply-compact"
-                :disabled="applyingStt"
-                @click="applySttChange"
-              >
-                <i class="bi bi-check2" :class="{ spin: applyingStt }"></i> 套用語音辨識
-              </button>
-            </div>
-
-            <div class="setting-form-row">
-              <div class="field-label-group">
-                <label for="stt-engine" class="field-main-label">辨識引擎</label>
-                <span v-if="selectedSttEngine?.description" class="field-sub-hint">{{ selectedSttEngine.description }}</span>
-              </div>
-              <div class="field-control-area">
-                <select id="stt-engine" class="std-select" v-model="sttDraft.type">
-                  <option
-                    v-for="engine in sttEngineOptions"
-                    :key="engine.id"
-                    :value="engine.id"
-                    :disabled="engine.available === false && engine.id !== sttDraft.type"
-                  >
-                    {{ engine.label || engine.id }}{{ engine.available === false ? '（未安裝）' : '' }}
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <div class="setting-form-row" v-if="sttModelOptions.length">
-              <div class="field-label-group">
-                <label for="stt-model-size" class="field-main-label">辨識模型</label>
-              </div>
-              <div class="field-control-area">
-                <select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
-                  <option v-for="model in sttModelOptions" :key="model" :value="model">{{ model }}</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="setting-form-row" v-if="sttOutputScriptOptions.length">
-              <div class="field-label-group">
-                <label for="stt-output-script" class="field-main-label">輸出文字字元集</label>
-              </div>
-              <div class="field-control-area">
-                <select id="stt-output-script" class="std-select" v-model="sttDraft.output_script">
-                  <option v-for="script in sttOutputScriptOptions" :key="script.id" :value="script.id">{{ script.label }}</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- 預熱進度條 -->
-            <div
-              v-if="applyingStt"
-              class="stt-prewarm-progress"
-              role="status"
-              aria-live="polite"
-            >
-              <div
-                class="progress-track"
-                role="progressbar"
-                :aria-label="t('settings.speech.prewarmProgressLabel')"
-                :aria-valuetext="t('settings.speech.prewarming')"
-              >
-                <div class="progress-fill progress-fill-indeterminate"></div>
-              </div>
-              <p class="stt-prewarm-hint">
-                {{ selectedSttEngine?.local_model_ready
-                  ? t('settings.speech.localPrewarmProgressHint')
-                  : t('settings.speech.prewarmProgressHint') }}
-              </p>
-            </div>
-          </section>
-
-        </div>
-
         <!-- ── 分類 5：系統偏好與自訂 ── -->
         <div
           v-show="activeSettingsTab === 'experience'"
@@ -993,7 +1016,7 @@
       </div>
 
       <!-- 滿板固定底部動作條 -->
-      <footer v-show="!['roles', 'greeting', 'conversation'].includes(activeSettingsTab)" class="settings-fixed-footer">
+      <footer v-show="!['roles', 'greeting', 'conversation'].includes(activePage)" class="settings-fixed-footer">
         <button v-if="activeSettingsTab === 'experience'" type="button" class="btn-restore-gray" @click="confirmKind = 'reset'">
           <i class="bi bi-arrow-counterclockwise"></i> 還原系統偏好預設
         </button>
@@ -1045,6 +1068,7 @@ import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
 import AvatarProfiles from './AvatarProfiles.vue'
+import RoleComposition from './RoleComposition.vue'
 import IdleGreetingSettings from './IdleGreetingSettings.vue'
 import {
   boardReopenPresentation,
@@ -1094,7 +1118,19 @@ const emit = defineEmits([
 
 const showSettings = ref(true)
 const isFullBleed = ref(true)
-const activeSettingsTab = ref(['ai', 'rag', 'roles'].includes(props.initialTab) ? 'roles' : props.initialTab || 'roles')
+// 訪客互動與語音辨識 is the third segment of the roles page; 'interaction' still opens it.
+const activeSettingsTab = ref(['ai', 'rag', 'roles', 'interaction'].includes(props.initialTab) ? 'roles' : props.initialTab || 'roles')
+const roleSegment = ref(props.initialTab === 'interaction' ? 'interaction' : 'profiles')
+const composeVisited = ref(false)
+const compositionRef = ref(null)
+const roleSegments = [
+  { id: 'profiles', icon: 'bi bi-person-badge', label: '數位人設定檔', panel: 'roleSeg-profiles' },
+  { id: 'compose', icon: 'bi bi-diagram-3', label: '角色組合與交接', panel: 'roleSeg-compose' },
+  { id: 'interaction', icon: 'bi bi-mic', label: '訪客互動與語音辨識', panel: 'catPanel-interaction' }
+]
+// What the footer saves: the interaction segment keeps its own page actions.
+const activePage = computed(() => activeSettingsTab.value === 'roles' && roleSegment.value === 'interaction' ? 'interaction' : activeSettingsTab.value)
+const compositionDirtyCount = computed(() => compositionRef.value?.dirtyCount || 0)
 const profilesRef = ref(null)
 const greetingRef = ref(null)
 const greetingVisited = ref(props.initialTab === 'greeting')
@@ -1225,7 +1261,6 @@ const settingsTabs = computed(() => [
   { id: 'conversation', icon: 'bi bi-chat-square-text', label: '對話記憶與語系' },
   { id: 'roles', icon: 'bi bi-people-fill', label: '數位人、AI 與知識設定' },
   { id: 'greeting', icon: 'bi bi-chat-heart', label: '閒置招呼' },
-  { id: 'interaction', icon: 'bi bi-mic', label: '訪客互動與語音辨識' },
   { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
@@ -1398,10 +1433,35 @@ const systemStatus = computed(() => systemStatusRows({
   stt: speech.stt
 }))
 
+const selectRoleSegment = (segment) => {
+  roleSegment.value = segment
+  if (segment === 'compose') composeVisited.value = true
+}
+
+const handleSegmentKeydown = (event, currentIndex) => {
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key]
+  if (!step) return
+  event.preventDefault()
+  const next = roleSegments[(currentIndex + step + roleSegments.length) % roleSegments.length].id
+  selectRoleSegment(next)
+  nextTick(() => globalThis.document?.getElementById(`roleSegTab-${next}`)?.focus())
+}
+
+// 角色組合 asks to edit a profile, e.g. its voice: open it in the first segment.
+const editRoleProfile = (profileId, section) => {
+  selectRoleSegment('profiles')
+  profilesRef.value?.openProfile(profileId, section)
+}
+
 const selectSettingsTab = (tabId) => {
   if (tabId === 'greeting') greetingVisited.value = true
+  if (tabId === 'interaction') {
+    selectRoleSegment('interaction')
+    tabId = 'roles'
+  }
   if (tabId === 'ai' || tabId === 'rag') {
     roleInitialSection.value = tabId === 'rag' ? 'rag' : 'model'
+    selectRoleSegment('profiles')
     tabId = 'roles'
   }
   activeSettingsTab.value = tabId
@@ -1508,7 +1568,7 @@ const onLanguageChange = () => {
 }
 
 const savingSettings = ref(false)
-const pageInvalid = computed(() => (activeSettingsTab.value === 'interaction' && visitorResetError.value) || (activeSettingsTab.value === 'stage' && (stageCaptionLengthError.value || boardSizeError.value)))
+const pageInvalid = computed(() => (activePage.value === 'interaction' && visitorResetError.value) || (activePage.value === 'stage' && (stageCaptionLengthError.value || boardSizeError.value)))
 const hasUnsavedChanges = computed(() => {
   const states = {
     roles: profilesRef.value?.dirty || profilesRef.value?.pendingApply,
@@ -1517,14 +1577,14 @@ const hasUnsavedChanges = computed(() => {
     interaction: visitorDirty.value || vadDirty.value || sttDirty.value,
     avatar: avatarDirty.value || qualityDirty.value
   }
-  return Boolean(states[activeSettingsTab.value])
+  return Boolean(states[activePage.value])
 })
 
 const saveActiveSettings = async () => {
   if (savingSettings.value) return
   savingSettings.value = true
   try {
-    const tab = activeSettingsTab.value
+    const tab = activePage.value
     if (tab === 'stage' && stageDirty.value) await applyStageSettings()
     if (tab === 'interaction') {
       if (visitorDirty.value) await applyVisitorSettings()
@@ -1788,17 +1848,33 @@ defineExpose({
 
 <style scoped>
 .unified-role-panel { display: block; }
-.settings-return-console { margin-top: 12px; }
-.conversation-return-console { margin-bottom: 14px; }
 
 /* 16:9 一屏版面：整頁元件填滿分頁高度，由元件內的區塊各自捲動 */
 @media (min-width: 1280px) and (min-height: 640px) {
   .unified-role-panel { display: flex; flex-direction: column; }
-  .conversation-return-console { align-self: flex-start; flex: none; }
   .unified-role-panel > .conversation-panel { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
   .unified-role-panel > .role-settings,
   .unified-role-panel > .idle-greeting-settings { flex: 1 1 0; min-height: 0; }
+  .role-workspace > .role-page-head { flex: none; }
+  .role-workspace > .role-seg-panel:not(.settings-category-panel) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+  .role-seg-panel > .role-settings,
+  .role-seg-panel > .role-compose { flex: 1 1 0; min-height: 0; }
 }
+
+/* 數位人、AI 與知識設定：標題與三個分頁（設定檔｜角色組合與交接｜訪客互動與語音辨識） */
+.role-page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; min-width: 0; }
+.role-page-title { min-width: 0; }
+.role-page-title h2 { font-size: 22px; font-weight: 700; line-height: 1.25; margin: 0; }
+.role-page-title p { font-size: 12px; color: var(--text-3); margin: 2px 0 0; }
+.role-segs { display: inline-flex; flex-wrap: wrap; padding: 3px; border-radius: var(--radius-md); background: var(--bg-sunken); border: 1px solid var(--border); flex: none; max-width: 100%; }
+.role-segs button { border: 0; background: none; min-height: 34px; padding: 0 16px; border-radius: 7px; cursor: pointer; color: var(--text-2); font-size: 13px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; transition: background var(--anim-fast), color var(--anim-fast); }
+.role-segs button:hover { color: var(--text); }
+.role-segs button[aria-selected="true"] { background: var(--bg-surface); color: var(--text); box-shadow: var(--shadow-1); }
+.role-segs button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.role-seg-count { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--warn-surface); color: var(--warn); border: 1px solid var(--warn-border); }
+.role-seg-panel { min-width: 0; }
+@media (max-width: 1366px) { .role-page-title p { display: none; } }
+@media (max-height: 820px) { .role-page-head { margin-bottom: 8px; } .role-page-title h2 { font-size: 18px; } }
 
 .btn-xs { padding: 3px 8px; font-size: 11px; }
 

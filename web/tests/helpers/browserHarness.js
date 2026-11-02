@@ -50,14 +50,19 @@ export async function stubBackend(page) {
   })
 }
 
-// Each state opens one settings tab, optionally a sub-view, and names its blocks.
+// Each state opens one settings tab, optionally a segment (tab) and sub-view
+// (buttons, then CSS selectors to click), and names its blocks.
+const compose = '.rc-list-card, .rc-editor, .rc-aside'
 export const settingsStates = [
   { id: 'conversation', select: ['#catPanel-conversation select', '11'], blocks: '.conversation-panel' },
-  { id: 'roles', blocks: '.role-list, .role-editor-card' },
-  { id: 'roles', view: 'voice', open: ['聲音與工具'], blocks: '.role-list, .role-editor-card' },
-  { id: 'roles', view: 'handoff', open: ['角色組合、交接與轉場'], blocks: '.role-handoff > .role-card' },
+  { id: 'roles', tab: '數位人設定檔', blocks: '.role-list, .role-editor-card' },
+  { id: 'roles', view: 'voice', tab: '數位人設定檔', open: ['聲音'], blocks: '.role-list, .role-editor-card' },
+  { id: 'roles', view: 'compose', tab: '角色組合與交接', click: ['.rc-slots .rc-slot >> nth=0'], blocks: compose },
+  { id: 'roles', view: 'compose-member', tab: '角色組合與交接', click: ['.rc-slot:has-text("氣象員")'], blocks: compose },
+  { id: 'roles', view: 'compose-incompatible', tab: '角色組合與交接', click: ['.rc-slot:has-text("交通導覽")'], blocks: compose },
+  { id: 'roles', view: 'compose-add', tab: '角色組合與交接', click: ['.rc-slot.empty'], blocks: compose },
+  { id: 'roles', view: 'interaction', tab: '訪客互動與語音辨識', blocks: '.setting-card' },
   { id: 'greeting', blocks: '.greeting-side, .greeting-main' },
-  { id: 'interaction', blocks: '.setting-card' },
   { id: 'avatar', blocks: '.setting-card' },
   { id: 'stage', blocks: '.setting-card, .stage-live-preview-card' },
   { id: 'experience', blocks: '.setting-card' }
@@ -65,7 +70,9 @@ export const settingsStates = [
 
 export async function openSettingsState(page, state) {
   await page.click(`#railTab-${state.id}`)
+  if (state.tab) await page.getByRole('tab', { name: state.tab }).click()
   for (const label of state.open || []) await page.getByRole('button', { name: label, exact: true }).click()
+  for (const selector of state.click || []) await page.click(selector)
   if (state.select) await page.selectOption(...state.select)
   await page.waitForTimeout(300)
 }

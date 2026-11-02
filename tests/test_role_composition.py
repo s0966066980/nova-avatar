@@ -13,10 +13,10 @@ import yaml
 
 from src.config.schema import Config
 from src.profiles.composition import (
-    MAX_ENABLED_MEMBERS, compatibility_report, legacy_pair_view, live_members, transition,
+    MAX_ENABLED_MEMBERS, compatibility_report, live_members, profile_ids, referenced_media, transition,
 )
 from src.profiles.coordinator import ConversationRoles
-from src.profiles.store import ProfileError, ProfileStore
+from src.profiles.store import ProfileError, ProfileStore, validate_profile
 from src.server.state import state
 from tests.access_helpers import access_client, same_origin
 
@@ -164,10 +164,9 @@ def test_live_v1_library_becomes_a_composition_once_with_a_backup(tmp_path):
         "transitions": {"revision": 1,
                         "default": {"kind": "effect", "effect": "fade", "duration": 0.6, "asset_id": ""},
                         "overrides": old["transitions"]}}
-    # The temporary two-role view reproduces what the runtime read before.
-    for key in ("enabled", "pair", "transitions", "handoff", "weather"):
-        assert library[key] == old[key], key
-    assert [p["tools"] for p in library["profiles"]] == [p["tools"] for p in old["profiles"]]
+    # Reads return the stored shape only: no two-role keys, no profile tools.
+    assert set(library) == {"version", "revision", "profiles_revision", "profiles", "composition"}
+    assert all("tools" not in p for p in library["profiles"])
 
     before = path.read_bytes()
     assert store.initialize(_config()) == library
@@ -350,7 +349,8 @@ def test_main_avatar_has_the_same_handoff_fields_and_its_own_revision(store):
                             expected_revision=main["revision"])
     assert saved["composition"]["main"]["revision"] == main["revision"] + 1
     assert saved["composition"]["revision"] == library["composition"]["revision"]
-    assert saved["handoff"]["return_announcement"] == "這題我請接待員回答。"
+    assert saved["composition"]["main"]["announcement"] == "這題我請接待員回答。"
+    assert saved["composition"]["members"] == library["composition"]["members"]
     with pytest.raises(ProfileError) as error:
         store.save_main({"announcement": "過期"}, expected_revision=main["revision"])
     assert error.value.extra["conflict"]["scope"] == "main"
@@ -400,20 +400,34 @@ def test_transitions_fall_back_to_the_saved_default_in_the_runtime(store):
     assert ConversationRoles.edge(roles, "main", "weather")["effect"] == "zoom"
 
 
-def test_two_role_save_maps_onto_the_composition_and_keeps_other_members(store):
-    _add(store, "s1", enabled=True, description="其他成員")
-    other = _member(store, "s1")
-    view = store.load()
-    assert view["pair"] == {"main": "main", "specialist": "weather"}
-    view["handoff"]["description"] = "改過的天氣說明"
-    view["weather"] = {"county": "台東縣", "town": "台東市"}
-    view["enabled"] = True
-    saved = store.save(view, expected_revision=view["revision"])
-    weather = _member(store, "weather")
-    assert weather["description"] == "改過的天氣說明"
-    assert weather["tools"]["weather"] == {"enabled": True, "county": "臺東縣", "town": "臺東市"}
-    assert _member(store, "s1") == other
-    assert saved["enabled"] is True and saved["composition"]["enabled"] is True
+def test_profiles_and_stored_libraries_no_longer_carry_tools_or_two_role_keys(store):
+    library = store.load()
+    profile = deepcopy(library["profiles"][1])
+    profile["tools"] = {"weather": True}
+    with pytest.raises(ProfileError, match="角色組合與交接") as error:
+        validate_profile(profile)
+    assert error.value.extra["field"] == "tools"
+    before = store.path.read_bytes()
+    with pytest.raises(ProfileError):
+        store.save_profiles([*library["profiles"][:1], profile], expected_revision=library["profiles_revision"])
+    assert store.path.read_bytes() == before
+    # A version 2 file is read as stored: two-role keys are refused, not dropped.
+    for extra in ({"pair": {"main": "main", "specialist": "weather"}}, {"transitions": []}, {"enabled": True}):
+        store.path.write_text(yaml.safe_dump({**yaml.safe_load(before), **extra}, allow_unicode=True), "utf-8")
+        with pytest.raises(ProfileError, match="未知欄位"):
+            store.load()
+    store.path.write_bytes(before)
+
+
+def test_only_the_saved_default_and_overrides_reference_transition_clips(store):
+    transitions = store.load()["composition"]["transitions"]
+    library = store.save_transitions(
+        {"default": {"kind": "video", "asset_id": "clip_default"},
+         "overrides": [{"source": "main", "target": "weather", "kind": "video", "asset_id": "clip_edge"}]},
+        expected_revision=transitions["revision"])
+    assert referenced_media(library) == {"clip_default", "clip_edge"}
+    assert referenced_media({**library, "transitions": [{"kind": "video", "asset_id": "stale"}]}) == {
+        "clip_default", "clip_edge"}
 
 
 @pytest.fixture
@@ -465,8 +479,29 @@ def test_member_routes_report_conflicts_with_the_saved_member(composition_routes
     assert status == 200 and [m["profile_id"] for m in body["library"]["composition"]["members"]] == ["weather"]
 
 
-def test_view_without_members_turns_handoff_off(store):
+def test_whole_library_saves_are_refused_and_profile_lists_save_over_http(composition_routes):
+    store = composition_routes
+    library = store.load()
+    before = store.path.read_bytes()
+    status, body = _request("PUT", "/api/profiles", {"library": library, "expected_revision": library["revision"]})
+    assert (status, body["code"]) == (400, -1)
+    assert store.path.read_bytes() == before
+    profiles = deepcopy(library["profiles"])
+    profiles[0]["name"] = "新的接待員"
+    status, body = _request("PUT", "/api/profiles",
+                            {"profiles": profiles, "expected_profiles_revision": library["profiles_revision"]})
+    assert status == 200, body
+    assert body["library"]["profiles"][0]["name"] == "新的接待員"
+    assert body["library"]["composition"] == library["composition"]
+    assert "pair" not in body["library"] and body["compatibility"]["s1"] == []
+    status, body = _request("PUT", "/api/profiles",
+                            {"profiles": profiles, "expected_profiles_revision": library["profiles_revision"]})
+    assert status == 409 and body["conflict"]["scope"] == "profiles"
+
+
+def test_a_composition_without_members_has_only_the_main_avatar(store):
     library = store.remove_member("weather", expected_revision=store.load()["composition"]["revision"])
-    view = legacy_pair_view(library)
-    assert view["pair"] == {"main": "main", "specialist": "main"}
-    assert view["enabled"] is False
+    library["composition"]["enabled"] = True
+    assert library["composition"]["members"] == []
+    assert live_members(library) == []
+    assert profile_ids(library) == {"main"}
