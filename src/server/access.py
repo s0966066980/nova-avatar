@@ -141,6 +141,7 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     ("PUT", "/api/profiles/composition/members/{profile_id}"): ADMIN,
     ("DELETE", "/api/profiles/composition/members/{profile_id}"): ADMIN,
     ("PUT", "/api/profiles/composition/transitions"): ADMIN,
+    ("POST", "/api/profiles/composition/dry-run"): ADMIN,
     ("POST", "/api/profiles/apply"): ADMIN,
     ("POST", "/api/profiles/return"): ADMIN,
     ("POST", "/api/profiles/stop"): ADMIN,

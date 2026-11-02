@@ -22,7 +22,7 @@ const member = (profile_id, extra = {}) => ({ profile_id, revision: 2, enabled: 
   announcement: `請${profile_id}回答。`, announcement_en: '', tools: { weather: { enabled: false, county: '', town: '' } }, ...extra })
 
 // The routes of ticket 01, enough to check what the console sends.
-function server(t) {
+function server(t, setup = () => {}) {
   const previousFetch = globalThis.fetch
   const library = {
     version: 2, revision: 20, profiles_revision: 5,
@@ -39,6 +39,7 @@ function server(t) {
   const compatibility = { weather: [], guide: [], transit: ['即時組合需共用語音合成引擎，可分別設定聲線'], shop: [] }
   const requests = []
   const fail = { next: null }
+  const dryRun = { next: { target: 'guide', target_name: '展覽導覽員', handoff: true, clarification: '', reason: '展品問題屬於導覽員', decided_by: 'model' } }
   const reply = (status, data) => ({ ok: status < 400, status, json: async () => data })
   const saved = () => reply(200, { code: 0, library: structuredClone(library), compatibility, runtime: { profiles_applied: true, active_revision: 20 } })
   const conflict = (scope, revision, current, extra = {}) => reply(409, { code: -1, msg: '已被其他控制台修改，請重新載入', conflict: { scope, revision, current: structuredClone(current), ...extra } })
@@ -66,13 +67,16 @@ function server(t) {
     } else if (path === '/api/profiles/composition/transitions') {
       if (body.expected_revision !== composition.transitions.revision) return conflict('transitions', composition.transitions.revision, composition.transitions)
       Object.assign(composition.transitions, body.transitions, { revision: composition.transitions.revision + 1 })
+    } else if (path === '/api/profiles/composition/dry-run') {
+      return reply(200, { code: 0, revision: library.revision, current_profile_id: body.current_profile_id, ...dryRun.next })
     } else throw Error(`Unexpected ${method} ${path}`)
     library.revision += 1
     return saved()
   }
+  setup(library)
   const view = mount(Composition, {})
   t.after(() => { view.unmount(); globalThis.fetch = previousFetch })
-  return { view, library, requests, fail, conflict, writes: () => requests.filter(r => r.method !== 'GET') }
+  return { view, library, requests, fail, dryRun, conflict, writes: () => requests.filter(r => r.method !== 'GET') }
 }
 
 const slot = (root, name) => all(root, n => n.type === 'button' && n.props.class?.includes?.('rc-slot') && textContent(n).includes(name))[0]
@@ -223,14 +227,41 @@ test('角色轉場：預設＋個別方向，重複方向不新增，另存轉�
   assert.deepEqual(request.body.transitions.overrides.map(e => [e.source, e.target]), [['main', 'guide']])
 })
 
-test('交接試算先只有介面：控制項停用，不呼叫路由', async t => {
+test('交接試算以已儲存的組合詢問路由並顯示由誰回答與原因', async t => {
   const field = server(t)
   await settle()
+  const { root } = field.view
+  const block = () => byId(root, 'rc-dry-run')
+  assert.match(textContent(block()), /交接試算.*已儲存版本 20/)
+  const options = all(byId(root, 'rc-sim-from'), n => n.type === 'option').map(textContent)
+  assert.deepEqual(options, ['接待員', '氣象員', '展覽導覽員'], '只列主數位人與生效成員')
+  assert.equal(button(block(), '試算由誰回答').props.disabled, true, '沒有問題時不能試算')
+  await type(root, 'rc-sim-from', 'weather')
+  await type(root, 'rc-sim-question', '這件展品的故事是什麼？')
+  block().props.onSubmit({ preventDefault() {} })
+  await settle()
+  const [request] = field.requests.filter(r => r.path.includes('dry-run'))
+  assert.equal(request.method, 'POST')
+  assert.deepEqual(request.body, { current_profile_id: 'weather', text: '這件展品的故事是什麼？' })
+  assert.match(textContent(block()), /交給展覽導覽員.*展品問題屬於導覽員（模型判斷）/)
+  assert.ok(field.writes().every(r => r.path.includes('dry-run')), '試算不儲存任何設定')
+
+  field.dryRun.next = { target: null, target_name: '', handoff: false, clarification: '請問您想先問天氣還是展覽？', reason: '混合主題', decided_by: 'model' }
+  block().props.onSubmit({ preventDefault() {} })
+  await settle()
+  assert.match(textContent(block()), /先向訪客釐清：請問您想先問天氣還是展覽？/)
+
+  field.fail.next = { ok: false, status: 503, json: async () => ({ code: -1, msg: '回答模型服務暫時無法使用' }) }
+  block().props.onSubmit({ preventDefault() {} })
+  await settle()
+  assert.match(textContent(block()), /回答模型服務暫時無法使用/)
+})
+
+test('沒有生效成員時交接試算停用並說明原因', async t => {
+  const field = server(t, library => { library.composition.enabled = false })
+  await settle()
   const block = byId(field.view.root, 'rc-dry-run')
-  assert.match(textContent(block), /交接試算.*尚未開放/)
-  const controls = all(block, n => ['select', 'input', 'button'].includes(n.type))
-  assert.equal(controls.length, 3)
-  assert.ok(controls.every(n => 'disabled' in n.props && n.props.disabled !== false))
-  assert.deepEqual(field.writes(), [])
+  assert.match(textContent(block), /至少啟用一位相容的專門數位人/)
+  assert.ok(all(block, n => ['select', 'input', 'button'].includes(n.type)).every(n => n.props.disabled === true))
   assert.ok(field.requests.every(r => !r.path.includes('dry-run')))
 })

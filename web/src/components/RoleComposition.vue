@@ -184,18 +184,24 @@
             <div class="rc-topo-wrap">
               <RoleTopology :nodes="topologyNodes" :live="liveKeys" :description="topologyDescription" @select="select" />
               <div class="rc-legend" aria-hidden="true"><span><i class="e"></i>可直接交接</span><span><i class="o"></i>未啟用</span><span><i class="x"></i>不相容</span></div>
-              <!-- 交接試算：介面先就位但停用；串接 POST /api/profiles/composition/dry-run
-                   （{current_profile_id, text} → {target, clarification, reason, decided_by}）留給 ticket 05。 -->
-              <section id="rc-dry-run" class="rc-sim" aria-labelledby="rc-sim-title" aria-describedby="rc-sim-hint">
-                <span id="rc-sim-title" class="rc-sub-title"><i class="bi bi-chat-left-text" aria-hidden="true"></i>交接試算<span class="rc-mini">尚未開放</span></span>
+              <!-- 交接試算：以已儲存的組合實際詢問路由；不播報，也不寫入對話。 -->
+              <form id="rc-dry-run" class="rc-sim" aria-labelledby="rc-sim-title" aria-describedby="rc-sim-hint" @submit.prevent="dryRun">
+                <span id="rc-sim-title" class="rc-sub-title"><i class="bi bi-chat-left-text" aria-hidden="true"></i>交接試算<span v-if="library" class="rc-mini">已儲存版本 {{ library.revision }}</span></span>
                 <div class="rc-sim-row">
                   <div class="rc-field"><label for="rc-sim-from">目前角色</label>
-                    <select id="rc-sim-from" class="rc-input" disabled><option v-for="id in liveKeysById" :key="id" :value="id">{{ nameOf(id) }}</option></select></div>
-                  <div class="rc-field"><label for="rc-sim-question">訪客問題</label><input id="rc-sim-question" class="rc-input" disabled placeholder="例：捷運怎麼去？"></div>
+                    <select id="rc-sim-from" v-model="sim.from" class="rc-input" :disabled="!simReady || sim.busy"><option v-for="id in liveKeysById" :key="id" :value="id">{{ nameOf(id) }}</option></select></div>
+                  <div class="rc-field"><label for="rc-sim-question">訪客問題</label><input id="rc-sim-question" v-model="sim.text" class="rc-input" maxlength="500" :disabled="!simReady || sim.busy" placeholder="例：捷運怎麼去？"></div>
                 </div>
-                <button type="button" class="rc-btn sm rc-self-start" disabled><i class="bi bi-signpost-split" aria-hidden="true"></i>試算由誰回答</button>
-                <p id="rc-sim-hint" class="rc-hint">尚未開放：之後可選目前角色、輸入訪客問題，以已儲存的組合實際詢問路由由誰回答與原因；不播報，也不寫入對話。</p>
-              </section>
+                <button type="submit" class="rc-btn sm rc-self-start" :disabled="!simReady || sim.busy || !sim.text.trim()"><i class="bi bi-signpost-split" aria-hidden="true"></i>{{ sim.busy ? '試算中…' : '試算由誰回答' }}</button>
+                <div v-if="sim.result" class="rc-sim-result" role="status">
+                  <b v-if="sim.result.target === null">先向訪客釐清：{{ sim.result.clarification }}</b>
+                  <b v-else-if="sim.result.handoff">交給{{ sim.result.target_name }}</b>
+                  <b v-else>留在{{ sim.result.target_name }}回答</b>
+                  <span class="rc-hint">{{ sim.result.reason || '模型未提供原因' }}（{{ sim.result.decided_by === 'keyword' ? '關鍵字初篩' : '模型判斷' }}）</span>
+                </div>
+                <p v-if="sim.error" class="rc-hint rc-sim-error" role="alert">{{ sim.error }}</p>
+                <p id="rc-sim-hint" class="rc-hint">{{ simHint }}</p>
+              </form>
             </div>
           </article>
           <RoleTransitions v-model:scope="scopes.transitions" v-model:media="media" :members="transitionMembers" :live="liveKeysById" :names="names"
@@ -547,6 +553,21 @@ function answer(value) {
   returnFocus?.focus?.(); returnFocus = null
 }
 
+// ── 交接試算 ─────────────────────────────────────────────────────────
+const sim = ref({ from: '', text: '', busy: false, result: null, error: '' })
+const simReady = computed(() => liveKeysById.value.length > 1)
+const simHint = computed(() => !simReady.value ? '開啟角色交接並至少啟用一位相容的專門數位人後即可試算。'
+  : dirtyKeys.value.length ? '以已儲存的組合試算；未儲存的修改不列入，請先儲存。'
+    : '以已儲存的組合實際詢問路由，當成新對話判斷；不播報，也不寫入對話。')
+watch(liveKeysById, ids => { if (!ids.includes(sim.value.from)) sim.value.from = ids[0] || '' }, { immediate: true })
+async function dryRun() {
+  if (!simReady.value || sim.value.busy || !sim.value.text.trim()) return
+  sim.value = { ...sim.value, busy: true, result: null, error: '' }
+  try {
+    const data = await roleRequest('/composition/dry-run', 'POST', { current_profile_id: sim.value.from, text: sim.value.text })
+    sim.value.result = data
+  } catch (e) { sim.value.error = e.message } finally { sim.value.busy = false }
+}
 defineExpose({ dirtyCount: computed(() => dirtyKeys.value.length), select, load })
 </script>
 
@@ -766,6 +787,8 @@ defineExpose({ dirtyCount: computed(() => dirtyKeys.value.length), select, load 
 .role-compose .rc-sim .rc-field{gap:2px}
 .role-compose .rc-sim .rc-field>label{font-size:var(--rc-xs);font-weight:600;color:var(--text-3)}
 .role-compose .rc-sim .rc-input{min-height:2rem;padding:.25rem .5rem;font-size:var(--rc-xs)}
+.role-compose .rc-sim-result{display:flex;flex-direction:column;gap:2px;font-size:var(--rc-xs)}
+.role-compose .rc-sim-error{color:var(--danger)}
 .role-compose .rc-single{overflow-y:auto}
 /* 確認對話框 */
 .role-compose .rc-scrim{position:fixed;inset:0;z-index:60;background:var(--scrim);display:grid;place-items:center;padding:var(--s4)}
