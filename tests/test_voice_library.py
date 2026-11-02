@@ -370,13 +370,13 @@ def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, st
         attempt = deepcopy(library)
         attempt["profiles"][0]["tts"].update(change)
         with pytest.raises(ProfileError):
-            store.save(attempt, expected_revision=library["revision"])
+            store.save_profiles(attempt["profiles"], expected_revision=library["profiles_revision"])
     source = tmp_path / "spoken.wav"
     source.write_bytes(wav_bytes(seconds=2.0))
     spoken = voice_library.add_voice(source, "有逐字稿", "參考逐字稿。")["id"]
     good = deepcopy(library)
     good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=spoken, tts_server="http://127.0.0.1:50000")
-    library = store.save(good, expected_revision=library["revision"])
+    library = store.save_profiles(good["profiles"], expected_revision=library["profiles_revision"])
 
     raw = yaml.safe_load(store.path.read_text("utf-8"))
     raw["profiles"][0]["tts"].update(ref_file="/etc/passwd", tts_server="http://evil.example:8020")
@@ -400,13 +400,13 @@ def test_breezyvoice_profiles_need_a_transcribed_reference_before_saving(voices,
         attempt = deepcopy(library)
         attempt["profiles"][0]["tts"].update(change)
         with pytest.raises(ProfileError, match=message):
-            store.save(attempt, expected_revision=library["revision"])
+            store.save_profiles(attempt["profiles"], expected_revision=library["profiles_revision"])
     source = tmp_path / "spoken.wav"
     source.write_bytes(wav_bytes(seconds=2.0))
     spoken = voice_library.add_voice(source, "有逐字稿", "參考逐字稿。")["id"]
     good = deepcopy(library)
     good["profiles"][0]["tts"].update(type="breezyvoice", ref_file=spoken, ref_text=None)
-    assert store.save(good, expected_revision=library["revision"])["profiles"][0]["tts"]["ref_file"] == spoken
+    assert store.save_profiles(good["profiles"], expected_revision=library["profiles_revision"])["profiles"][0]["tts"]["ref_file"] == spoken
 
 
 def test_library_transcript_is_the_only_reference_transcript(voices, stored_voice, tmp_path, monkeypatch, caplog):
@@ -435,7 +435,7 @@ def test_library_transcript_is_the_only_reference_transcript(voices, stored_voic
     attempt["profiles"][0]["tts"]["ref_text"] = "又一個覆寫"
     caplog.clear()
     with caplog.at_level(logging.INFO):
-        saved = store.save(attempt, expected_revision=library["revision"])
+        saved = store.save_profiles(attempt["profiles"], expected_revision=library["profiles_revision"])
     assert saved["profiles"][0]["tts"]["ref_text"] is None
     assert "又一個覆寫" not in store.path.read_text("utf-8")
     assert "ref_text" in caplog.text
@@ -444,7 +444,7 @@ def test_library_transcript_is_the_only_reference_transcript(voices, stored_voic
     attempt = deepcopy(saved)
     attempt["profiles"][0]["tts"].update(ref_file=stored_voice, ref_text="覆寫逐字稿")
     with pytest.raises(ProfileError, match="逐字稿"):
-        store.save(attempt, expected_revision=saved["revision"])
+        store.save_profiles(attempt["profiles"], expected_revision=saved["profiles_revision"])
 
 
 def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_path, monkeypatch):

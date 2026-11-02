@@ -28,7 +28,7 @@ const voices = Array.from({ length: 4 }, (_, i) => ({
   transcript: i === 3 ? '' : longText('您好，歡迎光臨。', 2), development: i === 0
 }))
 
-function profile(id, name) {
+function profile(id, name, tts = 'breezyvoice') {
   return {
     id, name, avatar_id: 'avatar_1', engine: 'musetalk',
     assistant_profile: {
@@ -41,9 +41,10 @@ function profile(id, name) {
       board_max_items: 8, reply_mode: 'streaming', semantic_wait_seconds: 0.5
     },
     reply_rules: { activation: longText('看板時機。', 3), speech: longText('口語規則。', 3), board: longText('看板內容。', 3) },
-    tts: { type: 'breezyvoice', ref_file: 'voice_2', ref_text: null, voice_en_us: '', tts_server: '', model: '' },
+    tts: tts === 'breezyvoice'
+      ? { type: 'breezyvoice', ref_file: 'voice_2', ref_text: null, voice_en_us: '', tts_server: '', model: '' }
+      : { type: 'edgetts', ref_file: 'zh-TW-HsiaoYuNeural', ref_text: null, voice_en_us: 'en-US-JennyNeural', tts_server: '', model: '' },
     rag: { enabled: false, dataset_ids: [], document_scope: 'all', document_ids: [] },
-    tools: { weather: false },
     greeting: {
       mode: 'scripts', prompt: '', min_chars: 20, max_chars: 60,
       scripts: [longText('歡迎來到展場。', 3), longText('需要協助嗎？', 3)], scripts_en: ['Welcome!']
@@ -51,17 +52,32 @@ function profile(id, name) {
   }
 }
 
+// One main avatar and four specialists: enabled, enabled but incompatible
+// (another TTS engine) and disabled, plus one profile outside the composition.
+const member = (profileId, extra = {}) => ({
+  profile_id: profileId, revision: 2, enabled: true, description: longText('專長介紹。', 3), rules: longText('交接規則。', 5),
+  announcement: '稍等，我請專門數位人回答。', announcement_en: '', tools: { weather: { enabled: false, county: '', town: '' } }, ...extra
+})
 const library = {
-  version: 1, revision: 3, enabled: true,
-  profiles: [profile('main', '接待員'), profile('weather', '氣象員'), profile('guide', '導覽員')],
-  pair: { main: 'main', specialist: 'weather' },
-  transitions: [{ source: 'main', target: 'weather', kind: 'effect', effect: 'fade', duration: 0.6, asset_id: '' }],
-  handoff: {
-    description: longText('天氣專長。', 3), rules: longText('交接規則。', 5), announcement: '稍等，我請氣象員回答。',
-    announcement_en: '', return_announcement: '', return_announcement_en: ''
-  },
-  weather: { county: '臺北市', town: '中正區' }
+  version: 2, revision: 15, profiles_revision: 9,
+  profiles: [profile('main', '接待員'), profile('weather', '氣象員'), profile('guide', '展覽導覽員'),
+    profile('transit', '交通導覽', 'edgetts'), profile('shop', '客服小幫手'), profile('english', 'English Host')],
+  composition: {
+    revision: 4, enabled: true,
+    main: { profile_id: 'main', revision: 3, description: longText('一般接待。', 2), rules: longText('不屬於其他角色時交給接待員。', 2),
+      announcement: '接下來請接待員為您說明。', announcement_en: 'Our host will help you next.' },
+    members: [
+      member('weather', { tools: { weather: { enabled: true, county: '臺北市', town: '中正區' } } }),
+      member('guide'), member('transit'), member('shop', { enabled: false })
+    ],
+    transitions: {
+      revision: 2, default: { kind: 'effect', effect: 'fade', duration: 0.6, asset_id: '' },
+      overrides: [{ source: 'main', target: 'weather', kind: 'video', effect: 'fade', duration: 0.6, asset_id: 'clip_1' },
+        { source: 'weather', target: 'shop', kind: 'effect', effect: 'zoom', duration: 1, asset_id: '' }]
+    }
+  }
 }
+const compatibility = { weather: [], guide: [], transit: ['即時組合需共用語音合成引擎，可分別設定聲線'], shop: [], english: [] }
 
 const session = (sessionid, role) => ({
   sessionid, role, locale: 'zh-TW', history_max_messages: 20, voice_zh_tw: 'zh-TW-HsiaoChenNeural',
@@ -109,8 +125,9 @@ const responses = {
   '/api/speech/voices': { code: 0, data: { items: voices } },
   '/api/vad': { code: 0, data: { supported: true, enabled: true, threshold: 0.5, min_silence_ms: 500, asr_mode: 'server' } },
   '/api/stage': { code: 0, data: stage, greetings: [{ status: 'waiting' }] },
-  '/api/profiles': { code: 0, library, greeting_profile: library.profiles[0], media: [],
-    runtime: { enabled: true, phase: 'idle', profiles_applied: true, active_revision: 3, active_profile_id: 'main', weather_configured: false } },
+  '/api/profiles': { code: 0, library, compatibility, greeting_profile: library.profiles[0],
+    media: [{ id: 'clip_1', name: '雲層轉場（很長的影片名稱測試）.mp4', duration: 0.8 }],
+    runtime: { enabled: true, phase: 'idle', profiles_applied: true, active_revision: 14, active_profile_id: 'main', weather_configured: false } },
   '/api/backgrounds': { code: 0, data: { background_id: 'bg-1', items: Array.from({ length: 9 }, (_, i) => ({
     id: `bg-${i + 1}`, label: `展場背景 ${i + 1}（很長的背景名稱用來測試截斷）`, kind: ['image', 'video', 'gif'][i % 3],
     preview_url: `/api/backgrounds/bg-${i + 1}/preview`

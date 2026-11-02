@@ -200,10 +200,10 @@ test('設定面板可選擇舊有或串流回覆模式並持久化', () => {
   assert.match(settings, /runtime\.llm\.reply_mode\s*=\s*data\.reply_mode/)
 })
 
-test('角色設定檔提供三區可編輯規則並共用一次版本儲存', () => {
+test('角色設定檔提供三區可編輯規則並以設定檔版本一次儲存', () => {
   for (const key of ['activation', 'speech', 'board']) assert.ok(editor.includes(`key: '${key}'`))
   assert.ok(editor.includes('profile.reply_rules[rule.key]'))
-  assert.ok(profiles.includes('expected_revision: draft.value.revision'))
+  assert.ok(profiles.includes('expected_profiles_revision: saved.value.profiles_revision'))
   assert.ok(profiles.includes('儲存並套用'))
   assert.doesNotMatch(panel, /handleApplyPromptAndRules|rulesDraft/)
 })

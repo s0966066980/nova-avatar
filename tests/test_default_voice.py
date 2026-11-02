@@ -44,7 +44,7 @@ def saved_profiles(tmp_path, monkeypatch, *, main_voice, config=None):
     store = ProfileStore(tmp_path / "avatar_profiles.yaml")
     library = store.initialize(config)
     raw = yaml.safe_load(store.path.read_text("utf-8"))
-    main = next(p for p in raw["profiles"] if p["id"] == library["pair"]["main"])
+    main = next(p for p in raw["profiles"] if p["id"] == library["composition"]["main"]["profile_id"])
     main["tts"].update(main_voice)
     store.path.write_text(yaml.safe_dump(raw, allow_unicode=True), "utf-8")
     return store
