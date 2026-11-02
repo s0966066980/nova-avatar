@@ -7,6 +7,12 @@
 [`current-project-workflow.md`](current-project-workflow.md)；可選引擎與商業審查
 邊界請依 [`software-stack.md`](software-stack.md)；設計決定見 [`adr/`](adr/)。
 
+> [!NOTE]
+> 以下能力清單與「正式實機基準」是 2026-09-25 在 **NVIDIA RTX 4090** 上取得的歷史資料，
+> 早於 VAD 靜音縮短、RAGFlow 檢索與綠幕背景合成，**不是 Jetson AGX Orin 的實測**，
+> 也不能代表 Orin 的延遲。Orin 的建置、驗證結果與已知限制見
+> [`jetson-orin.md`](jetson-orin.md#本機驗證結果2026-09-30)。
+
 ## 已完成範圍
 
 | 領域 | v1 已完成能力 |

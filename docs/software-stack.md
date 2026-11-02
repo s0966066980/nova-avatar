@@ -40,7 +40,8 @@ the root Apache-2.0 grant.
 
 ## External runtime requirements
 
-- Python 3.10–3.11 and `uv` for backend dependencies.
+- Python 3.11 and `uv` for backend dependencies. The Jetson build uses 3.11;
+  `pyproject.toml` accepts `>=3.10,<3.12`.
 - Node.js and npm for the Vue Console.
 - FFmpeg for media processing.
 - A browser and HTTPS certificates where browser media permissions require a
