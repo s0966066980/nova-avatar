@@ -68,9 +68,13 @@ def _fields(weather: bool) -> tuple[str, ...]:
     return ("clarification", *(WEATHER_FIELDS if weather else ()), "context")
 
 
-def route_schema(ids, weather: bool) -> dict:
-    """The decision grammar: target first, enumerating ``ids`` and clarify."""
-    fields = _fields(weather)
+def route_schema(ids, weather: bool, *, explain: bool = False) -> dict:
+    """The decision grammar: target first, enumerating ``ids`` and clarify.
+
+    ``explain`` appends a reason after every decision field, so the reason
+    cannot change the target the grammar has already produced.
+    """
+    fields = (*_fields(weather), *(("reason",) if explain else ()))
     return {
         "type": "object",
         "properties": {"target": {"type": "string", "enum": [*ids, CLARIFY]},
@@ -146,11 +150,13 @@ class RoutingClients:
 
 
 def route_question(config, library, current_id, text, history, confirmed, *,
-                   clients=None, client_factory=OpenAI):
+                   clients=None, client_factory=OpenAI, explain=False):
     """Who answers ``text``: ``target`` is a candidate's profile id, or None to clarify.
 
     ``history`` is the current role's recent conversation. The weather fields
     are always present and filled only for the live weather-tool holder.
+    ``explain`` (the console's handoff dry run) also returns a short ``reason``;
+    conversations leave it off to keep the decision short.
     """
     now = datetime.now(TAIPEI)
     ids = candidates(library)
@@ -162,14 +168,19 @@ def route_question(config, library, current_id, text, history, confirmed, *,
         # goes to the weather holder from any current role.
         decided = keyword_route(text, now.date(), confirmed=confirmed, site=holder["tools"]["weather"])
         if decided is not None:
-            return {"target": holder["profile_id"], "clarification": "", "context": "", **decided,
-                    "accepted_at": now.isoformat(), "decided_by": "keyword"}
+            result = {"target": holder["profile_id"], "clarification": "", "context": "", **decided,
+                      "accepted_at": now.isoformat(), "decided_by": "keyword"}
+            if explain:
+                result["reason"] = "關鍵字初篩：明確詢問單一縣市的天氣，交給天氣工具持有者。"
+            return result
     prompt = _prompt(library, current_id, now.date().isoformat(), confirmed, holder)
     locale = getattr(getattr(config, 'conversation', None), 'locale', 'zh-TW')
     if locale == 'en-US':
         prompt += '\nReturn clarification in English.'
         if holder is not None:
             prompt += ' Use canonical Chinese county/town names only in location fields.'
+    if explain:
+        prompt += '\n另在最後加上 reason：一句話（60 字內）說明選擇這位角色或先釐清的原因。'
     extra = dict(config.llm.extra_body or {})
     response_format = {"type": "json_object"}
     if config.llm.provider == "llamacpp":
@@ -179,7 +190,7 @@ def route_question(config, library, current_id, text, history, confirmed, *,
         # A grammar from the schema lets small local models such as Gemma 4
         # E2B emit only a parseable decision; target comes first.
         response_format = {"type": "json_schema", "json_schema": {
-            "name": "route", "schema": route_schema(ids, holder is not None)}}
+            "name": "route", "schema": route_schema(ids, holder is not None, explain=explain)}}
     # Both control and answer requests use the already loaded, prewarmed
     # common model. Without shared clients this call owns a client of its own.
     owned = RoutingClients(client_factory) if clients is None else None
@@ -203,7 +214,7 @@ def route_question(config, library, current_id, text, history, confirmed, *,
     if not isinstance(decision, dict) or decision.get("target") not in {*ids, CLARIFY}:
         raise ProfileError("角色判斷資料不正確")
     result = {"target": None if decision["target"] == CLARIFY else decision["target"]}
-    for key in ("clarification", *WEATHER_FIELDS, "context"):
+    for key in ("clarification", *WEATHER_FIELDS, "context", *(("reason",) if explain else ())):
         value = decision.get(key)
         # Small models write null for an unused field; it means empty.
         value = "" if value is None else value
@@ -221,6 +232,8 @@ def route_question(config, library, current_id, text, history, confirmed, *,
     _validate_weather(result, text, now.date().isoformat(), confirmed, holder["tools"]["weather"])
     if result["target"] is None:
         result.update(empty)
+        if explain and decision["target"] != CLARIFY:
+            result["reason"] = "選了天氣角色，但地點無法由訪客、前文或場域預設確認，先向訪客釐清。"
     result["clarification"] = fixed_text(result["clarification"], locale)
     return result
 
