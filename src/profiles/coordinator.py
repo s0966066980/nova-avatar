@@ -14,7 +14,7 @@ from uuid import uuid4
 from src.avatars.factory import load_avatar_data
 from src.llm.service import select_session_profile, session_history
 from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
-from src.profiles.routing import RoutingClients, route_question
+from src.profiles.routing import RoutingClients, route_question, weather_member
 from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
 from src.profiles.composition import MAIN_ANNOUNCEMENTS, live_members, main_profile_id, referenced_media, transition
@@ -35,11 +35,6 @@ def roster(library) -> dict:
     composition = library["composition"]
     return {composition["main"]["profile_id"]: composition["main"],
             **{m["profile_id"]: m for m in live_members(library)}}
-
-
-def weather_member(library):
-    """The live member holding the weather tool, or None."""
-    return next((m for m in live_members(library) if m["tools"]["weather"]["enabled"]), None)
 
 
 def announcement(library, target_id, locale) -> str:

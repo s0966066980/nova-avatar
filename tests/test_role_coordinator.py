@@ -90,26 +90,26 @@ def connect(roles, sid=7, presenter='console'):
 
 
 @pytest.mark.parametrize('text,confirmed,expected', [
-    ('中正區明天會下雨嗎', {}, 'clarify'),
-    ('新竹明天的天氣', {}, 'clarify'),
-    ('臺北市中正區明天的天氣', {}, 'specialist'),
-    ('那明天呢', {'county': '臺北市', 'town': '中正區'}, 'specialist'),
+    ('中正區明天會下雨嗎', {}, None),
+    ('新竹明天的天氣', {}, None),
+    ('臺北市中正區明天的天氣', {}, 'weather'),
+    ('那明天呢', {'county': '臺北市', 'town': '中正區'}, 'weather'),
 ])
 def test_routing_does_not_guess_a_county_for_an_ambiguous_district(field, text, confirmed, expected):
-    result = dict(route='specialist', county='臺北市', town='中正區', kind='forecast')
+    result = dict(target='weather', county='臺北市', town='中正區', kind='forecast')
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     class Client:
         def __init__(self, **_):
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
         def close(self): pass
     route = route_question(field.state.config, field.library, 'main', text, [], confirmed, client_factory=Client)
-    assert route['route'] == expected
+    assert route['target'] == expected
 
 
 def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field):
     from concurrent.futures import ThreadPoolExecutor
     from src.profiles.routing import RoutingClients
-    result = dict(route='answer')
+    result = dict(target='main')
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     built = []
     class Client:
@@ -124,7 +124,7 @@ def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field)
     with ThreadPoolExecutor(4) as pool:
         routes = list(pool.map(lambda text: roles.router(config, roles.library, 'main', text, [], {}),
                                ['公司地址？', '營業時間？', '有停車場嗎？', '怎麼預約？']))
-    assert [r['route'] for r in routes] == ['answer'] * 4
+    assert [r['target'] for r in routes] == ['main'] * 4
     assert len(built) == 1
     assert built[0].options['max_retries'] == 0
     asyncio.run(roles.close())
@@ -366,7 +366,7 @@ def test_single_role_apply_blocks_new_input_until_settings_are_bound(field):
 
 @pytest.mark.parametrize('text', ['今天台北天氣如何？', '今天臺北市天氣如何？'])
 def test_county_weather_question_handoffs_without_inventing_a_district(field, text):
-    result = dict(route='specialist', county='臺北市', town='', kind='forecast',
+    result = dict(target='weather', county='臺北市', town='', kind='forecast',
                   start_date=datetime.now().date().isoformat(), end_date=datetime.now().date().isoformat())
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     class Client:
@@ -374,7 +374,7 @@ def test_county_weather_question_handoffs_without_inventing_a_district(field, te
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
         def close(self): pass
     route = route_question(field.state.config, field.library, 'main', text, [], {}, client_factory=Client)
-    assert route['route'] == 'specialist', route
+    assert route['target'] == 'weather', route
     assert route['county'] == '臺北市'
     assert route.get('town', '') == ''
 

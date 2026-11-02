@@ -220,7 +220,7 @@ async def test_reverse_handoff_checks_main_attachment_capability_before_announci
 
 
 def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
-    result = {'route': 'answer', 'county': '臺北市', 'town': '中正區'}
+    result = {'target': 'main', 'county': '臺北市', 'town': '中正區'}
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     create = Mock(return_value=response)
     class Client:
@@ -228,7 +228,7 @@ def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
         def close(self): pass
     routed = route_question(field.state.config, field.library, 'weather',
         '比較台北和高雄的公司服務', [], {}, client_factory=Client)
-    assert routed['route'] == 'answer'
+    assert routed['target'] == 'main'
     assert routed['county'] == routed['town'] == ''
     prompt = create.call_args.kwargs['messages'][0]['content']
     assert '不能自動反向交接' not in prompt

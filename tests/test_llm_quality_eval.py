@@ -13,8 +13,8 @@ import threading
 import pytest
 
 from scripts.eval_llm_quality import (
-    QUESTIONS_PATH, build_first_sentence_report, build_report, check_answer,
-    compare_first_fragment, first_fragment, load_questions, main, run_eval,
+    QUESTIONS_PATH, ROUTING_PATH, build_first_sentence_report, build_report, build_routing_report,
+    check_answer, compare_first_fragment, first_fragment, load_questions, main, run_eval,
 )
 from src.config.schema import Config
 from src.profiles.store import ProfileStore
@@ -90,7 +90,7 @@ class _FakeLlamaServer:
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 server.requests.append(body)
                 if not body.get("stream"):
-                    decision = {"route": "answer", "clarification": "", "county": "", "town": "",
+                    decision = {"target": "main", "clarification": "", "county": "", "town": "",
                                 "kind": "", "start_date": "", "end_date": "", "context": ""}
                     self._send(json.dumps({"id": "r", "object": "chat.completion", "created": 0,
                         "model": body["model"], "choices": [{"index": 0, "finish_reason": "stop",
@@ -145,13 +145,17 @@ def test_run_asks_every_question_through_the_production_routing_and_answer_path(
     items = {item["id"]: item for item in result["items"]}
     assert len(items) == 30
     # Routing correctness against the fixed expectations. The fake model says
-    # "answer"; a clear weather question about one county is decided by the
+    # "main"; a clear weather question about one county is decided by the
     # keyword pre-filter before the model (ticket 17).
     for question in data["questions"]:
         item = items[question["id"]]
-        route = "specialist" if question["id"] in KEYWORD_ROUTED else "answer"
+        route = "weather" if question["id"] in KEYWORD_ROUTED else "main"
         assert item["route"] == route
-        assert item["route_correct"] is (question["expected_route"] == route)
+        assert item["decided_by"] == ("keyword" if question["id"] in KEYWORD_ROUTED else "model")
+        assert item["route_correct"] is (question["expected_target"] == route)
+    # The saved composition has handoff off; the evaluation switches it on.
+    assert not library["composition"]["enabled"]
+    assert result["roles"] == {"main": "avator_1", "weather": "天氣助手"}
     # A clarification has no answer; every other question is answered once.
     assert items["h06"]["answer"] is None
     answered = [item for item in result["items"] if item["answer"] is not None]
@@ -243,8 +247,7 @@ def test_fixed_set_has_thirty_questions_across_the_four_categories():
     # Handoff questions leave the current role (or ask which topic comes first).
     for item in questions:
         if item["category"] == "handoff":
-            stays = {"main": "answer", "weather": "specialist"}[item["role"]]
-            assert item["expected_route"] != stays
+            assert item["expected_target"] != item["role"]
 
 
 def _speech(text: str) -> str:
@@ -344,3 +347,81 @@ def test_runs_record_first_sentence_and_first_fragment_for_both_reports(
     # A board reply is not counted, however long its spoken summary.
     item["answer"]["raw"] = BOARD
     assert "遵循率：28/28" in build_first_sentence_report(result)
+
+
+# ── N-way routing set (role-composition ticket 02) ───────────────────────
+
+def test_routing_set_covers_every_member_every_direct_pair_followups_and_mixed_topics():
+    data = load_questions(ROUTING_PATH)
+    questions = data["questions"]
+    members = [role["key"] for role in data["composition"]["members"]]
+    assert len(members) == 4 and data["answers"] is False
+    assert len({item["id"] for item in questions}) == len(questions) == 30
+    by = {category: [item for item in questions if item["category"] == category]
+          for category in ("handoff", "direct", "followup", "mixed")}
+    assert sum(map(len, by.values())) == len(questions)
+    # Every member is reached from the main avatar and hands back to it.
+    handoffs = {(item["role"], item["expected_target"]) for item in by["handoff"]}
+    assert handoffs == {("main", key) for key in members} | {(key, "main") for key in members}
+    # Every ordered pair of members hands off directly, not through the main avatar.
+    assert {(item["role"], item["expected_target"]) for item in by["direct"]} == {
+        (a, b) for a in members for b in members if a != b}
+    # A follow-up on each role's own earlier turn stays with that role.
+    assert all(item["expected_target"] == item["role"] and item["history"] for item in by["followup"])
+    assert {item["role"] for item in by["followup"]} == {"main", *members}
+    # Mixed topics clarify first; a confirmed topic then goes to its role.
+    assert sum(item["expected_target"] == "clarify" for item in by["mixed"]) >= 3
+    assert any(item.get("history") and item["expected_target"] not in ("clarify", item["role"])
+               for item in by["mixed"])
+
+
+def test_routing_set_is_asked_among_its_own_five_roles_without_answers(fake_llama, library):
+    data = load_questions(ROUTING_PATH)
+    result = run_eval(fake_llama.url, label="E2B", config=Config(), library=library, data=data)
+
+    assert all(item["answer"] is None for item in result["items"])
+    assert not [body for body in fake_llama.requests if body.get("stream")]
+    assert result["roles"] == {"main": "avator_1", "weather": "天氣助手", "service": "客服小幫手",
+                               "traffic": "交通嚮導", "exhibit": "展覽導覽員"}
+    items = {item["id"]: item for item in result["items"]}
+    # The fake model always picks the main avatar; n15 names one county and
+    # the keyword pre-filter sends it to the weather role from the transport role.
+    assert items["n15"]["route"] == "weather" and items["n15"]["decided_by"] == "keyword"
+    assert items["n05"]["route_correct"] and not items["n01"]["route_correct"]
+    routing = [body for body in fake_llama.requests if not body.get("stream")]
+    assert len(routing) == 29
+    schema = routing[0]["response_format"]["json_schema"]["schema"]
+    assert schema["properties"]["target"]["enum"] == [
+        "main", "weather", "service", "traffic", "exhibit", "clarify"]
+    prompt = routing[0]["messages"][0]["content"]
+    assert "客服小幫手" in prompt and "處理會員帳號" in prompt
+    # The saved library is left as it was.
+    assert [profile["id"] for profile in library["profiles"]] == ["main", "weather"]
+
+
+def test_routing_report_summarises_one_run_per_category_with_every_miss(fake_llama, library, tmp_path):
+    result = run_eval(fake_llama.url, label="E2B", config=Config(), library=library,
+                      data=load_questions(ROUTING_PATH))
+    report = build_routing_report(result)
+    correct = sum(item["route_correct"] for item in result["items"])
+    assert report.startswith("<!-- Copyright (c) 2026 HongXian0903.")
+    assert f"路由正確率：{correct}/30" in report
+    assert "| 成員間直接交接 | " in report and "| 一般 |" not in report
+    assert "| n01 | avator_1（main） | 我的訂單什麼時候會到？ | service | main |" in report
+    assert "關鍵字初篩決定 1 題" in report
+
+    path = tmp_path / "routing.json"
+    path.write_text(json.dumps(result, ensure_ascii=False), "utf-8")
+    assert main(["routing", "--results", str(path), "--output", str(tmp_path / "routing.md")]) == 0
+    assert (tmp_path / "routing.md").read_text("utf-8") == report + "\n"
+
+
+def test_question_sets_reject_unknown_roles_and_targets(tmp_path):
+    data = load_questions(ROUTING_PATH)
+    for change in ({"role": "visitor"}, {"expected_target": "answer"}):
+        broken = copy.deepcopy(data)
+        broken["questions"][0].update(change)
+        path = tmp_path / "broken.json"
+        path.write_text(json.dumps(broken, ensure_ascii=False), "utf-8")
+        with pytest.raises(ValueError):
+            load_questions(path)
