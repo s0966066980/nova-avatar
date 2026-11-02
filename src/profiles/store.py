@@ -22,8 +22,7 @@ from src.llm.endpoints import (EndpointError, active_endpoint_name, apply_endpoi
                                configured_endpoints, endpoint_for_url)
 from src.llm.rules import rules_from_config, validate_rules
 from src.profiles.composition import (
-    HANDOFF_FIELDS, apply_legacy_view, bump_revisions, canonical, incompatibility,
-    legacy_pair_view, new_member, profile_ids, validate_composition,
+    HANDOFF_FIELDS, bump_revisions, canonical, incompatibility, new_member, profile_ids, validate_composition,
 )
 from src.profiles.validation import ProfileError
 from src.profiles.validation import identifier as _identifier, obj as _object, revision as _revision, text as _text
@@ -122,7 +121,10 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
     """Normalize a profile; ``require_endpoint`` also demands a listed endpoint name and
     ``require_voice`` a transcribed reference recording for BreezyVoice."""
     allowed = {"id", "name", "engine", "avatar_id", "assistant_profile", "llm",
-               "tts", "rag", "reply_rules", "tools", "greeting"}
+               "tts", "rag", "reply_rules", "greeting"}
+    if isinstance(value, dict) and "tools" in value:
+        # Tools belong to one composition member (ADR 0023), never to a profile.
+        raise ProfileError("工具改在「角色組合與交接」指定給一位成員，數位人設定檔不再包含工具", field="tools")
     value = _object(value, allowed, "角色設定檔")
     pid = _identifier(value.get("id"))
     name = _text(value.get("name"), "角色名稱", 80, empty=False)
@@ -189,8 +191,6 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
         rules = validate_rules(raw_rules, revision=raw_rules.get("revision", 1))
     except ValueError as exc:
         raise ProfileError(str(exc)) from exc
-    # Tools belong to composition members now; ``tools`` from the two-role
-    # view is accepted and dropped (see composition.apply_legacy_view).
     try:
         greeting = validate_content(value.get("greeting"))
     except ValueError as exc:
@@ -209,7 +209,7 @@ def _require_reference(tts: dict, name: str) -> None:
 
 
 def validate_library(value: dict, endpoints=None, *, require_endpoint=False, require_voice=False) -> dict:
-    """Normalize a version 2 library; version 1 and two-role view keys are converted first."""
+    """Normalize a version 2 library; a version 1 library is migrated first."""
     value = canonical(value)
     _object(value, {"version", "revision", "profiles_revision", "profiles", "composition"}, "角色設定")
     if value.get("version") != 2:
@@ -246,9 +246,8 @@ def _migrate_voice_settings(raw) -> bool:
 class ProfileStore:
     """The role library file: profiles and the 當次角色組合 (version 2).
 
-    Reads return the stored library plus the temporary two-role view keys
-    (``composition.legacy_pair_view``). Every write increases ``revision``;
-    each save checks only the revision of the scope it changes.
+    Every write increases ``revision``; each save checks only the revision of
+    the scope it changes.
     """
 
     def __init__(self, path: Path, endpoints=None):
@@ -262,7 +261,7 @@ class ProfileStore:
 
     def load(self) -> dict:
         with self._lock:
-            return legacy_pair_view(validate_library(self._read_raw(), self._endpoints()))
+            return validate_library(self._read_raw(), self._endpoints())
 
     def _read_raw(self):
         if self.path.is_symlink():
@@ -324,7 +323,7 @@ class ProfileStore:
                     library["revision"] += 1
                     library["profiles_revision"] += 1
                     self._write(library)
-                return legacy_pair_view(library)
+                return library
             defaults_path = defaults_path or Path(__file__).resolve().parents[2] / "config/avatar_profiles.defaults.yaml"
             defaults = yaml.safe_load(defaults_path.read_text("utf-8"))
             main = dict(id="main", name=config.llm.assistant_profile.assistant_name or config.model.avatar_id,
@@ -347,38 +346,15 @@ class ProfileStore:
             seed.update(revision=1, profiles_revision=1)
             library = validate_library(seed, self._endpoints(), require_endpoint=True)
             self._write(library)
-            return legacy_pair_view(library)
+            return library
 
     def _commit(self, current: dict, library: dict, renamed: dict | None = None) -> dict:
-        """Write a whole validated ``library`` over ``current``; return its view."""
+        """Write a whole validated ``library`` over ``current`` and return it."""
         library["composition"] = bump_revisions(current["composition"], library["composition"], renamed)
         library["revision"] = current["revision"] + 1
         library["profiles_revision"] = current["profiles_revision"] + (library["profiles"] != current["profiles"])
         self._write(library)
-        return legacy_pair_view(library)
-
-    def save(self, value: dict, *, expected_revision: int) -> dict:
-        """Temporary adapter: save a whole library in the two-role shape.
-
-        The pair, handoff, weather and transitions keys are mapped onto the
-        composition; every other member keeps its settings. Checks the file
-        ``revision``. The settings UI ticket replaces this with save_profiles
-        and the composition saves below.
-        """
-        if not isinstance(value, dict) or not isinstance(value.get("profiles"), list):
-            raise ProfileError("角色設定格式不正確")
-        raw_tools = {p.get("id"): p.get("tools") for p in value["profiles"] if isinstance(p, dict)}
-        with self._lock:
-            _, current = self._stored()
-            composition = apply_legacy_view(current["composition"], value, raw_tools)
-            candidate = dict(version=2, revision=current["revision"],
-                             profiles_revision=current["profiles_revision"],
-                             profiles=value["profiles"], composition=composition)
-            library = validate_library(candidate, self._endpoints(), require_endpoint=True, require_voice=True)
-            if type(expected_revision) is not int or current["revision"] != expected_revision:
-                raise ProfileError("設定已被其他控制台修改，請重新載入", 409,
-                                   conflict={"scope": "library", "revision": current["revision"]})
-            return self._commit(current, library)
+        return library
 
     def save_profiles(self, profiles: list, *, expected_revision: int) -> dict:
         """Save the profile list; checks ``profiles_revision`` only.
@@ -417,7 +393,7 @@ class ProfileStore:
             composition = bump_revisions(current["composition"], composition, renamed)
             stored.update(composition=composition, revision=current["revision"] + 1)
             self._write(stored)
-            return legacy_pair_view(dict(current, composition=composition, revision=stored["revision"]))
+            return dict(current, composition=composition, revision=stored["revision"])
 
     def update_composition(self, *, expected_revision: int, main=None, enabled=None,
                            confirm_disable=False) -> tuple[dict, list[str]]:

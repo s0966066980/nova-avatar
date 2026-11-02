@@ -128,7 +128,7 @@
           <template v-else-if="current">
             <div class="rc-ed-head">
               <div class="rc-who"><span :class="['rc-av', 'lg', memberAvatarState(current)]" :style="{ background: memberAvatarState(current) ? undefined : colorOf(current.draft.profile_id) }" aria-hidden="true">{{ initialOf(current.draft.profile_id) }}</span>
-                <div><h3>{{ nameOf(current.draft.profile_id) }}<span class="rc-mini">專門 #{{ seatOf(selected) }}</span></h3><p>設定檔 <span class="mono">{{ current.draft.profile_id }}</span> · {{ ttsLabel(profileOf(current.draft.profile_id)) }} · {{ voiceLabel(profileOf(current.draft.profile_id)) }}</p></div></div>
+                <div><h3>{{ nameOf(current.draft.profile_id) }}<span class="rc-mini">專門 #{{ seatOf(selected) }}</span></h3><p>設定檔 <span class="mono">{{ current.draft.profile_id }}</span> · {{ voiceLabel(profileOf(current.draft.profile_id)) }}</p></div></div>
               <div class="rc-acts"><RoleSaveState :scope="current" /><button type="button" class="rc-btn sm ghost" :disabled="current.kind === 'new' || !dirty(current) || current.status === 'saving'" @click="revert(selected)"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>還原</button><button type="button" class="rc-btn sm primary" :disabled="!dirty(current) || current.status === 'saving'" @click="save(selected)"><i class="bi bi-check-lg" aria-hidden="true"></i>儲存這位</button></div>
             </div>
             <div class="rc-ed-alerts">
@@ -184,15 +184,18 @@
             <div class="rc-topo-wrap">
               <RoleTopology :nodes="topologyNodes" :live="liveKeys" :description="topologyDescription" @select="select" />
               <div class="rc-legend" aria-hidden="true"><span><i class="e"></i>可直接交接</span><span><i class="o"></i>未啟用</span><span><i class="x"></i>不相容</span></div>
-              <!-- 交接試算的介面先就位；實際呼叫路由由後續工作接上。 -->
-              <div class="rc-sim" aria-labelledby="rc-sim-title">
-                <span id="rc-sim-title" class="rc-sub-title"><i class="bi bi-chat-left-text" aria-hidden="true"></i>交接試算<span class="rc-mini">即將推出</span></span>
+              <!-- 交接試算：介面先就位但停用；串接 POST /api/profiles/composition/dry-run
+                   （{current_profile_id, text} → {target, clarification, reason, decided_by}）留給 ticket 05。 -->
+              <section id="rc-dry-run" class="rc-sim" aria-labelledby="rc-sim-title" aria-describedby="rc-sim-hint">
+                <span id="rc-sim-title" class="rc-sub-title"><i class="bi bi-chat-left-text" aria-hidden="true"></i>交接試算<span class="rc-mini">尚未開放</span></span>
                 <div class="rc-sim-row">
-                  <div class="rc-field"><label for="rc-sim-from">目前角色</label><select id="rc-sim-from" class="rc-input" disabled><option>{{ nameOf(mainId) }}</option></select></div>
+                  <div class="rc-field"><label for="rc-sim-from">目前角色</label>
+                    <select id="rc-sim-from" class="rc-input" disabled><option v-for="id in liveKeysById" :key="id" :value="id">{{ nameOf(id) }}</option></select></div>
                   <div class="rc-field"><label for="rc-sim-question">訪客問題</label><input id="rc-sim-question" class="rc-input" disabled placeholder="例：捷運怎麼去？"></div>
                 </div>
-                <p class="rc-hint">即將推出：輸入目前角色與訪客問題，實際詢問回答模型由誰回答與原因；不播報，也不寫入對話。</p>
-              </div>
+                <button type="button" class="rc-btn sm rc-self-start" disabled><i class="bi bi-signpost-split" aria-hidden="true"></i>試算由誰回答</button>
+                <p id="rc-sim-hint" class="rc-hint">尚未開放：之後可選目前角色、輸入訪客問題，以已儲存的組合實際詢問路由由誰回答與原因；不播報，也不寫入對話。</p>
+              </section>
             </div>
           </article>
           <RoleTransitions v-model:scope="scopes.transitions" v-model:media="media" :members="transitionMembers" :live="liveKeysById" :names="names"
@@ -667,7 +670,7 @@ defineExpose({ dirtyCount: computed(() => dirtyKeys.value.length), select, load 
 .role-compose .rc-slot:hover{border-color:var(--border-strong)}
 .role-compose .rc-slot[aria-current="true"]{border-color:var(--brand);background:var(--brand-surface);box-shadow:inset 0 0 0 1px var(--brand)}
 .role-compose .rc-slot-text{min-width:0}
-.role-compose .rc-top{display:flex;align-items:center;gap:var(--s2);min-width:0}
+.role-compose .rc-top{display:flex;align-items:center;flex-wrap:wrap;gap:2px var(--s2);min-width:0}
 .role-compose .rc-top b{line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .role-compose .rc-top .rc-mini{margin-left:auto}
 .role-compose .rc-sub{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:3px}

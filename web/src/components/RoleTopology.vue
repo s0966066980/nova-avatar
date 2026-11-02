@@ -21,7 +21,7 @@ import { ringLayout } from '../roleComposition.js'
 // nodes: [{ key, target (what selecting it opens), name, initial, color, state: live|off|bad|empty|new, selected, main }], first is the main avatar.
 const props = defineProps({ nodes: { type: Array, required: true }, live: { type: Array, required: true }, description: { type: String, required: true } })
 defineEmits(['select'])
-const center = { cx: 150, cy: 112, r: 72 }
+const center = { cx: 150, cy: 110, r: 68 }
 const placed = computed(() => {
   const ring = ringLayout(Math.max(props.nodes.length, 2), center)
   return props.nodes.map((node, index) => {

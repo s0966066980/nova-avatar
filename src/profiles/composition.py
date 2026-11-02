@@ -4,9 +4,7 @@
 """當次角色組合: one main avatar and up to five enabled specialists (ADR 0023).
 
 Holds the version 2 schema, the version 1 migration, per-scope revisions and
-member compatibility. ``legacy_pair_view`` and ``apply_legacy_view`` are a
-temporary adapter that keeps the two-role runtime and console working until
-the N-way routing, runtime and settings UI replace them.
+member compatibility.
 """
 from __future__ import annotations
 
@@ -29,8 +27,6 @@ HANDOFF_FIELDS = ("description", "rules", "announcement", "announcement_en")
 _LIMITS = {"description": 2000, "rules": 12000, "announcement": 2000, "announcement_en": 2000}
 _LABELS = {"description": "專長介紹", "rules": "交接規則", "announcement": "交接說明",
            "announcement_en": "英文交接說明"}
-# Added by the two-role view or left by version 1; never stored in version 2.
-VIEW_KEYS = ("enabled", "pair", "handoff", "weather", "transitions", "migrated")
 
 
 # ── Schema ────────────────────────────────────────────────────────────────
@@ -219,16 +215,12 @@ def migrate_v1(raw: dict) -> dict:
 
 
 def canonical(raw) -> dict:
-    """The stored form of ``raw``: version 1 is migrated, view keys are dropped."""
+    """The stored form of ``raw``: version 1 is migrated, version 2 is kept as is."""
     if not isinstance(raw, dict):
         raise ProfileError("角色設定格式不正確")
     if raw.get("version") == 1:
         return migrate_v1(raw)
-    value = {key: deepcopy(item) for key, item in raw.items() if key not in VIEW_KEYS}
-    for profile in value.get("profiles") or ():
-        if isinstance(profile, dict):
-            profile.pop("tools", None)
-    return value
+    return deepcopy(raw)
 
 
 # ── Reading a composition ─────────────────────────────────────────────────
@@ -286,9 +278,9 @@ def transition(library: dict, source: str, target: str) -> dict:
 
 
 def referenced_media(library: dict) -> set[str]:
-    """Transition clips the library refers to, including the two-role view's edges."""
+    """Transition clips the library refers to: the default and every override."""
     transitions = library["composition"]["transitions"]
-    edges = (transitions["default"], *transitions["overrides"], *library.get("transitions", ()))
+    edges = (transitions["default"], *transitions["overrides"])
     return {e["asset_id"] for e in edges if e.get("kind") == "video" and e.get("asset_id")}
 
 
@@ -297,85 +289,3 @@ def profile_ids(library: dict, *, enabled_only=False) -> set[str]:
     composition = library["composition"]
     return {composition["main"]["profile_id"],
             *(m["profile_id"] for m in composition["members"] if m["enabled"] or not enabled_only)}
-
-
-# ── Temporary two-role adapter (remove with tickets 02–04) ────────────────
-
-def _view_specialist(composition, profiles):
-    main = profiles[composition["main"]["profile_id"]]
-    members = composition["members"]
-    return (next((m for m in members
-                  if m["enabled"] and not incompatibility(main, profiles[m["profile_id"]])), None)
-            or next((m for m in members if m["enabled"]), None)
-            or next(iter(members), None))
-
-
-def legacy_pair_view(library: dict) -> dict:
-    """``library`` plus the version 1 keys the two-role runtime and console read.
-
-    The pair's specialist is the first enabled, compatible member (else the
-    first enabled, else the first one). Without any member the pair repeats
-    the main avatar and handoff is off.
-    """
-    view = deepcopy(library)
-    composition = view["composition"]
-    profiles = {p["id"]: p for p in view["profiles"]}
-    main = composition["main"]
-    specialist = _view_specialist(composition, profiles)
-    source = specialist or main
-    view["enabled"] = bool(composition["enabled"] and specialist and specialist["enabled"])
-    view["pair"] = {"main": main["profile_id"], "specialist": source["profile_id"]}
-    view["handoff"] = {**{key: source[key] for key in HANDOFF_FIELDS},
-                       "return_announcement": main["announcement"],
-                       "return_announcement_en": main["announcement_en"]}
-    site = specialist["tools"]["weather"] if specialist else {}
-    view["weather"] = {"county": site.get("county", ""), "town": site.get("town", "")}
-    view["transitions"] = deepcopy(composition["transitions"]["overrides"])
-    holder = weather_holder(view)
-    for profile in view["profiles"]:
-        profile["tools"] = {"weather": holder is not None and profile["id"] == holder["profile_id"]}
-    return view
-
-
-def apply_legacy_view(composition: dict, value: dict, raw_tools: dict) -> dict:
-    """Map a save in the two-role shape onto ``composition``; other members stay.
-
-    ``raw_tools`` maps a submitted profile id to its submitted ``tools``.
-    """
-    pair = obj(value.get("pair"), {"main", "specialist"}, "角色組合")
-    main_id, specialist_id = pair.get("main"), pair.get("specialist")
-    if main_id not in raw_tools or specialist_id not in raw_tools or main_id == specialist_id:
-        raise ProfileError("請選擇兩份不同的主角色與專門角色設定檔")
-    handoff = obj(value.get("handoff"), {*HANDOFF_FIELDS, "return_announcement", "return_announcement_en"},
-                  "角色交接")
-    site = obj(value.get("weather", {}), {"county", "town"}, "天氣地點")
-    if not isinstance(value.get("enabled"), bool):
-        raise ProfileError("角色設定版本或啟用狀態不正確")
-    result = deepcopy(composition)
-    result["enabled"] = value["enabled"]
-    main = result["main"]
-    main["profile_id"] = main_id
-    for key, legacy in (("announcement", "return_announcement"), ("announcement_en", "return_announcement_en")):
-        if legacy in handoff:
-            main[key] = handoff[legacy]
-    members = [m for m in result["members"] if m["profile_id"] != main_id]
-    member = next((m for m in members if m["profile_id"] == specialist_id), None)
-    if member is None:
-        member = new_member(specialist_id)
-    else:
-        members.remove(member)
-    members.insert(0, member)
-    member.update({key: handoff.get(key, "") for key in HANDOFF_FIELDS})
-    if value["enabled"]:
-        member["enabled"] = True
-    weather = member["tools"]["weather"]
-    tools = raw_tools.get(specialist_id)
-    if isinstance(tools, dict) and isinstance(tools.get("weather"), bool):
-        weather["enabled"] = tools["weather"]
-    weather.update(county=site.get("county", ""), town=site.get("town", ""))
-    if weather["enabled"]:
-        for other in members[1:]:
-            other["tools"]["weather"]["enabled"] = False
-    result["members"] = members
-    result["transitions"]["overrides"] = value.get("transitions", result["transitions"]["overrides"])
-    return result

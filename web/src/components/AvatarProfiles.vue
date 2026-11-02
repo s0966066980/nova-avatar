@@ -75,11 +75,9 @@ async function run(action) {
   busy.value = true; error.value = ''; notice.value = ''
   try { await action() } catch (e) { error.value = e.message } finally { busy.value = false }
 }
-// Tools belong to composition members; a profile no longer carries them.
-const profileList = profiles => profiles.map(({ tools, ...p }) => p)
 function adopt(library) {
   saved.value = { revision: library.revision, profiles_revision: library.profiles_revision, composition: structuredClone(library.composition) }
-  draft.value = { profiles: structuredClone(profileList(library.profiles)) }
+  draft.value = { profiles: structuredClone(library.profiles) }
   selected.value = draft.value.profiles.some(p => p.id === selected.value) ? selected.value : library.composition.main.profile_id
   savedText.value = JSON.stringify(draft.value.profiles)
 }

@@ -90,8 +90,7 @@ async function save() {
     if (!savedProfile) throw Error('主數位人設定已變更，請重新載入。')
     savedProfile.greeting = structuredClone(toRaw(profile.value.greeting))
     // Only the profile list is saved; the composition keeps its own revisions.
-    const profiles = library.value.profiles.map(({ tools, ...p }) => p)
-    const result = await roleRequest('', 'PUT', { profiles, expected_profiles_revision: library.value.profiles_revision })
+    const result = await roleRequest('', 'PUT', { profiles: library.value.profiles, expected_profiles_revision: library.value.profiles_revision })
     Object.assign(library.value, { revision: result.library.revision, profiles_revision: result.library.profiles_revision })
     savedContent = true
     await roleRequest('/greeting/apply', 'POST', { profile_id: profile.value.id, expected_revision: library.value.revision })

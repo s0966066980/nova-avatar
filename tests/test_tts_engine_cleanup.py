@@ -141,4 +141,4 @@ def test_saved_role_with_a_removed_engine_starts_on_edge_tts(voices, stored_voic
     attempt = store.load()
     attempt["profiles"][0]["tts"]["type"] = "xtts"
     with pytest.raises(ProfileError, match="xtts"):
-        store.save(attempt, expected_revision=attempt["revision"])
+        store.save_profiles(attempt["profiles"], expected_revision=attempt["profiles_revision"])

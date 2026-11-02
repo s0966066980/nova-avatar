@@ -47,20 +47,14 @@ def _saved(library, roles, **extra):
 @endpoint
 async def save(request, roles):
     body = await request.json()
-    # The two-role console sends {library, expected_revision} (temporary adapter);
-    # the profile editor sends {profiles, expected_profiles_revision}.
-    profiles = body["library"]["profiles"] if "library" in body else body["profiles"]
+    profiles = body["profiles"]
     # Applied profiles must remain addressable until another composition is applied.
     if roles.enabled:
         ids = {p["id"] for p in profiles}
         if not profile_ids(roles.library, enabled_only=True) <= ids:
             raise ProfileError("請先套用其他角色組合，再刪除使用中的設定檔", 409)
-    if "library" in body:
-        saved = await asyncio.to_thread(roles.store.save, body["library"],
-                                        expected_revision=body["expected_revision"])
-    else:
-        saved = await asyncio.to_thread(roles.store.save_profiles, profiles,
-                                        expected_revision=body.get("expected_profiles_revision"))
+    saved = await asyncio.to_thread(roles.store.save_profiles, profiles,
+                                    expected_revision=body.get("expected_profiles_revision"))
     return _saved(saved, roles)
 
 
