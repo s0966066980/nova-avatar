@@ -211,7 +211,7 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
 def _require_reference(tts: dict, name: str) -> None:
     """BreezyVoice clones a library recording and needs what it says; none is chosen for the admin."""
     if not tts["ref_file"]:
-        raise ProfileError(f"角色「{name}」使用 BreezyVoice，請在聲音與工具選擇有逐字稿的參考音檔")
+        raise ProfileError(f"角色「{name}」使用 BreezyVoice，請在「聲音」選擇有逐字稿的參考音檔")
     if not voice_transcript(tts["ref_file"]):
         raise ProfileError(f"角色「{name}」的參考音檔沒有逐字稿，請改選有逐字稿的參考音檔或重新上傳並填寫逐字稿")
 

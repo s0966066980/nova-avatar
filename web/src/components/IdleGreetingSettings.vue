@@ -72,7 +72,7 @@ async function load() {
   try {
     const [roles, stage] = await Promise.all([roleRequest(), stageRequest()])
     library.value = structuredClone(roles.library)
-    activeProfile.value = structuredClone(roles.greeting_profile || roles.library.profiles.find(p => p.id === roles.library.pair.main))
+    activeProfile.value = structuredClone(roles.greeting_profile || roles.library.profiles.find(p => p.id === roles.library.composition.main.profile_id))
     enabled.value = Boolean(stage.idle_greeting_enabled)
     seconds.value = Number(stage.idle_greeting_seconds ?? 60)
     published.value = snapshot()
@@ -89,8 +89,10 @@ async function save() {
     const savedProfile = library.value.profiles.find(p => p.id === profile.value.id)
     if (!savedProfile) throw Error('主數位人設定已變更，請重新載入。')
     savedProfile.greeting = structuredClone(toRaw(profile.value.greeting))
-    const result = await roleRequest('', 'PUT', { library: library.value, expected_revision: library.value.revision })
-    library.value.revision = result.library.revision
+    // Only the profile list is saved; the composition keeps its own revisions.
+    const profiles = library.value.profiles.map(({ tools, ...p }) => p)
+    const result = await roleRequest('', 'PUT', { profiles, expected_profiles_revision: library.value.profiles_revision })
+    Object.assign(library.value, { revision: result.library.revision, profiles_revision: result.library.profiles_revision })
     savedContent = true
     await roleRequest('/greeting/apply', 'POST', { profile_id: profile.value.id, expected_revision: library.value.revision })
     await stageRequest({ idle_greeting_enabled: enabled.value, idle_greeting_seconds: seconds.value })

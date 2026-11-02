@@ -35,7 +35,7 @@
       <datalist id="role-models"><option v-for="m in modelNames" :key="m" :value="m"></option></datalist>
       <p v-if="selectedEndpoint">服務網址：{{ selectedEndpoint.base_url }}</p>
       <p v-else-if="endpoints.length" role="alert">此設定檔的原服務網址不在伺服器設定檔的 LLM 端點清單中，請改選端點後再儲存套用。</p>
-      <p>LLM 端點、網址與 API 金鑰只能由伺服器設定檔 <code>llm.endpoints</code> 管理；本機 llama.cpp 會在套用時載入所選模型。即時交接的兩位角色需使用相同端點與模型。</p>
+      <p>LLM 端點、網址與 API 金鑰只能由伺服器設定檔 <code>llm.endpoints</code> 管理；本機 llama.cpp 會在套用時載入所選模型。當次角色組合的成員需與主數位人使用相同端點與模型。</p>
       <div class="profile-grid">
         <label for="llm-response-max-chars">口語字數上限<input id="llm-response-max-chars" type="number" v-model.number="profile.llm.response_max_chars" min="20" max="2000" required aria-describedby="llm-response-max-chars-hint"></label>
         <label>模型 Token 預算<input type="number" v-model.number="profile.llm.max_tokens" min="16" max="8192" required></label>
@@ -52,7 +52,7 @@
       <RagFlowSettings :key="profile.id" v-model="profile.rag" :profile-id="profile.id" :profile-name="profile.name" :disabled="disabled" />
     </section>
     <section v-show="section === 'voice'" class="profile-section">
-      <h3>聲音與工具</h3><p>每位角色可選擇自己的聲線；即時組合共用同一語音合成引擎。主數位人的聲音也是尚未套用設定檔時的預設聲音。</p>
+      <h3>聲音</h3><p>每位角色可選擇自己的聲線；當次角色組合共用同一語音合成引擎。主數位人的聲音也是尚未套用設定檔時的預設聲音。天氣等工具改在「角色組合與交接」中指定給一位成員。</p>
       <!-- A saved role named a removed engine; the server switched it to Edge TTS. -->
       <p v-if="speech.tts.notice" class="profile-alert" role="status">{{ speech.tts.notice }}</p>
       <div class="profile-grid">
@@ -72,7 +72,6 @@
       <label v-if="profile.tts.type === 'edgetts'">英文聲音<input v-model="profile.tts.voice_en_us" placeholder="en-US-JennyNeural"></label>
       <VoiceLibraryManager v-if="usesVoiceLibrary" :selected="profile.tts.ref_file" @uploaded="voice => chooseVoice(voice.id)" @deleted="id => { if (profile.tts.ref_file === id) chooseVoice('') }" />
       <details v-if="usesVoiceLibrary"><summary>其他 BreezyVoice 設定</summary><div class="profile-grid"><label v-for="(label,key) in voiceFields" :key="key">{{ label }}<input :value="profile.tts[key] || ''" @input="profile.tts[key] = $event.target.value"></label></div></details>
-      <label class="profile-check"><input type="checkbox" v-model="profile.tools.weather">使用 CWA 即時天氣工具（臺灣，角色交接模式）</label>
     </section>
   </div>
 </template>
@@ -92,7 +91,7 @@ const sections = [
   { id: 'identity', icon: 'bi bi-person-badge', label: '身分與素材' },
   { id: 'model', icon: 'bi bi-cpu', label: 'AI 模型與規則' },
   { id: 'rag', icon: 'bi bi-journal-text', label: 'RAG 知識文本' },
-  { id: 'voice', icon: 'bi bi-soundwave', label: '聲音與工具' }
+  { id: 'voice', icon: 'bi bi-soundwave', label: '聲音' }
 ]
 const ruleFields = [{ key: 'activation', label: '何時使用看板' }, { key: 'speech', label: '口語回覆規則' }, { key: 'board', label: '看板內容規則' }]
 const voiceFields = { tts_server: 'BreezyVoice 服務網址（限本機，留空為預設）', model: 'models/ 內的 BreezyVoice 模型（留空為預設）' }

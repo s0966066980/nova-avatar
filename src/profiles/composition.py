@@ -249,7 +249,7 @@ def incompatibility(main: dict, profile: dict) -> list[str]:
     elif main["tts"]["type"] == "breezyvoice" and len({
             server_identity(p["tts"]["tts_server"], p["tts"]["model"]) for p in (main, profile)}) > 1:
         # Only the main role's BreezyVoice server is started; every role speaks through it.
-        reasons.append("即時組合的數位人共用一個 BreezyVoice 伺服器，請在「聲音與工具」的"
+        reasons.append("即時組合的數位人共用一個 BreezyVoice 伺服器，請在「聲音」的"
                        "「其他 BreezyVoice 設定」選擇同一個 BreezyVoice 模型與服務網址；參考音檔可以不同")
     return reasons
 

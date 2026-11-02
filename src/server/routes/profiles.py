@@ -39,7 +39,9 @@ async def library(request, roles):
 
 
 def _saved(library, roles, **extra):
-    return web.json_response({"code": 0, "library": library, "runtime": roles.snapshot(), **extra})
+    # Compatibility follows the saved main avatar and profiles, so every save returns it.
+    return web.json_response({"code": 0, "library": library, "compatibility": compatibility_report(library),
+                              "runtime": roles.snapshot(), **extra})
 
 
 @endpoint
