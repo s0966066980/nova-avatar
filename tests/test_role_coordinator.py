@@ -42,6 +42,17 @@ class Avatar:
         self._asset_epoch += 1
 
 
+def route_to(target, **fields):
+    """A router decision in ticket 02's shape: a member id, or None to clarify."""
+    today = datetime.now().date().isoformat()
+    route = dict(target=target, clarification='', context='', county='', town='', kind='',
+                 start_date='', end_date='', accepted_at=datetime.now().isoformat(), decided_by='model')
+    route.update(fields)
+    if route['kind'] and not route['start_date']:
+        route.update(start_date=today, end_date=today)
+    return route
+
+
 @pytest.fixture
 def field(tmp_path, monkeypatch):
     monkeypatch.setattr(service, '_session_llm_instances', {})
@@ -53,14 +64,12 @@ def field(tmp_path, monkeypatch):
     config.reply_streaming.enabled = False
     store = ProfileStore(tmp_path / 'profiles.yaml')
     library = store.initialize(config)
-    library['enabled'] = True
+    library['composition']['enabled'] = True
     state = SimpleNamespace(config=config, voice_sessions={}, avatar_streams={},
         avatar=object(),
         count_sessions=lambda kind: sum(v._presenter == kind for v in state.voice_sessions.values()))
     weather = SimpleNamespace(configured=True, query=Mock())
-    route = {'route': 'specialist', 'county': '臺北市', 'town': '中正區', 'kind': 'forecast',
-        'start_date': datetime.now().date().isoformat(), 'end_date': datetime.now().date().isoformat(),
-        'context': '已確認臺北市中正區'}
+    route = route_to('weather', county='臺北市', town='中正區', kind='forecast', context='已確認臺北市中正區')
     roles = RoleCoordinator(state, store, library, router=lambda *_: dict(route), weather=weather)
     roles.phase = 'ready'
     roles.assets = {'musetalk_angela': object(), 'musetalk_1': object()}
@@ -81,26 +90,26 @@ def connect(roles, sid=7, presenter='console'):
 
 
 @pytest.mark.parametrize('text,confirmed,expected', [
-    ('中正區明天會下雨嗎', {}, 'clarify'),
-    ('新竹明天的天氣', {}, 'clarify'),
-    ('臺北市中正區明天的天氣', {}, 'specialist'),
-    ('那明天呢', {'county': '臺北市', 'town': '中正區'}, 'specialist'),
+    ('中正區明天會下雨嗎', {}, None),
+    ('新竹明天的天氣', {}, None),
+    ('臺北市中正區明天的天氣', {}, 'weather'),
+    ('那明天呢', {'county': '臺北市', 'town': '中正區'}, 'weather'),
 ])
 def test_routing_does_not_guess_a_county_for_an_ambiguous_district(field, text, confirmed, expected):
-    result = dict(route='specialist', county='臺北市', town='中正區', kind='forecast')
+    result = dict(target='weather', county='臺北市', town='中正區', kind='forecast')
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     class Client:
         def __init__(self, **_):
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
         def close(self): pass
     route = route_question(field.state.config, field.library, 'main', text, [], confirmed, client_factory=Client)
-    assert route['route'] == expected
+    assert route['target'] == expected
 
 
 def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field):
     from concurrent.futures import ThreadPoolExecutor
     from src.profiles.routing import RoutingClients
-    result = dict(route='answer')
+    result = dict(target='main')
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     built = []
     class Client:
@@ -115,7 +124,7 @@ def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field)
     with ThreadPoolExecutor(4) as pool:
         routes = list(pool.map(lambda text: roles.router(config, roles.library, 'main', text, [], {}),
                                ['公司地址？', '營業時間？', '有停車場嗎？', '怎麼預約？']))
-    assert [r['route'] for r in routes] == ['answer'] * 4
+    assert [r['target'] for r in routes] == ['main'] * 4
     assert len(built) == 1
     assert built[0].options['max_retries'] == 0
     asyncio.run(roles.close())
@@ -303,7 +312,8 @@ async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers
     voice, _ = connect(roles, presenter='stage')
     try:
         voice._role_coordinator._bind(voice, 'weather')
-        disabled = dict(roles.library, enabled=False)
+        disabled = deepcopy(roles.library)
+        disabled['composition']['enabled'] = False
         # The saved main role may refer to material that was never preloaded.
         disabled['profiles'][0]['avatar_id'] = 'new_saved_material'
         disabled['profiles'][0]['assistant_profile']['assistant_name'] = '單角色接待員'
@@ -347,7 +357,7 @@ async def test_stage_reconnect_accepts_input_during_console_answer(field):
 
 
 def test_single_role_apply_blocks_new_input_until_settings_are_bound(field):
-    field.library['enabled'] = False
+    field.library['composition']['enabled'] = False
     voice = SimpleNamespace(_presenter='console', sessionid=99)
     assert field.input_allowed(voice)
     field._apply_waiting = True
@@ -356,7 +366,7 @@ def test_single_role_apply_blocks_new_input_until_settings_are_bound(field):
 
 @pytest.mark.parametrize('text', ['今天台北天氣如何？', '今天臺北市天氣如何？'])
 def test_county_weather_question_handoffs_without_inventing_a_district(field, text):
-    result = dict(route='specialist', county='臺北市', town='', kind='forecast',
+    result = dict(target='weather', county='臺北市', town='', kind='forecast',
                   start_date=datetime.now().date().isoformat(), end_date=datetime.now().date().isoformat())
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     class Client:
@@ -364,7 +374,7 @@ def test_county_weather_question_handoffs_without_inventing_a_district(field, te
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
         def close(self): pass
     route = route_question(field.state.config, field.library, 'main', text, [], {}, client_factory=Client)
-    assert route['route'] == 'specialist', route
+    assert route['target'] == 'weather', route
     assert route['county'] == '臺北市'
     assert route.get('town', '') == ''
 
@@ -410,7 +420,7 @@ async def test_idle_greeting_starts_fresh_interval_after_automatic_main_return(f
 @async_test
 async def test_console_answer_does_not_cancel_stage_greeting(field):
     roles = field
-    roles.library['enabled'] = False
+    roles.library['composition']['enabled'] = False
     roles.phase = 'disabled'
     roles.profiles_applied = True
     roles.state.config.stage.idle_greeting_enabled = True
@@ -608,8 +618,8 @@ async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_liv
 
     field.state.config.tts.type = 'breezyvoice'
     target = deepcopy(field.library)
-    target['enabled'] = False
-    main = next(p for p in target['profiles'] if p['id'] == target['pair']['main'])
+    target['composition']['enabled'] = False
+    main = next(p for p in target['profiles'] if p['id'] == 'main')
     main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
                        tts_server='http://127.0.0.1:50001')
     monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
@@ -638,8 +648,8 @@ async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_liv
 async def test_breezyvoice_server_change_waits_until_conversations_disconnect(field, monkeypatch, change):
     field.state.config.tts.type = 'breezyvoice'
     target = deepcopy(field.library)
-    target['enabled'] = False
-    main = next(p for p in target['profiles'] if p['id'] == target['pair']['main'])
+    target['composition']['enabled'] = False
+    main = next(p for p in target['profiles'] if p['id'] == 'main')
     main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
                        tts_server='http://127.0.0.1:50001')
     monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
@@ -652,7 +662,7 @@ async def test_breezyvoice_server_change_waits_until_conversations_disconnect(fi
     try:
         changed = deepcopy(target)
         changed['revision'] += 1
-        next(p for p in changed['profiles'] if p['id'] == changed['pair']['main'])['tts'].update(change)
+        next(p for p in changed['profiles'] if p['id'] == 'main')['tts'].update(change)
         result = await field.apply(changed)
         assert result['pending'], '連線中的 BreezyVoice 伺服器不可被換掉，也不可未啟動就發布為預設'
         start.assert_not_called()

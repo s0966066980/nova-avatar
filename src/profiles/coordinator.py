@@ -14,11 +14,11 @@ from uuid import uuid4
 from src.avatars.factory import load_avatar_data
 from src.llm.service import select_session_profile, session_history
 from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
-from src.profiles.routing import RoutingClients, route_question
+from src.profiles.routing import RoutingClients, route_question, weather_member
 from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
-from src.profiles.composition import referenced_media, transition
-from src.profiles.store import RETURN_ANNOUNCEMENTS, ProfileError, ProfileStore, compatible_pair, profile_config
+from src.profiles.composition import MAIN_ANNOUNCEMENTS, live_members, main_profile_id, referenced_media, transition
+from src.profiles.store import ProfileError, ProfileStore, profile_config
 from src.profiles.weather import CwaWeather, WeatherQuery
 from src.tts.cosyvoice_runtime import server_identity
 from src.utils.logging import logger
@@ -26,6 +26,25 @@ from src.utils.logging import logger
 # The plan of a turn the current main role answers itself. It is also the
 # plan a concurrently started main answer assumes before routing decides.
 ANSWER_CONTEXT = "本輪未取得即時氣象資料，不可提供實際即時天氣數值。"
+# Spoken when an English conversation reaches a member without an English announcement.
+MEMBER_ANNOUNCEMENT_EN = "I will ask our specialist to help with your question."
+
+
+def roster(library) -> dict:
+    """Profile id -> handoff entry of every role a turn may reach: the main avatar, then live members."""
+    composition = library["composition"]
+    return {composition["main"]["profile_id"]: composition["main"],
+            **{m["profile_id"]: m for m in live_members(library)}}
+
+
+def announcement(library, target_id, locale) -> str:
+    """The sentence the current role says before handing over: the target's own."""
+    entry = roster(library)[target_id]
+    if locale != "en-US":
+        return entry["announcement"]
+    fallback = (MAIN_ANNOUNCEMENTS["announcement_en"] if target_id == main_profile_id(library)
+                else MEMBER_ANNOUNCEMENT_EN)
+    return entry["announcement_en"] or fallback
 
 
 async def _bind_avatar(avatar, config, data):
@@ -47,7 +66,9 @@ class ConversationRoles:
         self.library = deepcopy(getattr(voice.config, "role_library_snapshot", manager.library))
         self.assets = manager.assets
         self.router, self.weather, self.media = manager.router, manager.weather, manager.media
-        self.current_id = self.library["pair"]["main"]
+        self.main_id = main_profile_id(self.library)
+        self.roster = roster(self.library)
+        self.current_id = self.main_id
         self.phase = "ready" if manager.enabled else "disabled"
         self.error = ""
         self.profiles_applied = manager.profiles_applied
@@ -59,7 +80,7 @@ class ConversationRoles:
 
     @property
     def enabled(self):
-        return bool(self.library["enabled"] and self.phase != "disabled")
+        return bool(len(self.roster) > 1 and self.phase != "disabled")
 
     @property
     def profiles(self):
@@ -68,13 +89,14 @@ class ConversationRoles:
     def snapshot(self):
         return dict(enabled=self.enabled, phase=self.phase,
                     sessionid=self.voice.sessionid,
-                    active_profile_id=self.current_id, pair=self.library["pair"],
+                    active_profile_id=self.current_id, main_profile_id=self.main_id,
+                    member_ids=list(self.roster)[1:],
                     active_revision=self.library["revision"], error=self.error,
                     weather_configured=self.weather.configured,
                     profiles_applied=self.profiles_applied,
                     active_avatar_id=self.profiles[self.current_id]["avatar_id"]
                         if self.profiles_applied or self.enabled else "",
-                    can_return=self.enabled and self.current_id == self.library["pair"]["specialist"]
+                    can_return=self.enabled and self.current_id != self.main_id
                                and self.phase == "ready", applying=False)
 
     def notify(self, session=None):
@@ -124,12 +146,14 @@ class ConversationRoles:
     def speculative_plan(self):
         """The plan of a turn routing keeps with the current role, adding no facts.
 
-        A main answer started before routing decides uses this plan; a routed
-        plan equal to it releases that answer, any other plan replaces it.
+        An answer started before routing decides uses this plan; a routed plan
+        equal to it releases that answer, any other plan replaces it. The
+        weather tool holder always routes to a lookup or a question instead.
         """
-        if self.current_id == self.library["pair"]["main"]:
-            return {"context": ANSWER_CONTEXT}
-        return {"weather": None, "context": ""}
+        holder = weather_member(self.library)
+        if holder is not None and self.current_id == holder["profile_id"]:
+            return {"weather": None, "context": ""}
+        return {"context": ANSWER_CONTEXT}
 
     async def before_generate(self, voice, text, turn_id, generation):
         if not self.enabled:
@@ -158,12 +182,17 @@ class ConversationRoles:
             return {"fixed": "目前無法確認問題的接手方式，請再說一次您的問題。"}
         if not voice._is_current(turn_id, generation):
             return {"cancelled": True}
-        if route["route"] == "clarify":
+        target_id = route["target"]
+        if target_id is None:
             return {"fixed": route.get("clarification") or "請問您想先詢問哪個主題？"}
-        specialist_id = self.library["pair"]["specialist"]
-        target_id = specialist_id if route['route'] == 'specialist' else self.library['pair']['main']
-        if target_id == self.current_id and route['route'] == 'answer':
-            return {"context": ANSWER_CONTEXT}
+        if target_id not in self.roster:
+            # Only the main avatar and live members can answer (ADR 0023).
+            logger.warning("角色判斷選了不在當次角色組合中的角色 %s", target_id)
+            return {"fixed": "目前無法確認問題的接手方式，請再說一次您的問題。"}
+        holder = weather_member(self.library)
+        weather_turn = holder is not None and target_id == holder["profile_id"]
+        if target_id == self.current_id and not weather_turn:
+            return self.speculative_plan()
         target = self.profiles[target_id]
         if getattr(voice, 'attachments', None) and voice.attachments.selection:
             from src.server.attachments import vision_ready
@@ -175,7 +204,7 @@ class ConversationRoles:
             if not voice._is_current(turn_id, generation):
                 return {'cancelled': True}
         weather_task = None
-        if route['route'] == 'specialist' and target["tools"]["weather"]:
+        if weather_turn:
             if not route.get("county"):
                 return {"fixed": "請問您想查詢哪個縣市的天氣？"}
             town = route.get("town", "")
@@ -211,22 +240,11 @@ class ConversationRoles:
             return {"cancelled": True}
         self.phase = "announcement"
         self.notify()
-        reverse = target_id == self.library['pair']['main']
-        key = 'return_announcement' if reverse else 'announcement'
-        if voice._conversation['locale'] == 'en-US':
-            key += '_en'
-        announcement = self.library['handoff'].get(key, '')
-        if not announcement:
-            announcement = RETURN_ANNOUNCEMENTS[key] if reverse else (
-                'I will ask our specialist to help with your question.' if voice._conversation['locale'] == 'en-US'
-                else '接下來請專門數位人接續回答您的問題。')
-        return {"fixed": announcement, "handoff_id": pending["id"]}
+        return {"fixed": announcement(self.library, target_id, voice._conversation['locale']),
+                "handoff_id": pending["id"]}
 
     def edge(self, source, target):
-        # Two-role view edges first (temporary adapter), then the composition default.
-        return next((dict(e) for e in self.library["transitions"]
-                     if e["source"] == source and e["target"] == target),
-                    transition(self.library, source, target))
+        return transition(self.library, source, target)
 
     def cancel(self, sid):
         pending = self.pending.pop(sid, None)
@@ -355,11 +373,11 @@ class ConversationRoles:
                 self.notify()
 
     async def return_to_main(self, requester):
-        if not self.enabled or self.current_id == self.library["pair"]["main"]:
+        if not self.enabled or self.current_id == self.main_id:
             return self.snapshot()
         owner = requester
         try:
-            await self._switch(self.library["pair"]["main"], owner)
+            await self._switch(self.main_id, owner)
         except asyncio.CancelledError:
             raise
         except ProfileError:
@@ -381,7 +399,7 @@ class ConversationRoles:
                 await self.manager.restart_conversation(voice, self)
             except Exception:
                 self.error = "新對話設定尚未就緒，請重新連線"
-                self.phase = "ready" if self.library["enabled"] else "disabled"
+                self.phase = "ready" if len(self.roster) > 1 else "disabled"
                 self.notify()
                 logger.exception("Conversation settings could not be refreshed")
             finally:
@@ -404,7 +422,7 @@ def profiles_path(config_path) -> Path:
 
 def _adopt_main_voice(config, library) -> None:
     """The default voice is the main role's; it is never saved anywhere else."""
-    main = next(p for p in library["profiles"] if p["id"] == library["pair"]["main"])
+    main = next(p for p in library["profiles"] if p["id"] == main_profile_id(library))
     config.tts = TTSConfig(**deepcopy(main["tts"]))
 
 
@@ -459,7 +477,7 @@ class RoleCoordinator:
 
     @property
     def enabled(self):
-        return bool(self.library["enabled"] and self.phase != "disabled")
+        return bool(live_members(self.library) and self.phase != "disabled")
 
     @property
     def profiles(self):
@@ -467,11 +485,12 @@ class RoleCoordinator:
 
     @property
     def current_id(self):
-        return self.library["pair"]["main"]
+        return main_profile_id(self.library)
 
     def snapshot(self):
         return dict(enabled=self.enabled, phase=self.phase,
-                    active_profile_id=self.current_id, pair=self.library["pair"],
+                    active_profile_id=self.current_id, main_profile_id=self.current_id,
+                    member_ids=[m["profile_id"] for m in live_members(self.library)],
                     active_revision=self.library["revision"], error=self.error,
                     weather_configured=self.weather.configured,
                     profiles_applied=self.profiles_applied,
@@ -503,15 +522,15 @@ class RoleCoordinator:
             raise ProfileError("設定正在套用，請稍候", 409)
         target = deepcopy(library or self.store.load())
         profiles = {p["id"]: p for p in target["profiles"]}
-        main = profiles[target["pair"]["main"]]
+        main = profiles[main_profile_id(target)]
         if self.state.config.stage.idle_greeting_enabled:
             try:
                 validate_content(main.get("greeting"), required=True)
             except ValueError as exc:
                 raise ProfileError(str(exc)) from exc
-        selected = [main]
-        if target["enabled"]:
-            selected = list(compatible_pair(target))
+        # Every live member shares the main avatar's engines (composition.incompatibility).
+        members = [profiles[m["profile_id"]] for m in live_members(target)]
+        selected = [main, *members]
         config = profile_config(self.state.config, main)
         # A local model server or shared renderer cannot be replaced underneath
         # another conversation. Keep the saved library pending until disconnect.
@@ -538,6 +557,8 @@ class RoleCoordinator:
                 # connected conversation keeps the server it is using.
                 await asyncio.to_thread(_start_breezyvoice, config.tts)
             config = profile_config(self.state.config, main)
+            # One copy per avatar, shared by every conversation and member;
+            # avatars no longer in the composition go with the old cache.
             cache = {}
             for profile in selected:
                 aid = profile["avatar_id"]
@@ -545,8 +566,10 @@ class RoleCoordinator:
                 valid, reason = avatar_bootable(profile["engine"], aid)
                 if not valid:
                     raise ProfileError(reason, 409)
-                if target["enabled"] and not avatar_uses_green_screen(aid):
+                if members and not avatar_uses_green_screen(aid):
                     raise ProfileError("人物層轉場需要綠幕 MuseTalk 素材", 409)
+                if aid in cache:
+                    continue
                 if aid in self.assets:
                     cache[aid] = self.assets[aid]
                 elif aid == self.state.config.model.avatar_id and self.state.avatar is not None:
@@ -570,7 +593,7 @@ class RoleCoordinator:
                 # The admin has chosen voices again since a removed engine fell back.
                 clear_removed_engine_notice()
             self.profiles_applied = True
-            self.phase = "ready" if target["enabled"] else "disabled"
+            self.phase = "ready" if members else "disabled"
             self.error = ""
             self._pending_library = None
         finally:
@@ -636,8 +659,8 @@ class RoleCoordinator:
     async def restart_conversation(self, voice, previous):
         # Called only by automatic full reset, never by display clearing,
         # manual history clearing or a role handoff.
-        if previous.enabled and previous.current_id != previous.library["pair"]["main"]:
-            await previous._switch(previous.library["pair"]["main"], voice)
+        if previous.enabled and previous.current_id != previous.main_id:
+            await previous._switch(previous.main_id, voice)
         config = self.config_for_session()
         if hasattr(voice.avatar, "bind_profile") and (self.profiles_applied or self.enabled):
             await _bind_avatar(voice.avatar, config, self.data_for_session())

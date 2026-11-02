@@ -93,7 +93,7 @@ async def run(args):
         async with http.get(args.base_url + '/api/profiles') as response:
             runtime = (await response.json())['runtime']
         if not runtime['enabled']:
-            raise RuntimeError('Enable a validated role pair before running the soak')
+            raise RuntimeError('Enable a role composition with a live member before running the soak')
         for presenter in args.presenters:
             await post('/api/profiles/mode', {'mode': 'console' if presenter == 'console' else 'visitor'})
             peer = RolePeer(args.base_url, http, client_role=presenter)

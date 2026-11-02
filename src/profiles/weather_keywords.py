@@ -154,7 +154,10 @@ def _date_range(offset, today: date) -> tuple[date, date]:
 
 def keyword_route(text: str, today: date, *, confirmed: Optional[Mapping] = None,
                   site: Optional[Mapping] = None) -> Optional[dict]:
-    """A weather-role decision for a clear weather question about one county, else None."""
+    """The weather query of a clear weather question about one county, else None.
+
+    The router sends such a question to the weather-tool holder.
+    """
     if len([part for part in _SENTENCE_END.split(text) if part.strip()]) > 1:
         return None
     matches, rest = _places(text)
@@ -179,6 +182,5 @@ def keyword_route(text: str, today: date, *, confirmed: Optional[Mapping] = None
         if known.get("county") == county and known.get("town"):
             town = known["town"]
             break
-    return {"route": "specialist", "clarification": "", "county": county, "town": town,
-            "kind": "current" if current else "forecast",
-            "start_date": start.isoformat(), "end_date": end.isoformat(), "context": ""}
+    return {"county": county, "town": town, "kind": "current" if current else "forecast",
+            "start_date": start.isoformat(), "end_date": end.isoformat()}

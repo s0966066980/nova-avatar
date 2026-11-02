@@ -426,7 +426,7 @@ def composition_routes(store, monkeypatch):
 
     roles = SimpleNamespace(store=store, enabled=False, library=library, snapshot=lambda: {"phase": "disabled"},
                             media=SimpleNamespace(list=lambda: []), close=close,
-                            profiles={p["id"]: p for p in library["profiles"]})
+                            profiles={p["id"]: p for p in library["profiles"]}, current_id="main")
     monkeypatch.setattr(state, "roles", roles, raising=False)
     return store
 

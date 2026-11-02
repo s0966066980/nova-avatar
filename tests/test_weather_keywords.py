@@ -49,8 +49,8 @@ def test_place_table_covers_every_county_exactly_once():
 ])
 def test_weather_question_naming_one_county_goes_to_the_weather_role(text, county, kind, start, end):
     decision = keyword_route(text, FRIDAY)
-    assert decision == {"route": "specialist", "clarification": "", "county": county, "town": "",
-                        "kind": kind, "start_date": _day(start), "end_date": _day(end), "context": ""}
+    assert decision == {"county": county, "town": "", "kind": kind,
+                        "start_date": _day(start), "end_date": _day(end)}
 
 
 @pytest.mark.parametrize("text", [
@@ -135,9 +135,9 @@ def _route(text, model_decision=None, *, history=(), weather_tool=True):
     config.llm.provider = "llamacpp"
     config.llm.base_url = "http://127.0.0.1:18080/v1"
     library = ProfileStore(Path(tempfile.mkdtemp()) / "profiles.yaml").initialize(config)
-    specialist = next(p for p in library["profiles"] if p["id"] == library["pair"]["specialist"])
-    specialist["tools"]["weather"] = weather_tool
-    raw = json.dumps(model_decision or {"route": "answer"}, ensure_ascii=False)
+    library["composition"]["enabled"] = True
+    library["composition"]["members"][0]["tools"]["weather"]["enabled"] = weather_tool
+    raw = json.dumps(model_decision or {"target": "main"}, ensure_ascii=False)
     create = Mock(return_value=SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=raw))]))
 
@@ -148,7 +148,7 @@ def _route(text, model_decision=None, *, history=(), weather_tool=True):
         def close(self):
             pass
 
-    routed = route_question(config, library, library["pair"]["main"], text, list(history), {},
+    routed = route_question(config, library, "main", text, list(history), {},
                             client_factory=Client)
     return routed, create
 
@@ -159,39 +159,40 @@ def test_english_weather_question_hands_off_without_the_model_after_a_long_histo
     history = [{"role": "user", "content": "規律運動有什麼好處？"},
                {"role": "assistant", "content": "可以增強心肺功能。"}] * 5
     routed, create = _route("Will it rain in Taipei tomorrow?",
-                            {"route": "specialist", "county": ""}, history=history)
+                            {"target": "weather", "county": ""}, history=history)
     tomorrow = (datetime.now(TAIPEI).date() + timedelta(days=1)).isoformat()
-    assert (routed["route"], routed["county"], routed["start_date"]) == ("specialist", "臺北市", tomorrow)
+    assert (routed["target"], routed["county"], routed["start_date"]) == ("weather", "臺北市", tomorrow)
+    assert routed["decided_by"] == "keyword"
     assert routed["accepted_at"]
     create.assert_not_called()
 
 
 def test_non_weather_question_naming_a_city_still_asks_the_model():
-    routed, create = _route("Tell me a fun fact about Taipei.", {"route": "answer"})
-    assert routed["route"] == "answer"
+    routed, create = _route("Tell me a fun fact about Taipei.", {"target": "main"})
+    assert routed["target"] == "main"
     create.assert_called_once()
 
 
-def test_pre_filter_is_off_when_the_specialist_has_no_weather_tool():
-    routed, create = _route("Will it rain in Taipei tomorrow?", {"route": "answer"}, weather_tool=False)
-    assert routed["route"] == "answer"
+def test_pre_filter_is_off_without_a_weather_tool_member():
+    routed, create = _route("Will it rain in Taipei tomorrow?", {"target": "main"}, weather_tool=False)
+    assert routed["target"] == "main"
     create.assert_called_once()
 
 
 def test_model_county_without_its_suffix_is_canonicalised():
     # E2B wrote "臺南" for Tainan, which failed validation and asked again.
     routed, _ = _route("Is tomorrow good for hiking in Tainan?",
-                       {"route": "specialist", "county": "臺南", "kind": "forecast"})
-    assert (routed["route"], routed["county"]) == ("specialist", "臺南市")
+                       {"target": "weather", "county": "臺南", "kind": "forecast"})
+    assert (routed["target"], routed["county"]) == ("weather", "臺南市")
 
 
 def test_model_empty_county_is_filled_from_the_one_county_the_visitor_named():
     routed, _ = _route("Is tomorrow good for hiking in Kaohsiung?",
-                       {"route": "specialist", "county": "", "kind": "forecast"})
-    assert (routed["route"], routed["county"]) == ("specialist", "高雄市")
+                       {"target": "weather", "county": "", "kind": "forecast"})
+    assert (routed["target"], routed["county"]) == ("weather", "高雄市")
 
 
 def test_model_empty_county_stays_empty_for_an_ambiguous_name():
     routed, _ = _route("Is tomorrow good for hiking in Hsinchu?",
-                       {"route": "specialist", "county": "", "kind": "forecast"})
+                       {"target": "weather", "county": "", "kind": "forecast"})
     assert routed["county"] == ""
