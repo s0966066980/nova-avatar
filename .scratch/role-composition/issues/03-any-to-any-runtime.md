@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 任意角色交接的執行期
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 依[規格](../spec.md)。`src/profiles/coordinator.py`、`src/server/voice_session.py` 改為任意來源→目的：交接說明取目的成員的那一句；轉場取個別覆寫否則預設；主數位人開場與兜底、「返回主數位人」與訪客對話重置回主數位人；閒置招呼只在主數位人；各角色對話記憶照舊隔離。
