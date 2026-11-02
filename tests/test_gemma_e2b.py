@@ -74,6 +74,7 @@ def _routing(raw, *, provider="llamacpp", model=E2B):
     config.llm.model = model
     config.llm.base_url = "http://127.0.0.1:18080/v1"
     library = _library(config)
+    library["composition"]["enabled"] = True
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=raw))])
     create = Mock(return_value=response)
 
@@ -84,35 +85,35 @@ def _routing(raw, *, provider="llamacpp", model=E2B):
         def close(self):
             pass
 
-    routed = route_question(config, library, library["pair"]["main"], "介紹你們的服務", [], {},
+    routed = route_question(config, library, "main", "介紹你們的服務", [], {},
                             client_factory=Client)
     return routed, create.call_args.kwargs
 
 
 def test_local_routing_is_constrained_to_the_route_schema_without_thinking():
-    _, request = _routing(json.dumps({"route": "answer"}))
+    _, request = _routing(json.dumps({"target": "main"}))
     response_format = request["response_format"]
     assert response_format["type"] == "json_schema"
     schema = response_format["json_schema"]["schema"]
-    assert schema["properties"]["route"]["enum"] == ["answer", "specialist", "clarify"]
-    assert schema["required"][0] == "route"
+    assert schema["properties"]["target"]["enum"] == ["main", "weather", "clarify"]
+    assert schema["required"][0] == "target"
     assert request["extra_body"]["chat_template_kwargs"] == {"enable_thinking": False}
 
 
 def test_routing_reads_a_decision_wrapped_in_a_fence_or_thought_channel():
-    decision = json.dumps({"route": "answer", "clarification": ""}, ensure_ascii=False)
+    decision = json.dumps({"target": "main", "clarification": ""}, ensure_ascii=False)
     for raw in (f"```json\n{decision}\n```",
                 f"<|channel>thought\n<channel|>{decision}",
                 f"<think>\n</think>\n{decision}"):
         routed, _ = _routing(raw, provider="ollama", model="gemma4:e2b")
-        assert routed["route"] == "answer"
+        assert routed["target"] == "main"
 
 
 def test_routing_treats_null_fields_as_empty():
-    raw = json.dumps({"route": "answer", "clarification": None, "county": None, "town": None,
+    raw = json.dumps({"target": "main", "clarification": None, "county": None, "town": None,
                       "kind": None, "start_date": None, "end_date": None, "context": None})
     routed, _ = _routing(raw)
-    assert routed["route"] == "answer"
+    assert routed["target"] == "main"
     assert routed["clarification"] == routed["context"] == ""
 
 
@@ -120,12 +121,12 @@ def test_routing_still_rejects_text_that_is_not_a_decision():
     import pytest
     from src.profiles.store import ProfileError
 
-    for raw in ("我覺得應該交給主角色。", '{"route": "weather"}', "[]"):
+    for raw in ("我覺得應該交給主角色。", '{"route": "weather"}', '{"target": "answer"}', "[]"):
         with pytest.raises(ProfileError):
             _routing(raw)
 
 
 def test_other_providers_keep_plain_json_mode():
-    _, request = _routing(json.dumps({"route": "answer"}), provider="ollama", model="qwen3.5:4b")
+    _, request = _routing(json.dumps({"target": "main"}), provider="ollama", model="qwen3.5:4b")
     assert request["response_format"] == {"type": "json_object"}
     assert "chat_template_kwargs" not in (request["extra_body"] or {})

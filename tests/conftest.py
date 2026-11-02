@@ -25,6 +25,7 @@ AREA_BY_FILE = {
     "test_role_media.py": "avatar",
     "test_role_coordinator.py": "conversation",
     "test_reverse_role_handoff.py": "conversation",
+    "test_n_way_routing.py": "conversation",
     "test_answer_board.py": "conversation",
     "test_assistant_profile.py": "llm",
     "test_auto_response_protocol.py": "conversation",

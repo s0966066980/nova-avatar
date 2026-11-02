@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
-"""Compare local LLMs on a fixed set of 30 visitor questions (issue 04).
+"""Compare local LLMs on fixed sets of visitor questions (issue 04, role-composition 02).
 
 ``run`` asks one llama-server (given by URL) every question twice through the
 production code: the role routing decision, then the answer of the expected
 destination role with the real system prompt, reply grammar, retrieved
-knowledge or weather facts. ``report`` puts two runs side by side with the
+knowledge or weather facts. A set with ``"answers": false`` (the N-way
+routing set) stops after routing, and a set with a ``composition`` routes
+among its own evaluation roles instead of the saved composition.
+``report`` puts two runs side by side with the
 automatic checks: reply format, Simplified characters, spoken length cap, the
 short first sentence (issue 08) and routing correctness. The user decides on
-the default model from that report. ``first-sentence`` summarises one run:
+the default model from that report. ``routing`` summarises the routing
+accuracy of one run per category and lists every miss.
+``first-sentence`` summarises one run:
 how often the reply opens with a complete sentence of at most 15 characters,
 and how long and how late the first playable fragment was, both at the
 complete semantic boundary and with the first-fragment exception.
@@ -30,9 +35,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 EVAL_DIR = PROJECT_ROOT / ".scratch" / "first-audio-latency" / "e2b-eval"
 QUESTIONS_PATH = EVAL_DIR / "questions.json"
-CATEGORIES = {"general": "一般", "rag": "RAG", "weather": "天氣", "handoff": "需交接"}
-ROLES = ("main", "weather")
-ROUTES = ("answer", "specialist", "clarify")
+ROUTING_PATH = PROJECT_ROOT / ".scratch" / "role-composition" / "routing-eval" / "questions.json"
+CATEGORIES = {"general": "一般", "rag": "RAG", "weather": "天氣", "handoff": "需交接",
+              "direct": "成員間直接交接", "followup": "延續追問", "mixed": "混合主題"}
+CLARIFY = "clarify"
 MODES = ("SIMPLE", "BOARD")
 
 
@@ -245,11 +251,49 @@ def served_model(base_url: str) -> str:
     return Path(str(loaded.id)).name.removesuffix(".gguf")
 
 
-def _role_config(config, library, role: str, *, base_url: str, model: str):
+def eval_library(library: dict, data: dict) -> tuple[dict, dict]:
+    """The library a question set is asked against, and its role key -> profile id.
+
+    Handoff is evaluated even while the saved composition has it switched off.
+    Without a ``composition`` the keys ``main`` and ``weather`` name the saved
+    main avatar and live weather-tool holder. With one, its members are clones
+    of the saved main profile (same model and voice, so they are live) that
+    carry the set's own names, texts and tools.
+    """
+    from copy import deepcopy
+
+    from src.profiles.composition import main_profile_id, new_member
+    from src.profiles.routing import weather_member
+
+    library = deepcopy(library)
+    composition = library["composition"]
+    composition["enabled"] = True
+    main_id = main_profile_id(library)
+    spec = data.get("composition")
+    if spec is None:
+        holder = weather_member(library)
+        if holder is None:
+            raise ValueError("此題組需要一位啟用、相容且持有天氣工具的專門數位人")
+        return library, {"main": main_id, "weather": holder["profile_id"]}
+    main = next(profile for profile in library["profiles"] if profile["id"] == main_id)
+    composition["main"].update(description=spec["main"].get("description", ""),
+                               rules=spec["main"].get("rules", ""))
+    composition["members"] = []
+    library["profiles"] = [main]
+    for role in spec["members"]:
+        library["profiles"].append(dict(deepcopy(main), id=role["key"], name=role["name"]))
+        member = new_member(role["key"])
+        member.update(enabled=True, description=role["description"], rules=role.get("rules", ""),
+                      announcement=f"接下來請{role['name']}為您說明。")
+        member["tools"]["weather"]["enabled"] = bool(role.get("weather"))
+        composition["members"].append(member)
+    return library, {"main": main_id, **{role["key"]: role["key"] for role in spec["members"]}}
+
+
+def _role_config(config, library, profile_id: str, *, base_url: str, model: str):
     from src.profiles.store import profile_config
 
-    role_id = library["pair"]["main" if role == "main" else "specialist"]
-    profile = next(item for item in library["profiles"] if item["id"] == role_id)
+    profile = next(item for item in library["profiles"] if item["id"] == profile_id)
     result = profile_config(config, profile)
     # The saved role, rules and prompts stay; only the server under test changes.
     result.llm.provider = "llamacpp"
@@ -285,7 +329,7 @@ def _timed_engine(config):
     return engine
 
 
-def _answer(question: dict, data: dict, config, profile) -> dict:
+def _answer(question: dict, data: dict, config, profile, *, weather: bool) -> dict:
     from src.llm.router import ReplyMode
     from src.profiles.weather import weather_prompt
     from src.ragflow.client import retrieval_prompt
@@ -299,7 +343,7 @@ def _answer(question: dict, data: dict, config, profile) -> dict:
     context = ""
     if question.get("rag"):
         context = retrieval_prompt(data["knowledge_base"]["sources"])
-    if profile["tools"]["weather"]:
+    if weather:
         context += "\n" + weather_prompt(data["weather_fixture"])
     started = time.perf_counter()
     error = ""
@@ -333,42 +377,54 @@ def _rounded(value):
 
 def run_eval(base_url: str, *, label: str, config, library: dict, data: dict,
              model: str = "") -> dict:
-    """Route and answer every question against one llama-server, sequentially."""
-    from src.profiles.routing import RoutingClients, route_question
+    """Route (and answer) every question against one llama-server, sequentially.
+
+    ``route`` and ``expected_target`` are role keys of the set, or ``clarify``.
+    """
+    from src.profiles.routing import RoutingClients, route_question, weather_member
 
     model = model or served_model(base_url)
+    library, ids = eval_library(library, data)
+    keys = {profile_id: key for key, profile_id in ids.items()}
+    holder = weather_member(library)
+    names = {profile["id"]: profile["name"] for profile in library["profiles"]}
     clients = RoutingClients()
     items = []
     try:
         for question in data["questions"]:
             history = data.get("histories", {}).get(question.get("history") or "", [])
-            current, profile = _role_config(config, library, question["role"],
+            current, profile = _role_config(config, library, ids[question["role"]],
                                             base_url=base_url, model=model)
             started = time.perf_counter()
-            route, route_error = "", ""
+            route, route_error, decided_by = "", "", ""
             try:
-                route = route_question(current, library, profile["id"], question["text"],
-                                       history, dict(data.get("confirmed_context", {})),
-                                       clients=clients)["route"]
+                decision = route_question(current, library, profile["id"], question["text"],
+                                          history, dict(data.get("confirmed_context", {})),
+                                          clients=clients)
+                route = CLARIFY if decision["target"] is None else keys[decision["target"]]
+                decided_by = decision["decided_by"]
             except Exception as exc:
                 route_error = f"{type(exc).__name__}: {exc}"[:300]
             item = {key: question.get(key) for key in
-                    ("id", "category", "source", "role", "text", "expected_route", "expected_mode")}
-            item.update(route=route, route_error=route_error,
-                        route_correct=route == question["expected_route"],
+                    ("id", "category", "source", "role", "text", "expected_target", "expected_mode")}
+            item.update(route=route, route_error=route_error, decided_by=decided_by,
+                        route_correct=route == question["expected_target"],
                         route_seconds=_rounded(time.perf_counter() - started), answer=None)
-            if question["expected_route"] != "clarify":
-                destination = "main" if question["expected_route"] == "answer" else "weather"
+            if data.get("answers", True) and question["expected_target"] != CLARIFY:
+                destination = ids[question["expected_target"]]
                 answer_config, answer_profile = _role_config(config, library, destination,
                                                              base_url=base_url, model=model)
-                item["answer"] = _answer(question, data, answer_config, answer_profile)
+                item["answer"] = _answer(
+                    question, data, answer_config, answer_profile,
+                    weather=holder is not None and holder["profile_id"] == destination)
             items.append(item)
             print(f"{label} {question['id']} route={route or route_error} "
                   f"correct={item['route_correct']}", flush=True)
     finally:
         clients.close()
     return {"label": label, "model": model, "base_url": base_url,
-            "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "items": items}
+            "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "roles": {key: names[profile_id] for key, profile_id in ids.items()}, "items": items}
 
 
 # Routing is "clearly lower" (spec Q18) when the candidate misses at least this
@@ -377,11 +433,51 @@ ROUTING_GAP = 2
 _CHECK_LABELS = (("format", "格式正確"), ("simplified", "無簡體字"),
                  ("length", "口語字數未超過上限"), ("first_sentence", "首句 15 字內且完整"),
                  ("mode", "模式符合預期"), ("terms", "關鍵事實命中"))
-_ROLE_LABELS = {"main": "主角色", "weather": "天氣角色"}
 
 
 def _cell(text) -> str:
     return str(text if text is not None else "—").replace("|", "\\|").replace("\n", " ")
+
+
+def _categories(result: dict) -> list[tuple[str, str]]:
+    """The categories a run's questions use, in the fixed order."""
+    used = {item["category"] for item in result["items"]}
+    return [(key, label) for key, label in CATEGORIES.items() if key in used]
+
+
+def _role_label(result: dict, key: str) -> str:
+    name = result.get("roles", {}).get(key)
+    return f"{name}（{key}）" if name else key
+
+
+def build_routing_report(result: dict) -> str:
+    """Markdown routing accuracy of one run: overall, per category, every miss."""
+    items = result["items"]
+    keyword = sum(item.get("decided_by") == "keyword" for item in items)
+    lines = [
+        "<!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->",
+        f"# 路由正確率：{result['label']}",
+        "",
+        f"- 模型：`{result['model']}`（{result['at']}）",
+        "- 角色：" + "、".join(_role_label(result, key) for key in result.get("roles", {})),
+        f"- 路由正確率：{_routing_count(items)}；路由耗時 P50 {_median(i['route_seconds'] for i in items)}；"
+        f"關鍵字初篩決定 {keyword} 題",
+        "",
+        "| 類別 | 正確 |",
+        "|---|---|",
+    ]
+    lines += [f"| {label} | {_routing_count(i for i in items if i['category'] == key)} |"
+              for key, label in _categories(result)]
+    lines += ["", "## 錯誤", ""]
+    missed = [item for item in items if not item["route_correct"]]
+    if not missed:
+        lines.append("無。")
+    else:
+        lines += ["| 題號 | 目前角色 | 問題 | 預期 | 結果 |", "|---|---|---|---|---|"]
+        lines += [f"| {item['id']} | {_cell(_role_label(result, item['role']))} | {_cell(item['text'])} "
+                  f"| {item['expected_target']} | {_cell(item['route'] or item['route_error'])} |"
+                  for item in missed]
+    return "\n".join(lines)
 
 
 def _median(values) -> str:
@@ -465,7 +561,7 @@ def build_report(baseline: dict, candidate: dict) -> str:
         f"- {names[1]}：`{b['model']}`（{b['at']}）",
         f"- 題目：{len(a['items'])} 題，"
         + "、".join(f"{label} {sum(item['category'] == key for item in a['items'])}"
-                   for key, label in CATEGORIES.items())
+                   for key, label in _categories(a))
         + "；來源與預期見 `questions.json`。",
         "- 回答一律以預期的目的角色產生（與實際路由結果無關），兩個模型讀到相同的提示、"
         "檢索片段與氣象資料。自動檢查只看格式與數字，語意好壞請讀逐題並排。",
@@ -490,7 +586,7 @@ def build_report(baseline: dict, candidate: dict) -> str:
 
     lines += ["", "## 各類別路由正確率", "", f"| 類別 | {_cell(names[0])} | {_cell(names[1])} |",
               "|---|---|---|"]
-    for key, label in CATEGORIES.items():
+    for key, label in _categories(a):
         lines.append(f"| {label} | {_routing_count(i for i in a['items'] if i['category'] == key)} | "
                      f"{_routing_count(i for i in b['items'] if i['category'] == key)} |")
 
@@ -512,9 +608,9 @@ def build_report(baseline: dict, candidate: dict) -> str:
 
     lines += ["", "## 逐題並排", ""]
     for first, second in zip(a["items"], b["items"]):
-        expected = first["expected_route"] + (f"／{first['expected_mode']}" if first["expected_mode"] else "")
+        expected = first["expected_target"] + (f"／{first['expected_mode']}" if first["expected_mode"] else "")
         lines += [f"### {first['id']} {CATEGORIES[first['category']]} · "
-                  f"{_ROLE_LABELS[first['role']]} · 預期 {expected}", "",
+                  f"{_role_label(a, first['role'])} · 預期 {expected}", "",
                   f"問：{first['text']}", "",
                   f"| | {_cell(names[0])} | {_cell(names[1])} |", "|---|---|---|"]
 
@@ -619,14 +715,21 @@ def build_first_sentence_report(result: dict) -> str:
 
 
 def load_questions(path: Path = QUESTIONS_PATH) -> dict:
-    """The fixed question set, validated so both models get identical input."""
+    """A fixed question set, validated so both models get identical input."""
     data = json.loads(Path(path).read_text("utf-8"))
     histories = data.get("histories", {})
+    roles = ["main", "weather"]
+    if "composition" in data:
+        roles = ["main", *(role["key"] for role in data["composition"]["members"])]
+        if len(set(roles)) != len(roles) or CLARIFY in roles:
+            raise ValueError("題組角色代號重複或使用保留字")
+        if sum(bool(role.get("weather")) for role in data["composition"]["members"]) > 1:
+            raise ValueError("題組的天氣工具只能由一位角色持有")
     for item in data["questions"]:
-        if item["category"] not in CATEGORIES or item["role"] not in ROLES:
+        if item["category"] not in CATEGORIES or item["role"] not in roles:
             raise ValueError(f"題目 {item['id']} 的類別或角色不正確")
-        if item["expected_route"] not in ROUTES:
-            raise ValueError(f"題目 {item['id']} 的預期路由不正確")
+        if item["expected_target"] not in (*roles, CLARIFY):
+            raise ValueError(f"題目 {item['id']} 的預期角色不正確")
         if item.get("expected_mode") not in (None, *MODES):
             raise ValueError(f"題目 {item['id']} 的預期模式不正確")
         if item.get("history") and item["history"] not in histories:
@@ -654,6 +757,9 @@ def main(argv=None) -> int:
     first = commands.add_parser("first-sentence", help="summarise the first-sentence rule of one run")
     first.add_argument("--results", type=Path, required=True)
     first.add_argument("--output", type=Path, default=EVAL_DIR / "first-sentence.md")
+    routing = commands.add_parser("routing", help="summarise the routing accuracy of one run")
+    routing.add_argument("--results", type=Path, required=True)
+    routing.add_argument("--output", type=Path, default=ROUTING_PATH.parent / "report.md")
     args = parser.parse_args(argv)
 
     if args.command == "run":
@@ -667,6 +773,8 @@ def main(argv=None) -> int:
         output = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
     elif args.command == "first-sentence":
         output = build_first_sentence_report(json.loads(args.results.read_text("utf-8"))) + "\n"
+    elif args.command == "routing":
+        output = build_routing_report(json.loads(args.results.read_text("utf-8"))) + "\n"
     else:
         output = build_report(json.loads(args.baseline.read_text("utf-8")),
                               json.loads(args.candidate.read_text("utf-8"))) + "\n"

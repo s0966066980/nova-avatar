@@ -14,7 +14,7 @@ from uuid import uuid4
 from src.avatars.factory import load_avatar_data
 from src.llm.service import select_session_profile, session_history
 from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
-from src.profiles.routing import RoutingClients, route_question
+from src.profiles.routing import RoutingClients, route_question, weather_member
 from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
 from src.profiles.composition import referenced_media, transition
@@ -23,8 +23,8 @@ from src.profiles.weather import CwaWeather, WeatherQuery
 from src.tts.cosyvoice_runtime import server_identity
 from src.utils.logging import logger
 
-# The plan of a turn the current main role answers itself. It is also the
-# plan a concurrently started main answer assumes before routing decides.
+# The plan of a turn a role without the weather tool keeps. It is also the
+# plan a concurrently started answer of such a role assumes before routing decides.
 ANSWER_CONTEXT = "本輪未取得即時氣象資料，不可提供實際即時天氣數值。"
 
 
@@ -124,12 +124,16 @@ class ConversationRoles:
     def speculative_plan(self):
         """The plan of a turn routing keeps with the current role, adding no facts.
 
-        A main answer started before routing decides uses this plan; a routed
+        An answer started before routing decides uses this plan; a routed
         plan equal to it releases that answer, any other plan replaces it.
         """
-        if self.current_id == self.library["pair"]["main"]:
-            return {"context": ANSWER_CONTEXT}
-        return {"weather": None, "context": ""}
+        if self._holds_weather(self.current_id):
+            return {"weather": None, "context": ""}
+        return {"context": ANSWER_CONTEXT}
+
+    def _holds_weather(self, profile_id):
+        holder = weather_member(self.library)
+        return holder is not None and holder["profile_id"] == profile_id
 
     async def before_generate(self, voice, text, turn_id, generation):
         if not self.enabled:
@@ -158,11 +162,11 @@ class ConversationRoles:
             return {"fixed": "目前無法確認問題的接手方式，請再說一次您的問題。"}
         if not voice._is_current(turn_id, generation):
             return {"cancelled": True}
-        if route["route"] == "clarify":
+        target_id = route["target"]
+        if target_id is None:
             return {"fixed": route.get("clarification") or "請問您想先詢問哪個主題？"}
-        specialist_id = self.library["pair"]["specialist"]
-        target_id = specialist_id if route['route'] == 'specialist' else self.library['pair']['main']
-        if target_id == self.current_id and route['route'] == 'answer':
+        weather = self._holds_weather(target_id)
+        if target_id == self.current_id and not weather:
             return {"context": ANSWER_CONTEXT}
         target = self.profiles[target_id]
         if getattr(voice, 'attachments', None) and voice.attachments.selection:
@@ -175,7 +179,7 @@ class ConversationRoles:
             if not voice._is_current(turn_id, generation):
                 return {'cancelled': True}
         weather_task = None
-        if route['route'] == 'specialist' and target["tools"]["weather"]:
+        if weather:
             if not route.get("county"):
                 return {"fixed": "請問您想查詢哪個縣市的天氣？"}
             town = route.get("town", "")

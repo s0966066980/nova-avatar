@@ -521,7 +521,7 @@ class RetrievalBudgetTests(_SessionCase):
 
 @async_test
 async def test_main_role_answer_route_equals_the_speculative_plan(field):
-    field.router = Mock(return_value={"route": "answer", "context": "訪客想了解服務"})
+    field.router = Mock(return_value={"target": "main", "context": "訪客想了解服務"})
     voice, _ = connect(field)
     roles = voice._role_coordinator
     try:
@@ -536,7 +536,7 @@ async def test_main_role_answer_route_equals_the_speculative_plan(field):
 
 @async_test
 async def test_general_turn_with_real_roles_delivers_the_concurrent_answer_once(field, monkeypatch):
-    field.router = Mock(return_value={"route": "answer", "context": ""})
+    field.router = Mock(return_value={"target": "main", "context": ""})
     voice, events = connect(field)
     llm = Mock(return_value="主角色的回答")
     monkeypatch.setattr("src.server.voice_session.llm_response", llm)
