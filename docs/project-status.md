@@ -1,6 +1,6 @@
 # 目前專案基線
 
-更新日期：2026-10-30
+更新日期：2026-11-02
 
 此文件記錄 Nova Avatar 目前已交付能力、可重現的驗證結果與執行邊界。
 新的工作項目、舊實驗的清理與 release handoff 流程請依
@@ -19,6 +19,7 @@
 | 語音與字幕 | 多 TTS adapter（Edge TTS 為執行預設但僅供開發；BreezyVoice 本機台灣華語已整合）、可靠語意切片（每輪第一個片段可在 8 字以上的子句處提早釋放）、播放提交、字幕顯示窗口；字幕在播放結束或輪次提交後才淡出 |
 | 數字人 | MuseTalk（Supported / Commercial）、Wav2Lip（Research / Non-commercial）、Ultralight、ER-NeRF、TalkingGaussian；MuseTalk 段落連續、待機相位匹配與 4–6 影格回答收尾 settling |
 | 演播場景 | MuseTalk 綠幕數位人於後端色鍵合成至共用背景（圖片、GIF、循環影片），講話中可切換背景；角色與背景可封存／復原 |
+| 角色組合 | 一位主數位人加最多五位啟用中的專門數位人（ADR 0023）；每輪在所有生效成員中路由，任一位可直接交給任一位；成員各自保存交接設定與修訂；預設轉場加個別方向覆寫；控制台交接試算 |
 | 設定與生命週期 | LLM、Avatar、VAD、STT、TTS、Prompt、Rule、回覆模式、知識庫與舞台設定；owned llama-server 正常關閉清理 |
 | 控制台驗證 | 自訂 Prompt 的一鍵真實語音鏈路測試、逐階段延遲與既有 SLO Gate、環境快照、實際播放回覆及本機持久歷史 |
 | 安全與隱私 | generation fence、取消後拒絕 stale output、有界媒體背壓；未啟動錄製時不持久保存原始麥克風音訊 |
@@ -148,13 +149,30 @@ LLM → TTS → Avatar → WebRTC 完整播放，不是模擬器，也不繞過�
 滿時淘汰最舊未播畫格以維持音訊主時鐘，顯示為「視訊背壓丟幀」，不計入
 stale-output Gate；generation fence、取消或提交前檢查丟棄的媒體才算 stale output。
 
+## 角色組合實機驗證（2026-11-02）
+
+主數位人加三位生效成員（天氣助手、兩位以既有設定檔複製的測試成員），MuseTalk＋
+Gemma 4 E2B 全 GPU、Edge TTS，舞台以合成麥克風語音經 ASR 進入。
+
+- 直接交接：天氣→客服、客服→天氣、天氣→交通、交通→主數位人都不經主數位人，播出的是
+  目的角色自己的交接說明；延續追問留在原角色；有覆寫的方向（客服→天氣 0.8 s）用覆寫，
+  其餘用預設 0.6 s。8 題全部符合預期（另一題混合主題被 ASR 在逗號處切成單一主題，
+  不計）。
+- 路由正確率（`.scratch/role-composition/routing-eval/`，五角色、30 題）：27/30，
+  路由 P50 0.24 s；需交接 8/8、成員間直接交接 12/12、延續追問 5/5、**混合主題 2/5**
+  （E2B 直接交給第一個主題，未先確認）。
+- 人物素材：套用時以 `avatar_id` 共用快取，同一素材的成員只解碼一次；三位成員只多讀
+  一份素材。後端常駐顯存 14.3 GiB（含 MuseTalk、Whisper、E2B），每位成員只增加
+  latents 約 2–3 MiB；主記憶體隨不同素材數成長（1080p 素材約 1.2 GiB）。
+- 交接試算以 E2B 回應 0.36–0.50 s，原因可讀。
+
 ## 目前驗證狀態
 
 - 離線專案檢查：passed。它驗證目前設定、品牌／授權必備檔案、核心 Python
   整合依賴與 MuseTalk commercial review profile，且不寫入音訊。
-- 完整 Python suite：1305 passed、3 skipped、83 subtests passed（2026-10-30，工作樹；
+- 完整 Python suite：1463 passed、3 skipped、79 subtests passed（2026-11-02，工作樹；
   另 2 項需要不進版控的本機資產，在工作樹中固定失敗）。
-- Web：210 tests passed；ESLint passed。
+- Web：257 tests passed；ESLint passed。
 - Vite production build：passed。
 - 嘴型連續、待機轉場、settling、字幕生命週期、看板提交、可編輯規則、RAGFlow
   檢索與背景合成均有專用回歸測試。

@@ -7,7 +7,8 @@ import json
 import pytest
 
 from src.config.schema import Config
-from src.profiles.store import ProfileError, ProfileStore, compatible_pair, profile_config
+from src.profiles.composition import MAIN_ANNOUNCEMENTS, incompatibility, live_members
+from src.profiles.store import ProfileError, ProfileStore, profile_config
 from src.llm import service as llm_service
 from types import SimpleNamespace
 
@@ -25,6 +26,10 @@ def profiles(tmp_path, monkeypatch):
     return store, config, store.initialize(config)
 
 
+def _save_profiles(store, data):
+    return store.save_profiles(data["profiles"], expected_revision=data["profiles_revision"])
+
+
 def test_migration_is_once_only_and_excludes_credentials(profiles):
     store, config, data = profiles
     assert data["profiles"][0]["assistant_profile"]["system_prompt"] == "現有接待規則"
@@ -36,40 +41,43 @@ def test_migration_is_once_only_and_excludes_credentials(profiles):
     assert "api_key" not in json.dumps(data)
 
 
-def test_old_libraries_gain_return_announcements_once_without_overwriting_content(profiles):
+def test_old_libraries_gain_a_main_announcement_once_without_overwriting_content(profiles):
     import yaml
     store, config, data = profiles
-    old = deepcopy(data)
-    old['handoff'].pop('return_announcement', None)
-    old['handoff'].pop('return_announcement_en', None)
-    store.path.write_text(yaml.safe_dump(old), encoding='utf8')
+    # A version 1 file saved before return announcements existed.
+    weather = data["composition"]["members"][0]
+    old = {"version": 1, "revision": data["revision"], "enabled": False,
+           "profiles": [dict(p, tools={"weather": p["id"] == "weather"}) for p in data["profiles"]],
+           "pair": {"main": "main", "specialist": "weather"}, "transitions": [],
+           "handoff": {key: weather[key] for key in ("description", "rules", "announcement", "announcement_en")},
+           "weather": {"county": "", "town": ""}}
+    store.path.write_text(yaml.safe_dump(old, allow_unicode=True), encoding='utf8')
     migrated = store.initialize(config)
-    assert migrated['handoff']['return_announcement']
-    assert migrated['handoff']['return_announcement_en']
-    assert migrated['handoff']['announcement'] == old['handoff']['announcement']
+    main = migrated['composition']['main']
+    assert (main['announcement'], main['announcement_en']) == (
+        MAIN_ANNOUNCEMENTS['announcement'], MAIN_ANNOUNCEMENTS['announcement_en'])
+    assert migrated['composition']['members'][0]['announcement'] == old['handoff']['announcement']
     assert migrated['revision'] == old['revision'] + 1
     assert store.initialize(config) == migrated
-    migrated['handoff']['return_announcement'] = '專用返回說明'
-    migrated['handoff']['return_announcement_en'] = 'Custom return message.'
-    saved = store.save(migrated, expected_revision=migrated['revision'])
+    saved = store.save_main({'announcement': '專用返回說明', 'announcement_en': 'Custom return message.'},
+                            expected_revision=main['revision'])
     assert store.initialize(config) == saved
-    assert saved['handoff']['return_announcement'] == '專用返回說明'
+    assert saved['composition']['main']['announcement'] == '專用返回說明'
 
 
 @pytest.mark.parametrize('value', [42, 'x' * 2001])
-def test_invalid_return_announcements_do_not_replace_saved_settings(profiles, value):
+def test_invalid_main_announcements_do_not_replace_saved_settings(profiles, value):
     store, _, data = profiles
     before = store.path.read_bytes()
-    data['handoff']['return_announcement_en'] = value
     with pytest.raises(ProfileError):
-        store.save(data, expected_revision=1)
+        store.save_main({'announcement_en': value}, expected_revision=data['composition']['main']['revision'])
     assert store.path.read_bytes() == before
 
 
 def test_role_identity_is_independent_of_reused_visual_material(profiles):
     store, config, data = profiles
     data["profiles"][1]["avatar_id"] = data["profiles"][0]["avatar_id"]
-    saved = store.save(data, expected_revision=1)
+    saved = _save_profiles(store, data)
     a, b = (profile_config(config, p) for p in saved["profiles"])
     assert a.model.avatar_id == b.model.avatar_id
     assert a.profile_id != b.profile_id
@@ -84,17 +92,19 @@ def test_stale_editor_cannot_overwrite_a_saved_revision(profiles):
     store, _, data = profiles
     stale = deepcopy(data)
     data["profiles"][0]["name"] = "已更新"
-    assert store.save(data, expected_revision=1)["revision"] == 2
+    assert _save_profiles(store, data)["profiles_revision"] == 2
     with pytest.raises(ProfileError, match="其他控制台"):
-        store.save(stale, expected_revision=1)
+        _save_profiles(store, stale)
     assert store.load()["profiles"][0]["name"] == "已更新"
 
 
 def test_site_location_normalizes_common_tai_spelling(profiles):
     store, _, data = profiles
-    data['weather'] = {'county': '台東縣', 'town': '台東市'}
-    saved = store.save(data, expected_revision=1)
-    assert saved['weather'] == {'county': '臺東縣', 'town': '臺東市'}
+    weather = data['composition']['members'][0]
+    saved = store.save_member('weather', {'tools': {'weather': {'enabled': True, 'county': '台東縣', 'town': '台東市'}}},
+                              expected_revision=weather['revision'])
+    assert saved['composition']['members'][0]['tools']['weather'] == {
+        'enabled': True, 'county': '臺東縣', 'town': '臺東市'}
 
 
 @pytest.mark.parametrize("change", [
@@ -102,27 +112,39 @@ def test_site_location_normalizes_common_tai_spelling(profiles):
     lambda d: d["profiles"][0]["llm"].update(base_url="https://user:password@localhost/v1"),
     lambda d: d["profiles"][0]["rag"].update(enabled=True, dataset_ids=[]),
     lambda d: d["profiles"][0].update(id="../outside"),
-    lambda d: d["transitions"].append(
-        {"source": "main", "target": "main", "kind": "effect"}),
-    lambda d: d["transitions"].append(
-        {"source": "main", "target": "weather", "kind": "video"}),
+    lambda d: d["profiles"][1].update(tools={"weather": True}),
 ])
 def test_invalid_save_does_not_damage_current_settings(profiles, change):
     store, _, data = profiles
     before = store.path.read_bytes()
     change(data)
     with pytest.raises(ProfileError):
-        store.save(data, expected_revision=1)
+        _save_profiles(store, data)
     assert store.path.read_bytes() == before
 
 
-def test_different_model_can_be_saved_but_not_activated_as_live_pair(profiles):
+@pytest.mark.parametrize("edge", [
+    {"source": "main", "target": "main", "kind": "effect"},
+    {"source": "main", "target": "weather", "kind": "video"},
+])
+def test_invalid_transition_does_not_damage_current_settings(profiles, edge):
+    store, _, data = profiles
+    before = store.path.read_bytes()
+    with pytest.raises(ProfileError):
+        store.save_transitions({"overrides": [edge]},
+                               expected_revision=data["composition"]["transitions"]["revision"])
+    assert store.path.read_bytes() == before
+
+
+def test_different_model_can_be_saved_but_not_activated_as_live_member(profiles):
     store, config, data = profiles
     data["profiles"][1]["llm"]["model"] = "another-local-model"
-    saved = store.save(data, expected_revision=1)
+    saved = _save_profiles(store, data)
     assert saved["profiles"][1]["llm"]["model"] == "another-local-model"
-    with pytest.raises(ProfileError, match="共用同一 LLM"):
-        compatible_pair(saved, config)
+    assert "即時組合必須共用同一 LLM 服務及模型" in incompatibility(*saved["profiles"][:2])
+    saved["composition"]["enabled"] = True
+    assert saved["composition"]["members"][0]["enabled"]
+    assert live_members(saved) == []
 
 
 @pytest.mark.parametrize("field,value", [("model", "tts/BreezyVoice-other"),
@@ -134,10 +156,9 @@ def test_live_pair_shares_one_breezyvoice_model_and_server(profiles, field, valu
         # Each role may clone its own recording; the server and model are shared.
         profile["tts"].update(type="breezyvoice", ref_file=f"{index:016x}", model="", tts_server="")
     data["profiles"][1]["tts"]["tts_server"] = "http://127.0.0.1:50000"  # the default, spelled out
-    assert compatible_pair(data, config)
+    assert incompatibility(*data["profiles"][:2]) == []
     data["profiles"][1]["tts"][field] = value
-    with pytest.raises(ProfileError, match="同一個 BreezyVoice 模型與服務網址"):
-        compatible_pair(data, config)
+    assert any("同一個 BreezyVoice 模型與服務網址" in reason for reason in incompatibility(*data["profiles"][:2]))
 
 
 def test_return_resumes_only_that_roles_played_history_and_reset_clears_both(profiles, monkeypatch):
@@ -171,7 +192,7 @@ def test_document_scope_and_model_rules_are_per_profile_snapshots(profiles):
     specialist['avatar_id'] = main['avatar_id']
     main['rag'].update(document_scope='selected', document_ids=['c' * 32])
     main['llm'].update(board_max_items=3, reply_mode='streaming', semantic_wait_seconds=2.5)
-    saved = store.save(data, expected_revision=1)
+    saved = _save_profiles(store, data)
     a, b = [profile_config(config, p) for p in saved['profiles']]
     assert a.profile_rag['document_ids'] == ['c' * 32]
     assert b.profile_rag['document_scope'] == 'all'
@@ -196,7 +217,7 @@ def test_bad_document_scope_does_not_replace_saved_library(profiles, change):
     before = store.path.read_bytes()
     data['profiles'][0]['rag'].update(change)
     with pytest.raises(ProfileError):
-        store.save(data, expected_revision=1)
+        _save_profiles(store, data)
     assert store.path.read_bytes() == before
 
 

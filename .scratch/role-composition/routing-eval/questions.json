@@ -1,0 +1,81 @@
+{
+  "description": "Ticket 02 N-way routing set: a five-role evaluation composition (main avatar, weather, customer service, transport, exhibition). Only the main profile's model settings come from the saved library; the four members are eval-only clones with the texts below. Routing only, no answers. Categories: handoff (main to each member and back), direct (every ordered pair of members), followup (an elliptical follow-up stays), mixed (two roles' topics in one turn clarify; a confirmed topic goes to its role).",
+  "answers": false,
+  "composition": {
+    "main": {
+      "description": "介紹公司與服務、一般知識與閒聊；沒有其他角色專長的問題由主數位人回答。",
+      "rules": ""
+    },
+    "members": [
+      {
+        "key": "weather", "name": "天氣助手", "weather": true,
+        "description": "回答臺灣各縣市鄉鎮的目前天氣、溫度與未來預報。",
+        "rules": "當訪客詢問具體天氣、氣溫、下雨機率、天氣預報或天氣相關生活建議時，交給天氣助手。天氣相關追問留在天氣助手。"
+      },
+      {
+        "key": "service", "name": "客服小幫手",
+        "description": "處理會員帳號、訂單狀態、退貨換貨、發票與客訴。",
+        "rules": "訪客詢問會員、點數、訂單、退換貨、發票或客訴時，交給客服小幫手。"
+      },
+      {
+        "key": "traffic", "name": "交通嚮導",
+        "description": "說明到場館的交通路線、捷運公車、停車場與接駁車。",
+        "rules": "訪客詢問怎麼到場館、搭車、停車或接駁車時，交給交通嚮導。"
+      },
+      {
+        "key": "exhibit", "name": "展覽導覽員",
+        "description": "介紹目前展覽內容、展區位置、導覽場次與門票。",
+        "rules": "訪客詢問展覽、展區、導覽時間或門票時，交給展覽導覽員。"
+      }
+    ]
+  },
+  "histories": {
+    "company": [{"role": "user", "content": "介紹一下你們公司。"},
+                {"role": "assistant", "content": "我們提供數位人導覽與客服服務。"}],
+    "prior_weather": [{"role": "user", "content": "明天台北中正區的天氣如何？"},
+                      {"role": "assistant", "content": "明天臺北市中正區多雲時陰，降雨機率六成。"}],
+    "order": [{"role": "user", "content": "我的訂單什麼時候會到？"},
+              {"role": "assistant", "content": "您的訂單已經出貨了。"}],
+    "parking": [{"role": "user", "content": "場館有停車場嗎？"},
+                {"role": "assistant", "content": "有的，地下一樓有停車場。"}],
+    "dinosaur": [{"role": "user", "content": "現在有什麼展覽？"},
+                 {"role": "assistant", "content": "三樓正在展出恐龍特展。"}],
+    "mixed_parking_return": [{"role": "user", "content": "停車場在哪裡？我也想退貨。"},
+                             {"role": "assistant", "content": "您想先問停車，還是退貨？"}],
+    "mixed_weather_service": [{"role": "user", "content": "明天天氣如何？也介紹一下你們的服務。"},
+                              {"role": "assistant", "content": "您想先詢問天氣，還是服務介紹？"}]
+  },
+  "confirmed_context": {"county": "臺北市", "town": "中正區"},
+  "questions": [
+    {"id": "n01", "category": "handoff", "source": "role-topic", "role": "main", "text": "我的訂單什麼時候會到？", "expected_target": "service"},
+    {"id": "n02", "category": "handoff", "source": "role-topic", "role": "main", "text": "從臺北車站要怎麼到你們場館？", "expected_target": "traffic"},
+    {"id": "n03", "category": "handoff", "source": "role-topic", "role": "main", "text": "現在有哪些展覽可以看？", "expected_target": "exhibit"},
+    {"id": "n04", "category": "handoff", "source": "routing-probe", "role": "main", "text": "明天適合帶小孩出門嗎？會不會下雨？", "expected_target": "weather"},
+    {"id": "n05", "category": "handoff", "source": "role-topic", "role": "service", "text": "介紹一下你們公司。", "expected_target": "main"},
+    {"id": "n06", "category": "handoff", "source": "role-topic", "role": "traffic", "text": "臺灣最高的山是哪一座？", "expected_target": "main"},
+    {"id": "n07", "category": "handoff", "source": "prewarm-prompt", "role": "exhibit", "text": "請用一句短句說明如何保持專注。", "expected_target": "main"},
+    {"id": "n08", "category": "handoff", "source": "routing-probe", "role": "weather", "text": "介紹你們的服務", "expected_target": "main"},
+    {"id": "n09", "category": "direct", "source": "role-topic", "role": "weather", "text": "我要退貨，要怎麼辦？", "expected_target": "service"},
+    {"id": "n10", "category": "direct", "source": "role-topic", "role": "weather", "text": "附近有停車場嗎？", "expected_target": "traffic"},
+    {"id": "n11", "category": "direct", "source": "role-topic", "role": "weather", "text": "恐龍展在幾樓？", "expected_target": "exhibit"},
+    {"id": "n12", "category": "direct", "source": "routing-probe", "role": "service", "text": "明天適合去爬山嗎？", "expected_target": "weather"},
+    {"id": "n13", "category": "direct", "source": "role-topic", "role": "service", "text": "接駁車幾點發車？", "expected_target": "traffic"},
+    {"id": "n14", "category": "direct", "source": "role-topic", "role": "service", "text": "今天的導覽場次是幾點？", "expected_target": "exhibit"},
+    {"id": "n15", "category": "direct", "source": "role-topic", "role": "traffic", "text": "明天臺北市會下雨嗎？", "expected_target": "weather"},
+    {"id": "n16", "category": "direct", "source": "role-topic", "role": "traffic", "text": "我的會員點數要怎麼查？", "expected_target": "service"},
+    {"id": "n17", "category": "direct", "source": "role-topic", "role": "traffic", "text": "展覽門票多少錢？", "expected_target": "exhibit"},
+    {"id": "n18", "category": "direct", "source": "role-topic", "role": "exhibit", "text": "這週末天氣好嗎？要不要帶傘？", "expected_target": "weather"},
+    {"id": "n19", "category": "direct", "source": "role-topic", "role": "exhibit", "text": "發票可以改成公司統編嗎？", "expected_target": "service"},
+    {"id": "n20", "category": "direct", "source": "role-topic", "role": "exhibit", "text": "搭捷運要在哪一站下車？", "expected_target": "traffic"},
+    {"id": "n21", "category": "followup", "source": "role-topic", "role": "main", "history": "company", "text": "那有哪些合作夥伴？", "expected_target": "main"},
+    {"id": "n22", "category": "followup", "source": "routing-probe", "role": "weather", "history": "prior_weather", "text": "那週末呢？", "expected_target": "weather"},
+    {"id": "n23", "category": "followup", "source": "role-topic", "role": "service", "history": "order", "text": "那大概還要幾天？", "expected_target": "service"},
+    {"id": "n24", "category": "followup", "source": "role-topic", "role": "traffic", "history": "parking", "text": "那收費怎麼算？", "expected_target": "traffic"},
+    {"id": "n25", "category": "followup", "source": "role-topic", "role": "exhibit", "history": "dinosaur", "text": "那適合小朋友嗎？", "expected_target": "exhibit"},
+    {"id": "n26", "category": "mixed", "source": "role-topic", "role": "main", "text": "我想退貨，順便問停車場在哪裡？", "expected_target": "clarify"},
+    {"id": "n27", "category": "mixed", "source": "routing-probe", "role": "service", "text": "明天會下雨嗎？另外展覽門票多少？", "expected_target": "clarify"},
+    {"id": "n28", "category": "mixed", "source": "role-topic", "role": "traffic", "text": "恐龍展在哪一樓？還有我的訂單到哪了？", "expected_target": "clarify"},
+    {"id": "n29", "category": "mixed", "source": "role-topic", "role": "exhibit", "history": "mixed_parking_return", "text": "先問停車", "expected_target": "traffic"},
+    {"id": "n30", "category": "mixed", "source": "routing-probe", "role": "weather", "history": "mixed_weather_service", "text": "先介紹服務", "expected_target": "main"}
+  ]
+}

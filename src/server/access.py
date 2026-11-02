@@ -135,6 +135,13 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     # Console: avatar profiles
     ("GET", "/api/profiles"): ADMIN,
     ("PUT", "/api/profiles"): ADMIN,
+    ("PUT", "/api/profiles/composition"): ADMIN,
+    ("PUT", "/api/profiles/composition/main"): ADMIN,
+    ("POST", "/api/profiles/composition/members"): ADMIN,
+    ("PUT", "/api/profiles/composition/members/{profile_id}"): ADMIN,
+    ("DELETE", "/api/profiles/composition/members/{profile_id}"): ADMIN,
+    ("PUT", "/api/profiles/composition/transitions"): ADMIN,
+    ("POST", "/api/profiles/composition/dry-run"): ADMIN,
     ("POST", "/api/profiles/apply"): ADMIN,
     ("POST", "/api/profiles/return"): ADMIN,
     ("POST", "/api/profiles/stop"): ADMIN,

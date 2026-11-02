@@ -65,7 +65,7 @@ class IdleGreetingController:
             return
         active, idle, clear = host.greeting_conditions()
         roles = host._role_coordinator
-        content = (roles.profiles[roles.library["pair"]["main"]] if roles is not None
+        content = (roles.profiles[roles.main_id] if roles is not None
                    else (asdict(host.config.greeting), asdict(host.config.llm)))
         settings = (content, host.config.stage.idle_greeting_enabled,
                     host.config.stage.idle_greeting_seconds)

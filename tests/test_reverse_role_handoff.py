@@ -12,13 +12,13 @@ import pytest
 
 from src.llm import service
 from src.profiles.routing import route_question
-from tests.test_role_coordinator import async_test, connect, field, wait_until  # noqa: F401
+from tests.test_role_coordinator import async_test, connect, field, route_to, wait_until  # noqa: F401
 
 
 def use_weather(voice):
     roles = voice._role_coordinator
-    roles._bind(voice, roles.library['pair']['specialist'])
-    roles.current_id = roles.library['pair']['specialist']
+    roles._bind(voice, 'weather')
+    roles.current_id = 'weather'
     return roles
 
 
@@ -37,7 +37,7 @@ async def play_announcement(voice):
 @async_test
 async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
         field, monkeypatch, presenter, locale, input_source):
-    field.router = Mock(return_value={'route': 'answer', 'context': '訪客想了解服務'})
+    field.router = Mock(return_value=route_to('main', context='訪客想了解服務'))
     voice, events = connect(field, 7, presenter)
     other, _ = connect(field, 8, 'stage' if presenter == 'console' else 'console')
     voice._conversation['locale'] = locale
@@ -47,8 +47,8 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
     roles = use_weather(voice)
     service.prepare_spoken_history('之前的天氣問題', voice.avatar, 'prior-weather')
     service.commit_session_history(7, 'prior-weather', assistant_text='天氣角色自己的記憶', terminal_reason='completed')
-    roles.library['handoff'].update(return_announcement='請主數位人接續為您介紹。',
-                                    return_announcement_en='Our main avatar will introduce our services.')
+    roles.library['composition']['main'].update(announcement='請主數位人接續為您介紹。',
+                                                announcement_en='Our main avatar will introduce our services.')
     other._turn_id = 'other-conversation'
     other_generation = other._generation
     voice._conversation['voice_en_us'] = 'en-US-JennyNeural'
@@ -68,7 +68,7 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
             await voice._generate_turn(question, source_turn, voice._generation, input_source='voice')
         assert roles.phase == 'announcement'
         assert roles.current_id == 'weather'
-        announcement = roles.library['handoff']['return_announcement_en' if locale == 'en-US' else 'return_announcement']
+        announcement = roles.library['composition']['main']['announcement_en' if locale == 'en-US' else 'announcement']
         assert voice.avatar.messages[-1][0] == announcement
         # The weather role's answer generated beside routing (ADR 0022) is discarded.
         source_calls = llm.call_count
@@ -101,8 +101,8 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
         assert llm.call_count == source_calls + 1
         # A new weather question can still hand off in the forward direction.
         field.router.reset_mock()
-        roles.router = Mock(return_value={'route': 'specialist', 'county': '臺南市', 'town': '安平區',
-            'kind': 'forecast', 'start_date': '2026-10-29', 'end_date': '2026-10-29'})
+        roles.router = Mock(return_value=route_to('weather', county='臺南市', town='安平區',
+            kind='forecast', start_date='2026-10-29', end_date='2026-10-29'))
         async def weather(_query):
             return {'status': 'available', 'source': 'CWA', 'series': {}}
         roles.weather.query = weather
@@ -118,7 +118,7 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
 @pytest.mark.parametrize('failure', ['interrupt', 'playback_failure', 'transition_failure'])
 @async_test
 async def test_cancelled_or_failed_reverse_handoff_keeps_weather_role(field, monkeypatch, failure):
-    field.router = Mock(return_value={'route': 'answer', 'context': ''})
+    field.router = Mock(return_value=route_to('main'))
     voice, events = connect(field)
     roles = use_weather(voice)
     llm = Mock(return_value='must not be delivered')
@@ -159,8 +159,8 @@ async def test_cancelled_or_failed_reverse_handoff_keeps_weather_role(field, mon
 @pytest.mark.parametrize('question',['明天台北會下雨嗎？', '明天適合爬山嗎？', '那週末呢？'])
 @async_test
 async def test_weather_followups_stay_with_specialist(field, question):
-    field.router = Mock(return_value={'route': 'specialist', 'county': '臺北市', 'town': '',
-        'kind': 'forecast', 'start_date': '2026-10-29', 'end_date': '2026-10-30'})
+    field.router = Mock(return_value=route_to('weather', county='臺北市', town='',
+        kind='forecast', start_date='2026-10-29', end_date='2026-10-30'))
     weather = {'status': 'available', 'source': 'CWA', 'series': {}}
     async def query(_):
         return weather
@@ -181,8 +181,8 @@ async def test_weather_followups_stay_with_specialist(field, question):
 
 @async_test
 async def test_mixed_question_clarifies_then_can_hand_back_the_nonweather_topic(field):
-    field.router = Mock(side_effect=[{'route': 'clarify', 'clarification': '您想先問天氣，還是服務介紹？'},
-                                     {'route': 'answer', 'context': '先介紹服務'}])
+    field.router = Mock(side_effect=[route_to(None, clarification='您想先問天氣，還是服務介紹？'),
+                                     route_to('main', context='先介紹服務')])
     voice, _ = connect(field)
     roles = use_weather(voice)
     try:
@@ -202,7 +202,7 @@ async def test_mixed_question_clarifies_then_can_hand_back_the_nonweather_topic(
 @async_test
 async def test_reverse_handoff_checks_main_attachment_capability_before_announcing(field, monkeypatch):
     from tests.test_pc_conversations import picture
-    field.router = Mock(return_value={'route': 'answer'})
+    field.router = Mock(return_value=route_to('main'))
     voice, _ = connect(field)
     roles = use_weather(voice)
     item = voice.attachments.add_batch([('question.png', picture())], 0)[0]
@@ -220,7 +220,7 @@ async def test_reverse_handoff_checks_main_attachment_capability_before_announci
 
 
 def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
-    result = {'route': 'answer', 'county': '臺北市', 'town': '中正區'}
+    result = {'target': 'main', 'county': '臺北市', 'town': '中正區'}
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     create = Mock(return_value=response)
     class Client:
@@ -228,7 +228,7 @@ def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
         def close(self): pass
     routed = route_question(field.state.config, field.library, 'weather',
         '比較台北和高雄的公司服務', [], {}, client_factory=Client)
-    assert routed['route'] == 'answer'
+    assert routed['target'] == 'main'
     assert routed['county'] == routed['town'] == ''
     prompt = create.call_args.kwargs['messages'][0]['content']
     assert '不能自動反向交接' not in prompt
@@ -239,7 +239,7 @@ def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
 async def test_a_new_question_supersedes_continuation_waiting_for_attachment_validation(field, monkeypatch):
     from threading import Event
     from tests.test_pc_conversations import picture
-    field.router = Mock(return_value={'route': 'answer'})
+    field.router = Mock(return_value=route_to('main'))
     voice, _ = connect(field)
     roles = voice._role_coordinator
     roles.continuations[7] = {'id': 'old-handoff', 'target_profile_id': 'main',
@@ -277,8 +277,8 @@ async def test_stale_handoff_failure_cannot_cancel_a_new_forward_handoff(field, 
     from threading import Event
     from unittest.mock import AsyncMock
     from tests.test_pc_conversations import picture
-    field.router = Mock(return_value={'route': 'specialist', 'county': '臺北市', 'town': '',
-        'kind': 'forecast', 'start_date': '2026-10-29', 'end_date': '2026-10-29'})
+    field.router = Mock(return_value=route_to('weather', county='臺北市', town='',
+        kind='forecast', start_date='2026-10-29', end_date='2026-10-29'))
     field.weather.query = AsyncMock(return_value={'status': 'available', 'source': 'CWA', 'series': {}})
     voice, _ = connect(field)
     roles = voice._role_coordinator

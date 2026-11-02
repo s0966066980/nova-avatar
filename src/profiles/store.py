@@ -8,9 +8,10 @@ from copy import deepcopy
 from dataclasses import asdict, fields
 import os
 from pathlib import Path
-import re
+import shutil
 import tempfile
 from threading import RLock
+import time
 from urllib.parse import urlsplit
 
 import yaml
@@ -20,21 +21,26 @@ from src.greetings.content import validate_content
 from src.llm.endpoints import (EndpointError, active_endpoint_name, apply_endpoint,
                                configured_endpoints, endpoint_for_url)
 from src.llm.rules import rules_from_config, validate_rules
+from src.profiles.composition import (
+    HANDOFF_FIELDS, bump_revisions, canonical, incompatibility, new_member, profile_ids, validate_composition,
+)
+from src.profiles.validation import ProfileError
+from src.profiles.validation import identifier as _identifier, obj as _object, revision as _revision, text as _text
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
-from src.tts.cosyvoice_runtime import server_identity
 from src.tts.voice_library import (
     REFERENCE_AUDIO_ENGINES, TTS_ENGINES, VoiceLibraryError, check_model, check_reference, check_tts_server,
     drop_stale_transcript, migrate_tts_values, voice_transcript,
 )
 from src.utils.logging import logger
 
-_ID = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}")
+__all__ = ["ProfileError", "ProfileStore", "profile_config", "validate_library", "validate_profile"]
+
 LLM_FIELDS = ("endpoint", "model", "max_tokens", "response_max_chars")
 # Profiles saved before the endpoint allowlist stored a URL instead of a name.
 LEGACY_LLM_FIELDS = ("provider", "base_url")
 LLM_PLAYBACK_DEFAULTS = {"board_max_items": 8, "reply_mode": "legacy", "semantic_wait_seconds": 0.5}
-EFFECTS = ("fade", "slide_left", "slide_right", "zoom")
+_MEMBER_INPUT = {"profile_id", "revision", "enabled", "tools", *HANDOFF_FIELDS}
 
 
 def _playback_settings(config):
@@ -43,34 +49,17 @@ def _playback_settings(config):
                 semantic_wait_seconds=config.reply_streaming.semantic_wait_seconds)
 
 
-RETURN_ANNOUNCEMENTS = {
-    "return_announcement": "接下來請主數位人接續回答您的問題。",
-    "return_announcement_en": "Our main avatar will help with your question next.",
-}
-
-
-class ProfileError(ValueError):
-    def __init__(self, message: str, status: int = 400):
-        super().__init__(message)
-        self.status = status
-
-
-def _text(value, label, limit=12000, *, empty=True):
-    if not isinstance(value, str) or len(value) > limit or (not empty and not value.strip()):
-        raise ProfileError(f"{label} 格式或長度不正確")
-    return value.strip()
-
-
-def _identifier(value, label="角色識別碼"):
-    if not isinstance(value, str) or not _ID.fullmatch(value):
-        raise ProfileError(f"{label} 不正確")
-    return value
-
-
-def _object(value, allowed, label):
-    if not isinstance(value, dict) or set(value) - set(allowed):
-        raise ProfileError(f"{label} 含未知欄位或格式不正確")
-    return value
+def _expect(expected, actual, scope, message, *, current=None, profile_id=None):
+    """Refuse a save whose ``expected`` revision is not the stored one."""
+    if isinstance(expected, bool) or not isinstance(expected, int):
+        raise ProfileError("請附上修訂版本", 400, field="expected_revision")
+    if expected != actual:
+        conflict = {"scope": scope, "revision": actual}
+        if profile_id is not None:
+            conflict["profile_id"] = profile_id
+        if current is not None:
+            conflict["current"] = deepcopy(current)
+        raise ProfileError(message, 409, conflict=conflict)
 
 
 def _endpoint(value):
@@ -132,7 +121,10 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
     """Normalize a profile; ``require_endpoint`` also demands a listed endpoint name and
     ``require_voice`` a transcribed reference recording for BreezyVoice."""
     allowed = {"id", "name", "engine", "avatar_id", "assistant_profile", "llm",
-               "tts", "rag", "reply_rules", "tools", "greeting"}
+               "tts", "rag", "reply_rules", "greeting"}
+    if isinstance(value, dict) and "tools" in value:
+        # Tools belong to one composition member (ADR 0023), never to a profile.
+        raise ProfileError("工具改在「角色組合與交接」指定給一位成員，數位人設定檔不再包含工具", field="tools")
     value = _object(value, allowed, "角色設定檔")
     pid = _identifier(value.get("id"))
     name = _text(value.get("name"), "角色名稱", 80, empty=False)
@@ -199,83 +191,40 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
         rules = validate_rules(raw_rules, revision=raw_rules.get("revision", 1))
     except ValueError as exc:
         raise ProfileError(str(exc)) from exc
-    tools = _object(value.get("tools", {"weather": False}), {"weather"}, "角色工具")
-    if not isinstance(tools.get("weather"), bool):
-        raise ProfileError("天氣工具啟用狀態不正確")
     try:
         greeting = validate_content(value.get("greeting"))
     except ValueError as exc:
         raise ProfileError(str(exc)) from exc
     return {"id": pid, "name": name, "engine": engine, "avatar_id": avatar_id,
             "assistant_profile": identity, "llm": llm, "tts": tts,
-            "rag": rag, "reply_rules": rules,
-            "tools": dict(tools), "greeting": greeting}
+            "rag": rag, "reply_rules": rules, "greeting": greeting}
 
 
 def _require_reference(tts: dict, name: str) -> None:
     """BreezyVoice clones a library recording and needs what it says; none is chosen for the admin."""
     if not tts["ref_file"]:
-        raise ProfileError(f"角色「{name}」使用 BreezyVoice，請在聲音與工具選擇有逐字稿的參考音檔")
+        raise ProfileError(f"角色「{name}」使用 BreezyVoice，請在「聲音」選擇有逐字稿的參考音檔")
     if not voice_transcript(tts["ref_file"]):
         raise ProfileError(f"角色「{name}」的參考音檔沒有逐字稿，請改選有逐字稿的參考音檔或重新上傳並填寫逐字稿")
 
 
 def validate_library(value: dict, endpoints=None, *, require_endpoint=False, require_voice=False) -> dict:
-    _object(value, {"version", "revision", "enabled", "profiles", "pair", "transitions",
-                    "handoff", "weather", "migrated"}, "角色設定")
-    if value.get("version") != 1 or not isinstance(value.get("enabled"), bool):
-        raise ProfileError("角色設定版本或啟用狀態不正確")
+    """Normalize a version 2 library; a version 1 library is migrated first."""
+    value = canonical(value)
+    _object(value, {"version", "revision", "profiles_revision", "profiles", "composition"}, "角色設定")
+    if value.get("version") != 2:
+        raise ProfileError("角色設定版本不正確")
     profiles = value.get("profiles")
-    if not isinstance(profiles, list) or not 2 <= len(profiles) <= 30:
-        raise ProfileError("請保存 2–30 份角色設定檔")
+    if not isinstance(profiles, list) or not 1 <= len(profiles) <= 30:
+        raise ProfileError("請保存 1–30 份角色設定檔")
     normalized = [validate_profile(p, endpoints, require_endpoint=require_endpoint, require_voice=require_voice)
                   for p in profiles]
-    ids = {p["id"] for p in normalized}
-    if len(ids) != len(normalized):
+    names = {p["id"]: p["name"] for p in normalized}
+    if len(names) != len(normalized):
         raise ProfileError("角色識別碼不可重複")
-    pair = _object(value.get("pair"), {"main", "specialist"}, "角色組合")
-    if pair.get("main") not in ids or pair.get("specialist") not in ids or pair["main"] == pair["specialist"]:
-        raise ProfileError("請選擇兩份不同的主角色與專門角色設定檔")
-    transitions = value.get("transitions")
-    if not isinstance(transitions, list) or len(transitions) > 200:
-        raise ProfileError("轉場設定格式不正確")
-    seen, edges = set(), []
-    for edge in transitions:
-        _object(edge, {"source", "target", "kind", "effect", "duration", "asset_id"}, "角色轉場")
-        source, target = edge.get("source"), edge.get("target")
-        if source not in ids or target not in ids or source == target or (source, target) in seen:
-            raise ProfileError("轉場來源、目的或重複設定不正確")
-        seen.add((source, target))
-        kind, effect = edge.get("kind", "effect"), edge.get("effect", "fade")
-        duration = edge.get("duration", 0.6)
-        if kind not in {"effect", "video"} or effect not in EFFECTS:
-            raise ProfileError("轉場類型或特效不正確")
-        if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not .2 <= duration <= 2:
-            raise ProfileError("特效時長必須介於 0.2–2 秒")
-        asset = edge.get("asset_id", "")
-        if asset:
-            _identifier(asset, "轉場影片識別碼")
-        if kind == "video" and not asset:
-            raise ProfileError("請選擇轉場影片")
-        edges.append(dict(source=source, target=target, kind=kind, effect=effect,
-                          duration=float(duration), asset_id=asset))
-    handoff = _object(value.get("handoff"), {"description", "rules", "announcement", "announcement_en", *RETURN_ANNOUNCEMENTS}, "角色交接")
-    announcement_en = _text(handoff.get("announcement_en", ""), "英文交接說明", 2000)
-    returns = {key: _text(handoff.get(key, default), "返回交接說明", 2000)
-               for key, default in RETURN_ANNOUNCEMENTS.items()}
-    handoff = {key: _text(handoff.get(key), key, 12000 if key == "rules" else 2000, empty=False)
-               for key in ("description", "rules", "announcement")}
-    handoff["announcement_en"] = announcement_en
-    handoff.update(returns)
-    weather = _object(value.get("weather"), {"county", "town"}, "天氣地點")
-    weather = {key: _text(weather.get(key, ""), key, 80) for key in ("county", "town")}
-    weather = {key: value.replace("台", "臺") for key, value in weather.items()}
-    revision = value.get("revision")
-    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
-        raise ProfileError("設定版本不正確")
-    return dict(version=1, revision=revision, enabled=value["enabled"],
-                profiles=normalized, pair=dict(pair), transitions=edges, handoff=handoff,
-                weather=weather, migrated=True)
+    return dict(version=2, revision=_revision(value.get("revision")),
+                profiles_revision=_revision(value.get("profiles_revision"), "設定檔版本"),
+                profiles=normalized, composition=validate_composition(value.get("composition"), names))
 
 
 def _migrate_voice_settings(raw) -> bool:
@@ -295,6 +244,12 @@ def _migrate_voice_settings(raw) -> bool:
 
 
 class ProfileStore:
+    """The role library file: profiles and the 當次角色組合 (version 2).
+
+    Every write increases ``revision``; each save checks only the revision of
+    the scope it changes.
+    """
+
     def __init__(self, path: Path, endpoints=None):
         self.path = Path(path)
         self._lock = RLock()
@@ -318,6 +273,25 @@ class ProfileStore:
         except yaml.YAMLError as exc:
             raise ProfileError("角色設定 YAML 無法解析") from exc
 
+    def _stored(self) -> tuple[dict, dict]:
+        """The stored library as written and validated; a version 1 file is backed up first."""
+        raw = self._read_raw()
+        if isinstance(raw, dict) and raw.get("version") == 1:
+            self._backup_version_1()
+        stored = canonical(raw)
+        return stored, validate_library(deepcopy(stored), self._endpoints())
+
+    def _backup_version_1(self) -> Path:
+        stamp = time.strftime("%Y%m%dT%H%M%S")
+        backup = self.path.with_name(f"{self.path.name}.v1-{stamp}.bak")
+        number = 1
+        while backup.exists():
+            backup = self.path.with_name(f"{self.path.name}.v1-{stamp}-{number}.bak")
+            number += 1
+        shutil.copy2(self.path, backup)
+        logger.info("角色設定轉換為角色組合（版本 2），原檔備份於 %s", backup)
+        return backup
+
     def initialize(self, config, *, defaults_path: Path | None = None) -> dict:
         """Migrate missing settings once, preserving every explicit role choice."""
         with self._lock:
@@ -325,18 +299,21 @@ class ProfileStore:
                 self.endpoints = lambda: configured_endpoints(config.llm)
             if self.path.exists() or self.path.is_symlink():
                 raw = self._read_raw()
+                upgrade = isinstance(raw, dict) and raw.get("version") == 1
+                if upgrade:
+                    self._backup_version_1()
+                raw = canonical(raw)
                 # Voice migration decodes and hashes audio: done once here and
                 # saved as is, even while a legacy endpoint keeps the rest unsaved.
-                if _migrate_voice_settings(raw):
+                if _migrate_voice_settings(raw) or upgrade:
                     self._write(raw)
                 library = validate_library(deepcopy(raw), self._endpoints())
-                changed = any(key not in raw['handoff'] for key in RETURN_ANNOUNCEMENTS)
                 legacy = [p for p, original in zip(library["profiles"], raw["profiles"])
                           if "endpoint" not in original["llm"]]
                 # An unlisted legacy URL stays on disk until an admin picks an
                 # endpoint; applying that role is refused meanwhile.
                 unresolved = any(not p["llm"]["endpoint"] for p in legacy)
-                changed = changed or bool(legacy)
+                changed = bool(legacy)
                 for profile, original in zip(library["profiles"], raw["profiles"]):
                     for key, value in _playback_settings(config).items():
                         if key not in original["llm"]:
@@ -344,6 +321,7 @@ class ProfileStore:
                             changed = True
                 if changed and not unresolved:
                     library["revision"] += 1
+                    library["profiles_revision"] += 1
                     self._write(library)
                 return library
             defaults_path = defaults_path or Path(__file__).resolve().parents[2] / "config/avatar_profiles.defaults.yaml"
@@ -361,22 +339,189 @@ class ProfileStore:
                               engine="musetalk", avatar_id=defaults["specialist"]["avatar_id"],
                               assistant_profile=defaults["specialist"]["assistant_profile"],
                               rag={"enabled": False, "dataset_ids": []}, tools={"weather": True})
-            library = validate_library(dict(version=1, revision=1, enabled=False, migrated=True,
+            # The defaults keep the version 1 shape; migrating them seeds the composition.
+            seed = canonical(dict(version=1, revision=1, enabled=False,
                 profiles=[main, specialist], pair={"main": "main", "specialist": "weather"},
-                transitions=[], handoff=defaults["handoff"], weather={"county": "", "town": ""}),
-                self._endpoints(), require_endpoint=True)
+                transitions=[], handoff=defaults["handoff"], weather={"county": "", "town": ""}))
+            seed.update(revision=1, profiles_revision=1)
+            library = validate_library(seed, self._endpoints(), require_endpoint=True)
             self._write(library)
-            return deepcopy(library)
+            return library
 
-    def save(self, value: dict, *, expected_revision: int) -> dict:
-        normalized = validate_library(value, self._endpoints(), require_endpoint=True, require_voice=True)
+    def _commit(self, current: dict, library: dict, renamed: dict | None = None) -> dict:
+        """Write a whole validated ``library`` over ``current`` and return it."""
+        library["composition"] = bump_revisions(current["composition"], library["composition"], renamed)
+        library["revision"] = current["revision"] + 1
+        library["profiles_revision"] = current["profiles_revision"] + (library["profiles"] != current["profiles"])
+        self._write(library)
+        return library
+
+    def save_profiles(self, profiles: list, *, expected_revision: int) -> dict:
+        """Save the profile list; checks ``profiles_revision`` only.
+
+        A profile in the composition cannot be removed; transition overrides
+        of a removed profile are dropped.
+        """
+        if not isinstance(profiles, list):
+            raise ProfileError("數位人設定檔格式不正確")
         with self._lock:
-            current = self.load()
-            if type(expected_revision) is not int or current["revision"] != expected_revision:
-                raise ProfileError("設定已被其他控制台修改，請重新載入", 409)
-            normalized["revision"] = current["revision"] + 1
-            self._write(normalized)
-        return deepcopy(normalized)
+            _, current = self._stored()
+            _expect(expected_revision, current["profiles_revision"], "profiles",
+                    "數位人設定檔已被其他控制台修改，請重新載入")
+            ids = {p.get("id") for p in profiles if isinstance(p, dict)}
+            names = {p["id"]: p["name"] for p in current["profiles"]}
+            missing = sorted(profile_ids(current) - ids)
+            if missing:
+                raise ProfileError(f"「{'、'.join(names[pid] for pid in missing)}」在當次角色組合中，"
+                                   "請先移出組合或更換主數位人再刪除", 409, field="profiles")
+            composition = deepcopy(current["composition"])
+            transitions = composition["transitions"]
+            transitions["overrides"] = [e for e in transitions["overrides"]
+                                        if e["source"] in ids and e["target"] in ids]
+            candidate = dict(version=2, revision=current["revision"],
+                             profiles_revision=current["profiles_revision"],
+                             profiles=profiles, composition=composition)
+            library = validate_library(candidate, self._endpoints(), require_endpoint=True, require_voice=True)
+            return self._commit(current, library)
+
+    def _update_composition(self, change, renamed: dict | None = None) -> dict:
+        """Apply ``change(library) -> composition``; profiles stay byte for byte."""
+        with self._lock:
+            stored, current = self._stored()
+            names = {p["id"]: p["name"] for p in current["profiles"]}
+            composition = validate_composition(change(current), names)
+            composition = bump_revisions(current["composition"], composition, renamed)
+            stored.update(composition=composition, revision=current["revision"] + 1)
+            self._write(stored)
+            return dict(current, composition=composition, revision=stored["revision"])
+
+    def update_composition(self, *, expected_revision: int, main=None, enabled=None,
+                           confirm_disable=False) -> tuple[dict, list[str]]:
+        """Change the main avatar and/or the handoff switch; checks the composition revision.
+
+        Enabled members incompatible with a new main avatar are refused unless
+        ``confirm_disable`` is true, which disables them; returns their ids.
+        """
+        disabled: list[str] = []
+
+        def change(library):
+            composition = deepcopy(library["composition"])
+            _expect(expected_revision, composition["revision"], "composition",
+                    "角色組合已被其他控制台修改，請重新載入", current=library["composition"])
+            if enabled is not None:
+                if not isinstance(enabled, bool):
+                    raise ProfileError("角色交接啟用狀態不正確", field="enabled")
+                composition["enabled"] = enabled
+            if main is not None and main != composition["main"]["profile_id"]:
+                profiles = {p["id"]: p for p in library["profiles"]}
+                if main not in profiles:
+                    raise ProfileError("找不到這份數位人設定檔", 404, field="main")
+                if any(m["profile_id"] == main for m in composition["members"]):
+                    raise ProfileError(f"「{profiles[main]['name']}」目前是專門數位人，請先移出角色組合再設為主數位人",
+                                       409, field="main")
+                broken = [m for m in composition["members"]
+                          if m["enabled"] and incompatibility(profiles[main], profiles[m["profile_id"]])]
+                if broken and confirm_disable is not True:
+                    names = "、".join(profiles[m["profile_id"]]["name"] for m in broken)
+                    raise ProfileError(f"更換主數位人後「{names}」不相容，確認後會一併停用", 409, field="main",
+                                       disable_required=[m["profile_id"] for m in broken])
+                for member in broken:
+                    member["enabled"] = False
+                    disabled.append(member["profile_id"])
+                composition["main"]["profile_id"] = main
+            return composition
+
+        return self._update_composition(change), disabled
+
+    def save_main(self, value: dict, *, expected_revision: int) -> dict:
+        """Save the main avatar's handoff fields; checks only its revision."""
+        def change(library):
+            composition = deepcopy(library["composition"])
+            main = composition["main"]
+            fields_ = _object(value, {"profile_id", "revision", *HANDOFF_FIELDS}, "主數位人")
+            if fields_.get("profile_id", main["profile_id"]) != main["profile_id"]:
+                raise ProfileError("主數位人已更換，請重新載入", 409, conflict={
+                    "scope": "composition", "revision": composition["revision"], "current": library["composition"]})
+            _expect(expected_revision, main["revision"], "main",
+                    "主數位人的交接設定已被其他控制台修改，請重新載入；其他成員不受影響",
+                    current=library["composition"]["main"], profile_id=main["profile_id"])
+            main.update({key: fields_[key] for key in HANDOFF_FIELDS if key in fields_})
+            return composition
+        return self._update_composition(change)
+
+    def add_member(self, value: dict, *, expected_revision: int) -> dict:
+        """Add a specialist (disabled unless ``enabled``); checks the composition revision."""
+        def change(library):
+            composition = deepcopy(library["composition"])
+            _expect(expected_revision, composition["revision"], "composition",
+                    "角色組合已被其他控制台修改，請重新載入", current=library["composition"])
+            fields_ = _object(value, _MEMBER_INPUT, "專門數位人")
+            member = {**new_member(fields_.get("profile_id")),
+                      **{key: item for key, item in fields_.items() if key != "revision"}}
+            _require_compatible(library, member)
+            composition["members"].append(member)
+            return composition
+        return self._update_composition(change)
+
+    def save_member(self, profile_id: str, value: dict, *, expected_revision: int,
+                    expected_composition_revision: int | None = None) -> dict:
+        """Save one specialist; checks only its revision.
+
+        Omitted fields keep their values. Changing ``enabled`` or pointing the
+        member at another ``profile_id`` also checks the composition revision.
+        """
+        renamed: dict[str, str] = {}
+
+        def change(library):
+            composition = deepcopy(library["composition"])
+            members = composition["members"]
+            index = next((i for i, m in enumerate(members) if m["profile_id"] == profile_id), None)
+            if index is None:
+                raise ProfileError("這位專門數位人已不在角色組合中，請重新載入", 409, conflict={
+                    "scope": "composition", "revision": composition["revision"], "current": library["composition"]})
+            stored = members[index]
+            name = next(p["name"] for p in library["profiles"] if p["id"] == profile_id)
+            _expect(expected_revision, stored["revision"], "member",
+                    f"「{name}」已被其他控制台修改，請重新載入這位；其他成員不受影響",
+                    current=library["composition"]["members"][index], profile_id=profile_id)
+            fields_ = _object(value, _MEMBER_INPUT, "專門數位人")
+            member = {**stored, **{key: item for key, item in fields_.items() if key != "revision"}}
+            structural = member["profile_id"] != profile_id or member["enabled"] != stored["enabled"]
+            if structural:
+                _expect(expected_composition_revision, composition["revision"], "composition",
+                        "角色組合已被其他控制台修改，請重新載入", current=library["composition"])
+            if member["profile_id"] != profile_id:
+                renamed[member["profile_id"]] = profile_id
+            if member["enabled"] is True and structural:
+                _require_compatible(library, member)
+            members[index] = member
+            return composition
+        return self._update_composition(change, renamed)
+
+    def remove_member(self, profile_id: str, *, expected_revision: int) -> dict:
+        """Remove a specialist; its profile and transition overrides stay. Checks the composition revision."""
+        def change(library):
+            composition = deepcopy(library["composition"])
+            _expect(expected_revision, composition["revision"], "composition",
+                    "角色組合已被其他控制台修改，請重新載入", current=library["composition"])
+            members = [m for m in composition["members"] if m["profile_id"] != profile_id]
+            if len(members) == len(composition["members"]):
+                raise ProfileError("這位專門數位人已不在角色組合中，請重新載入", 404)
+            composition["members"] = members
+            return composition
+        return self._update_composition(change)
+
+    def save_transitions(self, value: dict, *, expected_revision: int) -> dict:
+        """Save the default transition and the directed overrides; checks only their revision."""
+        def change(library):
+            composition = deepcopy(library["composition"])
+            transitions = composition["transitions"]
+            fields_ = _object(value, {"revision", "default", "overrides"}, "角色轉場")
+            _expect(expected_revision, transitions["revision"], "transitions",
+                    "角色轉場已被其他控制台修改，請重新載入", current=library["composition"]["transitions"])
+            transitions.update({key: fields_[key] for key in ("default", "overrides") if key in fields_})
+            return composition
+        return self._update_composition(change)
 
     def _write(self, value):
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -395,20 +540,16 @@ class ProfileStore:
                 os.unlink(temporary)
 
 
-def compatible_pair(library: dict, base=None) -> tuple[dict, dict]:
+def _require_compatible(library: dict, member: dict) -> None:
+    """An enabled member must share the main avatar's engines and services."""
+    if member.get("enabled") is not True:
+        return
     profiles = {p["id"]: p for p in library["profiles"]}
-    main, specialist = (profiles[library["pair"][key]] for key in ("main", "specialist"))
-    if main["engine"] != "musetalk" or specialist["engine"] != "musetalk":
-        raise ProfileError("首版即時組合需要兩位 MuseTalk 數位人", 409)
-    if any(main["llm"].get(key) != specialist["llm"].get(key) for key in ("endpoint", "model")):
-        raise ProfileError("即時組合必須共用同一 LLM 服務及模型", 409)
-    if main["tts"]["type"] != specialist["tts"]["type"]:
-        raise ProfileError("即時組合需共用語音合成引擎，可分別設定聲線", 409)
-    # Only the main role's BreezyVoice server is started; both roles speak through it.
-    if main["tts"]["type"] == "breezyvoice" and len({
-            server_identity(p["tts"]["tts_server"], p["tts"]["model"]) for p in (main, specialist)}) > 1:
-        raise ProfileError("即時組合的兩位數位人共用一個 BreezyVoice 伺服器，請在「聲音與工具」的"
-                           "「其他 BreezyVoice 設定」選擇同一個 BreezyVoice 模型與服務網址；參考音檔可以不同", 409)
-    if base is not None and main["tts"]["type"] != base.tts.type:
-        raise ProfileError("語音引擎改變後請先在未連線時載入該引擎", 409)
-    return main, specialist
+    profile = profiles.get(member.get("profile_id"))
+    if profile is None:
+        raise ProfileError("找不到這份數位人設定檔", 404, field="profile_id")
+    reasons = incompatibility(profiles[library["composition"]["main"]["profile_id"]], profile)
+    if reasons:
+        raise ProfileError(f"「{profile['name']}」與主數位人不相容，無法啟用：{'；'.join(reasons)}",
+                           409, field="enabled", reasons=reasons)
+

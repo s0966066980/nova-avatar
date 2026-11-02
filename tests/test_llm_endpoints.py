@@ -133,7 +133,7 @@ def test_store_rejects_profiles_that_do_not_name_a_configured_endpoint(no_rag, t
     before = store.path.read_bytes()
     change(library["profiles"][0]["llm"])
     with pytest.raises(ProfileError):
-        store.save(library, expected_revision=library["revision"])
+        store.save_profiles(library["profiles"], expected_revision=library["profiles_revision"])
     assert store.path.read_bytes() == before
 
 

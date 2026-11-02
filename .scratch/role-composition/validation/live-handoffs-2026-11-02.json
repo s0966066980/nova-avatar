@@ -1,0 +1,143 @@
+[
+ {
+  "question": "你好，請問你們提供哪些服務？",
+  "heard": "你好",
+  "expected": "main",
+  "before": "main",
+  "after": "main",
+  "handoff": false,
+  "source_text": "你好，我已經準備好為你服務了。請問有什麼我可以幫你的嗎？",
+  "answer": "",
+  "transition": null,
+  "seconds": 13.58,
+  "ok": true
+ },
+ {
+  "question": "明天臺北市會下雨嗎？",
+  "heard": "明天台北市會下雨嗎?",
+  "expected": "weather",
+  "before": "main",
+  "after": "weather",
+  "handoff": true,
+  "source_text": "接下來請天氣助手為您說明。",
+  "answer": "\n明天臺北市會下雨，預報為陰天，降雨機率在各時段皆為 10.0%。\n",
+  "transition": {
+   "source_profile_id": "main",
+   "target_profile_id": "weather",
+   "duration_seconds": 0.6
+  },
+  "seconds": 18.09,
+  "ok": true
+ },
+ {
+  "question": "那後天呢？",
+  "heard": "那後天呢?",
+  "expected": "weather",
+  "before": "weather",
+  "after": "weather",
+  "handoff": false,
+  "source_text": "\n後天（11月4日）的臺北市預報是晴天，但下午可能會多雲。\n",
+  "answer": "",
+  "transition": null,
+  "seconds": 14.84,
+  "ok": true
+ },
+ {
+  "question": "我上週買的訂單什麼時候會到？",
+  "heard": "我上周買的訂單什麼時候會到?",
+  "expected": "rc06_service",
+  "before": "weather",
+  "after": "rc06_service",
+  "handoff": true,
+  "source_text": "這部分我請客服小幫手協助您。",
+  "answer": "請提供您的訂單編號，我才能查詢訂單的準確出貨時間。",
+  "transition": {
+   "source_profile_id": "weather",
+   "target_profile_id": "rc06_service",
+   "duration_seconds": 0.6
+  },
+  "seconds": 15.79,
+  "ok": true
+ },
+ {
+  "question": "那如果不滿意可以退貨嗎？",
+  "heard": "那如果不滿意可以退貨嗎?",
+  "expected": "rc06_service",
+  "before": "rc06_service",
+  "after": "rc06_service",
+  "handoff": false,
+  "source_text": "滿意後可以退貨嗎？這取決於商品是否符合退換貨的條件，請您提供訂單資訊我才能為您查詢相關的退換貨政策。",
+  "answer": "",
+  "transition": null,
+  "seconds": 19.07,
+  "ok": true
+ },
+ {
+  "question": "明天臺北市中正區會下雨嗎？",
+  "heard": "明天台北市中正區會下雨嗎?",
+  "expected": "weather",
+  "before": "rc06_service",
+  "after": "weather",
+  "handoff": true,
+  "source_text": "接下來請天氣助手為您說明。",
+  "answer": "\n明天臺北市中正區預報是陰天，降雨機率在各時段皆為 10. 0%。\n",
+  "transition": {
+   "source_profile_id": "rc06_service",
+   "target_profile_id": "weather",
+   "duration_seconds": 0.8
+  },
+  "seconds": 18.76,
+  "ok": true
+ },
+ {
+  "question": "搭捷運要怎麼到你們這裡？",
+  "heard": "大捷運要怎麼到你們這裡?",
+  "expected": "rc06_traffic",
+  "before": "weather",
+  "after": "rc06_traffic",
+  "handoff": true,
+  "source_text": "交通的問題我請交通導覽說明。",
+  "answer": "大捷運到這裡請依照指示牌或導覽系統尋找最近的出口或公車接駁車。",
+  "transition": {
+   "source_profile_id": "weather",
+   "target_profile_id": "rc06_traffic",
+   "duration_seconds": 0.6
+  },
+  "seconds": 17.59,
+  "ok": true
+ },
+ {
+  "question": "我想了解你們公司的介紹",
+  "heard": "我想了解你們公司的介紹。",
+  "expected": "main",
+  "before": "rc06_traffic",
+  "after": "main",
+  "handoff": true,
+  "source_text": "接下來請主數位人接續回答您的問題。",
+  "answer": "我們是為您提供先進的 AI 語音對話服務的助手。我們專注於理解您的問題並提供準確、有幫助的回答。我們非常樂意為您服務。",
+  "transition": {
+   "source_profile_id": "rc06_traffic",
+   "target_profile_id": "main",
+   "duration_seconds": 0.6
+  },
+  "seconds": 22.19,
+  "ok": true
+ },
+ {
+  "question": "我想問明天的天氣，也想查我的訂單",
+  "heard": "我想問明天的天氣",
+  "expected": null,
+  "before": "main",
+  "after": "weather",
+  "handoff": true,
+  "source_text": "接下來請天氣助手為您說明。",
+  "answer": "\n明天臺北市預報是陰天，降雨機率在各時段皆為 10. 0%。\n",
+  "transition": {
+   "source_profile_id": "main",
+   "target_profile_id": "weather",
+   "duration_seconds": 0.6
+  },
+  "seconds": 17.3,
+  "ok": false
+ }
+]
