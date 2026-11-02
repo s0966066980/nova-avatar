@@ -35,7 +35,7 @@ async def library(request, roles):
     saved = await asyncio.to_thread(roles.store.load)
     return web.json_response({"code": 0, "library": saved, "compatibility": compatibility_report(saved),
                               "runtime": roles.snapshot(), "media": roles.media.list(),
-                              "greeting_profile": roles.profiles[roles.library["pair"]["main"]]})
+                              "greeting_profile": roles.profiles[roles.current_id]})
 
 
 def _saved(library, roles, **extra):
@@ -51,7 +51,7 @@ async def save(request, roles):
     # Applied profiles must remain addressable until another composition is applied.
     if roles.enabled:
         ids = {p["id"] for p in profiles}
-        if not ({*roles.library["pair"].values()} | profile_ids(roles.library, enabled_only=True)) <= ids:
+        if not profile_ids(roles.library, enabled_only=True) <= ids:
             raise ProfileError("請先套用其他角色組合，再刪除使用中的設定檔", 409)
     if "library" in body:
         saved = await asyncio.to_thread(roles.store.save, body["library"],

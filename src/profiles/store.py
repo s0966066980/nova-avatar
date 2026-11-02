@@ -22,7 +22,7 @@ from src.llm.endpoints import (EndpointError, active_endpoint_name, apply_endpoi
                                configured_endpoints, endpoint_for_url)
 from src.llm.rules import rules_from_config, validate_rules
 from src.profiles.composition import (
-    HANDOFF_FIELDS, MAIN_ANNOUNCEMENTS, apply_legacy_view, bump_revisions, canonical, incompatibility,
+    HANDOFF_FIELDS, apply_legacy_view, bump_revisions, canonical, incompatibility,
     legacy_pair_view, new_member, profile_ids, validate_composition,
 )
 from src.profiles.validation import ProfileError
@@ -35,8 +35,7 @@ from src.tts.voice_library import (
 )
 from src.utils.logging import logger
 
-__all__ = ["RETURN_ANNOUNCEMENTS", "ProfileError", "ProfileStore", "compatible_pair", "profile_config",
-           "validate_library", "validate_profile"]
+__all__ = ["ProfileError", "ProfileStore", "profile_config", "validate_library", "validate_profile"]
 
 LLM_FIELDS = ("endpoint", "model", "max_tokens", "response_max_chars")
 # Profiles saved before the endpoint allowlist stored a URL instead of a name.
@@ -49,13 +48,6 @@ def _playback_settings(config):
     return dict(board_max_items=config.llm.board.max_items,
                 reply_mode="streaming" if config.reply_streaming.enabled else "legacy",
                 semantic_wait_seconds=config.reply_streaming.semantic_wait_seconds)
-
-
-# Temporary two-role adapter: the runtime's fallback return announcements.
-RETURN_ANNOUNCEMENTS = {
-    "return_announcement": MAIN_ANNOUNCEMENTS["announcement"],
-    "return_announcement_en": MAIN_ANNOUNCEMENTS["announcement_en"],
-}
 
 
 def _expect(expected, actual, scope, message, *, current=None, profile_id=None):
@@ -585,14 +577,3 @@ def _require_compatible(library: dict, member: dict) -> None:
         raise ProfileError(f"「{profile['name']}」與主數位人不相容，無法啟用：{'；'.join(reasons)}",
                            409, field="enabled", reasons=reasons)
 
-
-def compatible_pair(library: dict, base=None) -> tuple[dict, dict]:
-    """Temporary two-role adapter: the view's pair, refused when it cannot run live."""
-    profiles = {p["id"]: p for p in library["profiles"]}
-    main, specialist = (profiles[library["pair"][key]] for key in ("main", "specialist"))
-    reasons = incompatibility(main, specialist)
-    if reasons:
-        raise ProfileError(reasons[0], 409)
-    if base is not None and main["tts"]["type"] != base.tts.type:
-        raise ProfileError("語音引擎改變後請先在未連線時載入該引擎", 409)
-    return main, specialist
