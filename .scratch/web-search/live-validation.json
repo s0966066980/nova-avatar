@@ -1,0 +1,99 @@
+{
+  "model": "gemma-4-E2B_q4_0-it",
+  "planning": [
+    {
+      "question": "你好",
+      "previous": [],
+      "result": {
+        "search": false,
+        "query": "",
+        "reuse": false
+      },
+      "seconds": 0.427
+    },
+    {
+      "question": "什麼是光合作用？",
+      "previous": [],
+      "result": {
+        "search": false,
+        "query": "",
+        "reuse": false
+      },
+      "seconds": 0.172
+    },
+    {
+      "question": "請查台北最新活動",
+      "previous": [],
+      "result": {
+        "search": true,
+        "query": "台北 最新 活動",
+        "reuse": false
+      },
+      "seconds": 0.183
+    },
+    {
+      "question": "What are the latest Python releases?",
+      "previous": [],
+      "result": {
+        "search": true,
+        "query": "Python latest release official",
+        "reuse": false
+      },
+      "seconds": 0.182
+    },
+    {
+      "question": "請摘要這份附件",
+      "previous": [],
+      "result": {
+        "search": false,
+        "query": "",
+        "reuse": false
+      },
+      "seconds": 0.113
+    },
+    {
+      "question": "活動地點在哪裡？",
+      "previous": [
+        "台北 2026年11月 活動"
+      ],
+      "result": {
+        "search": true,
+        "query": "台北 2026年11月 活動 地點",
+        "reuse": true
+      },
+      "seconds": 0.228
+    },
+    {
+      "question": "重新查最新的活動地點",
+      "previous": [
+        "台北 2026年11月 活動"
+      ],
+      "result": {
+        "search": true,
+        "query": "2026年11月 最新活動地點",
+        "reuse": false
+      },
+      "seconds": 0.225
+    },
+    {
+      "question": "台南有哪些最新展覽",
+      "previous": [
+        "台北 2026年11月 活動"
+      ],
+      "result": {
+        "search": true,
+        "query": "台南 最新 展覽",
+        "reuse": false
+      },
+      "seconds": 0.197
+    }
+  ],
+  "search": {
+    "status": "unavailable",
+    "query": "Python latest release official",
+    "sources": [],
+    "fetched_at": "2026-11-03T11:35:36.319453+00:00",
+    "reused": false,
+    "seconds": 0.478
+  }
+}

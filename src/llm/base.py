@@ -371,6 +371,10 @@ class BaseLLM(ABC):
         legacy_splitter = AnswerBoardSplitter()
         is_legacy_markup = False
         spoken_response = ""
+        web_guard = None
+        if getattr(message, 'web_evidence', False):
+            from src.llm.web_reply import WebSpeechGuard
+            web_guard = WebSpeechGuard(resp_chars or DEFAULT_RESPONSE_MAX_CHARS)
         def send_to_avatar(text: str) -> None:
             nonlocal fragment_sequence, spoken_response
             if not text:
@@ -380,10 +384,12 @@ class BaseLLM(ABC):
             ))
             if not text:
                 return
+            if web_guard is not None and not web_guard.accept(text):
+                return
             previous_length = len(spoken_response)
             spoken_response = join_spoken_fragments((spoken_response, text))
             if target_avatar:
-                if identity_policy.enabled:
+                if identity_policy.enabled or web_guard is not None:
                     notify_chunk = getattr(target_avatar, 'notify_llm_chunk', None)
                     if callable(notify_chunk):
                         notify_chunk(spoken_response[previous_length:], {
@@ -429,7 +435,7 @@ class BaseLLM(ABC):
                 send_to_avatar,
                 active=turn_live,
             )
-            if semantic_stream and target_avatar
+            if (semantic_stream and target_avatar) or web_guard is not None
             else None
         )
 
@@ -537,7 +543,7 @@ class BaseLLM(ABC):
                             mark_stage("llm_first_speech")
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
-                        if callable(notify_chunk) and not identity_policy.enabled:
+                        if callable(notify_chunk) and not identity_policy.enabled and web_guard is None:
                             notify_chunk(
                                 spoken,
                                 {
@@ -559,8 +565,13 @@ class BaseLLM(ABC):
                     # model omitted sentence punctuation. Board generation
                     # must not hold an already complete spoken summary.
                     semantic_fragments.flush()
-            
-            if not fenced:
+                if web_guard is not None and web_guard.stopped:
+                    close = getattr(chunks, 'close', None)
+                    if callable(close):
+                        close()
+                    break
+
+            if not fenced and not (web_guard is not None and web_guard.stopped):
                 if is_legacy_markup:
                     leftover, board_payload = legacy_splitter.flush()
                     flush_deltas = [leftover] if leftover else []
@@ -577,7 +588,7 @@ class BaseLLM(ABC):
                             mark_stage("llm_first_speech")
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
-                        if callable(notify_chunk) and not identity_policy.enabled:
+                        if callable(notify_chunk) and not identity_policy.enabled and web_guard is None:
                             notify_chunk(
                                 delta,
                                 {

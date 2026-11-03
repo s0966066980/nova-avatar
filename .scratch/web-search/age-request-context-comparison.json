@@ -1,0 +1,143 @@
+{
+  "at": "2026-11-03T13:53:23.691251+00:00",
+  "engines": [],
+  "searches": [],
+  "turns": [
+    {
+      "policy": "without_current_evidence_hint",
+      "seeded_previous_refusal": true,
+      "question": "周杰倫現在幾歲",
+      "seconds": 2.634,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "f31d635ae3d948bb8967bbd66d1230f2",
+          "status": "partial",
+          "query": "周杰倫出生日期",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/zh-tw/周杰伦",
+              "title": "周杰倫 - 維基百科，自由的百科全書 - zh.wikipedia.org",
+              "snippet": "周杰倫在 臺灣 臺北縣 林口鄉 [註 1] 出生長大，為家中的獨生子 [15][16]。父親周耀中任教於 蘆洲國中，教授 生物；母親葉惠美則是林口國中 美術 老師 [17]。14歲時父母離異，由父親擔任 監護人，年滿18歲後選擇與母親共同生活 [18]。周杰倫曾在台灣 民視新聞台 由 胡婉玲 主持的節目《台灣演義 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://en.wikipedia.org/wiki/Jay_Chou",
+              "title": "Jay Chou - Wikipedia",
+              "snippet": "Jay Chou was born and raised in Linkou, Taipei County, Taiwan. Both his parents were secondary school teachers: his mother, Yeh Hui-mei (葉惠美; Yè Huìměi), who was an art teacher, while his father, Chou Yao-chung (周耀中; Zhōu Yàozhōng), is a biomedical researcher. His mother noticed his sensitivity to music and took him to piano lessons at the age of four. [3] During his ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://baike.baidu.com/item/周杰伦/129156",
+              "title": "周杰伦（华语流行乐男歌手、原创音乐人、影视演员、导演、编剧）_百度百科",
+              "snippet": "周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市，祖籍福建省永春县，华语流行乐男歌手、原创音乐人、影视演员、导演、编剧，毕业于淡江中学。 演艺经历：周杰伦自幼喜爱音乐，后因参加选秀节目而被发掘。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://kknews.cc/zh-tw/entertainment/oe4956o.html",
+              "title": "周杰倫個人簡歷 - 每日頭條",
+              "snippet": "中文名周杰倫外文名Jay Chou別 名周董國 籍中國民 族漢族星 座摩羯座血 型O型身 高175cm出生地台灣省新北市出生日期1979年1月18日職 業歌手、音樂人、製作人、導演、商人畢業院校淡江中學經紀公司杰威爾音樂有限公司代表作品星晴、龍捲風、簡單愛、雙截棍、晴天、以父之名",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://www.jendow.com.tw/wiki/周傑倫",
+              "title": "周杰倫:周杰倫（Jay Chou），1979年1月18日出生於台灣省新北 -百科知識中文網",
+              "snippet": "周杰倫（Jay Chou），1979年1月18日出生於台灣省新北市，中國台灣流行樂男歌手、音樂人、演員、導演、編劇、監製、商人。2000年發行首張個人專輯《Jay [周杰倫製作專輯]》。2001年發行的專輯《范特西 [周杰倫2001年發行專輯]》奠定其融合中西方音樂的風格。2004年獲得世界音樂大獎中國區最暢銷藝人 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T13:53:26.300575+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [],
+      "queued_speech": [
+        "我沒有即時的年齡資料，",
+        "但我可以告訴您周傑倫的出生日期是西元一九七九年一月十八日。",
+        "您可以根據這個日期來計算他目前的年齡。"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "policy": "with_current_evidence_hint",
+      "seeded_previous_refusal": true,
+      "question": "周杰倫現在幾歲",
+      "seconds": 2.487,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "25eaf3c6944a42f2a8a9ea8d9861fcd7",
+          "status": "partial",
+          "query": "周杰倫出生日期",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/zh-tw/周杰伦",
+              "title": "周杰倫 - 維基百科，自由的百科全書 - zh.wikipedia.org",
+              "snippet": "周杰倫在 臺灣 臺北縣 林口鄉 [註 1] 出生長大，為家中的獨生子 [15][16]。父親周耀中任教於 蘆洲國中，教授 生物；母親葉惠美則是林口國中 美術 老師 [17]。14歲時父母離異，由父親擔任 監護人，年滿18歲後選擇與母親共同生活 [18]。周杰倫曾在台灣 民視新聞台 由 胡婉玲 主持的節目《台灣演義 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://baike.baidu.com/item/周杰伦/129156",
+              "title": "周杰伦（华语流行乐男歌手、原创音乐人、影视演员、导演、编剧）_百度百科",
+              "snippet": "周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市，祖籍福建省永春县，华语流行乐男歌手、原创音乐人、影视演员、导演、编剧，毕业于淡江中学。 演艺经历：周杰伦自幼喜爱音乐，后因参加选秀节目而被发掘。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://kknews.cc/zh-tw/entertainment/oe4956o.html",
+              "title": "周杰倫個人簡歷 - 每日頭條",
+              "snippet": "中文名周杰倫外文名Jay Chou別 名周董國 籍中國民 族漢族星 座摩羯座血 型O型身 高175cm出生地台灣省新北市出生日期1979年1月18日職 業歌手、音樂人、製作人、導演、商人畢業院校淡江中學經紀公司杰威爾音樂有限公司代表作品星晴、龍捲風、簡單愛、雙截棍、晴天、以父之名",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.jendow.com.tw/wiki/周傑倫",
+              "title": "周杰倫:周杰倫（Jay Chou），1979年1月18日出生於台灣省新北 -百科知識中文網",
+              "snippet": "周杰倫（Jay Chou），1979年1月18日出生於台灣省新北市，中國台灣流行樂男歌手、音樂人、演員、導演、編劇、監製、商人。2000年發行首張個人專輯《Jay [周杰倫製作專輯]》。2001年發行的專輯《范特西 [周杰倫2001年發行專輯]》奠定其融合中西方音樂的風格。2004年獲得世界音樂大獎中國區最暢銷藝人 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://www.jendow.com.tw/wiki/周杰倫",
+              "title": "周杰倫:周杰倫（Jay Chou），1979年1月18日出生於台灣新北， -百科知識中文網",
+              "snippet": "周杰倫（Jay Chou），1979年1月18日出生於台灣新北，中國台灣流行樂男歌手、音樂人、演員、導演、編劇、監製、企業家等。2000年發行首張個人專輯《Jay》。2001年發行的專輯《范特西》。2002年舉行The One世界巡迴演唱會。2003年登上美國《時代周刊》。2004年獲世界音樂大獎中國區最暢銷藝人獎。2",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T13:53:28.639943+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [],
+      "queued_speech": [
+        "周傑倫現在是四十七歲。",
+        "他的出生日期是西元一九七九年一月十八日。",
+        "我會根據這個日期來計算。"
+      ],
+      "board": [],
+      "errors": []
+    }
+  ]
+}

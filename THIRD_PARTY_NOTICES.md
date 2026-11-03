@@ -230,3 +230,16 @@ Model weights and datasets are not relicensed by Nova Avatar. A usable code
 license does not imply that associated weights, training data, voices, or
 generated assets have the same permissions. Distributors are responsible for
 reviewing the exact artifacts they ship.
+
+## DDGS (public web search)
+
+- Role: optional-at-use public search for role-owned web search, pinned to `ddgs==9.14.4`
+- License: MIT
+- Source: <https://github.com/deedy5/ddgs>
+- Installed package metadata and license remain in the Python distribution.
+- Nova Avatar uses explicitly selected DuckDuckGo and Brave backends. Search queries
+  leave the deployment host; search providers and retrieved websites retain their
+  own terms. The package license does not grant rights over retrieved web content
+  or guarantee availability of search services.
+- Unsloth Studio was consulted as an architectural reference; no AGPL Studio code
+  was copied into this integration.

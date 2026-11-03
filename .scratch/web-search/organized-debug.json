@@ -1,0 +1,83 @@
+{
+  "at": "2026-11-03T14:40:41.056741+00:00",
+  "engines": [],
+  "searches": [],
+  "turns": [
+    {
+      "selection": [
+        {
+          "mode": "context",
+          "items": [
+            {
+              "source_id": "1",
+              "quote": "USB A伴隨了我們二十多年，因為強大的歷史包容性，在舊型週邊與低功耗配件中仍佔有一席之地；然而，它在體積、方向性、以及功率上的硬體極限，已註定無法跟上未來高速"
+            }
+          ]
+        }
+      ],
+      "question": "請上網簡短比較USB-C和USB-A的差別",
+      "seconds": 3.197,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "a5a83d511d33476ebd4cf0191ef2c390",
+          "status": "partial",
+          "query": "USB-C 和 USB-A 差異比較",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://uptogo.com.tw/科技/usb-a和usb-c有什麼不同？/",
+              "title": "USB A和USB-C有什麼不同？從接頭外觀、傳輸速度到充電效能的深度科技解析 - UpToGo",
+              "snippet": "一眼看懂硬體演進：主要 USB 接頭類型外觀與特徵 要搞懂 USB A和USB-C有什麼不同，首先必須從它們的物理形態（外觀）開始認識。 USB 的命名慣例中，後面的字母代表連接器的物理形態與結構，而數字則代表傳輸的速度與功率協議。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://uptogo.com.tw/科技/3c電子/usb周邊/usb-a-跟usb-c差在哪？/",
+              "title": "秒懂傳輸介面：USB a 跟usb c差在哪？從外觀到充電速度完整比較 - UpToGo",
+              "snippet": "前言：為何我們需要了解接頭差異？ 在數位裝置充斥的現代生活中，無論是手機充電、電腦傳輸資料，還是連接外接螢幕，USB 介面幾乎無所不在。然而，當你拿起一條傳輸線時，是否曾困惑於「為什麼這條線充得比較慢？」或是「這個接頭為什麼插不進去？」這些問題的核心，往往在於未能區分 USB ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://zhuanlan.zhihu.com/p/1989290801268793584",
+              "title": "一文读懂所有USB接口：A、B、Type‑C、雷电到底有啥区别？",
+              "snippet": "我们平时是不是会遇到过这种情况： 买了个号称\"高速\"的移动硬盘，拷文件却跟蜗牛一样。 笔记本上有好几个 USB 口，有的能连显示器，有的只能插U盘。 同样是 Type‑C，有的能快充，有的却只能缓慢的传数据。 这些坑，几乎都和USB 接口的\"形状\"和\"版本\"有关。我整理一下，把常见USB 接口 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://tyaward.com.tw/科技/usb-a-跟usb-c差在哪/",
+              "title": "usb-a-跟usb-c差在哪？一文搞懂外觀與傳輸快充差異｜日常有解",
+              "snippet": "USB-A 與 USB-C 的基礎概念與發展背景 USB 技術的登場徹底改變了早期個人電腦連接周邊設備時需要各式專用介面的混亂狀態。而在眾多 USB 接頭類型中，USB-A 與 USB-C 分別代表了兩個不同世代的技術里程碑。 USB-A（Type-A）作為最經典的連接介面，最早於 1996 年發表，並在 1998 年後大規模普及於個人電腦 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://pcu.jp/usb-a-to-usb-c-chigai/",
+              "title": "Usb-aとusb-cの違いを初心者向けに徹底解説｜見分け方・使い方・選び方までわかる完全ガイド",
+              "snippet": "USB-AとUSB-Cの違いを初心者向けに徹底解説｜見分け方・使い方・選び方までわかる完全ガイド パソコンやスマートフォンを使っていると、「USB-A」や「USB-C」という言葉を目にする機会が増えています。しかし、見た目が違うことは分かっていても、実際に何が違うのか分からないという方は ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:40:43.693280+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [],
+      "queued_speech": [
+        "USB-C 和 USB-A 的主要差別在於外觀、傳輸速度和充電效能。",
+        "USB-A 雖然歷史悠久，但體積和功率上已經有硬體極限，而 USB-C 則代表了未來的高速發展方向。"
+      ],
+      "board": [],
+      "errors": []
+    }
+  ]
+}

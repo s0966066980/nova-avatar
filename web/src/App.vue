@@ -175,6 +175,7 @@ See LICENSE and NOTICE.
 
             <!-- 對話模式：對話訊息瀑布流 -->
             <div v-if="activeMode === 'chat'" class="chat-flow-container" id="chatFlowBox" ref="messagesRef">
+              <WebSearchSources :phase="activeWebSearch.phase" />
               <div
                 v-for="(msg, index) in visibleChatMessages"
                 :key="index"
@@ -215,6 +216,7 @@ See LICENSE and NOTICE.
                       </ol>
                     </details>
                   </div>
+                  <WebSearchSources v-if="msg.type === 'ai' && webByTurn[msg.voiceTurnId]" :result="webByTurn[msg.voiceTurnId]" />
                   <div v-if="msg.boardItems && msg.boardItems.length" class="inline-board-preview">
                     <div class="inline-board-title"><i class="bi bi-stars"></i> 看板同步資料：</div>
                     <ul class="inline-board-list">
@@ -479,6 +481,8 @@ See LICENSE and NOTICE.
 </template>
 
 <script setup>
+import WebSearchSources from './components/WebSearchSources.vue'
+import { webSearchState, receiveWebSearch } from './webSearchState.js'
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import DebugPanel from './components/DebugPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
@@ -746,6 +750,8 @@ const captionEpoch = ref(0)
 const visibleChatMessages = computed(() => historyProfile.value
   ? chatMessages.value.filter(m => m.profileId === historyProfile.value) : chatMessages.value)
 const ragByTurn = reactive({})
+const webByTurn = reactive({})
+const activeWebSearch = reactive(webSearchState())
 
 // 每個語音 turn 保留最後接受的 LLM delta 序號；晚到或重複事件不得污染文字預覽。
 const assistantStreamState = new Map()
@@ -847,12 +853,16 @@ const getNotificationIcon = (type) => {
 
 const handleVoiceEvent = (event) => {
   if (event.mirrored) return
+  receiveWebSearch(activeWebSearch, event)
+  if (event.type === 'web_search_result' && event.turn_id === activeWebSearch.turnId) webByTurn[event.turn_id] = event
+  if (event.type === 'turn_cancelled') delete webByTurn[event.turn_id]
   composerRef.value?.receive(event)
   if (event.type === 'answer_clear') { captionEpoch.value += 1; return }
   if (event.type === 'presentation_reset' || event.type === 'conversation_reset') {
     chatMessages.value = []
     assistantStreamState.clear()
     for (const key of Object.keys(ragByTurn)) delete ragByTurn[key]
+    for (const key of Object.keys(webByTurn)) delete webByTurn[key]
     captionEpoch.value += 1
     applyConsoleBoardEvent(stageBoard, { type: 'board_clear' })
     isThinking.value = false
@@ -883,7 +893,7 @@ const handleVoiceEvent = (event) => {
   if (event.type === 'state') {
     voiceState.value = event.state
     isRecordingVoice.value = ['listening', 'speech_detected'].includes(event.state)
-    isThinking.value = ['stt', 'retrieving', 'llm', 'tts_ready'].includes(event.state)
+    isThinking.value = ['stt', 'retrieving', 'search_planning', 'searching', 'summarizing', 'llm', 'tts_ready'].includes(event.state)
     if (event.state === 'error' && event.error) {
       const errorKey = {
         tts_error_before_commit: 'notifications.ttsErrorBeforeCommit',
@@ -1395,6 +1405,8 @@ onUnmounted(() => {
 const resetChatMessages = () => {
   chatMessages.value = []
   Object.keys(ragByTurn).forEach(key => delete ragByTurn[key])
+  Object.keys(webByTurn).forEach(key => delete webByTurn[key])
+  Object.assign(activeWebSearch, webSearchState())
 }
 
 const clearChatHistory = async () => {

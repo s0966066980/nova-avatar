@@ -1,0 +1,312 @@
+{
+  "at": "2026-11-03T12:07:54.497534+00:00",
+  "engines": [
+    {
+      "engine": "duckduckgo",
+      "seconds": 0.875,
+      "count": 5,
+      "urls": [
+        "https://www.python.org/downloads/",
+        "https://www.python.org/downloads/windows/",
+        "https://www.python.org/downloads/latest/",
+        "https://www.python.org/",
+        "https://www.python.org/box/homepage-downloads/"
+      ]
+    },
+    {
+      "engine": "brave",
+      "seconds": 0.236,
+      "error": "SearchUnavailable",
+      "message": "rate_limited"
+    }
+  ],
+  "searches": [
+    {
+      "status": "available",
+      "query": "Python official downloads",
+      "sources": [
+        {
+          "id": "1",
+          "url": "https://www.python.org/downloads/",
+          "title": "Download Python | Python.org",
+          "snippet": "The official home of the Python Programming Language",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "2",
+          "url": "https://www.python.org/downloads/windows/",
+          "title": "Python Releases for Windows",
+          "snippet": "The official home of the Python Programming Language",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "3",
+          "url": "https://www.python.org/downloads/release/python-3152/",
+          "title": "Python Release Python 3.15.2 | Python.org",
+          "snippet": "Python 3.15.2 is an expedited security release and the second maintenance release of 3.15, containing around 130 bugfixes, build improvements and documentation changes from 70 contributors since 3.15.1.",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "4",
+          "url": "https://www.python.org/",
+          "title": "Welcome to Python.org",
+          "snippet": "Download Python source code and installers are available for download for all versions! Latest: Python 3.15.2",
+          "kind": "snippet",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "5",
+          "url": "https://www.python.org/box/homepage-downloads/",
+          "title": "Download - Python.org",
+          "snippet": "Download Python source code and installers are available for download for all versions! Latest: Python 3.15.2",
+          "kind": "snippet",
+          "engine": "duckduckgo"
+        }
+      ],
+      "fetched_at": "2026-11-03T12:07:55.608213+00:00",
+      "reused": false,
+      "seconds": 0.906
+    },
+    {
+      "status": "available",
+      "query": "台北 最新 展覽 活動",
+      "sources": [
+        {
+          "id": "1",
+          "url": "https://jioujiou.tw/taipei-exhibition/",
+          "title": "【台北展覽】2026/10月、11月、12月最齊全活動資訊!最新展覽推薦一次看 - 揪好玩",
+          "snippet": "2026年台北展覽最新統整!週末放假想出門逛逛展嗎?那就快來看看台北最近有什麼有趣的展覽吧! 本篇文章整理了台北各場館展覽資訊、沉浸式劇場、展期、入場時間、地點、優惠票等，喜歡看展的你不要錯過囉～",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "2",
+          "url": "https://goevent.tw/city/taipei",
+          "title": "台北活動 2026｜近期展覽、市集、演出與免費索票｜逛展吧",
+          "snippet": "台北 近期活動與展覽 本頁收錄 台北 近期 356 場 消費型展覽，依開展日排序，含索票方式與場館；想知道新展何時公告，在下方登記開展提醒。 最後更新 2026-11-03。",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "3",
+          "url": "https://seh.tw/category/展覽",
+          "title": "展覽活動｜2026 台灣近期展覽｜seh",
+          "snippet": "台灣近期的展覽活動，共 427 場，可依縣市篩選。",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "4",
+          "url": "https://gofunit.com/台北展覽特展攻略/",
+          "title": "2026 【台北展覽推薦】2026必看展覽總整理!就在華山、南港展覽館、松菸，門票&地點懶人包 - 好好玩funit",
+          "snippet": "2026台北展覽最新攻略來啦!這篇小編幫你整理13大必逛展覽，從動漫展到超好拍的台北室內景點通通有。展覽地點遍布松菸展覽、華山1914文化創意產業園區、中正紀念堂、北美館、士林科教館，門票多在 300 元左右，也有可以免費入場的選擇，本篇都幫你一次整理好，照著攻略就能輕鬆玩展不踩雷!",
+          "kind": "snippet",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "5",
+          "url": "https://www.funtime.com.tw/localtour/topic/index.php?theme=taiwan-exhibition&target=taipei",
+          "title": "【台北展覽活動】2026必看展覽資訊、時間、票價、地點｜ FunTime旅遊",
+          "snippet": "2026台北近期必看的展覽在這裡!首次登台的《消失的法老VR沉浸體驗》，跨越時空的古埃及史詩冒險；還有《托雷多美術館珍藏展-古典光影大師：林布蘭到哥雅》，讓你一次欣賞50件真跡作品!展覽時間、地點等資訊都幫你整理好了!",
+          "kind": "snippet",
+          "engine": "duckduckgo"
+        }
+      ],
+      "fetched_at": "2026-11-03T12:07:56.513836+00:00",
+      "reused": false,
+      "seconds": 2.782
+    },
+    {
+      "status": "available",
+      "query": "中央氣象署 官網",
+      "sources": [
+        {
+          "id": "1",
+          "url": "https://www.cwa.gov.tw/V8/C/",
+          "title": "首頁 | 交通部中央氣象署",
+          "snippet": "2026/11/02懸日預報：南投縣南投市民族路（南陽路以西）等路段，於115年11月7日至9日（星期六至一）傍晚可見；高雄市苓雅區青年一、二路（民權一路以西）等路段於115年11月8日至10日（星期日至二）傍晚可見。觀賞懸日或拍照請注意交通安全，詳細資料請參考：中央氣象署官網首頁資料／天文資料 ...",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "2",
+          "url": "https://www.cwa.gov.tw/V8/C/W/index.html",
+          "title": "天氣概況 | 交通部中央氣象署",
+          "snippet": "W11h0310 中央氣象署 1週天氣預報概況 發布時間：115年11月 3日17時 0分 有效時間：自11月 4日 0時起至11月10日24時止 天氣概況： 4日東北季風減弱，北部及東北部氣溫回升；4日至5日白天各地大多為多雲到晴，僅東半部地區及恆春半島有零星短暫雨，4日午後南部山區有零星短暫陣雨。 5日晚起至6日東北 ...",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "3",
+          "url": "https://www.cwa.gov.tw/V8/C/W/week.html",
+          "title": "1週預報 | 交通部中央氣象署",
+          "snippet": "中央氣象署提供精緻化預報及現代化氣象觀測, 縣市天氣預報, 鄉鎮天氣預報, 各類觀測資訊, 衛星雲圖, 雷達迴波, 雨量累積 ...",
+          "kind": "page",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "4",
+          "url": "https://rdc28.cwa.gov.tw/TDB/",
+          "title": "中央氣象署全球資訊網",
+          "snippet": "中央氣象署全球資訊網 ... 首頁 最新消息",
+          "kind": "snippet",
+          "engine": "duckduckgo"
+        },
+        {
+          "id": "5",
+          "url": "https://www.cwa.gov.tw/V8/C/P/Typhoon/TY_NEWS.html",
+          "title": "颱風消息 | 交通部中央氣象署 - 颱風消息 - 中央氣象 ...",
+          "snippet": "另外，當氣象署已發布颱風警報，警報期間24小時之內的颱風預測資訊，建議使用本署颱風警報單、風雨預報及天氣特報等更高頻率且詳細的預報產品。 其他文件與相關連結 颱風百問 颱風機率產品說明 (PDF) 颱風消息 GIS 版 人事行政總處停班停課資訊",
+          "kind": "snippet",
+          "engine": "duckduckgo"
+        }
+      ],
+      "fetched_at": "2026-11-03T12:07:59.295684+00:00",
+      "reused": false,
+      "seconds": 0.713
+    }
+  ],
+  "turns": [
+    {
+      "question": "你好",
+      "seconds": 0.682,
+      "sources": [],
+      "responses": [
+        "你好！請問有什麼我可以幫你的嗎？"
+      ],
+      "errors": []
+    },
+    {
+      "question": "請上網查台北最新展覽",
+      "seconds": 2.482,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "79a0189953394437b9bf8ba931eb6373",
+          "status": "available",
+          "query": "台北 最新 展覽",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://jioujiou.tw/taipei-exhibition/",
+              "title": "【台北展覽】2026/10月、11月、12月最齊全活動資訊!最新展覽推薦一次看 - 揪好玩",
+              "snippet": "2026年台北展覽最新統整!週末放假想出門逛逛展嗎?那就快來看看台北最近有什麼有趣的展覽吧! 本篇文章整理了台北各場館展覽資訊、沉浸式劇場、展期、入場時間、地點、優惠票等，喜歡看展的你不要錯過囉～",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://gofunit.com/台北展覽特展攻略/",
+              "title": "2026 【台北展覽推薦】2026必看展覽總整理!就在華山、南港展覽館、松菸，門票&地點懶人包 - 好好玩funit",
+              "snippet": "2026台北展覽最新攻略來啦!這篇小編幫你整理13大必逛展覽，從動漫展到超好拍的台北室內景點通通有。展覽地點遍布松菸展覽、華山1914文化創意產業園區、中正紀念堂、北美館、士林科教館，門票多在 300 元左右，也有可以免費入場的選擇，本篇都幫你一次整理好，照著攻略就能輕鬆玩展不踩雷!",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://seh.tw/category/展覽",
+              "title": "展覽活動｜2026 台灣近期展覽｜seh",
+              "snippet": "台灣近期的展覽活動，共 427 場，可依縣市篩選。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.funtime.com.tw/localtour/topic/index.php?theme=taiwan-exhibition&target=taipei",
+              "title": "【台北展覽活動】2026必看展覽資訊、時間、票價、地點｜ FunTime旅遊",
+              "snippet": "2026台北近期必看的展覽在這裡!首次登台的《消失的法老VR沉浸體驗》，跨越時空的古埃及史詩冒險；還有《托雷多美術館珍藏展-古典光影大師：林布蘭到哥雅》，讓你一次欣賞50件真跡作品!展覽時間、地點等資訊都幫你整理好了!",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://goevent.tw/city/taipei",
+              "title": "台北活動 2026｜近期展覽、市集、演出與免費索票｜逛展吧",
+              "snippet": "台北 近期活動與展覽 本頁收錄 台北 近期 356 場 消費型展覽，依開展日排序，含索票方式與場館；想知道新展何時公告，在下方登記開展提醒。 最後更新 2026-11-03。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T12:08:03.123042+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "臺北最新展覽資訊已整理出來。"
+      ],
+      "errors": []
+    },
+    {
+      "question": "What are the latest Python releases?",
+      "seconds": 3.152,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "5e88dc7b0a6d44218fa23d0b17531380",
+          "status": "available",
+          "query": "Python latest release official",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://www.python.org/downloads/release/python-3152/",
+              "title": "Python Release Python 3.15.2 | Python.org",
+              "snippet": "Python 3.15.2 is an expedited security release and the second maintenance release of 3.15, containing around 130 bugfixes, build improvements and documentation changes from 70 contributors since 3.15.1.",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://www.python.org/downloads/",
+              "title": "Download Python | Python.org",
+              "snippet": "The official home of the Python Programming Language",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://www.python.org/downloads/windows/",
+              "title": "Python Releases for Windows | Python.org",
+              "snippet": "The official home of the Python Programming Language",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.python.org/downloads/release/python-3140/",
+              "title": "Python Release Python 3.14.0 | Python.org",
+              "snippet": "Official macOS and Windows release binaries include an experimental JIT compiler. Official Android binary releases are now available. Incompatible changes, removals and new deprecations Incompatible changes Python removals and deprecations C API removals and deprecations Overview of all pending deprecations Python install manager",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://www.python.org/",
+              "title": "Welcome to Python.org",
+              "snippet": "Download Python source code and installers are available for download for all versions! Latest: Python 3.15.2",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T12:08:05.617467+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "最新的 Python 版本是 3."
+      ],
+      "errors": []
+    }
+  ],
+  "read_page": {
+    "url": "https://www.python.org/downloads/",
+    "characters": 8000,
+    "seconds": 0.128
+  }
+}

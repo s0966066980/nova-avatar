@@ -262,7 +262,7 @@ function receive(event) {
   const owned = event.turn_id && event.turn_id === ownedTurnId
   if (owned && ['assistant_response_start', 'assistant_response'].includes(event.type)) lastSources.value = acceptedSources
   if (event.type === 'attachment_status') { conversationBusy = true; deadline(); if (owned || sending.value) status.value = `${tr('分析中', 'Analyzing')} ${event.index || 0}/${event.total}${event.source ? ' · ' + event.source : ''}` }
-  if (event.type === 'state' && ['stt', 'retrieving', 'llm', 'tts_ready', 'avatar_speaking', 'tail_guard'].includes(event.state)) { conversationBusy = true; deadline() }
+  if (event.type === 'state' && ['stt', 'retrieving', 'search_planning', 'searching', 'summarizing', 'llm', 'tts_ready', 'avatar_speaking', 'tail_guard'].includes(event.state)) { conversationBusy = true; deadline() }
   if (event.type === 'state' && event.state === 'error') { conversationBusy = false; if (owned) { active.value = false; if (retry && !text.value) text.value = retry.text; fail(event.error || 'analysis_capacity') } deadline() }
   if (event.type === 'turn_committed' && owned) { active.value = false; if (event.reason === 'completed') { retry = null; status.value = '' } }
   if (event.type === 'state' && ['listening', 'paused'].includes(event.state) && !sending.value) { conversationBusy = false; deadline() }

@@ -177,6 +177,14 @@ class OpenAILLM(BaseLLM):
             request_message = history_transaction.user_text if history_transaction is not None else message
             if hasattr(request_message, 'parts'):
                 messages[-1] = {**messages[-1], 'content': list(request_message.parts)}
+            instructions = getattr(request_message, 'request_instructions', '')
+            if instructions:
+                # A request-only copy: never persist capability reminders or
+                # reference material as a visitor message in retained history.
+                content = messages[-1]['content']
+                messages[-1] = {**messages[-1], 'content': (
+                    [*content, {'type': 'text', 'text': instructions}]
+                    if isinstance(content, list) else str(content) + '\n\n' + instructions)}
             profile = getattr(llm_cfg, 'assistant_profile', None)
             if getattr(profile, 'output_locale', 'zh-TW') == 'en-US':
                 # Reinforce the session policy beside the current question. This

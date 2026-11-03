@@ -51,6 +51,13 @@
     <section v-show="section === 'rag'" class="profile-section">
       <RagFlowSettings :key="profile.id" v-model="profile.rag" :profile-id="profile.id" :profile-name="profile.name" :disabled="disabled" />
     </section>
+    <section v-show="section === 'web'" class="profile-section">
+      <h3>網頁搜尋</h3>
+      <label class="profile-check"><input type="checkbox" :checked="profile.web_search?.enabled || false" :disabled="disabled" @change="updateWeb({ enabled: $event.target.checked })">允許此數位人依問題搜尋公開網頁</label>
+      <p>搜尋會將必要關鍵字送往外部搜尋引擎；附件內容與內部知識庫不自動外送。每輪最多五筆結果、讀取三頁，搜尋與讀頁合計最多八秒。</p>
+      <label>允許讀取的網域（留空為公開網站，每行一個）<textarea :value="(profile.web_search?.allowed_domains || []).join('\n')" :disabled="disabled" rows="4" placeholder="例如 gov.tw" @input="updateWeb({ allowed_domains: $event.target.value.split(/[\n,，]/).map(x => x.trim()).filter(Boolean) })"></textarea></label>
+      <p>先查 DuckDuckGo，沒有可用結果時再查 Brave。來源會另外顯示；實際回答時間另含模型處理與語音合成。</p>
+    </section>
     <section v-show="section === 'voice'" class="profile-section">
       <h3>聲音</h3><p>每位角色可選擇自己的聲線；當次角色組合共用同一語音合成引擎。主數位人的聲音也是尚未套用設定檔時的預設聲音。天氣等工具改在「角色組合與交接」中指定給一位成員。</p>
       <!-- A saved role named a removed engine; the server switched it to Edge TTS. -->
@@ -87,10 +94,12 @@ const profile = defineModel({ type: Object, required: true })
 const props = defineProps({ avatars: { type: Array, default: () => [] }, endpoints: { type: Array, default: () => [] }, initialSection: { type: String, default: 'identity' }, disabled: Boolean })
 defineEmits(['restore-rules'])
 const section = ref(props.initialSection)
+function updateWeb(patch) { profile.value.web_search = { enabled: false, allowed_domains: [], ...profile.value.web_search, ...patch } }
 const sections = [
   { id: 'identity', icon: 'bi bi-person-badge', label: '身分與素材' },
   { id: 'model', icon: 'bi bi-cpu', label: 'AI 模型與規則' },
   { id: 'rag', icon: 'bi bi-journal-text', label: 'RAG 知識文本' },
+  { id: 'web', icon: 'bi bi-globe', label: '網頁搜尋' },
   { id: 'voice', icon: 'bi bi-soundwave', label: '聲音' }
 ]
 const ruleFields = [{ key: 'activation', label: '何時使用看板' }, { key: 'speech', label: '口語回覆規則' }, { key: 'board', label: '看板內容規則' }]

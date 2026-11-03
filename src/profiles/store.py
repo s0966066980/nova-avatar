@@ -114,6 +114,8 @@ def profile_config(base, profile: dict):
     result.tts = TTSConfig(**profile["tts"])
     result.greeting = GreetingConfig(**validate_content(profile.get("greeting")))
     result.profile_rag = deepcopy(profile["rag"])
+    from src.web_search.settings import settings
+    result.profile_web_search = settings(profile.get("web_search"))
     return result
 
 
@@ -121,7 +123,7 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
     """Normalize a profile; ``require_endpoint`` also demands a listed endpoint name and
     ``require_voice`` a transcribed reference recording for BreezyVoice."""
     allowed = {"id", "name", "engine", "avatar_id", "assistant_profile", "llm",
-               "tts", "rag", "reply_rules", "greeting"}
+               "tts", "rag", "reply_rules", "greeting", "web_search"}
     if isinstance(value, dict) and "tools" in value:
         # Tools belong to one composition member (ADR 0023), never to a profile.
         raise ProfileError("工具改在「角色組合與交接」指定給一位成員，數位人設定檔不再包含工具", field="tools")
@@ -193,11 +195,13 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
         raise ProfileError(str(exc)) from exc
     try:
         greeting = validate_content(value.get("greeting"))
+        from src.web_search.settings import settings
+        web_search = settings(value.get("web_search"))
     except ValueError as exc:
         raise ProfileError(str(exc)) from exc
     return {"id": pid, "name": name, "engine": engine, "avatar_id": avatar_id,
             "assistant_profile": identity, "llm": llm, "tts": tts,
-            "rag": rag, "reply_rules": rules, "greeting": greeting}
+            "rag": rag, "reply_rules": rules, "greeting": greeting, "web_search": web_search}
 
 
 def _require_reference(tts: dict, name: str) -> None:

@@ -1,0 +1,736 @@
+{
+  "at": "2026-11-03T14:41:54.783463+00:00",
+  "engines": [],
+  "searches": [],
+  "turns": [
+    {
+      "selection": [
+        {
+          "mode": "extractive",
+          "items": [
+            {
+              "source_id": "5",
+              "quote": "周杰倫的生日是1979年1月18日"
+            }
+          ]
+        }
+      ],
+      "question": "周杰倫的生日是什麼時候？",
+      "seconds": 2.521,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "27a28e0725f54c9db3a0b61e68ee310f",
+          "status": "available",
+          "query": "周杰倫生日",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/zh-tw/周杰伦",
+              "title": "周杰倫 - 維基百科，自由的百科全書 - zh.wikipedia.org",
+              "snippet": "周杰倫 （英語： Jay Chou，1979年1月18日—）， 臺灣 男歌手、詞曲作家、演員及製作人。其音樂風行於 大中華地區 及全球各地的 華人 社群，並對 華語樂壇 產生重大影響 [6][7][8]，有「華語流行天王」之美譽 [9][10]。 自2000年發行首張專輯《杰倫》出道至今，周杰倫多次獲得華語樂壇重要的音樂獎項 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://zh.wikipedia.org/zh/周杰倫",
+              "title": "周杰倫 - 维基百科，自由的百科全书",
+              "snippet": "周杰倫 （英語： Jay Chou，1979年1月18日—）， 臺灣 男歌手、詞曲作家、演員及製作人。其音樂風行于 大中華地區 及全球各地的 華人 社群，並對 華語樂壇 產生重大影響 [6][7][8]，有「华语流行天王」之美譽 [9][10]。 自2000年发行首张专辑《杰倫》出道至今，周杰伦多次获得华语乐坛重要的音乐奖项 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://tw.news.yahoo.com/天王47歲了-周杰倫生日獲阿信-蕭敬騰祝福-放閃昆凌慶祝結婚11週年-133500480.html",
+              "title": "天王47歲了!周杰倫生日獲阿信、蕭敬騰祝福 放閃昆凌慶祝結婚11週年",
+              "snippet": "[FTNN新聞網]記者陳献朋／綜合報導 亞洲天王「周董」 周杰倫 今（18）日迎來47歲生日，前一天同時也是他和妻子昆凌的婚禮11週年紀念日，為此，二 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.ftnn.com.tw/news/516795",
+              "title": "天王47歲了!周杰倫生日獲阿信、蕭敬騰祝福 放閃昆凌慶祝結婚11週年 | Ftnn 新聞網",
+              "snippet": "記者陳献朋／綜合報導亞洲天王「周董」周杰倫今（18）日迎來47歲生日，前一天同時也是他和妻子昆凌的婚禮11週年紀念日，為此，二人與周媽媽、昆凌爸爸還有一群好友一同聚餐慶祝，從周董發布的貼文中還能看出現場有音樂演出，氣氛相當美好。周杰倫今（18）日迎來47歲生日。（圖／周杰倫IG ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://kknews.cc/zh-tw/entertainment/n4xp8xg.html",
+              "title": "周杰倫生日是哪天，他是什麼星座，有哪些代表作？ - 每日頭條",
+              "snippet": "#頭條創作挑戰賽#周杰倫的生日是1979年1月18日，摩羯座。他是一位極具人氣的流行樂男歌手，更是一位才華橫溢的音樂創作人，同時也是優秀的演員和導演。周杰倫創作的音樂作品多次獲得音樂大獎，他在華語樂壇的地位少有人能及。他的代表作有《夜曲》、《以父之名》、《晴天》、《稻香》等。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:41:57.411791+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "周杰倫的生日是1979年1月18日"
+      ],
+      "queued_speech": [
+        "周杰倫的生日是1979年1月18日"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "extractive",
+          "items": [
+            {
+              "source_id": "5",
+              "quote": "周杰倫的生日是1979年1月18日"
+            }
+          ]
+        }
+      ],
+      "question": "周杰倫的生日",
+      "seconds": 2.265,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "c3d6e349a466478e9c5aafd000d89fda",
+          "status": "available",
+          "query": "周杰倫生日",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/zh-tw/周杰伦",
+              "title": "周杰倫 - 維基百科，自由的百科全書 - zh.wikipedia.org",
+              "snippet": "周杰倫 （英語： Jay Chou，1979年1月18日—）， 臺灣 男歌手、詞曲作家、演員及製作人。其音樂風行於 大中華地區 及全球各地的 華人 社群，並對 華語樂壇 產生重大影響 [6][7][8]，有「華語流行天王」之美譽 [9][10]。 自2000年發行首張專輯《杰倫》出道至今，周杰倫多次獲得華語樂壇重要的音樂獎項 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://zh.wikipedia.org/zh/周杰倫",
+              "title": "周杰倫 - 维基百科，自由的百科全书",
+              "snippet": "周杰倫 （英語： Jay Chou，1979年1月18日—）， 臺灣 男歌手、詞曲作家、演員及製作人。其音樂風行于 大中華地區 及全球各地的 華人 社群，並對 華語樂壇 產生重大影響 [6][7][8]，有「华语流行天王」之美譽 [9][10]。 自2000年发行首张专辑《杰倫》出道至今，周杰伦多次获得华语乐坛重要的音乐奖项 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://tw.news.yahoo.com/天王47歲了-周杰倫生日獲阿信-蕭敬騰祝福-放閃昆凌慶祝結婚11週年-133500480.html",
+              "title": "天王47歲了!周杰倫生日獲阿信、蕭敬騰祝福 放閃昆凌慶祝結婚11週年",
+              "snippet": "[FTNN新聞網]記者陳献朋／綜合報導 亞洲天王「周董」 周杰倫 今（18）日迎來47歲生日，前一天同時也是他和妻子昆凌的婚禮11週年紀念日，為此，二 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.ftnn.com.tw/news/516795",
+              "title": "天王47歲了!周杰倫生日獲阿信、蕭敬騰祝福 放閃昆凌慶祝結婚11週年 | Ftnn 新聞網",
+              "snippet": "記者陳献朋／綜合報導亞洲天王「周董」周杰倫今（18）日迎來47歲生日，前一天同時也是他和妻子昆凌的婚禮11週年紀念日，為此，二人與周媽媽、昆凌爸爸還有一群好友一同聚餐慶祝，從周董發布的貼文中還能看出現場有音樂演出，氣氛相當美好。周杰倫今（18）日迎來47歲生日。（圖／周杰倫IG ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://kknews.cc/zh-tw/entertainment/n4xp8xg.html",
+              "title": "周杰倫生日是哪天，他是什麼星座，有哪些代表作？ - 每日頭條",
+              "snippet": "#頭條創作挑戰賽#周杰倫的生日是1979年1月18日，摩羯座。他是一位極具人氣的流行樂男歌手，更是一位才華橫溢的音樂創作人，同時也是優秀的演員和導演。周杰倫創作的音樂作品多次獲得音樂大獎，他在華語樂壇的地位少有人能及。他的代表作有《夜曲》、《以父之名》、《晴天》、《稻香》等。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:41:59.623712+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "周杰倫的生日是1979年1月18日"
+      ],
+      "queued_speech": [
+        "周杰倫的生日是1979年1月18日"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "extractive",
+          "items": [
+            {
+              "source_id": "1",
+              "quote": "成立 1987年2月21日"
+            }
+          ]
+        }
+      ],
+      "question": "台積電哪一年成立？",
+      "seconds": 1.899,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "1a5091aa426a4d48b6f8b8ec97ecba31",
+          "status": "available",
+          "query": "台積電成立年份",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/zh-tw/台積電",
+              "title": "台積電 - 維基百科，自由的百科全書 - zh.wikipedia.org",
+              "snippet": "台積電的業務涵蓋先進製程與特殊製程的晶圓 製造 、光罩技術、以「TSMC 3DFabric」為名的3D矽堆疊與先進 封裝 、測試，以及完整的設計生態系支援 [2]。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://zh.wikipedia.org/wiki/台積電",
+              "title": "台積電 - 维基百科，自由的百科全书",
+              "snippet": "台積電的業務涵蓋先進製程與特殊製程的晶圓 製造 、光罩技術、以「TSMC 3DFabric」為名的3D矽堆疊與先進 封裝 、測試，以及完整的設計生態系支援 [2]。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://uptogo.com.tw/歷史/台灣歷史/台積電創辦時間？/",
+              "title": "揭開護國神山的面紗：台積電創辦時間？與背後的歷史真相 - UpToGo",
+              "snippet": "台積電創辦時間？ 不僅是一個年份，更是國家戰略的展現 台積電正式的創辦時間為 1987年2月21日，這一年台灣尚處於解嚴前夕。 然而，台積電的誕生並非一蹴可幾，它的基礎源自於台灣戰後前期的產業政策。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://investor.tsmc.com/chinese/fundamentals",
+              "title": "公司概況 - 台灣積體電路製造股份有限公司",
+              "snippet": "台灣積體電路製造股份有限公司 (台灣證券交易所代碼：2330，美國NYSE代碼：TSM) 成立於民國七十六年，在半導體產業中首創專業積體電路製造服務模式。台積公司為約465個客戶提供服務, 生產超過9,920種不同產品，被廣泛地運用在電腦產品、通訊產品與消費性電子產品等多樣應用領域；民國一百零 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://www.tsmc.com/chinese/aboutTSMC/company_profile",
+              "title": "公司介紹 - 台灣積體電路製造股份有限公司 - Tsmc",
+              "snippet": "台灣積體電路製造股份有限公司（台灣證券交易所代碼：2330，美國NYSE代碼：TSM）由張忠謀博士於1987年成立，開創了專業積體電路製造服務商業模式，並專注於生產由客戶所設計的晶片。2025年，台積公司以305種製程技術，為534個客戶生產12,682 種不同產品，被廣泛地運用在各種終端市場，例如高效能 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:42:01.901773+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "成立 1987年2月21日"
+      ],
+      "queued_speech": [
+        "成立 1987年2月21日"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "extractive",
+          "items": [
+            {
+              "source_id": "1",
+              "quote": "總部位於 新竹科學園區"
+            }
+          ]
+        }
+      ],
+      "question": "請查台積電總部在哪裡",
+      "seconds": 2.004,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "2c48cb99d8f14fd7a70443d91c24195b",
+          "status": "available",
+          "query": "台積電總部地址",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/zh-tw/台灣積體電路製造",
+              "title": "台積電 - 維基百科，自由的百科全書 - zh.wikipedia.org",
+              "snippet": "台灣積體電路製造 （英語： Taiwan Semiconductor Manufacturing Company, Ltd.），簡稱 台積電 、 TSMC，與旗下子公司合稱 台積電集團[3]，是 臺灣 一家專注於 半導體 晶片 製造的高科技 跨國企業，總部位於 新竹科學園區，是全球市值最高的企業之一，也是全球最領先的半導體晶片製造商 [4]。台積電開創了 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://iwiki.tw/",
+              "title": "台積電總部地址：科技巨擘的所在 - 台積電洞察",
+              "snippet": "台積電，全球首屈一指的半導體公司，其總部坐落於何處？今文將帶你一窺其神秘面紗。此外，我們亦將探討投履歷無聲息、應徵技術員之甘苦與離職者後悔Dcard上的心聲，並作2024員工數預測。台積電14廠地址解密台積電（TSMC）總部位於新竹科學園區內的3507號廠房，即俗...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://www.tsmc.com/chinese/aboutTSMC/TSMC_Fabs",
+              "title": "晶圓廠區 - 台灣積體電路製造股份有限公司 - Tsmc",
+              "snippet": "台積電 (南京) 有限公司及晶圓十六廠",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.tsmc.com/chinese/contact-us",
+              "title": "聯絡我們 - 台灣積體電路製造股份有限公司 - Tsmc",
+              "snippet": "江蘇省南京市浦口經濟開發區紫峰路16號",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://www.findcompany.com.tw/台灣積體電路製造股份有限公司",
+              "title": "台灣積體電路製造股份有限公司",
+              "snippet": "1．依客戶之訂單與其提供之產品設計說明，以從事製造與銷售積體電路以及其他晶圓半導體裝置。提供前述產品之封裝與測試服務。提供積體電路之電腦輔助設計技術服務。提供製造光罩及其設計服務。2．從事研究、開發、設計、製造與銷售發光二極體（LED）照明裝置及其相關應用產品與系統。3 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:42:03.800860+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "總部位於 新竹科學園區"
+      ],
+      "queued_speech": [
+        "總部位於 新竹科學園區"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "extractive",
+          "items": [
+            {
+              "source_id": "1",
+              "quote": "最高峰 玉山主峰 海拔 3,952公尺（12,966英尺）"
+            }
+          ]
+        }
+      ],
+      "question": "請查玉山的高度是多少？",
+      "seconds": 2.232,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "9a46e624041747769f8e203973a7fdce",
+          "status": "available",
+          "query": "玉山高度",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/zh-tw/玉山",
+              "title": "玉山 - 維基百科，自由的百科全書",
+              "snippet": "玉山 （鄒語： Patungkuonʉ）是 臺灣 最高的 山，最高峰 玉山主峰 海拔 3,952公尺（12,966英尺），設有一等 三角點。其處於 玉山山脈 的核心，交界於 南投縣 信義鄉 東埔村、 嘉義縣 阿里山鄉 中山村與 高雄市 桃源區 梅山里 [2][3]。 1985年，為保護玉山及其周邊地區珍貴的自然景觀生態及歷史文化資產 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://zh.wikipedia.org/wiki/玉山",
+              "title": "玉山 - 维基百科，自由的百科全书",
+              "snippet": "玉山 （鄒語： Patungkuonʉ）是 臺灣 最高的 山，最高峰 玉山主峰 海拔 3,952米（12,966英尺），設有一等 三角點。其處於 玉山山脈 的核心，交界於 南投縣 信義鄉 東埔村、 嘉義縣 阿里山鄉 中山村與 高雄市 桃源區 梅山里 [2][3]。 1985年，為保護玉山及其周邊地區珍貴的自然景觀生態及歷史文化資產 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://ja.wikipedia.org/wiki/玉山_(台湾)",
+              "title": "玉山 (台湾) - Wikipedia",
+              "snippet": "玉山国家公園の位置 玉山 （ぎょくざん、ユイシャン、 拼音: Yù Shān 、 ウェード式：Yü Shan）は、 台湾島 にある山である。 台湾 最高峰 であり、 東アジア 最高峰とも言われる。標高は3,952 m。旧称は 新高山 （にいたかやま）、 モリソン山 （Mount Morrison）、 ツォウ語 で パトゥンクオヌ。英語 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.ysnp.gov.tw/FAQ/C007000?ID=c7939bca-5d9f-4fde-8c82-9931afbc9289&PageIndex=6&PageType=1",
+              "title": "玉山的高度為何？ - 常見問答 - 內政部國家公園署玉山國家公園管理處",
+              "snippet": "有關玉山主峰高度記載如下： 1896年由「日治時代臺灣總督府臨時土地測量局」測出玉山高度為3,950公尺，由於高度超過日本最高峰富士山，日本政府遂將玉山改名為「新高山」。 1957年由「美國遠東陸軍製圖局」測出玉山高度為3,997公尺。 1967年8月8日中國青年 登山 會將于右任銅像豎立於玉山山頂 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://www.nps.gov.tw/ch/titlelist/parknews/1270",
+              "title": "內政部國家公園署 |玉山有多高 最新測量數據出爐",
+              "snippet": "玉山之名首次出現 玉山高度變變變 「玉山」之名始於西元1685年《臺灣府志》，而玉山高度的首次測量是在日治時期，由參謀本部測量部測量到比富士山（海拔3,776公尺）更高，於1897年改名為「新高山」。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:42:05.800744+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "最高峰 玉山主峰 海拔 3,952公尺（12,966英尺）"
+      ],
+      "queued_speech": [
+        "最高峰 玉山主峰 海拔 3,952公尺（12,966英尺）"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "extractive",
+          "items": [
+            {
+              "source_id": "2",
+              "quote": "Python 3.15.2 is an expedited security"
+            }
+          ]
+        }
+      ],
+      "question": "Python最新的完整版本號",
+      "seconds": 6.145,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "715a97fc8d00458e85567e682e7a6a22",
+          "status": "available",
+          "query": "Python 最新完整版本號",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://www.python.org/downloads/?hl=zh-cn",
+              "title": "Download Python | Python.org",
+              "snippet": "The official home of the Python Programming Language",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://www.python.org/downloads/release/python-3152/",
+              "title": "Python Release Python 3.15.2 | Python.org",
+              "snippet": "Python 3.15.2 is an expedited security release and the second maintenance release of 3.15, containing around 130 bugfixes, build improvements and documentation changes from 70 contributors since 3.15.1.",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://blog.csdn.net/m0_59559215/article/details/157183707",
+              "title": "手把手教你安装最新版 Python（2026 版）| 全系统适配 + 避坑指南_python最新版本-CSDN博客",
+              "snippet": "文章浏览阅读3k次，点赞15次，收藏5次。本文详细介绍如何在Windows、macOS和Linux系统中安装Python 3.12，涵盖官方安装包、Homebrew及PPA源等多种方法，并提供环境变量配置、pip升级、多版本共存与虚拟环境等关键操作指导，帮助开发者顺利完成部署并规避常见问题。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://devguide.python.org/versions/index.html",
+              "title": "Status of Python versions",
+              "snippet": "Status of Python versions ¶ The main branch is currently the future Python 3.16, and is the only branch that accepts new features. The latest release for each Python version can be found on the download page.",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://python.club.tw/doc/versions/",
+              "title": "Python 各版本說明文件 | Python.org - Python 程式語言",
+              "snippet": "Python 各版本說明文件 部分先前版本的文件仍可在網路上取得。請使用下方列表選擇要檢視的版本。 關於尚未發布（開發中）的文件，請參閱 開發中版本。 Python 3.13.9，文件發布於 2025 年 10 月 14 日。 Python 3.11.14，文件發布於 2025 年 10 月 9 日。 Python 3.10.19，文件發布於 2025 年 10 月 9 日。 Python 3.12.12 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:42:08.032592+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [],
+      "queued_speech": [
+        "Python 的最新完整版本號是三點一五點二。",
+        "這個版本是三點一五點二，它是一個加速的安全版本。"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "context",
+          "items": [
+            {
+              "source_id": "1",
+              "quote": "USB A 伴隨了我們二十多年，因為強大的歷史包容性，在舊型週邊與低功耗配件中仍佔有一席之地；然而，它在體積、方向性、以及功率上的硬體極限，已註定無法跟上未來高"
+            },
+            {
+              "source_id": "2",
+              "quote": "USB-A：經典但有方向性的矩形 USB Type-A（簡稱 USB-A）是目"
+            },
+            {
+              "source_id": "2",
+              "quote": "USB-C：被稱為「萬能接口」。透過 Alt Mode (替代模式)，USB-C 可以直接傳輸 DisplayPort 或 HDMI 訊號，這意味著你可以用一條"
+            }
+          ]
+        }
+      ],
+      "question": "請上網簡短比較USB-C和USB-A的差別",
+      "seconds": 3.317,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "0b23d668ba854473ad28c051d256477d",
+          "status": "partial",
+          "query": "USB-C 和 USB-A 差異比較",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://uptogo.com.tw/科技/usb-a和usb-c有什麼不同？/",
+              "title": "USB A和USB-C有什麼不同？從接頭外觀、傳輸速度到充電效能的深度科技解析 - UpToGo",
+              "snippet": "一眼看懂硬體演進：主要 USB 接頭類型外觀與特徵 要搞懂 USB A和USB-C有什麼不同，首先必須從它們的物理形態（外觀）開始認識。 USB 的命名慣例中，後面的字母代表連接器的物理形態與結構，而數字則代表傳輸的速度與功率協議。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://uptogo.com.tw/科技/3c電子/usb周邊/usb-a-跟usb-c差在哪？/",
+              "title": "秒懂傳輸介面：USB a 跟usb c差在哪？從外觀到充電速度完整比較 - UpToGo",
+              "snippet": "前言：為何我們需要了解接頭差異？ 在數位裝置充斥的現代生活中，無論是手機充電、電腦傳輸資料，還是連接外接螢幕，USB 介面幾乎無所不在。然而，當你拿起一條傳輸線時，是否曾困惑於「為什麼這條線充得比較慢？」或是「這個接頭為什麼插不進去？」這些問題的核心，往往在於未能區分 USB ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://zhuanlan.zhihu.com/p/1989290801268793584",
+              "title": "一文读懂所有USB接口：A、B、Type‑C、雷电到底有啥区别？",
+              "snippet": "我们平时是不是会遇到过这种情况： 买了个号称\"高速\"的移动硬盘，拷文件却跟蜗牛一样。 笔记本上有好几个 USB 口，有的能连显示器，有的只能插U盘。 同样是 Type‑C，有的能快充，有的却只能缓慢的传数据。 这些坑，几乎都和USB 接口的\"形状\"和\"版本\"有关。我整理一下，把常见USB 接口 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.stchargers.cn/news/usb-a、usb-b-与-usb-c：三种接口的全面解析/",
+              "title": "USB-A、USB-B 与 USB-C：三种接口的全面解析 - Kunshan ST Electronics Co., Ltd.",
+              "snippet": "本文将深入探讨 USB-A、USB-B 和 USB-C 三种接口之间的主要区别，分析各自的特点与适用场景，重点介绍为何具备更高速度、更强供电能力和多功能特性的 USB-C 正逐渐成为通用标准。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://tyaward.com.tw/科技/usb-a-跟usb-c差在哪/",
+              "title": "usb-a-跟usb-c差在哪？一文搞懂外觀與傳輸快充差異｜日常有解",
+              "snippet": "USB-A 與 USB-C 的基礎概念與發展背景 USB 技術的登場徹底改變了早期個人電腦連接周邊設備時需要各式專用介面的混亂狀態。而在眾多 USB 接頭類型中，USB-A 與 USB-C 分別代表了兩個不同世代的技術里程碑。 USB-A（Type-A）作為最經典的連接介面，最早於 1996 年發表，並在 1998 年後大規模普及於個人電腦 ...",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:42:14.209985+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [],
+      "queued_speech": [
+        "USB-C 和 USB-A 的主要差別在於外觀、傳輸速度和充電能力。",
+        "USB-A 是傳統的矩形介面，而 USB-C 被稱為萬能介面，它具備更高的多功能性，可以同時傳輸資料和顯示訊號。"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "extractive",
+          "items": [
+            {
+              "source_id": "1",
+              "quote": "地址:709025臺南市安南區長和路一段250號"
+            }
+          ]
+        }
+      ],
+      "question": "請查國立臺灣歷史博物館在哪裡",
+      "seconds": 2.979,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "5f0a5cf00cd74500961f1922b80a55a2",
+          "status": "available",
+          "query": "國立臺灣歷史博物館 地址",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://www.nmth.gov.tw/cp.aspx?n=4101",
+              "title": "交通 - 國立臺灣歷史博物館",
+              "snippet": "1.計程車：搭乘計程車至 國立臺灣歷史博物館（長和路）（約15分） → 抵達。 2.轉乘公車：轉乘公車（20、905路）至和順轉運站 （約25分） → 步行約5分鐘後抵達。 【國道客運】 1.計程車：抵達轉運站後，搭乘計程車至 國立臺灣歷史博物館（長和路） → 抵達。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://accessibility.moc.gov.tw/NMTHNEW/CP.aspx?n=4800",
+              "title": "國立臺灣歷史博物館 友善措施服務介紹網-參觀資訊",
+              "snippet": "如何前往 歡迎來國立臺灣歷史博物館! 地址：709025臺南市安南區長和路一段250號 無障礙服務專線：06-356-8889轉分機8103 您想來國立臺灣歷史博物館，您可以在下面的交通資訊和右邊的地圖找到來這裏的方式。",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://www.tad.gov.tw/m1.aspx?sNo=0001016&id=A12-00403",
+              "title": "國立臺灣歷史博物館 > 觀光景點 > 交通部觀光署",
+              "snippet": "「臺史博」是國立臺灣歷史博物館的暱稱，為了保存臺灣歷史文化記憶，現已蒐藏十多萬件館藏，許多都來自民眾的捐贈。 臺史博具有堅強的研究典藏、展覽策劃與推廣能量，關注歷史與當代議題，以多元角度及跨族群視野講述人與土地的故事，為不同需求的觀眾提供友善的服務及體驗方案。 展示 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://www.nmth.gov.tw/",
+              "title": "國立臺灣歷史博物館",
+              "snippet": "2026-09-09 【新聞稿】迎向名古屋亞運 臺史博推出《亞洲在場》系列主題影片 從當代運動員回望亞運歷史，延伸臺灣的體育記憶 2026-08-21 【新聞稿】臺史博深化臺日館際合作 赴能登交流災後文化復振、推進「世界的臺史博」",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://the.nmth.gov.tw/",
+              "title": "國立臺灣歷史博物館 - 常設展 - 點集臺灣史",
+              "snippet": "點集臺灣史 地址：709025臺南市安南區長和路一段250號 電話：06-356-8889 傳真：06-356-4981 無障礙服務專線電話：06-356-8889 分機 8103 更新日期：2025-03-24 訪客人數：1,592,401",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:42:17.500657+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [
+        "地址:709025臺南市安南區長和路一段250號"
+      ],
+      "queued_speech": [
+        "地址:709025臺南市安南區長和路一段250號"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        {
+          "mode": "context",
+          "items": [
+            {
+              "source_id": "1",
+              "quote": "1979年1月18日 （ 47歲）"
+            }
+          ]
+        }
+      ],
+      "question": "周杰倫現在幾歲",
+      "seconds": 2.587,
+      "sources": [
+        {
+          "type": "web_search_result",
+          "turn_id": "8f05fdecf39b48f0aabfa0520e986978",
+          "status": "available",
+          "query": "周杰倫出生日期",
+          "sources": [
+            {
+              "id": "1",
+              "url": "https://zh.wikipedia.org/wiki/周杰倫",
+              "title": "周杰倫 - 维基百科，自由的百科全书",
+              "snippet": "周杰倫在 臺灣 臺北縣 林口鄉 [註 1] 出生長大，為家中的獨生子 [15][16]。父親周耀中任教於 蘆洲國中，教授 生物；母親葉惠美則是林口國中 美術 老師 [17]。14歲時父母離異，由父親擔任 監護人，年滿18歲後選擇與母親共同生活 [18]。周杰倫曾在台灣 民視新聞台 由 胡婉玲 主持的節目《台灣演義》專 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "2",
+              "url": "https://zh-yue.wikipedia.org/wiki/周杰倫",
+              "title": "周杰倫 - 維基百科，自由嘅百科全書",
+              "snippet": "吳宗憲 可以話係周杰倫嘅 伯樂。1997年8月，當時只有十八歲嘅周杰倫，因為佢高中同學參加TVBS嘅節目《超級新人王》，而做佢同學嘅鋼琴伴奏。雖然佢同學冇攞到獎，但係當時嘅節目主持吳宗憲一下子就睇中咗周杰倫對作曲樂譜嘅工整，認為佢係隻「潛力股」，因而同佢簽約，周杰倫從此進入樂壇 ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "3",
+              "url": "https://en.wikipedia.org/wiki/Jay_Chou",
+              "title": "Jay Chou - Wikipedia",
+              "snippet": "Jay Chou was born and raised in Linkou, Taipei County, Taiwan. Both his parents were secondary school teachers: his mother, Yeh Hui-mei (葉惠美; Yè Huìměi), who was an art teacher, while his father, Chou Yao-chung (周耀中; Zhōu Yàozhōng), is a biomedical researcher. His mother noticed his sensitivity to music and took him to piano lessons at the age of four. [3] During his ...",
+              "kind": "page",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "4",
+              "url": "https://baike.baidu.com/item/周杰伦/129156",
+              "title": "周杰伦（华语流行乐男歌手、原创音乐人、影视演员、导演、编剧）_百度百科",
+              "snippet": "周杰伦（Jay Chou），1979年1月18日出生于台湾省新北市，祖籍福建省永春县，华语流行乐男歌手、原创音乐人、影视演员、导演、编剧，毕业于淡江中学。 演艺经历：周杰伦自幼喜爱音乐，后因参加选秀节目而被发掘。",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            },
+            {
+              "id": "5",
+              "url": "https://kknews.cc/zh-tw/entertainment/oe4956o.html",
+              "title": "周杰倫個人簡歷 - 每日頭條",
+              "snippet": "中文名周杰倫外文名Jay Chou別 名周董國 籍中國民 族漢族星 座摩羯座血 型O型身 高175cm出生地台灣省新北市出生日期1979年1月18日職 業歌手、音樂人、製作人、導演、商人畢業院校淡江中學經紀公司杰威爾音樂有限公司代表作品星晴、龍捲風、簡單愛、雙截棍、晴天、以父之名",
+              "kind": "snippet",
+              "engine": "duckduckgo"
+            }
+          ],
+          "fetched_at": "2026-11-03T14:42:20.474561+00:00",
+          "reused": false,
+          "profile_id": "search_retest",
+          "seq": 7
+        }
+      ],
+      "responses": [],
+      "queued_speech": [
+        "周傑倫現在是四十七歲。",
+        "根據維基百科的資料，他出生於一九七九年一月十八日。"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        null
+      ],
+      "question": "你好",
+      "seconds": 0.431,
+      "sources": [],
+      "responses": [],
+      "queued_speech": [
+        "你好！",
+        "很高興能為你服務。",
+        "有什麼我可以幫你的嗎？"
+      ],
+      "board": [],
+      "errors": []
+    },
+    {
+      "selection": [
+        null
+      ],
+      "question": "什麼是光合作用？",
+      "seconds": 0.502,
+      "sources": [],
+      "responses": [],
+      "queued_speech": [
+        "光合作用就是植物利用光能把二氧化碳和水變成糖分，",
+        "這是一種非常重要的過程。"
+      ],
+      "board": [],
+      "errors": []
+    }
+  ]
+}

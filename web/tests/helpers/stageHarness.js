@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HongXian0903
 // SPDX-License-Identifier: Apache-2.0
 
+import { webSearchState, receiveWebSearch } from '../../src/webSearchState.js'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import { stageText, stageItemCount } from '../../src/stageLocale.js'
@@ -87,7 +88,8 @@ export function stageHarness({
   } })
   const stream = { getAudioTracks: () => [track], getTracks: () => [track] }
   const context = {
-    stageText, stageItemCount, composerSettings,
+    stageText, stageItemCount, composerSettings, webSearchState, receiveWebSearch,
+    WebSearchSources: {},
     reactive: value => value, createApp: () => ({ mount() {} }), h: () => null,
     queueMicrotask,
     document: { getElementById: element },

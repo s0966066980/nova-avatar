@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HongXian0903
 // SPDX-License-Identifier: Apache-2.0
 
+import { webSearchState, receiveWebSearch } from '../src/webSearchState.js'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
@@ -15,6 +16,7 @@ const handler = app.slice(app.indexOf('const handleVoiceEvent ='), app.indexOf('
 test('控制台忽略另一端問答與重置，只重播自己對話的已播內容', () => {
   const context = {
     composerRef: { value: null },
+    receiveWebSearch, activeWebSearch: webSearchState(), webByTurn: {},
     roleEvent() {}, voiceTestPanelRef: { value: null },
     voiceState: { value: '' }, isRecordingVoice: { value: false }, isThinking: { value: false },
     chatMessages: { value: [] }, assistantStreamState: new Map(), ragByTurn: {},

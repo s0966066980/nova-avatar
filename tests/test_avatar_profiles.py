@@ -237,3 +237,15 @@ def test_existing_profiles_migrate_effective_shared_playback_choices_once(profil
     assert all(p['llm']['board_max_items'] == 4 for p in migrated['profiles'])
     config.reply_streaming.enabled = False
     assert store.initialize(config) == migrated
+
+
+def test_web_search_policy_is_role_owned_persisted_and_snapshotted(profiles):
+    store, config, data = profiles
+    assert all(not p['web_search']['enabled'] for p in data['profiles'])
+    data['profiles'][0]['web_search'] = {'enabled': True, 'allowed_domains': ['gov.tw']}
+    saved = _save_profiles(store, data)
+    assert store.load()['profiles'][0]['web_search']['enabled']
+    snapshot = profile_config(config, saved['profiles'][0])
+    saved['profiles'][0]['web_search']['allowed_domains'].clear()
+    assert snapshot.profile_web_search['allowed_domains'] == ['gov.tw']
+    assert not saved['profiles'][1]['web_search']['enabled']

@@ -10,6 +10,7 @@ const lifecycle = { ...vue, onMounted() {},
   TransitionGroup: { inheritAttrs: false, setup: (_props, { slots }) => () => slots.default?.() } }
 const Composer = await loadComponent(new URL('../src/components/ConversationComposer.vue', import.meta.url), { vue: lifecycle }, { inlineTemplate: false })
 const VoiceTestPanel = await loadComponent(new URL('../src/components/VoiceTestPanel.vue', import.meta.url), { vue: lifecycle }, { inlineTemplate: false })
+const WebSearchSources = await loadComponent(new URL('../src/components/WebSearchSources.vue', import.meta.url))
 const empty = { default: { render: () => null } }
 const Settings = { props: ['sessionId'], emits: ['close-settings', 'conversation-summary'], setup: (props, { emit, expose }) => {
   const selected = vue.ref('roles')
@@ -38,6 +39,7 @@ async function consoleView(t, { connected = true, rolePhase = 'disabled', humanR
   const App = await loadComponent(new URL('../src/App.vue', import.meta.url), {
     vue: lifecycle,
     './components/ConversationComposer.vue': { default: Composer },
+    './components/WebSearchSources.vue': { default: WebSearchSources },
     './components/ConversationPanel.vue': { default: { render: () => vue.h('section', '對話記憶與語系') } },
     './components/DebugPanel.vue': empty,
     './components/SettingsPanel.vue': { default: Settings },
