@@ -20,6 +20,34 @@ from src.utils.logging import logger
 _session_llm_instances = {}
 
 
+def _session_instance(avatar_stream, config, api_key=None, base_url=None, model=None):
+    sessionid = getattr(avatar_stream, "sessionid", 0)
+    if sessionid not in _session_llm_instances:
+        logger.info(f"Creating new LLM instance for session {sessionid}")
+        _session_llm_instances[sessionid] = OpenAILLM(
+            config=config,
+            parent=avatar_stream,
+            api_key=(config.llm.api_key if config and getattr(config, "llm", None) else None) or api_key or "nova-avatar-local",
+            base_url=(config.llm.base_url if config and getattr(config, "llm", None) else None) or base_url,
+            model=(config.llm.model if config and getattr(config, "llm", None) else None) or model,
+            max_history=10,
+        )
+    return _session_llm_instances[sessionid]
+
+
+def prepare_spoken_history(message: str, avatar_stream: BaseAvatar, turn_id: str) -> None:
+    """A fixed clarification reply commits through the same playback transaction."""
+    from src.server.state import state as server_state
+    config = getattr(avatar_stream, "config", None) or server_state.config
+    llm = _session_instance(avatar_stream, config)
+    llm.begin_history_turn(message, turn_id=turn_id)
+
+
+def session_history(sessionid: int) -> list:
+    llm = _session_llm_instances.get(sessionid)
+    return list(getattr(llm, "conversation_history", [])) if llm else []
+
+
 def llm_response(
     message: str,
     avatar_stream: BaseAvatar,

@@ -146,6 +146,8 @@ const speech = reactive({
   tts: {
     type: 'edgetts',
     ref_file: 'zh-TW-HsiaoChenNeural',
+    voice_zh_tw: 'zh-TW-HsiaoChenNeural',
+    voice_en_us: 'en-US-JennyNeural',
     ref_text: '',
     tts_server: '',
     model: '',
@@ -158,6 +160,8 @@ const speech = reactive({
     languages: [],
     speakers: [],
     edge_voices: [],
+    edge_voices_zh_tw: [],
+    edge_voices_en_us: [],
     devices: ['auto', 'cpu', 'cuda']
   }
 })
@@ -173,6 +177,8 @@ const ttsDraft = reactive({
   type: 'edgetts',
   mode: 'auto',
   ref_file: 'zh-TW-HsiaoChenNeural',
+  voice_zh_tw: 'zh-TW-HsiaoChenNeural',
+  voice_en_us: 'en-US-JennyNeural',
   ref_text: '',
   tts_server: '',
   model: '',
@@ -390,6 +396,8 @@ const ttsDirty = computed(() => (
   ttsDraft.type !== speech.tts.type ||
   ttsDraft.mode !== speech.tts.mode ||
   ttsDraft.ref_file !== speech.tts.ref_file ||
+  ttsDraft.voice_zh_tw !== speech.tts.voice_zh_tw ||
+  ttsDraft.voice_en_us !== speech.tts.voice_en_us ||
   ttsDraft.ref_text !== speech.tts.ref_text ||
   ttsDraft.tts_server !== speech.tts.tts_server ||
   ttsDraft.model !== speech.tts.model ||
@@ -402,6 +410,18 @@ const ttsDirty = computed(() => (
 const STT_ENGINE_FALLBACK = [
   { id: 'whisper', label: 'Whisper' },
   { id: 'funasr', label: 'FunASR' }
+]
+
+const EDGE_VOICES_ZH_TW_FALLBACK = [
+  { id: 'zh-TW-HsiaoChenNeural', name: 'HsiaoChen', label: '曉臻 HsiaoChen（女聲）', gender: 'female', locale: 'zh-TW' },
+  { id: 'zh-TW-HsiaoYuNeural', name: 'HsiaoYu', label: '曉雨 HsiaoYu（女聲）', gender: 'female', locale: 'zh-TW' },
+  { id: 'zh-TW-YunJheNeural', name: 'YunJhe', label: '雲哲 YunJhe（男聲）', gender: 'male', locale: 'zh-TW' }
+]
+
+const EDGE_VOICES_EN_US_FALLBACK = [
+  { id: 'en-US-JennyNeural', name: 'Jenny', label: 'Jenny（美式女聲）', gender: 'female', locale: 'en-US' },
+  { id: 'en-US-AriaNeural', name: 'Aria', label: 'Aria（美式女聲）', gender: 'female', locale: 'en-US' },
+  { id: 'en-US-GuyNeural', name: 'Guy', label: 'Guy（美式男聲）', gender: 'male', locale: 'en-US' }
 ]
 
 const sttEngineOptions = computed(() => {
@@ -418,10 +438,27 @@ const sttModelOptions = computed(() => (
 ))
 
 const edgeVoiceOptions = computed(() => {
-  const available = Array.isArray(speech.tts.edge_voices) ? speech.tts.edge_voices : []
+  const fromZh = Array.isArray(speech.tts.edge_voices_zh_tw) && speech.tts.edge_voices_zh_tw.length
+    ? speech.tts.edge_voices_zh_tw
+    : (Array.isArray(speech.tts.edge_voices) && speech.tts.edge_voices.length
+        ? speech.tts.edge_voices.filter((v) => String(v.id || '').startsWith('zh-TW-'))
+        : EDGE_VOICES_ZH_TW_FALLBACK)
+  const available = fromZh.length ? fromZh : EDGE_VOICES_ZH_TW_FALLBACK
   const selected = ttsDraft.ref_file
   if (!selected || available.some((voice) => voice.id === selected)) return available
-  return [{ id: selected, name: selected }, ...available]
+  return [{ id: selected, name: selected, label: selected }, ...available]
+})
+
+const edgeEnVoiceOptions = computed(() => {
+  const fromEn = Array.isArray(speech.tts.edge_voices_en_us) && speech.tts.edge_voices_en_us.length
+    ? speech.tts.edge_voices_en_us
+    : (Array.isArray(speech.tts.edge_voices) && speech.tts.edge_voices.length
+        ? speech.tts.edge_voices.filter((v) => String(v.id || '').startsWith('en-US-'))
+        : EDGE_VOICES_EN_US_FALLBACK)
+  const available = fromEn.length ? fromEn : EDGE_VOICES_EN_US_FALLBACK
+  const selected = ttsDraft.voice_en_us
+  if (!selected || available.some((voice) => voice.id === selected)) return available
+  return [{ id: selected, name: selected, label: selected }, ...available]
 })
 
 watch(() => sttDraft.type, () => {
@@ -430,7 +467,7 @@ watch(() => sttDraft.type, () => {
   }
 })
 
-const EDGE_VOICE_ID = /^zh-TW-.+Neural$/
+const EDGE_VOICE_ID = /^(?:zh-TW|en-US)-.+Neural$/
 
 watch(() => ttsDraft.type, (type, previous) => {
   if (previous === 'edgetts' && type !== 'edgetts' && EDGE_VOICE_ID.test(ttsDraft.ref_file)) {
@@ -578,10 +615,24 @@ function applySpeechSnapshot(data) {
   }
   if (data.tts) {
     Object.assign(speech.tts, data.tts)
+    const zhVoice = data.tts.voice_zh_tw || (
+      String(data.tts.ref_file || '').startsWith('zh-TW-')
+        ? data.tts.ref_file
+        : (speech.tts.voice_zh_tw || 'zh-TW-HsiaoChenNeural')
+    )
+    const enVoice = data.tts.voice_en_us || (
+      String(data.tts.ref_file || '').startsWith('en-US-')
+        ? data.tts.ref_file
+        : (speech.tts.voice_en_us || 'en-US-JennyNeural')
+    )
+    speech.tts.voice_zh_tw = zhVoice
+    speech.tts.voice_en_us = enVoice
     Object.assign(ttsDraft, {
       type: data.tts.type,
       mode: data.tts.mode || 'auto',
       ref_file: data.tts.ref_file || '',
+      voice_zh_tw: zhVoice,
+      voice_en_us: enVoice,
       ref_text: data.tts.ref_text || '',
       tts_server: data.tts.tts_server || '',
       model: data.tts.model || '',
@@ -593,11 +644,34 @@ function applySpeechSnapshot(data) {
   }
 }
 
+async function syncConversationVoiceDefaults() {
+  try {
+    const res = await fetch('/api/conversations', { cache: 'no-store' })
+    const json = await res.json()
+    if (res.ok && json.code === 0 && json.data?.defaults) {
+      const defs = json.data.defaults
+      if (defs.voice_zh_tw) {
+        speech.tts.voice_zh_tw = defs.voice_zh_tw
+        ttsDraft.voice_zh_tw = defs.voice_zh_tw
+        if (ttsDraft.type === 'edgetts') {
+          speech.tts.ref_file = defs.voice_zh_tw
+          ttsDraft.ref_file = defs.voice_zh_tw
+        }
+      }
+      if (defs.voice_en_us) {
+        speech.tts.voice_en_us = defs.voice_en_us
+        ttsDraft.voice_en_us = defs.voice_en_us
+      }
+    }
+  } catch (_) {}
+}
+
 async function loadSpeechSettings() {
   speechError.value = ''
   try {
     const data = await parseJson(await fetch('/api/speech'))
     applySpeechSnapshot(data)
+    await syncConversationVoiceDefaults()
     return data
   } catch (error) {
     speechError.value = error.message
@@ -637,12 +711,27 @@ async function applyTtsSettings() {
   applyingTts.value = true
   speechError.value = ''
   try {
+    if (ttsDraft.type === 'edgetts' && String(ttsDraft.ref_file || '').startsWith('zh-TW-')) {
+      ttsDraft.voice_zh_tw = ttsDraft.ref_file
+    }
     const data = await parseJson(await fetch('/api/speech/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(ttsDraft)
     }))
-    applySpeechSnapshot({ tts: data })
+    if (ttsDraft.type === 'edgetts') {
+      try {
+        await fetch('/api/conversations/defaults', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            voice_zh_tw: ttsDraft.voice_zh_tw || ttsDraft.ref_file,
+            voice_en_us: ttsDraft.voice_en_us
+          })
+        })
+      } catch (_) {}
+    }
+    applySpeechSnapshot({ tts: { ...data, voice_zh_tw: ttsDraft.voice_zh_tw, voice_en_us: ttsDraft.voice_en_us } })
     if (data.preview_audio) {
       const preview = new Audio(data.preview_audio)
       await preview.play()
@@ -847,7 +936,7 @@ async function loadRuntimeSettings() {
   try {
     const data = await parseJson(await fetch('/api/settings'))
     applySnapshot(data)
-    await loadReplyRules()
+    await Promise.all([loadReplyRules(), syncConversationVoiceDefaults()])
     return data
   } catch (error) {
     settingsError.value = error.message
@@ -1500,6 +1589,7 @@ export function useRuntimeSettings() {
     sttModelOptions,
     ttsDirty,
     edgeVoiceOptions,
+    edgeEnVoiceOptions,
     applyingStt,
     applyingTts,
     speechError,

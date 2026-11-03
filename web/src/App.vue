@@ -19,7 +19,6 @@ See LICENSE and NOTICE.
         </div>
         <div class="nav-brand-title">
           <span>Nova Avatar</span>
-          <span class="nav-version-pill">v2.0</span>
         </div>
       </div>
 

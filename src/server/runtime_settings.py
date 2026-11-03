@@ -225,6 +225,11 @@ def current_snapshot(config) -> Dict[str, Any]:
         "vad": vad_snapshot(config),
         "speech": speech_snapshot(config),
         "stage": stage_snapshot(config),
+        "weather": {
+            "enabled": bool(getattr(getattr(config, "weather", None), "enabled", True)),
+            "county": str(getattr(getattr(config, "weather", None), "county", "") or ""),
+            "town": str(getattr(getattr(config, "weather", None), "town", "") or ""),
+        },
     }
 
 
@@ -1280,13 +1285,23 @@ STT_MODELS_BY_ENGINE = {
 STT_LANGUAGES = ("zh", "en", "auto")
 STT_DEVICES = ("auto", "cpu", "cuda")
 EDGE_TTS_ZH_TW_VOICES = (
-    {"id": "zh-TW-HsiaoChenNeural", "name": "HsiaoChen", "gender": "female"},
-    {"id": "zh-TW-HsiaoYuNeural", "name": "HsiaoYu", "gender": "female"},
-    {"id": "zh-TW-YunJheNeural", "name": "YunJhe", "gender": "male"},
+    {"id": "zh-TW-HsiaoChenNeural", "name": "HsiaoChen", "label": "曉臻 HsiaoChen（女聲）", "gender": "female", "locale": "zh-TW"},
+    {"id": "zh-TW-HsiaoYuNeural", "name": "HsiaoYu", "label": "曉雨 HsiaoYu（女聲）", "gender": "female", "locale": "zh-TW"},
+    {"id": "zh-TW-YunJheNeural", "name": "YunJhe", "label": "雲哲 YunJhe（男聲）", "gender": "male", "locale": "zh-TW"},
 )
+EDGE_TTS_EN_US_VOICES = (
+    {"id": "en-US-JennyNeural", "name": "Jenny", "label": "Jenny（美式女聲）", "gender": "female", "locale": "en-US"},
+    {"id": "en-US-AriaNeural", "name": "Aria", "label": "Aria（美式女聲）", "gender": "female", "locale": "en-US"},
+    {"id": "en-US-GuyNeural", "name": "Guy", "label": "Guy（美式男聲）", "gender": "male", "locale": "en-US"},
+)
+EDGE_TTS_VOICES = EDGE_TTS_ZH_TW_VOICES + EDGE_TTS_EN_US_VOICES
 EDGE_TTS_ZH_TW_VOICE_IDS = frozenset(
     voice["id"] for voice in EDGE_TTS_ZH_TW_VOICES
 )
+EDGE_TTS_EN_US_VOICE_IDS = frozenset(
+    voice["id"] for voice in EDGE_TTS_EN_US_VOICES
+)
+EDGE_TTS_VOICE_IDS = EDGE_TTS_ZH_TW_VOICE_IDS | EDGE_TTS_EN_US_VOICE_IDS
 
 
 def _engine_available(item: Dict[str, str]) -> bool:
@@ -1312,6 +1327,13 @@ def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
 def speech_snapshot(config) -> Dict[str, Any]:
     asr = config.asr
     tts = config.tts
+    conv = getattr(config, "conversation", None)
+    voice_zh_tw = getattr(conv, "voice_zh_tw", None) or (
+        tts.ref_file if tts.ref_file in EDGE_TTS_ZH_TW_VOICE_IDS else "zh-TW-HsiaoChenNeural"
+    )
+    voice_en_us = getattr(conv, "voice_en_us", None) or (
+        tts.ref_file if tts.ref_file in EDGE_TTS_EN_US_VOICE_IDS else "en-US-JennyNeural"
+    )
     return {
         "stt": {
             "type": asr.type,
@@ -1333,6 +1355,8 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "type": tts.type,
             "mode": getattr(tts, "mode", "auto"),
             "ref_file": tts.ref_file,
+            "voice_zh_tw": voice_zh_tw,
+            "voice_en_us": voice_en_us,
             "ref_text": tts.ref_text or "",
             "tts_server": tts.tts_server,
             "model": tts.model,
@@ -1356,7 +1380,9 @@ def speech_snapshot(config) -> Dict[str, Any]:
                 )
             ],
             "speakers": [],
-            "edge_voices": [dict(voice) for voice in EDGE_TTS_ZH_TW_VOICES],
+            "edge_voices": [dict(voice) for voice in EDGE_TTS_VOICES],
+            "edge_voices_zh_tw": [dict(voice) for voice in EDGE_TTS_ZH_TW_VOICES],
+            "edge_voices_en_us": [dict(voice) for voice in EDGE_TTS_EN_US_VOICES],
             "devices": list(STT_DEVICES),
         },
     }
@@ -1454,8 +1480,46 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     speaker = str(params.get("speaker", config.tts.speaker) or "").strip()
     instruct = str(params.get("instruct", config.tts.instruct) or "").strip()
     device = str(params.get("device", config.tts.device) or "auto").strip().lower()
-    if engine == "edgetts" and ref_file not in EDGE_TTS_ZH_TW_VOICE_IDS:
-        raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線")
+    conv = getattr(config, "conversation", None)
+    has_dual_voices = "voice_zh_tw" in params or "voice_en_us" in params
+    voice_zh_tw = str(
+        params.get("voice_zh_tw")
+        or getattr(conv, "voice_zh_tw", "zh-TW-HsiaoChenNeural")
+        or "zh-TW-HsiaoChenNeural"
+    ).strip()
+    voice_en_us = str(
+        params.get("voice_en_us")
+        or getattr(conv, "voice_en_us", "en-US-JennyNeural")
+        or "en-US-JennyNeural"
+    ).strip()
+    preview_ref_file = ref_file
+    if engine == "edgetts":
+        if has_dual_voices:
+            if "voice_zh_tw" in params and voice_zh_tw not in EDGE_TTS_ZH_TW_VOICE_IDS:
+                raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線")
+            if "voice_en_us" in params and voice_en_us not in EDGE_TTS_EN_US_VOICE_IDS:
+                raise SettingsError("請選擇可用的 Edge TTS 美式英語聲線")
+            if ref_file in EDGE_TTS_ZH_TW_VOICE_IDS and "voice_zh_tw" not in params:
+                voice_zh_tw = ref_file
+            prev_en = getattr(conv, "voice_en_us", "en-US-JennyNeural")
+            prev_zh = getattr(conv, "voice_zh_tw", "zh-TW-HsiaoChenNeural")
+            if voice_en_us != prev_en and voice_zh_tw == prev_zh:
+                preview_ref_file = voice_en_us
+            else:
+                preview_ref_file = voice_zh_tw
+            ref_file = (
+                voice_en_us
+                if getattr(conv, "locale", "zh-TW") == "en-US"
+                else voice_zh_tw
+            )
+        else:
+            if ref_file not in EDGE_TTS_VOICE_IDS:
+                raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線或美式英語聲線")
+            preview_ref_file = ref_file
+            if ref_file in EDGE_TTS_ZH_TW_VOICE_IDS:
+                voice_zh_tw = ref_file
+            elif ref_file in EDGE_TTS_EN_US_VOICE_IDS:
+                voice_en_us = ref_file
     if is_cosyvoice_engine(engine):
         from src.tts.cosyvoice_runtime import (
             DEFAULT_PROMPT_TEXT,
@@ -1471,7 +1535,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
 
         if not tts_server:
             tts_server = "http://127.0.0.1:50000"
-        if ref_file in EDGE_TTS_ZH_TW_VOICE_IDS:
+        if ref_file in EDGE_TTS_VOICE_IDS:
             ref_file = ""
 
         if mode == "zero_shot" and ref_file and not ref_text:
@@ -1522,7 +1586,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     preview_audio = _preview_tts(
         config,
         engine=engine,
-        ref_file=ref_file,
+        ref_file=preview_ref_file if engine == "edgetts" else ref_file,
         ref_text=ref_text,
         tts_server=tts_server,
         model=model,
@@ -1543,6 +1607,16 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     config.tts.speaker = speaker
     config.tts.instruct = instruct
     config.tts.device = device
+    if engine == "edgetts" and hasattr(config, "conversation"):
+        config.conversation.voice_zh_tw = voice_zh_tw
+        config.conversation.voice_en_us = voice_en_us
+        if not has_dual_voices:
+            if ref_file in EDGE_TTS_EN_US_VOICE_IDS:
+                config.conversation.locale = "en-US"
+                config.llm.assistant_profile.output_locale = "en-US"
+            elif ref_file in EDGE_TTS_ZH_TW_VOICE_IDS:
+                config.conversation.locale = "zh-TW"
+                config.llm.assistant_profile.output_locale = "zh-TW"
     persist_runtime_overrides(config)
     result = speech_snapshot(config)["tts"]
     result["preview_audio"] = preview_audio
@@ -1598,9 +1672,14 @@ def _preview_tts(
     from src.tts.factory import create_tts_engine
 
     sink = PreviewSink()
+    preview_text = (
+        "Voice configuration complete"
+        if engine == "edgetts" and ref_file in EDGE_TTS_EN_US_VOICE_IDS
+        else "語音設定完成"
+    )
     try:
         candidate = create_tts_engine(engine, pending, sink)
-        candidate.txt_to_audio(("語音設定完成", {"preview": True}))
+        candidate.txt_to_audio((preview_text, {"preview": True}))
     except Exception as exc:
         raise SettingsError(f"TTS 連線或試聽失敗: {exc}", status=502) from exc
     if not sink.frames:

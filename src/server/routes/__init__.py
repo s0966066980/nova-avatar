@@ -15,6 +15,11 @@ from .ragflow import (
     list_ragflow_datasets,
     test_ragflow_retrieval,
 )
+from .weather import (
+    get_weather_settings,
+    put_weather_settings,
+    test_weather_query,
+)
 from .settings import (
     get_settings,
     get_vad_settings,
@@ -69,6 +74,9 @@ __all__ = [
     'put_ragflow_settings',
     'list_ragflow_datasets',
     'test_ragflow_retrieval',
+    'get_weather_settings',
+    'put_weather_settings',
+    'test_weather_query',
     'get_settings',
     'get_vad_settings',
     'set_vad_settings',

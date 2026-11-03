@@ -179,6 +179,13 @@ def persist_runtime_overrides(config) -> None:
             "instruct": tts.instruct,
             "device": tts.device,
         }
+    weather = getattr(config, "weather", None)
+    if weather is not None:
+        payload["weather"] = {
+            "enabled": bool(getattr(weather, "enabled", True)),
+            "county": str(getattr(weather, "county", "") or ""),
+            "town": str(getattr(weather, "town", "") or ""),
+        }
     RUNTIME_OVERRIDES_FILE.parent.mkdir(parents=True, exist_ok=True)
     header = (
         "# 由設定面板自動生成，請勿手改關鍵結構。\n"

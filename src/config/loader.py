@@ -13,7 +13,8 @@ from .schema import (
     Config, AppConfig, ModelConfig, TTSConfig, ASRConfig, VADConfig, LLMConfig,
     AudioConfig, VideoConfig, CustomVideoConfig, ERNeRfConfig, TalkingGaussianConfig,
     MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
-    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig, ConversationConfig,
+    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig,
+    ConversationConfig, WeatherConfig,
 )
 
 
@@ -155,6 +156,13 @@ def dict_to_config(config_dict: Dict) -> Config:
     stage_config = StageConfig(
         **{key: value for key, value in stage_dict.items() if key in allowed_stage}
     )
+    weather_dict = config_dict.get('weather', {}) or {}
+    if not isinstance(weather_dict, dict):
+        weather_dict = {}
+    allowed_weather = {item.name for item in fields(WeatherConfig)}
+    weather_config = WeatherConfig(
+        **{key: value for key, value in weather_dict.items() if key in allowed_weather}
+    )
 
     return Config(
         app=app_config,
@@ -169,6 +177,7 @@ def dict_to_config(config_dict: Dict) -> Config:
         reply_streaming=reply_streaming_config,
         stage=stage_config,
         conversation=ConversationConfig(**config_dict.get('conversation', {})),
+        weather=weather_config,
     )
 
 

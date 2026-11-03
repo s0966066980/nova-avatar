@@ -86,3 +86,51 @@ class TextNormalizerTests(unittest.TestCase):
         self.assertEqual(boards[0]["title"], "軟體功能")
         self.assertEqual(boards[0]["items"][0]["title"], "視訊")
         self.assertEqual(boards[0]["items"][0]["content"], "支援使用者資料")
+
+    def test_en_us_number_words_are_normalized_to_arabic_numerals(self):
+        text = (
+            "It is twenty-six degrees Celsius with forty percent rain, "
+            "one hundred and twenty-five visitors, and three point five hours. "
+            "It is one of the best museums."
+        )
+        self.assertEqual(
+            normalize_output_text(text, locale="en-US"),
+            "It is 26 degrees Celsius with 40 percent rain, "
+            "125 visitors, and 3.5 hours. "
+            "It is one of the best museums.",
+        )
+
+    def test_en_us_streaming_pipeline_normalizes_split_number_words_for_subtitles(self):
+        class FakeEnglishLLM(BaseLLM):
+            def chat_stream(self, message, system_prompt=None, **kwargs):
+                yield "[[SPEECH]]It is "
+                yield "twenty"
+                yield "-six"
+                yield " degrees with "
+                yield "forty"
+                yield " percent rain.[[END]]"
+
+        class FakeAvatar:
+            def __init__(self):
+                self.fragments = []
+                self.deltas = []
+
+            def put_msg_txt(self, text, data=None):
+                self.fragments.append(text)
+
+            def notify_llm_chunk(self, text, data=None):
+                self.deltas.append(text)
+
+        config = Config()
+        config.llm.assistant_profile.output_locale = "en-US"
+        config.llm.assistant_profile.enforce_output_locale = True
+        avatar = FakeAvatar()
+        llm = FakeEnglishLLM(config)
+        spoken = llm.generate_response(
+            "What is the weather?",
+            avatar,
+            datainfo={"turn_id": "turn-en-1", "generation": 1},
+        )
+        self.assertEqual(spoken, "It is 26 degrees with 40 percent rain.")
+        self.assertEqual("".join(avatar.deltas), "It is 26 degrees with 40 percent rain.")
+        self.assertEqual("".join(avatar.fragments), "It is 26 degrees with 40 percent rain.")

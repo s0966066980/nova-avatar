@@ -51,12 +51,13 @@ uv.lock
 
 # Project specific
 models/
-llama/*.gguf
+llama/
 data/
 logs/
 config/runtime_overrides.yaml
 config/ragflow_settings.yaml
 config/ragflow.env
+config/cwa.env
 .local/ragflow/
 .local/toolchains/
 .local/jetson/

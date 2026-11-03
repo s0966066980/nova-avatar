@@ -582,7 +582,7 @@ class SpeechSettingsTests(unittest.TestCase):
             )
         )
 
-    def test_snapshot_lists_all_edge_tts_zh_tw_voices(self):
+    def test_snapshot_lists_all_edge_tts_zh_tw_and_en_us_voices(self):
         voices = speech_snapshot(Config())["tts"]["edge_voices"]
         self.assertEqual(
             {voice["id"] for voice in voices},
@@ -590,12 +590,57 @@ class SpeechSettingsTests(unittest.TestCase):
                 "zh-TW-HsiaoChenNeural",
                 "zh-TW-HsiaoYuNeural",
                 "zh-TW-YunJheNeural",
+                "en-US-JennyNeural",
+                "en-US-AriaNeural",
+                "en-US-GuyNeural",
             },
         )
         self.assertEqual(
             {voice["gender"] for voice in voices},
             {"female", "male"},
         )
+        self.assertEqual(
+            {voice["locale"] for voice in voices},
+            {"zh-TW", "en-US"},
+        )
+
+    def test_apply_edge_tts_english_voice_updates_conversation_locale(self):
+        config = Config()
+        with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
+            "src.server.runtime_settings._preview_tts",
+            return_value="data:audio/wav;base64,dGVzdA==",
+        ), patch("src.server.runtime_settings.persist_runtime_overrides"):
+            result = apply_tts_settings(
+                config,
+                {"type": "edgetts", "ref_file": "en-US-JennyNeural"},
+                session_count=0,
+            )
+        self.assertEqual(config.tts.ref_file, "en-US-JennyNeural")
+        self.assertEqual(config.conversation.voice_en_us, "en-US-JennyNeural")
+        self.assertEqual(config.conversation.locale, "en-US")
+        self.assertEqual(config.llm.assistant_profile.output_locale, "en-US")
+        self.assertEqual(result["ref_file"], "en-US-JennyNeural")
+
+    def test_apply_edge_tts_dual_zh_tw_and_en_us_voices_updates_both_settings(self):
+        config = Config()
+        with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
+            "src.server.runtime_settings._preview_tts",
+            return_value="data:audio/wav;base64,dGVzdA==",
+        ), patch("src.server.runtime_settings.persist_runtime_overrides"):
+            result = apply_tts_settings(
+                config,
+                {
+                    "type": "edgetts",
+                    "ref_file": "zh-TW-YunJheNeural",
+                    "voice_zh_tw": "zh-TW-YunJheNeural",
+                    "voice_en_us": "en-US-GuyNeural",
+                },
+                session_count=0,
+            )
+        self.assertEqual(config.conversation.voice_zh_tw, "zh-TW-YunJheNeural")
+        self.assertEqual(config.conversation.voice_en_us, "en-US-GuyNeural")
+        self.assertEqual(result["voice_zh_tw"], "zh-TW-YunJheNeural")
+        self.assertEqual(result["voice_en_us"], "en-US-GuyNeural")
 
     def test_tts_rejects_removed_provider(self):
         with self.assertRaises(SettingsError):

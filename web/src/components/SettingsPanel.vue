@@ -1160,6 +1160,21 @@
               </div>
             </div>
 
+            <!-- STT 辨識語言 -->
+            <div class="setting-form-row">
+              <div class="field-label-group">
+                <label for="stt-language" class="field-main-label">語音辨識語言（中／英設定）</label>
+                <span class="field-sub-hint">設定 STT 對中文與英文語音輸入的辨識模式</span>
+              </div>
+              <div class="field-control-area">
+                <select id="stt-language" class="std-select" v-model="sttDraft.language">
+                  <option value="auto">自動偵測 (中 / 英)</option>
+                  <option value="zh">繁體中文 (zh)</option>
+                  <option value="en">English (en)</option>
+                </select>
+              </div>
+            </div>
+
             <!-- FunASR 繁簡字元集 -->
             <div class="setting-form-row" v-if="sttDraft.type === 'funasr'">
               <div class="field-label-group">
@@ -1210,19 +1225,36 @@
               </div>
             </div>
 
-            <!-- Edge TTS 聲線 -->
-            <div class="setting-form-row" v-if="ttsDraft.type === 'edgetts'">
-              <div class="field-label-group">
-                <span class="field-main-label">播音音色 (Voice)</span>
+            <!-- Edge TTS 中文語音設定與英文語音設定 -->
+            <template v-if="ttsDraft.type === 'edgetts'">
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="tts-voice-zh-tw" class="field-main-label">中文語音設定 (zh-TW)</label>
+                  <span class="field-sub-hint">當前繁體中文模式使用的播音聲線</span>
+                </div>
+                <div class="field-control-area">
+                  <select id="tts-voice-zh-tw" class="std-select" v-model="ttsDraft.ref_file">
+                    <option v-for="voice in edgeVoiceOptions" :key="voice.id" :value="voice.id">
+                      {{ voice.label || `${voice.name || voice.id}${voice.gender ? `（${voice.gender === 'female' ? '女聲' : '男聲'}）` : ''}` }}
+                    </option>
+                  </select>
+                </div>
               </div>
-              <div class="field-control-area">
-                <select class="std-select" v-model="ttsDraft.ref_file">
-                  <option v-for="voice in edgeVoiceOptions" :key="voice.id" :value="voice.id">
-                    {{ voice.name || voice.label || voice.id }}{{ voice.gender ? `（${voice.gender === 'female' ? '女聲' : '男聲'}）` : '' }}
-                  </option>
-                </select>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="tts-voice-en-us" class="field-main-label">英文語音設定 (en-US)</label>
+                  <span class="field-sub-hint">當前英文模式使用的播音聲線</span>
+                </div>
+                <div class="field-control-area">
+                  <select id="tts-voice-en-us" class="std-select" v-model="ttsDraft.voice_en_us">
+                    <option v-for="voice in edgeEnVoiceOptions" :key="voice.id" :value="voice.id">
+                      {{ voice.label || `${voice.name || voice.id}${voice.gender ? `（${voice.gender === 'female' ? '美式女聲' : '美式男聲'}）` : ''}` }}
+                    </option>
+                  </select>
+                </div>
               </div>
-            </div>
+            </template>
 
             <!-- CosyVoice 專屬設定 -->
             <template v-if="isCosyVoiceFamily">
@@ -1298,6 +1330,9 @@
         >
           <RagFlowSettings
             :avatar-id="runtime.avatar.avatar_id"
+            :active="activeSettingsTab === 'rag'"
+          />
+          <WeatherSettings
             :active="activeSettingsTab === 'rag'"
           />
         </div>
@@ -1455,6 +1490,7 @@ import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
 import RagFlowSettings from './RagFlowSettings.vue'
+import WeatherSettings from './WeatherSettings.vue'
 import PrerecordedAvatarPanel from './PrerecordedAvatarPanel.vue'
 import {
   boardReopenPresentation,
@@ -1698,6 +1734,7 @@ const {
   sttModelOptions,
   ttsDirty,
   edgeVoiceOptions,
+  edgeEnVoiceOptions,
   applyingStt,
   applyingTts,
   speechError,
@@ -1762,11 +1799,11 @@ const currentBoardStyleLabel = computed(() => {
 })
 
 const settingsTabs = computed(() => [
-  { id: 'ai', icon: 'bi bi-cpu-fill', label: 'AI 模型與規則', badge: selectedProvider.value === 'ollama' ? 'Ollama' : 'llama.cpp' },
-  { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
-  { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
-  { id: 'voice', icon: 'bi bi-soundwave', label: '語音活動與辨識', badge: 'Silero' },
-  { id: 'rag', icon: 'bi bi-journal-text', label: '知識庫檢索', badge: 'RAGFlow' },
+  { id: 'ai', icon: 'bi bi-cpu-fill', label: 'AI 模型與規則' },
+  { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質' },
+  { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版' },
+  { id: 'voice', icon: 'bi bi-soundwave', label: '語音活動與辨識' },
+  { id: 'rag', icon: 'bi bi-journal-text', label: '知識庫檢索' },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
 ])
 

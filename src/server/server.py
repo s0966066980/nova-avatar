@@ -18,6 +18,7 @@ from src.server import routes
 from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
+from src.weather import routing_clients
 
 
 async def on_shutdown(app):
@@ -29,6 +30,7 @@ async def on_shutdown(app):
     shutdown_llama_server()
     shutdown_cosyvoice_server()
     scene_service.close()
+    routing_clients.close()
 
 
 def create_app():
@@ -66,6 +68,9 @@ def create_app():
     app.router.add_put("/api/ragflow/settings", routes.put_ragflow_settings)
     app.router.add_get("/api/ragflow/datasets", routes.list_ragflow_datasets)
     app.router.add_post("/api/ragflow/test", routes.test_ragflow_retrieval)
+    app.router.add_get("/api/weather/settings", routes.get_weather_settings)
+    app.router.add_put("/api/weather/settings", routes.put_weather_settings)
+    app.router.add_post("/api/weather/test", routes.test_weather_query)
     app.router.add_get("/api/llm/models", routes.list_llm_models)
     app.router.add_post("/api/llm/model", routes.set_llm_model)
     app.router.add_put("/api/llm/behavior", routes.set_llm_behavior)

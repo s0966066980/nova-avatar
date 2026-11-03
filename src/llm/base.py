@@ -269,7 +269,10 @@ class BaseLLM(ABC):
             "changes only conflicting language preferences in earlier instructions and history. "
             "The configured role, restrictions, capabilities and editable reply rules remain binding "
             "in every language, including self-introductions and board content. Never copy the Chinese wording of format "
-            "examples. Keep protocol markers unchanged. Preserve necessary quoted source text."
+            "examples. Always write numbers, temperatures, percentages, dates, times, and quantities "
+            "using Arabic numerals (e.g., 26°C, 40%, 3) rather than spelling out English number words, "
+            "overriding any earlier rule that asks to write numbers as words. Keep protocol markers unchanged. "
+            "Preserve necessary quoted source text."
             if output_locale == 'en-US' else
             "\n\n本輪互動語系：臺灣繁體中文。無論使用者使用中文或英文，口語回覆與看板"
             "標題、項目均使用繁體中文；保持回覆協定標記不變，必要的引文保留原文。"
@@ -379,6 +382,14 @@ class BaseLLM(ABC):
             on_mode(norm_mode)
         legacy_splitter = AnswerBoardSplitter()
         is_legacy_markup = False
+        output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
+        enforce_locale = bool(getattr(profile, "enforce_output_locale", True))
+        assistant_name = str(getattr(profile, "assistant_name", "") or "")
+        forbidden_names = list(getattr(profile, "forbidden_self_names", []) or [])
+        use_fragment_preview = identity_policy.enabled or (
+            enforce_locale and output_locale.lower() == "en-us"
+        )
+
         spoken_response = ""
         def send_to_avatar(text: str) -> None:
             nonlocal fragment_sequence, spoken_response
@@ -392,7 +403,7 @@ class BaseLLM(ABC):
             previous_length = len(spoken_response)
             spoken_response = join_spoken_fragments((spoken_response, text))
             if target_avatar:
-                if identity_policy.enabled:
+                if use_fragment_preview:
                     notify_chunk = getattr(target_avatar, 'notify_llm_chunk', None)
                     if callable(notify_chunk):
                         notify_chunk(spoken_response[previous_length:], {
@@ -416,11 +427,6 @@ class BaseLLM(ABC):
                     logger.info("Queueing legacy LLM fragment")
                 target_avatar.put_msg_txt(text, fragment_info)
                 fragment_sequence += 1
-
-        output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
-        enforce_locale = bool(getattr(profile, "enforce_output_locale", True))
-        assistant_name = str(getattr(profile, "assistant_name", "") or "")
-        forbidden_names = list(getattr(profile, "forbidden_self_names", []) or [])
 
         def normalize_visible_text(text: str) -> str:
             normalized = normalize_assistant_identity(
@@ -515,14 +521,15 @@ class BaseLLM(ABC):
                     deltas = parser.feed(chunk)
 
                 for spoken in deltas:
-                    spoken = normalize_visible_text(spoken)
+                    if not use_fragment_preview:
+                        spoken = normalize_visible_text(spoken)
                     if spoken and target_avatar:
                         mark_stage = getattr(target_avatar, "mark_stage_end", None)
                         if callable(mark_stage):
                             mark_stage("llm_first_speech")
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
-                        if callable(notify_chunk) and not identity_policy.enabled:
+                        if callable(notify_chunk) and not use_fragment_preview:
                             notify_chunk(
                                 spoken,
                                 {
@@ -558,14 +565,15 @@ class BaseLLM(ABC):
                 for delta in flush_deltas:
                     if not delta:
                         continue
-                    delta = normalize_visible_text(delta)
+                    if not use_fragment_preview:
+                        delta = normalize_visible_text(delta)
                     if delta and target_avatar:
                         mark_stage = getattr(target_avatar, "mark_stage_end", None)
                         if callable(mark_stage):
                             mark_stage("llm_first_speech")
                     if target_avatar and semantic_stream:
                         notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
-                        if callable(notify_chunk) and not identity_policy.enabled:
+                        if callable(notify_chunk) and not use_fragment_preview:
                             notify_chunk(
                                 delta,
                                 {

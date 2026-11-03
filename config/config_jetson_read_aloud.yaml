@@ -128,3 +128,7 @@ video:
   max_height: 1280
 custom_video:
   config_path: ''
+weather:
+  enabled: false
+  county: ''
+  town: ''

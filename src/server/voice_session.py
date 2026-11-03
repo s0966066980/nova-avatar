@@ -30,6 +30,8 @@ from src.llm.service import (
     clear_session_history,
     commit_session_history,
     llm_response,
+    prepare_spoken_history,
+    session_history,
 )
 from src.llm.rules import snapshot_from_config
 from src.ragflow.client import RagFlowClient, retrieval_prompt
@@ -39,6 +41,13 @@ from src.server.reply_streaming.metrics import TurnMetrics
 from src.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
 from src.utils.logging import logger
 from src.vad.service import create_segmenter
+from src.weather import (
+    WeatherQuery,
+    fixed_text,
+    resolve_weather_plan,
+    weather_prompt,
+    weather_service,
+)
 
 
 EventSink = Callable[[str], None]
@@ -129,6 +138,8 @@ class VoiceTurnSession:
         self._rules_snapshot = None
         self._assistant_profile_snapshot = None
         self._rag_snapshot = {"enabled": False, "dataset_ids": []}
+        self._weather_snapshot = None
+        self._weather_confirmed: dict[str, str] = {}
         self._circuit_breaker = ReplyCircuitBreaker(clock=clock)
         self._pipeline_mode = "legacy"
         self._fragment_lock = RLock()
@@ -596,8 +607,11 @@ class VoiceTurnSession:
             sf.write(wav, audio, sample_rate, format="WAV", subtype="PCM_16")
             self.mark_stage_start("asr")
             if getattr(self._asr, 'supports_language_options', False) is True:
+                asr_lang = getattr(self.config.asr, 'language', 'auto') or 'auto'
+                if self._conversation.get('locale') == 'en-US' and asr_lang == 'zh':
+                    asr_lang = 'auto'
                 result = await loop.run_in_executor(None, partial(
-                    self._asr.transcribe, wav.getvalue(), language='auto'))
+                    self._asr.transcribe, wav.getvalue(), language=asr_lang))
             else:
                 result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
             self.mark_stage_end("asr")
@@ -659,10 +673,55 @@ class VoiceTurnSession:
         if not self._is_current(turn_id, generation):
             return
         self._emit("board_clear", turn_id=turn_id)
+        raw_question = text
+        weather_plan = await asyncio.to_thread(
+            resolve_weather_plan,
+            self.config,
+            raw_question,
+            session_history(self.sessionid),
+            self._weather_confirmed,
+            weather_override=self._weather_snapshot,
+            locale_override=self._conversation.get("locale", "zh-TW"),
+        )
+        if not self._is_current(turn_id, generation):
+            return
+        if weather_plan.get("route") == "clarify":
+            self._speak_fixed(
+                raw_question,
+                str(weather_plan.get("clarification") or ""),
+                turn_id,
+                generation,
+                input_source,
+            )
+            return
+
+        weather_task: Optional[asyncio.Task] = None
+        if weather_plan.get("route") == "specialist":
+            self._weather_confirmed = {
+                "county": str(weather_plan.get("county") or ""),
+                "town": str(weather_plan.get("town") or ""),
+                "kind": str(weather_plan.get("kind") or "forecast"),
+                "start_date": str(weather_plan.get("start_date") or ""),
+                "end_date": str(weather_plan.get("end_date") or ""),
+            }
+            weather_task = asyncio.create_task(
+                weather_service.query(
+                    WeatherQuery(
+                        county=self._weather_confirmed["county"],
+                        town=self._weather_confirmed["town"],
+                        kind=self._weather_confirmed["kind"],
+                        start_date=self._weather_confirmed["start_date"],
+                        end_date=self._weather_confirmed["end_date"],
+                    )
+                )
+            )
+
         resolved = self.attachments.validate_selection(self.attachments.selection)
         if resolved:
             from src.server.attachments import vision_ready
             if not await asyncio.to_thread(vision_ready, self.config):
+                if weather_task is not None:
+                    weather_task.cancel()
                 raise ValueError('vision_unavailable')
             self._emit('attachment_status', turn_id=turn_id, state='reading', total=sum(len(p) for _, p in resolved))
             def progress(index, total, source):
@@ -673,10 +732,13 @@ class VoiceTurnSession:
                 self.avatar.config if getattr(self.avatar, 'config', None) else self.config,
                 progress, lambda: self._is_current(turn_id, generation))
             if not self._is_current(turn_id, generation):
+                if weather_task is not None:
+                    weather_task.cancel()
                 return
         rag_result = None
         rag_selection = self._rag_snapshot
-        if rag_selection["enabled"] and rag_selection["dataset_ids"]:
+        skip_rag = bool(weather_plan.get("pure_weather")) and not resolved
+        if rag_selection["enabled"] and rag_selection["dataset_ids"] and not skip_rag:
             self._emit("state", state="retrieving", turn_id=turn_id)
             try:
                 rag_result = await RagFlowClient().retrieve(
@@ -686,12 +748,29 @@ class VoiceTurnSession:
                 rag_result = {"status": "unavailable", "sources": []}
                 logger.warning(f"RAGFlow retrieval unavailable: {type(exc).__name__}")
             if not self._is_current(turn_id, generation):
+                if weather_task is not None:
+                    weather_task.cancel()
                 return
             self._emit(
                 "rag_retrieval",
                 turn_id=turn_id,
                 status=rag_result["status"],
                 sources=rag_result["sources"],
+            )
+        weather_result = None
+        if weather_task is not None:
+            weather_result = await weather_task
+            if not self._is_current(turn_id, generation):
+                return
+            self._emit(
+                "weather_lookup",
+                turn_id=turn_id,
+                status=weather_result["status"],
+                county=weather_result.get("county", ""),
+                town=weather_result.get("town", ""),
+                kind=weather_result.get("kind", ""),
+                cached=bool(weather_result.get("cached", False)),
+                query_seconds=float(weather_result.get("query_seconds", 0.0)),
             )
         self._emit("state", state="llm", turn_id=turn_id)
         if self._pipeline_mode == "streaming":
@@ -716,8 +795,15 @@ class VoiceTurnSession:
                 "on_board": self._on_board_event,
             },
         }
+        rag_contexts: list[str] = []
         if rag_result and rag_result["status"] == "matched":
-            kwargs["rag_context"] = retrieval_prompt(rag_result["sources"])
+            rag_contexts.append(retrieval_prompt(rag_result["sources"]))
+        if weather_result is not None:
+            rag_contexts.append(weather_prompt(weather_result))
+        elif weather_plan.get("context"):
+            rag_contexts.append(str(weather_plan["context"]))
+        if rag_contexts:
+            kwargs["rag_context"] = "\n\n".join(rag_contexts)
         # Keep the immutable snapshot on the session/avatar seam so legacy
         # test doubles and TTS metadata do not receive internal rule text.
         try:
@@ -777,6 +863,62 @@ class VoiceTurnSession:
                 terminal_reason="completed",
             )
         self._turn_task = None
+
+    def _speak_fixed(
+        self,
+        question: str,
+        response: str,
+        turn_id: str,
+        generation: int,
+        input_source: str,
+    ) -> None:
+        """Send a fixed clarification response through TTS and played-only history."""
+        response = fixed_text(response, self._conversation.get("locale", "zh-TW"))
+        prepare_spoken_history(question, self.avatar, turn_id)
+        if (
+            self._turn_context is not None
+            and self._turn_context.state == TurnState.CREATED
+        ):
+            self._turn_context.transition(TurnState.LLM_STREAMING)
+        if self._pipeline_mode == "streaming":
+            self._emit(
+                "assistant_response_start",
+                turn_id=turn_id,
+                mode="streaming",
+                input_source=input_source,
+            )
+            self._emit(
+                "assistant_response_delta",
+                turn_id=turn_id,
+                sequence=0,
+                text_delta=response,
+            )
+        else:
+            self._emit(
+                "assistant_response",
+                turn_id=turn_id,
+                text=response,
+                mode="legacy",
+                input_source=input_source,
+            )
+        self.avatar.put_msg_txt(
+            response,
+            {
+                "turn_id": turn_id,
+                "generation": generation,
+                "fragment_sequence": 0,
+            },
+        )
+        self._llm_finished = True
+        self._turn_task = None
+        self._emit("state", state="tts_ready", turn_id=turn_id)
+        if self._pipeline_mode == "streaming":
+            self._emit(
+                "assistant_response_done",
+                turn_id=turn_id,
+                mode="streaming",
+                terminal_reason="completed",
+            )
 
     def _handle_turn_error(
         self, exc: Exception, turn_id: str, generation: int
@@ -1368,6 +1510,7 @@ class VoiceTurnSession:
             self._rag_snapshot = avatar_settings(
                 str(getattr(getattr(self.config, "model", None), "avatar_id", "") or "")
             )
+            self._weather_snapshot = deepcopy(getattr(self.config, "weather", None))
             enabled = bool(
                 getattr(getattr(self.config, "reply_streaming", None), "enabled", False)
             )
@@ -1500,6 +1643,7 @@ class VoiceTurnSession:
         """Forget the previous visitor: history, shown board items and stage content."""
         clear_session_history(self.sessionid)
         self.attachments.clear()
+        self._weather_confirmed.clear()
         self._composer_editing = False
         self._board_display_receipts.clear()
         self._conversation_dirty = False

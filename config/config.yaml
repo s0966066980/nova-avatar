@@ -170,3 +170,8 @@ video:
 # CustomVideo配置資訊
 custom_video:
   config_path: ''
+
+weather:
+  enabled: true
+  county: ''
+  town: ''

@@ -416,6 +416,14 @@ class ConversationConfig:
 
 
 @dataclass
+class WeatherConfig:
+    """中央氣象署（CWA）氣候查詢與場域預設地點配置。"""
+    enabled: bool = True
+    county: str = ""
+    town: str = ""
+
+
+@dataclass
 class Config:
     """全域性配置"""
     app: AppConfig = field(default_factory=AppConfig)
@@ -430,6 +438,7 @@ class Config:
     reply_streaming: ReplyStreamingConfig = field(default_factory=ReplyStreamingConfig)
     stage: StageConfig = field(default_factory=StageConfig)
     conversation: ConversationConfig = field(default_factory=ConversationConfig)
+    weather: WeatherConfig = field(default_factory=WeatherConfig)
     
     # 其他動態配置
     sessionid: int = 0
