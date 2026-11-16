@@ -18,9 +18,9 @@ Tailscale VPN 內的其他電腦、平板與手機開啟使用。
 - [Jetson 優化與已知限制](#jetson-優化與已知限制)
 - [使用的模型](#使用的模型)
 - [系統需求](#系統需求)
-- [安裝與首次建置](#安裝與首次建置)
-- [跨裝置使用與統一啟動流程](#跨裝置使用與統一啟動流程)
-- [日常操作與進階能力](#日常操作與進階能力)
+- [從零部署到其他裝置開啟的完整流程](#從零部署到其他裝置開啟的完整流程)
+- [啟動模式對照與日常維運](#啟動模式對照與日常維運)
+- [其他裝置日常操作與進階能力](#其他裝置日常操作與進階能力)
 - [驗證](#驗證)
 - [專案結構](#專案結構)
 - [文件](#文件)
@@ -126,22 +126,21 @@ Wav2Lip 為 **Research / Non-commercial**，不得視為具商業許可，本分
 
 - **網路與憑證**：Edge TTS 需要網路；若需跨裝置使用，建議安裝 `mkcert`（未安裝時腳本會自動改用 `openssl` 產生本地 Root CA）或透過 Tailscale 建立跨區網加密連線。
 
-## 安裝與首次建置
+## 從零部署到其他裝置開啟的完整流程
+
+依序完成 **步驟 1–7**，即可將 Jetson Orin 部署為常駐助理 Server 並從電腦、平板或手機開啟使用（已經完成環境建置與模型準備的主機可直接從 **步驟 4** 開始）：
+
+### 步驟 1：取得程式並建置 Jetson 環境與前端
 
 ```bash
 git clone --branch jetson-orin https://github.com/s0966066980/nova-avatar.git
 cd nova-avatar
-```
-
-### 1. 建置 Jetson 環境與前端
-
-```bash
 bash scripts/setup-jetson.sh
 ```
 
 亦可執行 `bash scripts/setup-env.sh musetalk`，腳本偵測到 Jetson 後會自動轉交 `setup-jetson.sh`，依序完成 ARM64 CUDA 13.2 原生 CTranslate2 編譯、Python 3.11 `.venv` 與 PyTorch 2.11 cu130 安裝、cuSPARSELt metadata 修正、依賴同步、前端 `web/dist` 建置及 `scripts/check-cuda.py` 自我檢查。
 
-### 2. 編譯 llama.cpp
+### 步驟 2：編譯 llama.cpp
 
 ```bash
 bash scripts/build-jetson-llama.sh
@@ -149,7 +148,7 @@ bash scripts/build-jetson-llama.sh
 
 以 `GGML_CUDA=ON` 與 SM 87 編譯 llama.cpp v0.5.0（置於 `.local/jetson/llama.cpp/`）。可用 `NOVA_BUILD_JOBS=4` 降低並行度；加上 `--download-model` 可下載預設 Qwen 模型並驗證 SHA-256。
 
-### 3. 準備模型、素材與選用金鑰
+### 步驟 3：準備模型、素材與選用金鑰
 
 模型權重、TensorRT engine 與角色素材不加入 Git，全新 checkout 需自行準備：
 
@@ -169,9 +168,9 @@ uvx --from huggingface_hub hf download madebyollin/taesd \
   --local-dir .local/jetson/taesd
 ```
 
-### 4. 產生多 SAN HTTPS 憑證並設定裝置信任
+### 步驟 4：產生多 SAN HTTPS 憑證
 
-瀏覽器在非 `localhost` 來源開啟麥克風與 WebRTC 音訊必須使用受信任的 HTTPS：
+瀏覽器在非 `localhost` 來源開啟麥克風與 WebRTC 音訊必須使用受信任的 HTTPS，且憑證必須簽入 Orin 的區網 IP／主機名稱：
 
 ```bash
 bash scripts/create_ssl_certs.sh
@@ -179,48 +178,85 @@ bash scripts/create_ssl_certs.sh
 # bash scripts/create_ssl_certs.sh --host orin.tailnet.ts.net
 ```
 
-- 腳本優先使用 `mkcert`，若未安裝會自動改用 `openssl` 建立本地 Root CA（`ssl_certs/rootCA.pem` / `rootCA.crt`）並簽發含 `localhost`、`127.0.0.1`、Orin 區網 IP、`<hostname>.local` 與 Tailscale IP/DNS 的伺服器憑證（`ssl_certs/localhost.crt` / `.key`）。
-- **要在其他電腦、iPhone／iPad 或 Android 開啟前**：請依 [跨裝置 HTTPS 憑證信任指南](docs/https-device-trust.md) 將 `ssl_certs/rootCA.pem`（或 `.crt`）匯入該裝置信任。
+- 腳本優先使用 `mkcert`，若未安裝會自動改用 `openssl` 建立本地 Root CA（`ssl_certs/rootCA.pem` / `rootCA.crt`），並將 `localhost`、`127.0.0.1`、Orin 區網 IP、`<hostname>.local` 與 Tailscale IP/DNS 簽入 `ssl_certs/localhost.crt`（私鑰為 `ssl_certs/localhost.key`）。
+- 檢查實際簽入的位址與查詢目前 Orin IP：
 
-## 跨裝置使用與統一啟動流程
+  ```bash
+  hostname -I
+  openssl x509 -in ssl_certs/localhost.crt -noout -ext subjectAltName
+  ```
 
-依使用情境選擇其中一種方式啟動，**正式作為常駐數字人助理 Server 時建議使用方式 A**：
+### 步驟 5：檢查資源並啟動 Jetson 常駐 Server（`:8010` 單一入口）
 
-### 方式 A：Jetson 常駐 Server（`:8010` 單一入口，跨裝置推薦）
-
-1. **前置檢查**（檢查設定、憑證、`web/dist`、linger 與背景 `ollama` 記憶體佔用）：
+1. 執行前置檢查（確認設定、憑證、`web/dist`、`linger` 與背景 `ollama` 佔用）：
 
    ```bash
    bash scripts/jetson-service.sh check
    ```
 
-   > 若不打算啟用 RAGFlow 知識庫，可執行 `bash scripts/jetson-service.sh stop-ollama`（或自行停止系統級 `ollama`）以釋放約 1.7 GB 統一記憶體。
+   > 若 Phase 1 不使用 RAGFlow 知識庫且畫面提示系統級 `ollama` 正在背景執行，可執行 `bash scripts/jetson-service.sh stop-ollama`（或自行停用 `ollama`）以釋放統一記憶體。
 
-2. **安裝並啟動 `systemd --user` 常駐服務**（預設 `NOVA_START_RAGFLOW=0`，支援崩潰自動重啟與優雅停止 **Owned llama-server**）：
+2. 安裝並啟動 `systemd --user` 常駐服務（預設 `NOVA_START_RAGFLOW=0`，支援崩潰自動重啟與優雅停止 **Owned llama-server**）：
 
    ```bash
    bash scripts/jetson-service.sh install --start --linger
    ```
 
-   常用維運指令：
+   *(系統需要約 **15–30 秒** 完成 `scripts/check-cuda.py` 與模型／Edge TTS 預熱；請稍候再執行健康檢查確認就緒。)*
 
    ```bash
-   bash scripts/jetson-service.sh status    # 檢視服務狀態與健康檢查
-   bash scripts/jetson-service.sh health    # 確認 https://127.0.0.1:8010/health 回傳 ready: true
-   bash scripts/jetson-service.sh logs      # 追蹤 journald 日誌
-   bash scripts/jetson-service.sh restart   # 套用新設定後重啟
-   bash scripts/jetson-service.sh stop      # 停止服務
+   bash scripts/jetson-service.sh health
+   # 看到 {"code": 0, "ready": true, "model_ready": true, ...} 即代表就緒
    ```
 
-   若不想安裝 `systemd` 而只想在前景手動跑 `:8010` 單一入口，可直接執行：
+### 步驟 6：在另一台裝置匯入 Root CA 憑證信任
 
-   ```bash
-   bash scripts/start-server.sh config/config_jetson.yaml
-   # 若修改過 web/ 原始碼，可加 --build 自動重建 web/dist：
-   # bash scripts/start-server.sh --build config/config_jetson.yaml
-   ```
+將 Orin 上的 **`ssl_certs/rootCA.crt`**（或 `rootCA.pem`）傳到目標裝置並匯入信任（**切勿傳送 `*.key` 或 `rootCA-key.pem`**；詳細步驟見 [跨裝置 HTTPS 憑證信任指南](docs/https-device-trust.md)）：
 
-### 方式 B：前景開發／除錯與診斷模式
+- **Windows**：雙擊 `rootCA.crt` →「安裝憑證」→「本機電腦」→ 放入「**受信任的根憑證授權單位**」→ 重開瀏覽器。
+- **macOS**：雙擊 `rootCA.crt` 加入鑰匙圈 → 雙擊該 CA →「信任」設為「**永遠信任**」。
+- **iPhone / iPad（兩步驟皆須完成）**：
+  1. 下載描述檔後至「設定 → 一般 → VPN 與裝置管理」完成**安裝**。
+  2. 再至「設定 → 一般 → 關於本機 → 憑證信任設定」開啟**完全信任**。
+- **Android**：至「設定 → 安全性 → 更多安全設定 → 從儲存空間安裝 → CA 憑證」選取 `rootCA.crt`。
+
+### 步驟 7：在另一台裝置瀏覽器開啟並使用
+
+確認該裝置與 Orin 處於**同一區網（Wi-Fi／LAN）或同一 Tailscale 網路**，將 `<orin-host>` 換成步驟 4 查到的 Orin IP（例如 `192.168.1.50`）或 Tailscale 位址：
+
+- **開啟數位人舞台（主要互動裝置）**：`https://<orin-host>:8010/stage.html`
+  - 首次進入請允許瀏覽器**麥克風權限**；在手機／平板若出現聲音解鎖按鈕，點一下即可啟用音訊播放。
+  - 若另一台裝置先前已開著舞台，新裝置會顯示「目前已有其他裝置正在使用舞台」，點「**接管此舞台**」即可接手並停止舊裝置搶線。
+- **開啟 Web 控制台（遠端管理／驗證，可選）**：`https://<orin-host>:8010/`
+  - 可從另一台電腦遠端調整 LLM／語音／數位人／舞台背景／天氣設定，或在「語音驗證」面板測試完整鏈路。
+
+---
+
+## 啟動模式對照與日常維運
+
+依使用情境選擇執行模式，**不要同時啟動 `nova-avatar.service` 與 `start-jetson.sh`（兩者會搶佔 `:8010` 埠）**：
+
+### 常駐服務常用維運指令（方式 A：`:8010` 單一入口）
+
+```bash
+bash scripts/jetson-service.sh status    # 檢視服務狀態、健康端點與外部 ollama 提醒
+bash scripts/jetson-service.sh health    # 驗證 https://127.0.0.1:8010/health 回傳 ready: true
+bash scripts/jetson-service.sh logs      # 即時追蹤 journald 日誌
+bash scripts/jetson-service.sh restart   # 更改設定、憑證或重建 web/dist 後重啟（需等 ~15–30 秒載入）
+bash scripts/jetson-service.sh stop      # 停止服務（要切換至前景開發模式前請先執行）
+```
+
+若不想安裝 `systemd` 而只想在前景手動跑 `:8010` 單一入口：
+
+```bash
+bash scripts/start-server.sh config/config_jetson.yaml
+# 若修改過 web/ 原始碼，可加 --build 自動重建 web/dist：
+# bash scripts/start-server.sh --build config/config_jetson.yaml
+```
+
+### 前景開發／除錯與診斷模式（方式 B）
+
+> 若先前已啟動 `nova-avatar.service`，請先執行 `bash scripts/jetson-service.sh stop` 再執行以下指令。
 
 | 指令 | 設定檔 | 用途 |
 | --- | --- | --- |
@@ -231,8 +267,6 @@ bash scripts/create_ssl_certs.sh
 
 ### 服務入口對照
 
-把 `<orin-host>` 換成 Orin 的區網 IP、`<hostname>.local` 或 Tailscale 位址：
-
 | 入口 | 單一入口（Server / `--prod`） | 開發期雙埠（`start-jetson.sh`） | 用途 |
 | --- | --- | --- | --- |
 | 數位人舞台 | `https://<orin-host>:8010/stage.html` | `https://<orin-host>:3000/stage.html` | 訪客／主要互動視窗（語音、文字、附件、背景合成） |
@@ -240,7 +274,14 @@ bash scripts/create_ssl_certs.sh
 | 健康檢查 | `https://<orin-host>:8010/health` | `https://<orin-host>:8010/health` | 回傳 HTTP 200 且 `ready: true` 表示就緒 |
 | RAGFlow 管理 | `http://127.0.0.1:8088`（限本機） | `http://127.0.0.1:8088`（限本機） | 遠端管理請使用 SSH port-forward（`ssh -L 8088:127.0.0.1:8088 <user>@<orin-host>`） |
 
-## 日常操作與進階能力
+### 常見問題排查
+
+- **`restart` 後馬上跑 `health` 顯示無法連線**：`ExecStartPre` 需先執行 `check-cuda.py` 且主程式需載入模型與預熱 Edge TTS（約 15–30 秒），稍候再執行 `bash scripts/jetson-service.sh health` 或看 `bash scripts/jetson-service.sh status`。
+- **Orin 換了 Wi-Fi IP 或新裝 Tailscale**：重跑 `bash scripts/create_ssl_certs.sh`（沿用既有 `rootCA.pem`，裝置端免重裝 CA）後執行 `bash scripts/jetson-service.sh restart`。
+- **另一台裝置無法開麥克風或跳安全警告**：確認已匯入 `ssl_certs/rootCA.crt` 並完成信任（iOS 須完成「描述檔安裝」與「憑證信任設定」兩步），且網址使用的是有簽進憑證 SAN 的 IP 或主機名稱。
+- **改過前端程式但 `:8010` 畫面沒變**：單一入口服務提供的是靜態 `web/dist`，請執行 `cd web && npm run build` 後重啟服務。
+
+## 其他裝置日常操作與進階能力
 
 ### 1. 在其他裝置開啟舞台（`/stage.html`）
 1. 確保已匯入並信任 Orin 的 `rootCA` 憑證。
