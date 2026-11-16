@@ -49,7 +49,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { attachmentRequest, composerDefaults, composerGeometry, composerPlacement, shouldSend, validateDraft } from '../conversationAttachments.js'
 
-const props = defineProps({ sessionId: { type: Number, default: 0 }, connected: Boolean,
+const props = defineProps({ sessionId: { type: Number, default: 0 }, clientId: { type: String, default: '' }, connected: Boolean,
   locale: { type: String, default: 'zh-TW' }, stage: Boolean, preview: Boolean, enabled: { type: Boolean, default: true },
   settings: { type: Object, default: () => ({ ...composerDefaults }) }, modelValue: { type: String, default: '' } })
 const emit = defineEmits(['update:modelValue', 'accepted', 'editing', 'layout'])
@@ -67,7 +67,8 @@ let editing = false
 const tr = (zh, en) => props.locale === 'en-US' ? en : zh
 const placeholder = computed(() => props.locale === 'en-US' ? props.settings.composer_placeholder_en : props.settings.composer_placeholder_zh)
 const path = () => `/api/conversations/${props.sessionId}`
-const json = (body) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+const headers = (extra = {}) => props.clientId ? { ...extra, 'X-Client-Id': props.clientId } : extra
+const json = (body) => ({ method: 'POST', headers: headers({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) })
 const messages = {
   reference_limit: ['每輪最多四個附件（包含已選附件）。', 'Choose at most four attachments, including existing files.'],
   file_size: ['單檔須為 1 byte–20 MB。', 'Each file must be between 1 byte and 20 MB.'],
@@ -150,7 +151,7 @@ async function refresh() {
   if (props.preview || !props.connected || !props.sessionId) return
   const identity = props.sessionId, generation = epoch, revision = selectionRevision
   try {
-    const data = await attachmentRequest(path() + '/attachments')
+    const data = await attachmentRequest(path() + '/attachments', props.clientId ? { headers: headers() } : undefined)
     if (identity !== props.sessionId || generation !== epoch) return
     files.value = data.files; bytes.value = data.bytes; ready.value = data.vision_ready
     if (!sending.value && !selectionPending.size && !preserveSelection && revision === selectionRevision) selected.value = data.selection
@@ -180,7 +181,7 @@ async function toggle(file, enabled) {
 async function pages(id, value) { await saveSelection(selected.value.map(item => item.id === id ? { ...item, pages: value } : item)) }
 async function removeFile(id) {
   const identity = props.sessionId, generation = epoch
-  try { await attachmentRequest(path() + '/attachments/' + id, { method: 'DELETE' }); if (identity === props.sessionId && generation === epoch) { await refresh(); touch() } }
+  try { await attachmentRequest(path() + '/attachments/' + id, { method: 'DELETE', ...(props.clientId ? { headers: headers() } : {}) }); if (identity === props.sessionId && generation === epoch) { await refresh(); touch() } }
   catch (exc) { if (identity === props.sessionId && generation === epoch) fail(exc.message) }
 }
 function keydown(event) { if (window.matchMedia('(pointer: fine)').matches && shouldSend(event)) { event.preventDefault(); send() } }
@@ -199,7 +200,7 @@ async function send() {
     if (pending.length) {
       status.value = tr('正在上傳及檢查附件…', 'Uploading and checking attachments…')
       const body = new FormData(); for (const item of pending) body.append('files', item.file)
-      const uploaded = await attachmentRequest(path() + '/attachments', { method: 'POST', body, signal: request.signal })
+      const uploaded = await attachmentRequest(path() + '/attachments', { method: 'POST', body, ...(props.clientId ? { headers: headers() } : {}), signal: request.signal })
       if (generation !== epoch || identity !== props.sessionId) return
       pending.forEach((item, index) => { item.uploadedId = uploaded[index].id })
       files.value.push(...uploaded); selected.value.push(...uploaded.map(item => ({ id: item.id, pages: '' })))

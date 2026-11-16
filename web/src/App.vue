@@ -228,12 +228,12 @@ See LICENSE and NOTICE.
 
             <!-- 底部輸入操作塢 -->
             <div class="studio-input-dock" v-show="activeMode === 'chat'">
-              <ConversationComposer ref="composerRef" v-model="chatInput" :session-id="sessionId" :connected="isConnected"
+              <ConversationComposer ref="composerRef" v-model="chatInput" :session-id="sessionId" :client-id="clientId" :connected="isConnected"
                 @accepted="onComposerAccepted" @editing="onComposerEditing" />
               <div class="input-actions-bar">
                 <div class="vad-status-label">
                   <i class="bi bi-check-circle-fill" :style="{ color: isConnected ? 'var(--success)' : 'var(--text-muted)' }"></i>
-                  <span>{{ isConnected ? (handsFreeTalk ? 'Silero VAD 免持聆聽就緒 · 靜音 650ms 自動送出' : '文字模式就緒 · 點選按住說話或輸入') : '等待 WebRTC 連線就緒...' }}</span>
+                  <span>{{ isConnected ? (handsFreeTalk ? 'Silero VAD 免持聆聽就緒 · 靜音 650ms 自動送出' : '文字模式就緒 · 點選按住說話或輸入') : '管理模式就緒 · 未建立 WebRTC 音視訊連線（不佔用 GPU）' }}</span>
                 </div>
                 <div class="dock-buttons-wrap">
                   <button
@@ -989,6 +989,7 @@ const handleVoiceTestFinished = (record) => {
 const replyPlaybackState = ref('idle')
 
 const {
+  clientId,
   startPlay,
   stopPlay,
   resumePlayback,
@@ -1403,12 +1404,13 @@ const sendTTSMessage = async () => {
   try {
     const response = await fetch('/human', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-Id': clientId },
       body: JSON.stringify({
         text: message,
         type: 'echo',
         interrupt: true,
-        sessionid: sessionId.value
+        sessionid: sessionId.value,
+        client_id: clientId
       })
     })
     const data = await response.json().catch(() => ({}))
@@ -1478,9 +1480,10 @@ const clearChatHistory = async () => {
   try {
     const response = await fetch('/clear_history', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-Id': clientId },
       body: JSON.stringify({
-        sessionid: sessionId.value
+        sessionid: sessionId.value,
+        client_id: clientId
       })
     })
 

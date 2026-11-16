@@ -8,6 +8,7 @@ from aiohttp import web
 
 from src.llm.service import clear_session_history
 from src.utils.logging import logger
+from src.server.session_guard import authorize_session_request, session_forbidden_response
 from src.server.state import state
 
 
@@ -24,6 +25,8 @@ async def human(request):
             voice_session = state.voice_sessions.get(sessionid)
             if voice_session is None:
                 raise web.HTTPConflict(text="語音工作階段尚未連線")
+            if not authorize_session_request(request, sessionid, payload=params):
+                return session_forbidden_response()
             started = await voice_session.start_read_aloud_turn(
                 params['text'],
                 interrupt=bool(params.get('interrupt')),
@@ -39,6 +42,8 @@ async def human(request):
             voice_session = state.voice_sessions.get(sessionid)
             if voice_session is None or avatar_stream is None:
                 raise web.HTTPConflict(text="語音工作階段尚未連線")
+            if not authorize_session_request(request, sessionid, payload=params):
+                return session_forbidden_response()
             if not getattr(voice_session, "event_sink_ready", True):
                 raise web.HTTPConflict(text="回覆事件通道尚未就緒，請稍後再試")
             if getattr(voice_session, '_presenter', 'console') == 'stage' and not getattr(state.config.stage, 'composer_enabled', False):
@@ -96,6 +101,9 @@ async def interrupt_talk(request):
         params = await request.json()
         sessionid = params.get('sessionid', 0)
         voice_session = state.voice_sessions.get(sessionid)
+        if voice_session is not None or sessionid in state.avatar_streams or sessionid in state.session_clients:
+            if not authorize_session_request(request, sessionid, payload=params):
+                return session_forbidden_response()
         if voice_session is not None:
             if params.get('request_id'):
                 await voice_session.cancel_text_request(params['request_id'])
@@ -124,6 +132,9 @@ async def is_speaking(request):
     """查詢是否正在說話"""
     params = await request.json()
     sessionid = params.get('sessionid', 0)
+    if sessionid in state.avatar_streams or sessionid in state.session_clients:
+        if not authorize_session_request(request, sessionid, payload=params):
+            return session_forbidden_response()
     
     return web.Response(
         content_type="application/json",
@@ -140,6 +151,9 @@ async def clear_history(request):
         sessionid = params.get('sessionid', 0)
         
         voice_session = state.voice_sessions.get(sessionid)
+        if voice_session is not None or sessionid in state.avatar_streams or sessionid in state.session_clients:
+            if not authorize_session_request(request, sessionid, payload=params):
+                return session_forbidden_response()
         if voice_session is not None:
             capture, paused = voice_session._capture_requested, voice_session._manual_pause
             try:

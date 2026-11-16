@@ -6,13 +6,17 @@ import asyncio
 from aiohttp import web
 
 from src.server.attachments import AttachmentError, MAX_FILE_BYTES, MAX_REFERENCES, vision_ready
+from src.server.session_guard import authorize_session_request, raise_session_forbidden
 from src.server.state import state
 
 
 def get_session(request, *, writing=False):
-    session = state.voice_sessions.get(int(request.match_info['sessionid']))
+    sessionid = int(request.match_info['sessionid'])
+    session = state.voice_sessions.get(sessionid)
     if session is None or session._closed:
         raise web.HTTPNotFound(text='session_reset')
+    if not authorize_session_request(request, sessionid):
+        raise_session_forbidden()
     if writing and session._presenter == 'stage' and not getattr(state.config.stage, 'composer_enabled', False):
         raise web.HTTPConflict(text='composer_disabled')
     return session
