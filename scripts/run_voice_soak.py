@@ -181,14 +181,10 @@ class EventBroker:
             self.cancelled_turns.add(str(turn_id))
         elif event_type in STALE_OUTPUT_EVENT_TYPES and turn_id and str(turn_id) in self.cancelled_turns:
             self.stale_events += 1
-        elif event_type == "speech_input_rejected":
+        elif event_type == "speech_rejected":
             self.rejected_events.append(
                 {
-                    "reason": str(
-                        event.get("reason")
-                        or event.get("speech_input_rejection_reason")
-                        or "rejected"
-                    ),
+                    "reason": str(event.get("reason") or "rejected"),
                     "turn_id": str(turn_id) if turn_id else None,
                 }
             )
@@ -281,7 +277,7 @@ class SoakPeer:
             try:
                 event = await self.events.wait_for(
                     lambda ev: ev.get("type")
-                    in {"speech_input_rejected", "user_transcript", "state"},
+                    in {"speech_rejected", "user_transcript", "state"},
                     timeout=remaining,
                 )
             except asyncio.TimeoutError:
@@ -317,12 +313,8 @@ class SoakPeer:
                     "reason": "unexpected_user_transcript",
                     "recovered_to_listening": True,
                 }
-            if ev_type == "speech_input_rejected":
-                reason = str(
-                    event.get("reason")
-                    or event.get("speech_input_rejection_reason")
-                    or "rejected"
-                )
+            if ev_type == "speech_rejected":
+                reason = str(event.get("reason") or "rejected")
                 continue
             if ev_type == "state":
                 state_name = event.get("state")
@@ -440,6 +432,71 @@ async def fetch_health(base_url: str, http: aiohttp.ClientSession) -> dict | Non
         return None
 
 
+def normalize_presentation_mode(value: str | None) -> str | None:
+    if not value:
+        return None
+    text = str(value).strip().lower()
+    if text == "prerecorded":
+        return "prerecorded"
+    if text in {"realtime", "musetalk", "wav2lip", "ernerf", "talkinggaussian", "ultralight"}:
+        return "realtime"
+    return None
+
+
+async def fetch_presentation_mode(
+    base_url: str,
+    http: aiohttp.ClientSession,
+    health: Mapping | None = None,
+) -> str | None:
+    """Query active server presentation mode via /api/presentation/{avatar_id} or /api/settings."""
+    base = base_url.rstrip("/")
+    avatar_id = None
+    if isinstance(health, Mapping):
+        avatar_info = health.get("avatar")
+        if isinstance(avatar_info, Mapping) and avatar_info.get("avatar_id"):
+            avatar_id = str(avatar_info["avatar_id"])
+    endpoints: list[str] = []
+    if avatar_id:
+        endpoints.append(f"{base}/api/presentation/{avatar_id}")
+    endpoints.append(f"{base}/api/settings")
+    for url in endpoints:
+        try:
+            async with http.get(url, timeout=aiohttp.ClientTimeout(total=5.0)) as response:
+                if response.status != 200:
+                    continue
+                payload = await response.json()
+        except Exception:
+            continue
+        if not isinstance(payload, Mapping):
+            continue
+        data = payload.get("data") if isinstance(payload.get("data"), Mapping) else payload
+        mode = data.get("mode")
+        if not mode and isinstance(data.get("avatar"), Mapping):
+            mode = data["avatar"].get("presentation")
+        normalized = normalize_presentation_mode(mode)
+        if normalized is not None:
+            return normalized
+    return None
+
+
+def verify_presentation_mode(
+    requested: str | None,
+    server_mode: str | None,
+    *,
+    allow_mismatch: bool = False,
+) -> str | None:
+    """Raise RuntimeError if the server presentation mode conflicts with the requested mode."""
+    if server_mode is None or requested is None or allow_mismatch:
+        return server_mode
+    if server_mode != requested:
+        raise RuntimeError(
+            f"Server active presentation mode is {server_mode!r}, "
+            f"which does not match requested --presentation {requested!r}. "
+            "Switch the server presentation mode or pass --allow-presentation-mismatch."
+        )
+    return server_mode
+
+
 async def run(args) -> dict:
     fixtures = [
         await synthesize_fixture(text, args.fixture_voice)
@@ -462,6 +519,18 @@ async def run(args) -> dict:
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as http:
         health = await fetch_health(args.base_url, http)
         environment = resolve_environment(args, health)
+        requested_presentation = (
+            getattr(args, "presentation", None)
+            or PROFILE_PRESETS.get(getattr(args, "profile", None) or "", {}).get("presentation")
+        )
+        server_presentation = await fetch_presentation_mode(args.base_url, http, health)
+        verify_presentation_mode(
+            requested_presentation,
+            server_presentation,
+            allow_mismatch=bool(getattr(args, "allow_presentation_mismatch", False)),
+        )
+        if server_presentation is not None:
+            environment["server_presentation"] = server_presentation
         _record_rss()
         peer = SoakPeer(args.base_url, http)
         await peer.connect()
@@ -573,6 +642,7 @@ def parse_args(argv: Sequence[str] | None = None):
         choices=("prerecorded", "realtime"),
         default=None,
     )
+    parser.add_argument("--allow-presentation-mismatch", action="store_true")
     parser.add_argument("--profile", default=None)
     parser.add_argument("--gpu", default=None)
     parser.add_argument("--llm", default=None)

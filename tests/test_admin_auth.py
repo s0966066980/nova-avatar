@@ -77,13 +77,27 @@ async def test_unauthenticated_admin_routes_return_401_while_public_routes_stay_
             "authenticated": False,
         }
 
-        # Public SPA/stage/health/read routes remain accessible without login.
-        for public_path in ("/", "/stage.html", "/health", "/api/vad", "/api/stage"):
+        # Public stage/health/read routes remain accessible without login.
+        for public_path in ("/stage.html", "/health", "/api/vad", "/api/stage"):
             resp = await client.get(public_path)
             assert resp.status == 200, public_path
 
-        # Admin routes must reject unauthenticated callers with HTTP 401.
+        # Console root/index serves the login shell HTML with HTTP 401 when unauthenticated,
+        # while its built JS/CSS /assets/* remain 200 so the login gate can mount.
+        import re
+        for console_path in ("/", "/index.html"):
+            console_resp = await client.get(console_path)
+            assert console_resp.status == 401, console_path
+            console_html = await console_resp.text()
+            assert '<div id="app"></div>' in console_html
+            for asset_path in re.findall(r'/(?:assets)/[^"\'>\s]+', console_html):
+                asset_resp = await client.get(asset_path)
+                assert asset_resp.status == 200, asset_path
+
+        # Admin routes and downloads must reject unauthenticated callers with HTTP 401.
         protected_calls = [
+            ("GET", "/download/sample.mp4", None),
+            ("POST", "/api/presentation/jobs/job1/cancel", {}),
             ("GET", "/api/settings", None),
             ("GET", "/api/conversations", None),
             ("POST", "/api/conversations/defaults", {"locale": "zh-TW"}),
@@ -164,6 +178,9 @@ async def test_admin_login_sets_httponly_cookie_allows_admin_and_logout_revokes(
         }
         settings_resp = await client.get("/api/settings")
         assert settings_resp.status == 200
+        console_authed = await client.get("/")
+        assert console_authed.status == 200
+        assert '<div id="app"></div>' in await console_authed.text()
         stage_post = await client.post("/api/stage", json={"caption_max_chars": 150})
         assert stage_post.status == 200
 
@@ -183,6 +200,8 @@ async def test_admin_login_sets_httponly_cookie_allows_admin_and_logout_revokes(
         }
         after_logout = await client.get("/api/settings")
         assert after_logout.status == 401
+        console_after_logout = await client.get("/")
+        assert console_after_logout.status == 401
 
 
 @pytest.mark.anyio

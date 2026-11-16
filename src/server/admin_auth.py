@@ -32,8 +32,18 @@ _CONV_PATH_RE = re.compile(r"^/api/conversations/(?P<sessionid>\d+)(?P<suffix>/c
 _PRES_MEDIA_RE = re.compile(r"^/api/presentation/[^/]+/media/[^/]+$")
 _PRES_BG_RE = re.compile(r"^/api/presentation/background/[^/]+$")
 _PRES_JOB_RE = re.compile(r"^/api/presentation/jobs/[^/]+$")
-_PRES_JOB_CANCEL_RE = re.compile(r"^/api/presentation/jobs/[^/]+/cancel$")
 _PRES_AVATAR_RE = re.compile(r"^/api/presentation/[^/]+$")
+_PUBLIC_READ_PATHS = frozenset(
+    {
+        "/stage.html",
+        "/health",
+        "/favicon.ico",
+        "/api/admin/status",
+        "/api/vad",
+        "/api/stage",
+    }
+)
+_PUBLIC_READ_PREFIXES = ("/assets/",)
 _ATTACH_PATH_RE = re.compile(
     r"^/api/conversations/(?P<sessionid>\d+)/(?:attachments(?:/[^/]+)?|interaction)$"
 )
@@ -198,6 +208,19 @@ def _unauthorized_response(message: str = "請先登入管理者帳號") -> web.
     return web.json_response({"code": -1, "msg": message}, status=401)
 
 
+def enforce_console_session_auth(request: web.Request, sessionid: int) -> web.Response | None:
+    """Return a 401 response when an unauthenticated caller targets a console session."""
+    auth = request.app.get(ADMIN_AUTH_KEY) if hasattr(request, "app") else None
+    if (
+        auth is not None
+        and auth.enabled
+        and not auth.is_authenticated(request)
+        and state.session_role(sessionid) == "console"
+    ):
+        return _unauthorized_response()
+    return None
+
+
 async def admin_status(request: web.Request) -> web.Response:
     auth = request.app[ADMIN_AUTH_KEY]
     enabled = auth.enabled
@@ -269,9 +292,7 @@ async def admin_logout(request: web.Request) -> web.Response:
 def _is_public_read(method: str, path: str) -> bool:
     if method not in {"GET", "HEAD"}:
         return False
-    if not path.startswith("/api/"):
-        return True
-    if path in {"/api/admin/status", "/api/vad", "/api/stage"}:
+    if path in _PUBLIC_READ_PATHS or any(path.startswith(prefix) for prefix in _PUBLIC_READ_PREFIXES):
         return True
     return bool(
         _PRES_MEDIA_RE.match(path)
@@ -308,10 +329,13 @@ async def admin_auth_middleware(request: web.Request, handler):
     if _is_public_read(method, path):
         return await handler(request)
 
-    if method == "POST" and path in {"/api/admin/login", "/api/admin/logout", "/api/presentation/records"}:
-        return await handler(request)
+    if method in {"GET", "HEAD"} and path in {"/", "/index.html"}:
+        response = await handler(request)
+        if response.status == 200:
+            response.set_status(401)
+        return response
 
-    if method == "POST" and _PRES_JOB_CANCEL_RE.match(path):
+    if method == "POST" and path in {"/api/admin/login", "/api/admin/logout", "/api/presentation/records"}:
         return await handler(request)
 
     if method == "POST" and path == "/offer":
@@ -343,8 +367,8 @@ async def admin_auth_middleware(request: web.Request, handler):
             sessionid = int(raw_sid) if raw_sid is not None else None
         except (TypeError, ValueError):
             sessionid = None
-        if sessionid is not None and state.session_role(sessionid) == "console":
-            return _unauthorized_response()
+        if sessionid is not None and (denied := enforce_console_session_auth(request, sessionid)) is not None:
+            return denied
         return await handler(request)
 
     return _unauthorized_response()

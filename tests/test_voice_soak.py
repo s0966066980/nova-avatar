@@ -16,6 +16,7 @@ import numpy as np
 from scripts.run_voice_soak import (
     EventBroker,
     SoakPeer,
+    fetch_presentation_mode,
     parse_args,
     resolve_environment,
     run as run_soak,
@@ -190,13 +191,13 @@ class RejectedSpeechTurnTests(unittest.IsolatedAsyncioTestCase):
         peer.channel = type("Channel", (), {"send": lambda _self, _msg: None})()
         return peer
 
-    async def test_explicit_speech_input_rejected_recovers_without_waiting_for_transcript(self):
+    async def test_explicit_speech_rejected_recovers_without_waiting_for_transcript(self):
         peer = self._make_peer()
         peer.events.receive(
             json.dumps(
                 {
-                    "type": "speech_input_rejected",
-                    "speech_input_rejection_reason": "audio_too_quiet",
+                    "type": "speech_rejected",
+                    "reason": "audio_too_quiet",
                     "turn_id": "rej-1",
                 }
             )
@@ -211,6 +212,10 @@ class RejectedSpeechTurnTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["rejected"])
         self.assertEqual(result["reason"], "audio_too_quiet")
         self.assertTrue(result["recovered_to_listening"])
+        self.assertEqual(
+            peer.events.rejected_events,
+            [{"reason": "audio_too_quiet", "turn_id": "rej-1"}],
+        )
 
     async def test_empty_asr_stt_to_listening_recovers_without_user_transcript(self):
         peer = self._make_peer()
@@ -323,6 +328,7 @@ class ReconnectAndEndToEndSoakTests(unittest.IsolatedAsyncioTestCase):
             patch("scripts.run_voice_soak.SoakPeer", FakeSoakPeer),
             patch("scripts.run_voice_soak.synthesize_fixture", side_effect=fake_synth),
             patch("scripts.run_voice_soak.fetch_health", side_effect=fake_health),
+            patch("scripts.run_voice_soak.fetch_presentation_mode", return_value="prerecorded"),
         ):
             report = await run_soak(args)
 
@@ -330,6 +336,7 @@ class ReconnectAndEndToEndSoakTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(report["turns"], 50)
         self.assertEqual(report["stale_output_events"], 0)
         self.assertEqual(report["environment"]["presentation"], "prerecorded")
+        self.assertEqual(report["environment"]["server_presentation"], "prerecorded")
         self.assertIn("rapid_consecutive", report["scenario_counts"])
         self.assertIn("interrupt", report["scenario_counts"])
         self.assertIn("llm_interrupt", report["scenario_counts"])
@@ -357,6 +364,77 @@ class ReconnectAndEndToEndSoakTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(report["checks"]["recovery_passed"])
         self.assertFalse(report["slo_pass"])
         self.assertEqual(report["recovery"]["failed_probes"], 1)
+
+    async def test_presentation_mismatch_aborts_unless_overridden(self):
+        class UnusedPeer:
+            def __init__(self, *_a, **_k):
+                raise AssertionError("SoakPeer should not connect on presentation mismatch")
+
+        async def fake_synth(_text: str, _voice: str) -> np.ndarray:
+            return np.ones(320, dtype=np.int16)
+
+        async def fake_health(_base_url: str, _http) -> dict:
+            return {"ready": True, "avatar": {"type": "musetalk", "avatar_id": "musetalk_1"}}
+
+        strict_args = parse_args(["--turns", "1", "--presentation", "prerecorded"])
+        with (
+            patch("scripts.run_voice_soak.SoakPeer", UnusedPeer),
+            patch("scripts.run_voice_soak.synthesize_fixture", side_effect=fake_synth),
+            patch("scripts.run_voice_soak.fetch_health", side_effect=fake_health),
+            patch("scripts.run_voice_soak.fetch_presentation_mode", return_value="realtime"),
+        ):
+            with self.assertRaises(RuntimeError):
+                await run_soak(strict_args)
+
+        class MinimalPeer:
+            def __init__(self, _base_url: str, _http) -> None:
+                self.events = EventBroker()
+
+            async def connect(self) -> None:
+                return None
+
+            async def run_turn(self, _samples, _scenario: str) -> dict:
+                return _sample_turn(0)
+
+            async def close(self) -> None:
+                return None
+
+        override_args = parse_args(
+            ["--turns", "1", "--presentation", "prerecorded", "--allow-presentation-mismatch"]
+        )
+        with (
+            patch("scripts.run_voice_soak.SoakPeer", MinimalPeer),
+            patch("scripts.run_voice_soak.synthesize_fixture", side_effect=fake_synth),
+            patch("scripts.run_voice_soak.fetch_health", side_effect=fake_health),
+            patch("scripts.run_voice_soak.fetch_presentation_mode", return_value="realtime"),
+        ):
+            report = await run_soak(override_args)
+        self.assertEqual(report["environment"]["presentation"], "prerecorded")
+        self.assertEqual(report["environment"]["server_presentation"], "realtime")
+
+    async def test_fetch_presentation_mode_queries_presentation_and_settings_endpoints(self):
+        from aiohttp import web
+        from aiohttp.test_utils import TestClient, TestServer
+
+        async def handle_pres(_request):
+            return web.json_response({"code": 0, "data": {"mode": "prerecorded"}})
+
+        async def handle_settings(_request):
+            return web.json_response({"code": 0, "data": {"avatar": {"presentation": "musetalk"}}})
+
+        app = web.Application()
+        app.router.add_get("/api/presentation/alpha", handle_pres)
+        app.router.add_get("/api/settings", handle_settings)
+        async with TestClient(TestServer(app)) as client:
+            base_url = str(client.make_url("")).rstrip("/")
+            mode_from_pres = await fetch_presentation_mode(
+                base_url, client.session, health={"avatar": {"avatar_id": "alpha"}}
+            )
+            mode_from_settings = await fetch_presentation_mode(
+                base_url, client.session, health={}
+            )
+        self.assertEqual(mode_from_pres, "prerecorded")
+        self.assertEqual(mode_from_settings, "realtime")
 
 
 class MemoryTrendAndLeakGuardTests(unittest.TestCase):

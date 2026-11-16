@@ -75,6 +75,16 @@ See LICENSE and NOTICE.
         >
           <i class="bi bi-box-arrow-right"></i> 登出
         </button>
+        <div
+          v-else-if="adminAuthReady && !adminAuthEnabled"
+          id="adminAuthDisabledBadge"
+          class="admin-auth-disabled-badge"
+          role="status"
+          title="尚未設定管理者密碼（NOVA_ADMIN_PASSWORD / app.admin_password），僅建議於本機開發環境使用"
+        >
+          <i class="bi bi-shield-exclamation"></i>
+          <span>未啟用管理者認證（開發預設）</span>
+        </div>
       </div>
     </header>
 
@@ -1763,6 +1773,20 @@ onUnmounted(() => {
 
 .admin-logout-btn {
   padding: 5px 12px;
+  white-space: nowrap;
+}
+
+.admin-auth-disabled-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
   white-space: nowrap;
 }
 

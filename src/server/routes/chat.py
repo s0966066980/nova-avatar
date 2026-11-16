@@ -48,11 +48,11 @@ async def human(request):
             selection = params.get('attachments', store.selection if store else [])
             text_value = str(params.get('text', '') or '').strip()
             if getattr(voice_session, '_presenter', 'console') == 'stage' and not getattr(state.config.stage, 'composer_enabled', False):
-                recommended = [
-                    str(item or '').strip()
-                    for item in (getattr(state.config.stage, 'recommended_prompts', []) or [])
-                    if str(item or '').strip()
-                ]
+                from src.config.overrides import normalize_recommended_prompts
+                recommended = normalize_recommended_prompts(
+                    getattr(state.config.stage, 'recommended_prompts', []),
+                    max_items=None,
+                )
                 if selection or text_value not in recommended:
                     raise web.HTTPConflict(text='composer_disabled')
             try:

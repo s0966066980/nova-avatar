@@ -948,13 +948,24 @@ import {
     }
   }
 
-  function microphoneFailureMessage(err, {watchFallback=true}={}){
+  function classifyMicError(err){
     if(err?.code === 'insecure_context' || globalThis.isSecureContext === false || !navigator.mediaDevices?.getUserMedia){
+      return 'mic_insecure_context';
+    }
+    if(err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'){
+      return 'mic_permission_denied';
+    }
+    return 'mic_unavailable';
+  }
+
+  function microphoneFailureMessage(err, {watchFallback=true}={}){
+    const micCode = classifyMicError(err);
+    if(micCode === 'mic_insecure_context'){
       return t(watchFallback
         ? '需要受信任的 HTTPS 連線才能使用麥克風，目前為純觀看'
         : '需要受信任的 HTTPS 連線才能啟用麥克風，仍可使用文字與附件。');
     }
-    if(err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'){
+    if(micCode === 'mic_permission_denied'){
       return t(watchFallback
         ? '麥克風權限未允許，請在瀏覽器設定允許麥克風，目前為純觀看'
         : '麥克風權限未允許，請在瀏覽器設定允許麥克風，仍可使用文字與附件。');
@@ -1238,10 +1249,7 @@ import {
       micStream = null;
       pc.addTransceiver('audio', {direction:'recvonly'});
       showSaid(microphoneFailureMessage(err, {watchFallback:true}));
-      const micCode = (err?.code === 'insecure_context' || globalThis.isSecureContext === false || !navigator.mediaDevices?.getUserMedia)
-        ? 'mic_insecure_context'
-        : ((err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') ? 'mic_permission_denied' : 'mic_unavailable');
-      showRecoveryNotice(micCode);
+      showRecoveryNotice(classifyMicError(err));
     }
     pc.addTransceiver('video', {direction:'recvonly'});
 
@@ -1374,10 +1382,9 @@ import {
     }catch(err){showSaid(typeof microphoneFailureMessage === 'function'
       ? microphoneFailureMessage(err, {watchFallback:false})
       : (stageLocale === 'en-US' ? 'Microphone unavailable. Text and attachments are still available.' : '無法啟用麥克風，仍可使用文字與附件。'));
-      const micCode = (err?.code === 'insecure_context' || globalThis.isSecureContext === false || !navigator.mediaDevices?.getUserMedia)
-        ? 'mic_insecure_context'
-        : ((err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') ? 'mic_permission_denied' : 'mic_unavailable');
-      if(typeof showRecoveryNotice === 'function') showRecoveryNotice(micCode);
+      if(typeof showRecoveryNotice === 'function'){
+        showRecoveryNotice(typeof classifyMicError === 'function' ? classifyMicError(err) : 'mic_unavailable');
+      }
     }
     finally{microphoneRequest=null;}
   }

@@ -254,3 +254,21 @@ test('訪客重置保留舞台使用者暫停收音的選擇', async () => {
   assert.equal(stage.element('hint').textContent, '已暫停收音，點一下恢復')
   assert.equal(stage.element('veil').hidden, true)
 })
+
+test('stage.html uses shared classifyMicError helper for insecure context, denied permission, and unavailable errors', () => {
+  const fnMatch = html.match(/  function classifyMicError\(err\)\{[\s\S]*?\n  \}/)
+  assert.ok(fnMatch, 'classifyMicError should exist in stage.html')
+  const classify = vm.runInNewContext(`(${fnMatch[0]})`, {
+    globalThis: { isSecureContext: true },
+    navigator: { mediaDevices: { getUserMedia: async () => {} } },
+  })
+  assert.equal(classify({ code: 'insecure_context' }), 'mic_insecure_context')
+  assert.equal(classify({ name: 'NotAllowedError' }), 'mic_permission_denied')
+  assert.equal(classify({ name: 'PermissionDeniedError' }), 'mic_permission_denied')
+  assert.equal(classify({ name: 'NotFoundError' }), 'mic_unavailable')
+  const insecureClassify = vm.runInNewContext(`(${fnMatch[0]})`, {
+    globalThis: { isSecureContext: false },
+    navigator: {},
+  })
+  assert.equal(insecureClassify(new Error('nope')), 'mic_insecure_context')
+})

@@ -15,6 +15,40 @@ from src.utils.paths import get_config_dir
 from src.config.stage_composer import snapshot as composer_snapshot
 
 RUNTIME_OVERRIDES_FILE = get_config_dir() / "runtime_overrides.yaml"
+MAX_STAGE_RECOMMENDED_PROMPTS = 4
+MAX_STAGE_RECOMMENDED_PROMPT_CHARS = 200
+
+
+def normalize_recommended_prompts(
+    prompts: Any,
+    *,
+    max_items: int | None = MAX_STAGE_RECOMMENDED_PROMPTS,
+    max_length: int | None = None,
+    strict: bool = False,
+) -> list[str]:
+    """Normalize visitor recommended prompts by stripping blanks and enforcing optional bounds."""
+    if prompts is None:
+        return []
+    if strict and not isinstance(prompts, list):
+        raise ValueError("訪客推薦提問須為清單")
+    items = prompts if isinstance(prompts, (list, tuple)) else []
+    cleaned: list[str] = []
+    for item in items:
+        if strict and not isinstance(item, str):
+            raise ValueError("訪客推薦提問項目須為文字")
+        text = item.strip() if strict else str(item or "").strip()
+        if not text:
+            continue
+        if max_length is not None and len(text) > max_length:
+            if strict:
+                raise ValueError(f"每題訪客推薦提問最多 {max_length} 字")
+            text = text[:max_length]
+        cleaned.append(text)
+    if max_items is not None and len(cleaned) > max_items:
+        if strict:
+            raise ValueError(f"訪客推薦提問最多 {max_items} 題")
+        return cleaned[:max_items]
+    return cleaned
 
 
 def load_runtime_overrides() -> Dict[str, Any]:
@@ -146,16 +180,9 @@ def persist_runtime_overrides(config) -> None:
             "welcome_speak": bool(
                 getattr(getattr(config, "stage", None), "welcome_speak", False)
             ),
-            "recommended_prompts": [
-                str(item).strip()
-                for item in (
-                    getattr(
-                        getattr(config, "stage", None), "recommended_prompts", []
-                    )
-                    or []
-                )
-                if str(item or "").strip()
-            ][:4],
+            "recommended_prompts": normalize_recommended_prompts(
+                getattr(getattr(config, "stage", None), "recommended_prompts", [])
+            ),
         },
     }
 

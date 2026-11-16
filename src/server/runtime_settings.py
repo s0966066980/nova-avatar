@@ -28,7 +28,12 @@ from src.avatars.mouth_quality import (
     apply_quality_to_model,
     quality_from_model,
 )
-from src.config.overrides import persist_runtime_overrides
+from src.config.overrides import (
+    MAX_STAGE_RECOMMENDED_PROMPTS,
+    MAX_STAGE_RECOMMENDED_PROMPT_CHARS,
+    normalize_recommended_prompts,
+    persist_runtime_overrides,
+)
 from src.llm.base import (
     DEFAULT_RESPONSE_MAX_CHARS,
     load_system_prompt,
@@ -89,8 +94,6 @@ MAX_BOARD_HEIGHT = 720
 MIN_BOARD_MAX_ITEMS = 1
 MAX_BOARD_MAX_ITEMS = 12
 MAX_STAGE_WELCOME_TEXT_CHARS = 500
-MAX_STAGE_RECOMMENDED_PROMPTS = 4
-MAX_STAGE_RECOMMENDED_PROMPT_CHARS = 200
 
 
 def validate_stage_welcome_text(value: Any) -> str:
@@ -107,25 +110,12 @@ def validate_stage_welcome_text(value: Any) -> str:
 
 def validate_stage_recommended_prompts(value: Any) -> list[str]:
     """Validate and normalize 0–4 non-empty visitor recommended prompts."""
-    if value is None:
-        return []
-    if not isinstance(value, list):
-        raise ValueError("訪客推薦提問須為清單")
-    cleaned: list[str] = []
-    for item in value:
-        if not isinstance(item, str):
-            raise ValueError("訪客推薦提問項目須為文字")
-        text = item.strip()
-        if not text:
-            continue
-        if len(text) > MAX_STAGE_RECOMMENDED_PROMPT_CHARS:
-            raise ValueError(
-                f"每題訪客推薦提問最多 {MAX_STAGE_RECOMMENDED_PROMPT_CHARS} 字"
-            )
-        cleaned.append(text)
-    if len(cleaned) > MAX_STAGE_RECOMMENDED_PROMPTS:
-        raise ValueError(f"訪客推薦提問最多 {MAX_STAGE_RECOMMENDED_PROMPTS} 題")
-    return cleaned
+    return normalize_recommended_prompts(
+        value,
+        max_items=MAX_STAGE_RECOMMENDED_PROMPTS,
+        max_length=MAX_STAGE_RECOMMENDED_PROMPT_CHARS,
+        strict=True,
+    )
 
 
 def assistant_profile_snapshot(config) -> Dict[str, Any]:

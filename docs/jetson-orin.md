@@ -187,7 +187,7 @@ FunASR 與 Silero 推論。faster-whisper 首次執行會下載 base 模型；
 
 ### Orin 50 輪預錄呈現連續語音 Soak 與異常恢復驗證
 
-Phase A 商用交付基線採用**預錄呈現**（`Gemma-4-E2B` + `faster-whisper small` + `Silero VAD`）。於 Orin 實機啟動 `:8010` 單一入口服務並確認 `/health` 回傳 `ready: true` 後，執行 50 輪連續語音與異常恢復 soak：
+Phase A 商用交付基線採用**預錄呈現**（`Gemma-4-E2B` + `faster-whisper small` + `Silero VAD`）。本倉已完成 soak 測試腳本與離線回歸驗證；實際 50 輪 Jetson Orin 真機實測數據於部署後在 Ticket `08` 現場驗收期間產出並記錄（不預設或偽造實測數據）。於 Orin 實機啟動 `:8010` 單一入口服務並確認 `/health` 回傳 `ready: true` 後，執行 50 輪連續語音與異常恢復 soak：
 
 ```bash
 SERVER_PID=$(pgrep -f "src/app.py" | head -n1)
@@ -208,7 +208,7 @@ uv run python scripts/run_voice_soak.py \
   --output logs/jetson-prerecorded-soak.json
 ```
 
-測試情境涵蓋一般多輪問答（`short` / `long` / `weak_punctuation` / `no_punctuation`）、**插話**打斷（`interrupt` / `llm_interrupt`）、快速連續提問（`rapid_consecutive`）、低音量與空字串**語音輸入品質閘門**拒收驗證（`low_volume` / `empty_asr`，於 `speech_input_rejected` 或閘門釋放後直接恢復 `listening` 而不卡死），以及定期 WebRTC 斷線重連恢復（`reconnect`）。
+測試情境涵蓋一般多輪問答（`short` / `long` / `weak_punctuation` / `no_punctuation`）、**插話**打斷（`interrupt` / `llm_interrupt`）、快速連續提問（`rapid_consecutive`）、低音量與空字串**語音輸入品質閘門**拒收驗證（`low_volume` / `empty_asr`，於 `speech_rejected` 或閘門釋放後直接恢復 `listening` 而不卡死），以及定期 WebRTC 斷線重連恢復（`reconnect`）。
 
 **驗收標準（輸出報告 `logs/jetson-prerecorded-soak.json` 須達成 `slo_pass: true`）：**
 

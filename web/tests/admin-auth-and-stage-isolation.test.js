@@ -87,6 +87,9 @@ test('App.vue checks /api/admin/status before mounting console viewport/Settings
   assert.match(appVue, /id="btnAdminLogin"/)
   assert.match(appVue, /id="btnAdminLogout"/)
   assert.match(appVue, /adminAuthEnabled\s*&&\s*adminAuthenticated/)
+  assert.match(appVue, /id="adminAuthDisabledBadge"/)
+  assert.match(appVue, /!adminAuthEnabled/)
+  assert.match(appVue, /未啟用管理者認證/)
   // Ensure VAD/settings initialization runs after auth gate, not unconditionally before status check.
   const mountedBlock = appVue.match(/onMounted\(async \(\) => \{[\s\S]*?\n\}\)/)?.[0] || ''
   assert.match(mountedBlock, /refreshAdminAuth/)
