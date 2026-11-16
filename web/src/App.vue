@@ -450,24 +450,7 @@ import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from './storageKeys.js'
-import { marked } from 'marked'
-import hljs from 'highlight.js'
-
-// 配置 marked
-marked.setOptions({
-  highlight: function(code, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(code, { language: lang }).value
-      } catch (err) {
-        console.error('程式碼高亮失敗:', err)
-      }
-    }
-    return hljs.highlightAuto(code).value
-  },
-  breaks: true,
-  gfm: true
-})
+import { renderSafeMarkdown } from './sanitizeHtml.js'
 
 const { t, setLocale, loadLocale } = useI18n()
 const { vad, vadDraft, loadVadSettings, applyVadSettings, runtime, isStageConfiguring, selectedBoardPreview } = useRuntimeSettings()
@@ -522,12 +505,7 @@ const renderMarkdown = (text) => {
   if (!text) return ''
   const clean = sanitizeChatText(text)
   if (!clean) return ''
-  try {
-    return marked.parse(clean)
-  } catch (error) {
-    console.error('Markdown 解析錯誤:', error)
-    return clean
-  }
+  return renderSafeMarkdown(clean)
 }
 
 const sessionId = ref(0)
