@@ -14,24 +14,39 @@ const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]
 
 function stageHarness() {
   const elements = new Map()
+  const makeNode = (id, tagName = 'div') => {
+    const handlers = new Map()
+    return {
+      id,
+      tagName,
+      hidden: false,
+      disabled: id === 'mic',
+      dataset: {},
+      style: { setProperty() {} },
+      classList: { add() {}, remove() {}, toggle() {} },
+      className: '',
+      children: [],
+      _text: '',
+      get textContent() { return this._text },
+      set textContent(value) {
+        this._text = String(value ?? '')
+        if (this._text === '') this.children = []
+      },
+      appendChild(child) { this.children.push(child); return child },
+      get innerHTML() {
+        return this.children.map((child) => `<${child.tagName}>${child.textContent}</${child.tagName}>`).join('')
+      },
+      clientWidth: 360,
+      clientHeight: 640,
+      addEventListener(type, handler) { handlers.set(type, handler) },
+      dispatch(type) { handlers.get(type)?.({ preventDefault() {} }) },
+      setAttribute() {},
+      async play() {},
+    }
+  }
   const element = (id) => {
     if (!elements.has(id)) {
-      const handlers = new Map()
-      elements.set(id, {
-        id,
-        hidden: false,
-        disabled: id === 'mic',
-        dataset: {},
-        style: { setProperty() {} },
-        classList: { add() {}, remove() {}, toggle() {} },
-        textContent: '',
-        clientWidth: 360,
-        clientHeight: 640,
-        addEventListener(type, handler) { handlers.set(type, handler) },
-        dispatch(type) { handlers.get(type)?.({ preventDefault() {} }) },
-        setAttribute() {},
-        async play() {},
-      })
+      elements.set(id, makeNode(id))
     }
     return elements.get(id)
   }
@@ -60,7 +75,10 @@ function stageHarness() {
     downloadMedia: async () => {},
     configureReplyPlayout,
     mountPresentation, presentationPlayer, exportSceneRecording,
-    document: { getElementById: (id) => id === 'scene-record-controls' ? elements.get(id) || null : element(id) },
+    document: {
+      getElementById: (id) => id === 'scene-record-controls' ? elements.get(id) || null : element(id),
+      createElement: (tag) => makeNode('', tag),
+    },
     window: { ResizeObserver: null },
     navigator: { mediaDevices: { getUserMedia: async () => ({
       getAudioTracks: () => [track], getTracks: () => [track]
