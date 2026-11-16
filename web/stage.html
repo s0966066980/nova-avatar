@@ -530,9 +530,26 @@ import {
   function renderBoardItems(){
     if(!boardList) return;
     const shown=displayBoard();
-    boardList.innerHTML=shown.items.map((item,n)=>
-      `<li class="board-item"><span class="item-number">${String(n+1).padStart(2,'0')}</span><div><div class="item-title">${item.title}</div><p class="item-body">${item.body||''}</p></div></li>`
-    ).join('');
+    boardList.textContent='';
+    shown.items.forEach((item,n)=>{
+      const li=document.createElement('li');
+      li.className='board-item';
+      const num=document.createElement('span');
+      num.className='item-number';
+      num.textContent=String(n+1).padStart(2,'0');
+      const content=document.createElement('div');
+      const titleEl=document.createElement('div');
+      titleEl.className='item-title';
+      titleEl.textContent=String(item?.title ?? '');
+      const bodyEl=document.createElement('p');
+      bodyEl.className='item-body';
+      bodyEl.textContent=String(item?.body || '');
+      content.appendChild(titleEl);
+      content.appendChild(bodyEl);
+      li.appendChild(num);
+      li.appendChild(content);
+      boardList.appendChild(li);
+    });
     if(boardBadge) boardBadge.textContent=shown.preview ? t('預覽') : stageItemCount(shown.items.length, stageLocale);
     if(boardTitle) boardTitle.textContent=shown.title;
     if(boardSource) boardSource.textContent=shown.preview ? t('控制台預覽 · 對位置與大小，非本輪回答') : (shown.items.length ? t('本輪條列 · 可關閉後再展開') : '');
