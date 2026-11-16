@@ -13,6 +13,7 @@ from aiohttp import web
 from src.config.schema import ConversationConfig
 from src.config.overrides import persist_runtime_overrides
 from src.llm.service import session_memory
+from src.server.session_guard import authorize_session_request, session_forbidden_response
 from src.server.state import state
 
 
@@ -124,20 +125,37 @@ async def save_defaults(request):
 
 
 async def update_conversation(request):
-    session = state.voice_sessions.get(int(request.match_info['sessionid']))
+    sessionid = int(request.match_info['sessionid'])
+    session = state.voice_sessions.get(sessionid)
     if session is None:
         return web.json_response({'code': -1, 'msg': '對話已結束，請重新選擇'}, status=404)
     try:
-        await session.apply_conversation(await request.json())
+        payload = await request.json()
+        if not authorize_session_request(request, sessionid, payload=payload, allow_console_stage_control=True):
+            return session_forbidden_response()
+        settings_payload = (
+            {k: v for k, v in payload.items() if k not in {'client_id', 'client_role'}}
+            if isinstance(payload, dict) else payload
+        )
+        await session.apply_conversation(settings_payload)
         return web.json_response({'code': 0, 'data': snapshot(session)})
     except (ValueError, TypeError, RuntimeError) as exc:
         return web.json_response({'code': -1, 'msg': str(exc)}, status=409)
 
 
 async def clear_conversation(request):
-    session = state.voice_sessions.get(int(request.match_info['sessionid']))
+    sessionid = int(request.match_info['sessionid'])
+    session = state.voice_sessions.get(sessionid)
     if session is None:
         return web.json_response({'code': -1, 'msg': '對話已結束，請重新選擇'}, status=404)
+    payload = None
+    if getattr(request, 'body_exists', False) and getattr(request, 'content_type', '') == 'application/json':
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = None
+    if not authorize_session_request(request, sessionid, payload=payload, allow_console_stage_control=True):
+        return session_forbidden_response()
     async with session._settings_lock:
         capture, paused = session._capture_requested, session._manual_pause
         try:

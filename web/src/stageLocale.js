@@ -50,6 +50,12 @@ const english = {
   '請先在設定中選擇並套用數字人引擎與角色': 'Select and apply an avatar in the console first.',
   '正在準備對話，請稍後再連線': 'Preparing conversation. Please try again shortly.',
   '正在製作或切換數位人，請稍候': 'The avatar is being prepared. Please wait.',
+  '舞台使用中': 'Stage in use',
+  '目前已有其他裝置正在使用舞台': 'Another device is currently using the stage.',
+  '接管此舞台': 'Take over stage',
+  '舞台已由其他裝置接管': 'Stage taken over by another device',
+  '此舞台連線已中斷。如需在此裝置繼續使用，請重新接管舞台。': 'This stage connection was closed. To use the stage here, take over again.',
+  '重新接管此舞台': 'Take over stage again',
 }
 const chineseErrors = {
   context_capacity: 'Context 容量不足，請由控制台降低保留上限、縮短問題或清空對話。',

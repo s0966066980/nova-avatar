@@ -340,6 +340,7 @@ export function useWebRTC(options = {}) {
   globalThis.addEventListener?.('pagehide', stopPlay)
 
   return {
+    clientId,
     startPlay,
     stopPlay,
     resumePlayback,

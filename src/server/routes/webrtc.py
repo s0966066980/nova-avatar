@@ -30,6 +30,29 @@ async def close_sessions(*, presentation_change=False):
     await asyncio.gather(*(pc.close() for pc in list(state.pcs)))
 
 
+async def _evict_stage_sessions() -> None:
+    """Notify and close active stage sessions before an explicit cross-device takeover."""
+    displaced_ids = [
+        sid for sid in list(state.avatar_streams)
+        if state.session_roles.get(sid, "console") == "stage"
+    ]
+    notified = False
+    for sid in displaced_ids:
+        voice_session = state.voice_sessions.get(sid)
+        if voice_session is not None:
+            voice_session._emit("session_displaced", reason="takeover")
+            notified = True
+    if notified:
+        # Yield briefly so the DataChannel displacement notice flushes before pc.close().
+        await asyncio.sleep(0.02)
+    cleanups = [
+        cleanup for sid in displaced_ids
+        if (cleanup := state.session_cleanups.get(sid)) is not None
+    ]
+    if cleanups:
+        await asyncio.gather(*(cleanup() for cleanup in cleanups))
+
+
 async def release_session(request):
     params = await request.json()
     sessionid = params.get("sessionid")
@@ -72,8 +95,18 @@ async def offer(request):
     if state.switching:
         return web.json_response({"code": -1, "msg": "正在製作或切換數位人，請稍候"}, status=409)
     max_sessions = max(1, int(getattr(state.config.app, "max_session", 1)))
+    takeover = bool(params.get("takeover", False))
     if state.count_sessions(client_role) >= max_sessions:
-        return web.json_response({"code": -1, "msg": f"{client_role} WebRTC 會話數已達上限，請先關閉同類頁面"}, status=429)
+        if client_role == "stage":
+            if takeover:
+                await _evict_stage_sessions()
+            if state.count_sessions(client_role) >= max_sessions:
+                return web.json_response(
+                    {"code": "stage_occupied", "msg": "目前已有其他裝置正在使用舞台"},
+                    status=409,
+                )
+        else:
+            return web.json_response({"code": -1, "msg": f"{client_role} WebRTC 會話數已達上限，請先關閉同類頁面"}, status=429)
     description = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
     sessionid = randN(6)
     while sessionid in state.avatar_streams:

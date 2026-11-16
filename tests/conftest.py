@@ -54,6 +54,7 @@ AREA_BY_FILE = {
     "test_speech_timing.py": "conversation",
     "test_ssl_certs.py": "runtime",
     "test_stage_idle_reset.py": "conversation",
+    "test_stage_takeover.py": "runtime",
     "test_vad.py": "speech",
     "test_voice_session.py": "conversation",
     "test_weather_context.py": "conversation",

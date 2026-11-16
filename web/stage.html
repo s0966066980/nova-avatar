@@ -448,7 +448,7 @@ import {
   let sessionId=0, lastSeq=0;
   let stageLocale='zh-TW', languageSwitching=false, hasConnected=false;
   let stageComposer=null, microphoneRequest=null, enablingMicrophonePress=false, composerCaptureBefore=null, composerBox=null;
-  const composerState=reactive({stage:true, sessionId:0, connected:false, enabled:false,
+  const composerState=reactive({stage:true, sessionId:0, clientId:stageClientId, connected:false, enabled:false,
     locale:'zh-TW', settings:composerSettings()});
   createApp({render:()=>h(ConversationComposer, {...composerState,
     ref: instance=>{stageComposer=instance;}, onLayout:box=>{composerBox=box;queueMicrotask(applyBoardLayout);}, onAccepted:({text})=>showSaid(text),
@@ -929,9 +929,9 @@ import {
   }
 
   // ── 建立 WebRTC 連線 ────────────────────────
-  function connect(){
+  function connect(options={}){
     if(connectingPromise) return connectingPromise;
-    const pending = connectOnce();
+    const pending = connectOnce(options);
     connectingPromise = pending;
     const clear = () => { if(connectingPromise === pending) connectingPromise = null; };
     pending.then(clear, clear);
@@ -949,7 +949,7 @@ import {
     }, 1000);
   }
 
-  async function connectOnce(){
+  async function connectOnce({takeover=false}={}){
     teardown();
     entryLanguages.hidden=true;
     const attempt = stageGeneration;
@@ -998,6 +998,13 @@ import {
         if(!Number.isFinite(msg.seq) || msg.seq <= lastSeq) return;
         lastSeq = msg.seq;
         if(msg.type === 'presentation_changing') { showVeil('切換呈現方式', '正在準備數位人，完成後會自動重新連線。', {btn:''}); scheduleStageReconnect(); return; }
+        if(msg.type === 'session_displaced') {
+          teardown({release:false});
+          showVeil('舞台已由其他裝置接管', '此舞台連線已中斷。如需在此裝置繼續使用，請重新接管舞台。', {
+            btn:'重新接管此舞台', onBtn:() => connect({takeover:true}), alt:true
+          });
+          return;
+        }
         presentationPlayer(video)?.receive(msg);
         onVoiceEvent(msg);
       }catch(_){ /* 壞掉的事件直接丟掉 */ }
@@ -1034,13 +1041,23 @@ import {
         body:JSON.stringify({
           client_role:'stage', client_id:stageClientId,
           locale:stageLocale,
+          ...(takeover ? {takeover:true} : {}),
           sdp:peer.localDescription.sdp,
           type:peer.localDescription.type
         })
       });
       if(!res.ok){
-        let m = `HTTP ${res.status}`;
-        try{ m = (await res.json()).msg || m; }catch(_){}
+        let m = `HTTP ${res.status}`, code = null;
+        try{
+          const payload = await res.json();
+          m = payload.msg || m;
+          code = payload.code ?? null;
+        }catch(_){}
+        if(res.status === 409 && code === 'stage_occupied'){
+          teardown({release:false});
+          showVeil('舞台使用中', m, {btn:'接管此舞台', onBtn:() => connect({takeover:true}), alt:true});
+          return;
+        }
         if(res.status === 409){
           teardown();
           showVeil('數字人尚未就緒', m, {btn:'重試', onBtn:connect, alt:true});
@@ -1070,11 +1087,11 @@ import {
     }
   }
 
-  function teardown(){
+  function teardown({release=true}={}){
     stageGeneration++;
     if(stageRetry) clearTimeout(stageRetry);
     stageRetry = null;
-    if(sessionId) stageRelease = releaseSession(sessionId, stageClientId);
+    if(sessionId && release) stageRelease = releaseSession(sessionId, stageClientId);
     sessionId = 0;
     composerState.connected=false;
     presentationPlayer(video)?.dispose();
