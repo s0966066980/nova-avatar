@@ -10,10 +10,14 @@ SPDX-License-Identifier: Apache-2.0
 
 > [!IMPORTANT]
 > Nova Avatar 的根目錄 [Apache-2.0](../LICENSE) 不涵蓋任何模型、權重、資料集、
-> 聲音或外部服務。本文的「授權依據」欄只記錄這個 repo 內查得到的證據，
-> 查不到的一律標示「未稽核」，**不代表可商用**。商業發行前請逐項審閱，並參考
+> 聲音、人物素材或外部服務。本文的「授權依據」欄只記錄這個 repo 內查得到的證據，
+> 查不到的一律標示「未稽核」，**不代表可商用**。商業發行前請逐項審閱
+> [商用交付合規檢查清單](commercial-release-checklist.md)、
 > [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) 與
 > [來源標註稽核](source-attribution-audit.md)。
+>
+> **內部 POC 試用 vs 對外商業銷售**：[`config/config_commercial.yaml`](../config/config_commercial.yaml)
+> 鎖定 Orin Phase A 商用基線（`Gemma-4-E2B` + `mmproj`、`faster-whisper small`、**預錄呈現**，排除含營收上限之 `LFM2.5` 與未稽核之 `qwen3.5`）。對外商業銷售仍須先解除兩項 **Blocking**：(1) 替換 `Edge TTS`，(2) 重錄具完整肖像／聲音授權之自有預錄人物素材（不得沿用開發測試角色 `musetalk_1`）。
 
 ## 閱讀前先分清兩種設定
 
@@ -30,11 +34,11 @@ SPDX-License-Identifier: Apache-2.0
 
 | 環節 | 模型／元件 | 預設值與位置 | 授權依據 |
 | --- | --- | --- | --- |
-| 語音端點偵測（VAD） | Silero VAD | `vad.type: silero`、`device: cuda`、靜音 300 ms 判定說完 | `silero-vad` 6.2.1 套件 metadata 標示 MIT；權重未另行稽核，THIRD_PARTY_NOTICES 未列載 |
-| 語音轉文字（STT） | faster-whisper `base` | `asr.model_size: base`、`device: cuda`、輸出繁體；首次執行自動下載 `base`，不隨 repo 附帶 | Whisper 為 MIT（Copyright 2022 OpenAI，見 THIRD_PARTY_NOTICES） |
-| 語言模型（LLM） | LFM2.5-2.6B Q4_K_M | `llama/LFM2.5-2.6B-Q4_K_M.gguf`，由本機 CUDA llama.cpp v0.5.0 啟動 | **LFM Open License v1.0（自訂授權）**，商業使用以年營收低於 1,000 萬美元為條件，見本機 `llama/metadata/lfm2.5-2.6b/LICENSE` |
-| 語音合成（TTS） | Edge TTS | `tts.type: edgetts`；需要網路，不在本機推論 | `edge-tts` 7.2.8 套件 metadata 標示 LGPLv3；線上服務與聲音條款須自行審閱 |
-| 數位人嘴型 | MuseTalk v1.5 | `models/musetalk/musetalkV15/unet.pth`，角色 `musetalk_1` 位於 `data/avatars/` | 程式碼 MIT（Copyright 2024 Tencent Music Entertainment Group）；權重與相依模型另受各自條款約束 |
+| 語音端點偵測（VAD） | Silero VAD | `vad.type: silero`、`device: cuda`、靜音 300 ms 判定說完 | `silero-vad` 6.2.1 套件 PyPI classifier 標示 MIT；wheel 內附 `.jit`/`.onnx` 權重但未附獨立 LICENSE 檔，**權重未獨立稽核**（見 THIRD_PARTY_NOTICES） |
+| 語音轉文字（STT） | faster-whisper `base` | `asr.model_size: base`、`device: cuda`、輸出繁體；首次執行自動下載 `base`，不隨 repo 附帶 | Whisper 為 MIT（Copyright 2022 OpenAI，見 THIRD_PARTY_NOTICES）；商用基線改採本機 `whisper-small` |
+| 語言模型（LLM） | LFM2.5-2.6B Q4_K_M | `llama/LFM2.5-2.6B-Q4_K_M.gguf`，由本機 CUDA llama.cpp v0.5.0 啟動 | **LFM Open License v1.0（自訂授權）**，商業使用以年營收低於 1,000 萬美元為條件，見本機 `llama/metadata/lfm2.5-2.6b/LICENSE`；**Phase A 商用基線改採 Apache-2.0 之 `Gemma-4-E2B`** |
+| 語音合成（TTS） | Edge TTS | `tts.type: edgetts`；需要網路，不在本機推論 | `edge-tts` 7.2.8 套件 classifier 標示 LGPLv3；線上服務與聲音條款未過商用審查，**僅限內部 POC 試用，對外商用 Blocking 必換** |
+| 數位人嘴型 | MuseTalk v1.5 | `models/musetalk/musetalkV15/unet.pth`，開發測試角色 `musetalk_1` 位於 `data/avatars/` | 程式碼 MIT（Copyright 2024 Tencent Music Entertainment Group）；權重未稽核；`musetalk_1` 標記為 `user_upload` 且無肖像／聲音授權，**對外商用 Blocking 必換**，Phase A 改採預錄呈現 |
 | 嘴型推論加速 | MuseTalk UNet FP16 TensorRT engine | `.local/jetson/musetalk-unet-fp16.engine`，在 Orin 上由目前 UNet 建置，不入 Git | 衍生自 MuseTalk UNet 權重，該權重條款未稽核 |
 | 嘴型輕量解碼 | TAESD（`madebyollin/taesd`） | `.local/jetson/taesd/`，固定 revision `614f76814bbe30edbe2e627ace1c2234c81a2c0e` | MIT，Copyright (c) 2023 Ollin Boer Bohan（見 THIRD_PARTY_NOTICES） |
 
@@ -87,12 +91,13 @@ SPDX-License-Identifier: Apache-2.0
 Gemma-4-E2B 與其 mmproj 也用於**對話附件**的圖片與 PDF 頁面分析，見
 [對話附件](conversation-attachments.md)。Ollama 也可作為相容的本機 LLM 服務。
 
-### 選用的知識庫檢索
+### 選用的知識庫檢索與外部資料服務
 
 | 元件 | 說明 | 授權依據 |
 | --- | --- | --- |
-| RAGFlow v0.27.2 | 獨立部署的檢索服務，只提供檢索片段，回答仍由 Nova 的 LLM 產生 | 程式碼 Apache-2.0；映像與相依服務各有授權 |
-| BGE-M3 | 由獨立的 Ollama v0.35.1 GPU 程序提供嵌入 | **授權未稽核**，模型卡見 <https://huggingface.co/BAAI/bge-m3> |
+| RAGFlow v0.27.2 | 獨立部署的檢索服務，只提供檢索片段，回答仍由 Nova 的 LLM 產生 | 程式碼 Apache-2.0；映像與相依服務（Elasticsearch、MySQL、MinIO-compatible、Valkey、Microsoft ODBC EULA）各有授權 |
+| BGE-M3 | 由獨立的 Ollama v0.35.1 GPU 程序提供嵌入（預設停用） | **權重與訓練資料未在本 repo 獨立稽核（列為未稽核）**；模型卡見 <https://huggingface.co/BAAI/bge-m3>，商業交付知識庫前須另行覆核 |
+| CWA OpenData（`src/weather/`） | 連線交通部中央氣象署開放資料 API（`https://opendata.cwa.gov.tw/`）提供台灣天氣查詢 | **非軟體權重，屬外部政府開放資料 API**：須依 OGDL v1.0 與平台規範標示「交通部中央氣象署」出處，並由商業營運主體申請自有正式 API Key（不可沿用開發測試 Key）；停用時設 `weather.enabled: false` |
 
 詳見 [RAGFlow 本機檢索整合](ragflow.md) 與 [ARM64 建置報告](reports/ragflow-arm64.md)。
 

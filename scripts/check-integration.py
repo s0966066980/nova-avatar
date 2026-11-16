@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import importlib.util
+import os
 import sys
 import time
 from pathlib import Path
@@ -27,10 +28,29 @@ OK, FAIL = "\033[32m✓\033[0m", "\033[31m✗\033[0m"
 REQUIRED_FILES = {
     "LICENSE": ("Apache License",),
     "NOTICE": ("Kedreamix", "Linly-Talker-Stream", "LiveTalking"),
-    "THIRD_PARTY_NOTICES.md": ("MuseTalk", "Wav2Lip", "Research / Non-commercial"),
+    "THIRD_PARTY_NOTICES.md": (
+        "MuseTalk",
+        "Wav2Lip",
+        "Research / Non-commercial",
+        "Silero VAD",
+        "CWA OpenData",
+        "BGE-M3",
+    ),
     "third_party/licenses/MuseTalk-LICENSE.txt": (),
     "third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt": (),
-    "docs/software-stack.md": ("Nova Avatar Software Stack",),
+    "docs/models.md": ("Gemma-4-E2B", "whisper-small", "Silero VAD", "BGE-M3", "CWA OpenData"),
+    "docs/software-stack.md": ("Nova Avatar Software Stack", "commercial-release-checklist.md"),
+    "docs/commercial-release-checklist.md": (
+        "內部 POC 試用",
+        "對外商業銷售",
+        "Blocking",
+        "Edge TTS",
+        "musetalk_1",
+        "Silero VAD",
+        "BGE-M3",
+        "CWA OpenData",
+        "Wav2Lip",
+    ),
     "docs/source-attribution-audit.md": ("Source Attribution Audit",),
     "docs/current-project-workflow.md": ("Current Project Workflow", "清除過往工作項目"),
 }
@@ -96,10 +116,43 @@ def check_selected_runtime_dependencies(cfg) -> None:
 
 def check_commercial_profile() -> None:
     profile = ROOT / "config/config_commercial.yaml"
-    cfg = load_config(str(profile))
+    raw = profile.read_text(encoding="utf-8").lower()
+    for forbidden in ("wav2lip", "lfm2.5", "qwen3.5"):
+        if forbidden in raw:
+            _fail(f"commercial review profile 不得包含受限或未稽核項目: {forbidden}")
+
+    previous_override = os.environ.get("NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED")
+    os.environ["NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED"] = "0"
+    try:
+        cfg = load_config(str(profile))
+    finally:
+        if previous_override is None:
+            os.environ.pop("NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED", None)
+        else:
+            os.environ["NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED"] = previous_override
+
     if cfg.model.type != "musetalk":
         _fail("commercial review profile 必須選用 musetalk")
-    print(f"{OK} 商業審查設定檔使用 {cfg.model.type}")
+    presentation_mode = cfg.model.presentation_modes.get(cfg.model.avatar_id)
+    if presentation_mode != "prerecorded":
+        _fail(
+            "commercial review profile Phase A 基線必須將 "
+            f"{cfg.model.avatar_id!r} 設為 prerecorded 呈現（目前為 {presentation_mode!r}）"
+        )
+    if cfg.asr.type != "whisper" or cfg.asr.model_size != "small":
+        _fail(
+            "commercial review profile 必須選用 whisper / small "
+            f"（目前為 {cfg.asr.type!r} / {cfg.asr.model_size!r}）"
+        )
+    if cfg.llm.provider != "llamacpp" or cfg.llm.model != "gemma-4-E2B_q4_0-it":
+        _fail(
+            "commercial review profile 必須選用 llamacpp / gemma-4-E2B_q4_0-it "
+            f"（目前為 {cfg.llm.provider!r} / {cfg.llm.model!r}）"
+        )
+    print(
+        f"{OK} 商業審查設定檔基線正常 "
+        f"({cfg.model.type}:{presentation_mode} / {cfg.asr.type}:{cfg.asr.model_size} / {cfg.llm.provider}:{cfg.llm.model})"
+    )
 
 
 def check_llm_smoke(cfg) -> str:
