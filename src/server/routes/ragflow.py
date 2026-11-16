@@ -11,6 +11,7 @@ from aiohttp import web
 from src.avatars.catalog import is_safe_avatar_id
 from src.ragflow.client import MANAGEMENT_URL, RagFlowClient, RagFlowError
 from src.ragflow.settings import avatar_settings, save_avatar_settings
+from src.server.request_origin import is_loopback_request
 
 
 def _json(data: dict, status: int = 200) -> web.Response:
@@ -34,11 +35,13 @@ async def get_ragflow_settings(request):
     except ValueError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=400)
     client = RagFlowClient()
+    local_client = is_loopback_request(request)
     return _json({"code": 0, "data": {
         "avatar_id": avatar_id,
         **avatar_settings(avatar_id),
         "configured": client.connection.configured,
-        "management_url": MANAGEMENT_URL,
+        "is_local_client": local_client,
+        "management_url": MANAGEMENT_URL if local_client else None,
     }})
 
 

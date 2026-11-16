@@ -39,6 +39,7 @@ from src.server.runtime_settings import (
     reply_rules_snapshot,
 )
 from src.server.state import state
+from src.server.request_origin import has_local_display, is_loopback_request
 from src.scene.service import (
     MAX_BACKGROUND_BYTES,
     SceneError,
@@ -180,7 +181,9 @@ async def set_vad_settings(request):
 async def get_speech_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    return _json({"code": 0, "data": speech_snapshot(state.config)})
+    data = dict(speech_snapshot(state.config))
+    data["local_path_picker_available"] = is_loopback_request(request) and has_local_display()
+    return _json({"code": 0, "data": data})
 
 
 async def get_stage_settings(request):
@@ -364,6 +367,24 @@ async def set_tts_settings(request):
 
 async def pick_speech_path(request):
     """Open a native local chooser; browser file inputs cannot reveal paths."""
+    if not is_loopback_request(request):
+        return _json(
+            {
+                "code": -1,
+                "reason": "remote_client",
+                "msg": "遠端瀏覽器無法開啟伺服器本機檔案視窗，請直接輸入伺服器上的檔案或資料夾路徑。",
+            },
+            status=403,
+        )
+    if not has_local_display():
+        return _json(
+            {
+                "code": -1,
+                "reason": "headless",
+                "msg": "目前伺服器為無螢幕（headless）環境，無法開啟檔案選擇器，請直接輸入伺服器上的檔案或資料夾路徑。",
+            },
+            status=400,
+        )
     try:
         kind = (await request.json()).get("kind", "file")
         import tkinter as tk

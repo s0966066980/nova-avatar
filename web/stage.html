@@ -221,6 +221,16 @@ See LICENSE and NOTICE.
   }
   .dot{width:6px;height:6px;border-radius:50%;background:var(--ring,var(--idle));
        box-shadow:0 0 10px var(--ring,var(--idle))}
+  .audio-unlock{
+    position:absolute; top:56px; left:50%; transform:translateX(-50%);
+    z-index:4; display:inline-flex; align-items:center; justify-content:center;
+    min-height:40px; padding:8px 16px; border-radius:999px;
+    border:1px solid rgba(124,156,255,.55);
+    background:rgba(15,23,42,.88); color:var(--ink);
+    font-size:13px; font-family:inherit; cursor:pointer;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);
+  }
+  .audio-unlock[hidden]{display:none}
 
   /* ── 覆蓋層（開場 / 錯誤）────────────────── */
   .veil{
@@ -342,6 +352,7 @@ See LICENSE and NOTICE.
     <div class="stage-language"><select id="stageLocale" aria-label="舞台語系"><option value="zh-TW">繁體中文</option><option value="en-US">English</option></select><span id="languageStatus" class="stage-language-status" role="status" aria-live="polite"></span></div>
 
     <div class="mode" id="mode"><span class="dot"></span><span id="modeText">連線中</span></div>
+    <button class="audio-unlock" id="audioUnlock" type="button" hidden>點擊開啟聲音</button>
 
     <div class="mic-wrap" id="micWrap">
       <button class="mic" id="mic" disabled aria-label="收音">
@@ -423,7 +434,7 @@ import {
   'use strict';
 
   const $ = (id) => document.getElementById(id);
-  const stage=$('stage'), video=$('video'), mic=$('mic'), hint=$('hint');
+  const stage=$('stage'), video=$('video'), mic=$('mic'), hint=$('hint'), audioUnlock=$('audioUnlock');
   const said=$('said'), replyWrap=$('replyWrap'), reply=$('reply'), replyExitLayer=$('replyExitLayer'), modeText=$('modeText');
   const veil=$('veil'), veilTitle=$('veilTitle'), veilText=$('veilText'),
         veilBtn=$('veilBtn'), veilAlt=$('veilAlt');
@@ -433,7 +444,7 @@ import {
         boardTitle=$('boardTitle'), boardSource=$('boardSource');
 
   // ── 連線狀態 ────────────────────────────────
-  let pc=null, chan=null, micStream=null;
+  let pc=null, chan=null, micStream=null, stageAudioContext=null;
   let sessionId=0, lastSeq=0;
   let stageLocale='zh-TW', languageSwitching=false, hasConnected=false;
   let stageComposer=null, microphoneRequest=null, enablingMicrophonePress=false, composerCaptureBefore=null, composerBox=null;
@@ -459,6 +470,7 @@ import {
     hideBoardBtn.setAttribute('aria-label', t('關閉看板'));
     $('boardLabel').textContent=t('回答看板');
     veilAlt.textContent=t('開啟控制台');
+    if(audioUnlock) audioUnlock.textContent=t('點擊開啟聲音');
     document.getElementById('scene-record-controls')?.querySelectorAll?.('button,a').forEach(node => { node.textContent=t(node.textContent); });
     setMode(); refreshAffordance(); renderBoardItems(); applyBoardLayout();
   }
@@ -682,6 +694,74 @@ import {
   }
   const hideVeil = () => { veil.hidden = true; };
 
+  function unlockAudioContext(){
+    const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if(!Ctx) return;
+    try{
+      if(!stageAudioContext) stageAudioContext = new Ctx();
+      if(stageAudioContext.state === 'suspended') void stageAudioContext.resume()?.catch?.(()=>{});
+    }catch(_){}
+  }
+
+  function setAudioUnlockVisible(visible){
+    if(!audioUnlock) return;
+    audioUnlock.textContent = t('點擊開啟聲音');
+    audioUnlock.hidden = !visible;
+  }
+
+  async function resumeStagePlayback(){
+    const stream = video?.srcObject;
+    if(!stream || !video.play) return false;
+    video.muted = false;
+    if(video.volume === 0) video.volume = 1;
+    try{
+      unlockAudioContext();
+      await video.play();
+      if(video.srcObject !== stream) return false;
+      const blocked = Boolean(video.paused || video.muted || video.volume === 0);
+      setAudioUnlockVisible(blocked);
+      return !blocked;
+    }catch(_){
+      if(video.srcObject !== stream) return false;
+      setAudioUnlockVisible(true);
+      return false;
+    }
+  }
+
+  if(audioUnlock) audioUnlock.onclick = () => resumeStagePlayback();
+
+  async function requestStageMicrophone(){
+    if(!navigator.mediaDevices?.getUserMedia){
+      const err = new Error('MediaDevices unavailable');
+      err.code = globalThis.isSecureContext === false ? 'insecure_context' : 'unsupported';
+      throw err;
+    }
+    try{
+      return await navigator.mediaDevices.getUserMedia({
+        audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1}
+      });
+    }catch(err){
+      if(err?.name === 'OverconstrainedError' || err?.name === 'TypeError'){
+        return navigator.mediaDevices.getUserMedia({audio:true});
+      }
+      throw err;
+    }
+  }
+
+  function microphoneFailureMessage(err, {watchFallback=true}={}){
+    if(err?.code === 'insecure_context' || globalThis.isSecureContext === false || !navigator.mediaDevices?.getUserMedia){
+      return t(watchFallback
+        ? '需要受信任的 HTTPS 連線才能使用麥克風，目前為純觀看'
+        : '需要受信任的 HTTPS 連線才能啟用麥克風，仍可使用文字與附件。');
+    }
+    if(err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'){
+      return t(watchFallback
+        ? '麥克風權限未允許，請在瀏覽器設定允許麥克風，目前為純觀看'
+        : '麥克風權限未允許，請在瀏覽器設定允許麥克風，仍可使用文字與附件。');
+    }
+    return t(watchFallback ? '麥克風無法使用，目前為純觀看' : '無法啟用麥克風，仍可使用文字與附件。');
+  }
+
   veilAlt.onclick = () => { window.location.href = '/'; };
 
   // ── 控制訊息 ────────────────────────────────
@@ -884,10 +964,18 @@ import {
     // 只綁一次 srcObject。音軌與視訊軌是分開抵達的，每次 ontrack 都重綁會讓
     // 元素重新接管已在播放的音訊管線，兩軌可能因此跑在各自的時鐘上。
     video.srcObject = remote;
+    const updateStagePlayback = () => {
+      if(video.srcObject !== remote || !remote.getTracks().length) return;
+      setAudioUnlockVisible(Boolean(video.paused || video.muted || video.volume === 0));
+    };
+    video.onplaying = updateStagePlayback;
+    video.onpause = updateStagePlayback;
+    video.onvolumechange = updateStagePlayback;
     pc.ontrack = (e) => {
       if(attempt !== stageGeneration) return;
       configureReplyPlayout(e);
       if(!remote.getTracks().some(t => t.id === e.track.id)) remote.addTrack(e.track);
+      void resumeStagePlayback();
     };
     pc.onconnectionstatechange = () => {
       if(attempt !== stageGeneration) return;
@@ -922,9 +1010,7 @@ import {
         // without replacing the peer connection or losing this conversation.
         pc.addTransceiver('audio', {direction:'sendrecv'});
       }else{
-      const microphone = await navigator.mediaDevices.getUserMedia({
-        audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1}
-      });
+      const microphone = await requestStageMicrophone();
       if(attempt !== stageGeneration) { microphone.getTracks().forEach(t=>t.stop()); return; }
       micStream = microphone;
       pc.addTrack(micStream.getAudioTracks()[0], micStream);
@@ -934,7 +1020,7 @@ import {
       if(attempt !== stageGeneration) return;
       micStream = null;
       pc.addTransceiver('audio', {direction:'recvonly'});
-      showSaid(t('麥克風無法使用，目前為純觀看'));
+      showSaid(microphoneFailureMessage(err, {watchFallback:true}));
     }
     pc.addTransceiver('video', {direction:'recvonly'});
 
@@ -1002,7 +1088,13 @@ import {
     pc = null;
     micStream?.getTracks().forEach(t => t.stop());
     micStream = null;
-    video.srcObject = null;
+    setAudioUnlockVisible(false);
+    if(video){
+      video.onplaying = null;
+      video.onpause = null;
+      video.onvolumechange = null;
+      video.srcObject = null;
+    }
     setVisual('idle');
     refreshAffordance();
   }
@@ -1036,7 +1128,9 @@ import {
   async function enableMicrophone(){
     if(microphoneRequest || !pc) return;
     const peer=pc;
-    microphoneRequest=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
+    microphoneRequest=typeof requestStageMicrophone === 'function'
+      ? requestStageMicrophone()
+      : navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true,channelCount:1}});
     try{
       const stream=await microphoneRequest;
       if(peer !== pc){stream.getTracks().forEach(track=>track.stop());return;}
@@ -1045,12 +1139,15 @@ import {
       await sender.replaceTrack(stream.getAudioTracks()[0]);
       micStream=stream; autoPaused=false;
       setCapture(autoMode); setMode(); refreshAffordance();
-    }catch(_){showSaid(stageLocale === 'en-US' ? 'Microphone unavailable. Text and attachments are still available.' : '無法啟用麥克風，仍可使用文字與附件。');}
+    }catch(err){showSaid(typeof microphoneFailureMessage === 'function'
+      ? microphoneFailureMessage(err, {watchFallback:false})
+      : (stageLocale === 'en-US' ? 'Microphone unavailable. Text and attachments are still available.' : '無法啟用麥克風，仍可使用文字與附件。'));}
     finally{microphoneRequest=null;}
   }
   mic.addEventListener('pointerdown', (e) => {
     if(mic.disabled) return;
     e.preventDefault();
+    if(typeof audioUnlock !== 'undefined' && audioUnlock && !audioUnlock.hidden && typeof resumeStagePlayback === 'function') void resumeStagePlayback();
     if(!micStream){enablingMicrophonePress=true;enableMicrophone();return;}
     interruptedPress = false;
     if(speaking){ interruptedPress = true; interrupt(); return; }
@@ -1103,12 +1200,13 @@ import {
   // ── 開場：需要一次使用者手勢才能自動播放帶聲音的影片 ──
   async function enterStage(locale=stageLocale){
     applyLocale(locale);
+    unlockAudioContext();
     entryLanguages.hidden=true;
     veilBtn.hidden = true;
     await syncVadMode();
     await syncStageSettings();
     await connect();
-    try{ await video.play(); }catch(_){}
+    await resumeStagePlayback();
   }
   veilBtn.onclick = () => enterStage();
   entryLanguages.querySelectorAll?.('[data-locale]').forEach(button => {

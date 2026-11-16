@@ -127,6 +127,7 @@ const vadDraft = reactive({
 })
 
 const speech = reactive({
+  local_path_picker_available: true,
   stt: {
     type: 'whisper',
     model_size: 'base',
@@ -603,6 +604,9 @@ function applyVadSnapshot(data) {
 
 function applySpeechSnapshot(data) {
   if (!data) return
+  if (typeof data.local_path_picker_available === 'boolean') {
+    speech.local_path_picker_available = data.local_path_picker_available
+  }
   if (data.stt) {
     Object.assign(speech.stt, data.stt)
     Object.assign(sttDraft, {

@@ -13,12 +13,20 @@ from aiohttp import web
 import aiohttp_cors
 
 from src.utils.logging import logger
+from src.utils.paths import get_project_root
 from src.server.state import state
 from src.server import routes
 from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
 from src.weather import routing_clients
+
+
+def _resolve_frontend_dir() -> Path:
+    """解析前端靜態資源目錄，優先使用已建置的 web/dist。"""
+    web_dir = get_project_root() / "web"
+    dist_dir = web_dir / "dist"
+    return dist_dir if (dist_dir / "index.html").is_file() else web_dir
 
 
 async def on_shutdown(app):
@@ -106,8 +114,16 @@ def create_app():
     app.router.add_post("/api/voice-tests/run", routes.run_voice_test)
     app.router.add_delete("/api/voice-tests", routes.clear_voice_tests)
     # 前端靜態資源託管
-    frontend = Path('web/dist')
-    app.router.add_static('/', path=frontend if (frontend / 'index.html').is_file() else Path('web'))
+    frontend = _resolve_frontend_dir()
+
+    async def serve_index(_request):
+        index_file = frontend / "index.html"
+        if not index_file.is_file():
+            raise web.HTTPNotFound()
+        return web.FileResponse(index_file)
+
+    app.router.add_get("/", serve_index)
+    app.router.add_static("/", path=frontend)
     
     # 寬鬆 CORS 方便本地除錯和跨域訪問
     cors = aiohttp_cors.setup(app, defaults={

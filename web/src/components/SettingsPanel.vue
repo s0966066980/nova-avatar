@@ -1156,7 +1156,8 @@
               <div class="field-control-area">
                 <div class="input-group"><select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
                   <option v-for="model in sttModelOptions" :key="model" :value="model">{{ model }}</option>
-                </select><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('stt', 'directory')">選擇資料夾</button></div>
+                </select><button v-if="pathPickerState.available" type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('stt', 'directory')">選擇資料夾</button></div>
+                <span v-if="!pathPickerState.available" class="field-sub-hint">{{ pathPickerState.hint }}</span>
               </div>
             </div>
 
@@ -1297,7 +1298,8 @@
                   <label for="tts-cosyvoice-prompt-wav" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
                 </div>
                 <div class="field-control-area">
-                  <div class="input-group"><input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model"><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'directory')">選擇資料夾</button></div>
+                  <div class="input-group"><input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model"><button v-if="pathPickerState.available" type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'directory')">選擇資料夾</button></div>
+                  <span v-if="!pathPickerState.available" class="field-sub-hint">{{ pathPickerState.hint }}</span>
                 </div>
               </div>
             </template>
@@ -1315,7 +1317,8 @@
                   type="text"
                   v-model.trim="ttsDraft.ref_file"
                   :placeholder="t('settings.speech.referencePathPlaceholder')"
-                ><button type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'file')">選擇音檔</button></div>
+                ><button v-if="pathPickerState.available" type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'file')">選擇音檔</button></div>
+                <span v-if="!pathPickerState.available" class="field-sub-hint">{{ pathPickerState.hint }}</span>
               </div>
             </div>
           </section>
@@ -1503,6 +1506,7 @@ import { composerGeometry } from '../conversationAttachments.js'
 import ConversationComposer from './ConversationComposer.vue'
 import { placeStageCaption } from '../stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
+import { speechPathPickerState } from '../remoteAccess.js'
 
 const selectedPresentation = ref('musetalk')
 const onPresentationLoaded = (value) => { selectedPresentation.value = value.mode }
@@ -1745,6 +1749,9 @@ const {
 const isCosyVoiceFamily = computed(() => (
   ttsDraft.type === 'cosyvoice' || ttsDraft.type === 'fun-cosyvoice3'
 ))
+const pathPickerState = computed(() => speechPathPickerState({
+  serverAvailable: speech.local_path_picker_available
+}))
 
 async function chooseSpeechPath(target, kind) {
   try {
