@@ -1,0 +1,32 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=Nova Avatar Jetson Remote Server (:8010)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/nova-avatar
+Environment=PATH=%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=PYTHONUNBUFFERED=1
+Environment=OMP_NUM_THREADS=1
+Environment=OPENBLAS_NUM_THREADS=1
+Environment=MKL_NUM_THREADS=1
+Environment=OPENCV_FOR_THREADS_NUM=1
+Environment=NOVA_START_RAGFLOW=0
+EnvironmentFile=-%h/nova-avatar/config/ragflow.env
+ExecStartPre=/usr/bin/env uv run python scripts/check-cuda.py
+ExecStart=/usr/bin/env uv run python src/server/app.py --config config/config_jetson.yaml
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nova-avatar
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

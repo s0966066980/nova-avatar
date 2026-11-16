@@ -138,6 +138,32 @@ RAGFlow 使用原生 ARM64 v0.27.2 映像，一般 Jetson 模式會自動帶起�
 `--read-aloud` 與 `--realtime` 朗讀模式仍略過。
 Wav2Lip、ER-NeRF、TalkingGaussian 等其他 Avatar 尚未驗證 ARM64 相依套件。
 
+## 常駐服務（systemd --user）與背景資源管理
+
+Jetson Orin 正式單一入口模式（`:8010`）可使用使用者層級 `systemd --user` 常駐執行，unit 模板位於
+[nova-avatar.service](../integrations/systemd/nova-avatar.service)，並由
+[jetson-service.sh](../scripts/jetson-service.sh) 管理生命週期：
+
+```bash
+bash scripts/jetson-service.sh check      # 前置檢查（設定、憑證、web/dist、linger、外部 ollama）
+bash scripts/jetson-service.sh install    # 安裝並啟用 ~/.config/systemd/user/nova-avatar.service
+sudo loginctl enable-linger "$USER"       # 允許未登入桌面時開機自動拉起 user systemd 服務
+bash scripts/jetson-service.sh start      # 啟動常駐服務（ExecStartPre 會先跑 check-cuda.py）
+bash scripts/jetson-service.sh status     # 檢視服務狀態、/health 與外部 ollama 記憶體提示
+bash scripts/jetson-service.sh logs       # 檢視 journalctl --user -u nova-avatar.service
+bash scripts/jetson-service.sh stop       # 優雅停止（SIGTERM -> 關閉 WebRTC 會話與 owned llama-server）
+```
+
+- **Phase 1 資源基線**：unit 預設設定 `NOVA_START_RAGFLOW=0` 與單執行緒限制（`OMP_NUM_THREADS=1`、`OPENBLAS_NUM_THREADS=1`、`MKL_NUM_THREADS=1`、`OPENCV_FOR_THREADS_NUM=1`），避免未啟用知識庫時常駐 Docker／RAGFlow。
+- **外部 `ollama` 記憶體控管**：Orin 上若另有系統級 `ollama.service` 常駐（可能佔用約 1.7 GB 統一記憶體）且 Phase 1 不使用 RAGFlow 嵌入，請依 `check`／`status` 提示手動停止並停用：
+  ```bash
+  sudo systemctl disable --now ollama
+  # 或執行：bash scripts/jetson-service.sh stop-ollama
+  ```
+  腳本的 `check`、`status` 與 `install` 僅檢查並顯示建議，不會在未經授權下自動停止外部系統服務。
+- **健康檢查監控**：外部監控腳本可執行 `bash scripts/jetson-service.sh health`（或查詢 `https://<orin-ip>:8010/health`），服務完全就緒後會回傳 `"ready": true`。
+- **日誌與輪替**：`StandardOutput=journal`／`StandardError=journal` 會寫入 `journald`（可透過 `journalctl --user -u nova-avatar.service` 檢視與由系統 `journald` 上限控制大小）；Python 後端與 `llama-server` 亦各自寫入 `logs/nova-avatar_*.log` 與 `logs/llama-server.log`，長期運作可定期清理過舊的 `logs/nova-avatar_*.log`（例如保留最近 14 天：`find logs -name 'nova-avatar_*.log' -mtime +14 -delete`）。
+
 ## 驗證
 
 ```bash
