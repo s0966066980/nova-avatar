@@ -13,7 +13,7 @@ import pypdfium2 as pdfium
 from src.config.schema import Config
 from src.llm.context_usage import measure_request
 from src.llm.engines.openai import OpenAILLM
-from src.server.attachments import AttachmentError, AttachmentStore, page_numbers
+from src.server.attachments import AttachmentError, AttachmentStore, page_numbers, repair_json_evidence
 
 
 def image_bytes():
@@ -216,3 +216,91 @@ def test_cancel_before_acceptance_rejects_late_request_without_interrupting_old_
             await session.close()
 
     asyncio.run(exercise())
+
+
+def test_repair_json_evidence_handles_truncation_and_codeblocks():
+    # 1. Normal JSON
+    normal = '{"relevant": true, "requested_field": null, "field_quote": null, "observations": "All clear."}'
+    assert repair_json_evidence(normal)['observations'] == 'All clear.'
+
+    # 2. Markdown codeblock
+    wrapped = '```json\n{"relevant": true, "requested_field": null, "field_quote": null, "observations": "In block"}\n```'
+    assert repair_json_evidence(wrapped)['observations'] == 'In block'
+
+    # 3. Truncated JSON without closing quote/brace
+    truncated = '{"relevant": true, "requested_field": null, "field_quote": null, "observations": "Truncated sentence'
+    repaired = repair_json_evidence(truncated)
+    assert repaired is not None
+    assert repaired['relevant'] is True
+    assert repaired['observations'] == 'Truncated sentence'
+
+    # 4. Completely invalid
+    assert repair_json_evidence('not json at all') is None
+
+
+def test_page_evidence_two_tier_fallback_on_corrupt_json(store):
+    output = BytesIO()
+    with pdfium.PdfDocument.new() as document:
+        document.new_page(300, 400).close()
+        document.save(output)
+    item = store.add_batch([('doc.pdf', output.getvalue())], store.generation)[0]
+
+    class Stream(list):
+        def close(self):
+            pass
+
+    # Tier 2 fallback: LLM returns broken JSON, but extracted text is present -> fallback to extracted text
+    units_with_text = [('doc.pdf — page 1', 'Extracted page content here', Image.new('RGB', (30, 40)))]
+    broken_stream = Stream([SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content='Not valid JSON'))])])
+    with patch.object(store, '_units', return_value=iter(units_with_text)), patch('openai.OpenAI') as factory:
+        factory.return_value.chat.completions.create.return_value = broken_stream
+        question = store.prepare_question('Summary', store.validate_selection([{'id': item['id']}]),
+                                          Config(), Mock(), lambda: True)
+    assert 'Extracted page content here' in question.parts[0]['text']
+
+    # When no extracted text is available and JSON is broken -> raises AttachmentError('analysis_unreadable')
+    units_empty_text = [('doc.pdf — page 1', '', Image.new('RGB', (30, 40)))]
+    with patch.object(store, '_units', return_value=iter(units_empty_text)), patch('openai.OpenAI') as factory:
+        factory.return_value.chat.completions.create.return_value = Stream(
+            [SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content='Not valid JSON'))])])
+        with pytest.raises(AttachmentError, match='analysis_unreadable'):
+            store.prepare_question('Summary', store.validate_selection([{'id': item['id']}]),
+                                   Config(), Mock(), lambda: True)
+
+
+def test_field_aliases_classification_fallback(store):
+    import json
+    output = BytesIO()
+    with pdfium.PdfDocument.new() as document:
+        for _ in range(2):
+            document.new_page(300, 400).close()
+        document.save(output)
+    item = store.add_batch([('multi.pdf', output.getvalue())], store.generation)[0]
+
+    class Stream(list):
+        def close(self):
+            pass
+
+    def page_stream():
+        payload = json.dumps({'relevant': True, 'requested_field': None, 'field_quote': None, 'observations': 'Page ok'})
+        return Stream([SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=payload))])])
+
+    # Classified returns invalid JSON
+    classified_bad = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='Bad JSON'))])
+    units = [(f'multi.pdf — page {i + 1}', f'Text {i + 1}', Image.new('RGB', (30, 40))) for i in range(2)]
+
+    with patch.object(store, '_units', return_value=iter(units)), patch('openai.OpenAI') as factory:
+        factory.return_value.chat.completions.create.side_effect = [classified_bad, page_stream(), page_stream()]
+        question = store.prepare_question('Analyze this', store.validate_selection([{'id': item['id']}]),
+                                          Config(), Mock(), lambda: True)
+    assert 'Page ok' in question.parts[0]['text']
+
+    # Classified returns empty choices
+    classified_empty = SimpleNamespace(choices=[])
+    units_empty = [(f'multi.pdf — page {i + 1}', f'Text {i + 1}', Image.new('RGB', (30, 40))) for i in range(2)]
+    with patch.object(store, '_units', return_value=iter(units_empty)), patch('openai.OpenAI') as factory:
+        factory.return_value.chat.completions.create.side_effect = [classified_empty, page_stream(), page_stream()]
+        question = store.prepare_question('Analyze this', store.validate_selection([{'id': item['id']}]),
+                                          Config(), Mock(), lambda: True)
+    assert 'Page ok' in question.parts[0]['text']
+
