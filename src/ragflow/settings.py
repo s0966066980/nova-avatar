@@ -20,6 +20,36 @@ SETTINGS_FILE = get_config_dir() / "ragflow_settings.yaml"
 _LOCK = RLock()
 _DATASET_ID = re.compile(r"[a-fA-F0-9]{32}")
 MAX_DATASETS = 8
+MAX_REFUSAL_MESSAGE_CHARS = 300
+DEFAULT_REFUSAL_MESSAGE = "抱歉，目前的知識庫中找不到足夠的相關資料，無法確認此問題，建議洽詢現場或客服人員。"
+DEFAULT_ENGLISH_REFUSAL_MESSAGE = (
+    "Sorry, I couldn't find enough relevant information in the knowledge base to confirm this question. "
+    "Please contact on-site or customer support staff."
+)
+
+
+def _normalize_refusal_message(value: Any, *, strict: bool = False) -> str:
+    if value is None:
+        return DEFAULT_REFUSAL_MESSAGE
+    if not isinstance(value, str):
+        if strict:
+            raise ValueError("拒答訊息必須是文字")
+        return DEFAULT_REFUSAL_MESSAGE
+    cleaned = re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", "", value).strip()
+    if len(cleaned) > MAX_REFUSAL_MESSAGE_CHARS:
+        if strict:
+            raise ValueError(f"拒答訊息不可超過 {MAX_REFUSAL_MESSAGE_CHARS} 字")
+        cleaned = cleaned[:MAX_REFUSAL_MESSAGE_CHARS].strip()
+    return cleaned or DEFAULT_REFUSAL_MESSAGE
+
+
+def resolve_refusal_message(settings_snapshot: dict[str, Any] | None, locale: str = "zh-TW") -> str:
+    """Return the configured refusal message, localizing the default copy for en-US."""
+    raw = settings_snapshot.get("refusal_message") if isinstance(settings_snapshot, dict) else None
+    message = _normalize_refusal_message(raw)
+    if locale == "en-US" and message == DEFAULT_REFUSAL_MESSAGE:
+        return DEFAULT_ENGLISH_REFUSAL_MESSAGE
+    return message
 
 
 def _load() -> dict[str, Any]:
@@ -37,7 +67,12 @@ def _load() -> dict[str, Any]:
 def avatar_settings(avatar_id: str) -> dict[str, Any]:
     """Return an immutable-by-convention snapshot for one conversation turn."""
     if not is_safe_avatar_id(avatar_id):
-        return {"enabled": False, "dataset_ids": []}
+        return {
+            "enabled": False,
+            "dataset_ids": [],
+            "strict_grounding": True,
+            "refusal_message": DEFAULT_REFUSAL_MESSAGE,
+        }
     with _LOCK:
         data = _load()["avatars"].get(avatar_id, {})
     if not isinstance(data, dict):
@@ -45,20 +80,33 @@ def avatar_settings(avatar_id: str) -> dict[str, Any]:
     ids = data.get("dataset_ids", [])
     if not isinstance(ids, list):
         ids = []
+    strict_raw = data.get("strict_grounding")
+    strict_grounding = strict_raw if isinstance(strict_raw, bool) else True
     return {
         "enabled": data.get("enabled") is True,
         "dataset_ids": [
             item for item in ids[:MAX_DATASETS]
             if isinstance(item, str) and _DATASET_ID.fullmatch(item)
         ],
+        "strict_grounding": strict_grounding,
+        "refusal_message": _normalize_refusal_message(data.get("refusal_message")),
     }
 
 
-def save_avatar_settings(avatar_id: str, *, enabled: Any, dataset_ids: Any) -> dict[str, Any]:
+def save_avatar_settings(
+    avatar_id: str,
+    *,
+    enabled: Any,
+    dataset_ids: Any,
+    strict_grounding: Any = True,
+    refusal_message: Any = None,
+) -> dict[str, Any]:
     if not is_safe_avatar_id(avatar_id) or len(avatar_id) > 128:
         raise ValueError("數位人識別碼不正確")
     if not isinstance(enabled, bool):
         raise ValueError("啟用狀態必須是布林值")
+    if not isinstance(strict_grounding, bool):
+        raise ValueError("嚴格依據拒答模式必須是布林值")
     if not isinstance(dataset_ids, list) or len(dataset_ids) > MAX_DATASETS:
         raise ValueError(f"最多只能選擇 {MAX_DATASETS} 個知識庫")
     if any(not isinstance(item, str) or not _DATASET_ID.fullmatch(item) for item in dataset_ids):
@@ -67,13 +115,18 @@ def save_avatar_settings(avatar_id: str, *, enabled: Any, dataset_ids: Any) -> d
         raise ValueError("知識庫不可重複選擇")
     if enabled and not dataset_ids:
         raise ValueError("啟用檢索前請先選擇知識庫")
+    normalized_refusal = _normalize_refusal_message(refusal_message, strict=True)
+
+    entry = {
+        "enabled": enabled,
+        "dataset_ids": list(dataset_ids),
+        "strict_grounding": strict_grounding,
+        "refusal_message": normalized_refusal,
+    }
 
     with _LOCK:
         payload = _load()
-        payload["avatars"][avatar_id] = {
-            "enabled": enabled,
-            "dataset_ids": list(dataset_ids),
-        }
+        payload["avatars"][avatar_id] = entry
         SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
         temporary_path = None
         try:
@@ -98,4 +151,9 @@ def save_avatar_settings(avatar_id: str, *, enabled: Any, dataset_ids: Any) -> d
                 except OSError:
                     pass
             raise
-    return {"enabled": enabled, "dataset_ids": list(dataset_ids)}
+    return {
+        "enabled": enabled,
+        "dataset_ids": list(dataset_ids),
+        "strict_grounding": strict_grounding,
+        "refusal_message": normalized_refusal,
+    }
