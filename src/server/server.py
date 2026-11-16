@@ -17,6 +17,7 @@ from src.utils.logging import logger
 from src.utils.paths import get_project_root
 from src.server.state import state
 from src.server import routes
+from src.server.admin_auth import admin_auth_middleware, register_admin_auth
 from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
@@ -64,7 +65,11 @@ def create_app():
     """建立並配置 aiohttp 應用"""
     # 單獨設定較大的請求體上限，方便上傳音影片
     # Leave space for multipart headers around the 100 MB background asset.
-    app = web.Application(client_max_size=1024**2*513)
+    app = web.Application(
+        client_max_size=1024**2*513,
+        middlewares=[admin_auth_middleware],
+    )
+    register_admin_auth(app)
     from src.server.routes.presentation import register as register_presentation
     register_presentation(app)
     from src.server.routes.attachments import register as register_attachments

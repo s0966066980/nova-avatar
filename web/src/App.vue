@@ -23,7 +23,7 @@ See LICENSE and NOTICE.
       </div>
 
       <!-- 主頁面 Tabs 切換：即時演播控制台 vs 滿板系統設定中心 -->
-      <nav class="nav-main-tabs" aria-label="主要視圖切換">
+      <nav v-if="canRenderConsole" class="nav-main-tabs" aria-label="主要視圖切換">
         <button
           class="main-tab-link"
           id="btnViewConsole"
@@ -44,7 +44,7 @@ See LICENSE and NOTICE.
         </button>
       </nav>
 
-      <div class="nav-status-group">
+      <div v-if="canRenderConsole" class="nav-status-group">
         <div class="webrtc-chip">
           <span class="live-dot" :class="{ 'connected': isConnected }"></span>
           <span>{{ isConnected ? 'WebRTC 已連線' : (connectionStatus === 'connecting' ? '連線中...' : 'WebRTC 未連線') }}</span>
@@ -54,13 +54,66 @@ See LICENSE and NOTICE.
           <i :class="isRecordingVoice ? 'bi bi-mic-fill' : 'bi bi-soundwave'"></i>
           <span>{{ voiceBadgeText || '語音待命' }}</span>
         </div>
+        <button
+          v-if="adminAuthEnabled && adminAuthenticated"
+          type="button"
+          class="sample-btn admin-logout-btn"
+          id="btnAdminLogout"
+          @click="handleAdminLogout"
+        >
+          <i class="bi bi-box-arrow-right"></i> 登出
+        </button>
       </div>
     </header>
+
+    <!-- 管理者驗證邊界：未通過驗證前不掛載控制台與 SettingsPanel -->
+    <section
+      v-if="adminAuthReady && adminAuthEnabled && !adminAuthenticated"
+      class="admin-auth-gate"
+      id="adminLoginGate"
+      aria-label="管理者登入"
+    >
+      <form class="admin-auth-card" @submit.prevent="handleAdminLogin">
+        <div class="admin-auth-header">
+          <div class="nav-logo-box"><i class="bi bi-shield-lock"></i></div>
+          <div>
+            <h2>Nova Avatar 控制台登入</h2>
+            <p>請輸入管理者密碼或 PIN 碼以存取設定與演播控制台</p>
+          </div>
+        </div>
+        <label class="admin-auth-label" for="adminPasswordInput">管理者密碼</label>
+        <input
+          id="adminPasswordInput"
+          v-model="adminPasswordInput"
+          type="password"
+          class="admin-auth-input"
+          autocomplete="current-password"
+          placeholder="輸入管理者密碼或 PIN"
+          :disabled="adminLoggingIn"
+        />
+        <p v-if="adminLoginError" id="adminLoginError" class="admin-auth-error" role="alert">
+          {{ adminLoginError }}
+        </p>
+        <button
+          id="btnAdminLogin"
+          type="submit"
+          class="admin-auth-submit"
+          :disabled="adminLoggingIn || !adminPasswordInput"
+        >
+          {{ adminLoggingIn ? '驗證中...' : '登入控制台' }}
+        </button>
+      </form>
+    </section>
+    <section v-else-if="!adminAuthReady" class="admin-auth-gate" aria-label="正在檢查服務狀態">
+      <div class="admin-auth-card">
+        <p style="margin: 0; color: var(--text-secondary);">正在確認控制台驗證狀態...</p>
+      </div>
+    </section>
 
     <!-- ══════════════════════════════════════════════════════════════
          2. 頁面視圖容器 (Page Views)
          ══════════════════════════════════════════════════════════════ -->
-    <div class="app-viewport">
+    <div class="app-viewport" v-if="canRenderConsole">
 
       <!-- ──────────────────────────────────────────────────────────
            頁面 A：即時演播控制台 (Studio Console View)
@@ -448,6 +501,7 @@ import { presentationPlayer, exportSceneRecording } from './prerecordedPlayer.js
 import { downloadMedia } from './mediaDownload.js'
 import { applyTurnCommitted } from './consoleTurnCommit.js'
 import { applyConsoleBoardEvent, createConsoleBoardState } from './consoleBoardState.js'
+import { fetchAdminAuthStatus, loginAdmin, logoutAdmin } from './adminAuth.js'
 import { boardReopenPresentation, placeStageBoard, STAGE_BOARD_PREVIEW_ITEMS, STAGE_BOARD_PREVIEW_TITLE } from './stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from './storageKeys.js'
 import { renderSafeMarkdown } from './sanitizeHtml.js'
@@ -1487,32 +1541,36 @@ const clearChatHistory = async () => {
 }
 
 let videoResizeObserver = null
+let backendCheckInterval = null
+let backendTimeoutTimer = null
+let authRetryTimer = null
+let consoleSessionStarted = false
 
-onMounted(async () => {
-  console.log('✅ Vue 應用已掛載')
-  console.log('後端 API 地址: /offer (通過 Vite proxy 轉發到 localhost:8010)')
-  
-  // 載入語言設定
-  loadLocale()
-  
-  // 應用初始主題
-  const savedSample = readMigratedStorage(
-    localStorage,
-    STORAGE_KEYS.designSample,
-    LEGACY_STORAGE_KEYS.designSample
-  ) || 'obsidian'
-  setDesignSample(savedSample)
-  
-  const wrap = videoWrapperRef.value
-  if (wrap && window.ResizeObserver) {
-    const measure = () => {
-      videoSizeBox.w = wrap.clientWidth
-      videoSizeBox.h = wrap.clientHeight
-    }
-    videoResizeObserver = new ResizeObserver(measure)
-    videoResizeObserver.observe(wrap)
-    measure()
+const adminAuthReady = ref(false)
+const adminAuthEnabled = ref(false)
+const adminAuthenticated = ref(false)
+const adminPasswordInput = ref('')
+const adminLoginError = ref('')
+const adminLoggingIn = ref(false)
+
+const canRenderConsole = computed(() => (
+  adminAuthReady.value && (!adminAuthEnabled.value || adminAuthenticated.value)
+))
+
+const stopBackendReadinessPolling = () => {
+  if (backendCheckInterval) {
+    clearInterval(backendCheckInterval)
+    backendCheckInterval = null
   }
+  if (backendTimeoutTimer) {
+    clearTimeout(backendTimeoutTimer)
+    backendTimeoutTimer = null
+  }
+}
+
+const startConsoleSession = () => {
+  if (consoleSessionStarted || !canRenderConsole.value) return
+  consoleSessionStarted = true
 
   // 拉一次 VAD / 識別來源，決定錄音走瀏覽器識別還是後端（後端才過 VAD）
   loadVadSettings().then(async () => {
@@ -1526,21 +1584,109 @@ onMounted(async () => {
 
   // 開始輪詢檢查後端是否就緒
   console.log('🔍 開始檢查後端狀態...')
-  const checkInterval = setInterval(async () => {
+  stopBackendReadinessPolling()
+  backendCheckInterval = setInterval(async () => {
     const ready = await checkBackendReady()
     if (ready) {
-      clearInterval(checkInterval)
+      stopBackendReadinessPolling()
       showNotification(t('notifications.backendReady'), 'success')
     }
-  }, 2000)  // 每2秒檢查一次
-  
+  }, 2000)
+
   // 最多檢查60秒
-  setTimeout(() => {
+  backendTimeoutTimer = setTimeout(() => {
     if (!backendReady.value) {
-      clearInterval(checkInterval)
+      stopBackendReadinessPolling()
       showNotification(t('notifications.backendTimeout'), 'error')
     }
   }, 60000)
+}
+
+const refreshAdminAuth = async () => {
+  const status = await fetchAdminAuthStatus()
+  if (!status.ok) {
+    if (authRetryTimer) clearTimeout(authRetryTimer)
+    authRetryTimer = setTimeout(() => { void refreshAdminAuth() }, 1500)
+    return false
+  }
+  adminAuthEnabled.value = status.auth_enabled
+  adminAuthenticated.value = status.authenticated
+  adminAuthReady.value = true
+  if (canRenderConsole.value) {
+    startConsoleSession()
+  }
+  return true
+}
+
+const handleAdminLogin = async () => {
+  if (adminLoggingIn.value || !adminPasswordInput.value) return
+  adminLoggingIn.value = true
+  adminLoginError.value = ''
+  try {
+    const result = await loginAdmin(adminPasswordInput.value)
+    if (!result.ok) {
+      adminLoginError.value = result.message || '密碼錯誤'
+      return
+    }
+    adminAuthEnabled.value = result.auth_enabled
+    adminAuthenticated.value = result.authenticated
+    adminPasswordInput.value = ''
+    adminLoginError.value = ''
+    startConsoleSession()
+  } finally {
+    adminLoggingIn.value = false
+  }
+}
+
+const handleAdminLogout = async () => {
+  if (isConnected.value || connectionStatus.value === 'connecting') {
+    await handleStopConnection()
+  }
+  stopBackendReadinessPolling()
+  consoleSessionStarted = false
+  const result = await logoutAdmin()
+  adminAuthEnabled.value = result.auth_enabled
+  adminAuthenticated.value = result.authenticated
+  adminPasswordInput.value = ''
+  adminLoginError.value = ''
+}
+
+watch(videoWrapperRef, (wrap) => {
+  videoResizeObserver?.disconnect()
+  videoResizeObserver = null
+  if (wrap && window.ResizeObserver) {
+    const measure = () => {
+      videoSizeBox.w = wrap.clientWidth
+      videoSizeBox.h = wrap.clientHeight
+    }
+    videoResizeObserver = new ResizeObserver(measure)
+    videoResizeObserver.observe(wrap)
+    measure()
+  }
+})
+
+onMounted(async () => {
+  console.log('✅ Vue 應用已掛載')
+  console.log('後端 API 地址: /offer (通過 Vite proxy 轉發到 localhost:8010)')
+
+  // 載入語言設定
+  loadLocale()
+
+  // 應用初始主題
+  const savedSample = readMigratedStorage(
+    localStorage,
+    STORAGE_KEYS.designSample,
+    LEGACY_STORAGE_KEYS.designSample
+  ) || 'obsidian'
+  setDesignSample(savedSample)
+
+  await refreshAdminAuth()
+})
+
+onUnmounted(() => {
+  if (authRetryTimer) clearTimeout(authRetryTimer)
+  stopBackendReadinessPolling()
+  videoResizeObserver?.disconnect()
 })
 </script>
 
@@ -1554,6 +1700,88 @@ onMounted(async () => {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+}
+
+.admin-auth-gate {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-app, #0b0f17);
+}
+
+.admin-auth-card {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  border-radius: 18px;
+  background: var(--bg-surface-elevated, #141a24);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  box-shadow: var(--shadow-lg, 0 20px 50px rgba(0, 0, 0, 0.45));
+}
+
+.admin-auth-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-auth-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.admin-auth-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.admin-auth-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.admin-auth-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm, 10px);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.16));
+  background: var(--bg-surface, #0f141d);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.admin-auth-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger, #f87171);
+}
+
+.admin-auth-submit {
+  padding: 11px 16px;
+  border: 0;
+  border-radius: var(--radius-sm, 10px);
+  background: var(--brand, #4f7cff);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-logout-btn {
+  padding: 5px 12px;
+  white-space: nowrap;
 }
 
 .stage-ratio-box video {
