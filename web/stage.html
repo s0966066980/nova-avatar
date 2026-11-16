@@ -398,7 +398,6 @@ See LICENSE and NOTICE.
       <p id="veilText">選擇語言即可進入，瀏覽器會詢問麥克風權限。</p>
       <div id="entryLanguages" class="entry-languages"><button class="btn" type="button" data-locale="zh-TW" lang="zh-TW">繁體中文</button><button class="btn" type="button" data-locale="en-US" lang="en">English</button></div>
       <button class="btn" id="veilBtn" hidden>重試</button>
-      <button class="btn ghost" id="veilAlt" hidden>開啟控制台</button>
     </div>
   </main>
 </div>
@@ -437,7 +436,7 @@ import {
   const stage=$('stage'), video=$('video'), mic=$('mic'), hint=$('hint'), audioUnlock=$('audioUnlock');
   const said=$('said'), replyWrap=$('replyWrap'), reply=$('reply'), replyExitLayer=$('replyExitLayer'), modeText=$('modeText');
   const veil=$('veil'), veilTitle=$('veilTitle'), veilText=$('veilText'),
-        veilBtn=$('veilBtn'), veilAlt=$('veilAlt');
+        veilBtn=$('veilBtn');
   const board=$('board'), boardList=$('boardList'), boardKicker=$('boardKicker'),
         boardBadge=$('boardBadge'), captions=$('captions'), micWrap=$('micWrap'),
         hideBoardBtn=$('hideBoard'), boardReopen=$('boardReopen'), boardReopenIcon=$('boardReopenIcon'), boardReopenLabel=$('boardReopenLabel'),
@@ -469,7 +468,6 @@ import {
     board.setAttribute('aria-label', t('回答看板'));
     hideBoardBtn.setAttribute('aria-label', t('關閉看板'));
     $('boardLabel').textContent=t('回答看板');
-    veilAlt.textContent=t('開啟控制台');
     if(audioUnlock) audioUnlock.textContent=t('點擊開啟聲音');
     document.getElementById('scene-record-controls')?.querySelectorAll?.('button,a').forEach(node => { node.textContent=t(node.textContent); });
     setMode(); refreshAffordance(); renderBoardItems(); applyBoardLayout();
@@ -699,14 +697,13 @@ import {
     saidTimer = setTimeout(() => said.classList.remove('on'), 4500);
   }
 
-  function showVeil(title, text, {isError=false, btn='重試', onBtn=null, alt=false}={}){
+  function showVeil(title, text, {isError=false, btn='重試', onBtn=null}={}){
     veilTitle.textContent = t(title);
     veilText.textContent = t(text);
     veilText.classList.toggle('err', isError);
     veilBtn.textContent = t(btn);
     veilBtn.hidden = !onBtn;
     veilBtn.onclick = onBtn;
-    veilAlt.hidden = !alt;
     veil.hidden = false;
   }
   const hideVeil = () => { veil.hidden = true; };
@@ -778,8 +775,6 @@ import {
     }
     return t(watchFallback ? '麥克風無法使用，目前為純觀看' : '無法啟用麥克風，仍可使用文字與附件。');
   }
-
-  veilAlt.onclick = () => { window.location.href = '/'; };
 
   // ── 控制訊息 ────────────────────────────────
   function send(msg){
@@ -1018,7 +1013,7 @@ import {
         if(msg.type === 'session_displaced') {
           teardown({release:false});
           showVeil('舞台已由其他裝置接管', '此舞台連線已中斷。如需在此裝置繼續使用，請重新接管舞台。', {
-            btn:'重新接管此舞台', onBtn:() => connect({takeover:true}), alt:true
+            btn:'重新接管此舞台', onBtn:() => connect({takeover:true})
           });
           return;
         }
@@ -1072,12 +1067,12 @@ import {
         }catch(_){}
         if(res.status === 409 && code === 'stage_occupied'){
           teardown({release:false});
-          showVeil('舞台使用中', m, {btn:'接管此舞台', onBtn:() => connect({takeover:true}), alt:true});
+          showVeil('舞台使用中', m, {btn:'接管此舞台', onBtn:() => connect({takeover:true})});
           return;
         }
         if(res.status === 409){
           teardown();
-          showVeil('數字人尚未就緒', m, {btn:'重試', onBtn:connect, alt:true});
+          showVeil('數字人尚未就緒', m, {btn:'重試', onBtn:connect});
           scheduleStageReconnect();
           return;
         }
