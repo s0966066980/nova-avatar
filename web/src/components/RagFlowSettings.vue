@@ -28,6 +28,25 @@
         <span>儲存後從下一輪對話生效</span>
       </div>
 
+      <div class="rag-strict-box">
+        <label class="rag-checkbox">
+          <input v-model="draft.strictGrounding" type="checkbox" :disabled="!avatarId || saving">
+          <span>嚴格依據拒答模式</span>
+        </label>
+        <p class="rag-hint">
+          開啟後，知識庫無命中或無法連線時將直接輸出安全拒答訊息，不交由模型自由編造（已勾選本輪參考附件與天氣查詢除外）。
+        </p>
+        <label class="rag-test-label" for="rag-refusal-message">拒答話術（留空時自動套用預設安全訊息）</label>
+        <textarea
+          id="rag-refusal-message"
+          v-model="draft.refusalMessage"
+          rows="2"
+          maxlength="300"
+          :disabled="!avatarId || saving"
+          :placeholder="DEFAULT_REFUSAL_MESSAGE"
+        ></textarea>
+      </div>
+
       <div class="rag-section-heading">
         <h3>選擇知識庫</h3>
         <button type="button" class="rag-secondary" :disabled="loading || !configured" @click="refreshDatasets()">
@@ -100,8 +119,19 @@ const props = defineProps({
   active: { type: Boolean, default: false }
 })
 
-const draft = reactive({ enabled: false, datasetIds: [] })
-const saved = reactive({ enabled: false, datasetIds: [] })
+const DEFAULT_REFUSAL_MESSAGE = '抱歉，目前的知識庫中找不到足夠的相關資料，無法確認此問題，建議洽詢現場或客服人員。'
+const draft = reactive({
+  enabled: false,
+  strictGrounding: true,
+  refusalMessage: DEFAULT_REFUSAL_MESSAGE,
+  datasetIds: []
+})
+const saved = reactive({
+  enabled: false,
+  strictGrounding: true,
+  refusalMessage: DEFAULT_REFUSAL_MESSAGE,
+  datasetIds: []
+})
 const configured = ref(false)
 const managementUrl = ref('')
 const isLocalClient = ref(true)
@@ -119,6 +149,8 @@ const serviceReady = ref(false)
 let loadGeneration = 0
 
 const dirty = computed(() => draft.enabled !== saved.enabled ||
+  draft.strictGrounding !== saved.strictGrounding ||
+  (draft.refusalMessage.trim() || DEFAULT_REFUSAL_MESSAGE) !== saved.refusalMessage ||
   JSON.stringify([...draft.datasetIds].sort()) !== JSON.stringify([...saved.datasetIds].sort()))
 const missingDatasetIds = computed(() => saved.datasetIds.filter(id => !datasets.value.some(item => item.id === id)))
 const statusKind = computed(() => loading.value ? 'loading' : !configured.value ? 'unconfigured' : serviceReady.value ? 'ready' : 'unavailable')
@@ -149,8 +181,12 @@ async function load() {
     const data = await readJson(await fetch(`/api/ragflow/settings?avatar_id=${encodeURIComponent(avatarId)}`))
     if (generation !== loadGeneration) return
     saved.enabled = Boolean(data.enabled)
+    saved.strictGrounding = data.strict_grounding !== false
+    saved.refusalMessage = data.refusal_message || DEFAULT_REFUSAL_MESSAGE
     saved.datasetIds = [...(data.dataset_ids || [])]
     draft.enabled = saved.enabled
+    draft.strictGrounding = saved.strictGrounding
+    draft.refusalMessage = saved.refusalMessage
     draft.datasetIds = [...saved.datasetIds]
     configured.value = Boolean(data.configured)
     isLocalClient.value = data.is_local_client !== false
@@ -197,11 +233,19 @@ async function save() {
     const data = await readJson(await fetch('/api/ragflow/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ avatar_id: avatarId, enabled: draft.enabled, dataset_ids: draft.datasetIds })
+      body: JSON.stringify({
+        avatar_id: avatarId, enabled: draft.enabled, dataset_ids: draft.datasetIds,
+        strict_grounding: draft.strictGrounding,
+        refusal_message: draft.refusalMessage.trim() || DEFAULT_REFUSAL_MESSAGE
+      })
     }))
     if (generation !== loadGeneration) return
     saved.enabled = Boolean(data.enabled)
+    saved.strictGrounding = data.strict_grounding !== false
+    saved.refusalMessage = data.refusal_message || DEFAULT_REFUSAL_MESSAGE
     saved.datasetIds = [...data.dataset_ids]
+    draft.strictGrounding = saved.strictGrounding
+    draft.refusalMessage = saved.refusalMessage
     saveNotice.value = '已儲存，從下一輪對話生效。'
   } catch (error) {
     if (generation === loadGeneration) saveError.value = error.message
@@ -248,6 +292,10 @@ h2 i, h3 i { color: var(--brand-light); margin-right: 8px; }
 .rag-status.unavailable, .rag-status.unconfigured { color: var(--warning); }
 .rag-alert { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--warning); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; line-height: 1.5; }
 .rag-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-block: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; }
+.rag-strict-box { padding: 16px 0; border-bottom: 1px solid var(--border-subtle); }
+.rag-strict-box .rag-hint { margin: 8px 0 0; }
+.rag-strict-box .rag-test-label { margin-top: 12px; }
+.rag-strict-box textarea { min-height: 64px; }
 .rag-checkbox, .rag-dataset { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .rag-checkbox { color: var(--text-primary); font-size: 14px; font-weight: 700; }
 input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--brand-light); flex: none; }

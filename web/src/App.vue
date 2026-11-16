@@ -166,7 +166,7 @@ See LICENSE and NOTICE.
                   >
                     <div v-if="ragByTurn[msg.voiceTurnId].status === 'unavailable'" class="rag-turn-warning" role="status">
                       <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
-                      知識庫暫時無法連線，本輪沿用一般回答。
+                      {{ ragByTurn[msg.voiceTurnId].strictRefusal ? '知識庫暫時無法連線，已依嚴格依據模式拒答。' : '知識庫暫時無法連線，本輪沿用一般回答。' }}
                     </div>
                     <details v-else-if="ragByTurn[msg.voiceTurnId].sources.length" class="rag-turn-references">
                       <summary>檢索參考 · {{ ragByTurn[msg.voiceTurnId].sources.length }} 段</summary>
@@ -861,6 +861,7 @@ const handleVoiceEvent = (event) => {
   if (event.type === 'rag_retrieval' && event.turn_id) {
     ragByTurn[event.turn_id] = {
       status: event.status,
+      strictRefusal: Boolean(event.strict_refusal),
       sources: Array.isArray(event.sources) ? event.sources : []
     }
   } else if (event.type === 'turn_cancelled' && event.turn_id) {
