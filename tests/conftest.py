@@ -13,6 +13,7 @@ import pytest
 AREA_BY_FILE = {
     "test_conversation_settings.py": "conversation",
     "test_conversation_attachments.py": "conversation",
+    "test_admin_auth.py": "runtime",
     "test_answer_board.py": "conversation",
     "test_assistant_profile.py": "llm",
     "test_auto_response_protocol.py": "conversation",
@@ -58,6 +59,7 @@ AREA_BY_FILE = {
     "test_systemd_service.py": "runtime",
     "test_vad.py": "speech",
     "test_voice_session.py": "conversation",
+    "test_voice_soak.py": "conversation",
     "test_weather_context.py": "conversation",
     "test_weather_keywords.py": "conversation",
     "test_webrtc_lifecycle.py": "runtime",

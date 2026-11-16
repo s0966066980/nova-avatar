@@ -43,6 +43,7 @@ SPDX-License-Identifier: Apache-2.0
 | --- | --- |
 | [project-status.md](project-status.md) | 專案基線與歷史驗證結果（基準為 RTX 4090，非 Jetson） |
 | [software-stack.md](software-stack.md) | 軟體組合、可選引擎與授權邊界 |
+| [commercial-release-checklist.md](commercial-release-checklist.md) | Phase A 商用交付前合規與授權檢查清單（內部 POC vs 對外商售阻礙項） |
 | [current-project-workflow.md](current-project-workflow.md) | 開新工作項目、驗證與交付流程 |
 | [source-attribution-audit.md](source-attribution-audit.md) | 來源標註稽核 |
 | [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) | 第三方聲明 |

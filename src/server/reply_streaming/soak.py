@@ -5,9 +5,57 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable, Mapping
+from pathlib import Path
+from typing import Iterable, Mapping, Sequence
 
 from .metrics import STAGE_NAMES
+
+
+def sample_rss_mb(pid: int | None = None) -> float | None:
+    """Read current resident memory (VmRSS) in MiB from Linux procfs."""
+    target = str(pid) if pid is not None else "self"
+    status_path = Path(f"/proc/{target}/status")
+    try:
+        content = status_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    for line in content.splitlines():
+        if line.startswith("VmRSS:"):
+            parts = line.split()
+            if len(parts) >= 2:
+                try:
+                    kib = float(parts[1])
+                except ValueError:
+                    return None
+                return round(kib / 1024.0, 3)
+    return None
+
+
+def summarize_memory_trend(samples_mb: Iterable[float]) -> dict | None:
+    """Summarize RSS trend and linear growth rate without any content payloads."""
+    values = [float(v) for v in samples_mb if v is not None and math.isfinite(float(v))]
+    if not values:
+        return None
+    n = len(values)
+    if n == 1:
+        slope = 0.0
+    else:
+        mean_x = (n - 1) / 2.0
+        mean_y = sum(values) / n
+        denom = sum((i - mean_x) ** 2 for i in range(n))
+        slope = (
+            sum((i - mean_x) * (val - mean_y) for i, val in enumerate(values)) / denom
+            if denom > 0
+            else 0.0
+        )
+    return {
+        "sample_count": n,
+        "initial_mb": round(values[0], 3),
+        "final_mb": round(values[-1], 3),
+        "peak_mb": round(max(values), 3),
+        "delta_mb": round(values[-1] - values[0], 3),
+        "slope_mb_per_sample": round(slope, 6),
+    }
 
 
 def percentile(values: Iterable[float], percentile_value: float) -> float | None:
@@ -25,14 +73,42 @@ def percentile(values: Iterable[float], percentile_value: float) -> float | None
     return round(samples[lower] * (1.0 - weight) + samples[upper] * weight, 6)
 
 
+def _summarize_recovery(recovery_results: Sequence[Mapping]) -> dict:
+    total = len(recovery_results)
+    passed = sum(1 for item in recovery_results if bool(item.get("passed")))
+    reconnect_count = sum(
+        1 for item in recovery_results if item.get("type") == "reconnect"
+    )
+    rejection_count = sum(
+        1
+        for item in recovery_results
+        if item.get("type") == "speech_gate_rejection"
+    )
+    return {
+        "total_probes": total,
+        "passed_probes": passed,
+        "failed_probes": total - passed,
+        "reconnect_count": reconnect_count,
+        "rejection_probe_count": rejection_count,
+        "all_passed": passed == total,
+    }
+
+
 def build_soak_report(
     turns: list[Mapping],
     *,
     scenario_counts: Mapping[str, int],
     stale_events: int,
     environment: Mapping[str, str],
+    max_first_audio_p50: float = 1.2,
+    max_first_audio_p95: float = 2.5,
+    memory_samples_mb: Sequence[float] | None = None,
+    max_rss_growth_mb: float = 256.0,
+    recovery_results: Sequence[Mapping] | None = None,
 ) -> dict:
     """Aggregate scalar telemetry without accepting transcript/audio fields."""
+    if max_first_audio_p50 <= 0 or max_first_audio_p95 <= 0:
+        raise ValueError("first audio latency budgets must be positive")
     first_audio = [item.get("first_audio_seconds") for item in turns]
     interrupt_stop = [
         item.get("interrupt_stop_seconds")
@@ -69,8 +145,8 @@ def build_soak_report(
         "first_audio_seconds": {
             "p50": percentile(first_audio, 50),
             "p95": percentile(first_audio, 95),
-            "target_p50_at_most": 1.2,
-            "target_p95_at_most": 2.5,
+            "target_p50_at_most": float(max_first_audio_p50),
+            "target_p95_at_most": float(max_first_audio_p95),
         },
         "interrupt_stop_seconds": {
             "p95": percentile(interrupt_stop, 95),
@@ -92,8 +168,12 @@ def build_soak_report(
     }
     checks = {
         "at_least_50_turns": len(turns) >= 50,
-        "first_audio_p50": _at_most(metrics["first_audio_seconds"]["p50"], 1.2),
-        "first_audio_p95": _at_most(metrics["first_audio_seconds"]["p95"], 2.5),
+        "first_audio_p50": _at_most(
+            metrics["first_audio_seconds"]["p50"], float(max_first_audio_p50)
+        ),
+        "first_audio_p95": _at_most(
+            metrics["first_audio_seconds"]["p95"], float(max_first_audio_p95)
+        ),
         "interrupt_stop": _at_most(
             metrics["interrupt_stop_seconds"]["p95"], 0.2
         ),
@@ -104,7 +184,7 @@ def build_soak_report(
         "media_debt": metrics["media_debt_seconds"]["maximum"] <= 2.0,
         "stale_output": stale_events == 0,
     }
-    return {
+    report = {
         "schema_version": 1,
         "mode": "real_reply_streaming_soak",
         "turns": len(turns),
@@ -114,8 +194,21 @@ def build_soak_report(
         "stale_drop_count": stale_drops,
         "stale_output_events": int(stale_events),
         "checks": checks,
-        "slo_pass": all(checks.values()),
     }
+    if recovery_results is not None:
+        recovery_summary = _summarize_recovery(recovery_results)
+        report["recovery"] = recovery_summary
+        checks["recovery_passed"] = recovery_summary["all_passed"]
+    if memory_samples_mb is not None:
+        memory_trend = summarize_memory_trend(memory_samples_mb)
+        if memory_trend is not None:
+            memory_trend["target_growth_at_most_mb"] = float(max_rss_growth_mb)
+            report["memory_trend"] = memory_trend
+            checks["memory_leak_guard"] = (
+                memory_trend["delta_mb"] <= float(max_rss_growth_mb)
+            )
+    report["slo_pass"] = all(checks.values())
+    return report
 
 
 def _at_most(value: float | None, target: float) -> bool:

@@ -25,6 +25,9 @@ class AppConfig:
     ssl: bool = False  # 主開關：true 啟用 HTTPS，false 使用 HTTP
     ssl_cert: Optional[str] = None  # SSL 證書檔案路徑（.pem 或 .crt）
     ssl_key: Optional[str] = None   # SSL 私鑰檔案路徑（.key）
+
+    # 管理者驗證設定（留空時維持本機開發無驗證模式）
+    admin_password: str = ""
     
     # 前端配置（可選，支援巢狀字典或 WebConfig 物件）
     web: Optional[Dict[str, Any]] = field(default_factory=lambda: {"port": 3000, "host": "0.0.0.0"})

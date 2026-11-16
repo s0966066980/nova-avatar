@@ -35,7 +35,7 @@ from src.llm.service import (
 )
 from src.llm.rules import snapshot_from_config
 from src.ragflow.client import RagFlowClient, retrieval_prompt
-from src.ragflow.settings import avatar_settings
+from src.ragflow.settings import DEFAULT_REFUSAL_MESSAGE, avatar_settings, resolve_refusal_message
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
 from src.server.reply_streaming.metrics import TurnMetrics
 from src.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
@@ -137,7 +137,12 @@ class VoiceTurnSession:
         self._turn_context: Optional[TurnContext] = None
         self._rules_snapshot = None
         self._assistant_profile_snapshot = None
-        self._rag_snapshot = {"enabled": False, "dataset_ids": []}
+        self._rag_snapshot = {
+            "enabled": False,
+            "dataset_ids": [],
+            "strict_grounding": True,
+            "refusal_message": DEFAULT_REFUSAL_MESSAGE,
+        }
         self._weather_snapshot = None
         self._weather_confirmed: dict[str, str] = {}
         self._circuit_breaker = ReplyCircuitBreaker(clock=clock)
@@ -741,6 +746,12 @@ class VoiceTurnSession:
                 return
         rag_result = None
         rag_selection = self._rag_snapshot
+        strict_grounding = bool(rag_selection.get("strict_grounding", True))
+        weather_active = (
+            bool(weather_plan.get("pure_weather"))
+            or weather_plan.get("route") in {"specialist", "clarify"}
+            or bool(weather_plan.get("context"))
+        )
         skip_rag = bool(weather_plan.get("pure_weather")) and not resolved
         if rag_selection["enabled"] and rag_selection["dataset_ids"] and not skip_rag:
             self._emit("state", state="retrieving", turn_id=turn_id)
@@ -755,12 +766,34 @@ class VoiceTurnSession:
                 if weather_task is not None:
                     weather_task.cancel()
                 return
+            strict_refusal = bool(
+                strict_grounding
+                and not resolved
+                and not weather_active
+                and rag_result["status"] in {"empty", "unavailable"}
+            )
             self._emit(
                 "rag_retrieval",
                 turn_id=turn_id,
                 status=rag_result["status"],
                 sources=rag_result["sources"],
+                strict_refusal=strict_refusal,
             )
+            if strict_refusal:
+                if weather_task is not None:
+                    weather_task.cancel()
+                refusal = resolve_refusal_message(
+                    rag_selection,
+                    self._conversation.get("locale", "zh-TW"),
+                )
+                self._speak_fixed(
+                    raw_question,
+                    refusal,
+                    turn_id,
+                    generation,
+                    input_source,
+                )
+                return
         weather_result = None
         if weather_task is not None:
             weather_result = await weather_task
@@ -801,7 +834,9 @@ class VoiceTurnSession:
         }
         rag_contexts: list[str] = []
         if rag_result and rag_result["status"] == "matched":
-            rag_contexts.append(retrieval_prompt(rag_result["sources"]))
+            rag_contexts.append(
+                retrieval_prompt(rag_result["sources"], strict_grounding=strict_grounding)
+            )
         if weather_result is not None:
             rag_contexts.append(weather_prompt(weather_result))
         elif weather_plan.get("context"):

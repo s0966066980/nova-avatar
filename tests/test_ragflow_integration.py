@@ -16,12 +16,14 @@ from unittest.mock import patch
 
 from aiohttp import web
 
-from src.config.schema import Config
+from src.config.schema import Config, WeatherConfig
 from src.llm.base import BaseLLM
+from src.llm.service import _session_llm_instances, session_history
 from src.ragflow import settings
 from src.ragflow.client import RagFlowClient, RagFlowConnection, RagFlowError, retrieval_prompt
-from src.server.routes.ragflow import get_ragflow_settings
+from src.server.routes.ragflow import get_ragflow_settings, put_ragflow_settings
 from src.server.voice_session import VoiceTurnSession
+from src.weather import ANSWER_CONTEXT
 from scripts.ragflow_validate import EXPECTED_SERVICES, validate
 from scripts import ragflow_prepare, ragflow_connection
 
@@ -214,12 +216,65 @@ class RagFlowSettingsTests(unittest.TestCase):
         self.directory.cleanup()
 
     def test_avatar_choices_are_independent_and_default_off(self):
-        self.assertEqual(settings.avatar_settings("alpha"), {"enabled": False, "dataset_ids": []})
+        self.assertEqual(
+            settings.avatar_settings("alpha"),
+            {
+                "enabled": False,
+                "dataset_ids": [],
+                "strict_grounding": True,
+                "refusal_message": settings.DEFAULT_REFUSAL_MESSAGE,
+            },
+        )
         settings.save_avatar_settings("alpha", enabled=True, dataset_ids=[DATASET_A])
-        settings.save_avatar_settings("beta", enabled=False, dataset_ids=[DATASET_B])
-        self.assertEqual(settings.avatar_settings("alpha"), {"enabled": True, "dataset_ids": [DATASET_A]})
-        self.assertEqual(settings.avatar_settings("beta"), {"enabled": False, "dataset_ids": [DATASET_B]})
+        settings.save_avatar_settings(
+            "beta",
+            enabled=False,
+            dataset_ids=[DATASET_B],
+            strict_grounding=False,
+            refusal_message="請洽櫃台人員。",
+        )
+        self.assertEqual(
+            settings.avatar_settings("alpha"),
+            {
+                "enabled": True,
+                "dataset_ids": [DATASET_A],
+                "strict_grounding": True,
+                "refusal_message": settings.DEFAULT_REFUSAL_MESSAGE,
+            },
+        )
+        self.assertEqual(
+            settings.avatar_settings("beta"),
+            {
+                "enabled": False,
+                "dataset_ids": [DATASET_B],
+                "strict_grounding": False,
+                "refusal_message": "請洽櫃台人員。",
+            },
+        )
         self.assertNotIn("api_key", settings.SETTINGS_FILE.read_text(encoding="utf-8"))
+
+    def test_legacy_yaml_defaults_strict_grounding_on_and_validates_fields(self):
+        settings.SETTINGS_FILE.write_text(
+            f"avatars:\n  legacy:\n    enabled: true\n    dataset_ids:\n    - {DATASET_A}\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            settings.avatar_settings("legacy"),
+            {
+                "enabled": True,
+                "dataset_ids": [DATASET_A],
+                "strict_grounding": True,
+                "refusal_message": settings.DEFAULT_REFUSAL_MESSAGE,
+            },
+        )
+        self.assertEqual(
+            settings.resolve_refusal_message(settings.avatar_settings("legacy"), "en-US"),
+            settings.DEFAULT_ENGLISH_REFUSAL_MESSAGE,
+        )
+        self.assertEqual(
+            settings.resolve_refusal_message({"refusal_message": "Custom refusal."}, "en-US"),
+            "Custom refusal.",
+        )
 
     def test_rejects_bad_dataset_and_enabled_without_selection(self):
         with self.assertRaises(ValueError):
@@ -228,6 +283,10 @@ class RagFlowSettingsTests(unittest.TestCase):
             settings.save_avatar_settings("alpha", enabled=False, dataset_ids=["not-an-id"])
         with self.assertRaises(ValueError):
             settings.save_avatar_settings("../alpha", enabled=False, dataset_ids=[])
+        with self.assertRaises(ValueError):
+            settings.save_avatar_settings("alpha", enabled=False, dataset_ids=[], strict_grounding="yes")
+        with self.assertRaises(ValueError):
+            settings.save_avatar_settings("alpha", enabled=False, dataset_ids=[], refusal_message="x" * 301)
 
 
 class RagFlowPromptTests(unittest.TestCase):
@@ -257,6 +316,16 @@ class RagFlowPromptTests(unittest.TestCase):
         self.assertNotIn("只限本輪的資料", " ".join(llm.committed))
         self.assertEqual(spoken, "這是一般回答。")
         self.assertEqual(llm.committed[-1], spoken)
+
+    def test_strict_grounding_prompt_strengthens_grounding_within_budget(self):
+        sources = [{"document_name": f"手冊{i}", "content": "事實" * 400} for i in range(4)]
+        strict_prompt = retrieval_prompt(sources, strict_grounding=True)
+        relaxed_prompt = retrieval_prompt(sources, strict_grounding=False)
+        self.assertIn("不受信任", strict_prompt)
+        self.assertIn("嚴格依據", strict_prompt)
+        self.assertIn("禁止自行推測", strict_prompt)
+        self.assertNotIn("嚴格依據", relaxed_prompt)
+        self.assertLess(len(strict_prompt), 4000)
 
 
 class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
@@ -323,7 +392,8 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
 
 
 class _Avatar:
-    def __init__(self):
+    def __init__(self, sessionid: int = 93):
+        self.sessionid = sessionid
         self.messages = []
 
     def put_msg_txt(self, text, data=None):
@@ -341,13 +411,15 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.path_patch = patch.object(settings, "SETTINGS_FILE", Path(self.directory.name) / "ragflow.yaml")
         self.path_patch.start()
+        _session_llm_instances.pop(93, None)
         settings.save_avatar_settings("alpha", enabled=True, dataset_ids=[DATASET_A])
-        self.avatar = _Avatar()
+        self.avatar = _Avatar(93)
         config = SimpleNamespace(
             model=SimpleNamespace(avatar_id="alpha"),
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
             vad=SimpleNamespace(),
             reply_streaming=SimpleNamespace(enabled=False),
+            weather=WeatherConfig(enabled=True, county="臺北市", town=""),
         )
         self.session = VoiceTurnSession(93, config, self.avatar)
         self.session._segmenter = SimpleNamespace(reset=lambda: None, is_speaking=False)
@@ -356,18 +428,19 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await self.session.close()
+        _session_llm_instances.pop(93, None)
         self.path_patch.stop()
         self.directory.cleanup()
 
-    async def _turn(self, result=None, failure=None):
+    async def _run_turn(self, question="問題", result=None, failure=None):
         calls = []
 
         def fake_llm(_text, _avatar, **kwargs):
             calls.append(kwargs)
             return "一般回答"
 
-        async def fake_retrieve(_client, question, dataset_ids):
-            self.assertEqual(question, "問題")
+        async def fake_retrieve(_client, asked, dataset_ids):
+            self.assertEqual(asked, question)
             self.assertEqual(dataset_ids, [DATASET_A])
             if failure:
                 raise failure
@@ -376,20 +449,26 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
         with patch("src.server.voice_session.llm_response", side_effect=fake_llm), patch(
             "src.server.voice_session.RagFlowClient.retrieve", fake_retrieve
         ):
-            await self.session.start_text_turn("問題", interrupt=False)
+            await self.session.start_text_turn(question, interrupt=False)
             await self.session._turn_task
-        return calls[0]
+        return calls
 
     async def test_matched_context_is_only_this_turns_prompt(self):
-        call = await self._turn({"status": "matched", "sources": [{
+        calls = await self._run_turn(result={"status": "matched", "sources": [{
             "document_name": "手冊", "content": "可查的事實", "document_id": "d", "dataset_id": DATASET_A,
         }]})
+        call = calls[0]
         self.assertIn("可查的事實", call["rag_context"])
+        self.assertIn("嚴格依據", call["rag_context"])
         self.assertNotIn("spoken_prefix", call)
-        self.assertEqual([e["status"] for e in self.events if e["type"] == "rag_retrieval"], ["matched"])
+        rag_events = [e for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual([e["status"] for e in rag_events], ["matched"])
+        self.assertFalse(rag_events[0]["strict_refusal"])
 
-    async def test_no_hit_keeps_retrieval_status_out_of_the_answer(self):
-        call = await self._turn({"status": "empty", "sources": []})
+    async def test_no_hit_keeps_retrieval_status_out_of_the_answer_when_strict_off(self):
+        settings.save_avatar_settings("alpha", enabled=True, dataset_ids=[DATASET_A], strict_grounding=False)
+        calls = await self._run_turn(result={"status": "empty", "sources": []})
+        call = calls[0]
         self.assertNotIn("spoken_prefix", call)
         self.assertNotIn("rag_context", call)
         self.assertEqual(self.avatar.messages[0][0], "一般回答")
@@ -397,16 +476,178 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
             [e["text"] for e in self.events if e["type"] == "assistant_response"],
             ["一般回答"],
         )
-        self.assertEqual(
-            [e["status"] for e in self.events if e["type"] == "rag_retrieval"],
-            ["empty"],
-        )
+        rag_events = [e for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual([e["status"] for e in rag_events], ["empty"])
+        self.assertFalse(rag_events[0]["strict_refusal"])
 
-    async def test_failure_continues_existing_answer(self):
-        call = await self._turn(failure=RagFlowError("off"))
+    async def test_failure_continues_existing_answer_when_strict_off(self):
+        settings.save_avatar_settings("alpha", enabled=True, dataset_ids=[DATASET_A], strict_grounding=False)
+        calls = await self._run_turn(failure=RagFlowError("off"))
+        call = calls[0]
         self.assertNotIn("rag_context", call)
         self.assertNotIn("spoken_prefix", call)
-        self.assertEqual([e["status"] for e in self.events if e["type"] == "rag_retrieval"], ["unavailable"])
+        rag_events = [e for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual([e["status"] for e in rag_events], ["unavailable"])
+        self.assertFalse(rag_events[0]["strict_refusal"])
+
+    async def test_strict_grounding_refuses_on_empty_without_calling_llm(self):
+        calls = await self._run_turn(result={"status": "empty", "sources": []})
+        self.assertEqual(calls, [])
+        self.assertEqual(len(self.avatar.messages), 1)
+        refusal_text, envelope = self.avatar.messages[0]
+        self.assertEqual(refusal_text, settings.DEFAULT_REFUSAL_MESSAGE)
+        self.assertEqual(
+            [e["text"] for e in self.events if e["type"] == "assistant_response"],
+            [settings.DEFAULT_REFUSAL_MESSAGE],
+        )
+        rag_events = [e for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual([e["status"] for e in rag_events], ["empty"])
+        self.assertTrue(rag_events[0]["strict_refusal"])
+        self.session.register_fragment(refusal_text, envelope)
+        self.session.on_output_audio_frame({**envelope, "fragment_end": True}, active=True)
+        self.assertTrue(self.session._commit_history("completed", turn_id=envelope["turn_id"]))
+        self.assertEqual(
+            session_history(93),
+            [
+                {"role": "user", "content": "問題"},
+                {"role": "assistant", "content": settings.DEFAULT_REFUSAL_MESSAGE},
+            ],
+        )
+
+    async def test_strict_grounding_refuses_on_unavailable_without_calling_llm(self):
+        calls = await self._run_turn(failure=RagFlowError("off"))
+        self.assertEqual(calls, [])
+        self.assertEqual(self.avatar.messages[0][0], settings.DEFAULT_REFUSAL_MESSAGE)
+        self.assertEqual(
+            [e["text"] for e in self.events if e["type"] == "assistant_response"],
+            [settings.DEFAULT_REFUSAL_MESSAGE],
+        )
+        rag_events = [e for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual([e["status"] for e in rag_events], ["unavailable"])
+        self.assertTrue(rag_events[0]["strict_refusal"])
+
+    async def test_strict_grounding_uses_custom_refusal_and_english_default_locale(self):
+        settings.save_avatar_settings(
+            "alpha",
+            enabled=True,
+            dataset_ids=[DATASET_A],
+            strict_grounding=True,
+            refusal_message="知識庫沒有這項資訊，請洽值班人員。",
+        )
+        calls = await self._run_turn(result={"status": "empty", "sources": []})
+        self.assertEqual(calls, [])
+        self.assertEqual(self.avatar.messages[0][0], "知識庫沒有這項資訊，請洽值班人員。")
+
+        self.session._turn_id = None
+        self.avatar.messages.clear()
+        settings.save_avatar_settings("alpha", enabled=True, dataset_ids=[DATASET_A], strict_grounding=True)
+        self.session._conversation["locale"] = "en-US"
+        calls = await self._run_turn(question="Question", result={"status": "empty", "sources": []})
+        self.assertEqual(calls, [])
+        self.assertEqual(self.avatar.messages[0][0], settings.DEFAULT_ENGLISH_REFUSAL_MESSAGE)
+
+    async def test_strict_grounding_exempts_selected_attachments(self):
+        calls = []
+
+        def fake_llm(_text, _avatar, **kwargs):
+            calls.append(kwargs)
+            return "附件分析回答"
+
+        async def fake_retrieve(_client, _question, _dataset_ids):
+            return {"status": "empty", "sources": []}
+
+        with patch.object(
+            self.session.attachments,
+            "validate_selection",
+            return_value=[(SimpleNamespace(submitted=False), ["page-1"])],
+        ), patch(
+            "src.server.attachments.vision_ready",
+            return_value=True,
+        ), patch.object(
+            self.session.attachments,
+            "prepare_question",
+            return_value="問題\n[附件重點]",
+        ), patch(
+            "src.server.voice_session.RagFlowClient.retrieve",
+            fake_retrieve,
+        ), patch(
+            "src.server.voice_session.llm_response",
+            side_effect=fake_llm,
+        ):
+            await self.session.start_text_turn("問題", interrupt=False)
+            await self.session._turn_task
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(self.avatar.messages[0][0], "附件分析回答")
+        rag_events = [e for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual([e["status"] for e in rag_events], ["empty"])
+        self.assertFalse(rag_events[0]["strict_refusal"])
+
+    async def test_strict_grounding_exempts_weather_queries(self):
+        calls = []
+
+        def fake_llm(_text, _avatar, **kwargs):
+            calls.append(kwargs)
+            return "天氣與活動回答"
+
+        async def fake_retrieve(_client, _question, _dataset_ids):
+            raise RagFlowError("offline")
+
+        def mixed_plan(_config, _text, _history, _confirmed, **_kwargs):
+            return {
+                "route": "specialist",
+                "pure_weather": False,
+                "county": "臺北市",
+                "town": "",
+                "kind": "forecast",
+                "start_date": "2026-11-16",
+                "end_date": "2026-11-16",
+                "clarification": "",
+                "context": "",
+            }
+
+        async def fake_weather(_query):
+            return {
+                "status": "available",
+                "county": "臺北市",
+                "town": "",
+                "kind": "forecast",
+                "cached": False,
+                "query_seconds": 0.01,
+                "start_date": "2026-11-16",
+                "end_date": "2026-11-16",
+                "dataset": "預報",
+                "fields": {},
+                "probability_note": "",
+            }
+
+        with patch("src.server.voice_session.resolve_weather_plan", side_effect=mixed_plan), patch(
+            "src.server.voice_session.RagFlowClient.retrieve", fake_retrieve
+        ), patch(
+            "src.server.voice_session.weather_service.query", side_effect=fake_weather
+        ), patch(
+            "src.server.voice_session.llm_response", side_effect=fake_llm
+        ):
+            await self.session.start_text_turn("今天臺北天氣如何？順便介紹展館", interrupt=False)
+            await self.session._turn_task
+
+        self.assertEqual(len(calls), 1)
+        self.assertIn("【本輪氣象工具資料】", calls[0]["rag_context"])
+        rag_events = [e for e in self.events if e["type"] == "rag_retrieval"]
+        self.assertEqual([e["status"] for e in rag_events], ["unavailable"])
+        self.assertFalse(rag_events[0]["strict_refusal"])
+
+        # Disabled weather tool still marks weather_plan.context = ANSWER_CONTEXT; strict RAG must not block it.
+        self.session._turn_id = None
+        calls.clear()
+        self.session.config.weather.enabled = False
+        with patch("src.server.voice_session.RagFlowClient.retrieve", fake_retrieve), patch(
+            "src.server.voice_session.llm_response", side_effect=fake_llm
+        ):
+            await self.session.start_text_turn("今天臺北天氣如何？", interrupt=False)
+            await self.session._turn_task
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0]["rag_context"], ANSWER_CONTEXT)
 
     async def test_interruption_during_retrieval_drops_old_result(self):
         started = asyncio.Event()
@@ -435,4 +676,31 @@ class RagFlowRouteTests(unittest.IsolatedAsyncioTestCase):
             response = await get_ragflow_settings(request)
         payload = json.loads(response.text)
         self.assertTrue(payload["data"]["configured"])
+        self.assertIn("strict_grounding", payload["data"])
+        self.assertIn("refusal_message", payload["data"])
         self.assertNotIn("top-secret", response.text)
+
+    async def test_put_ragflow_settings_persists_strict_grounding_and_refusal_message(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(settings, "SETTINGS_FILE", Path(directory) / "ragflow.yaml"):
+                async def json_body():
+                    return {
+                        "avatar_id": "alpha",
+                        "enabled": True,
+                        "dataset_ids": [DATASET_A],
+                        "strict_grounding": False,
+                        "refusal_message": "找不到相關文件，請洽客服。",
+                    }
+
+                req = SimpleNamespace(json=json_body)
+                put_resp = await put_ragflow_settings(req)
+                self.assertEqual(put_resp.status, 200)
+                put_data = json.loads(put_resp.text)["data"]
+                self.assertFalse(put_data["strict_grounding"])
+                self.assertEqual(put_data["refusal_message"], "找不到相關文件，請洽客服。")
+
+                get_req = SimpleNamespace(query={"avatar_id": "alpha"})
+                get_resp = await get_ragflow_settings(get_req)
+                get_data = json.loads(get_resp.text)["data"]
+                self.assertFalse(get_data["strict_grounding"])
+                self.assertEqual(get_data["refusal_message"], "找不到相關文件，請洽客服。")

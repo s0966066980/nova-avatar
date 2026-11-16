@@ -18,6 +18,10 @@ async def humanaudio(request):
     try:
         form = await request.post()
         sessionid = int(form.get('sessionid', 0))
+        from src.server.admin_auth import ADMIN_AUTH_KEY
+        auth = request.app.get(ADMIN_AUTH_KEY) if hasattr(request, 'app') else None
+        if auth is not None and auth.enabled and not auth.is_authenticated(request) and state.session_role(sessionid) == "console":
+            return web.json_response({"code": -1, "msg": "請先登入管理者帳號"}, status=401)
         if (forbidden := guard_session_request(request, sessionid, payload=form)) is not None:
             return forbidden
         fileobj = form["file"]
