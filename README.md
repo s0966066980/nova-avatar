@@ -1,92 +1,106 @@
 # Nova Avatar (Jetson Orin 版本)
 
 Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克風音訊，後端依序完成
-語音端點偵測、語音轉文字、模型回答、語音合成與數位人渲染，再把影音和字幕送回瀏覽器。
-**Web 控制台**用來對話與調整設定，`/stage.html` 是獨立的**數位人演播舞台**。
+語音端點偵測、語音轉文字、模型回答、語音合成與數位人渲染，再把影音、字幕與看板送回瀏覽器。
+**Web 控制台**（`/`）負責管理設定與對話驗證，`/stage.html` 是專注互動的**數位人演播舞台**。
 
 這個分支專為 **NVIDIA Jetson AGX Orin**（ARM64、JetPack 7／L4T R39.2.1、CUDA 13.2、
-cuDNN 9、Python 3.11）移植與優化，所有安裝、啟動與文件都以 Orin 為準。
+cuDNN 9、Python 3.11）移植與優化，並支援將 Orin 作為**常駐數位人助理 Server**，從同一區網或
+Tailscale VPN 內的其他電腦、平板與手機開啟使用。
 
 > 本專案由 Kedreamix/Linly-Talker-Stream 衍生，現由 HongXian0903 獨立維護。
 > 上游與第三方來源見 [NOTICE](NOTICE) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 目錄
 
-- [功能](#功能)
+- [目前版本功能](#目前版本功能)
 - [系統架構](#系統架構)
-- [Jetson 優化](#jetson-優化)
+- [Jetson 優化與已知限制](#jetson-優化與已知限制)
 - [使用的模型](#使用的模型)
 - [系統需求](#系統需求)
-- [安裝步驟](#安裝步驟)
-- [啟動與使用](#啟動與使用)
+- [安裝與首次建置](#安裝與首次建置)
+- [跨裝置使用與統一啟動流程](#跨裝置使用與統一啟動流程)
+- [日常操作與進階能力](#日常操作與進階能力)
 - [驗證](#驗證)
 - [專案結構](#專案結構)
 - [文件](#文件)
 - [授權與來源標註](#授權與來源標註)
 
-## 功能
+## 目前版本功能
 
-- **全鏈路即時對話**：支援**免按對話**、按住說話與**插話**；使用者可隨時按下麥克風打斷數位人。
-- **語音端點偵測在伺服器端**：Silero VAD 判定發話邊界，說完靜音 300 ms 即開始處理。
-- **對話輪次由伺服器編排**：同一時間只有一個輪次，取消或斷線後以**輪次隔離**丟棄舊內容，不留殘音。
-- **回答分成口語與看板**：同一個 LLM 依可編輯的**回覆規則**決定直接口述，或「口語摘要＋看板」條列。
-- **回覆語音串流（選用）**：模型尚未寫完時，已完整的片段就開始合成語音。出廠預設使用舊有回覆模式。
-- **數位人呈現**：MuseTalk 即時嘴型，或預錄的待機與說話影片。
-- **舞台與場景**：綠幕數位人在伺服器端去背，可放到共用背景，講話中也能切換背景。
-- **舞台語系**：每場舞台對話各自選繁體中文或 English，涵蓋介面、辨識、回覆與聲音。
-- **對話附件**：附上 PDF 或圖片，供分析與追問；舞台也可開啟文字與附件輸入。
-- **知識庫檢索（選用）**：以獨立的 RAGFlow 檢索，由原有 LLM 總結成回答。
-- **控制台真實語音驗證**：一鍵跑完整的 LLM → TTS → 數位人 → WebRTC 鏈路並記錄各階段延遲。
+### 核心對話與語音互動
+- **全鏈路即時對話**：支援**免按對話模式**、按住說話與**插話**；數位人說話期間會**收音暫停**（由伺服器推送的**發話狀態事件**控制），使用者按下麥克風即可打斷。
+- **伺服器端端點與輪次編排**：Silero VAD 判定發話邊界（說完靜音 300 ms 送出），由伺服器單獨擁有**輪次編排**，取消或斷線後以**輪次隔離**丟棄舊內容。
+- **回答分成口語與看板**：單一 LLM 依可編輯的**回覆規則**決定直接口述，或分流為「**口語摘要**＋**看板回覆**」條列，並以實際播放進度進行**輪次提交**。
+- **回覆語音串流（選用）**：可在控制台開啟**回覆語音串流**，邊生成邊於**完整語意邊界**切分合成語音；出廠預設維持**舊有回覆模式**。
+
+### 數位人、演播場景與多語系
+- **數位人呈現方式**：支援 **MuseTalk 即時嘴型** 與 **預錄呈現**（以預錄的待機影片與說話影片呈現動作，對話語音仍即時合成，適合穩定低延遲服務）。
+- **綠幕去背與演播場景**：綠幕數位人在後端即時去背合成至共用**舞台背景**（圖片、GIF、循環影片），講話中亦可切換背景。
+- **舞台語系**：每場舞台對話可獨立切換「繁體中文」或「English」，同步涵蓋舞台介面、語音辨識、回覆文字與語音，不影響控制台或其他場次。
+- **兩階段舞台閒置重置**：舞台回答結束閒置達設定秒數（預設 10 秒，控制台可調 3–300 秒）僅清除字幕與看板，保留記憶與附件；閒置達 120 秒後執行**場次完整清空**。
+
+### 知識庫、附件、天氣與驗證
+- **對話附件與舞台文字輸入**：可上傳 PDF 或圖片進行多輪追問，支援逐輪勾選**本輪參考附件**；舞台可開啟文字與附件輸入框，並具備截斷 JSON 修復與文字回退機制。
+- **中央氣象署天氣查詢（內建工具）**：預設啟用兩階段輕量天氣閘門（一般對話 0 ms 額外延遲），支援場域預設地點與對話臨時地點即時天氣／預報查詢（需設定 `NOVA_CWA_API_KEY`）。
+- **知識庫檢索（RAGFlow，選用）**：整合原生 ARM64 RAGFlow v0.27.2，依數位人選擇知識庫進行**檢索輔助回答**。
+- **控制台真實語音驗證**：一鍵執行完整 LLM → TTS → 數位人 → WebRTC 鏈路，記錄各階段延遲與 Gate 結果。
+
+### 跨裝置 Server 與單一活躍舞台保護
+- **`:8010` 單一入口服務**：正式 Server 模式僅透過 `:8010`（HTTPS）直接提供已建置的控制台 `/`、舞台 `/stage.html`、API 與 WebRTC，不依賴前景 Vite 開發伺服器（`:3000`）。
+- **多 SAN HTTPS 憑證與裝置信任**：支援 `mkcert` 與 OpenSSL 本地 Root CA 回退，自動簽入區網 IP、`.local` 與 Tailscale IP/MagicDNS，搭配 `rootCA.pem` 匯入指南，讓桌機與 iOS／Android 手機平板皆能正常授權麥克風與解鎖音訊播放。
+- **單一活躍舞台與跨裝置接管**：Jetson 預設 `app.max_session: 1`，確保同一時間只有一台裝置透過舞台佔用即時推論資源；新裝置開啟 `/stage.html` 若已有活躍舞台，會提示「接管此舞台」而非無限重連，舊分頁收到通知後停止搶線。控制台預設停留在不佔用 GPU 的純 HTTP 管理模式。
+- **會話保護與遠端介面清理**：所有會話綁定路由統一透過 `session_guard` 核對 `client_id`；遠端瀏覽器操作控制台時，會自動隱藏／提示僅限本機使用的選項（如本機 `tkinter` 選檔視窗與 `127.0.0.1:8088` 管理連結），改為路徑輸入與 SSH port-forward 指引。
+- **`systemd --user` 常駐管理**：支援開機自啟（`enable-linger`）、CUDA 前置檢查、崩潰重啟、優雅關閉 **Owned llama-server** 與背景 `ollama`／RAGFlow 資源檢查。
 
 ## 系統架構
 
 ```mermaid
 flowchart LR
-    Mic["瀏覽器麥克風"] -->|WebRTC| VAD["Silero VAD"]
-    VAD --> STT["STT<br/>faster-whisper"]
-    STT --> LLM["LLM<br/>llama.cpp (CUDA)"]
-    RAG["RAGFlow (選用)"] -.-> LLM
+    Device["桌機 / 平板 / 手機<br/>(:8010 HTTPS 單一入口)"] -->|WebRTC 音訊| VAD["Silero VAD"]
+    VAD --> STT["STT<br/>faster-whisper / FunASR"]
+    STT --> Gate{"天氣 / RAGFlow<br/>/ 附件上下文"}
+    Gate --> LLM["LLM<br/>Owned llama-server (CUDA)"]
     LLM --> TTS["TTS<br/>Edge TTS"]
-    TTS --> Avatar["數位人<br/>MuseTalk / 預錄"]
-    Avatar --> Scene["綠幕去背與背景"]
-    Scene -->|WebRTC 影音、字幕、看板| Out["控制台與舞台"]
+    TTS --> Avatar["數位人<br/>MuseTalk / 預錄呈現"]
+    Avatar --> Scene["綠幕去背與舞台背景"]
+    Scene -->|WebRTC 影音、字幕、看板、事件| Device
 ```
 
-後端是 `aiohttp` + `aiortc`（連接埠 8010），前端是 Vue 3 + Vite（連接埠 3000）。
-完整資料流、對話輪次生命週期與原始碼對照見 [系統架構](docs/architecture.md)。
+正式 Server 模式由 `aiohttp` + `aiortc` 在 `:8010` 單一入口提供全部前端靜態頁面（`web/dist`）、HTTP API 與 WebRTC；僅在開發前端 UI 時才另開 Vite（`:3000`）。完整資料流與對話輪次生命週期見 [系統架構](docs/architecture.md) 與 [ADR-0020](docs/adr/0020-single-active-stage-takeover-and-session-guard.md)。
 
-## Jetson 優化
+## Jetson 優化與已知限制
 
-下表每一項都能在 repo 內查證，括號內是出處。
+下表每一項都能在 repo 內查證，括號內是出處：
 
 | 項目 | 做法 |
 | --- | --- |
 | 嘴型推論 | MuseTalk UNet 建置為 FP16 TensorRT engine（[realtime-avatar.md](docs/realtime-avatar.md)） |
 | 嘴型解碼 | 以 TAESD 取代原 VAE 解碼；引擎或解碼器載入失敗時回退 PyTorch UNet 與原 VAE（[realtime-avatar.md](docs/realtime-avatar.md)） |
 | 輸出規格 | 直式 720×1280、25 fps、batch 8（[config_jetson.yaml](config/config_jetson.yaml)） |
-| 嘴型銜接 | 嘴型連續控制、待機相位對齊與 4–6 影格收尾穩定，避免閉嘴閃跳（[config_jetson.yaml](config/config_jetson.yaml)） |
-| 語音辨識 | PyPI 的 ARM64 CTranslate2 wheel 沒有 CUDA；改以 CUDA 13.2、cuDNN 與 SM 8.7 原生編譯，讓 faster-whisper 與 FunASR 在 CUDA 執行（[jetson-orin.md](docs/jetson-orin.md)） |
-| 語言模型 | 以 `GGML_CUDA=ON`、SM 87 編譯 llama.cpp v0.5.0；顯存規劃改用 `torch.cuda.mem_get_info()`，因為 Orin 的 `nvidia-smi` 無法回報可用顯存（[jetson-orin.md](docs/jetson-orin.md)） |
-| CPU 爭用 | 啟動腳本把 OpenMP、OpenBLAS、MKL、OpenCV 執行緒限制為 1（[start-jetson.sh](scripts/start-jetson.sh)） |
+| 嘴型銜接 | **嘴型連續控制**、待機相位對齊與 4–6 影格**回答收尾穩定**（[config_jetson.yaml](config/config_jetson.yaml)） |
+| 語音辨識 | 以 CUDA 13.2、cuDNN 與 SM 8.7 原生編譯 CTranslate2，讓 faster-whisper 與 FunASR 在 CUDA 執行（[jetson-orin.md](docs/jetson-orin.md)） |
+| 語言模型 | 以 `GGML_CUDA=ON`、SM 87 編譯 llama.cpp v0.5.0；顯存規劃以 `torch.cuda.mem_get_info()` 作為 fallback（[jetson-orin.md](docs/jetson-orin.md)） |
+| CPU 爭用 | 啟動腳本與 `systemd` unit 將 OpenMP、OpenBLAS、MKL、OpenCV 執行緒限制為 1（[start-jetson.sh](scripts/start-jetson.sh)、[nova-avatar.service](integrations/systemd/nova-avatar.service)） |
 | 播放緩衝 | 瀏覽器接收端音訊抖動緩衝目標 160 ms（[replyPlayout.js](web/src/replyPlayout.js)） |
-| TTS 連線 | 後端啟動時預熱並重用 Edge TTS 連線，減少首輪建連等待（[jetson-orin.md](docs/jetson-orin.md)） |
-| 知識庫 | 原生 ARM64 RAGFlow v0.27.2，BGE-M3 嵌入由獨立 GPU 程序提供（[ragflow.md](docs/ragflow.md)） |
+| TTS 連線 | 後端啟動時預熱並重用 Edge TTS 連線池（[jetson-orin.md](docs/jetson-orin.md)） |
+| 單一活躍舞台 | `max_session: 1` 搭配跨裝置佔用／接管，避免多路並發爭搶 Orin GPU（[ADR-0020](docs/adr/0020-single-active-stage-takeover-and-session-guard.md)） |
+| 知識庫與天氣 | 原生 ARM64 RAGFlow v0.27.2（BGE-M3 獨立 GPU 嵌入）與單角色輕量天氣閘門（[ragflow.md](docs/ragflow.md)、[ADR-0019](docs/adr/0019-single-role-weather-tool-on-jetson.md)） |
 
 ### 目前已知限制
 
-這個分支功能與 CUDA 路徑已驗證，但**即時延遲仍需調校**，不能沿用 RTX 4090 的效能結論
-（[jetson-orin.md](docs/jetson-orin.md#本機驗證結果2026-09-30)）：
+這個分支功能與 CUDA 路徑已驗證，但即時模式延遲仍有限制，不能沿用 RTX 4090 的效能結論（[jetson-orin.md](docs/jetson-orin.md#本機驗證結果2026-09-30)）：
 
-- 2026-09-30 的短測試，兩輪語音回合的首音延遲為 6.85 秒與 4.48 秒，未達原有 2.5 秒目標。
-- 1080×1920 背景合成的影格處理中位數 35.3 ms，超過原有 30 ms 門檻，門檻沒有放寬。
+- 2026-09-30 短測試中，即時 MuseTalk 兩輪語音回合首音延遲為 6.85 秒與 4.48 秒，未達 2.5 秒目標；對即時反應優先的日常助理服務，可於控制台將數位人切換為**預錄呈現**（`prerecorded`）。
+- 1080×1920 綠幕背景合成的影格處理中位數 35.3 ms，超過 30 ms 門檻，門檻沒有放寬。
 - TAESD 是近似解碼，牙齒與唇部細節會略柔化。
+- 跨裝置連線以同區網或私人 VPN（如 Tailscale）直連為前提，未內建公網 TURN 中繼與使用者帳號登入系統。
 
 ## 使用的模型
 
-出廠預設的對話鏈路如下。這是 `config/config_jetson.yaml` 的預設值，**不是**某台機器目前實際使用的值：
-控制台保存的**執行期覆蓋設定**會在啟動時蓋過它。
+以下為 `config/config_jetson.yaml` 的**出廠預設設定**；控制台保存的**執行期覆蓋設定**（`config/runtime_overrides.yaml`）會在啟動時蓋過它：
 
-| 環節 | 預設模型 | 授權提醒 |
+| 環節 | 出廠預設模型 | 授權提醒 |
 | --- | --- | --- |
 | 語音端點偵測 | Silero VAD（CUDA） | 權重未稽核 |
 | 語音轉文字 | faster-whisper `base`（CUDA） | Whisper 為 MIT |
@@ -94,49 +108,38 @@ flowchart LR
 | 語音合成 | Edge TTS（線上服務，需網路） | 服務與聲音條款須自行審閱 |
 | 數位人 | MuseTalk v1.5＋TensorRT UNet＋TAESD | MuseTalk 程式碼 MIT；權重另受各自條款 |
 
-本機另可切換 Whisper small／turbo、FunASR、LFM2.5-1.2B、Gemma-4-E2B、Granite-4.2-3B、
-Ministral-3-3B、Qwen3.5 等模型。**完整清單、檔案位置與各模型的授權依據見 [使用的模型](docs/models.md)。**
-Wav2Lip 是 **Research / Non-commercial**，不得視為具商業許可，本分支也未驗證它的 ARM64 相依套件。
+本機另可切換 Whisper `small`／`turbo`、FunASR、LFM2.5-1.2B、Gemma-4-E2B（含多模態視覺 `mmproj` 支援對話附件）、Granite-4.2-3B、Ministral-3-3B、Qwen3.5 等模型。**完整清單、檔案位置與授權依據見 [使用的模型](docs/models.md)。**
+Wav2Lip 為 **Research / Non-commercial**，不得視為具商業許可，本分支也未驗證其 ARM64 相依套件。
 
 ## 系統需求
 
 - **硬體**：NVIDIA Jetson AGX Orin 64GB／32GB（或相容的 Orin 模組）。
-- **作業系統**：Ubuntu 24.04 LTS（aarch64）、JetPack 7 / L4T R39.2.1。這不是 JetPack 6 的流程，
-  不要在舊版 JetPack 上直接套用 CUDA 13 套件。
+- **作業系統**：Ubuntu 24.04 LTS（aarch64）、JetPack 7 / L4T R39.2.1。這不是 JetPack 6 的流程，不要在舊版 JetPack 上直接套用 CUDA 13 套件。
 - **CUDA**：CUDA Toolkit 13.2（`/usr/local/cuda`）、cuDNN 9。
-- **Python**：3.11，使用 [uv](https://docs.astral.sh/uv/) 管理。
-- **前端工具**：Node.js 22 與 npm。
+- **Python 與前端工具**：Python 3.11（[uv](https://docs.astral.sh/uv/) 管理）、Node.js 22 與 npm。
 - **系統套件**：
 
   ```bash
   sudo apt-get update
-  sudo apt-get install -y ffmpeg ninja-build cmake build-essential libopenblas-dev pkg-config lsof
+  sudo apt-get install -y ffmpeg ninja-build cmake build-essential libopenblas-dev pkg-config lsof openssl
   ```
 
-- **網路**：Edge TTS 需要網路；首次執行 faster-whisper `base` 會自動下載模型。
+- **網路與憑證**：Edge TTS 需要網路；若需跨裝置使用，建議安裝 `mkcert`（未安裝時腳本會自動改用 `openssl` 產生本地 Root CA）或透過 Tailscale 建立跨區網加密連線。
 
-## 安裝步驟
+## 安裝與首次建置
 
 ```bash
 git clone --branch jetson-orin https://github.com/s0966066980/nova-avatar.git
 cd nova-avatar
 ```
 
-### 1. 建置 Jetson 環境
+### 1. 建置 Jetson 環境與前端
 
 ```bash
 bash scripts/setup-jetson.sh
 ```
 
-亦可執行 `bash scripts/setup-env.sh musetalk`，腳本偵測到 Jetson 後會自動轉交 `setup-jetson.sh`。
-它會依序：
-
-1. 編譯 ARM64 CUDA 13.2 原生 CTranslate2 函式庫與 wheel（存放於 `.local/jetson/`，需保留）。
-2. 建立 Python 3.11 虛擬環境，安裝 PyTorch 2.11 cu130 ARM64 wheels。
-3. 修正 cuSPARSELt 0.8.0 wheel 的 manylinux metadata tag。
-4. 同步相依套件（`uv sync --extra vad --extra musetalk --extra funasr`）。
-5. 建置 Vue 3 前端控制台（`npm ci && npm run build`）。
-6. 執行 `scripts/check-cuda.py`，以真實 CUDA 運算自我檢查。
+亦可執行 `bash scripts/setup-env.sh musetalk`，腳本偵測到 Jetson 後會自動轉交 `setup-jetson.sh`，依序完成 ARM64 CUDA 13.2 原生 CTranslate2 編譯、Python 3.11 `.venv` 與 PyTorch 2.11 cu130 安裝、cuSPARSELt metadata 修正、依賴同步、前端 `web/dist` 建置及 `scripts/check-cuda.py` 自我檢查。
 
 ### 2. 編譯 llama.cpp
 
@@ -144,21 +147,20 @@ bash scripts/setup-jetson.sh
 bash scripts/build-jetson-llama.sh
 ```
 
-以 `GGML_CUDA=ON` 與 SM 87 編譯 llama.cpp v0.5.0，執行檔放在 `.local/jetson/llama.cpp/`。
-可用 `NOVA_BUILD_JOBS=4` 減少編譯並行數。加上 `--download-model` 會以固定 revision 下載
-Qwen 模型並驗證 SHA-256。
+以 `GGML_CUDA=ON` 與 SM 87 編譯 llama.cpp v0.5.0（置於 `.local/jetson/llama.cpp/`）。可用 `NOVA_BUILD_JOBS=4` 降低並行度；加上 `--download-model` 可下載預設 Qwen 模型並驗證 SHA-256。
 
-### 3. 準備模型與素材
+### 3. 準備模型、素材與選用金鑰
 
 模型權重、TensorRT engine 與角色素材不加入 Git，全新 checkout 需自行準備：
 
 | 項目 | 位置 | 準備方式 |
 | --- | --- | --- |
-| MuseTalk 與相依權重 | `models/musetalk/`、`models/sd-vae/`、`models/face-parse-bisent/` | `bash scripts/download_musetalk_weights.sh`，完成後確認三個目錄齊全 |
+| MuseTalk 與相依權重 | `models/musetalk/`、`models/sd-vae/`、`models/face-parse-bisent/` | `bash scripts/download_musetalk_weights.sh` |
 | TAESD 輕量解碼器 | `.local/jetson/taesd/` | 見下方指令 |
-| TensorRT UNet engine | `.local/jetson/musetalk-unet-fp16.engine` | 需與目前模型、GPU 及 TensorRT 相容；換機或更新權重後重新建置，方法見 [realtime-avatar.md](docs/realtime-avatar.md#本機檔案) |
-| LLM（GGUF） | `llama/` | 預設 `llama/LFM2.5-2.6B-Q4_K_M.gguf`，自行放入 |
-| 角色素材 | `data/avatars/musetalk_1/` | 預設角色 |
+| TensorRT UNet engine | `.local/jetson/musetalk-unet-fp16.engine` | 依 [realtime-avatar.md](docs/realtime-avatar.md#本機檔案) 建置 |
+| LLM（GGUF） | `llama/` | 放入 `LFM2.5-2.6B-Q4_K_M.gguf`、`gemma-4-E2B_q4_0-it.gguf` 等 |
+| 角色素材 | `data/avatars/musetalk_1/` | 預設角色（含可選預錄素材） |
+| CWA 天氣 API 金鑰（選用） | `config/cwa.env` | 寫入 `NOVA_CWA_API_KEY=<你的氣象署授權碼>`（`0600` 權限，不入 Git） |
 
 ```bash
 uvx --from huggingface_hub hf download madebyollin/taesd \
@@ -167,76 +169,112 @@ uvx --from huggingface_hub hf download madebyollin/taesd \
   --local-dir .local/jetson/taesd
 ```
 
-### 4. 產生本機 SSL 憑證
+### 4. 產生多 SAN HTTPS 憑證並設定裝置信任
 
-瀏覽器取得麥克風權限需要 HTTPS：
+瀏覽器在非 `localhost` 來源開啟麥克風與 WebRTC 音訊必須使用受信任的 HTTPS：
 
 ```bash
 bash scripts/create_ssl_certs.sh
+# 若需額外指定網域或 Tailscale Host，可加上 --host：
+# bash scripts/create_ssl_certs.sh --host orin.tailnet.ts.net
 ```
 
-憑證寫入 `ssl_certs/`（`localhost.crt`、`localhost.key`）。
+- 腳本優先使用 `mkcert`，若未安裝會自動改用 `openssl` 建立本地 Root CA（`ssl_certs/rootCA.pem` / `rootCA.crt`）並簽發含 `localhost`、`127.0.0.1`、Orin 區網 IP、`<hostname>.local` 與 Tailscale IP/DNS 的伺服器憑證（`ssl_certs/localhost.crt` / `.key`）。
+- **要在其他電腦、iPhone／iPad 或 Android 開啟前**：請依 [跨裝置 HTTPS 憑證信任指南](docs/https-device-trust.md) 將 `ssl_certs/rootCA.pem`（或 `.crt`）匯入該裝置信任。
 
-## 啟動與使用
+## 跨裝置使用與統一啟動流程
 
-### 啟動模式
+依使用情境選擇其中一種方式啟動，**正式作為常駐數字人助理 Server 時建議使用方式 A**：
+
+### 方式 A：Jetson 常駐 Server（`:8010` 單一入口，跨裝置推薦）
+
+1. **前置檢查**（檢查設定、憑證、`web/dist`、linger 與背景 `ollama` 記憶體佔用）：
+
+   ```bash
+   bash scripts/jetson-service.sh check
+   ```
+
+   > 若不打算啟用 RAGFlow 知識庫，可執行 `bash scripts/jetson-service.sh stop-ollama`（或自行停止系統級 `ollama`）以釋放約 1.7 GB 統一記憶體。
+
+2. **安裝並啟動 `systemd --user` 常駐服務**（預設 `NOVA_START_RAGFLOW=0`，支援崩潰自動重啟與優雅停止 **Owned llama-server**）：
+
+   ```bash
+   bash scripts/jetson-service.sh install --start --linger
+   ```
+
+   常用維運指令：
+
+   ```bash
+   bash scripts/jetson-service.sh status    # 檢視服務狀態與健康檢查
+   bash scripts/jetson-service.sh health    # 確認 https://127.0.0.1:8010/health 回傳 ready: true
+   bash scripts/jetson-service.sh logs      # 追蹤 journald 日誌
+   bash scripts/jetson-service.sh restart   # 套用新設定後重啟
+   bash scripts/jetson-service.sh stop      # 停止服務
+   ```
+
+   若不想安裝 `systemd` 而只想在前景手動跑 `:8010` 單一入口，可直接執行：
+
+   ```bash
+   bash scripts/start-server.sh config/config_jetson.yaml
+   # 若修改過 web/ 原始碼，可加 --build 自動重建 web/dist：
+   # bash scripts/start-server.sh --build config/config_jetson.yaml
+   ```
+
+### 方式 B：前景開發／除錯與診斷模式
 
 | 指令 | 設定檔 | 用途 |
 | --- | --- | --- |
-| `bash scripts/start-jetson.sh` | `config/config_jetson.yaml` | **一般對話（推薦）**：Silero VAD、faster-whisper、llama.cpp 全部在 CUDA 執行，Edge TTS 合成語音；沿用控制台保存的設定；已部署 RAGFlow 時自動帶起 |
-| `bash scripts/start-jetson.sh --read-aloud` | `config/config_jetson_read_aloud.yaml` | 固定文字朗讀，驗證流暢度與口型；**不載入 LLM、VAD、ASR**，忽略保存的設定 |
-| `bash scripts/start-jetson.sh --realtime` | `config/config_jetson_realtime.yaml` | 單一會話的音畫同步與低延遲診斷；同樣不載入 LLM、VAD、ASR |
+| `bash scripts/start-jetson.sh` | `config/config_jetson.yaml` | **開發期雙埠模式**：同時啟動 `:8010` 後端與 `:3000` Vite HMR（已準備 RAGFlow 時自動帶起；設 `NOVA_START_RAGFLOW=0` 可略過） |
+| `bash scripts/start-jetson.sh --prod` | `config/config_jetson.yaml` | 通過 CUDA 檢查後轉交 `scripts/start-server.sh` 以 `:8010` 單一入口執行 |
+| `bash scripts/start-jetson.sh --read-aloud` | `config/config_jetson_read_aloud.yaml` | 固定文字朗讀驗證，不載入 LLM／VAD／ASR |
+| `bash scripts/start-jetson.sh --realtime` | `config/config_jetson_realtime.yaml` | 單一會話音畫同步與低延遲診斷，不載入 LLM／VAD／ASR |
 
-啟動腳本會先做真實 CUDA 檢查，失敗就停止。按 `Ctrl+C` 可安全結束所有相關程序，
-後端日誌在 `logs/start-all-backend.log`。設 `NOVA_START_RAGFLOW=0` 可略過 RAGFlow。
+### 服務入口對照
 
-### 服務入口
+把 `<orin-host>` 換成 Orin 的區網 IP、`<hostname>.local` 或 Tailscale 位址：
 
-從區域網路其他裝置連線時，把 `localhost` 換成 Orin 的區網 IP。
+| 入口 | 單一入口（Server / `--prod`） | 開發期雙埠（`start-jetson.sh`） | 用途 |
+| --- | --- | --- | --- |
+| 數位人舞台 | `https://<orin-host>:8010/stage.html` | `https://<orin-host>:3000/stage.html` | 訪客／主要互動視窗（語音、文字、附件、背景合成） |
+| Web 控制台 | `https://<orin-host>:8010/` | `https://<orin-host>:3000/` | 遠端管理設定、Prompt、模型、語音驗證與紀錄 |
+| 健康檢查 | `https://<orin-host>:8010/health` | `https://<orin-host>:8010/health` | 回傳 HTTP 200 且 `ready: true` 表示就緒 |
+| RAGFlow 管理 | `http://127.0.0.1:8088`（限本機） | `http://127.0.0.1:8088`（限本機） | 遠端管理請使用 SSH port-forward（`ssh -L 8088:127.0.0.1:8088 <user>@<orin-host>`） |
 
-| 入口 | 位址 | 用途 |
-| --- | --- | --- |
-| Web 控制台 | `https://localhost:3000` | 對話、設定與語音鏈路測試 |
-| 數位人舞台 | `https://localhost:3000/stage.html` | 乾淨的演播視窗，支援綠幕與背景合成 |
-| 健康檢查 | `https://localhost:8010/health` | 回傳 HTTP 200 且 `ready: true` 表示就緒 |
-| RAGFlow 管理 | `http://127.0.0.1:8088` | 知識庫管理，僅本機 loopback |
+## 日常操作與進階能力
 
-### 基本操作
+### 1. 在其他裝置開啟舞台（`/stage.html`）
+1. 確保已匯入並信任 Orin 的 `rootCA` 憑證。
+2. 開啟 `https://<orin-host>:8010/stage.html` 並允許麥克風權限；在手機／平板上若瀏覽器暫停自動播放，點選畫面顯示的音效解鎖按鈕即可啟用聲音。
+3. **跨裝置舞台接管**：若另一台裝置原本已開著舞台，新裝置會提示「目前已有其他裝置正在使用舞台」，點擊「**接管此舞台**」即可接手並中斷舊裝置連線。
+4. **對話互動**：支援**免按對話模式**（靜音 300 ms 自動送出）、按住說話與**插話**；右下／下方可依設定使用文字與圖片／PDF 對話附件輸入，並可即時切換中文／English **舞台語系**。
 
-1. 開啟控制台，連線數位人並授權麥克風。
-2. **免按對話**：連線後，數位人沒在說話時就會持續收音，說完靜音 300 ms 即送出。
-3. **按住說話**：不想要持續收音時，按住麥克風按鈕說話。
-4. **插話**：數位人說話時，按下麥克風按鈕即可打斷並開始新發話。喇叭回音或背景人聲不會觸發插話。
-5. 數位人說話期間會**收音暫停**，由伺服器推送的發話狀態事件決定何時恢復。
-6. 在 `/stage.html` 選「繁體中文」或「English」，舞台內可即時切換；每場對話的語系互不影響。
+### 2. 在其他裝置開啟控制台（`/`）
+- 控制台預設停留在管理模式（不建立佔用 GPU 的 WebRTC 連線），可直接調整 LLM／STT／TTS／舞台設定、編輯回覆規則與助手身分、管理背景與角色，或檢視天氣／知識庫設定。
+- 若需在遠端調整伺服器本機模型路徑，系統會自動隱藏僅限本機的系統選檔按鈕並切換為文字路徑輸入（STT 支援切換「自訂路徑」輸入）。
+- 需要測試完整語音鏈路時，再點擊連線並於「語音驗證」面板執行一鍵測試。
 
-控制台可調整模型、助手角色與 Prompt、回覆規則、數位人與畫質、舞台背景與排版、
-知識庫檢索，也能跑「語音驗證」。設定會保存為執行期覆蓋設定。
-
-### 進階功能
-
-| 功能 | 文件 |
-| --- | --- |
-| 助手角色、Prompt 與回覆規則 | [llm-reply-rules.md](docs/llm-reply-rules.md) |
-| 對話附件與舞台文字輸入 | [conversation-attachments.md](docs/conversation-attachments.md) |
-| 預錄數位人與說話素材製作 | [prerecorded-avatars.md](docs/prerecorded-avatars.md) |
-| RAGFlow 知識庫檢索 | [ragflow.md](docs/ragflow.md) |
-| 固定文字朗讀 | [fixed-read-aloud.md](docs/fixed-read-aloud.md) |
-
-### 知識庫檢索（RAGFlow，選用）
+### 3. 選用知識庫檢索（RAGFlow）
 
 ```bash
 bash scripts/ragflow.sh build       # 建置原生 ARM64 映像（固定 v0.27.2）
 bash scripts/ragflow.sh up          # 啟動 RAGFlow 與主機 GPU 嵌入程序（BGE-M3）
 bash scripts/ragflow.sh pull-model  # 下載嵌入模型並預熱
-bash scripts/ragflow.sh connect     # 自動連線並建立 API 金鑰
+bash scripts/ragflow.sh connect     # 自動連線並寫入 config/ragflow.env（0600，不入 Git）
 bash scripts/ragflow.sh status      # 檢視狀態
 ```
 
-連線設定與金鑰寫入 `config/ragflow.env`（權限 `0600`，已被 `.gitignore` 忽略，
-**不可提交進 Git**）。接著在控制台「設定 → 知識庫檢索」確認顯示「RAGFlow 已連線」，
-勾選知識庫並執行「測試檢索」後啟用。RAGFlow 只提供檢索片段，最終回答仍由 Nova 的 LLM 產生。
-細節見 [ragflow.md](docs/ragflow.md)。
+啟用後於控制台「設定 → 知識庫檢索」確認「RAGFlow 已連線」並勾選知識庫即可。若要在常駐 `systemd` 服務中一併自動啟動 RAGFlow，請於環境覆蓋設定 `NOVA_START_RAGFLOW=1`（詳見 [jetson-orin.md](docs/jetson-orin.md) 與 [ragflow.md](docs/ragflow.md)）。
+
+### 進階文件索引
+
+| 功能 | 文件 |
+| --- | --- |
+| 跨裝置 HTTPS 憑證與信任教學 | [https-device-trust.md](docs/https-device-trust.md) |
+| 助手角色、Prompt 與回覆規則 | [llm-reply-rules.md](docs/llm-reply-rules.md) |
+| 對話附件與舞台文字輸入 | [conversation-attachments.md](docs/conversation-attachments.md) |
+| 預錄數位人與說話素材製作 | [prerecorded-avatars.md](docs/prerecorded-avatars.md) |
+| RAGFlow 知識庫檢索 | [ragflow.md](docs/ragflow.md) |
+| 固定文字朗讀 | [fixed-read-aloud.md](docs/fixed-read-aloud.md) |
 
 ## 驗證
 
@@ -248,7 +286,7 @@ uv run python scripts/check-integration.py     # 品牌、授權與整合稽核
 uv run pytest                                  # Python 測試
 cd web
 npm test                                       # 前端測試
-npm run build                                  # 前端 production build
+npm run build                                  # 前端 production build（更新 :8010 服務之 web/dist）
 ```
 
 不要只用 `torch.cuda.is_available()` 判斷模型可用。已記錄的驗證結果與限制見
@@ -258,10 +296,11 @@ npm run build                                  # 前端 production build
 
 | 路徑 | 說明 |
 | --- | --- |
-| `src/` | 後端：`server/`、`vad/`、`asr/`、`llm/`、`tts/`、`avatars/`、`scene/`、`ragflow/`、`config/` |
-| `web/` | Vue 3 控制台與 `stage.html` 舞台 |
-| `config/` | `config_jetson*.yaml` 出廠預設設定 |
-| `scripts/` | 建置、啟動、驗證與 RAGFlow 管理腳本 |
+| `src/` | 後端：`server/`、`vad/`、`asr/`、`llm/`、`tts/`、`avatars/`、`scene/`、`ragflow/`、`weather/`、`config/` |
+| `web/` | Vue 3 控制台、`stage.html` 舞台與建置輸出 `dist/` |
+| `config/` | `config_jetson*.yaml` 出廠預設設定（執行期覆蓋與金鑰 `.env` 不入 Git） |
+| `scripts/` | 建置、憑證（`create_ssl_certs.sh`）、單一入口（`start-server.sh`）、`systemd` 管理（`jetson-service.sh`）、驗證與 RAGFlow 腳本 |
+| `integrations/` | 整合設定檔：`systemd/nova-avatar.service`、RAGFlow Compose 與服務模板 |
 | `models/`、`llama/` | 模型權重與 GGUF（不入 Git） |
 | `data/avatars/` | 數位人角色素材 |
 | `docs/` | 文件與 ADR，入口見 [docs/README.md](docs/README.md) |
@@ -275,6 +314,7 @@ npm run build                                  # 前端 production build
 - [系統架構](docs/architecture.md)
 - [使用的模型](docs/models.md)
 - [Orin 建置與 CUDA 驗證](docs/jetson-orin.md)
+- [跨裝置 HTTPS 憑證信任指南](docs/https-device-trust.md)
 - [數位人即時生成與 TensorRT UNet 診斷](docs/realtime-avatar.md)
 - [專案詞彙表](CONTEXT.md)
 - [架構決策紀錄（ADR）](docs/adr/)
@@ -284,5 +324,5 @@ npm run build                                  # 前端 production build
 - **Nova Avatar** 獨立撰寫的程式碼採 [Apache-2.0](LICENSE) 授權。
 - **MuseTalk** 程式碼採 MIT 授權（Copyright Tencent Music Entertainment Group）；其模型權重及相依套件另受各自條款約束。
 - 專案內整合的 **Wav2Lip** 僅供 **Research / Non-commercial**（學術與個人非商業用途），不得視為具商業許可。
-- RAGFlow、BGE-M3、外部語音合成與各語言模型權重都有獨立授權；根目錄授權不涵蓋它們的權重與外部服務。
+- RAGFlow、BGE-M3、中央氣象署 API、外部語音合成與各語言模型權重都有獨立授權；根目錄授權不涵蓋它們的權重與外部服務。
 - 詳見 [NOTICE](NOTICE)、[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 與 [來源標註稽核](docs/source-attribution-audit.md)。

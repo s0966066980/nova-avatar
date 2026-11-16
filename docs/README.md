@@ -70,3 +70,5 @@ SPDX-License-Identifier: Apache-2.0
 | [0016](adr/0016-separate-prerecorded-presentation-and-asset-production.md) | 將預錄呈現與說話素材製作分離 |
 | [0017](adr/0017-session-owned-stage-language.md) | 各場舞台對話獨立擁有語系，控制台保存新對話預設 |
 | [0018](adr/0018-session-owned-conversation-attachments.md) | 由各場對話持有分析附件 |
+| [0019](adr/0019-single-role-weather-tool-on-jetson.md) | 在 Jetson Orin 以單一角色與兩階段輕量閘門整合中央氣象署氣候工具 |
+| [0020](adr/0020-single-active-stage-takeover-and-session-guard.md) | `:8010` 單一入口、單一活躍舞台、跨裝置接管與會話識別保護 |
