@@ -44,10 +44,17 @@ async def human(request):
                 raise web.HTTPConflict(text="語音工作階段尚未連線")
             if not getattr(voice_session, "event_sink_ready", True):
                 raise web.HTTPConflict(text="回覆事件通道尚未就緒，請稍後再試")
-            if getattr(voice_session, '_presenter', 'console') == 'stage' and not getattr(state.config.stage, 'composer_enabled', False):
-                raise web.HTTPConflict(text='composer_disabled')
             store = getattr(voice_session, 'attachments', None)
             selection = params.get('attachments', store.selection if store else [])
+            text_value = str(params.get('text', '') or '').strip()
+            if getattr(voice_session, '_presenter', 'console') == 'stage' and not getattr(state.config.stage, 'composer_enabled', False):
+                recommended = [
+                    str(item or '').strip()
+                    for item in (getattr(state.config.stage, 'recommended_prompts', []) or [])
+                    if str(item or '').strip()
+                ]
+                if selection or text_value not in recommended:
+                    raise web.HTTPConflict(text='composer_disabled')
             try:
                 if store:
                     store.validate_selection(selection)

@@ -54,6 +54,18 @@ See LICENSE and NOTICE.
           <i :class="isRecordingVoice ? 'bi bi-mic-fill' : 'bi bi-soundwave'"></i>
           <span>{{ voiceBadgeText || '語音待命' }}</span>
         </div>
+        <button
+          id="btnMaintenanceDrawer"
+          type="button"
+          class="sample-btn"
+          :class="{ active: showMaintenanceDrawer }"
+          @click="showMaintenanceDrawer = !showMaintenanceDrawer"
+          title="開啟系統維護／工程診斷"
+          style="padding: 5px 10px;"
+        >
+          <i class="bi bi-wrench-adjustable-circle"></i>
+          <span>系統維護／工程診斷</span>
+        </button>
       </div>
     </header>
 
@@ -74,24 +86,17 @@ See LICENSE and NOTICE.
               <div class="mode-pills-wrap">
                 <button
                   class="mode-pill-btn"
-                  :class="{ active: activeMode === 'chat' && !showTestPanel }"
-                  @click="activeMode = 'chat'; showTestPanel = false"
+                  :class="{ active: activeMode === 'chat' }"
+                  @click="activeMode = 'chat'"
                 >
                   <i class="bi bi-chat-text"></i> 對話模式
                 </button>
                 <button
                   class="mode-pill-btn"
-                  :class="{ active: activeMode === 'tts' && !showTestPanel }"
-                  @click="activeMode = 'tts'; showTestPanel = false"
+                  :class="{ active: activeMode === 'tts' }"
+                  @click="activeMode = 'tts'"
                 >
                   <i class="bi bi-volume-up"></i> 朗讀模式
-                </button>
-                <button
-                  class="mode-pill-btn"
-                  :class="{ active: showTestPanel }"
-                  @click="showTestPanel = !showTestPanel"
-                >
-                  <i class="bi bi-speedometer2"></i> 語音驗證
                 </button>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
@@ -113,36 +118,6 @@ See LICENSE and NOTICE.
                 </button>
               </div>
             </div>
-
-            <!-- 快捷提問膠囊列 -->
-            <div class="quick-chips-row">
-              <span style="font-size: 11px; color: var(--text-muted); font-weight: 700; white-space: nowrap;">⚡ 快捷指令:</span>
-              <button class="chip-item board-chip" @click="quickSend('請整理 Nova Avatar 三大核心技術優勢並輸出看板')">
-                📋 核心技術優勢 (BOARD)
-              </button>
-              <button class="chip-item board-chip" @click="quickSend('請列出系統安裝部署四步驟')">
-                📋 部署步驟 (BOARD)
-              </button>
-              <button class="chip-item" @click="quickSend('你好！請簡短自我介紹')">
-                💬 自我介紹 (SIMPLE)
-              </button>
-              <button class="chip-item" @click="quickSend('今天台北天氣如何？')">
-                💬 日常天氣問候
-              </button>
-            </div>
-
-            <VoiceTestPanel
-              v-if="showTestPanel"
-              ref="voiceTestPanelRef"
-              :session-id="sessionId"
-              :connected="isConnected"
-              :busy="isThinking || ['avatar_speaking', 'tail_guard'].includes(voiceState)"
-              :voice-state="voiceState"
-              @close="showTestPanel = false"
-              @started="handleVoiceTestStarted"
-              @finished="handleVoiceTestFinished"
-              @notification="showNotification"
-            />
 
             <!-- 對話模式：對話訊息瀑布流 -->
             <div v-if="activeMode === 'chat'" class="chat-flow-container" id="chatFlowBox" ref="messagesRef">
@@ -292,7 +267,7 @@ See LICENSE and NOTICE.
                   style="z-index: 2;"
                 >
                   <div class="board-window-header">
-                    <span class="board-window-title"><i class="bi bi-layout-sidebar-reverse"></i> {{ visibleBoard.title || '核心優勢看板' }}</span>
+                    <span class="board-window-title"><i class="bi bi-layout-sidebar-reverse"></i> {{ visibleBoard.title || '回答看板' }}</span>
                     <button class="btn-board-x" @click="stageBoard.hidden = true">✕</button>
                   </div>
                   <ul class="board-window-items">
@@ -316,8 +291,8 @@ See LICENSE and NOTICE.
                   <span class="stage-board-open-icon" aria-hidden="true">{{ consoleBoardOpenPresentation.icon }}</span> {{ stageBoard.hidden ? '展開看板' : '收合看板' }} ({{ visibleBoard.items.length }}項)
                 </button>
 
-                <div class="stage-captions-sub" style="z-index: 2;">
-                  「{{ stageCaptionText || '好的！這三大核心優勢已同步呈現於右側 9:16 舞台看板中。' }}」
+                <div v-if="stageCaptionText" class="stage-captions-sub" style="z-index: 2;">
+                  「{{ stageCaptionText }}」
                 </div>
 
                 <div class="recording-badge" v-if="isRecording" style="position: absolute; top: 12px; left: 12px; background: rgba(239, 68, 68, 0.9); color: #fff; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px; z-index: 3;">
@@ -402,6 +377,7 @@ See LICENSE and NOTICE.
           @avatar-ready="onAvatarReady"
           @switch-theme="setDesignSample"
           @close-settings="switchMainView('console')"
+          @open-maintenance="showMaintenanceDrawer = true"
         />
       </div>
 
@@ -409,12 +385,53 @@ See LICENSE and NOTICE.
 
     <input type="hidden" id="sessionid" :value="sessionId">
 
-    <!-- 除錯面板 -->
-    <DebugPanel
-      v-if="appSettings.showDebugPanel"
-      :connection-status="connectionStatus"
-      :session-id="sessionId"
-    />
+    <!-- 系統維護／工程診斷抽屜 -->
+    <aside
+      v-if="showMaintenanceDrawer"
+      id="maintenanceDrawer"
+      class="maintenance-drawer"
+      aria-label="系統維護／工程診斷"
+    >
+      <div class="maintenance-drawer-header">
+        <span class="maintenance-drawer-title">
+          <i class="bi bi-wrench-adjustable-circle"></i>
+          系統維護／工程診斷
+        </span>
+        <button
+          type="button"
+          class="sample-btn"
+          @click="showMaintenanceDrawer = false"
+          aria-label="關閉系統維護／工程診斷"
+          style="padding: 4px 10px;"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="maintenance-drawer-body">
+        <VoiceTestPanel
+          ref="voiceTestPanelRef"
+          :session-id="sessionId"
+          :connected="isConnected"
+          :busy="isThinking || ['avatar_speaking', 'tail_guard'].includes(voiceState)"
+          :voice-state="voiceState"
+          @close="showMaintenanceDrawer = false"
+          @started="handleVoiceTestStarted"
+          @finished="handleVoiceTestFinished"
+          @notification="showNotification"
+        />
+        <div class="maintenance-debug-section">
+          <label class="maintenance-debug-toggle">
+            <input type="checkbox" v-model="appSettings.showDebugPanel">
+            <span>顯示即時除錯監控資訊</span>
+          </label>
+          <DebugPanel
+            v-if="appSettings.showDebugPanel"
+            :connection-status="connectionStatus"
+            :session-id="sessionId"
+          />
+        </div>
+      </div>
+    </aside>
 
     <!-- 通知提示 -->
     <div class="notification-container">
@@ -560,10 +577,6 @@ const switchMainView = (viewKey, subTabKey = null) => {
     settingsPanelRef.value.selectSettingsTab(subTabKey)
   }
 }
-const quickSend = (txt) => {
-  chatInput.value = txt
-  sendChatMessage()
-}
 const openStageWindow = () => {
   window.open('stage.html', '_blank')
 }
@@ -626,48 +639,16 @@ const voiceBadgeText = computed(() => {
   return isConnected.value ? '全雙工待命' : ''
 })
 
-// 快速指令選單狀態
-const showQuickCommands = ref(false)
-const quickCommands = [
-  '你好，請介紹一下自己',
-  '請用看板列出三個健康飲食原則',
-  '今天天氣如何？',
-  '講一個有趣的笑話',
-  '如何學習程式設計？'
-]
-
-// 插入快速指令
-const insertQuickCommand = (cmd) => {
-  chatInput.value = cmd
-  showQuickCommands.value = false
-  // 自動聚焦輸入框
-  nextTick(() => {
-    const textarea = document.querySelector('.textarea-wrapper textarea')
-    if (textarea) textarea.focus()
-  })
-}
-
-// 點擊外部關閉快速指令選單
-const closeQuickCommandsOnOutsideClick = (e) => {
-  if (showQuickCommands.value && !e.target.closest('.quick-commands-menu') && !e.target.closest('.btn-quick-cmd')) {
-    showQuickCommands.value = false
-  }
-}
-
-function askPreset(query) {
-  chatInput.value = query
-  sendChatMessage()
-}
 const backendReady = ref(false)  // 後端是否就緒
 const modelReady = ref(false)    // 是否已套用數字人引擎
 const stageBoard = reactive(createConsoleBoardState())
-const showTestPanel = ref(false)
+const showMaintenanceDrawer = ref(false)
 const voiceTestPanelRef = ref(null)
 const videoWrapperRef = ref(null)
 const videoSizeBox = reactive({ w: 400, h: 400 })
 const visibleBoard = computed(() => {
   if (stageBoard.items.length) {
-    return { title: stageBoard.title || '核心優勢看板', items: stageBoard.items, preview: false }
+    return { title: stageBoard.title || '回答看板', items: stageBoard.items, preview: false }
   }
   if (isStageConfiguring.value && (selectedBoardPreview.value || runtime.stage?.board_preview)) {
     return { title: STAGE_BOARD_PREVIEW_TITLE, items: STAGE_BOARD_PREVIEW_ITEMS, preview: true }
@@ -1657,5 +1638,62 @@ onMounted(async () => {
 @keyframes pulse {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
+}
+
+.maintenance-drawer {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  bottom: 16px;
+  width: min(440px, calc(100vw - 32px));
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.maintenance-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.maintenance-drawer-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.maintenance-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.maintenance-debug-section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.maintenance-debug-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  cursor: pointer;
 }
 </style>

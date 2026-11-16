@@ -231,6 +231,42 @@ See LICENSE and NOTICE.
     box-shadow:0 8px 24px rgba(0,0,0,.45);
   }
   .audio-unlock[hidden]{display:none}
+  .stage-notice{
+    position:absolute; top:56px; left:50%; transform:translateX(-50%);
+    z-index:4; display:flex; align-items:center; gap:8px; max-width:min(92%, 420px);
+    padding:8px 12px; border-radius:14px;
+    background:rgba(20,14,18,.9); border:1px solid rgba(248,113,113,.45);
+    color:#fee2e2; font-size:12.5px; line-height:1.45;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  .stage-notice[hidden]{display:none}
+  .stage-notice-text{flex:1; min-width:0}
+  .stage-notice-btn{
+    flex:0 0 auto; border:1px solid rgba(255,255,255,.28); border-radius:999px;
+    background:rgba(255,255,255,.12); color:#fff; font-size:11.5px;
+    padding:4px 10px; cursor:pointer; white-space:nowrap;
+  }
+  .stage-notice-btn[hidden]{display:none}
+  .stage-notice-close{
+    flex:0 0 auto; border:0; background:transparent; color:rgba(255,255,255,.72);
+    cursor:pointer; font-size:13px; padding:2px 4px;
+  }
+  .recommended-prompts{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
+    width:100%; max-width:100%; pointer-events:auto;
+  }
+  .recommended-prompts[hidden]{display:none}
+  .recommended-prompt-pill{
+    appearance:none; border:1px solid rgba(255,255,255,.22);
+    background:rgba(12,16,28,.76); color:var(--ink);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    padding:6px 13px; border-radius:999px;
+    font-size:12.5px; line-height:1.35; font-family:inherit; cursor:pointer;
+    max-width:100%; text-align:left;
+    transition:background .18s, border-color .18s, transform .12s;
+  }
+  .recommended-prompt-pill:hover:not(:disabled){background:rgba(124,156,255,.24); border-color:rgba(124,156,255,.55)}
+  .recommended-prompt-pill:disabled{opacity:.45; cursor:not-allowed}
 
   /* ── 覆蓋層（開場 / 錯誤）────────────────── */
   .veil{
@@ -353,6 +389,11 @@ See LICENSE and NOTICE.
 
     <div class="mode" id="mode"><span class="dot"></span><span id="modeText">連線中</span></div>
     <button class="audio-unlock" id="audioUnlock" type="button" hidden>點擊開啟聲音</button>
+    <div class="stage-notice" id="stageNotice" hidden role="status" aria-live="polite">
+      <span class="stage-notice-text" id="stageNoticeText"></span>
+      <button class="stage-notice-btn" id="stageNoticeAction" type="button" hidden></button>
+      <button class="stage-notice-close" id="stageNoticeDismiss" type="button" aria-label="關閉提示">✕</button>
+    </div>
 
     <div class="mic-wrap" id="micWrap">
       <button class="mic" id="mic" disabled aria-label="收音">
@@ -366,6 +407,7 @@ See LICENSE and NOTICE.
     </div>
 
     <div class="captions" id="captions">
+      <div class="recommended-prompts" id="recommendedPrompts" hidden aria-label="推薦提問"></div>
       <div class="said" id="said"></div>
       <div class="reply-wrap" id="replyWrap">
         <div class="reply-exit-layer" id="replyExitLayer" aria-hidden="true"></div>
@@ -407,7 +449,7 @@ See LICENSE and NOTICE.
 import { createApp, h, reactive } from 'vue';
 import ConversationComposer from '/src/components/ConversationComposer.vue';
 import { composerSettings } from '/src/conversationAttachments.js';
-import { stageText, stageItemCount } from '/src/stageLocale.js';
+import { stageText, stageItemCount, stageErrorGuidance } from '/src/stageLocale.js';
 import {
   DEFAULT_STAGE_CAPTION_MAX_CHARS,
   StageCaptionWindow
@@ -435,6 +477,8 @@ import {
 
   const $ = (id) => document.getElementById(id);
   const stage=$('stage'), video=$('video'), mic=$('mic'), hint=$('hint'), audioUnlock=$('audioUnlock');
+  const stageNotice=$('stageNotice'), stageNoticeText=$('stageNoticeText'), stageNoticeAction=$('stageNoticeAction'), stageNoticeDismiss=$('stageNoticeDismiss');
+  const recommendedPrompts=$('recommendedPrompts');
   const said=$('said'), replyWrap=$('replyWrap'), reply=$('reply'), replyExitLayer=$('replyExitLayer'), modeText=$('modeText');
   const veil=$('veil'), veilTitle=$('veilTitle'), veilText=$('veilText'),
         veilBtn=$('veilBtn'), veilAlt=$('veilAlt');
@@ -448,6 +492,7 @@ import {
   let sessionId=0, lastSeq=0;
   let stageLocale='zh-TW', languageSwitching=false, hasConnected=false;
   let stageComposer=null, microphoneRequest=null, enablingMicrophonePress=false, composerCaptureBefore=null, composerBox=null;
+  let stageWelcome={text:'', speak:false}, stageRecommendedPrompts=[], pendingWelcome=false, welcomeTurnId=null;
   const composerState=reactive({stage:true, sessionId:0, clientId:stageClientId, connected:false, enabled:false,
     locale:'zh-TW', settings:composerSettings()});
   createApp({render:()=>h(ConversationComposer, {...composerState,
@@ -471,8 +516,10 @@ import {
     $('boardLabel').textContent=t('回答看板');
     veilAlt.textContent=t('開啟控制台');
     if(audioUnlock) audioUnlock.textContent=t('點擊開啟聲音');
+    if(recommendedPrompts) recommendedPrompts.setAttribute('aria-label', t('推薦提問'));
+    if(stageNoticeDismiss) stageNoticeDismiss.setAttribute('aria-label', t('關閉提示'));
     document.getElementById('scene-record-controls')?.querySelectorAll?.('button,a').forEach(node => { node.textContent=t(node.textContent); });
-    setMode(); refreshAffordance(); renderBoardItems(); applyBoardLayout();
+    setMode(); refreshAffordance(); renderRecommendedPrompts(); renderBoardItems(); applyBoardLayout();
   }
   function finishLanguageSwitch(locale, failed=false){
     languageSwitching=false;
@@ -627,12 +674,151 @@ import {
 
   function refreshAffordance(){
     composerState.connected=live && !languageSwitching;
+    renderRecommendedPrompts();
     if(!live || languageSwitching){ mic.disabled=true; hint.textContent=t('準備中'); return; }
     mic.disabled=false;
     if(!micStream){hint.textContent=stageLocale === 'en-US' ? 'Enable microphone' : '啟用麥克風'; return;}
     if(speaking){ hint.textContent = t('點一下插話'); return; }
     if(autoMode){ hint.textContent = t(autoPaused ? '已暫停收音，點一下恢復' : '直接說話'); return; }
     hint.textContent = t(holding ? '放開送出' : '按住說話');
+  }
+
+  function hideNotice(){
+    if(stageNotice) stageNotice.hidden=true;
+    if(stageNoticeText) stageNoticeText.textContent='';
+    if(stageNoticeAction){ stageNoticeAction.hidden=true; stageNoticeAction.onclick=null; }
+  }
+  if(stageNoticeDismiss) stageNoticeDismiss.onclick = hideNotice;
+
+  function showRecoveryNotice(code, {retryPrompt=''}={}){
+    if(!stageNotice || !stageNoticeText) return;
+    const resolveGuidance = (key) => typeof stageErrorGuidance === 'function'
+      ? stageErrorGuidance(key, stageLocale)
+      : { message: t(String(key || 'pipeline_error')), actionKind: 'dismiss', actionLabel: t('關閉') };
+    const guidance = resolveGuidance(code);
+    stageNoticeText.textContent = guidance.message;
+    stageNotice.hidden = false;
+    if(stageNoticeAction){
+      stageNoticeAction.textContent = guidance.actionLabel || t('再試一次');
+      stageNoticeAction.hidden = false;
+      stageNoticeAction.onclick = async () => {
+        if(guidance.actionKind === 'retry_mic'){
+          await enableMicrophone();
+          return;
+        }
+        if(guidance.actionKind === 'retry_speech'){
+          hideNotice();
+          if(live && autoMode){
+            autoPaused = false;
+            setCapture(true);
+            setVisual('idle');
+            setMode();
+            refreshAffordance();
+          }
+          return;
+        }
+        if(guidance.actionKind === 'reset_conversation'){
+          hideNotice();
+          if(sessionId){
+            try{
+              await fetch('/clear_history', {
+                method:'POST',
+                headers:{'Content-Type':'application/json', 'X-Client-Id':stageClientId},
+                body:JSON.stringify({sessionid:sessionId, client_id:stageClientId})
+              });
+            }catch(_){}
+          }
+          return;
+        }
+        if(guidance.actionKind === 'reconnect_or_retry'){
+          hideNotice();
+          if(retryPrompt){
+            await sendRecommendedPrompt(retryPrompt);
+            return;
+          }
+          if(!live) await connect();
+          return;
+        }
+        hideNotice();
+      };
+    }
+  }
+
+  function renderRecommendedPrompts(){
+    if(!recommendedPrompts) return;
+    recommendedPrompts.textContent='';
+    const items=Array.isArray(stageRecommendedPrompts)
+      ? stageRecommendedPrompts.map(item => String(item || '').trim()).filter(Boolean).slice(0,4)
+      : [];
+    if(!live || !items.length){
+      recommendedPrompts.hidden=true;
+      return;
+    }
+    recommendedPrompts.hidden=false;
+    items.forEach((promptText) => {
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='recommended-prompt-pill';
+      btn.textContent=promptText;
+      btn.disabled=!live || languageSwitching;
+      btn.onclick=() => sendRecommendedPrompt(promptText);
+      recommendedPrompts.appendChild(btn);
+    });
+  }
+
+  async function sendRecommendedPrompt(promptText){
+    const text=String(promptText || '').trim();
+    if(!text || !live || !sessionId || languageSwitching) return;
+    hideNotice();
+    showSaid(text);
+    try{
+      const res=await fetch('/human', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Client-Id':stageClientId},
+        body:JSON.stringify({
+          type:'chat',
+          sessionid:sessionId,
+          client_id:stageClientId,
+          text,
+          attachments:[],
+          interrupt:true
+        })
+      });
+      if(!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+      const payload=await res.json().catch(() => ({}));
+      if(payload.code === -1) throw new Error(payload.msg || 'prompt_send_failed');
+    }catch(_){
+      showRecoveryNotice('prompt_send_failed', {retryPrompt:text});
+    }
+  }
+
+  async function presentWelcomeIfNeeded(){
+    if(!pendingWelcome || !live || !chan || chan.readyState !== 'open') return;
+    pendingWelcome=false;
+    const text=String(stageWelcome.text || '').trim();
+    if(!text) return;
+    showReply(text, 'welcome');
+    if(!stageWelcome.speak || !sessionId) return;
+    try{
+      const res=await fetch('/human', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-Client-Id':stageClientId},
+        body:JSON.stringify({
+          type:'echo',
+          sessionid:sessionId,
+          client_id:stageClientId,
+          text,
+          interrupt:false
+        })
+      });
+      if(res.ok){
+        const payload=await res.json().catch(() => ({}));
+        if(payload?.turn_id){
+          welcomeTurnId=payload.turn_id;
+          if(replyTurnId === 'welcome') replyTurnId=payload.turn_id;
+        }
+      }
+    }catch(_){ /* Keep text welcome visible even if welcome speech fails. */ }
   }
 
   function setMode(){
@@ -851,6 +1037,12 @@ import {
       if(Number.isInteger(micX) && micX>=0 && micX<=100) micLayout.x=micX;
       if(Number.isInteger(micY) && micY>=0 && micY<=100) micLayout.y=micY;
       if(typeof data.mic_preset === 'string') micLayout.preset=data.mic_preset;
+      stageWelcome.text = String(data.welcome_text || '').trim();
+      stageWelcome.speak = Boolean(data.welcome_speak);
+      stageRecommendedPrompts = Array.isArray(data.recommended_prompts)
+        ? data.recommended_prompts.map(item => String(item || '').trim()).filter(Boolean).slice(0,4)
+        : [];
+      renderRecommendedPrompts();
       applyBoardLayout();
     }catch(_){ /* 後台不可達時維持現有舞台設定 */ }
   }
@@ -875,13 +1067,19 @@ import {
     }
     if(ev.type === 'state'){
       if(ev.state === 'error' || ev.state === 'degraded'){
-        if(ev.error) showReply(t(String(ev.error)), null);
+        const errCode = String(ev.error || 'pipeline_error');
+        showRecoveryNotice(errCode);
+        if(ev.error) showReply(t(errCode), null);
         fadeReply();
       }
       const v = VISUAL[ev.state];
       if(v) setVisual(v);
       if(ev.state === 'listening'){ speaking = false; }
       refreshAffordance();
+      return;
+    }
+    if(ev.type === 'speech_rejected'){
+      showRecoveryNotice(String(ev.reason || 'empty_transcript'));
       return;
     }
     if(ev.type === 'user_transcript' && ev.text){ showSaid(ev.text); return; }
@@ -997,7 +1195,7 @@ import {
     pc.onconnectionstatechange = () => {
       if(attempt !== stageGeneration) return;
       const s = peer.connectionState;
-      if(s === 'connected'){ live = true; hideVeil(); setMode(); refreshAffordance(); }
+      if(s === 'connected'){ live = true; hideVeil(); setMode(); refreshAffordance(); void presentWelcomeIfNeeded(); }
       if(s === 'failed' || s === 'disconnected'){
         live = false; refreshAffordance();
         scheduleStageReconnect();
@@ -1006,7 +1204,7 @@ import {
     };
 
     chan = pc.createDataChannel('voice-events', {ordered:true});
-    chan.onopen = () => { if(attempt === stageGeneration) setCapture(autoMode && !autoPaused && Boolean(micStream)); };
+    chan.onopen = () => { if(attempt === stageGeneration){ setCapture(autoMode && !autoPaused && Boolean(micStream)); void presentWelcomeIfNeeded(); } };
     chan.onclose = () => { if(attempt === stageGeneration) scheduleStageReconnect(); };
     chan.onmessage = (e) => {
       if(attempt !== stageGeneration) return;
@@ -1045,6 +1243,10 @@ import {
       micStream = null;
       pc.addTransceiver('audio', {direction:'recvonly'});
       showSaid(microphoneFailureMessage(err, {watchFallback:true}));
+      const micCode = (err?.code === 'insecure_context' || globalThis.isSecureContext === false || !navigator.mediaDevices?.getUserMedia)
+        ? 'mic_insecure_context'
+        : ((err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') ? 'mic_permission_denied' : 'mic_unavailable');
+      showRecoveryNotice(micCode);
     }
     pc.addTransceiver('video', {direction:'recvonly'});
 
@@ -1172,10 +1374,16 @@ import {
       if(!sender){stream.getTracks().forEach(track=>track.stop());throw new Error('Audio sender unavailable');}
       await sender.replaceTrack(stream.getAudioTracks()[0]);
       micStream=stream; autoPaused=false;
+      if(typeof hideNotice === 'function') hideNotice();
       setCapture(autoMode); setMode(); refreshAffordance();
     }catch(err){showSaid(typeof microphoneFailureMessage === 'function'
       ? microphoneFailureMessage(err, {watchFallback:false})
-      : (stageLocale === 'en-US' ? 'Microphone unavailable. Text and attachments are still available.' : '無法啟用麥克風，仍可使用文字與附件。'));}
+      : (stageLocale === 'en-US' ? 'Microphone unavailable. Text and attachments are still available.' : '無法啟用麥克風，仍可使用文字與附件。'));
+      const micCode = (err?.code === 'insecure_context' || globalThis.isSecureContext === false || !navigator.mediaDevices?.getUserMedia)
+        ? 'mic_insecure_context'
+        : ((err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') ? 'mic_permission_denied' : 'mic_unavailable');
+      if(typeof showRecoveryNotice === 'function') showRecoveryNotice(micCode);
+    }
     finally{microphoneRequest=null;}
   }
   mic.addEventListener('pointerdown', (e) => {
@@ -1235,12 +1443,14 @@ import {
   async function enterStage(locale=stageLocale){
     applyLocale(locale);
     unlockAudioContext();
+    pendingWelcome = true;
     entryLanguages.hidden=true;
     veilBtn.hidden = true;
     await syncVadMode();
     await syncStageSettings();
     await connect();
     await resumeStagePlayback();
+    await presentWelcomeIfNeeded();
   }
   veilBtn.onclick = () => enterStage();
   entryLanguages.querySelectorAll?.('[data-locale]').forEach(button => {

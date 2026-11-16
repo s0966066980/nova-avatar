@@ -236,6 +236,9 @@ class OverridePersistTests(unittest.TestCase):
                     "mic_preset": "custom",
                     "board_open_x": 50,
                     "board_open_y": 8,
+                    "welcome_text": "",
+                    "welcome_speak": False,
+                    "recommended_prompts": [],
                 },
             )
 
@@ -965,6 +968,88 @@ class ComposerHeightTests(unittest.TestCase):
                         self.assertEqual(config.stage.composer_height, 180)
                 for valid in (120, 480):
                     self.assertEqual(apply_stage_settings(config, {'composer_height': valid})['composer_height'], valid)
+
+
+class StageWelcomeAndPromptsTests(unittest.TestCase):
+    def test_welcome_and_recommended_prompts_persist_and_reload(self):
+        from src.config.loader import load_config
+
+        config = Config()
+        initial = stage_snapshot(config)
+        self.assertEqual(initial["welcome_text"], "")
+        self.assertFalse(initial["welcome_speak"])
+        self.assertEqual(initial["recommended_prompts"], [])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "overrides.yaml"
+            with patch("src.config.overrides.RUNTIME_OVERRIDES_FILE", path):
+                saved = apply_stage_settings(
+                    config,
+                    {
+                        "welcome_text": "  歡迎來到 Nova Avatar 展示舞台  ",
+                        "welcome_speak": True,
+                        "recommended_prompts": [
+                            "  產品有哪些核心特色？ ",
+                            "",
+                            "   ",
+                            "如何預約現場導覽？",
+                        ],
+                    },
+                )
+                self.assertEqual(saved["welcome_text"], "歡迎來到 Nova Avatar 展示舞台")
+                self.assertTrue(saved["welcome_speak"])
+                self.assertEqual(
+                    saved["recommended_prompts"],
+                    ["產品有哪些核心特色？", "如何預約現場導覽？"],
+                )
+                overrides_stage = load_runtime_overrides()["stage"]
+                self.assertEqual(
+                    overrides_stage["welcome_text"],
+                    "歡迎來到 Nova Avatar 展示舞台",
+                )
+                self.assertTrue(overrides_stage["welcome_speak"])
+                self.assertEqual(
+                    overrides_stage["recommended_prompts"],
+                    ["產品有哪些核心特色？", "如何預約現場導覽？"],
+                )
+                restored = load_config(config_file="config/config_jetson.yaml")
+                self.assertEqual(
+                    restored.stage.welcome_text, "歡迎來到 Nova Avatar 展示舞台"
+                )
+                self.assertTrue(restored.stage.welcome_speak)
+                self.assertEqual(
+                    restored.stage.recommended_prompts,
+                    ["產品有哪些核心特色？", "如何預約現場導覽？"],
+                )
+
+    def test_welcome_and_recommended_prompts_reject_invalid_payloads(self):
+        config = Config()
+        with patch("src.server.runtime_settings.persist_runtime_overrides"):
+            apply_stage_settings(
+                config,
+                {
+                    "welcome_text": "初始歡迎詞",
+                    "welcome_speak": False,
+                    "recommended_prompts": ["問題一", "問題二"],
+                },
+            )
+            for payload in (
+                {"welcome_text": 123},
+                {"welcome_text": "a" * 501},
+                {"welcome_speak": "yes"},
+                {"recommended_prompts": "not-a-list"},
+                {"recommended_prompts": [123]},
+                {"recommended_prompts": ["a" * 201]},
+                {"recommended_prompts": ["1", "2", "3", "4", "5"]},
+            ):
+                with self.subTest(payload=payload):
+                    with self.assertRaises(SettingsError):
+                        apply_stage_settings(config, payload)
+                    self.assertEqual(config.stage.welcome_text, "初始歡迎詞")
+                    self.assertFalse(config.stage.welcome_speak)
+                    self.assertEqual(
+                        config.stage.recommended_prompts, ["問題一", "問題二"]
+                    )
 
 
 if __name__ == "__main__":

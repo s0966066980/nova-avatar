@@ -140,6 +140,22 @@ def persist_runtime_overrides(config) -> None:
             "mic_preset": str(
                 getattr(getattr(config, "stage", None), "mic_preset", "custom")
             ),
+            "welcome_text": str(
+                getattr(getattr(config, "stage", None), "welcome_text", "") or ""
+            ).strip(),
+            "welcome_speak": bool(
+                getattr(getattr(config, "stage", None), "welcome_speak", False)
+            ),
+            "recommended_prompts": [
+                str(item).strip()
+                for item in (
+                    getattr(
+                        getattr(config, "stage", None), "recommended_prompts", []
+                    )
+                    or []
+                )
+                if str(item or "").strip()
+            ][:4],
         },
     }
 

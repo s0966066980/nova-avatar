@@ -932,6 +932,94 @@
                 <input id="stage-board-open-y" type="range" class="std-range" min="0" max="100" step="1" v-model.number="selectedBoardOpenY">
               </div>
             </div>
+
+            <div class="stage-welcome-controls" style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+              <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">
+                <i class="bi bi-chat-square-quote-fill" style="color: var(--brand-light);"></i> 舞台歡迎詞與訪客推薦提問
+              </span>
+
+              <div class="setting-form-row" style="align-items: flex-start;">
+                <div class="field-label-group">
+                  <label for="stage-welcome-text" class="field-main-label">舞台歡迎詞</label>
+                  <span class="field-sub-hint">訪客點擊進場語言按鈕後顯示的開場歡迎文字（最多 500 字；留空則不顯示）。</span>
+                </div>
+                <div class="field-control-area flex-col" style="width: 100%;">
+                  <textarea
+                    id="stage-welcome-text"
+                    class="std-textarea"
+                    rows="3"
+                    maxlength="500"
+                    v-model="selectedWelcomeText"
+                    placeholder="例如：歡迎來到展示現場，您可以直接說話或點選下方問題開始體驗。"
+                  ></textarea>
+                  <span v-if="stageWelcomeError" class="field-sub-hint" role="alert" style="color: #e57070;">舞台歡迎詞最多 500 字。</span>
+                </div>
+              </div>
+
+              <div class="setting-form-row">
+                <div class="field-label-group">
+                  <label for="stage-welcome-speak" class="field-main-label">進場自動語音歡迎</label>
+                  <span class="field-sub-hint">訪客點擊進場解鎖音訊後，同步以數位人語音播報一次歡迎詞。</span>
+                </div>
+                <div class="field-control-area">
+                  <label class="std-switch">
+                    <input
+                      id="stage-welcome-speak"
+                      type="checkbox"
+                      v-model="selectedWelcomeSpeak"
+                    >
+                    <span class="std-slider-track"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="setting-form-row" style="align-items: flex-start;">
+                <div class="field-label-group">
+                  <span class="field-main-label">訪客推薦提問（0–4 題）</span>
+                  <span class="field-sub-hint">顯示於獨立舞台供訪客一鍵點選發問；未設定時舞台保持極簡不顯示。</span>
+                </div>
+                <div class="field-control-area flex-col" style="width: 100%; gap: 8px;">
+                  <div
+                    v-for="(_prompt, index) in selectedRecommendedPrompts"
+                    :key="`recommended-prompt-${index}`"
+                    style="display: flex; gap: 8px; align-items: center; width: 100%;"
+                  >
+                    <input
+                      :id="`stage-recommended-prompt-${index}`"
+                      type="text"
+                      class="std-input"
+                      maxlength="200"
+                      v-model="selectedRecommendedPrompts[index]"
+                      :placeholder="`推薦提問 ${index + 1}`"
+                      :aria-label="`訪客推薦提問 ${index + 1}`"
+                      style="flex: 1;"
+                    >
+                    <button
+                      type="button"
+                      class="btn-secondary"
+                      style="padding: 6px 10px; font-size: 12px;"
+                      @click="removeRecommendedPrompt(index)"
+                      :aria-label="`移除推薦提問 ${index + 1}`"
+                    >
+                      移除
+                    </button>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <button
+                      id="stage-add-recommended-prompt"
+                      type="button"
+                      class="btn-secondary"
+                      style="padding: 6px 12px; font-size: 12px;"
+                      :disabled="selectedRecommendedPrompts.length >= 4"
+                      @click="addRecommendedPrompt"
+                    >
+                      <i class="bi bi-plus-lg"></i> 新增推薦提問（{{ selectedRecommendedPrompts.length }}/4）
+                    </button>
+                    <span v-if="stageRecommendedPromptsError" class="field-sub-hint" role="alert" style="color: #e57070;">最多 4 題，每題最多 200 字。</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
           <!-- 右欄：大尺寸 9:16 舞台即時對照全景視窗 (滿板震撼) -->
@@ -1429,9 +1517,17 @@
           <section class="setting-card">
             <div class="card-title-row">
               <div>
-                <div class="card-title-text"><i class="bi bi-speedometer"></i> 診斷監控與錄製配置</div>
-                <div class="card-subtitle-desc">效能除錯輔助與本機影片封裝選項。</div>
+                <div class="card-title-text"><i class="bi bi-speedometer"></i> 系統維護／工程診斷</div>
+                <div class="card-subtitle-desc">語音延遲驗證、WebRTC 除錯監控與本機影片封裝選項。</div>
               </div>
+              <button
+                type="button"
+                class="btn-secondary"
+                style="padding: 6px 12px; font-size: 12px;"
+                @click="emit('open-maintenance'); emit('close-settings')"
+              >
+                <i class="bi bi-wrench-adjustable-circle"></i> 開啟維護診斷抽屜
+              </button>
             </div>
 
             <div class="setting-form-row">
@@ -1567,7 +1663,8 @@ const emit = defineEmits([
   'request-disconnect',
   'avatar-ready',
   'switch-theme',
-  'close-settings'
+  'close-settings',
+  'open-maintenance'
 ])
 
 const showSettings = ref(true)
@@ -1733,6 +1830,13 @@ const {
   selectedMicX,
   selectedMicY,
   selectedMicPreset,
+  selectedWelcomeText,
+  selectedWelcomeSpeak,
+  selectedRecommendedPrompts,
+  stageWelcomeError,
+  stageRecommendedPromptsError,
+  addRecommendedPrompt,
+  removeRecommendedPrompt,
   boardSizeError,
   selectBoardPreset,
   markBoardPositionCustom,

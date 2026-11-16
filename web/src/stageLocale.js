@@ -56,21 +56,112 @@ const english = {
   '舞台已由其他裝置接管': 'Stage taken over by another device',
   '此舞台連線已中斷。如需在此裝置繼續使用，請重新接管舞台。': 'This stage connection was closed. To use the stage here, take over again.',
   '重新接管此舞台': 'Take over stage again',
+  '推薦提問': 'Suggested questions',
+  '重試麥克風': 'Retry microphone',
+  '再試一次': 'Try again',
+  '清空對話重試': 'Reset & retry',
+  '關閉': 'Dismiss',
+  '關閉提示': 'Dismiss notice',
+  '麥克風權限未允許，請點擊網址列鎖頭允許麥克風，或改用文字／推薦提問。': 'Microphone permission denied. Allow mic access in your browser address bar, or use text / suggested questions.',
+  'speech_too_short': 'That was too short. Please move closer to the mic and try again.',
+  'audio_too_quiet': 'Your voice was too quiet. Please move closer and speak again.',
+  'empty_transcript': 'I could not catch that clearly. Please speak again or tap a prompt.',
+  'transcript_low_confidence': 'Could not recognize clearly. Please speak a bit more slowly and try again.',
+  'transcript_invalid_confidence': 'Speech recognition could not be verified. Please try again.',
+  'unsupported_file': 'Supported formats: PDF, JPG, PNG, WebP.',
+  'page_limit': 'Up to 40 PDF pages per question. Please select a smaller page range.',
+  'invalid_pages': 'Invalid page range. Use a format such as 1-3,5.',
+  'file_size': 'Each file must be between 1 byte and 20 MB.',
+  'reference_limit': 'Up to 4 attachments per question.',
+  'encrypted_pdf': 'This PDF is encrypted. Please unlock it before uploading.',
+  'session_quota': 'Session attachment limit reached (20 files / 200 MB). Remove an older file first.',
+  'pixel_limit': 'Image exceeds 24 megapixels. Please resize and try again.',
+  'analysis_capacity': 'Attachment analysis exceeded model capacity. Select fewer pages and retry.',
+  'analysis_unreadable': 'Unable to read the page reliably. Select fewer pages or retry.',
+  'vision_unavailable': 'Vision analysis is not ready yet. Try again shortly or ask in text.',
+  'prompt_send_failed': 'Could not send this question right now. Please try again.',
 }
 const chineseErrors = {
   context_capacity: 'Context 容量不足，請由控制台降低保留上限、縮短問題或清空對話。',
-  pipeline_error: '回覆未能完成，請重試。',
+  pipeline_error: '回覆或語音合成失敗，請再試一次。',
   voice_unavailable: '所選聲音暫時無法使用，已保留原設定，請重試。',
   english_requires_whisper: '英文對話需先在控制台套用 Whisper 語音辨識。',
   english_requires_edge_tts: '英文對話需先在控制台套用 Edge TTS。',
+  speech_too_short: '說話時間太短，請靠近麥克風再試一次。',
+  audio_too_quiet: '聲音較小未能辨識，請靠近麥克風再說一次。',
+  empty_transcript: '剛剛沒有聽清楚，請再說一次或點選推薦提問。',
+  transcript_low_confidence: '語音辨識不清楚，請放慢語速再說一次。',
+  transcript_invalid_confidence: '語音辨識異常，請再說一次。',
+  unsupported_file: '僅支援 PDF、JPG、PNG、WebP 檔案格式。',
+  page_limit: 'PDF 每輪最多 40 頁，請選取較小的頁碼範圍。',
+  invalid_pages: '頁碼格式無效，請使用例如 1-3,5。',
+  file_size: '單檔大小須為 1 byte 至 20 MB。',
+  reference_limit: '每輪最多可參考 4 個附件。',
+  encrypted_pdf: '此 PDF 已加密，請先解除密碼保護後再上傳。',
+  session_quota: '本場附件已達上限（20 個／200 MB），請先移除舊檔案。',
+  pixel_limit: '圖片解析度超過 2400 萬像素，請縮小後再試。',
+  analysis_capacity: '檔案分析超出模型容量，請減少頁碼範圍後重試。',
+  analysis_unreadable: '無法可靠讀取頁面內容，請改選較小頁碼範圍或重試。',
+  vision_unavailable: '視覺分析模型尚未就緒，請稍後再試或改用純文字提問。',
+  prompt_send_failed: '暫時無法送出此問題，請再試一次。',
 }
 export function stageText(text, locale = 'zh-TW') {
   if (/^(tts_error|playback_error)/.test(text)) {
-    return locale === 'en-US' ? 'The reply could not be played. Please try again.' : '回覆語音暫時無法播放，請重試。'
+    return locale === 'en-US' ? 'Voice synthesis or playback failed. Please try again.' : '回覆語音合成或播放失敗，請再試一次。'
   }
   if (locale === 'en-US') return english[text] || text
   const key = Object.keys(english).find(key => english[key] === text) || text
   return chineseErrors[key] || key
+}
+export function stageErrorGuidance(code, locale = 'zh-TW') {
+  const key = String(code || 'pipeline_error')
+  if (key === 'mic_permission_denied') {
+    return {
+      message: stageText('麥克風權限未允許，請點擊網址列鎖頭允許麥克風，或改用文字／推薦提問。', locale),
+      actionKind: 'retry_mic',
+      actionLabel: stageText('重試麥克風', locale)
+    }
+  }
+  if (key === 'mic_insecure_context') {
+    return {
+      message: stageText('需要受信任的 HTTPS 連線才能啟用麥克風，仍可使用文字與附件。', locale),
+      actionKind: 'dismiss',
+      actionLabel: stageText('關閉', locale)
+    }
+  }
+  if (key === 'mic_unavailable') {
+    return {
+      message: stageText('無法啟用麥克風，仍可使用文字與附件。', locale),
+      actionKind: 'retry_mic',
+      actionLabel: stageText('重試麥克風', locale)
+    }
+  }
+  if (['speech_too_short', 'audio_too_quiet', 'empty_transcript', 'transcript_low_confidence', 'transcript_invalid_confidence'].includes(key)) {
+    return {
+      message: stageText(key, locale),
+      actionKind: 'retry_speech',
+      actionLabel: stageText('再試一次', locale)
+    }
+  }
+  if (key === 'context_capacity') {
+    return {
+      message: stageText(key, locale),
+      actionKind: 'reset_conversation',
+      actionLabel: stageText('清空對話重試', locale)
+    }
+  }
+  if (['unsupported_file', 'page_limit', 'invalid_pages', 'file_size', 'reference_limit', 'encrypted_pdf', 'session_quota', 'pixel_limit', 'analysis_capacity', 'analysis_unreadable', 'vision_unavailable'].includes(key)) {
+    return {
+      message: stageText(key, locale),
+      actionKind: 'dismiss',
+      actionLabel: stageText('關閉', locale)
+    }
+  }
+  return {
+    message: stageText(key, locale),
+    actionKind: 'reconnect_or_retry',
+    actionLabel: stageText('再試一次', locale)
+  }
 }
 export function stageItemCount(count, locale) {
   return locale === 'en-US' ? `${count} ${count === 1 ? 'item' : 'items'}` : `${count} 項`
