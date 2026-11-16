@@ -605,7 +605,7 @@ class VoiceTurnSession:
             )
             if rejection:
                 logger.info("Dropped speech turn before ASR reason=%s", rejection)
-                self._release_rejected_speech_turn(turn_id, generation)
+                self._release_rejected_speech_turn(turn_id, generation, reason=rejection)
                 return
             self._emit("state", state="stt", turn_id=turn_id)
             wav = BytesIO()
@@ -627,7 +627,7 @@ class VoiceTurnSession:
             )
             if rejection:
                 logger.info("Dropped speech turn after ASR reason=%s", rejection)
-                self._release_rejected_speech_turn(turn_id, generation)
+                self._release_rejected_speech_turn(turn_id, generation, reason=rejection)
                 return
             text = str(result.get("text", "")).strip()
             self._emit("user_transcript", text=text, turn_id=turn_id)
@@ -642,10 +642,14 @@ class VoiceTurnSession:
         except Exception as exc:
             self._handle_turn_error(exc, turn_id, generation)
 
-    def _release_rejected_speech_turn(self, turn_id: str, generation: int) -> None:
+    def _release_rejected_speech_turn(
+        self, turn_id: str, generation: int, *, reason: Optional[str] = None
+    ) -> None:
         """Release a discarded speech turn and immediately resume listening."""
         if not self._is_current(turn_id, generation):
             return
+        if reason:
+            self._emit("speech_rejected", reason=reason, turn_id=turn_id)
         self._turn_id = None
         self._turn_task = None
         self._refresh_gate()

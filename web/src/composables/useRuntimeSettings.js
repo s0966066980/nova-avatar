@@ -36,7 +36,10 @@ const runtime = reactive({
     board_open_y: 8,
     mic_x: 50,
     mic_y: 62,
-    mic_preset: 'custom'
+    mic_preset: 'custom',
+    welcome_text: '',
+    welcome_speak: false,
+    recommended_prompts: []
   },
   avatar: {
     type: '',
@@ -256,6 +259,24 @@ const selectedBoardOpenY = ref(8)
 const selectedMicX = ref(50)
 const selectedMicY = ref(62)
 const selectedMicPreset = ref('custom')
+const selectedWelcomeText = ref('')
+const selectedWelcomeSpeak = ref(false)
+const selectedRecommendedPrompts = ref([])
+
+function normalizeRecommendedPrompts(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+}
+
+function addRecommendedPrompt() {
+  if (selectedRecommendedPrompts.value.length >= 4) return
+  selectedRecommendedPrompts.value = [...selectedRecommendedPrompts.value, '']
+}
+
+function removeRecommendedPrompt(index) {
+  selectedRecommendedPrompts.value = selectedRecommendedPrompts.value.filter((_, idx) => idx !== index)
+}
 const BOARD_PRESETS = {
   tl: [0, 0],
   tc: [50, 0],
@@ -286,6 +307,13 @@ const stageCaptionLengthError = computed(() => {
 const stageIdleResetError = computed(() => {
   const value = Number(selectedStageIdleResetSeconds.value)
   return !Number.isInteger(value) || value < 3 || value > 300
+})
+
+const stageWelcomeError = computed(() => selectedWelcomeText.value.trim().length > 500)
+
+const stageRecommendedPromptsError = computed(() => {
+  const cleaned = normalizeRecommendedPrompts(selectedRecommendedPrompts.value)
+  return cleaned.length > 4 || cleaned.some((item) => item.length > 200)
 })
 
 const filteredCharacters = computed(() => {
@@ -340,11 +368,13 @@ const boardSizeError = computed(() => {
 })
 
 const stageDirty = computed(() => (
-    Object.keys(composerDefaults).some(key => composerDraft[key] !== (runtime.stage[key] ?? composerDefaults[key])) ||
   !stageCaptionLengthError.value &&
   !stageIdleResetError.value &&
+  !stageWelcomeError.value &&
+  !stageRecommendedPromptsError.value &&
   !boardSizeError.value &&
   (
+    Object.keys(composerDefaults).some(key => composerDraft[key] !== (runtime.stage[key] ?? composerDefaults[key])) ||
     Number(selectedStageCaptionMaxChars.value) !== Number(runtime.stage.caption_max_chars || 120) ||
     Number(selectedStageIdleResetSeconds.value) !== Number(runtime.stage.idle_reset_seconds || 10) ||
     Number(selectedCaptionX.value) !== Number(runtime.stage.caption_x ?? 50) ||
@@ -362,7 +392,10 @@ const stageDirty = computed(() => (
     Number(selectedBoardOpenY.value) !== Number(runtime.stage.board_open_y ?? 8) ||
     Number(selectedMicX.value) !== Number(runtime.stage.mic_x ?? 50) ||
     Number(selectedMicY.value) !== Number(runtime.stage.mic_y ?? 62) ||
-    selectedMicPreset.value !== (runtime.stage.mic_preset || 'custom')
+    selectedMicPreset.value !== (runtime.stage.mic_preset || 'custom') ||
+    selectedWelcomeText.value.trim() !== String(runtime.stage.welcome_text || '').trim() ||
+    Boolean(selectedWelcomeSpeak.value) !== Boolean(runtime.stage.welcome_speak) ||
+    JSON.stringify(normalizeRecommendedPrompts(selectedRecommendedPrompts.value)) !== JSON.stringify(normalizeRecommendedPrompts(runtime.stage.recommended_prompts))
   )
 ))
 
@@ -883,7 +916,10 @@ function applySnapshot(data) {
     board_open_y: Number(data.stage?.board_open_y ?? 8),
     mic_x: Number(data.stage?.mic_x ?? 50),
     mic_y: Number(data.stage?.mic_y ?? 62),
-    mic_preset: data.stage?.mic_preset || 'custom'
+    mic_preset: data.stage?.mic_preset || 'custom',
+    welcome_text: String(data.stage?.welcome_text || '').trim(),
+    welcome_speak: Boolean(data.stage?.welcome_speak),
+    recommended_prompts: normalizeRecommendedPrompts(data.stage?.recommended_prompts).slice(0, 4)
   }
   runtime.avatar = data.avatar
   Object.assign(runtime.video, data.video || {})
@@ -932,6 +968,9 @@ function applySnapshot(data) {
   selectedMicX.value = runtime.stage.mic_x
   selectedMicY.value = runtime.stage.mic_y
   selectedMicPreset.value = runtime.stage.mic_preset
+  selectedWelcomeText.value = runtime.stage.welcome_text
+  selectedWelcomeSpeak.value = runtime.stage.welcome_speak
+  selectedRecommendedPrompts.value = [...runtime.stage.recommended_prompts]
 }
 
 async function loadRuntimeSettings() {
@@ -1187,7 +1226,10 @@ async function applyStageSettings(
         board_open_y: Number(selectedBoardOpenY.value),
         mic_x: Number(selectedMicX.value),
         mic_y: Number(selectedMicY.value),
-        mic_preset: selectedMicPreset.value
+        mic_preset: selectedMicPreset.value,
+        welcome_text: selectedWelcomeText.value.trim(),
+        welcome_speak: Boolean(selectedWelcomeSpeak.value),
+        recommended_prompts: normalizeRecommendedPrompts(selectedRecommendedPrompts.value).slice(0, 4)
       })
     }))
     Object.assign(runtime.stage, composerSettings(data))
@@ -1225,9 +1267,15 @@ async function applyStageSettings(
     runtime.stage.mic_x = Number(data.mic_x)
     runtime.stage.mic_y = Number(data.mic_y)
     runtime.stage.mic_preset = data.mic_preset
+    runtime.stage.welcome_text = String(data.welcome_text ?? selectedWelcomeText.value).trim()
+    runtime.stage.welcome_speak = Boolean(data.welcome_speak ?? selectedWelcomeSpeak.value)
+    runtime.stage.recommended_prompts = normalizeRecommendedPrompts(data.recommended_prompts ?? selectedRecommendedPrompts.value).slice(0, 4)
     selectedMicX.value = runtime.stage.mic_x
     selectedMicY.value = runtime.stage.mic_y
     selectedMicPreset.value = runtime.stage.mic_preset
+    selectedWelcomeText.value = runtime.stage.welcome_text
+    selectedWelcomeSpeak.value = runtime.stage.welcome_speak
+    selectedRecommendedPrompts.value = [...runtime.stage.recommended_prompts]
     return data
   } catch (error) {
     stageError.value = error.message
@@ -1535,6 +1583,13 @@ export function useRuntimeSettings() {
     selectedMicX,
     selectedMicY,
     selectedMicPreset,
+    selectedWelcomeText,
+    selectedWelcomeSpeak,
+    selectedRecommendedPrompts,
+    stageWelcomeError,
+    stageRecommendedPromptsError,
+    addRecommendedPrompt,
+    removeRecommendedPrompt,
     boardSizeError,
     selectBoardPreset,
     markBoardPositionCustom,

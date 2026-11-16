@@ -34,7 +34,13 @@
     <p v-if="!connected && !preview" class="composer-help">{{ tr('連線後可使用文字與附件。', 'Connect to use text and attachments.') }}</p>
     <p v-if="status" class="composer-status" role="status" aria-live="polite">{{ status }}</p>
     <p v-if="lastSources.length" class="composer-help">{{ tr('分析來源：', 'Analyzed sources: ') }}{{ lastSources.join(' · ') }}</p>
-    <p v-if="error" class="composer-error" role="alert">{{ error }}</p>
+    <div v-if="error" class="composer-error-recovery">
+      <p class="composer-error" role="alert">{{ error }}</p>
+      <div class="composer-error-actions">
+        <button v-if="ready && connected && !sending" type="button" @click="error = ''; openPicker()">{{ tr('重新選取檔案', 'Choose another file') }}</button>
+        <button type="button" @click="error = ''">{{ tr('關閉提示', 'Dismiss') }}</button>
+      </div>
+    </div>
     </div>
     <div class="composer-actions">
       <input ref="picker" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple hidden @change="pick" @cancel="edit(false)">
@@ -284,5 +290,5 @@ defineExpose({ send, receive, reset })
 .composer-label{display:block;font-size:.8em;margin-bottom:4px}.conversation-composer textarea{box-sizing:border-box;width:100%;min-height:54px;max-height:140px;resize:vertical;background:transparent;color:inherit;border:1px solid #76859e;border-radius:8px;padding:8px;font:inherit}
 .conversation-composer button{min-height:44px;min-width:44px;border:1px solid #7b8da9;border-radius:8px;background:#25334b;color:#fff;padding:6px 12px;cursor:pointer;font:inherit}
 .conversation-composer button:disabled{opacity:.5;cursor:default}.conversation-composer :focus-visible{outline:2px solid #b3ceff;outline-offset:2px}.composer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.composer-send{margin-left:auto;background:#234ba3!important}
-.composer-help,.composer-status,.composer-error{font-size:max(12px,.8em);margin:6px 0 0}.composer-help{opacity:.85}.composer-error{color:#ffb9b9}.composer-files,.composer-reference-list{max-height:130px;overflow:auto}.composer-file{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.85em;overflow-wrap:anywhere}.composer-file>span,.composer-file>label{flex:1;min-width:0}.composer-file img{width:36px;height:36px;object-fit:cover}.composer-pages{width:70px;min-height:36px;background:#182236;color:#fff;border:1px solid #7b8da9;border-radius:4px}.composer-references{margin-top:6px;font-size:.85em}.composer-references summary{cursor:pointer;min-height:32px}.composer-file input[type=checkbox]{width:20px;height:20px;vertical-align:middle}
+.composer-help,.composer-status,.composer-error{font-size:max(12px,.8em);margin:6px 0 0}.composer-help{opacity:.85}.composer-error{color:#ffb9b9}.composer-error-recovery{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;margin-top:4px}.composer-error-actions{display:flex;gap:6px}.composer-error-actions button{min-height:28px;min-width:auto;padding:3px 9px;font-size:11.5px;border-radius:999px}.composer-files,.composer-reference-list{max-height:130px;overflow:auto}.composer-file{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.85em;overflow-wrap:anywhere}.composer-file>span,.composer-file>label{flex:1;min-width:0}.composer-file img{width:36px;height:36px;object-fit:cover}.composer-pages{width:70px;min-height:36px;background:#182236;color:#fff;border:1px solid #7b8da9;border-radius:4px}.composer-references{margin-top:6px;font-size:.85em}.composer-references summary{cursor:pointer;min-height:32px}.composer-file input[type=checkbox]{width:20px;height:20px;vertical-align:middle}
 </style>

@@ -119,6 +119,14 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
 
             llm.assert_not_called()
             self.assertNotIn("user_transcript", [event["type"] for event in events])
+            self.assertIn(
+                {"type": "speech_rejected", "reason": "transcript_low_confidence"},
+                [
+                    {"type": event["type"], "reason": event.get("reason")}
+                    for event in events
+                    if event["type"] == "speech_rejected"
+                ],
+            )
             self.assertIsNone(session._turn_task)
             self.assertIsNone(session._turn_id)
             self.assertTrue(session._gate_open)

@@ -489,3 +489,52 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
             await stage_session.close()
 
     asyncio.run(run())
+
+
+def test_stage_recommended_prompt_allowed_even_when_composer_disabled(monkeypatch):
+    from copy import deepcopy
+
+    config = Config()
+    config.stage.composer_enabled = False
+    config.stage.recommended_prompts = ["公司有哪些產品？"]
+    for name, value in dict(
+        config=config,
+        avatar_streams={},
+        voice_sessions={},
+        session_roles={},
+        session_clients={},
+    ).items():
+        monkeypatch.setattr(state, name, value, raising=False)
+
+    async def run():
+        avatar = SimpleNamespace(config=deepcopy(config), flush_talk=MagicMock())
+        stage_session = VoiceTurnSession(101, config, avatar, presenter="stage")
+        stage_session.attach_event_sink(lambda _raw: None)
+        stage_session.start_text_turn = AsyncMock(
+            return_value={"turn_id": "t-1", "reply_mode": "legacy", "delivery": "events"}
+        )
+        state.add_session(101, avatar, role="stage")
+        state.voice_sessions[101] = stage_session
+        state.session_clients[101] = "stage-owner"
+
+        app = web.Application()
+        app.router.add_post("/human", chat.human)
+        try:
+            async with TestClient(TestServer(app)) as client:
+                denied = await client.post(
+                    "/human",
+                    json={"type": "chat", "sessionid": 101, "client_id": "stage-owner", "text": "未授權的任意提問"},
+                )
+                assert denied.status == 409
+                assert await denied.text() == "composer_disabled"
+
+                allowed = await client.post(
+                    "/human",
+                    json={"type": "chat", "sessionid": 101, "client_id": "stage-owner", "text": "公司有哪些產品？"},
+                )
+                assert allowed.status == 200
+                stage_session.start_text_turn.assert_awaited_once()
+        finally:
+            await stage_session.close()
+
+    asyncio.run(run())

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { useRuntimeSettings } from '../src/composables/useRuntimeSettings.js'
 
@@ -71,4 +72,60 @@ test('訪客重置設定儲存失敗時保留草稿並顯示錯誤', async () =>
     assert.equal(settings.stageError.value, '儲存失敗')
     assert.equal(settings.applyingStage.value, false)
   })
+})
+
+test('舞台歡迎詞與訪客推薦提問可編輯、限制 0-4 題並同步儲存', async () => {
+  await withSettings(async ({ settings, requests }) => {
+    assert.equal(settings.selectedWelcomeText.value, '')
+    assert.equal(settings.selectedWelcomeSpeak.value, false)
+    assert.deepEqual(settings.selectedRecommendedPrompts.value, [])
+    assert.equal(settings.stageDirty.value, false)
+
+    settings.selectedWelcomeText.value = '  歡迎來到 Nova Avatar 展示舞台  '
+    settings.selectedWelcomeSpeak.value = true
+    assert.equal(settings.stageDirty.value, true)
+
+    for (let i = 1; i <= 5; i++) {
+      settings.addRecommendedPrompt()
+    }
+    assert.equal(settings.selectedRecommendedPrompts.value.length, 4)
+    settings.selectedRecommendedPrompts.value[0] = '  公司有哪些核心產品？ '
+    settings.selectedRecommendedPrompts.value[1] = '   '
+    settings.selectedRecommendedPrompts.value[2] = '如何聯絡業務團隊？'
+    settings.removeRecommendedPrompt(3)
+    assert.equal(settings.selectedRecommendedPrompts.value.length, 3)
+
+    await settings.applyStageSettings()
+    assert.equal(requests[0].welcome_text, '歡迎來到 Nova Avatar 展示舞台')
+    assert.equal(requests[0].welcome_speak, true)
+    assert.deepEqual(requests[0].recommended_prompts, [
+      '公司有哪些核心產品？',
+      '如何聯絡業務團隊？'
+    ])
+    assert.equal(settings.stageDirty.value, false)
+    assert.equal(settings.selectedWelcomeText.value, '歡迎來到 Nova Avatar 展示舞台')
+    assert.deepEqual(settings.selectedRecommendedPrompts.value, [
+      '公司有哪些核心產品？',
+      '如何聯絡業務團隊？'
+    ])
+  })
+})
+
+test('舞台歡迎詞超過 500 字時禁止套用設定', async () => {
+  await withSettings(async ({ settings }) => {
+    settings.selectedWelcomeText.value = '字'.repeat(501)
+    assert.equal(settings.stageWelcomeError.value, true)
+    assert.equal(settings.stageDirty.value, false)
+  })
+})
+
+test('SettingsPanel 舞台頁籤提供歡迎詞、開嗓語音與推薦提問編輯欄位', () => {
+  const panel = readFileSync(
+    new URL('../src/components/SettingsPanel.vue', import.meta.url),
+    'utf8'
+  )
+  assert.match(panel, /id="stage-welcome-text"/)
+  assert.match(panel, /id="stage-welcome-speak"/)
+  assert.match(panel, /id="stage-add-recommended-prompt"/)
+  assert.match(panel, /selectedRecommendedPrompts/)
 })

@@ -407,6 +407,9 @@ class StageConfig:
     mic_x: int = 50
     mic_y: int = 62
     mic_preset: str = "custom"
+    welcome_text: str = ""
+    welcome_speak: bool = False
+    recommended_prompts: List[str] = field(default_factory=list)
 
 
 @dataclass

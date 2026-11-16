@@ -88,6 +88,44 @@ MIN_BOARD_HEIGHT = 180
 MAX_BOARD_HEIGHT = 720
 MIN_BOARD_MAX_ITEMS = 1
 MAX_BOARD_MAX_ITEMS = 12
+MAX_STAGE_WELCOME_TEXT_CHARS = 500
+MAX_STAGE_RECOMMENDED_PROMPTS = 4
+MAX_STAGE_RECOMMENDED_PROMPT_CHARS = 200
+
+
+def validate_stage_welcome_text(value: Any) -> str:
+    """Validate and normalize the stage welcome message text."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError("舞台歡迎詞須為文字")
+    text = value.strip()
+    if len(text) > MAX_STAGE_WELCOME_TEXT_CHARS:
+        raise ValueError(f"舞台歡迎詞最多 {MAX_STAGE_WELCOME_TEXT_CHARS} 字")
+    return text
+
+
+def validate_stage_recommended_prompts(value: Any) -> list[str]:
+    """Validate and normalize 0–4 non-empty visitor recommended prompts."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError("訪客推薦提問須為清單")
+    cleaned: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ValueError("訪客推薦提問項目須為文字")
+        text = item.strip()
+        if not text:
+            continue
+        if len(text) > MAX_STAGE_RECOMMENDED_PROMPT_CHARS:
+            raise ValueError(
+                f"每題訪客推薦提問最多 {MAX_STAGE_RECOMMENDED_PROMPT_CHARS} 字"
+            )
+        cleaned.append(text)
+    if len(cleaned) > MAX_STAGE_RECOMMENDED_PROMPTS:
+        raise ValueError(f"訪客推薦提問最多 {MAX_STAGE_RECOMMENDED_PROMPTS} 題")
+    return cleaned
 
 
 def assistant_profile_snapshot(config) -> Dict[str, Any]:
@@ -536,6 +574,13 @@ def stage_snapshot(config) -> Dict[str, Any]:
         "mic_preset": validate_board_preset(
             getattr(stage, "mic_preset", DEFAULT_MIC_PRESET)
         ),
+        "welcome_text": validate_stage_welcome_text(
+            getattr(stage, "welcome_text", "")
+        ),
+        "welcome_speak": bool(getattr(stage, "welcome_speak", False)),
+        "recommended_prompts": validate_stage_recommended_prompts(
+            getattr(stage, "recommended_prompts", [])
+        ),
     }
 
 
@@ -651,6 +696,16 @@ def apply_stage_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
             )
         if "mic_preset" in payload:
             stage.mic_preset = validate_board_preset(payload["mic_preset"])
+        if "welcome_text" in payload:
+            stage.welcome_text = validate_stage_welcome_text(payload["welcome_text"])
+        if "welcome_speak" in payload:
+            if not isinstance(payload["welcome_speak"], bool):
+                raise ValueError("進場歡迎語音開關須為布林值")
+            stage.welcome_speak = payload["welcome_speak"]
+        if "recommended_prompts" in payload:
+            stage.recommended_prompts = validate_stage_recommended_prompts(
+                payload["recommended_prompts"]
+            )
     except ValueError as exc:
         raise SettingsError(str(exc)) from exc
     for key, value in composer_values.items():
