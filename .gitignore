@@ -80,6 +80,10 @@ certs/
 *.pem
 *.key
 *.crt
+*.cer
+*.der
+*.p12
+*.srl
 
 # Temporary files
 *.tmp
