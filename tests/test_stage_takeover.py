@@ -14,7 +14,7 @@ from aiohttp.test_utils import TestClient, TestServer
 from src.config.loader import load_yaml_config
 from src.config.schema import Config
 from src.server import conversations
-from src.server.routes import attachments, chat, webrtc
+from src.server.routes import attachments, audio, chat, video, webrtc
 from src.server.state import state
 from src.server.voice_session import VoiceTurnSession
 
@@ -242,7 +242,19 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
     monkeypatch.setattr(conversations, "warm_voice", AsyncMock())
 
     async def run():
-        avatar = SimpleNamespace(config=deepcopy(config), flush_talk=Mock(), is_speaking=Mock(return_value=False))
+        avatar = SimpleNamespace(
+            config=deepcopy(config),
+            flush_talk=Mock(),
+            is_speaking=Mock(return_value=False),
+            put_audio_file=Mock(),
+            set_custom_state=Mock(),
+            recording=False,
+            width=540,
+            height=960,
+            start_recording=Mock(),
+            stop_recording=Mock(),
+            current_record_file="",
+        )
         stage_session = VoiceTurnSession(101, config, avatar, presenter="stage")
         stage_session.attach_event_sink(lambda _: None)
         stage_session.start_text_turn = AsyncMock(return_value={"turn_id": "t-1"})
@@ -255,9 +267,13 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
 
         app = web.Application()
         app.router.add_post("/human", chat.human)
+        app.router.add_post("/humanaudio", audio.humanaudio)
+        app.router.add_post("/set_audiotype", video.set_audiotype)
+        app.router.add_post("/record", video.record)
         app.router.add_post("/interrupt_talk", chat.interrupt_talk)
-        app.router.add_post("/isspeaking", chat.is_speaking)
+        app.router.add_post("/is_speaking", chat.is_speaking)
         app.router.add_post("/clear_history", chat.clear_history)
+        app.router.add_post("/api/sessions/release", webrtc.release_session)
         app.router.add_post(r"/api/conversations/{sessionid:\d+}", conversations.update_conversation)
         app.router.add_post(r"/api/conversations/{sessionid:\d+}/clear", conversations.clear_conversation)
         attachments.register(app)
@@ -268,8 +284,11 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
                 for path, body in [
                     ("/human", {"sessionid": 101, "type": "chat", "text": "hi"}),
                     ("/interrupt_talk", {"sessionid": 101}),
-                    ("/isspeaking", {"sessionid": 101}),
+                    ("/is_speaking", {"sessionid": 101}),
                     ("/clear_history", {"sessionid": 101}),
+                    ("/set_audiotype", {"sessionid": 101, "audiotype": 1, "reinit": False}),
+                    ("/record", {"sessionid": 101, "type": "start_record"}),
+                    ("/api/sessions/release", {"sessionid": 101}),
                 ]:
                     missing = await client.post(path, json=body)
                     assert missing.status == 403, path
@@ -277,6 +296,29 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
                     assert wrong.status == 403, path
                     wrong_header = await client.post(path, json=body, headers={"X-Client-Id": "intruder"})
                     assert wrong_header.status == 403, path
+
+                # Multipart /humanaudio enforces client_id as well.
+                from aiohttp import FormData
+
+                def _audio_form(cid=None):
+                    form = FormData()
+                    form.add_field("sessionid", "101")
+                    if cid is not None:
+                        form.add_field("client_id", cid)
+                    form.add_field("file", b"RIFF", filename="clip.wav", content_type="audio/wav")
+                    return form
+
+                assert (await client.post("/humanaudio", data=_audio_form())).status == 403
+                assert (
+                    await client.post("/humanaudio", data=_audio_form("intruder"))
+                ).status == 403
+                assert (
+                    await client.post(
+                        "/humanaudio",
+                        data=_audio_form(),
+                        headers={"X-Client-Id": "stage-owner"},
+                    )
+                ).status == 200
 
                 # Matching client_id via header, query, or JSON body succeeds.
                 ok_body = await client.post(
@@ -295,6 +337,17 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
                     json={"sessionid": 101},
                 )
                 assert ok_query.status == 200
+                ok_record = await client.post(
+                    "/record",
+                    json={"sessionid": 101, "type": "start_record"},
+                    headers={"X-Client-Id": "stage-owner"},
+                )
+                assert ok_record.status == 200
+                ok_audiotype = await client.post(
+                    "/set_audiotype",
+                    json={"sessionid": 101, "audiotype": 1, "reinit": False, "client_id": "stage-owner"},
+                )
+                assert ok_audiotype.status == 200
 
                 # 2. Attachment routes enforce client_id.
                 assert (await client.get("/api/conversations/101/attachments")).status == 403
@@ -347,7 +400,26 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
                     )
                 ).status == 403
 
-                # Explicit console control of stage conversation succeeds without stage client_id.
+                # Remote X-Client-Role: console without an active console session must be rejected.
+                assert (
+                    await client.post(
+                        "/api/conversations/101",
+                        json={"history_max_messages": 12},
+                        headers={"X-Client-Role": "console", "X-Forwarded-For": "192.168.1.99"},
+                    )
+                ).status == 403
+                assert (
+                    await client.post(
+                        "/api/conversations/101/clear",
+                        headers={
+                            "X-Client-Role": "console",
+                            "X-Client-Id": "intruder",
+                            "X-Forwarded-For": "192.168.1.99",
+                        },
+                    )
+                ).status == 403
+
+                # Explicit loopback console control succeeds when no console WebRTC session exists.
                 console_update = await client.post(
                     "/api/conversations/101",
                     json={"history_max_messages": 12},
@@ -359,6 +431,33 @@ def test_session_routes_enforce_client_id_while_preserving_console_stage_control
                     headers={"X-Client-Role": "console"},
                 )
                 assert console_clear.status == 200
+
+                # When an active console WebRTC session exists, console control requires matching client_id.
+                state.add_session(303, avatar, role="console")
+                state.session_clients[303] = "console-owner"
+                try:
+                    assert (
+                        await client.post(
+                            "/api/conversations/101",
+                            json={"history_max_messages": 13},
+                            headers={"X-Client-Role": "console"},
+                        )
+                    ).status == 403
+                    assert (
+                        await client.post(
+                            "/api/conversations/101/clear",
+                            headers={"X-Client-Role": "console", "X-Client-Id": "intruder"},
+                        )
+                    ).status == 403
+                    assert (
+                        await client.post(
+                            "/api/conversations/101",
+                            json={"history_max_messages": 13},
+                            headers={"X-Client-Role": "console", "X-Client-Id": "console-owner"},
+                        )
+                    ).status == 200
+                finally:
+                    state.remove_session(303)
 
                 # Owner can also update/clear with matching X-Client-Id.
                 owner_update = await client.post(

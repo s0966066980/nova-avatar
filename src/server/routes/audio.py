@@ -9,6 +9,7 @@ import asyncio
 
 from src.llm.service import llm_response
 from src.utils.logging import logger
+from src.server.session_guard import guard_session_request
 from src.server.state import state
 
 
@@ -17,6 +18,8 @@ async def humanaudio(request):
     try:
         form = await request.post()
         sessionid = int(form.get('sessionid', 0))
+        if (forbidden := guard_session_request(request, sessionid, payload=form)) is not None:
+            return forbidden
         fileobj = form["file"]
         filename = fileobj.filename
         filebytes = fileobj.file.read()

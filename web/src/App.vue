@@ -1276,10 +1276,11 @@ const handleStartRecord = async () => {
   try {
     const response = await fetch('/record', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-Id': clientId },
       body: JSON.stringify({
         type: 'start_record',
-        sessionid: sessionId.value
+        sessionid: sessionId.value,
+        client_id: clientId
       })
     })
     
@@ -1314,10 +1315,11 @@ const handleStopRecord = async () => {
   try {
     const response = await fetch('/record', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Client-Id': clientId },
       body: JSON.stringify({
         type: 'end_record',
-        sessionid: sessionId.value
+        sessionid: sessionId.value,
+        client_id: clientId
       })
     })
     

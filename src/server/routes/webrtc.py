@@ -15,6 +15,7 @@ import asyncio
 from src.utils.webrtc import HumanPlayer
 from src.avatars.factory import create_avatar
 from src.utils.logging import logger
+from src.server.session_guard import guard_session_request
 from src.server.state import state
 from src.server.utils import randN
 from src.server.voice_session import VoiceTurnSession
@@ -56,9 +57,8 @@ async def _evict_stage_sessions() -> None:
 async def release_session(request):
     params = await request.json()
     sessionid = params.get("sessionid")
-    client_id = params.get("client_id")
-    if not client_id or state.session_clients.get(sessionid) != client_id:
-        return web.json_response({"code": -1, "msg": "無效的連線識別"}, status=403)
+    if (forbidden := guard_session_request(request, sessionid, payload=params, require_registered=True)) is not None:
+        return forbidden
     cleanup = state.session_cleanups.get(sessionid)
     if cleanup:
         await cleanup()

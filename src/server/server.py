@@ -36,14 +36,11 @@ async def on_shutdown(app):
     from src.server.routes.webrtc import close_sessions
     from src.tts.engines.edge import shutdown_edge_tts
 
-    async def _close_sessions():
-        await close_sessions()
-
     async def _close_edge_tts():
         await asyncio.to_thread(shutdown_edge_tts)
 
     for label, step in (
-        ("WebRTC 會話", _close_sessions),
+        ("WebRTC 會話", close_sessions),
         ("Edge TTS 連線池", _close_edge_tts),
     ):
         try:
@@ -215,6 +212,14 @@ def run_server(app, config):
             cleaned_up = True
             await runner.cleanup()
 
+        def _clear_signal_handlers() -> None:
+            for sig in registered_signals:
+                try:
+                    loop.remove_signal_handler(sig)
+                except (NotImplementedError, RuntimeError, ValueError):
+                    pass
+            registered_signals.clear()
+
         async def _serve() -> None:
             stop_event = asyncio.Event()
             stopping = False
@@ -250,12 +255,7 @@ def run_server(app, config):
             try:
                 await stop_event.wait()
             finally:
-                for sig in registered_signals:
-                    try:
-                        loop.remove_signal_handler(sig)
-                    except (NotImplementedError, RuntimeError, ValueError):
-                        pass
-                registered_signals.clear()
+                _clear_signal_handlers()
                 await _cleanup_once()
 
         try:
@@ -263,11 +263,7 @@ def run_server(app, config):
         except KeyboardInterrupt:
             logger.info("收到 KeyboardInterrupt，正在優雅關閉伺服器...")
         finally:
-            for sig in registered_signals:
-                try:
-                    loop.remove_signal_handler(sig)
-                except (NotImplementedError, RuntimeError, ValueError):
-                    pass
+            _clear_signal_handlers()
             if not cleaned_up:
                 loop.run_until_complete(_cleanup_once())
             try:

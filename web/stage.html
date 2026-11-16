@@ -964,13 +964,13 @@ import {
     // 只綁一次 srcObject。音軌與視訊軌是分開抵達的，每次 ontrack 都重綁會讓
     // 元素重新接管已在播放的音訊管線，兩軌可能因此跑在各自的時鐘上。
     video.srcObject = remote;
-    const updateStagePlayback = () => {
+    const syncAudioUnlockButton = () => {
       if(video.srcObject !== remote || !remote.getTracks().length) return;
       setAudioUnlockVisible(Boolean(video.paused || video.muted || video.volume === 0));
     };
-    video.onplaying = updateStagePlayback;
-    video.onpause = updateStagePlayback;
-    video.onvolumechange = updateStagePlayback;
+    video.onplaying = syncAudioUnlockButton;
+    video.onpause = syncAudioUnlockButton;
+    video.onvolumechange = syncAudioUnlockButton;
     pc.ontrack = (e) => {
       if(attempt !== stageGeneration) return;
       configureReplyPlayout(e);

@@ -8,6 +8,7 @@ import json
 from aiohttp import web
 
 from src.utils.logging import logger
+from src.server.session_guard import guard_session_request
 from src.server.state import state
 
 
@@ -16,6 +17,8 @@ async def set_audiotype(request):
     try:
         params = await request.json()
         sessionid = params.get('sessionid', 0)
+        if (forbidden := guard_session_request(request, sessionid, payload=params)) is not None:
+            return forbidden
         state.avatar_streams[sessionid].set_custom_state(params['audiotype'], params['reinit'])
 
         return web.Response(
@@ -42,6 +45,8 @@ async def record(request):
 
         sessionid = params.get('sessionid', 0)
         logger.info(f'[錄製API] sessionid={sessionid}')
+        if (forbidden := guard_session_request(request, sessionid, payload=params)) is not None:
+            return forbidden
         
         if sessionid not in state.avatar_streams:
             logger.error(f'[錄製API] 錄製失敗: sessionid {sessionid} 不存在')

@@ -68,6 +68,34 @@ class ServerState:
     def get_session(self, sessionid: int) -> BaseAvatar:
         """獲取會話"""
         return self.avatar_streams.get(sessionid)
+
+    def session_owner_id(self, sessionid: int) -> str:
+        """Return the registered client_id for a session, or empty string if unregistered."""
+        return self.session_clients.get(sessionid) or ""
+
+    def session_role(self, sessionid: int) -> str:
+        """Return the presenter role ('stage' or 'console') for a session."""
+        return (
+            self.session_roles.get(sessionid)
+            or getattr(self.voice_sessions.get(sessionid), "_presenter", None)
+            or ""
+        )
+
+    def console_client_ids(self) -> Set[str]:
+        """Return registered client_ids belonging to active console sessions."""
+        return {
+            cid
+            for sid, role in self.session_roles.items()
+            if role == "console" and (cid := self.session_clients.get(sid))
+        }
+
+    def has_registered_session(self, sessionid: int) -> bool:
+        """Return True if sessionid has an active stream, voice session, or client binding."""
+        return (
+            sessionid in self.voice_sessions
+            or sessionid in self.avatar_streams
+            or sessionid in self.session_clients
+        )
     
     def add_peer_connection(self, pc: RTCPeerConnection):
         """新增 WebRTC 連線"""

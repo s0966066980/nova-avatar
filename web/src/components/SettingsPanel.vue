@@ -1149,15 +1149,38 @@
               </div>
             </div>
 
-            <div class="setting-form-row" v-if="sttModelOptions.length">
+            <div class="setting-form-row" v-if="sttModelOptions.length || useCustomSttPath">
               <div class="field-label-group">
                 <label for="stt-model-size" class="field-main-label">辨識模型</label>
               </div>
               <div class="field-control-area">
-                <div class="input-group"><select id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
-                  <option v-for="model in sttModelOptions" :key="model" :value="model">{{ model }}</option>
-                </select><button v-if="pathPickerState.available" type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('stt', 'directory')">選擇資料夾</button></div>
-                <span v-if="!pathPickerState.available" class="field-sub-hint">{{ pathPickerState.hint }}</span>
+                <SpeechPathField
+                  :picker-state="pathPickerState"
+                  button-label="選擇資料夾"
+                  @pick="chooseSpeechPath('stt', 'directory')"
+                >
+                  <input
+                    v-if="useCustomSttPath"
+                    id="stt-model-size"
+                    class="chat-text-entry"
+                    type="text"
+                    v-model.trim="sttDraft.model_size"
+                    placeholder="輸入伺服器上的模型資料夾路徑"
+                  >
+                  <select v-else id="stt-model-size" class="std-select" v-model="sttDraft.model_size">
+                    <option v-for="model in sttModelOptions" :key="model" :value="model">{{ model }}</option>
+                  </select>
+                  <template #actions>
+                    <button
+                      type="button"
+                      id="stt-custom-path-toggle"
+                      class="btn btn-outline-secondary"
+                      @click="toggleCustomSttPath"
+                    >
+                      {{ useCustomSttPath ? '預設清單' : '自訂路徑' }}
+                    </button>
+                  </template>
+                </SpeechPathField>
               </div>
             </div>
 
@@ -1298,8 +1321,13 @@
                   <label for="tts-cosyvoice-prompt-wav" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
                 </div>
                 <div class="field-control-area">
-                  <div class="input-group"><input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model"><button v-if="pathPickerState.available" type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'directory')">選擇資料夾</button></div>
-                  <span v-if="!pathPickerState.available" class="field-sub-hint">{{ pathPickerState.hint }}</span>
+                  <SpeechPathField
+                    :picker-state="pathPickerState"
+                    button-label="選擇資料夾"
+                    @pick="chooseSpeechPath('tts', 'directory')"
+                  >
+                    <input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model">
+                  </SpeechPathField>
                 </div>
               </div>
             </template>
@@ -1311,14 +1339,19 @@
                 <span class="field-sub-hint">{{ t('settings.speech.referencePathDesc') }}</span>
               </div>
               <div class="field-control-area">
-                <div class="input-group"><input
-                  id="tts-voice-audio-path"
-                  class="chat-text-entry"
-                  type="text"
-                  v-model.trim="ttsDraft.ref_file"
-                  :placeholder="t('settings.speech.referencePathPlaceholder')"
-                ><button v-if="pathPickerState.available" type="button" class="btn btn-outline-secondary" @click="chooseSpeechPath('tts', 'file')">選擇音檔</button></div>
-                <span v-if="!pathPickerState.available" class="field-sub-hint">{{ pathPickerState.hint }}</span>
+                <SpeechPathField
+                  :picker-state="pathPickerState"
+                  button-label="選擇音檔"
+                  @pick="chooseSpeechPath('tts', 'file')"
+                >
+                  <input
+                    id="tts-voice-audio-path"
+                    class="chat-text-entry"
+                    type="text"
+                    v-model.trim="ttsDraft.ref_file"
+                    :placeholder="t('settings.speech.referencePathPlaceholder')"
+                  >
+                </SpeechPathField>
               </div>
             </div>
           </section>
@@ -1495,6 +1528,7 @@ import { avatarScenePreviewUrl } from '../scenePreview.js'
 import RagFlowSettings from './RagFlowSettings.vue'
 import WeatherSettings from './WeatherSettings.vue'
 import PrerecordedAvatarPanel from './PrerecordedAvatarPanel.vue'
+import SpeechPathField from './SpeechPathField.vue'
 import {
   boardReopenPresentation,
   micStyle,
@@ -1752,6 +1786,26 @@ const isCosyVoiceFamily = computed(() => (
 const pathPickerState = computed(() => speechPathPickerState({
   serverAvailable: speech.local_path_picker_available
 }))
+const customSttPathOverride = ref(false)
+const useCustomSttPath = computed(() => (
+  customSttPathOverride.value
+  || (Boolean(sttDraft.model_size) && !sttModelOptions.value.includes(sttDraft.model_size))
+))
+
+watch(() => sttDraft.type, () => {
+  customSttPathOverride.value = false
+})
+
+function toggleCustomSttPath() {
+  if (useCustomSttPath.value) {
+    customSttPathOverride.value = false
+    if (sttModelOptions.value.length && !sttModelOptions.value.includes(sttDraft.model_size)) {
+      sttDraft.model_size = sttModelOptions.value[0]
+    }
+    return
+  }
+  customSttPathOverride.value = true
+}
 
 async function chooseSpeechPath(target, kind) {
   try {

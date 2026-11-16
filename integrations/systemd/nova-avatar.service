@@ -18,7 +18,7 @@ Environment=OPENCV_FOR_THREADS_NUM=1
 Environment=NOVA_START_RAGFLOW=0
 EnvironmentFile=-%h/nova-avatar/config/ragflow.env
 ExecStartPre=/usr/bin/env uv run python scripts/check-cuda.py
-ExecStart=/usr/bin/env uv run python src/server/app.py --config config/config_jetson.yaml
+ExecStart=/usr/bin/env bash scripts/start-server.sh --systemd config/config_jetson.yaml
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30

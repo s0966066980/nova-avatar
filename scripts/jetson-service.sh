@@ -16,6 +16,9 @@ CONFIG_FILE="${NOVA_CONFIG_FILE:-config/config_jetson.yaml}"
 CPU_THREADS="${NOVA_AVATAR_CPU_THREADS:-1}"
 START_RAGFLOW="${NOVA_START_RAGFLOW:-0}"
 
+# shellcheck source=lib/server-config.sh
+. "$PROJECT_ROOT/scripts/lib/server-config.sh"
+
 usage() {
     cat <<EOF
 用法：$0 <subcommand> [options]
@@ -41,24 +44,6 @@ resolve_config_path() {
     else
         printf '%s/%s\n' "$PROJECT_ROOT" "$CONFIG_FILE"
     fi
-}
-
-read_protocol() {
-    local cfg="$1"
-    if [ -f "$cfg" ] && grep -Eq '^[[:space:]]*ssl:[[:space:]]*true([[:space:]]|$)' "$cfg"; then
-        printf 'https\n'
-    else
-        printf 'http\n'
-    fi
-}
-
-read_backend_port() {
-    local cfg="$1"
-    local port=""
-    if [ -f "$cfg" ]; then
-        port="$(awk '/^[[:space:]]*listenport:[[:space:]]*[0-9]+/ {print $2; exit}' "$cfg" 2>/dev/null || true)"
-    fi
-    printf '%s\n' "${port:-8010}"
 }
 
 read_config_value() {
@@ -120,7 +105,7 @@ render_unit() {
             } else if ($0 ~ /^Environment=NOVA_START_RAGFLOW=/) {
                 print "Environment=NOVA_START_RAGFLOW=" ragflow
             } else if ($0 ~ /^ExecStart=/) {
-                print "ExecStart=/usr/bin/env uv run python src/server/app.py --config " cfg
+                print "ExecStart=/usr/bin/env bash scripts/start-server.sh --systemd " cfg
             } else {
                 print
             }

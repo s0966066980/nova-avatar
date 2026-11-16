@@ -19,16 +19,21 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/web"
 CONFIG_FILE="config/config.yaml"
 AUTO_BUILD="${NOVA_AUTO_BUILD_WEB:-0}"
+SYSTEMD_MODE=0
 BACKEND_PID=""
 RAGFLOW_OWNED=0
 
+# shellcheck source=lib/server-config.sh
+. "$PROJECT_ROOT/scripts/lib/server-config.sh"
+
 show_usage() {
     echo -e "${YELLOW}使用方法:${NC}"
-    echo -e "${YELLOW}  $0 [--build] [config/file.yaml]${NC}"
+    echo -e "${YELLOW}  $0 [--build] [--systemd] [config/file.yaml]${NC}"
     echo ""
     echo -e "${YELLOW}說明:${NC}"
     echo -e "${YELLOW}  僅啟動 :8010 後端並直接提供 web/dist 靜態頁面（控制台 / 與舞台 /stage.html）。${NC}"
-    echo -e "${YELLOW}  --build  若 web/dist 缺失或落後前端原始碼，自動執行 npm run build。${NC}"
+    echo -e "${YELLOW}  --build    若 web/dist 缺失或落後前端原始碼，自動執行 npm run build。${NC}"
+    echo -e "${YELLOW}  --systemd  以前景模式直接執行（供 systemd Type=simple 使用）。${NC}"
     echo ""
 }
 
@@ -42,26 +47,16 @@ while [ $# -gt 0 ]; do
             AUTO_BUILD=1
             shift
             ;;
+        --systemd)
+            SYSTEMD_MODE=1
+            shift
+            ;;
         *)
             CONFIG_FILE="$1"
             shift
             ;;
     esac
 done
-
-read_protocol() {
-    if grep -Eq '^[[:space:]]*ssl:[[:space:]]*true([[:space:]]|$)' "$1"; then
-        echo https
-    else
-        echo http
-    fi
-}
-
-read_backend_port() {
-    local port
-    port=$(awk '/^[[:space:]]*listenport:[[:space:]]*[0-9]+/ {print $2; exit}' "$1" 2>/dev/null || true)
-    echo "${port:-8010}"
-}
 
 web_dist_is_stale() {
     local ref="$FRONTEND_DIR/dist/index.html"
@@ -87,13 +82,18 @@ ensure_web_dist() {
     local dist_stage="$FRONTEND_DIR/dist/stage.html"
 
     if [ ! -f "$dist_index" ] || [ ! -f "$dist_stage" ]; then
-        echo -e "${YELLOW}⚠ 找不到完整的前端建置產物 web/dist${NC}"
-        if build_web_dist; then
-            echo -e "${GREEN}✓${NC} web/dist 建置完成"
-            return 0
+        if [ "$AUTO_BUILD" = 1 ]; then
+            echo -e "${YELLOW}⚠ 找不到完整的前端建置產物 web/dist，正在自動建置...${NC}"
+            if build_web_dist; then
+                echo -e "${GREEN}✓${NC} web/dist 建置完成"
+                return 0
+            fi
+            echo -e "${RED}❌ 錯誤: 找不到 web/dist（index.html / stage.html），且缺少 npm 或 web/node_modules 無法自動建置${NC}" >&2
+            echo -e "${YELLOW}請先執行: cd web && npm install && npm run build${NC}" >&2
+            exit 1
         fi
-        echo -e "${RED}❌ 錯誤: 找不到 web/dist（index.html / stage.html），且無法自動建置${NC}"
-        echo -e "${YELLOW}請先執行: cd web && npm install && npm run build${NC}"
+        echo -e "${RED}❌ 錯誤: 找不到完整的前端建置產物 web/dist（index.html / stage.html）${NC}" >&2
+        echo -e "${YELLOW}請先執行: cd web && npm run build（或加上 --build / NOVA_AUTO_BUILD_WEB=1）${NC}" >&2
         exit 1
     fi
 
@@ -156,7 +156,7 @@ if ! command -v uv >/dev/null 2>&1; then
     exit 1
 fi
 
-if [ ! -d "$PROJECT_ROOT/.venv" ]; then
+if [ ! -d "$PROJECT_ROOT/.venv" ] && [ -z "${UV_PROJECT_ENVIRONMENT:-}" ]; then
     echo -e "${RED}❌ 錯誤: 虛擬環境 '.venv' 不存在${NC}"
     exit 1
 fi
@@ -180,7 +180,9 @@ clear_port() {
     fi
 }
 
-clear_port "$BACKEND_PORT"
+if [ "$SYSTEMD_MODE" -eq 0 ]; then
+    clear_port "$BACKEND_PORT"
+fi
 
 if [ "${NOVA_START_RAGFLOW:-auto}" != 0 ] && \
     { [ "${NOVA_START_RAGFLOW:-auto}" = 1 ] || [ -d "$PROJECT_ROOT/.local/ragflow/upstream/.git" ]; }; then
@@ -194,6 +196,28 @@ else
     echo -e "${YELLOW}RAGFlow 尚未準備或已停用；部署方式見 docs/ragflow.md${NC}"
 fi
 
+load_ragflow_env() {
+    if [ -f "$PROJECT_ROOT/config/ragflow.env" ]; then
+        set -a
+        . "$PROJECT_ROOT/config/ragflow.env"
+        set +a
+    fi
+}
+
+cd "$PROJECT_ROOT"
+
+if [ "$SYSTEMD_MODE" -eq 1 ]; then
+    load_ragflow_env
+    if [ "$RAGFLOW_OWNED" -eq 0 ]; then
+        trap - EXIT INT TERM
+        exec uv run python src/server/app.py --config "$CONFIG_FILE"
+    fi
+    uv run python src/server/app.py --config "$CONFIG_FILE" &
+    BACKEND_PID=$!
+    wait "$BACKEND_PID"
+    exit $?
+fi
+
 PROTOCOL=$(read_protocol "$CONFIG_FILE")
 BACKEND_URL="${PROTOCOL}://localhost:${BACKEND_PORT}"
 NETWORK_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
@@ -205,13 +229,8 @@ mkdir -p "$PROJECT_ROOT/logs"
 BACKEND_LOG="$PROJECT_ROOT/logs/start-server.log"
 
 echo -e "${BLUE}🔧 啟動單一入口服務 (:${BACKEND_PORT})...${NC}"
-cd "$PROJECT_ROOT"
 (
-    if [ -f "$PROJECT_ROOT/config/ragflow.env" ]; then
-        set -a
-        . "$PROJECT_ROOT/config/ragflow.env"
-        set +a
-    fi
+    load_ragflow_env
     exec uv run python src/server/app.py --config "$CONFIG_FILE"
 ) >>"$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!

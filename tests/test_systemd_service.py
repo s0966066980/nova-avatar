@@ -280,7 +280,8 @@ class SystemdUnitAndCliRenderTests(unittest.TestCase):
         self.assertIn("ExecStartPre=", unit)
         self.assertIn("scripts/check-cuda.py", unit)
         self.assertIn("ExecStart=", unit)
-        self.assertIn("src/server/app.py --config config/config_jetson.yaml", unit)
+        self.assertIn("scripts/start-server.sh --systemd config/config_jetson.yaml", unit)
+        self.assertIn("scripts/start-server.sh --systemd config/config_jetson.yaml", UNIT_TEMPLATE.read_text(encoding="utf-8"))
         for env_line in (
             "Environment=OMP_NUM_THREADS=1",
             "Environment=OPENBLAS_NUM_THREADS=1",
@@ -535,6 +536,83 @@ class SystemdLifecycleAndPreflightTests(unittest.TestCase):
         finally:
             server.shutdown()
             server.server_close()
+
+    def test_start_server_systemd_mode_honors_ragflow_and_execs_app(self):
+        start_server = ROOT / "scripts" / "start-server.sh"
+        server_config_lib = ROOT / "scripts" / "lib" / "server-config.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "scripts" / "lib").mkdir(parents=True)
+            (tmp_path / "config").mkdir()
+            (tmp_path / "web" / "dist").mkdir(parents=True)
+            (tmp_path / ".venv").mkdir()
+            (tmp_path / "config" / "config_jetson.yaml").write_text(
+                "app:\n  listenport: 8010\n  ssl: false\n", encoding="utf-8"
+            )
+            (tmp_path / "web" / "dist" / "index.html").write_text("<html></html>", encoding="utf-8")
+            (tmp_path / "web" / "dist" / "stage.html").write_text("<html></html>", encoding="utf-8")
+            (tmp_path / "scripts" / "start-server.sh").write_text(
+                start_server.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            if server_config_lib.is_file():
+                (tmp_path / "scripts" / "lib" / "server-config.sh").write_text(
+                    server_config_lib.read_text(encoding="utf-8"), encoding="utf-8"
+                )
+
+            call_log = tmp_path / "calls.log"
+            fake_bin = tmp_path / "bin"
+            fake_bin.mkdir()
+            uv_stub = fake_bin / "uv"
+            uv_stub.write_text(
+                f"#!/usr/bin/env bash\necho \"uv $*\" >> {str(call_log)!r}\n",
+                encoding="utf-8",
+            )
+            uv_stub.chmod(0o755)
+
+            ragflow_stub = tmp_path / "scripts" / "ragflow.sh"
+            ragflow_stub.write_text(
+                textwrap.dedent(
+                    f"""\
+                    #!/usr/bin/env bash
+                    echo "ragflow $*" >> {str(call_log)!r}
+                    if [ "$1" = "is-running" ]; then
+                        exit 1
+                    fi
+                    exit 0
+                    """
+                ),
+                encoding="utf-8",
+            )
+            ragflow_stub.chmod(0o755)
+
+            base_env = {**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}"}
+            res_off = subprocess.run(
+                ["bash", str(tmp_path / "scripts" / "start-server.sh"), "--systemd", "config/config_jetson.yaml"],
+                cwd=str(tmp_path),
+                env={**base_env, "NOVA_START_RAGFLOW": "0"},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(res_off.returncode, 0, res_off.stdout + res_off.stderr)
+            calls_off = call_log.read_text(encoding="utf-8").splitlines()
+            self.assertFalse(any(line.startswith("ragflow ") for line in calls_off), calls_off)
+            self.assertIn("uv run python src/server/app.py --config config/config_jetson.yaml", calls_off)
+
+            call_log.unlink()
+            res_on = subprocess.run(
+                ["bash", str(tmp_path / "scripts" / "start-server.sh"), "--systemd", "config/config_jetson.yaml"],
+                cwd=str(tmp_path),
+                env={**base_env, "NOVA_START_RAGFLOW": "1"},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(res_on.returncode, 0, res_on.stdout + res_on.stderr)
+            calls_on = call_log.read_text(encoding="utf-8").splitlines()
+            self.assertIn("ragflow up", calls_on)
+            self.assertIn("uv run python src/server/app.py --config config/config_jetson.yaml", calls_on)
+            self.assertIn("ragflow down", calls_on)
 
 
 if __name__ == "__main__":

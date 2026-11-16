@@ -10,6 +10,7 @@ from typing import Any, NoReturn
 
 from aiohttp import web
 
+from src.server.request_origin import is_loopback_request
 from src.server.state import state
 
 
@@ -54,30 +55,50 @@ def authorize_session_request(
     allow_console_stage_control: bool = False,
 ) -> bool:
     """Verify caller ownership of a session, preserving explicit console->stage control."""
-    owner_client_id = state.session_clients.get(sessionid) or ""
+    owner_client_id = state.session_owner_id(sessionid)
     provided_client_id = extract_client_id(request, payload)
     caller_role = extract_client_role(request, payload)
-    session_role = (
-        state.session_roles.get(sessionid)
-        or getattr(state.voice_sessions.get(sessionid), "_presenter", None)
-        or ""
-    )
+    session_role = state.session_role(sessionid)
 
     if allow_console_stage_control and session_role == "stage" and caller_role == "console":
-        if not provided_client_id or provided_client_id == owner_client_id:
+        if provided_client_id and provided_client_id == owner_client_id:
             return True
-        console_clients = {
-            cid
-            for sid, role in state.session_roles.items()
-            if role == "console" and (cid := state.session_clients.get(sid))
-        }
-        return not console_clients or provided_client_id in console_clients
+        console_clients = state.console_client_ids()
+        if console_clients:
+            return bool(provided_client_id) and provided_client_id in console_clients
+        return is_loopback_request(request)
 
     if provided_client_id:
         return bool(owner_client_id) and provided_client_id == owner_client_id
     if owner_client_id:
         return False
     return True
+
+
+def guard_session_request(
+    request: Any,
+    sessionid: int,
+    *,
+    payload: Any = None,
+    allow_console_stage_control: bool = False,
+    require_registered: bool = False,
+) -> web.Response | None:
+    """Return a 403 JSON response when session ownership verification fails, else None."""
+    if require_registered:
+        owner_client_id = state.session_owner_id(sessionid)
+        provided_client_id = extract_client_id(request, payload)
+        if not owner_client_id or provided_client_id != owner_client_id:
+            return session_forbidden_response()
+        return None
+    if state.has_registered_session(sessionid):
+        if not authorize_session_request(
+            request,
+            sessionid,
+            payload=payload,
+            allow_console_stage_control=allow_console_stage_control,
+        ):
+            return session_forbidden_response()
+    return None
 
 
 def session_forbidden_response() -> web.Response:

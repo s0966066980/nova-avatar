@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import {
@@ -13,6 +13,7 @@ import {
 
 const rag = readFileSync(new URL('../src/components/RagFlowSettings.vue', import.meta.url), 'utf8')
 const panel = readFileSync(new URL('../src/components/SettingsPanel.vue', import.meta.url), 'utf8')
+const speechFieldUrl = new URL('../src/components/SpeechPathField.vue', import.meta.url)
 
 test('isLoopbackHost accurately distinguishes loopback vs LAN and Tailscale hosts', () => {
   assert.equal(isLoopbackHost('localhost'), true)
@@ -75,7 +76,15 @@ test('RagFlowSettings and SettingsPanel wire remote access guards cleanly', () =
   assert.match(rag, /ragflowAccess\.tunnelCommand/)
   assert.doesNotMatch(rag, /ref\('http:\/\/127\.0\.0\.1:8088'\)/)
 
+  assert.equal(existsSync(speechFieldUrl), true, 'SpeechPathField.vue should deduplicate picker + hint markup')
+  const speechField = readFileSync(speechFieldUrl, 'utf8')
+  assert.match(speechField, /v-if="pickerState\.available"/)
+  assert.match(speechField, /pickerState\.hint/)
+
   assert.match(panel, /speechPathPickerState/)
-  assert.match(panel, /v-if="pathPickerState\.available"/)
-  assert.match(panel, /pathPickerState\.hint/)
+  assert.equal((panel.match(/<SpeechPathField\b/g) || []).length, 3)
+  assert.doesNotMatch(panel, /pathPickerState\.hint/)
+  assert.match(panel, /id="stt-custom-path-toggle"/)
+  assert.match(panel, /useCustomSttPath/)
+  assert.match(panel, /v-model\.trim="sttDraft\.model_size"/)
 })
