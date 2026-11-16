@@ -32,10 +32,10 @@ Tailscale VPN 內的其他電腦、平板與手機開啟使用。
 - **全鏈路即時對話**：支援**免按對話模式**、按住說話與**插話**；數位人說話期間會**收音暫停**（由伺服器推送的**發話狀態事件**控制），使用者按下麥克風即可打斷。
 - **伺服器端端點與輪次編排**：Silero VAD 判定發話邊界（說完靜音 300 ms 送出），由伺服器單獨擁有**輪次編排**，取消或斷線後以**輪次隔離**丟棄舊內容。
 - **回答分成口語與看板**：單一 LLM 依可編輯的**回覆規則**決定直接口述，或分流為「**口語摘要**＋**看板回覆**」條列，並以實際播放進度進行**輪次提交**。
-- **回覆語音串流（選用）**：可在控制台開啟**回覆語音串流**，邊生成邊於**完整語意邊界**切分合成語音；出廠預設維持**舊有回覆模式**。
+- **回覆語音串流**：支援於控制台開啟**回覆語音串流**，邊生成邊於**完整語意邊界**切分合成語音（目前版本執行期已啟用，`strong_min_chars: 1`；**出廠預設設定**為關閉）。
 
 ### 數位人、演播場景與多語系
-- **數位人呈現方式**：支援 **MuseTalk 即時嘴型** 與 **預錄呈現**（以預錄的待機影片與說話影片呈現動作，對話語音仍即時合成，適合穩定低延遲服務）。
+- **數位人呈現方式**：支援 **預錄呈現**（目前版本預設以預錄的待機與說話影片呈現動作，對話語音即時合成，回應穩定低延遲）與 **MuseTalk 即時嘴型**（FP16 TensorRT UNet + TAESD，可隨時於控制台切換）。
 - **綠幕去背與演播場景**：綠幕數位人在後端即時去背合成至共用**舞台背景**（圖片、GIF、循環影片），講話中亦可切換背景。
 - **舞台語系**：每場舞台對話可獨立切換「繁體中文」或「English」，同步涵蓋舞台介面、語音辨識、回覆文字與語音，不影響控制台或其他場次。
 - **兩階段舞台閒置重置**：舞台回答結束閒置達設定秒數（預設 10 秒，控制台可調 3–300 秒）僅清除字幕與看板，保留記憶與附件；閒置達 120 秒後執行**場次完整清空**。
@@ -98,17 +98,17 @@ flowchart LR
 
 ## 使用的模型
 
-以下為 `config/config_jetson.yaml` 的**出廠預設設定**；控制台保存的**執行期覆蓋設定**（`config/runtime_overrides.yaml`）會在啟動時蓋過它：
+以下為目前 Jetson Orin 版本實際執行的模型組合（由本機**執行期覆蓋設定** `config/runtime_overrides.yaml` 套用；[config_jetson.yaml](config/config_jetson.yaml) 則保留 `LFM2.5-2.6B-Q4_K_M`、`faster-whisper base` 與關閉串流的**出廠預設設定**）：
 
-| 環節 | 出廠預設模型 | 授權提醒 |
-| --- | --- | --- |
-| 語音端點偵測 | Silero VAD（CUDA） | 權重未稽核 |
-| 語音轉文字 | faster-whisper `base`（CUDA） | Whisper 為 MIT |
-| 語言模型 | LFM2.5-2.6B Q4_K_M（llama.cpp，CUDA） | LFM Open License v1.0，商業使用有年營收條件 |
-| 語音合成 | Edge TTS（線上服務，需網路） | 服務與聲音條款須自行審閱 |
-| 數位人 | MuseTalk v1.5＋TensorRT UNet＋TAESD | MuseTalk 程式碼 MIT；權重另受各自條款 |
+| 環節 | 目前版本使用模型／元件 | 位置與說明 | 授權依據（見 [docs/models.md](docs/models.md)） |
+| --- | --- | --- | --- |
+| 語言模型與視覺理解（LLM） | **Gemma-4-E2B QAT q4_0**（含多模態 `mmproj`） | `llama/gemma-4-E2B_q4_0-it.gguf` + `llama/gemma-4-E2B-it-mmproj.gguf`（由本機 CUDA `llama-server` 載入，同時負責對話、看板、天氣閘門與 PDF／圖片附件分析） | 官方模型卡標示 Apache-2.0（固定版本 `675cff42a74c774d6cb76f76d8eacb49b48c9b93`） |
+| 語音轉文字（STT） | **faster-whisper `small`**（CUDA） | `models/whisper-small/`（`language: auto`，中英雙語轉繁體中文輸出） | MIT（OpenAI Whisper） |
+| 語音端點偵測（VAD） | **Silero VAD**（CUDA） | `silero-vad` 套件內附 JIT 模型（靜音 `300 ms` 判定發話結束） | 套件 MIT；權重未另行稽核 |
+| 語音合成（TTS） | **Edge TTS**（線上免金鑰服務，需網路） | 中文預設 `zh-TW-HsiaoChenNeural`、英文預設 `en-US-JennyNeural`（啟用連線池預熱重用） | `edge-tts` 套件 LGPLv3；線上服務與聲音條款須自行審閱 |
+| 數位人呈現 | **`musetalk_1`（目前為預錄呈現）**／MuseTalk v1.5 | 預設採預錄影片呈現以確保低延遲穩定；切換即時嘴型時使用 `models/musetalk/`、FP16 TensorRT UNet 與 TAESD（720×1280） | MuseTalk 程式碼 MIT（TME）；TAESD MIT；權重條款未逐項稽核 |
 
-本機另可切換 Whisper `small`／`turbo`、FunASR、LFM2.5-1.2B、Gemma-4-E2B（含多模態視覺 `mmproj` 支援對話附件）、Granite-4.2-3B、Ministral-3-3B、Qwen3.5 等模型。**完整清單、檔案位置與授權依據見 [使用的模型](docs/models.md)。**
+本機 `llama/` 與 `models/` 另備有可從控制台切換的模型：Whisper `large-v3-turbo`／`base`、FunASR `paraformer-zh`、`LFM2.5-2.6B-Q4_K_M`、`LFM2.5-1.2B-Instruct`、`Granite-4.2-3B`、`Ministral-3-3B`、`Qwen3.5-4B／2B` 等。**完整清單、檔案位置與授權依據見 [使用的模型](docs/models.md)。**
 Wav2Lip 為 **Research / Non-commercial**，不得視為具商業許可，本分支也未驗證其 ARM64 相依套件。
 
 ## 系統需求
@@ -150,18 +150,25 @@ bash scripts/build-jetson-llama.sh
 
 ### 步驟 3：準備模型、素材與選用金鑰
 
-模型權重、TensorRT engine 與角色素材不加入 Git，全新 checkout 需自行準備：
+模型權重、TensorRT engine 與角色素材不加入 Git，全新 checkout 需依目前版本需求準備：
 
 | 項目 | 位置 | 準備方式 |
 | --- | --- | --- |
-| MuseTalk 與相依權重 | `models/musetalk/`、`models/sd-vae/`、`models/face-parse-bisent/` | `bash scripts/download_musetalk_weights.sh` |
-| TAESD 輕量解碼器 | `.local/jetson/taesd/` | 見下方指令 |
-| TensorRT UNet engine | `.local/jetson/musetalk-unet-fp16.engine` | 依 [realtime-avatar.md](docs/realtime-avatar.md#本機檔案) 建置 |
-| LLM（GGUF） | `llama/` | 放入 `LFM2.5-2.6B-Q4_K_M.gguf`、`gemma-4-E2B_q4_0-it.gguf` 等 |
-| 角色素材 | `data/avatars/musetalk_1/` | 預設角色（含可選預錄素材） |
+| LLM 與視覺投影（目前預設 Gemma-4-E2B） | `llama/` | 下載 `gemma-4-E2B_q4_0-it.gguf` 與 `gemma-4-E2B-it-mmproj.gguf`（見下方指令；可另放 `LFM2.5-2.6B-Q4_K_M.gguf` 等備選） |
+| 語音辨識（目前預設 `whisper-small`） | `models/whisper-small/` | 準備 CTranslate2 格式 Whisper `small`（`base` 可於首次執行自動下載） |
+| 角色素材（含預錄呈現） | `data/avatars/musetalk_1/` | 預設角色（含 `prerecorded/` 待機與說話影片素材） |
+| MuseTalk 與即時嘴型權重（即時模式用） | `models/musetalk/`、`models/sd-vae/`、`models/face-parse-bisent/` | `bash scripts/download_musetalk_weights.sh` |
+| TAESD 與 TensorRT UNet engine（即時模式用） | `.local/jetson/taesd/`、`.local/jetson/musetalk-unet-fp16.engine` | 下載 TAESD（見下方指令），並依 [realtime-avatar.md](docs/realtime-avatar.md#本機檔案) 建置 engine |
 | CWA 天氣 API 金鑰（選用） | `config/cwa.env` | 寫入 `NOVA_CWA_API_KEY=<你的氣象署授權碼>`（`0600` 權限，不入 Git） |
 
 ```bash
+# 1. 下載目前預設之 Gemma-4-E2B QAT q4_0 GGUF 與多模態 mmproj（固定版本）
+uvx --from huggingface_hub hf download google/gemma-4-E2B-it-qat-q4_0-gguf \
+  gemma-4-E2B_q4_0-it.gguf gemma-4-E2B-it-mmproj.gguf \
+  --revision 675cff42a74c774d6cb76f76d8eacb49b48c9b93 \
+  --local-dir llama
+
+# 2. 若需即時 MuseTalk 嘴型，下載 TAESD 輕量解碼器
 uvx --from huggingface_hub hf download madebyollin/taesd \
   config.json diffusion_pytorch_model.safetensors README.md \
   --revision 614f76814bbe30edbe2e627ace1c2234c81a2c0e \
