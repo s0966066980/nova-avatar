@@ -51,6 +51,7 @@ AREA_BY_FILE = {
     "test_skill_update.py": "governance",
     "test_sovits_tts.py": "speech",
     "test_speech_timing.py": "conversation",
+    "test_ssl_certs.py": "runtime",
     "test_stage_idle_reset.py": "conversation",
     "test_stage_takeover.py": "runtime",
     "test_vad.py": "speech",
