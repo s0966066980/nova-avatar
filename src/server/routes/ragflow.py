@@ -51,10 +51,15 @@ async def put_ragflow_settings(request):
         if not isinstance(payload, dict):
             raise ValueError("設定內容必須是物件")
         avatar_id = _avatar_id(payload.get("avatar_id"))
+        strict_grounding = payload.get("strict_grounding")
+        if strict_grounding is None:
+            strict_grounding = True
         settings = save_avatar_settings(
             avatar_id,
             enabled=payload.get("enabled"),
             dataset_ids=payload.get("dataset_ids"),
+            strict_grounding=strict_grounding,
+            refusal_message=payload.get("refusal_message"),
         )
     except (ValueError, json.JSONDecodeError) as exc:
         return _json({"code": -1, "msg": str(exc)}, status=400)

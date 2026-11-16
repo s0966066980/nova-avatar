@@ -12,6 +12,10 @@ const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')
 test('RAG 設定是獨立頁籤並按數位人保存選擇', () => {
   assert.match(panel, /RagFlowSettings/)
   assert.match(rag, /avatar_id: avatarId, enabled: draft\.enabled, dataset_ids: draft\.datasetIds/)
+  assert.match(rag, /strict_grounding:\s*draft\.strictGrounding/)
+  assert.match(rag, /refusal_message:\s*draft\.refusalMessage/)
+  assert.match(rag, /v-model="draft\.strictGrounding"/)
+  assert.match(rag, /v-model="draft\.refusalMessage"/)
   assert.match(rag, /\/api\/ragflow\/settings/)
   assert.match(rag, /\/api\/ragflow\/datasets/)
   assert.match(rag, /\/api\/ragflow\/test/)
@@ -20,8 +24,10 @@ test('RAG 設定是獨立頁籤並按數位人保存選擇', () => {
 
 test('檢索參考與故障可顯示，但空結果不混入對話', () => {
   assert.match(app, /event\.type === 'rag_retrieval'/)
+  assert.match(app, /strictRefusal:\s*Boolean\(event\.strict_refusal\)/)
   assert.match(app, /event\.type === 'turn_cancelled'[\s\S]*delete ragByTurn\[event\.turn_id\]/)
   assert.match(app, /ragByTurn\[msg\.voiceTurnId\]\.status === 'unavailable'/)
+  assert.match(app, /ragByTurn\[msg\.voiceTurnId\]\.strictRefusal/)
   assert.match(app, /<details[^>]*class="rag-turn-references"/)
   assert.match(app, /status === 'unavailable'[\s\S]*\|\| ragByTurn\[msg\.voiceTurnId\]\.sources\.length/)
   assert.doesNotMatch(app, /ragByTurn\[msg\.voiceTurnId\]\.status === 'empty'/)

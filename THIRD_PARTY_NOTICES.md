@@ -24,15 +24,19 @@ Applicable source files retain their LiveTalking attribution.
 
 ## MuseTalk
 
-- Role: lip-sync avatar engine
+- Role: lip-sync avatar engine and Phase A prerecorded-presentation container
 - Code license: MIT
 - Copyright: Copyright (c) 2024 Tencent Music Entertainment Group
 - Source: <https://github.com/TMElyralab/MuseTalk>
 - Local license copy: [`third_party/licenses/MuseTalk-LICENSE.txt`](third_party/licenses/MuseTalk-LICENSE.txt)
 
 The MuseTalk code license permits commercial use, but bundled models and
-dependencies retain their own licenses. Verify every model and dependency used
-in a distribution.
+dependencies (`musetalkV15/unet.pth`, derived TensorRT engines, `models/sd-vae/`,
+`dwpose`, `s3fd`, `models/face-parse-bisent/`) retain their own licenses and are
+**not audited** in this repository. Phase A commercial deployments default to
+prerecorded presentation (`presentation_modes.<avatar_id>: prerecorded`) to
+avoid runtime lip-sync weight inference; verify every model, weight, and
+recorded avatar portrait/voice release before commercial distribution.
 
 ## Wav2Lip
 
@@ -52,6 +56,17 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - License: MIT
 - Copyright: Copyright (c) 2022 OpenAI
 - Source: <https://github.com/openai/whisper>
+
+## Silero VAD
+
+- Role: server-side streaming voice activity detection (`src/vad/engines/silero.py`)
+- Source: <https://github.com/snakers4/silero-vad>
+- Package metadata: `silero-vad` 6.2.1 PyPI classifier declares **MIT License**
+- Audit note: the installed `silero_vad` wheel bundles `.jit` / `.onnx` model
+  weights without a separate `LICENSE` file in the wheel directory, and the
+  weights and training-data provenance have **not** been independently audited in
+  this repository. Review upstream `snakers4/silero-vad` license and weight
+  terms before external commercial packaging.
 
 ## FunASR
 
@@ -94,7 +109,9 @@ must not be included in or used for a commercial Nova Avatar distribution.
 - Ollama role: separate GPU embedding process; existing host installation or
   locally downloaded official ARM64 v0.35.1 and JetPack CUDA runner
 - Ollama source: <https://github.com/ollama/ollama>
-- BGE-M3 role: recommended multilingual embedding model
+- BGE-M3 role: optional multilingual embedding model (not audited in this
+  repository; verify upstream model card and weight terms before commercial
+  knowledge-base delivery)
 - BGE-M3 source and model card: <https://huggingface.co/BAAI/bge-m3>
 - Native runtime packages retain their respective licenses; the Microsoft ODBC
   driver is distributed under Microsoft's separate EULA, not Nova's Apache-2.0
@@ -121,6 +138,27 @@ terms remain controlling for those files.
 Edge TTS, GPT-SoVITS, CosyVoice, Fun-CosyVoice, Fish TTS, XTTS, and IndexTTS2
 are optional integrations. Verify the exact code, service, voice, model, and
 checkpoint terms before redistribution or commercial packaging.
+
+- **Edge TTS (`edge-tts` 7.2.8)**: package metadata classifier declares
+  **LGPLv3**. It connects to Microsoft's online Edge read-aloud endpoint; online
+  service and voice terms are **not cleared for external commercial sale**.
+  Retain only for internal POC evaluation and replace before customer delivery
+  (see [`docs/commercial-release-checklist.md`](docs/commercial-release-checklist.md)).
+
+## External open data APIs
+
+### CWA OpenData (`src/weather/`)
+
+- Source: Central Weather Administration (交通部中央氣象署),
+  <https://opendata.cwa.gov.tw/>
+- Role: optional real-time weather observation and forecast lookup using an
+  operator-supplied API key (`NOVA_CWA_API_KEY` in `config/cwa.env`).
+- Terms and audit note: external government open-data service (not bundled
+  software weights). Retain required source attribution (`交通部中央氣象署`),
+  ensure the commercial operator obtains its own production API key, and review
+  applicable Taiwan Government Open Data License (OGDL v1.0), Meteorological
+  Act, and CWA OpenData usage terms before commercial deployment. Set
+  `weather.enabled: false` if weather lookup is not needed.
 
 ## Models, weights, and datasets
 

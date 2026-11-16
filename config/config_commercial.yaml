@@ -1,9 +1,13 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 #
-# Commercial review profile. This selects the recommended runtime path but does
-# not grant rights to models, voices, weights, datasets, or external services.
-# Review docs/software-stack.md and THIRD_PARTY_NOTICES.md before distribution.
+# Phase A Commercial Review Profile (Jetson AGX Orin / Pre-recorded baseline).
+# This selects the recommended runtime baseline (Gemma-4-E2B + whisper-small +
+# prerecorded presentation) and excludes non-commercial, revenue-capped, and
+# unaudited models. It does NOT grant rights to models, voices, weights,
+# datasets, or external services. Review docs/commercial-release-checklist.md,
+# docs/models.md, docs/software-stack.md, and THIRD_PARTY_NOTICES.md before
+# internal POC or external commercial distribution.
 
 app:
   listenport: 8010
@@ -16,10 +20,16 @@ app:
     host: 0.0.0.0
 
 model:
-  # MuseTalk is the recommended Avatar integration path. Wav2Lip is excluded
-  # because its bundled upstream integration is Research / Non-commercial.
+  # Keep type: musetalk as the supported avatar runtime path while defaulting
+  # Phase A delivery to prerecorded presentation (idle + talking video loops).
+  # BLOCKING FOR EXTERNAL COMMERCIAL SALE: replace the placeholder avatar_id
+  # and re-record owned-rights idle/talking video assets with signed portrait
+  # and voice releases before customer delivery (do not ship dev user_upload
+  # assets). Non-commercial and unaudited avatar engines are excluded.
   type: musetalk
   avatar_id: musetalk_avatar1
+  presentation_modes:
+    musetalk_avatar1: prerecorded
   batch_size: 8
   model_path: ./models
   mouth_sharpen: 0.5
@@ -34,17 +44,21 @@ model:
     settling_max_frames: 6
 
 tts:
-  # Edge TTS is the checked integration path. Its service and voice terms still
-  # require review for the intended distribution.
+  # POC-ONLY / BLOCKING FOR EXTERNAL COMMERCIAL SALE:
+  # Edge TTS (edge-tts package: LGPLv3; Microsoft online read-aloud service and
+  # voice terms are NOT cleared for commercial redistribution) may only be used
+  # during internal POC evaluation. You MUST replace this with a commercially
+  # cleared local or licensed TTS engine before external commercial delivery.
   type: edgetts
   ref_file: zh-TW-HsiaoChenNeural
   edge_persistent_worker: true
   edge_prefetch: true
+  edge_connection_reuse: true
 
 asr:
   mode: server
   type: whisper
-  model_size: base
+  model_size: small
   language: zh
   output_script: traditional-tw
   device: auto
@@ -55,12 +69,18 @@ vad:
   device: cpu
 
 llm:
-  # Select either an appropriately licensed Ollama model or a llama.cpp GGUF
-  # model for the deployment. This example retains the local Ollama endpoint.
-  provider: ollama
+  # Local llama.cpp GGUF server with Google Gemma-4-E2B QAT q4_0 (Apache-2.0)
+  # and paired mmproj vision projector. Revenue-capped and unaudited LLM
+  # baselines are excluded from this profile.
+  provider: llamacpp
   api_key: ollama
-  base_url: http://localhost:11434/v1
-  model: qwen3.5:4b
+  base_url: http://127.0.0.1:8080/v1
+  model: gemma-4-E2B_q4_0-it
+  llamacpp_dir: ./llama
+  llamacpp_host: 127.0.0.1
+  llamacpp_port: 8080
+  llamacpp_ctx: 8192
+  llamacpp_threads: 0
   max_tokens: 128
   response_max_chars: 120
 

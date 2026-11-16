@@ -185,6 +185,46 @@ FunASR 與 Silero 推論。faster-whisper 首次執行會下載 base 模型；
 `torch.cuda.is_available()` 判斷模型可用性。新增不同模型或 CUDA 算子時，
 也需執行實際推論確認其支援。
 
+### Orin 50 輪預錄呈現連續語音 Soak 與異常恢復驗證
+
+Phase A 商用交付基線採用**預錄呈現**（`Gemma-4-E2B` + `faster-whisper small` + `Silero VAD`）。於 Orin 實機啟動 `:8010` 單一入口服務並確認 `/health` 回傳 `ready: true` 後，執行 50 輪連續語音與異常恢復 soak：
+
+```bash
+SERVER_PID=$(pgrep -f "src/app.py" | head -n1)
+uv run python scripts/run_voice_soak.py \
+  --base-url https://localhost:8010 \
+  --turns 50 \
+  --presentation prerecorded \
+  --profile jetson-orin-prerecorded \
+  --interrupt-every 10 \
+  --llm-interrupt-every 15 \
+  --rapid-every 12 \
+  --reject-every 16 \
+  --reconnect-every 17 \
+  --max-first-audio-p50 1.2 \
+  --max-first-audio-p95 2.5 \
+  --max-rss-growth-mb 256 \
+  ${SERVER_PID:+--server-pid "$SERVER_PID"} \
+  --output logs/jetson-prerecorded-soak.json
+```
+
+測試情境涵蓋一般多輪問答（`short` / `long` / `weak_punctuation` / `no_punctuation`）、**插話**打斷（`interrupt` / `llm_interrupt`）、快速連續提問（`rapid_consecutive`）、低音量與空字串**語音輸入品質閘門**拒收驗證（`low_volume` / `empty_asr`，於 `speech_input_rejected` 或閘門釋放後直接恢復 `listening` 而不卡死），以及定期 WebRTC 斷線重連恢復（`reconnect`）。
+
+**驗收標準（輸出報告 `logs/jetson-prerecorded-soak.json` 須達成 `slo_pass: true`）：**
+
+- **完整輪次與零殘留**：`turns >= 50`（`checks.at_least_50_turns: true`）且 `stale_output_events == 0`（`checks.stale_output: true`）。
+- **感知首音與插話延遲**：`first_audio_seconds.p50 <= 1.2` s、`first_audio_seconds.p95 <= 2.5` s、`interrupt_stop_seconds.p95 <= 0.2` s、`listening_resume_seconds.p95 <= 0.5` s。
+- **影音同步與排隊上限**：`av_offset_seconds.p95 <= 0.08` s、`media_debt_seconds.maximum <= 2.0` s。
+- **異常與斷線恢復**：`recovery.failed_probes == 0`（`checks.recovery_passed: true`），所有拒收與重連皆自動回到 `listening`。
+- **記憶體洩漏防護**：`memory_trend.delta_mb <= 256.0` MB（`checks.memory_leak_guard: true`），並持續記錄 `slope_mb_per_sample`。
+- **各階段耗時與去內容化報告**：`metrics.stage_seconds` 完整記錄 `vad_endpoint`、`asr`、`llm_first_token`、`tts_first_pcm`、`webrtc_audio_commit` 等階段 P50/P95，`environment.presentation` 為 `"prerecorded"`，且報告不含任何逐字稿或音訊資料。
+
+**離線自動回歸檢查（CI／開發機可執行）：**
+
+```bash
+uv run pytest tests/test_voice_soak.py tests/test_reply_streaming.py
+```
+
 套件與模型仍各自適用其授權；MuseTalk 的 MIT notice、Tencent Music
 Entertainment Group attribution 和 Wav2Lip **Research / Non-commercial**
 限制保留。來源與限制見 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。

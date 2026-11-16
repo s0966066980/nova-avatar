@@ -59,6 +59,7 @@ AREA_BY_FILE = {
     "test_systemd_service.py": "runtime",
     "test_vad.py": "speech",
     "test_voice_session.py": "conversation",
+    "test_voice_soak.py": "conversation",
     "test_weather_context.py": "conversation",
     "test_weather_keywords.py": "conversation",
     "test_webrtc_lifecycle.py": "runtime",

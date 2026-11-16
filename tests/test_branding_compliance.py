@@ -39,6 +39,8 @@ class BrandingComplianceTests(unittest.TestCase):
         self.assertIn("Copyright (c) 2024 Tencent Music Entertainment Group", third_party)
         self.assertRegex(third_party, r"Wav2Lip[\s\S]+Research / Non-commercial")
         self.assertRegex(third_party, r"Wav2Lip[\s\S]+not permitted")
+        for required in ("Silero VAD", "CWA OpenData", "opendata.cwa.gov.tw", "BGE-M3", "Edge TTS"):
+            self.assertIn(required, third_party)
         self.assertTrue((ROOT / "third_party/licenses/MuseTalk-LICENSE.txt").is_file())
 
     def test_user_visible_surfaces_do_not_show_old_brand(self):
@@ -89,6 +91,9 @@ class BrandingComplianceTests(unittest.TestCase):
     def test_commercial_review_profile_and_audits_are_present(self):
         profile = (ROOT / "config/config_commercial.yaml").read_text(encoding="utf-8")
         stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        models_doc = (ROOT / "docs/models.md").read_text(encoding="utf-8")
+        docs_readme = (ROOT / "docs/README.md").read_text(encoding="utf-8")
+        checklist = (ROOT / "docs/commercial-release-checklist.md").read_text(encoding="utf-8")
         attribution_audit = (ROOT / "docs/source-attribution-audit.md").read_text(
             encoding="utf-8"
         )
@@ -97,8 +102,35 @@ class BrandingComplianceTests(unittest.TestCase):
         )
 
         self.assertIn("type: musetalk", profile)
+        self.assertIn("prerecorded", profile)
+        self.assertIn("gemma-4-E2B_q4_0-it", profile)
         self.assertIn("Wav2Lip", stack)
         self.assertIn("Research / Non-commercial", stack)
+        self.assertIn("Gemma-4-E2B", stack)
+        self.assertIn("commercial-release-checklist.md", stack)
+        self.assertIn("commercial-release-checklist.md", docs_readme)
+
+        for required in (
+            "內部 POC 試用",
+            "對外商業銷售",
+            "Blocking",
+            "Edge TTS",
+            "musetalk_1",
+            "user_upload",
+            "Gemma-4-E2B",
+            "whisper-small",
+            "TAESD",
+            "MuseTalk",
+            "Wav2Lip",
+            "Silero VAD",
+            "BGE-M3",
+            "CWA OpenData",
+        ):
+            self.assertIn(required, checklist)
+
+        for required in ("CWA OpenData", "Silero VAD", "BGE-M3", "Edge TTS", "musetalk_1"):
+            self.assertIn(required, models_doc)
+
         self.assertIn("src/avatars/musetalk/", attribution_audit)
         self.assertIn("清除過往工作項目", workflow)
 
