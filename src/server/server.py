@@ -8,6 +8,7 @@
 
 """伺服器啟動和配置"""
 import asyncio
+import signal
 from pathlib import Path
 from aiohttp import web
 import aiohttp_cors
@@ -31,14 +32,35 @@ def _resolve_frontend_dir() -> Path:
 
 async def on_shutdown(app):
     """伺服器關閉時的清理操作"""
+    state.server_ready = False
     from src.server.routes.webrtc import close_sessions
-    await close_sessions()
     from src.tts.engines.edge import shutdown_edge_tts
-    await asyncio.to_thread(shutdown_edge_tts)
-    shutdown_llama_server()
-    shutdown_cosyvoice_server()
-    scene_service.close()
-    routing_clients.close()
+
+    async def _close_sessions():
+        await close_sessions()
+
+    async def _close_edge_tts():
+        await asyncio.to_thread(shutdown_edge_tts)
+
+    for label, step in (
+        ("WebRTC 會話", _close_sessions),
+        ("Edge TTS 連線池", _close_edge_tts),
+    ):
+        try:
+            await step()
+        except Exception:
+            logger.exception("關閉 %s 時發生錯誤", label)
+
+    for label, sync_step in (
+        ("llama-server", shutdown_llama_server),
+        ("CosyVoice", shutdown_cosyvoice_server),
+        ("舞台背景服務", scene_service.close),
+        ("氣象路徑查詢客戶端", routing_clients.close),
+    ):
+        try:
+            sync_step()
+        except Exception:
+            logger.exception("關閉 %s 時發生錯誤", label)
 
 
 def create_app():
@@ -183,20 +205,75 @@ def run_server(app, config):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         runner = web.AppRunner(app)
-        loop.run_until_complete(runner.setup())
-        
-        if use_ssl:
-            import ssl
-            # 僅做服務端 TLS，不做客戶端校驗
-            ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(config.app.ssl_cert, config.app.ssl_key)
-            site = web.TCPSite(runner, listen_host, listen_port, ssl_context=ssl_context)
-            logger.info(f'✅ HTTPS 服務已啟動: https://{listen_host}:{listen_port}')
-        else:
-            site = web.TCPSite(runner, listen_host, listen_port)
-            logger.info(f'✅ HTTP 服務已啟動: http://{listen_host}:{listen_port}')
-        
-        loop.run_until_complete(site.start())
-        loop.run_forever()
-    
+        cleaned_up = False
+        registered_signals: list[signal.Signals] = []
+
+        async def _cleanup_once() -> None:
+            nonlocal cleaned_up
+            if cleaned_up:
+                return
+            cleaned_up = True
+            await runner.cleanup()
+
+        async def _serve() -> None:
+            stop_event = asyncio.Event()
+            stopping = False
+
+            def _request_shutdown(signum: int) -> None:
+                nonlocal stopping
+                if not stopping:
+                    stopping = True
+                    state.server_ready = False
+                    logger.info("收到關閉訊號 %s，正在優雅關閉伺服器...", signum)
+                stop_event.set()
+
+            await runner.setup()
+            if use_ssl:
+                import ssl
+                # 僅做服務端 TLS，不做客戶端校驗
+                ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                ssl_context.load_cert_chain(config.app.ssl_cert, config.app.ssl_key)
+                site = web.TCPSite(runner, listen_host, listen_port, ssl_context=ssl_context)
+                logger.info(f'✅ HTTPS 服務已啟動: https://{listen_host}:{listen_port}')
+            else:
+                site = web.TCPSite(runner, listen_host, listen_port)
+                logger.info(f'✅ HTTP 服務已啟動: http://{listen_host}:{listen_port}')
+
+            await site.start()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                try:
+                    loop.add_signal_handler(sig, _request_shutdown, int(sig))
+                    registered_signals.append(sig)
+                except (NotImplementedError, RuntimeError):
+                    pass
+
+            try:
+                await stop_event.wait()
+            finally:
+                for sig in registered_signals:
+                    try:
+                        loop.remove_signal_handler(sig)
+                    except (NotImplementedError, RuntimeError, ValueError):
+                        pass
+                registered_signals.clear()
+                await _cleanup_once()
+
+        try:
+            loop.run_until_complete(_serve())
+        except KeyboardInterrupt:
+            logger.info("收到 KeyboardInterrupt，正在優雅關閉伺服器...")
+        finally:
+            for sig in registered_signals:
+                try:
+                    loop.remove_signal_handler(sig)
+                except (NotImplementedError, RuntimeError, ValueError):
+                    pass
+            if not cleaned_up:
+                loop.run_until_complete(_cleanup_once())
+            try:
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            finally:
+                loop.close()
+                asyncio.set_event_loop(None)
+
     _run()
