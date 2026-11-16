@@ -51,12 +51,16 @@
       </p>
 
       <div class="rag-actions">
-        <a :href="managementUrl" target="_blank" rel="noopener noreferrer" class="rag-secondary">
+        <a v-if="ragflowAccess.canOpenDirect" :href="ragflowAccess.managementUrl" target="_blank" rel="noopener noreferrer" class="rag-secondary">
           <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> 開啟本機 RAGFlow
         </a>
         <button type="button" class="rag-primary" :disabled="!avatarId || saving || !dirty" @click="save">
           {{ saving ? '儲存中…' : '儲存檢索設定' }}
         </button>
+      </div>
+      <div v-if="!ragflowAccess.canOpenDirect" class="rag-remote-guide" role="note">
+        <p class="rag-hint">{{ ragflowAccess.hint }}</p>
+        <code class="rag-tunnel-cmd">{{ ragflowAccess.tunnelCommand }}</code>
       </div>
       <p v-if="saveNotice" class="rag-notice" role="status" aria-atomic="true">{{ saveNotice }}</p>
       <p v-if="saveError" class="rag-alert" role="alert">{{ saveError }}</p>
@@ -89,6 +93,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { ragflowAccessGuide } from '../remoteAccess.js'
 
 const props = defineProps({
   avatarId: { type: String, default: '' },
@@ -98,7 +103,8 @@ const props = defineProps({
 const draft = reactive({ enabled: false, datasetIds: [] })
 const saved = reactive({ enabled: false, datasetIds: [] })
 const configured = ref(false)
-const managementUrl = ref('http://127.0.0.1:8088')
+const managementUrl = ref('')
+const isLocalClient = ref(true)
 const datasets = ref([])
 const loading = ref(false)
 const loadError = ref('')
@@ -117,6 +123,10 @@ const dirty = computed(() => draft.enabled !== saved.enabled ||
 const missingDatasetIds = computed(() => saved.datasetIds.filter(id => !datasets.value.some(item => item.id === id)))
 const statusKind = computed(() => loading.value ? 'loading' : !configured.value ? 'unconfigured' : serviceReady.value ? 'ready' : 'unavailable')
 const statusText = computed(() => loading.value ? '連線檢查中…' : !configured.value ? '尚未設定金鑰' : serviceReady.value ? 'RAGFlow 已連線' : 'RAGFlow 未連線')
+const ragflowAccess = computed(() => ragflowAccessGuide({
+  isLocalClient: isLocalClient.value,
+  managementUrl: managementUrl.value
+}))
 
 async function readJson(response) {
   const body = await response.json()
@@ -143,7 +153,8 @@ async function load() {
     draft.enabled = saved.enabled
     draft.datasetIds = [...saved.datasetIds]
     configured.value = Boolean(data.configured)
-    managementUrl.value = data.management_url || managementUrl.value
+    isLocalClient.value = data.is_local_client !== false
+    managementUrl.value = data.management_url || ''
     await refreshDatasets(generation)
   } catch (error) {
     if (generation === loadGeneration) loadError.value = error.message
@@ -253,6 +264,9 @@ input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--brand-li
 .rag-secondary { border: 1px solid var(--border-default); background: var(--bg-surface-elevated); color: var(--text-primary); }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 .rag-notice { color: var(--success); font-size: 13px; }
+.rag-remote-guide { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--bg-surface-elevated); }
+.rag-remote-guide .rag-hint { margin: 0 0 6px; }
+.rag-tunnel-cmd { display: block; padding: 6px 8px; border-radius: 6px; background: rgba(0, 0, 0, 0.25); font-size: 12px; overflow-wrap: anywhere; user-select: all; }
 .rag-test-label { display: block; margin-top: 18px; margin-bottom: 7px; font-size: 13px; font-weight: 700; }
 textarea { width: 100%; min-height: 90px; box-sizing: border-box; resize: vertical; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-primary); background: var(--bg-surface-elevated); font: inherit; }
 textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }

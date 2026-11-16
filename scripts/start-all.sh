@@ -18,7 +18,21 @@ NC='\033[0m'
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/web"
-CONFIG_FILE="${1:-config/config.yaml}"
+CONFIG_FILE="config/config.yaml"
+PROD_MODE=0
+for arg in "$@"; do
+    case "$arg" in
+        --prod|--server)
+            PROD_MODE=1
+            ;;
+        *)
+            CONFIG_FILE="$arg"
+            ;;
+    esac
+done
+if [ "$PROD_MODE" -eq 1 ]; then
+    exec bash "$PROJECT_ROOT/scripts/start-server.sh" "$CONFIG_FILE"
+fi
 BACKEND_PID=""
 RAGFLOW_OWNED=0
 RAGFLOW_STARTED=0
