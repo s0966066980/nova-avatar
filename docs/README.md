@@ -14,6 +14,7 @@ SPDX-License-Identifier: Apache-2.0
 | [architecture.md](architecture.md) | 系統架構、資料流、對話輪次與原始碼對照 |
 | [models.md](models.md) | 使用的模型、本機可切換的模型與各自的授權依據 |
 | [jetson-orin.md](jetson-orin.md) | Orin 的建置、CUDA 驗證、移植修正與驗證結果 |
+| [https-device-trust.md](https-device-trust.md) | 跨裝置多 SAN HTTPS 憑證產生與 Windows／macOS／iOS／Android 信任匯入 |
 | [../CONTEXT.md](../CONTEXT.md) | 專案詞彙表，文件與程式碼使用的共通語言 |
 
 ## 功能與操作
