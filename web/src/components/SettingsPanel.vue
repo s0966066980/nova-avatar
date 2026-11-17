@@ -1517,17 +1517,9 @@
           <section class="setting-card">
             <div class="card-title-row">
               <div>
-                <div class="card-title-text"><i class="bi bi-speedometer"></i> 系統維護／工程診斷</div>
-                <div class="card-subtitle-desc">語音延遲驗證、WebRTC 除錯監控與本機影片封裝選項。</div>
+                <div class="card-title-text"><i class="bi bi-speedometer"></i> 診斷監控與錄製配置</div>
+                <div class="card-subtitle-desc">效能除錯輔助與本機影片封裝選項。</div>
               </div>
-              <button
-                type="button"
-                class="btn-secondary"
-                style="padding: 6px 12px; font-size: 12px;"
-                @click="emit('open-maintenance'); emit('close-settings')"
-              >
-                <i class="bi bi-wrench-adjustable-circle"></i> 開啟維護診斷抽屜
-              </button>
             </div>
 
             <div class="setting-form-row">
@@ -1663,8 +1655,7 @@ const emit = defineEmits([
   'request-disconnect',
   'avatar-ready',
   'switch-theme',
-  'close-settings',
-  'open-maintenance'
+  'close-settings'
 ])
 
 const showSettings = ref(true)

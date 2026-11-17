@@ -32,22 +32,25 @@ Tailscale VPN 內的其他電腦、平板與手機開啟使用。
 - **全鏈路即時對話**：支援**免按對話模式**、按住說話與**插話**；數位人說話期間會**收音暫停**（由伺服器推送的**發話狀態事件**控制），使用者按下麥克風即可打斷。
 - **伺服器端端點與輪次編排**：Silero VAD 判定發話邊界（說完靜音 300 ms 送出），由伺服器單獨擁有**輪次編排**，取消或斷線後以**輪次隔離**丟棄舊內容。
 - **回答分成口語與看板**：單一 LLM 依可編輯的**回覆規則**決定直接口述，或分流為「**口語摘要**＋**看板回覆**」條列，並以實際播放進度進行**輪次提交**。
-- **回覆語音串流**：支援於控制台開啟**回覆語音串流**，邊生成邊於**完整語意邊界**切分合成語音（目前版本執行期已啟用，`strong_min_chars: 1`；**出廠預設設定**為關閉）。
+- **回覆語音串流**：支援於控制台開啟**回覆語音串流**，邊生成邊於**完整語意邊界**切分合成語音（出廠與商用基線預設關閉，可於控制台即時啟用與調整語意等待秒數）。
 
 ### 數位人、演播場景與多語系
-- **數位人呈現方式**：支援 **預錄呈現**（目前版本預設以預錄的待機與說話影片呈現動作，對話語音即時合成，回應穩定低延遲）與 **MuseTalk 即時嘴型**（FP16 TensorRT UNet + TAESD，可隨時於控制台切換）。
+- **數位人呈現方式**：支援 **預錄呈現**（Phase A 商用基線預設以預錄的待機與說話影片呈現動作，對話語音即時合成，回應穩定低延遲）與 **MuseTalk 即時嘴型**（FP16 TensorRT UNet + TAESD，可隨時於控制台切換）。
 - **綠幕去背與演播場景**：綠幕數位人在後端即時去背合成至共用**舞台背景**（圖片、GIF、循環影片），講話中亦可切換背景。
 - **舞台語系**：每場舞台對話可獨立切換「繁體中文」或「English」，同步涵蓋舞台介面、語音辨識、回覆文字與語音，不影響控制台或其他場次。
+- **舞台歡迎詞、推薦提問與錯誤復原**：控制台可為各場域客製**舞台歡迎詞**、進場語音自動播報（`welcome_speak`）與 **0–4 題訪客推薦提問**；獨立舞台具備麥克風權限／HTTPS 安全檢查、語音輸入品質閘門拒收（`speech_rejected`）、LLM／TTS 失敗與不支援檔案／頁數的友善提示及一鍵重試機制。
 - **兩階段舞台閒置重置**：舞台回答結束閒置達設定秒數（預設 10 秒，控制台可調 3–300 秒）僅清除字幕與看板，保留記憶與附件；閒置達 120 秒後執行**場次完整清空**。
 
 ### 知識庫、附件、天氣與驗證
 - **對話附件與舞台文字輸入**：可上傳 PDF 或圖片進行多輪追問，支援逐輪勾選**本輪參考附件**；舞台可開啟文字與附件輸入框，並具備截斷 JSON 修復與文字回退機制。
 - **中央氣象署天氣查詢（內建工具）**：預設啟用兩階段輕量天氣閘門（一般對話 0 ms 額外延遲），支援場域預設地點與對話臨時地點即時天氣／預報查詢（需設定 `NOVA_CWA_API_KEY`）。
-- **知識庫檢索（RAGFlow，選用）**：整合原生 ARM64 RAGFlow v0.27.2，依數位人選擇知識庫進行**檢索輔助回答**。
-- **控制台真實語音驗證**：一鍵執行完整 LLM → TTS → 數位人 → WebRTC 鏈路，記錄各階段延遲與 Gate 結果。
+- **知識庫檢索與嚴格依據拒答模式（RAGFlow，選用）**：整合原生 ARM64 RAGFlow v0.27.2，依數位人選擇知識庫進行**檢索輔助回答**；支援啟用**嚴格依據拒答模式**（`strict_grounding`）與自訂拒答訊息（`refusal_message`），當選用知識庫無命中（`empty`）或暫時不可用（`unavailable`）時直接拒絕作答而不回退模型自由發揮（僅本輪明確夾帶附件或觸發氣象查詢例外放行，見 [ADR-0013](docs/adr/0013-use-ragflow-for-retrieval-only.md)）。
+- **控制台真實語音驗證**：於控制台聊天工具列提供「語音驗證」面板，一鍵執行完整 LLM → TTS → 數位人 → WebRTC 鏈路，記錄各階段延遲與 Gate 結果（除錯浮層開關位於「系統設定中心 → 診斷監控與錄製配置」）。
 
-### 跨裝置 Server 與單一活躍舞台保護
+### 跨裝置 Server、安全防護與單一活躍舞台
 - **`:8010` 單一入口服務**：正式 Server 模式僅透過 `:8010`（HTTPS）直接提供已建置的控制台 `/`、舞台 `/stage.html`、API 與 WebRTC，不依賴前景 Vite 開發伺服器（`:3000`）。
+- **管理者驗證邊界與訪客舞台隔離**：支援透過 `NOVA_ADMIN_PASSWORD` 或 `app.admin_password` 啟用單一管理者密碼／PIN + HMAC 簽章 `HttpOnly` Session Cookie 驗證（含登入失敗速率限制，5 次失敗鎖定 60 秒）。未設定密碼時於控制台顯示「未啟用管理者認證（開發預設）」提示；設定密碼後 `/` 控制台與管理端 `/api/*`（含 `/api/presentation/jobs/{job_id}/cancel` 與 `/download/{filename}`）未登入回傳 `401`，`/stage.html` 與訪客對話必要端點維持免登入，且舞台徹底移除任何導向控制台的連結。
+- **前端 XSS 安全過濾**：控制台 Markdown 回答（`renderSafeMarkdown`）經 **DOMPurify** 消毒後輸出，獨立舞台看板（`renderBoardItems`）以純 DOM `textContent` 安全組裝，消除 `innerHTML` 注入風險。
 - **多 SAN HTTPS 憑證與裝置信任**：支援 `mkcert` 與 OpenSSL 本地 Root CA 回退，自動簽入區網 IP、`.local` 與 Tailscale IP/MagicDNS，搭配 `rootCA.pem` 匯入指南，讓桌機與 iOS／Android 手機平板皆能正常授權麥克風與解鎖音訊播放。
 - **單一活躍舞台與跨裝置接管**：Jetson 預設 `app.max_session: 1`，確保同一時間只有一台裝置透過舞台佔用即時推論資源；新裝置開啟 `/stage.html` 若已有活躍舞台，會提示「接管此舞台」而非無限重連，舊分頁收到通知後停止搶線。控制台預設停留在不佔用 GPU 的純 HTTP 管理模式。
 - **會話保護與遠端介面清理**：所有會話綁定路由統一透過 `session_guard` 核對 `client_id`；遠端瀏覽器操作控制台時，會自動隱藏／提示僅限本機使用的選項（如本機 `tkinter` 選檔視窗與 `127.0.0.1:8088` 管理連結），改為路徑輸入與 SSH port-forward 指引。
@@ -89,26 +92,27 @@ flowchart LR
 
 ### 目前已知限制
 
-這個分支功能與 CUDA 路徑已驗證，但即時模式延遲仍有限制，不能沿用 RTX 4090 的效能結論（[jetson-orin.md](docs/jetson-orin.md#本機驗證結果2026-09-30)）：
+這個分支功能與 CUDA 路徑已驗證，但即時模式延遲與商用合規仍有以下限制，不能直接沿用 RTX 4090 的效能結論（[jetson-orin.md](docs/jetson-orin.md#本機驗證結果2026-09-30)）：
 
-- 2026-09-30 短測試中，即時 MuseTalk 兩輪語音回合首音延遲為 6.85 秒與 4.48 秒，未達 2.5 秒目標；對即時反應優先的日常助理服務，可於控制台將數位人切換為**預錄呈現**（`prerecorded`）。
+- 2026-09-30 短測試中，即時 MuseTalk 兩輪語音回合首音延遲為 6.85 秒與 4.48 秒，未達 2.5 秒目標；Phase A 商用交付基線改以**預錄呈現**（`prerecorded`）為預設，確保低延遲與穩定表現。
 - 1080×1920 綠幕背景合成的影格處理中位數 35.3 ms，超過 30 ms 門檻，門檻沒有放寬。
-- TAESD 是近似解碼，牙齒與唇部細節會略柔化。
-- 跨裝置連線以同區網或私人 VPN（如 Tailscale）直連為前提，未內建公網 TURN 中繼與使用者帳號登入系統。
+- TAESD 是近似解碼，即時模式下牙齒與唇部細節會略柔化。
+- 跨裝置連線以同區網或私人 VPN（如 Tailscale）直連為前提，未內建公網 TURN 中繼與多角色細粒度帳號權限體系（目前內建單一管理者密碼／PIN 驗證邊界）。
+- **對外商業銷售阻礙（Blocking）**：內部 POC 可暫用 Edge TTS 與測試角色 `musetalk_1`，對外商售前必須依 [商用交付前合規與授權檢查清單（Phase A）](docs/commercial-release-checklist.md) 替換為可商用 TTS 引擎與自有授權之預錄人物／聲音素材。
 
 ## 使用的模型
 
-以下為目前 Jetson Orin 版本實際執行的模型組合（由本機**執行期覆蓋設定** `config/runtime_overrides.yaml` 套用；[config_jetson.yaml](config/config_jetson.yaml) 則保留 `LFM2.5-2.6B-Q4_K_M`、`faster-whisper base` 與關閉串流的**出廠預設設定**）：
+以下為 Phase A 商用審查基線（[config_commercial.yaml](config/config_commercial.yaml)）與目前 Jetson Orin 執行環境之預設組合；[config_jetson.yaml](config/config_jetson.yaml) 則保留 `LFM2.5-2.6B-Q4_K_M`、`faster-whisper base` 與關閉串流的**出廠預設設定**，亦可透過本機**執行期覆蓋設定** `config/runtime_overrides.yaml` 由控制台切換：
 
-| 環節 | 目前版本使用模型／元件 | 位置與說明 | 授權依據（見 [docs/models.md](docs/models.md)） |
+| 環節 | 目前版本使用模型／元件 | 位置與說明 | 授權依據（見 [docs/models.md](docs/models.md) 與 [checklist](docs/commercial-release-checklist.md)） |
 | --- | --- | --- | --- |
 | 語言模型與視覺理解（LLM） | **Gemma-4-E2B QAT q4_0**（含多模態 `mmproj`） | `llama/gemma-4-E2B_q4_0-it.gguf` + `llama/gemma-4-E2B-it-mmproj.gguf`（由本機 CUDA `llama-server` 載入，同時負責對話、看板、天氣閘門與 PDF／圖片附件分析） | 官方模型卡標示 Apache-2.0（固定版本 `675cff42a74c774d6cb76f76d8eacb49b48c9b93`） |
-| 語音轉文字（STT） | **faster-whisper `small`**（CUDA） | `models/whisper-small/`（`language: auto`，中英雙語轉繁體中文輸出） | MIT（OpenAI Whisper） |
-| 語音端點偵測（VAD） | **Silero VAD**（CUDA） | `silero-vad` 套件內附 JIT 模型（靜音 `300 ms` 判定發話結束） | 套件 MIT；權重未另行稽核 |
-| 語音合成（TTS） | **Edge TTS**（線上免金鑰服務，需網路） | 中文預設 `zh-TW-HsiaoChenNeural`、英文預設 `en-US-JennyNeural`（啟用連線池預熱重用） | `edge-tts` 套件 LGPLv3；線上服務與聲音條款須自行審閱 |
-| 數位人呈現 | **`musetalk_1`（目前為預錄呈現）**／MuseTalk v1.5 | 預設採預錄影片呈現以確保低延遲穩定；切換即時嘴型時使用 `models/musetalk/`、FP16 TensorRT UNet 與 TAESD（720×1280） | MuseTalk 程式碼 MIT（TME）；TAESD MIT；權重條款未逐項稽核 |
+| 語音轉文字（STT） | **faster-whisper `small`**（CUDA） | `models/whisper-small/`（`language: auto` 或 `zh`，中英雙語轉繁體中文輸出） | MIT（OpenAI Whisper + faster-whisper） |
+| 語音端點偵測（VAD） | **Silero VAD**（CUDA / CPU） | `silero-vad` 套件內附 JIT 模型（靜音 `300 ms` 判定發話結束） | 套件 MIT；隨附權重尚未獨立稽核 |
+| 語音合成（TTS） | **Edge TTS**（僅限內部 POC，需網路） | 中文預設 `zh-TW-HsiaoChenNeural`、英文預設 `en-US-JennyNeural`（啟用連線池預熱重用） | `edge-tts` 套件 LGPLv3；線上服務與聲音條款不具商業再散佈授權（對外商售須替換） |
+| 數位人呈現 | **`prerecorded`（預錄呈現，Phase A 基線）**／MuseTalk v1.5 | 預設採預錄待機與說話影片呈現以確保低延遲穩定；切換即時嘴型時使用 `models/musetalk/`、FP16 TensorRT UNet 與 TAESD（720×1280） | MuseTalk 程式碼 MIT（TME）；TAESD MIT；權重條款未逐項稽核（測試角色 `musetalk_1` 僅限 POC） |
 
-本機 `llama/` 與 `models/` 另備有可從控制台切換的模型：Whisper `large-v3-turbo`／`base`、FunASR `paraformer-zh`、`LFM2.5-2.6B-Q4_K_M`、`LFM2.5-1.2B-Instruct`、`Granite-4.2-3B`、`Ministral-3-3B`、`Qwen3.5-4B／2B` 等。**完整清單、檔案位置與授權依據見 [使用的模型](docs/models.md)。**
+本機 `llama/` 與 `models/` 另備有可從控制台切換的模型：Whisper `large-v3-turbo`／`base`、FunASR `paraformer-zh`、`LFM2.5-2.6B-Q4_K_M`、`LFM2.5-1.2B-Instruct`、`Granite-4.2-3B`、`Ministral-3-3B`、`Qwen3.5-4B／2B` 等（`config_commercial.yaml` 明確排除含年營收門檻之 `LFM2.5` 與未稽核之 `Qwen3.5`）。**完整清單、檔案位置與授權依據見 [使用的模型](docs/models.md)。**
 Wav2Lip 為 **Research / Non-commercial**，不得視為具商業許可，本分支也未驗證其 ARM64 相依套件。
 
 ## 系統需求
@@ -253,10 +257,12 @@ bash scripts/jetson-service.sh restart   # 更改設定、憑證或重建 web/di
 bash scripts/jetson-service.sh stop      # 停止服務（要切換至前景開發模式前請先執行）
 ```
 
-若不想安裝 `systemd` 而只想在前景手動跑 `:8010` 單一入口：
+若不想安裝 `systemd` 而只想在前景手動跑 `:8010` 單一入口（可選用商用基線 `config/config_commercial.yaml` 或設定管理者密碼 `NOVA_ADMIN_PASSWORD`）：
 
 ```bash
-bash scripts/start-server.sh config/config_jetson.yaml
+NOVA_ADMIN_PASSWORD=<管理者密碼> bash scripts/start-server.sh config/config_commercial.yaml
+# 若使用 Orin 硬體出廠設定：
+# bash scripts/start-server.sh config/config_jetson.yaml
 # 若修改過 web/ 原始碼，可加 --build 自動重建 web/dist：
 # bash scripts/start-server.sh --build config/config_jetson.yaml
 ```
@@ -297,9 +303,10 @@ bash scripts/start-server.sh config/config_jetson.yaml
 4. **對話互動**：支援**免按對話模式**（靜音 300 ms 自動送出）、按住說話與**插話**；右下／下方可依設定使用文字與圖片／PDF 對話附件輸入，並可即時切換中文／English **舞台語系**。
 
 ### 2. 在其他裝置開啟控制台（`/`）
-- 控制台預設停留在管理模式（不建立佔用 GPU 的 WebRTC 連線），可直接調整 LLM／STT／TTS／舞台設定、編輯回覆規則與助手身分、管理背景與角色，或檢視天氣／知識庫設定。
+- 若已透過 `NOVA_ADMIN_PASSWORD` 或 `app.admin_password` 啟用管理者認證，開啟 `/` 會回傳 `401` 並先顯示控制台登入視窗，登入後透過 `HttpOnly` Session Cookie 存取管理介面與 `/download/*` 錄影下載；未設定密碼時控制台頂部會顯示「未啟用管理者認證（開發預設）」提醒。
+- 控制台預設停留在管理模式（不建立佔用 GPU 的 WebRTC 連線），可直接調整 LLM／STT／TTS／舞台歡迎詞與推薦提問、編輯回覆規則與助手身分、管理背景與角色，或檢視天氣／知識庫（含嚴格依據拒答模式）設定。
 - 若需在遠端調整伺服器本機模型路徑，系統會自動隱藏僅限本機的系統選檔按鈕並切換為文字路徑輸入（STT 支援切換「自訂路徑」輸入）。
-- 需要測試完整語音鏈路時，再點擊連線並於「語音驗證」面板執行一鍵測試。
+- 需要測試完整語音鏈路時，可點擊聊天工具列的「語音驗證」執行一鍵測試；即時除錯監控浮層可於「系統設定中心 → 診斷監控與錄製配置」切換開啟。
 
 ### 3. 選用知識庫檢索（RAGFlow）
 
@@ -329,25 +336,26 @@ bash scripts/ragflow.sh status      # 檢視狀態
 提交與發布前依序執行：
 
 ```bash
-uv run python scripts/check-cuda.py --models   # 真實 CUDA 模型推論（MuseTalk、faster-whisper、FunASR、Silero）
-uv run python scripts/check-integration.py     # 品牌、授權與整合稽核
-uv run pytest                                  # Python 測試
+uv run python scripts/check-cuda.py --models                        # 真實 CUDA 模型推論（MuseTalk、faster-whisper、FunASR、Silero）
+uv run python scripts/check-integration.py                          # 品牌、授權、整合與商用基線稽核
+uv run python scripts/check-integration.py config/config_commercial.yaml  # 驗證 Phase A 商用審查設定檔
+uv run pytest                                                       # Python 測試
 cd web
-npm test                                       # 前端測試
-npm run build                                  # 前端 production build（更新 :8010 服務之 web/dist）
+npm test                                                            # 前端測試
+npm run build                                                       # 前端 production build（更新 :8010 服務之 web/dist）
 ```
 
-不要只用 `torch.cuda.is_available()` 判斷模型可用。已記錄的驗證結果與限制見
+部署後實機 50 輪預錄呈現穩定性與斷線／品質閘門恢復 soak 壓測指令見 [jetson-orin.md](docs/jetson-orin.md#orin-50-輪預錄呈現連續語音-soak-與異常恢復驗證)（`scripts/run_voice_soak.py --presentation prerecorded`）。不要只用 `torch.cuda.is_available()` 判斷模型可用。已記錄的歷史實機限制見
 [jetson-orin.md](docs/jetson-orin.md#本機驗證結果2026-09-30)。
 
 ## 專案結構
 
 | 路徑 | 說明 |
 | --- | --- |
-| `src/` | 後端：`server/`、`vad/`、`asr/`、`llm/`、`tts/`、`avatars/`、`scene/`、`ragflow/`、`weather/`、`config/` |
-| `web/` | Vue 3 控制台、`stage.html` 舞台與建置輸出 `dist/` |
-| `config/` | `config_jetson*.yaml` 出廠預設設定（執行期覆蓋與金鑰 `.env` 不入 Git） |
-| `scripts/` | 建置、憑證（`create_ssl_certs.sh`）、單一入口（`start-server.sh`）、`systemd` 管理（`jetson-service.sh`）、驗證與 RAGFlow 腳本 |
+| `src/` | 後端：`server/`（含 `admin_auth.py`）、`vad/`、`asr/`、`llm/`、`tts/`、`avatars/`、`scene/`、`ragflow/`、`weather/`、`config/` |
+| `web/` | Vue 3 控制台（DOMPurify 安全過濾）、`stage.html`（純 DOM 看板）與建置輸出 `dist/` |
+| `config/` | `config_commercial.yaml`（Phase A 商用審查基線）與 `config_jetson*.yaml`（執行期覆蓋與金鑰 `.env` 不入 Git） |
+| `scripts/` | 建置、憑證（`create_ssl_certs.sh`）、單一入口（`start-server.sh`）、`systemd` 管理（`jetson-service.sh`）、Soak 壓測（`run_voice_soak.py`）、驗證與 RAGFlow 腳本 |
 | `integrations/` | 整合設定檔：`systemd/nova-avatar.service`、RAGFlow Compose 與服務模板 |
 | `models/`、`llama/` | 模型權重與 GGUF（不入 Git） |
 | `data/avatars/` | 數位人角色素材 |
@@ -361,6 +369,8 @@ npm run build                                  # 前端 production build（更�
 
 - [系統架構](docs/architecture.md)
 - [使用的模型](docs/models.md)
+- [商用交付前合規與授權檢查清單（Phase A）](docs/commercial-release-checklist.md)
+- [軟體組合與授權邊界](docs/software-stack.md)
 - [Orin 建置與 CUDA 驗證](docs/jetson-orin.md)
 - [跨裝置 HTTPS 憑證信任指南](docs/https-device-trust.md)
 - [數位人即時生成與 TensorRT UNet 診斷](docs/realtime-avatar.md)

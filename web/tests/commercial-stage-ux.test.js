@@ -185,18 +185,16 @@ test('App.vue 移除測試快捷指令列與原型佔位字串', () => {
   assert.doesNotMatch(app, /好的！這三大核心優勢已同步呈現於右側 9:16 舞台看板中。/)
 })
 
-test('App.vue 將 VoiceTestPanel 與 DebugPanel 收納至「系統維護／工程診斷」抽屜區', () => {
+test('App.vue 將 VoiceTestPanel 與 DebugPanel 保留於原本位置，不放在頂部導航抽屜', () => {
   const toolbarMatch = app.match(/<div class="mode-pills-wrap">([\s\S]*?)<\/div>/)
   assert.ok(toolbarMatch, 'mode-pills-wrap toolbar must exist')
-  assert.doesNotMatch(toolbarMatch[1], /語音驗證/)
+  assert.match(toolbarMatch[1], /語音驗證/)
 
-  const drawerMatch = app.match(/id="maintenanceDrawer"[\s\S]*?<\/aside>/)
-  assert.ok(drawerMatch, 'maintenanceDrawer section/drawer must exist')
-  assert.match(drawerMatch[0], /系統維護／工程診斷/)
-  assert.match(drawerMatch[0], /<VoiceTestPanel/)
-  assert.match(drawerMatch[0], /<DebugPanel/)
-  assert.match(app, /id="btnMaintenanceDrawer"/)
-  assert.match(settingsPanel, /系統維護／工程診斷/)
+  assert.doesNotMatch(app, /id="maintenanceDrawer"/)
+  assert.doesNotMatch(app, /id="btnMaintenanceDrawer"/)
+  assert.match(app, /<VoiceTestPanel\s+v-if="showTestPanel"/)
+  assert.match(app, /<DebugPanel\s+v-if="canRenderConsole && appSettings\.showDebugPanel"/)
+  assert.doesNotMatch(settingsPanel, /開啟維護診斷抽屜/)
 })
 
 test('stage.html 進場手勢後安全顯示舞台歡迎詞，且 welcome_speak 開啟時僅觸發一次語音歡迎', async () => {
