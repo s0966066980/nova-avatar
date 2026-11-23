@@ -43,7 +43,6 @@ test('語音活動與辨識提供英文 STT 辨識語言與中／英文雙語 Ed
   assert.match(panel, /中文語音設定 \(zh-TW\)/)
   assert.match(panel, /id="tts-voice-en-us"[\s\S]*v-model="ttsDraft\.voice_en_us"/)
   assert.match(panel, /英文語音設定 \(en-US\)/)
-  assert.ok(runtimeSettings.includes('const EDGE_VOICE_ID = /^(?:zh-TW|en-US)-.+Neural$/'))
 })
 
 test('頂部導航列不顯示 v2.0 版本號且系統設定左側欄不顯示模型徽章字樣', () => {

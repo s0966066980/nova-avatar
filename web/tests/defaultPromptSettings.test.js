@@ -65,27 +65,12 @@ test('設定面板可調整嘴型銳化、貼回插值與 MuseTalk 製作參數'
   assert.match(settings, /form\.append\('quality'/)
 })
 
-test('CosyVoice 設定提供合成語言與額外指令', () => {
-  assert.match(panel, /isCosyVoiceFamily/)
-  assert.match(panel, /fun-cosyvoice3/)
-  assert.match(panel, /settings\.speech\.cosyvoiceLanguage/)
-  assert.match(panel, /settings\.speech\.cosyvoiceInstruct/)
-  assert.match(panel, /settings\.speech\.cosyvoiceModel/)
-  assert.match(settings, /ttsDraft\.language = 'zh'/)
-  assert.match(settings, /type === 'fun-cosyvoice3'/)
-})
-
-test('Zero-shot 顯示並檢核參考語音逐字稿', () => {
-  assert.match(panel, /參考語音逐字稿/)
-  assert.match(panel, /ttsDraft\.ref_text/)
-  assert.match(settings, /Zero-shot 需要填寫「參考語音逐字稿」/)
-})
-
-test('從 Edge 切到本機 TTS 時會清掉聲線名稱並要求音訊路徑', () => {
-  assert.match(settings, /EDGE_VOICE_ID/)
-  assert.match(settings, /previous === 'edgetts'/)
-  assert.match(panel, /settings\.speech\.referencePathDesc/)
-  assert.match(panel, /settings\.speech\.referencePathPlaceholder/)
+test('設定面板保留 Edge-TTS 與離線 Matcha-TTS 引擎選項，不包含已移除的本機 TTS', () => {
+  assert.match(panel, /<option value="edgetts">/)
+  assert.match(panel, /<option value="matcha">/)
+  assert.match(panel, /id="tts-matcha-model"/)
+  assert.doesNotMatch(panel, /<option value="(?:cosyvoice|fun-cosyvoice3|breezyvoice)">/)
+  assert.doesNotMatch(settings, /breezyvoice|fun-cosyvoice3/)
 })
 
 test('套用舞台設定時會送出看板視窗樣式', () => {

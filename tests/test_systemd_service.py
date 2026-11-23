@@ -205,15 +205,14 @@ class GracefulServerShutdownTests(unittest.TestCase):
             with patch("src.server.routes.webrtc.close_sessions", new=AsyncMock()), patch(
                 "src.tts.engines.edge.shutdown_edge_tts"
             ), patch("src.server.server.shutdown_llama_server") as llama_stop, patch(
-                "src.server.server.shutdown_cosyvoice_server"
-            ) as cosy_stop, patch("src.server.server.scene_service.close"), patch(
+                "src.server.server.scene_service.close"
+            ), patch(
                 "src.server.server.routing_clients.close"
             ):
                 run_server(app, config)
             self.assertEqual(cleanup_ran, [True])
             self.assertFalse(state.server_ready)
             llama_stop.assert_called_once()
-            cosy_stop.assert_called_once()
         finally:
             timer.cancel()
             signal.signal(signal.SIGINT, prev_sigint)
@@ -227,14 +226,11 @@ class GracefulServerShutdownTests(unittest.TestCase):
             new=AsyncMock(side_effect=RuntimeError("webrtc close boom")),
         ), patch("src.tts.engines.edge.shutdown_edge_tts"), patch(
             "src.server.server.shutdown_llama_server"
-        ) as llama_stop, patch(
-            "src.server.server.shutdown_cosyvoice_server"
-        ) as cosy_stop, patch("src.server.server.scene_service.close"), patch(
+        ) as llama_stop, patch("src.server.server.scene_service.close"), patch(
             "src.server.server.routing_clients.close"
         ):
             asyncio.run(on_shutdown(app))
         llama_stop.assert_called_once()
-        cosy_stop.assert_called_once()
 
 
 class SystemdUnitAndCliRenderTests(unittest.TestCase):

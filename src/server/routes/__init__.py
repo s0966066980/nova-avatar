@@ -54,6 +54,12 @@ from .settings import (
     import_avatar,
     import_avatar_status,
 )
+from .tts_training import (
+    get_tts_training_status,
+    run_tts_training_step,
+    cancel_tts_training,
+    preview_tts_teacher_voice,
+)
 
 __all__ = [
     'offer',
@@ -109,4 +115,8 @@ __all__ = [
     'delete_archived_avatar_permanently',
     'import_avatar',
     'import_avatar_status',
+    'get_tts_training_status',
+    'run_tts_training_step',
+    'cancel_tts_training',
+    'preview_tts_teacher_voice',
 ]

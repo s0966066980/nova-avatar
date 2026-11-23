@@ -31,7 +31,6 @@ the root Apache-2.0 grant.
 | STT | FunASR | Optional | Review the exact code release and model (currently un-audited). |
 | LLM | llama.cpp / Ollama | Supported local OpenAI-compatible endpoints (`llamacpp` + `Gemma-4-E2B` in commercial profile) | `Gemma-4-E2B` (+ `mmproj`) declares Apache-2.0 at pinned revision. Exclude `LFM2.5` (revenue-capped) and `qwen3.5` (un-audited) from commercial baseline. |
 | TTS | Edge TTS | **Internal POC only** (**Blocking** for external commercial sale) | `edge-tts` is LGPLv3 and Microsoft online service/voice terms are NOT cleared for commercial sale. Must replace before customer delivery. |
-| TTS | GPT-SoVITS, CosyVoice, Fun-CosyVoice, Fish TTS, XTTS, IndexTTS2 | Optional (candidate TTS replacement path) | Review code, model, voice, and checkpoint terms individually before commercial selection. |
 | Avatar | MuseTalk (`presentation_modes: prerecorded` in Phase A) | Supported commercial baseline container | Code is MIT; MuseTalk weights (`unet.pth`, `sd-vae`, `dwpose`, `s3fd`, `face-parse-bisent`) are un-audited. Phase A uses prerecorded video loops and MUST replace dev `musetalk_1` (`user_upload`) with owned-rights recorded assets before commercial sale. |
 | Avatar | Wav2Lip | **Research / Non-commercial** | Do not include its integration (`src/avatars/wav2lip/`) or upstream weights in a commercial Nova Avatar distribution. |
 | Avatar | ER-NeRF, TalkingGaussian, UltraLight | Optional, license review required | Do not infer commercial rights from the root license. |

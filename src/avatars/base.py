@@ -225,7 +225,7 @@ class BaseAvatar:
         if not self.direct_audio_enabled:
             return True
         frame = np.asarray(audio_chunk, dtype=np.float32)
-        pcm = (frame * 32767).astype(np.int16)
+        pcm = (np.clip(frame, -1.0, 1.0) * 32767.0).astype(np.int16)
         new_frame = AudioFrame(format="s16", layout="mono", samples=pcm.shape[0])
         new_frame.planes[0].update(pcm.tobytes())
         new_frame.sample_rate = 16000
@@ -538,7 +538,7 @@ class BaseAvatar:
                 audio_enqueue_failed = False
                 for audio_frame in audio_frames:
                     frame, type, eventpoint = audio_frame
-                    frame = (frame * 32767).astype(np.int16)
+                    frame = (np.clip(np.asarray(frame, dtype=np.float32), -1.0, 1.0) * 32767.0).astype(np.int16)
                     new_audio_frame = AudioFrame(
                         format="s16", layout="mono", samples=frame.shape[0]
                     )

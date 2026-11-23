@@ -9,24 +9,11 @@
 
 from typing import Type
 
-from .engines import (
-    BaseTTS,
-    CosyVoiceTTS,
-    EdgeTTS,
-    FishTTS,
-    IndexTTS2,
-    SovitsTTS,
-    XTTS,
-)
+from .engines import BaseTTS, EdgeTTS, MatchaTTS
 
 _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
     "edgetts": EdgeTTS,
-    "gpt-sovits": SovitsTTS,
-    "xtts": XTTS,
-    "cosyvoice": CosyVoiceTTS,
-    "fun-cosyvoice3": CosyVoiceTTS,
-    "fishtts": FishTTS,
-    "indextts2": IndexTTS2,
+    "matcha": MatchaTTS,
 }
 
 

@@ -300,6 +300,32 @@ export default {
       confirmMessage: 'The current connection and turn will stop first. Settings are saved only after validation; reconnect manually afterward.'
     },
 
+    ttsTraining: {
+      title: 'Matcha-TTS Voice Distillation & Fine-Tuning Workbench',
+      desc: 'Build a bilingual corpus, synthesize & Whisper-QA teacher audio, fine-tune Matcha-TTS on CUDA, and export an offline CPU ONNX bundle step by step.',
+      refresh: 'Refresh',
+      cancel: 'Cancel job',
+      runFull: 'Run all 4 steps',
+      pipelineLabel: 'Voice training pipeline stages',
+      disconnectHint: 'An active session is using GPU memory. Disconnect before running teacher distillation or CUDA fine-tuning.',
+      disconnectNow: 'Disconnect now',
+      slugLabel: 'Output model slug (models/tts/<slug>)',
+      step1Title: 'Build bilingual training corpus (corpus.jsonl)',
+      step1Explain: 'Generates Mandarin, English, and code-switched utterances to target duration, with optional custom domain sentences.',
+      step2Title: 'Synthesize teacher audio & Whisper QA (manifest.jsonl)',
+      step2Explain: 'Synthesizes 16 kHz utterances with Edge-TTS or local CosyVoice3 and filters bad/dropped-word clips via Whisper ASR similarity and RMS checks.',
+      step3Title: 'Fine-tune Matcha-TTS on CUDA (best.pt)',
+      step3Explain: 'Fine-tunes the base Matcha flow-matching model with frozen embeddings, gentle encoder/projection LR scaling, tail silence padding, and duration regularization.',
+      step4Title: 'Export ONNX bundle & license notices (model.onnx)',
+      step4Explain: 'Packages the best checkpoint, Vocos vocoder, tokens, and lexicon into models/tts/<slug>/ for zero-VRAM CPU synthesis.',
+      trainedModelsTitle: 'Exported local Matcha models',
+      exportDoneNotice: 'ONNX export finished. Use "Load into Matcha settings" to apply it.',
+      modelFilledNotice: 'Refreshed models and filled the Matcha path. Click "Apply TTS" to activate.',
+      previewVoice: 'Preview voice',
+      previewLoading: 'Synthesizing…',
+      previewTextPlaceholder: 'Hello, this is a preview of the selected Edge TTS teacher voice.'
+    },
+
     vad: {
       title: 'Voice Activity Detection (Silero VAD)',
       desc: 'Server-side endpointing decides when you start and stop talking. Silero VAD is the only engine in use.',

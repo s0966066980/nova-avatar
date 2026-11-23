@@ -19,7 +19,6 @@ from src.server.state import state
 from src.server import routes
 from src.server.admin_auth import admin_auth_middleware, register_admin_auth
 from src.llm.llamacpp import shutdown_llama_server
-from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
 from src.weather import routing_clients
 
@@ -51,7 +50,6 @@ async def on_shutdown(app):
 
     for label, sync_step in (
         ("llama-server", shutdown_llama_server),
-        ("CosyVoice", shutdown_cosyvoice_server),
         ("舞台背景服務", scene_service.close),
         ("氣象路徑查詢客戶端", routing_clients.close),
     ):
@@ -116,6 +114,10 @@ def create_app():
     app.router.add_get("/api/speech", routes.get_speech_settings)
     app.router.add_post("/api/speech/stt", routes.set_stt_settings)
     app.router.add_post("/api/speech/tts", routes.set_tts_settings)
+    app.router.add_get("/api/tts/training", routes.get_tts_training_status)
+    app.router.add_post("/api/tts/training/step", routes.run_tts_training_step)
+    app.router.add_post("/api/tts/training/cancel", routes.cancel_tts_training)
+    app.router.add_post("/api/tts/training/preview", routes.preview_tts_teacher_voice)
     app.router.add_post("/api/speech/path-picker", routes.pick_speech_path)
     app.router.add_get("/api/stage", routes.get_stage_settings)
     app.router.add_post("/api/stage", routes.set_stage_settings)

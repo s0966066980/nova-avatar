@@ -58,6 +58,7 @@ REQUIRED_MODULES = ("openai", "edge_tts", "yaml")
 RUNTIME_MODULES = {
     "funasr": ("funasr",),
     "musetalk": ("einops", "ffmpeg"),
+    "matcha": ("sherpa_onnx",),
 }
 
 
@@ -99,6 +100,7 @@ def check_selected_runtime_dependencies(cfg) -> None:
     """Ensure the engines selected by the effective config have their modules."""
     required = set(RUNTIME_MODULES.get(cfg.asr.type, ()))
     required.update(RUNTIME_MODULES.get(cfg.model.type, ()))
+    required.update(RUNTIME_MODULES.get(cfg.tts.type, ()))
     missing = sorted(name for name in required if importlib.util.find_spec(name) is None)
     if missing:
         extras = []
@@ -106,12 +108,14 @@ def check_selected_runtime_dependencies(cfg) -> None:
             extras.append("uv sync --extra funasr")
         if cfg.model.type == "musetalk":
             extras.append("uv sync --extra musetalk")
+        if cfg.tts.type == "matcha":
+            extras.append('uv pip install -e ".[matcha]"')
         _fail(
             "目前設定所選引擎缺少依賴: "
             f"{', '.join(missing)}。執行：{'；'.join(extras)}"
         )
     if required:
-        print(f"{OK} 目前 ASR／Avatar 引擎依賴可匯入")
+        print(f"{OK} 目前 ASR／TTS／Avatar 引擎依賴可匯入")
 
 
 def check_commercial_profile() -> None:
@@ -202,13 +206,50 @@ def check_edgetts_smoke(cfg, text: str, output: Path | None) -> None:
         print(f"    音檔已寫入: {output}")
 
 
+def check_matcha_smoke(cfg, text: str, output: Path | None) -> None:
+    import io
+    import wave
+    import numpy as np
+    from src.tts.factory import create_tts_engine
+
+    frames: list[np.ndarray] = []
+
+    class _SmokeParent:
+        def put_audio_frame(self, chunk, datainfo=None):
+            del datainfo
+            frames.append(np.asarray(chunk, dtype=np.float32))
+
+    engine = create_tts_engine("matcha", cfg, _SmokeParent())
+    engine.txt_to_audio((text or "語音設定完成，歡迎使用 Nova Avatar。", {"smoke": True}))
+    if not frames:
+        _fail("Matcha TTS 未產生音訊")
+    pcm = np.concatenate(frames)
+    duration = pcm.size / float(engine.sample_rate)
+    print(f"{OK} Matcha TTS 合成正常  {duration:.2f}s ({engine.model_paths.model_dir.name})")
+    if output is not None:
+        buf = io.BytesIO()
+        int16_pcm = (np.clip(pcm, -1.0, 1.0) * 32767.0).astype("<i2")
+        with wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(engine.sample_rate)
+            wf.writeframes(int16_pcm.tobytes())
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(buf.getvalue())
+        print(f"    音檔已寫入: {output}")
+
+
 def check_tts_smoke(cfg, text: str, output: Path | None) -> None:
-    if cfg.tts.type != "edgetts":
-        _fail(
-            f"整合 smoke 尚無 {cfg.tts.type!r} 的無副作用 adapter；"
-            "請使用該引擎的專用測試或切換到已支援的 edgetts 後重試"
-        )
-    check_edgetts_smoke(cfg, text, output)
+    if cfg.tts.type == "edgetts":
+        check_edgetts_smoke(cfg, text, output)
+        return
+    if cfg.tts.type == "matcha":
+        check_matcha_smoke(cfg, text, output)
+        return
+    _fail(
+        f"整合 smoke 尚無 {cfg.tts.type!r} 的無副作用 adapter；"
+        "請使用該引擎的專用測試或切換到已支援的 edgetts / matcha 後重試"
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

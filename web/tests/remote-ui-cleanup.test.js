@@ -82,7 +82,7 @@ test('RagFlowSettings and SettingsPanel wire remote access guards cleanly', () =
   assert.match(speechField, /pickerState\.hint/)
 
   assert.match(panel, /speechPathPickerState/)
-  assert.equal((panel.match(/<SpeechPathField\b/g) || []).length, 3)
+  assert.equal((panel.match(/<SpeechPathField\b/g) || []).length, 1)
   assert.doesNotMatch(panel, /pathPickerState\.hint/)
   assert.match(panel, /id="stt-custom-path-toggle"/)
   assert.match(panel, /useCustomSttPath/)

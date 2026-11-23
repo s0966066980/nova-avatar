@@ -6,24 +6,16 @@
 
 對外只需要從這裡 import 對應的引擎類即可，例如：
 
-    from src.tts.engines import EdgeTTS, SovitsTTS
+    from src.tts.engines import EdgeTTS
 """
 
 from src.tts.base import BaseTTS, State
 from .edge import EdgeTTS
-from .fish import FishTTS
-from .sovits import SovitsTTS
-from .cosyvoice import CosyVoiceTTS
-from .indextts2 import IndexTTS2
-from .xtts import XTTS
+from .matcha import MatchaTTS
 
 __all__ = [
     "BaseTTS",
     "State",
     "EdgeTTS",
-    "FishTTS",
-    "SovitsTTS",
-    "CosyVoiceTTS",
-    "IndexTTS2",
-    "XTTS",
+    "MatchaTTS",
 ]

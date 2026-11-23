@@ -110,7 +110,6 @@ Gemma-4-E2B 與其 mmproj 也用於**對話附件**的圖片與 PDF 頁面分析
 | --- | --- | --- |
 | Wav2Lip（Research / Non-commercial） | 僅供研究與個人非商業用途 | **不得視為具商業許可**。其整合與上游權重不得放進商業發行，見 [Wav2Lip 限制聲明](../third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt) |
 | ER-NeRF、TalkingGaussian、UltraLight | 選用 | 須逐一審閱來源、子模組、資料集與模型；部分 TalkingGaussian 子模組帶有非商業研究條款 |
-| GPT-SoVITS、CosyVoice、Fun-CosyVoice、Fish TTS、XTTS、IndexTTS2 | 選用的替代 TTS | 須逐一審閱程式碼、模型、聲音與 checkpoint 條款 |
 
 ## Whisper small 與 turbo 的比較
 
