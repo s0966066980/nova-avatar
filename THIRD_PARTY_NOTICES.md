@@ -135,9 +135,10 @@ terms remain controlling for those files.
 
 ## Optional TTS backends
 
-Edge TTS, GPT-SoVITS, CosyVoice, Fun-CosyVoice, Fish TTS, XTTS, and IndexTTS2
-are optional integrations. Verify the exact code, service, voice, model, and
-checkpoint terms before redistribution or commercial packaging.
+Edge TTS is currently the only integrated TTS backend (all local TTS backends
+were removed pending selection of a low-latency commercially cleared
+replacement). Verify the exact code, service, voice, model, and checkpoint
+terms before redistribution or commercial packaging.
 
 - **Edge TTS (`edge-tts` 7.2.8)**: package metadata classifier declares
   **LGPLv3**. It connects to Microsoft's online Edge read-aloud endpoint; online

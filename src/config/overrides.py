@@ -221,6 +221,8 @@ def persist_runtime_overrides(config) -> None:
             "speaker": tts.speaker,
             "instruct": tts.instruct,
             "device": tts.device,
+            "num_threads": int(getattr(tts, "num_threads", 4) or 4),
+            "length_scale": float(getattr(tts, "length_scale", 1.0) or 1.0),
         }
     weather = getattr(config, "weather", None)
     if weather is not None:

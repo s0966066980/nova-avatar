@@ -300,6 +300,32 @@ export default {
       confirmMessage: '目前連線與進行中的輪次會先停止。新引擎驗證成功後才會儲存，完成後請手動重新連線。'
     },
 
+    ttsTraining: {
+      title: 'Matcha-TTS 語音蒸餾與微調工作台',
+      desc: '依序建立雙語語料、合成教師音訊並過濾 Whisper QA、CUDA 微調 Matcha-TTS，最後匯出本機 CPU 即時 ONNX 模型。',
+      refresh: '重新整理',
+      cancel: '中止任務',
+      runFull: '一鍵執行 4 步驟',
+      pipelineLabel: '語音訓練流水線階段',
+      disconnectHint: '偵測到活躍連線或推論執行中；執行教師蒸餾或 CUDA 微調前請先中斷連線以釋放 GPU 記憶體。',
+      disconnectNow: '中斷目前連線',
+      slugLabel: '輸出模型代號（models/tts/<代號>）',
+      step1Title: '建立中英雙語訓練語料（corpus.jsonl）',
+      step1Explain: '依目標時數產生台灣常用繁中、英文與中英夾雜句子（可附加自訂領域句），確保音素與詞彙覆蓋完整。',
+      step2Title: '教師聲線合成與 Whisper QA 驗收（manifest.jsonl）',
+      step2Explain: '使用 Edge-TTS 或本機 CosyVoice3 逐句合成 16kHz 音檔，再用 Whisper ASR 比對相似度與能量/停頓品質，淘汰破音或漏字樣本。',
+      step3Title: 'Matcha-TTS CUDA 聲學模型微調（best.pt）',
+      step3Explain: '在基礎 Matcha 權重上鎖定音素基底並以小倍率調整 Encoder／Projection，配合句末補靜音與長度正則，學習目標音色同時避免疊音與吞字。',
+      step4Title: '匯出 ONNX 並產出授權標註（model.onnx）',
+      step4Explain: '將最佳 checkpoint 與 Vocos 聲碼器、繁簡詞典封裝至 models/tts/<代號>/，不佔顯存即可由本機 CPU 即時合成。',
+      trainedModelsTitle: '已匯出的本機 Matcha 模型',
+      exportDoneNotice: 'ONNX 模型匯出完成，可點擊「帶入上方 Matcha 設定」套用。',
+      modelFilledNotice: '已更新模型清單並填入 Matcha 模型路徑，請按「套用 TTS」生效。',
+      previewVoice: '試聽聲線',
+      previewLoading: '合成中…',
+      previewTextPlaceholder: '您好，這是目前選擇的 Edge-TTS 教師聲線試聽範例。'
+    },
+
     vad: {
       title: '語音端點偵測 (Silero VAD)',
       desc: '伺服器端判斷你何時開口、何時說完。固定使用 Silero VAD。',

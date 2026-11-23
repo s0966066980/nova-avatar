@@ -62,6 +62,9 @@ funasr = [
 musetalk = [
     "nova-avatar-musetalk",
 ]
+matcha = [
+    "sherpa-onnx>=2.0",
+]
 
 [project.urls]
 Repository = "https://github.com/s0966066980/nova-avatar"

@@ -159,6 +159,8 @@ const speech = reactive({
     speaker: 'Vivian',
     instruct: '',
     device: 'auto',
+    num_threads: 4,
+    length_scale: 1.0,
     engines: [],
     models: [],
     languages: [],
@@ -189,7 +191,9 @@ const ttsDraft = reactive({
   language: 'Chinese',
   speaker: 'Vivian',
   instruct: '',
-  device: 'auto'
+  device: 'auto',
+  num_threads: 4,
+  length_scale: 1.0
 })
 const applyingStt = ref(false)
 const applyingTts = ref(false)
@@ -501,18 +505,7 @@ watch(() => sttDraft.type, () => {
   }
 })
 
-const EDGE_VOICE_ID = /^(?:zh-TW|en-US)-.+Neural$/
-
-watch(() => ttsDraft.type, (type, previous) => {
-  if (previous === 'edgetts' && type !== 'edgetts' && EDGE_VOICE_ID.test(ttsDraft.ref_file)) {
-    ttsDraft.ref_file = ''
-  }
-  if (
-    (type === 'cosyvoice' || type === 'fun-cosyvoice3') &&
-    (!ttsDraft.language || ttsDraft.language === 'Chinese')
-  ) {
-    ttsDraft.language = 'zh'
-  }
+watch(() => ttsDraft.type, (type) => {
   if (
     type === 'edgetts' &&
     speech.tts.edge_voices?.length &&
@@ -676,7 +669,9 @@ function applySpeechSnapshot(data) {
       language: data.tts.language === 'Chinese' ? 'zh' : (data.tts.language || 'zh'),
       speaker: data.tts.speaker || 'Vivian',
       instruct: data.tts.instruct || '',
-      device: data.tts.device || 'auto'
+      device: data.tts.device || 'auto',
+      num_threads: Number(data.tts.num_threads || 4),
+      length_scale: Number(data.tts.length_scale || 1.0)
     })
   }
 }
@@ -736,15 +731,6 @@ async function applySttSettings() {
 }
 
 async function applyTtsSettings() {
-  if (
-    ['cosyvoice', 'fun-cosyvoice3'].includes(ttsDraft.type) &&
-    ttsDraft.mode === 'zero_shot' &&
-    !ttsDraft.ref_text.trim()
-  ) {
-    const error = new Error('Zero-shot 需要填寫「參考語音逐字稿」，且內容必須與選取的參考音檔實際語句一致。')
-    speechError.value = error.message
-    throw error
-  }
   applyingTts.value = true
   speechError.value = ''
   try {

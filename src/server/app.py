@@ -195,29 +195,6 @@ def main():
         except Exception:
             logger.exception("啟動 llama-server 失敗，對話時會再試一次")
 
-    tts_type = str(getattr(state.config.tts, "type", "")).strip().lower()
-    if tts_type in {"cosyvoice", "fun-cosyvoice3"}:
-        try:
-            from src.tts.cosyvoice_runtime import (
-                cosyvoice_family,
-                ensure_server,
-                parse_server_url,
-            )
-
-            family = cosyvoice_family(tts_type)
-            host, port = parse_server_url(getattr(state.config.tts, "tts_server", "") or "")
-            label = "Fun-CosyVoice 3.0" if family == "cosyvoice3" else "CosyVoice2-0.5B"
-            logger.info("正在啟動 %s: %s", label, getattr(state.config.tts, "model", "") or label)
-            state.config.tts.tts_server = ensure_server(
-                model_dir=getattr(state.config.tts, "model", "") or "",
-                family=family,
-                host=host,
-                port=port,
-            )
-            logger.info("%s 已就緒: %s", label, state.config.tts.tts_server)
-        except Exception:
-            logger.exception("啟動 CosyVoice 失敗，請到設定重新套用 TTS")
-
     # Do not announce readiness while the first Edge connection is still cold.
     edge_ready = _await_edge_tts_prewarm(edge_tts_prewarm)
 

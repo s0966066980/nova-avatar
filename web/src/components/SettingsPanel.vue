@@ -1331,8 +1331,7 @@
               <div class="field-control-area">
                 <select class="std-select" v-model="ttsDraft.type">
                   <option value="edgetts">Edge-TTS (雲端免顯存 · 低延遲)</option>
-                  <option value="cosyvoice">CosyVoice (本機聲音複製 · 深度神經合成)</option>
-                  <option value="fun-cosyvoice3">Fun-CosyVoice3 (最新多語神經模型)</option>
+                  <option value="matcha">Matcha-TTS ONNX (本機 CPU · zh-TW/en-US 雙語)</option>
                 </select>
               </div>
             </div>
@@ -1368,81 +1367,72 @@
               </div>
             </template>
 
-            <!-- CosyVoice 專屬設定 -->
-            <template v-if="isCosyVoiceFamily">
-              <div class="setting-form-row">
-                <div class="field-label-group"><label for="tts-cosyvoice-mode" class="field-main-label">推理模式</label></div>
-                <div class="field-control-area"><select id="tts-cosyvoice-mode" class="std-select" v-model="ttsDraft.mode"><option value="auto">Auto</option><option value="zero_shot">Zero-shot（依參考語音）</option><option value="cross_lingual">Cross-lingual</option><option value="instruct">Instruct</option></select></div>
-              </div>
+            <template v-else-if="ttsDraft.type === 'matcha'">
               <div class="setting-form-row">
                 <div class="field-label-group">
-                  <label for="tts-cosyvoice-language" class="field-main-label">{{ t('settings.speech.cosyvoiceLanguage') }}</label>
+                  <label for="tts-matcha-model" class="field-main-label">Matcha ONNX 模型目錄</label>
+                  <span class="field-sub-hint">填入或選取本機匯出的模型目錄（含 model.onnx、vocos、lexicon.txt、tokens.txt）</span>
                 </div>
                 <div class="field-control-area">
-                  <select id="tts-cosyvoice-language" class="std-select" v-model="ttsDraft.language">
-                    <option v-for="item in cosyvoiceLanguageOptions" :key="item.id" :value="item.id">{{ item.label }}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="setting-form-row">
-                <div class="field-label-group">
-                  <label for="tts-cosyvoice-prompt-text" class="field-main-label">{{ t('settings.speech.cosyvoiceInstruct') }}</label>
-                </div>
-                <div class="field-control-area">
-                  <input id="tts-cosyvoice-prompt-text" class="chat-text-entry" type="text" v-model="ttsDraft.instruct">
+                  <input
+                    id="tts-matcha-model"
+                    type="text"
+                    class="std-input"
+                    list="tts-matcha-model-list"
+                    v-model.trim="ttsDraft.model"
+                    placeholder="models/tts/zh-tw-custom"
+                  />
+                  <datalist id="tts-matcha-model-list">
+                    <option v-for="m in (speech.tts.models || [])" :key="m" :value="m">{{ m }}</option>
+                  </datalist>
                 </div>
               </div>
 
               <div class="setting-form-row">
                 <div class="field-label-group">
-                  <label for="tts-cosyvoice-ref-text" class="field-main-label">參考語音逐字稿<span v-if="ttsDraft.mode === 'zero_shot'" aria-hidden="true"> *</span></label>
-                  <span class="field-sub-hint">Zero-shot 必填；請逐字填入選取音檔中實際說的內容，才能保留原本的語氣與韻律。</span>
+                  <label for="tts-matcha-threads" class="field-main-label">CPU 推論執行緒</label>
+                  <span class="field-sub-hint">Orin 建議設為 4，避免搶佔視訊或 ASR 執行緒</span>
                 </div>
                 <div class="field-control-area">
-                  <textarea id="tts-cosyvoice-ref-text" class="chat-text-entry" v-model.trim="ttsDraft.ref_text" :required="ttsDraft.mode === 'zero_shot'" rows="2" placeholder="例如：您好，歡迎使用 Nova Avatar。"></textarea>
+                  <input
+                    id="tts-matcha-threads"
+                    type="number"
+                    min="1"
+                    max="12"
+                    step="1"
+                    class="std-input"
+                    v-model.number="ttsDraft.num_threads"
+                  />
                 </div>
               </div>
 
               <div class="setting-form-row">
                 <div class="field-label-group">
-                  <label for="tts-cosyvoice-prompt-wav" class="field-main-label">{{ t('settings.speech.cosyvoiceModel') }}</label>
+                  <label for="tts-matcha-length-scale" class="field-main-label">語速倍率 (length_scale)</label>
+                  <span class="field-sub-hint">1.0 為標準語速，數值越小語速越快</span>
                 </div>
                 <div class="field-control-area">
-                  <SpeechPathField
-                    :picker-state="pathPickerState"
-                    button-label="選擇資料夾"
-                    @pick="chooseSpeechPath('tts', 'directory')"
-                  >
-                    <input id="tts-cosyvoice-prompt-wav" class="chat-text-entry" type="text" v-model="ttsDraft.model">
-                  </SpeechPathField>
+                  <input
+                    id="tts-matcha-length-scale"
+                    type="number"
+                    min="0.5"
+                    max="2.0"
+                    step="0.05"
+                    class="std-input"
+                    v-model.number="ttsDraft.length_scale"
+                  />
                 </div>
               </div>
             </template>
-
-            <!-- 參考音訊路徑 (非 Edge-TTS 時) -->
-            <div class="setting-form-row" v-if="ttsDraft.type !== 'edgetts'">
-              <div class="field-label-group">
-                <label for="tts-voice-audio-path" class="field-main-label">參考音訊路徑</label>
-                <span class="field-sub-hint">{{ t('settings.speech.referencePathDesc') }}</span>
-              </div>
-              <div class="field-control-area">
-                <SpeechPathField
-                  :picker-state="pathPickerState"
-                  button-label="選擇音檔"
-                  @pick="chooseSpeechPath('tts', 'file')"
-                >
-                  <input
-                    id="tts-voice-audio-path"
-                    class="chat-text-entry"
-                    type="text"
-                    v-model.trim="ttsDraft.ref_file"
-                    :placeholder="t('settings.speech.referencePathPlaceholder')"
-                  >
-                </SpeechPathField>
-              </div>
-            </div>
           </section>
+
+          <TtsTrainingPanel
+            :active="activeSettingsTab === 'voice'"
+            :is-connected="props.isConnected"
+            @request-disconnect="$emit('request-disconnect')"
+            @apply-model="handleApplyTrainedTtsModel"
+            @notification="(msg, kind) => $emit('notification', msg, kind)"
+          />
         </div>
 
         <div
@@ -1617,6 +1607,7 @@ import RagFlowSettings from './RagFlowSettings.vue'
 import WeatherSettings from './WeatherSettings.vue'
 import PrerecordedAvatarPanel from './PrerecordedAvatarPanel.vue'
 import SpeechPathField from './SpeechPathField.vue'
+import TtsTrainingPanel from './TtsTrainingPanel.vue'
 import {
   boardReopenPresentation,
   micStyle,
@@ -1871,13 +1862,18 @@ const {
   applyingStt,
   applyingTts,
   speechError,
+  loadSpeechSettings,
   applySttSettings,
   applyTtsSettings
 } = useRuntimeSettings()
 
-const isCosyVoiceFamily = computed(() => (
-  ttsDraft.type === 'cosyvoice' || ttsDraft.type === 'fun-cosyvoice3'
-))
+const handleApplyTrainedTtsModel = async (modelPath) => {
+  await loadSpeechSettings().catch(() => {})
+  ttsDraft.type = 'matcha'
+  ttsDraft.model = modelPath
+  emit('notification', t('settings.ttsTraining.modelFilledNotice'), 'success')
+}
+
 const pathPickerState = computed(() => speechPathPickerState({
   serverAvailable: speech.local_path_picker_available
 }))
@@ -1908,42 +1904,9 @@ async function chooseSpeechPath(target, kind) {
     const result = await response.json()
     if (!response.ok || result.code !== 0) throw new Error(result.msg || '選擇路徑失敗')
     if (!result.data?.path) return
-    if (target === 'tts' && kind === 'directory') ttsDraft.model = result.data.path
-    if (target === 'tts' && kind === 'file') ttsDraft.ref_file = result.data.path
     if (target === 'stt') sttDraft.model_size = result.data.path
   } catch (error) { speechError.value = error.message }
 }
-
-const COSYVOICE_LANGUAGE_FALLBACK = [
-  { id: 'zh', label: '中文' },
-  { id: 'en', label: 'English' },
-  { id: 'ja', label: '日本語' },
-  { id: 'ko', label: '한국어' },
-  { id: 'yue', label: '粵語' },
-  { id: 'auto', label: '自動' }
-]
-const COSYVOICE3_LANGUAGE_FALLBACK = [
-  { id: 'zh', label: '中文' },
-  { id: 'en', label: 'English' },
-  { id: 'ja', label: '日本語' },
-  { id: 'ko', label: '한국어' },
-  { id: 'yue', label: '粵語' },
-  { id: 'de', label: 'Deutsch' },
-  { id: 'es', label: 'Español' },
-  { id: 'fr', label: 'Français' },
-  { id: 'it', label: 'Italiano' },
-  { id: 'ru', label: 'Русский' },
-  { id: 'auto', label: '自動' }
-]
-
-const cosyvoiceLanguageOptions = computed(() => {
-  if (speech.tts.languages.length && ttsDraft.type === speech.tts.type) {
-    return speech.tts.languages
-  }
-  return ttsDraft.type === 'fun-cosyvoice3'
-    ? COSYVOICE3_LANGUAGE_FALLBACK
-    : COSYVOICE_LANGUAGE_FALLBACK
-})
 
 const activeLlmBackend = computed(() => {
   return selectedProvider.value === 'llamacpp' ? llamacpp : ollama
