@@ -13,6 +13,7 @@ Tailscale VPN 內的其他電腦、平板與手機開啟使用。
 
 ## 目錄
 
+- [最近更新紀錄](#最近更新紀錄)
 - [目前版本功能](#目前版本功能)
 - [系統架構](#系統架構)
 - [Jetson 優化與已知限制](#jetson-優化與已知限制)
@@ -26,6 +27,10 @@ Tailscale VPN 內的其他電腦、平板與手機開啟使用。
 - [文件](#文件)
 - [授權與來源標註](#授權與來源標註)
 
+## 最近更新紀錄
+
+- **2026-11-23**：整合離線 **Matcha-TTS CPU 語音合成引擎**、中英雙語蒸餾微調流程（`tools/tts-distill/`）與控制台「**Matcha-TTS 語音蒸餾與微調工作台**」（含 Edge-TTS 教師聲線即時試聽、滿版卡片排版與自動 `Research / Non-commercial` 授權標註），並移除舊版高顯存本機 TTS 後端。
+
 ## 目前版本功能
 
 ### 核心對話與語音互動
@@ -33,6 +38,7 @@ Tailscale VPN 內的其他電腦、平板與手機開啟使用。
 - **伺服器端端點與輪次編排**：Silero VAD 判定發話邊界（說完靜音 300 ms 送出），由伺服器單獨擁有**輪次編排**，取消或斷線後以**輪次隔離**丟棄舊內容。
 - **回答分成口語與看板**：單一 LLM 依可編輯的**回覆規則**決定直接口述，或分流為「**口語摘要**＋**看板回覆**」條列，並以實際播放進度進行**輪次提交**。
 - **回覆語音串流**：支援於控制台開啟**回覆語音串流**，邊生成邊於**完整語意邊界**切分合成語音（出廠與商用基線預設關閉，可於控制台即時啟用與調整語意等待秒數）。
+- **低顯存語音合成與控制台蒸餾工作台**：TTS 支援雲端 **Edge TTS**（透過 `EdgeConnectionPool` 連線重用）與零顯存佔用的本機 CPU **Matcha-TTS ONNX**（`sherpa-onnx`）；控制台「語音活動與辨識」內建 4 步驟語音訓練工作台（語料建立 → Edge-TTS／CosyVoice3 教師合成與 Whisper QA → Matcha CUDA 微調 → ONNX 匯出與一鍵套用），並提供 Edge-TTS 教師聲線即時試聽與自動寫入非商業授權告示（`NOTICE-NON-COMMERCIAL.txt`）。
 
 ### 數位人、演播場景與多語系
 - **數位人呈現方式**：支援 **預錄呈現**（Phase A 商用基線預設以預錄的待機與說話影片呈現動作，對話語音即時合成，回應穩定低延遲）與 **MuseTalk 即時嘴型**（FP16 TensorRT UNet + TAESD，可隨時於控制台切換）。
@@ -64,7 +70,7 @@ flowchart LR
     VAD --> STT["STT<br/>faster-whisper / FunASR"]
     STT --> Gate{"天氣 / RAGFlow<br/>/ 附件上下文"}
     Gate --> LLM["LLM<br/>Owned llama-server (CUDA)"]
-    LLM --> TTS["TTS<br/>Edge TTS"]
+    LLM --> TTS["TTS<br/>Matcha-TTS (CPU) / Edge TTS"]
     TTS --> Avatar["數位人<br/>MuseTalk / 預錄呈現"]
     Avatar --> Scene["綠幕去背與舞台背景"]
     Scene -->|WebRTC 影音、字幕、看板、事件| Device
@@ -109,7 +115,7 @@ flowchart LR
 | 語言模型與視覺理解（LLM） | **Gemma-4-E2B QAT q4_0**（含多模態 `mmproj`） | `llama/gemma-4-E2B_q4_0-it.gguf` + `llama/gemma-4-E2B-it-mmproj.gguf`（由本機 CUDA `llama-server` 載入，同時負責對話、看板、天氣閘門與 PDF／圖片附件分析） | 官方模型卡標示 Apache-2.0（固定版本 `675cff42a74c774d6cb76f76d8eacb49b48c9b93`） |
 | 語音轉文字（STT） | **faster-whisper `small`**（CUDA） | `models/whisper-small/`（`language: auto` 或 `zh`，中英雙語轉繁體中文輸出） | MIT（OpenAI Whisper + faster-whisper） |
 | 語音端點偵測（VAD） | **Silero VAD**（CUDA / CPU） | `silero-vad` 套件內附 JIT 模型（靜音 `300 ms` 判定發話結束） | 套件 MIT；隨附權重尚未獨立稽核 |
-| 語音合成（TTS） | **Edge TTS**（僅限內部 POC，需網路） | 中文預設 `zh-TW-HsiaoChenNeural`、英文預設 `en-US-JennyNeural`（啟用連線池預熱重用） | `edge-tts` 套件 LGPLv3；線上服務與聲音條款不具商業再散佈授權（對外商售須替換） |
+| 語音合成（TTS） | **Edge TTS ／ 離線 Matcha-TTS（CPU ONNX）** | Edge TTS 預設 `zh-TW-HsiaoChenNeural`／`en-US-JennyNeural`；本機 Matcha-TTS 模型置於 `models/tts/<代號>/`（支援由控制台工作台蒸餾微調與匯出） | `edge-tts`（LGPLv3）與線上服務條款、`sherpa-onnx`（Apache-2.0）；經 Edge-TTS 蒸餾訓練之模型皆標註為 `Research / Non-commercial`，對外商售須使用合規自有／商用音源 |
 | 數位人呈現 | **`prerecorded`（預錄呈現，Phase A 基線）**／MuseTalk v1.5 | 預設採預錄待機與說話影片呈現以確保低延遲穩定；切換即時嘴型時使用 `models/musetalk/`、FP16 TensorRT UNet 與 TAESD（720×1280） | MuseTalk 程式碼 MIT（TME）；TAESD MIT；權重條款未逐項稽核（測試角色 `musetalk_1` 僅限 POC） |
 
 本機 `llama/` 與 `models/` 另備有可從控制台切換的模型：Whisper `large-v3-turbo`／`base`、FunASR `paraformer-zh`、`LFM2.5-2.6B-Q4_K_M`、`LFM2.5-1.2B-Instruct`、`Granite-4.2-3B`、`Ministral-3-3B`、`Qwen3.5-4B／2B` 等（`config_commercial.yaml` 明確排除含年營收門檻之 `LFM2.5` 與未稽核之 `Qwen3.5`）。**完整清單、檔案位置與授權依據見 [使用的模型](docs/models.md)。**
@@ -356,6 +362,7 @@ npm run build                                                       # 前端 pro
 | `web/` | Vue 3 控制台（DOMPurify 安全過濾）、`stage.html`（純 DOM 看板）與建置輸出 `dist/` |
 | `config/` | `config_commercial.yaml`（Phase A 商用審查基線）與 `config_jetson*.yaml`（執行期覆蓋與金鑰 `.env` 不入 Git） |
 | `scripts/` | 建置、憑證（`create_ssl_certs.sh`）、單一入口（`start-server.sh`）、`systemd` 管理（`jetson-service.sh`）、Soak 壓測（`run_voice_soak.py`）、驗證與 RAGFlow 腳本 |
+| `tools/` | `tts-distill/`：Matcha-TTS 中英雙語語料建立、教師蒸餾與 Whisper QA、CUDA 微調及 ONNX 匯出工具 |
 | `integrations/` | 整合設定檔：`systemd/nova-avatar.service`、RAGFlow Compose 與服務模板 |
 | `models/`、`llama/` | 模型權重與 GGUF（不入 Git） |
 | `data/avatars/` | 數位人角色素材 |

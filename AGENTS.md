@@ -54,3 +54,12 @@ cd web
 npm test
 npm run build
 ```
+
+## Commit & Push Workflow
+
+Before every `git commit` and `git push`:
+
+1. Update `README.md` so its feature overview, architecture, models, and project
+   layout match the current version.
+2. Record the update date (`YYYY-MM-DD`) and a concise 1–2 sentence summary in
+   `README.md`'s recent updates log (`## 最近更新紀錄`).
