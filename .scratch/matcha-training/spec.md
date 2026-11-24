@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Matcha 訓練工作台
 
-Status: 已確認（2026-11-24），待疊音／跳音診斷與介面原型
+Status: 已確認（2026-11-24），疊音／跳音診斷已完成，待介面原型
 
 這是 [Matcha 聲線模型](../matcha-voice/spec.md)的第二階段。管理者在控制台用 Edge 朗讀聲音（測試用）或自己上傳的錄音訓練聲線模型，逐字稿可上傳或自動產生並校對，訓練完成後成為可選的聲線模型。設計依據見 [ADR 0026](../../docs/adr/0026-edge-as-test-only-matcha-teacher.md)，術語見 `CONTEXT.md`（使用限制標示、訓練語料、測試用老師、訓練工作）。
 
@@ -38,6 +38,12 @@ Status: 已確認（2026-11-24），待疊音／跳音診斷與介面原型
 - 可重用：faster-whisper 的 small、medium、large-v3 已在 HF 快取；`src/llm/text_normalizer.py` 有 OpenCC `s2twp`。
 - 從 jetson-orin 可帶入並調整的：`tts_training_jobs.py`、`routes/tts_training.py`、`tools/tts-distill/`（`train_matcha.py`、`matcha_arch.py`、`export_matcha_onnx.py`、`lexicon_utils.py`、`audio_qc.py`、`distill_edge_teacher.py`）。`build_corpus.py` 依賴 main 沒有的 `lexicon-zh.txt`，需要改寫。
 
+## 疊音與跳音診斷（2026-11-24）
+
+- **疊音**：原因在 `zh-tw-hsiaochen-edge` 的聲學權重會重複音節（例如「去去法國」），base 權重搭同一份詞典就不會；jetson 原版的評比音檔中文 400 句有 42 句（10.5%）疊字。main 沒有程式修法，要重訓或重新蒸餾，用工單 11 的評量驗證。
+- **跳音**：Matcha 沒有片段預取，片段之間有 221–280 ms 空白（Edge 約 20 ms），由工單 01 修正；是否就是聽到的跳音尚未用 WebRTC 擷取證實。
+- 先前推測的「訓練時數字被丟掉造成錯位」沒有被這次診斷支持：疊字出現在一般詞語，不是數字。決定 7 的數字展開仍保留，因為文字與音檔不一致本身就會傷害訓練。
+
 ## 信任邊界與資料位置
 
 - 所有新路由歸入 ADMIN（ADR 0021），登記在 `ROUTE_ACCESS`，並由 `tests/test_route_access.py` 守住。
@@ -50,12 +56,12 @@ Status: 已確認（2026-11-24），待疊音／跳音診斷與介面原型
 - 「快速測試」用 Edge 老師完整跑一次：合成語料、品質檢查、訓練、匯出，聲線模型出現在清單並標示 Development only，可在數位人設定檔選用，舞台實際聽得到。
 - 上傳自己的錄音（含自動產生的逐字稿並校對）完整跑一次，標示為 Research / Non-commercial。
 - 有舞台連線或顯存不足時，按鈕停用且顯示原因；取消訓練後 GPU 顯存釋放。
-- 疊音與跳音的修正（工單 01）已驗證。
+- 跳音修正（工單 01）已在實機驗證；重訓後的聲線模型以工單 11 的評量，疊字句數不高於 base 的水準。
 - `.github/workflows/ci.yml` 的每個步驟與現版主要基準全部通過，無新增失敗或跳過。
 
 ## 工單
 
-- [01 診斷並修正疊音與跳音](issues/01-fix-overlap-and-skipping.md)
+- [01 修正跳音：Matcha 片段預取](issues/01-fix-overlap-and-skipping.md)
 - [02 訓練環境實驗](issues/02-training-environment-spike.md)
 - [03 訓練語料資料模型](issues/03-corpus-model.md)
 - [04 Edge 測試用老師](issues/04-edge-test-teacher.md)
@@ -65,3 +71,4 @@ Status: 已確認（2026-11-24），待疊音／跳音診斷與介面原型
 - [08 訓練工作台介面](issues/08-training-ui.md)
 - [09 notices 與文件](issues/09-notices-and-docs.md)
 - [10 實機驗收](issues/10-live-acceptance.md)
+- [11 疊字評量腳本](issues/11-repeated-syllable-benchmark.md)
