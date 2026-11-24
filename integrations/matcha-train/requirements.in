@@ -22,3 +22,4 @@ wget                      # matcha.utils.utils
 matplotlib                # matcha.utils.utils / model plotting
 soundfile                 # reading the 16 kHz training wavs
 numpy<2                   # torch 2.5.0 wheels are built against numpy 1.x
+onnx==1.17.0              # export_matcha_onnx writes the sherpa-onnx metadata into model.onnx

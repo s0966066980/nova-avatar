@@ -91,6 +91,8 @@ tts:
 # Matcha-TTS 的伺服器設定，所有數位人設定檔共用；聲線模型在數位人設定檔的「聲音」選擇
 matcha:
   num_threads: 4  # sherpa-onnx 在 CPU 上合成的執行緒數（1–64）
+  training_min_free_vram_gb: 8  # 聲線訓練：剩餘顯存低於此值（GB）時拒絕開始；讀不到顯存也拒絕
+  training_whisper_model: small  # 訓練前逐字稿比對：tiny | base | small | medium | large-v3，在 CPU 執行
 
 # ASR 配置資訊，可以改對應的模型，建議browser
 asr:
