@@ -108,10 +108,13 @@ numpy==1.26.4
     #   contourpy
     #   diffusers
     #   matplotlib
+    #   onnx
     #   soundfile
     #   torchmetrics
 omegaconf==2.3.1
     # via hydra-core
+onnx==1.17.0
+    # via -r integrations/matcha-train/requirements.in
 packaging==26.4
     # via
     #   huggingface-hub
@@ -129,6 +132,8 @@ propcache==0.5.4
     # via
     #   aiohttp
     #   yarl
+protobuf==7.36.2
+    # via onnx
 pycparser==3.11
     # via cffi
 pygments==2.21.0
