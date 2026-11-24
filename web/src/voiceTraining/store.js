@@ -241,6 +241,7 @@ export function createVoiceTrainingStore({
     await guard(async () => {
       await api.confirmLines(state.slug, ids)
       await loadCorpus()
+      state.announcement = { code: 'confirmed', count: ids.length }
     })
     return ids.length
   }
@@ -286,6 +287,12 @@ export function createVoiceTrainingStore({
     } catch (error) {
       if (error instanceof TrainingApiError && error.preflight) state.preflight = error.preflight
       state.error = message(error)
+      // Unresolved digits are a text problem: go back to the sentence table that marks them.
+      if (error instanceof TrainingApiError && error.unresolved.length) {
+        await refreshEdgePreview()
+        go('review')
+        state.error = message(error)
+      }
     }
   }
 
@@ -327,13 +334,21 @@ export function createVoiceTrainingStore({
     }
   }
 
+  // Derived values are plain getters, so a component reads ``store.gate`` whether or not Vue unwraps refs for it.
   return {
     state, go, reset, newCorpus, chooseSource, refreshHome, loadCorpus, openCorpus,
-    confirmEdge, loadEdgeTextFile, editEdgeSentence, removeEdgeSentence, clearEdgeText, refreshEdgePreview, edgeReview,
-    selectDeclaration, addUploadFiles, acceptedCount, uploadReasons,
-    importTranscripts, startAutoTranscription, pollTranscription, cancelAutoTranscription, transcription, transcriptionShouldPoll,
+    confirmEdge, loadEdgeTextFile, editEdgeSentence, removeEdgeSentence, clearEdgeText, refreshEdgePreview,
+    selectDeclaration, addUploadFiles,
+    importTranscripts, startAutoTranscription, pollTranscription, cancelAutoTranscription,
     confirmRow, excludeRow, restoreRow, startEdit, cancelEdit, saveEdit, confirmAllPending, togglePlay, audioUrl,
-    gate, loadPreflight, startTraining, pollJob, shouldPoll, askCancel, keepTraining, confirmCancelJob,
-    previewAvailable, previewVoice
+    loadPreflight, startTraining, pollJob, askCancel, keepTraining, confirmCancelJob,
+    previewAvailable, previewVoice,
+    get edgeReview() { return edgeReview.value },
+    get acceptedCount() { return acceptedCount.value },
+    get uploadReasons() { return uploadReasons.value },
+    get transcription() { return transcription.value },
+    get transcriptionShouldPoll() { return transcriptionShouldPoll.value },
+    get gate() { return gate.value },
+    get shouldPoll() { return shouldPoll.value }
   }
 }

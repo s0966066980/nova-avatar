@@ -1,7 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903; SPDX-License-Identifier: Apache-2.0 -->
 <template>
   <div class="vt-act">
-    <!-- A disabled action stays focusable (aria-disabled) and names its reasons through aria-describedby. -->
     <button
       type="button"
       :class="['vt-btn', { primary }]"
@@ -19,6 +18,7 @@
 </template>
 
 <script setup>
+// A disabled action stays focusable (aria-disabled, not disabled) and names its reasons through aria-describedby.
 import { icon } from '../../voiceTraining/icons.js'
 
 const props = defineProps({

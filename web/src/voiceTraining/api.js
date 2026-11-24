@@ -6,12 +6,14 @@
 // No download or export call exists: the first version has no such route.
 
 export class TrainingApiError extends Error {
-  constructor(message, { status = 0, problems = [], preflight = null } = {}) {
+  constructor(message, { status = 0, problems = [], preflight = null, unresolved = [] } = {}) {
     super(message)
     this.name = 'TrainingApiError'
     this.status = status
     this.problems = problems
     this.preflight = preflight
+    // Start refused for digits no one can read aloud: [{index, text, reason}], index = position in the cleaned list.
+    this.unresolved = unresolved
   }
 }
 
@@ -38,7 +40,8 @@ export function createTrainingApi(fetchImpl = (...args) => globalThis.fetch(...a
       throw new TrainingApiError(body?.msg || `HTTP ${response.status}`, {
         status: response.status,
         problems: Array.isArray(body?.problems) ? body.problems : [],
-        preflight: body?.preflight || body?.data?.preflight || null
+        preflight: body?.preflight || body?.data?.preflight || null,
+        unresolved: Array.isArray(body?.unresolved) ? body.unresolved : []
       })
     }
     return body.data

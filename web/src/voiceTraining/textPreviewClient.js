@@ -6,7 +6,8 @@
 // here: if a field name changes, this file is the only fix.
 //
 // Request  {sentences: "<one sentence per line>"}
-// Response {ok, total, estimated_seconds, items: [{index, text, spoken, unresolved: [{text, start, end, reason}]}]}
+// Response {ok, total, unresolved_count, estimated_seconds,
+//           sentences: [{index (1-based, in the cleaned list), text, spoken, unresolved: [{text, start, end, reason}]}]}
 
 export const TEXT_PREVIEW_PATH = '/api/tts/training/text-preview'
 
@@ -29,7 +30,7 @@ function normalizeItem(raw, position) {
 // ``api`` is createTrainingApi() (anything with ``post``); ``sentences`` is an array of strings.
 export async function previewEdgeText(api, sentences) {
   const data = await api.post(TEXT_PREVIEW_PATH, { sentences: sentences.join('\n') })
-  const items = (Array.isArray(data?.items) ? data.items : []).map(normalizeItem)
+  const items = (Array.isArray(data?.sentences) ? data.sentences : Array.isArray(data?.items) ? data.items : []).map(normalizeItem)
   const clean = items.every(item => !item.unresolved.length)
   return {
     ok: typeof data?.ok === 'boolean' ? data.ok && clean : clean,

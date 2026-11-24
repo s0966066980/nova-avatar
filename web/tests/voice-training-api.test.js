@@ -106,7 +106,7 @@ test('Edge 文字清單在合成前預覽：句子以換行相連送出，結果
   const { fetchImpl, calls } = fakeFetch({
     'POST /api/tts/training/text-preview': ok({
       ok: false, total: 2, estimated_seconds: 7.5,
-      items: [
+      sentences: [
         { index: 1, text: '價格 3 元', spoken: '價格三元', unresolved: [] },
         { index: 2, text: '編號 A12', spoken: '編號 A12', unresolved: [{ text: 'A12', start: 3, end: 6, reason: 'mixed' }] }
       ]
@@ -123,9 +123,22 @@ test('Edge 文字清單在合成前預覽：句子以換行相連送出，結果
 })
 
 test('預覽回應缺欄位時不丟例外：ok 由未解決項推得', async () => {
-  const api = { post: async () => ({ items: [{ index: 1, text: 'a', unresolved: [{ text: '1/2', start: 0, end: 3 }] }] }) }
+  const api = { post: async () => ({ sentences: [{ index: 1, text: 'a', unresolved: [{ text: '1/2', start: 0, end: 3 }] }] }) }
   const preview = await previewEdgeText(api, ['a'])
   assert.equal(preview.ok, false)
   assert.equal(preview.total, 1)
   assert.equal(preview.items[0].spoken, 'a')
+})
+
+test('start 因數字無法念出而 409 時，unresolved 保留 index（第 N 句）與片段', async () => {
+  const { fetchImpl } = fakeFetch({
+    'POST /api/tts/training/start': { status: 409, body: { code: -1, msg: '有數字無法確定怎麼念：第 2 句「$50」', unresolved: [{ index: 2, text: '$50', reason: 'currency' }] } }
+  })
+  const api = createTrainingApi(fetchImpl)
+  await assert.rejects(api.startTraining({ corpus: 'c', name: 'n', sentences: 'a\nb' }), err => {
+    assert.equal(err.status, 409)
+    assert.equal(err.preflight, null)
+    assert.deepEqual(err.unresolved, [{ index: 2, text: '$50', reason: 'currency' }])
+    return true
+  })
 })

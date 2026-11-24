@@ -99,7 +99,7 @@ test('上傳被伺服器拒絕的檔案列出原因，其餘檔案不受影響',
   store.selectDeclaration('dev')
   await store.addUploadFiles([{ name: 'bad.wav', size: 1 }, { name: 'ok.wav', size: 1 }])
   assert.deepEqual(store.state.up.files.map(f => [f.name, f.status, f.reason || '']), [['bad.wav', 'rejected', '無法解碼'], ['ok.wav', 'accepted', '']])
-  assert.equal(store.acceptedCount.value, 1)
+  assert.equal(store.acceptedCount, 1)
 })
 
 test('逐字稿匯入錯誤保留每一條問題；成功後重新載入校對表', async () => {
@@ -166,10 +166,10 @@ test('Edge 上傳文字檔：讀入後在合成前預覽，改寫或移除句子
   store.state.edge.textSrc = 'file'
   await store.loadEdgeTextFile({ text: async () => '你好\nA12 號\n你好\n' })
   assert.deepEqual(store.state.edge.sentences, ['你好', 'A12 號'])
-  assert.equal(store.edgeReview.value.canContinue, false)
+  assert.equal(store.edgeReview.canContinue, false)
   await store.editEdgeSentence(1, '甲一二號')
   assert.deepEqual(store.state.edge.sentences, ['你好', '甲一二號'])
-  assert.equal(store.edgeReview.value.canContinue, true)
+  assert.equal(store.edgeReview.canContinue, true)
   await store.removeEdgeSentence(0)
   assert.deepEqual(store.state.edge.sentences, ['甲一二號'])
   assert.equal(call, 3)
@@ -202,8 +202,8 @@ test('開始訓練：內建句庫送 preset，上傳文字檔送 sentences；伺
   store2.go('preflight')
   await store2.startTraining()
   assert.equal(store2.state.screen, 'preflight')
-  assert.equal(store2.gate.value.canStart, false)
-  assert.deepEqual(store2.gate.value.reasons.map(r => r.id), ['stage_connections'])
+  assert.equal(store2.gate.canStart, false)
+  assert.deepEqual(store2.gate.reasons.map(r => r.id), ['stage_connections'])
 })
 
 test('名稱格式不合時前端不送出開始請求', async () => {
@@ -240,7 +240,7 @@ test('訓練進度輪詢：日誌依 offset 接續，工作完成後通知清單
   assert.equal(store.state.job.status, 'done')
   assert.equal(refreshed, 1)
   assert.equal(store.state.announcement.code, 'done')
-  assert.equal(store.shouldPoll.value, false)
+  assert.equal(store.shouldPoll, false)
 })
 
 test('取消訓練要先確認；繼續訓練不呼叫取消', async () => {
@@ -272,13 +272,13 @@ test('自動逐字稿：啟動、輪詢顯示裝置與退回原因，完成後�
   const store = createVoiceTrainingStore({ api })
   store.state.slug = 'c'
   await store.startAutoTranscription()
-  assert.equal(store.transcription.value.device, 'cpu')
-  assert.equal(store.transcription.value.fallbackReason, '有舞台連線')
+  assert.equal(store.transcription.device, 'cpu')
+  assert.equal(store.transcription.fallbackReason, '有舞台連線')
   await store.pollTranscription()
   await store.pollTranscription()
-  assert.equal(store.transcription.value.state, 'done')
+  assert.equal(store.transcription.state, 'done')
   assert.ok(names().includes('getCorpus'))
-  assert.equal(store.transcriptionShouldPoll.value, false)
+  assert.equal(store.transcriptionShouldPoll, false)
 })
 
 test('首頁：列出語料與進行中的工作；繼續上傳語料回到校對，Edge 語料回到朗讀文字', async () => {
@@ -310,4 +310,24 @@ test('完成畫面的預設試聽：伺服器目前只念固定句，其餘句�
   await store.previewVoice('zh')
   assert.deepEqual(calls[0].slice(1), ['/api/speech/preview', { tts: { type: 'matcha', ref_file: 'trained-1', tts_server: '', model: '' } }])
   assert.equal(store.state.preview.audio, 'data:audio/wav;base64,AAAA')
+})
+
+test('start 因未解決的數字被拒：回到校對表重新預覽並顯示「第 N 句」原因', async () => {
+  const refused = new TrainingApiError('有數字無法確定怎麼念：第 2 句「$50」', { status: 409, unresolved: [{ index: 2, text: '$50', reason: 'currency' }] })
+  const { api, names } = fakeApi({
+    startTraining: refused,
+    post: (_path, body) => ({ ok: false, total: 2, sentences: body.sentences.split('\n').map((text, i) => ({ index: i + 1, text, spoken: text, unresolved: /\$/.test(text) ? [{ text: '$50', start: 3, end: 6, reason: 'currency' }] : [] })) })
+  })
+  const store = createVoiceTrainingStore({ api })
+  store.chooseSource('edge')
+  store.state.slug = 'e'
+  store.state.name = 'n'
+  store.state.edge.textSrc = 'file'
+  store.state.edge.sentences = ['你好', '價錢是$50']
+  store.go('preflight')
+  await store.startTraining()
+  assert.equal(store.state.screen, 'review')
+  assert.match(store.state.error, /第 2 句/)
+  assert.equal(store.edgeReview.canContinue, false)
+  assert.deepEqual(names(), ['startTraining', 'post'])
 })
