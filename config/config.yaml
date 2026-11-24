@@ -80,13 +80,17 @@ model:
 
 # TTS：第一次建立數位人設定檔時成為主數位人的初始聲音；之後預設聲音由主數位人設定檔決定
 tts:
-  type: edgetts  # edgetts | breezyvoice（其他已移除的引擎在啟動時改用 edgetts）
-  ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；BreezyVoice 填控制台音訊庫的參考音訊 ID
+  type: edgetts  # edgetts | breezyvoice | matcha（其他已移除的引擎在啟動時改用 edgetts）
+  ref_file: zh-TW-HsiaoChenNeural  # 臺灣女聲（曉臻）；BreezyVoice 填控制台音訊庫的參考音訊 ID；Matcha 填聲線模型 ID
   tts_server: ''  # BreezyVoice 服務，只接受本機位址；空白為 127.0.0.1:50000，套用時自動啟動
   model: ''  # 空白為 models/BreezyVoice；其他 BreezyVoice 模型放進 models/ 後填資料夾名稱
   edge_persistent_worker: true  # 重用 Edge 的本機 event loop，不是持久遠端連線
   edge_prefetch: true  # 第一片段出聲後最多預取下一段，降低片段間空窗
   edge_connection_reuse: true  # 保留並重用 Edge 連線，避開每段重新建立連線的停頓
+
+# Matcha-TTS 的伺服器設定，所有數位人設定檔共用；聲線模型在數位人設定檔的「聲音」選擇
+matcha:
+  num_threads: 4  # sherpa-onnx 在 CPU 上合成的執行緒數（1–64）
 
 # ASR 配置資訊，可以改對應的模型，建議browser
 asr:

@@ -4,8 +4,9 @@
 """Reference-audio library and the rules for TTS inputs that name files or servers.
 
 Administrators upload reference audio; it is decoded, checked and stored as
-``data/voices/<id>.wav``. TTS settings then name a voice by its library ID, so
-a settings request can never point an engine at an arbitrary file on the host.
+``data/voices/<id>.wav``. TTS settings then name a voice by its library ID (or,
+for Matcha, a voice model by its ``models/tts`` catalog ID), so a settings
+request can never point an engine at an arbitrary file on the host.
 The same module checks the TTS server address (loopback only) and migrates
 saved settings written before these rules existed.
 """
@@ -36,8 +37,12 @@ VOICE_ID = re.compile(r"[0-9a-f]{16}")
 # Edge voice names name voices on the server side.
 SERVER_SIDE_REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}")
 # The only TTS engines; src.tts.factory builds exactly these.
-TTS_ENGINES = frozenset({"edgetts", "breezyvoice"})
+TTS_ENGINES = frozenset({"edgetts", "breezyvoice", "matcha"})
 REFERENCE_AUDIO_ENGINES = frozenset({"breezyvoice"})
+# Engines whose ``ref_file`` is a voice-model ID (src.tts.voice_models).
+VOICE_MODEL_ENGINES = frozenset({"matcha"})
+# Engines that speak en-US as well as zh-TW.
+ENGLISH_TTS_ENGINES = frozenset({"edgetts", "matcha"})
 DEFAULT_EDGE_VOICE = "zh-TW-HsiaoChenNeural"
 # Settings of TTS engines removed in 2026; dropped from saved settings on load.
 REMOVED_TTS_FIELDS = ("mode", "language", "speaker", "instruct", "device")
@@ -259,13 +264,21 @@ def delete_voice(voice_id: Any) -> Path:
 
 
 def check_reference(engine: str, value: Any) -> str:
-    """``value`` as a reference for ``engine``: a library ID, or a server-side voice name."""
+    """``value`` as a reference for ``engine``: a library ID, a listed voice-model ID,
+    or a server-side voice name."""
     if value is None:
         value = ""
     if not isinstance(value, str):
         raise VoiceLibraryError("參考音訊格式不正確")
     value = value.strip()
-    if str(engine or "").strip().lower() in REFERENCE_AUDIO_ENGINES:
+    engine = str(engine or "").strip().lower()
+    if engine in VOICE_MODEL_ENGINES:
+        from src.tts.voice_models import list_voice_models
+
+        if value and value not in {model.id for model in list_voice_models()}:
+            raise VoiceLibraryError(f"聲線模型「{value[:120]}」不在 models/tts 清單中，請改選已安裝的聲線模型")
+        return value
+    if engine in REFERENCE_AUDIO_ENGINES:
         if value:
             try:
                 voice_path(value)
@@ -418,7 +431,11 @@ def migrate_tts_values(values: dict, *, where: str) -> bool:
         except VoiceLibraryError:
             text = current if isinstance(current, str) else ""
             updated = _import_saved_path(text.strip(), where) if engine in REFERENCE_AUDIO_ENGINES else ""
-            if not updated:
+            if engine in VOICE_MODEL_ENGINES:
+                # Never another voice model: the engine then asks for one to be chosen.
+                logger.warning("%s 的聲線模型「%s」不在 models/tts 清單中，已清空；請把聲線模型複製到 "
+                               "models/tts/ 後在數位人設定檔的「聲音」重新選擇", where, current)
+            elif not updated:
                 if engine == "edgetts":
                     updated = DEFAULT_EDGE_VOICE
                 logger.warning("%s 的 tts.ref_file 不是音訊庫 ID，已改為「%s」：%r", where, updated, current)

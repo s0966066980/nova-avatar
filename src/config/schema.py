@@ -205,14 +205,21 @@ class ModelConfig:
 class TTSConfig:
     voice_en_us: str = "en-US-JennyNeural"
     """TTS 配置"""
-    type: str = "edgetts"  # edgetts | breezyvoice
-    ref_file: str = "zh-TW-HsiaoChenNeural"  # Edge 聲線名稱，或 BreezyVoice 的音訊庫 ID
+    type: str = "edgetts"  # edgetts | breezyvoice | matcha
+    # Edge 聲線名稱、BreezyVoice 的音訊庫 ID，或 Matcha 的聲線模型 ID（models/tts/<id>）
+    ref_file: str = "zh-TW-HsiaoChenNeural"
     ref_text: Optional[str] = None  # 已停用：逐字稿只來自音訊庫，載入與儲存時清除
     tts_server: str = ""  # BreezyVoice 服務（只接受本機）；空白為 127.0.0.1:50000
     model: str = ""  # BreezyVoice：models/ 清單 ID；空白為 models/BreezyVoice
     edge_persistent_worker: bool = True
     edge_prefetch: bool = True
     edge_connection_reuse: bool = True
+
+
+@dataclass
+class MatchaConfig:
+    """Matcha-TTS 的伺服器設定，所有數位人設定檔共用（不屬於任何設定檔）"""
+    num_threads: int = 4  # sherpa-onnx 在 CPU 上合成的執行緒數
 
 
 @dataclass
@@ -438,6 +445,7 @@ class Config:
     app: AppConfig = field(default_factory=AppConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     tts: TTSConfig = field(default_factory=TTSConfig)
+    matcha: MatchaConfig = field(default_factory=MatchaConfig)
     asr: ASRConfig = field(default_factory=ASRConfig)
     vad: VADConfig = field(default_factory=VADConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)

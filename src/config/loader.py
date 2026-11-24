@@ -10,11 +10,15 @@ from dataclasses import fields
 from pathlib import Path
 from typing import Optional, Dict, Any
 from .schema import (
-    Config, AppConfig, ModelConfig, TTSConfig, ASRConfig, VADConfig, LLMConfig,
+    Config, AppConfig, ModelConfig, TTSConfig, MatchaConfig, ASRConfig, VADConfig, LLMConfig,
     AudioConfig, VideoConfig, CustomVideoConfig, ERNeRfConfig, TalkingGaussianConfig,
     MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
     ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
 )
+
+
+# sherpa-onnx CPU threads for Matcha-TTS; more than the cores only adds contention.
+MAX_MATCHA_THREADS = 64
 
 
 def _merge_dicts(base: Dict, override: Dict) -> Dict:
@@ -115,6 +119,10 @@ def dict_to_config(config_dict: Dict) -> Config:
     tts_dict = {key: value for key, value in (config_dict.get('tts', {}) or {}).items()
                 if key not in REMOVED_TTS_FIELDS}
     tts_config = TTSConfig(**tts_dict)
+    matcha_config = MatchaConfig(**(config_dict.get('matcha', {}) or {}))
+    threads = matcha_config.num_threads
+    if type(threads) is not int or not 1 <= threads <= MAX_MATCHA_THREADS:
+        raise ValueError(f"matcha.num_threads 必須是 1–{MAX_MATCHA_THREADS} 的整數：{threads!r}")
     asr_config = ASRConfig(**config_dict.get('asr', {}))
     vad_config = VADConfig(**config_dict.get('vad', {}))
     llm_dict = dict(config_dict.get('llm', {}) or {})
@@ -173,6 +181,7 @@ def dict_to_config(config_dict: Dict) -> Config:
         app=app_config,
         model=model_config,
         tts=tts_config,
+        matcha=matcha_config,
         asr=asr_config,
         vad=vad_config,
         llm=llm_config,

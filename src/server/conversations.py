@@ -51,7 +51,9 @@ def validate(values: dict, current: dict) -> dict:
 
 def check_language_support(config, locale: str) -> None:
     # Both recognizers (faster-whisper, Fun-ASR-Nano) accept Chinese and English.
-    if locale == 'en-US' and getattr(config.tts, 'type', '') != 'edgetts':
+    from src.tts.voice_library import ENGLISH_TTS_ENGINES
+
+    if locale == 'en-US' and getattr(config.tts, 'type', '') not in ENGLISH_TTS_ENGINES:
         raise ValueError('english_requires_edge_tts')
 
 

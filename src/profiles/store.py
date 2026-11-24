@@ -29,7 +29,8 @@ from src.profiles.validation import identifier as _identifier, obj as _object, r
 from src.ragflow.settings import avatar_settings
 from src.ragflow.selection import validate_selection
 from src.tts.voice_library import (
-    REFERENCE_AUDIO_ENGINES, TTS_ENGINES, VoiceLibraryError, check_model, check_reference, check_tts_server,
+    REFERENCE_AUDIO_ENGINES, TTS_ENGINES, VOICE_MODEL_ENGINES, VoiceLibraryError, check_model, check_reference,
+    check_tts_server,
     drop_stale_transcript, migrate_tts_values, voice_transcript,
 )
 from src.utils.logging import logger
@@ -121,7 +122,7 @@ def profile_config(base, profile: dict):
 
 def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, require_voice=False) -> dict:
     """Normalize a profile; ``require_endpoint`` also demands a listed endpoint name and
-    ``require_voice`` a transcribed reference recording for BreezyVoice."""
+    ``require_voice`` a transcribed reference recording for BreezyVoice and a voice model for Matcha."""
     allowed = {"id", "name", "engine", "avatar_id", "assistant_profile", "llm",
                "tts", "rag", "reply_rules", "greeting", "web_search"}
     if isinstance(value, dict) and "tools" in value:
@@ -183,6 +184,8 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
         raise ProfileError(f"聲音設定：{exc.message}") from None
     if require_voice and tts["type"] in REFERENCE_AUDIO_ENGINES:
         _require_reference(tts, name)
+    if require_voice and tts["type"] in VOICE_MODEL_ENGINES and not tts["ref_file"]:
+        raise ProfileError(f"角色「{name}」使用 Matcha，請在「聲音」選擇聲線模型")
     try:
         rag = validate_selection(value.get("rag"))
     except ValueError as exc:
