@@ -1,0 +1,1581 @@
+
+> nova-avatar-web@1.0.0 test
+> node --test tests/*.test.js
+
+TAP version 13
+# Subtest: 登入狀態依 /api/session 決定登入、未設定或已登入
+ok 1 - 登入狀態依 /api/session 決定登入、未設定或已登入
+  ---
+  duration_ms: 1.625222
+  type: 'test'
+  ...
+# Subtest: 登入成功切換狀態，失敗顯示後端訊息
+ok 2 - 登入成功切換狀態，失敗顯示後端訊息
+  ---
+  duration_ms: 0.902217
+  type: 'test'
+  ...
+# Subtest: 任何控制台 API 回 401 時回到登入畫面
+ok 3 - 任何控制台 API 回 401 時回到登入畫面
+  ---
+  duration_ms: 0.468356
+  type: 'test'
+  ...
+# Subtest: 控制台根元件：未登入顯示登入表單，登入後才掛載主控制台
+ok 4 - 控制台根元件：未登入顯示登入表單，登入後才掛載主控制台
+  ---
+  duration_ms: 37.793023
+  type: 'test'
+  ...
+# Subtest: 未設定密碼時登入畫面提示設定腳本
+ok 5 - 未設定密碼時登入畫面提示設定腳本
+  ---
+  duration_ms: 10.949016
+  type: 'test'
+  ...
+# Subtest: 數位人舞台不載入控制台登入
+ok 6 - 數位人舞台不載入控制台登入
+  ---
+  duration_ms: 0.34203
+  type: 'test'
+  ...
+# Subtest: LLM 未全 GPU 執行時，控制台要顯示警告
+ok 7 - LLM 未全 GPU 執行時，控制台要顯示警告
+  ---
+  duration_ms: 0.872668
+  type: 'test'
+  ...
+# Subtest: 全 GPU 或後端未回報時不顯示警告
+ok 8 - 全 GPU 或後端未回報時不顯示警告
+  ---
+  duration_ms: 0.140827
+  type: 'test'
+  ...
+# Subtest: 點擊快捷指令立即送出指定問題
+ok 9 - 點擊快捷指令立即送出指定問題
+  ---
+  duration_ms: 72.703291
+  type: 'test'
+  ...
+# Subtest: 點擊快捷指令立即送出指定問題，並切回對話模式
+ok 10 - 點擊快捷指令立即送出指定問題，並切回對話模式
+  ---
+  duration_ms: 56.843948
+  type: 'test'
+  ...
+# Subtest: 記憶與語系不占控制台工作區，並提供對話設定入口
+ok 11 - 記憶與語系不占控制台工作區，並提供對話設定入口
+  ---
+  duration_ms: 20.675996
+  type: 'test'
+  ...
+# Subtest: 語音驗證獨占工作區，不與聊天列表及輸入塢堆疊
+ok 12 - 語音驗證獨占工作區，不與聊天列表及輸入塢堆疊
+  ---
+  duration_ms: 19.08011
+  type: 'test'
+  ...
+# Subtest: 語音驗證的草稿在切到對話或朗讀後仍保留
+ok 13 - 語音驗證的草稿在切到對話或朗讀後仍保留
+  ---
+  duration_ms: 16.643754
+  type: 'test'
+  ...
+# Subtest: 切換模式後仍接收進行中語音驗證的完成結果
+ok 14 - 切換模式後仍接收進行中語音驗證的完成結果
+  ---
+  duration_ms: 22.091648
+  type: 'test'
+  ...
+# Subtest: 對話與朗讀草稿在模式切換後各自保留
+ok 15 - 對話與朗讀草稿在模式切換後各自保留
+  ---
+  duration_ms: 13.424854
+  type: 'test'
+  ...
+# Subtest: 對話設定入口進入正確分類，返回時保留目前模式與草稿
+ok 16 - 對話設定入口進入正確分類，返回時保留目前模式與草稿
+  ---
+  duration_ms: 20.896147
+  type: 'test'
+  ...
+# Subtest: 尚未連線的快捷指令會明確提示先連線
+ok 17 - 尚未連線的快捷指令會明確提示先連線
+  ---
+  duration_ms: 15.784481
+  type: 'test'
+  ...
+# Subtest: 角色轉場中的快捷指令保留問題並顯示提示
+ok 18 - 角色轉場中的快捷指令保留問題並顯示提示
+  ---
+  duration_ms: 15.022949
+  type: 'test'
+  ...
+# Subtest: 快捷指令送出後立即顯示問題與傳送狀態，不等待後端回應
+ok 19 - 快捷指令送出後立即顯示問題與傳送狀態，不等待後端回應
+  ---
+  duration_ms: 14.048026
+  type: 'test'
+  ...
+# Subtest: 快捷指令被後端拒絕時顯示錯誤、移除暫存訊息並保留問題
+ok 20 - 快捷指令被後端拒絕時顯示錯誤、移除暫存訊息並保留問題
+  ---
+  duration_ms: 14.580584
+  type: 'test'
+  ...
+# Subtest: 上一題仍在傳送時可立即點快捷指令插話
+ok 21 - 上一題仍在傳送時可立即點快捷指令插話
+  ---
+  duration_ms: 14.033079
+  type: 'test'
+  ...
+# Subtest: 傳送期間可繼續輸入並按送出插話
+ok 22 - 傳送期間可繼續輸入並按送出插話
+  ---
+  duration_ms: 15.089384
+  type: 'test'
+  ...
+# Subtest: 取消後晚到的舊回應不會移除新快捷指令訊息
+ok 23 - 取消後晚到的舊回應不會移除新快捷指令訊息
+  ---
+  duration_ms: 15.699918
+  type: 'test'
+  ...
+# Subtest: 色彩 token 以 light-dark() 一次定義淺色與深色
+ok 24 - 色彩 token 以 light-dark() 一次定義淺色與深色
+  ---
+  duration_ms: 0.664915
+  type: 'test'
+  ...
+# Subtest: 淺色主題的文字對比至少 4.5:1
+ok 25 - 淺色主題的文字對比至少 4.5:1
+  ---
+  duration_ms: 0.772173
+  type: 'test'
+  ...
+# Subtest: 深色主題的文字對比至少 4.5:1
+ok 26 - 深色主題的文字對比至少 4.5:1
+  ---
+  duration_ms: 0.667765
+  type: 'test'
+  ...
+# Subtest: 深色主題沿用舞台背景黑與說話中藍
+ok 27 - 深色主題沿用舞台背景黑與說話中藍
+  ---
+  duration_ms: 0.095549
+  type: 'test'
+  ...
+# Subtest: 鍵盤焦點框與減少動態偏好
+ok 28 - 鍵盤焦點框與減少動態偏好
+  ---
+  duration_ms: 0.167214
+  type: 'test'
+  ...
+# Subtest: 主題選項為跟隨系統、淺色、深色
+ok 29 - 主題選項為跟隨系統、淺色、深色
+  ---
+  duration_ms: 0.759893
+  type: 'test'
+  ...
+# Subtest: 舊版主題值對應到新的三個選項，未知值跟隨系統
+ok 30 - 舊版主題值對應到新的三個選項，未知值跟隨系統
+  ---
+  duration_ms: 0.134388
+  type: 'test'
+  ...
+# Subtest: 跟隨系統時移除 data-theme，讓 prefers-color-scheme 決定配色
+ok 31 - 跟隨系統時移除 data-theme，讓 prefers-color-scheme 決定配色
+  ---
+  duration_ms: 0.180612
+  type: 'test'
+  ...
+# Subtest: 讀取已儲存的主題，沒有時沿用舊版樣式樣本
+ok 32 - 讀取已儲存的主題，沒有時沿用舊版樣式樣本
+  ---
+  duration_ms: 0.187727
+  type: 'test'
+  ...
+# Subtest: 儲存主題只寫入主題鍵，儲存空間不可用時不拋錯
+ok 33 - 儲存主題只寫入主題鍵，儲存空間不可用時不拋錯
+  ---
+  duration_ms: 0.21931
+  type: 'test'
+  ...
+# Subtest: 輪次提交後控制台改為已播回覆並結束預覽
+ok 34 - 輪次提交後控制台改為已播回覆並結束預覽
+  ---
+  duration_ms: 0.426289
+  type: 'test'
+  ...
+# Subtest: 沒有已播回覆時刪除該則預覽
+ok 35 - 沒有已播回覆時刪除該則預覽
+  ---
+  duration_ms: 0.317405
+  type: 'test'
+  ...
+# Subtest: 成功提交不影響其他輪次，錯誤原因可辨識
+ok 36 - 成功提交不影響其他輪次，錯誤原因可辨識
+  ---
+  duration_ms: 0.098003
+  type: 'test'
+  ...
+# Subtest: 控制台與設定中心在淺色與深色主題下文字對比至少 4.5:1
+ok 37 - 控制台與設定中心在淺色與深色主題下文字對比至少 4.5:1
+  ---
+  duration_ms: 35043.693673
+  type: 'test'
+  ...
+# Subtest: 登入頁在淺色與深色主題下文字對比至少 4.5:1
+ok 38 - 登入頁在淺色與深色主題下文字對比至少 4.5:1
+  ---
+  duration_ms: 659.825506
+  type: 'test'
+  ...
+# Subtest: 主題選項跟隨系統、淺色、深色實際生效並記住
+ok 39 - 主題選項跟隨系統、淺色、深色實際生效並記住
+  ---
+  duration_ms: 965.278229
+  type: 'test'
+  ...
+# Subtest: 鍵盤焦點有品牌色焦點框，減少動態時停止動畫與轉場
+ok 40 - 鍵盤焦點有品牌色焦點框，減少動態時停止動畫與轉場
+  ---
+  duration_ms: 580.411187
+  type: 'test'
+  ...
+# Subtest: 控制台看板依序接收 begin/item 並可清空
+ok 41 - 控制台看板依序接收 begin/item 並可清空
+  ---
+  duration_ms: 0.896487
+  type: 'test'
+  ...
+# Subtest: 完整看板事件會以最新內容取代舊內容
+ok 42 - 完整看板事件會以最新內容取代舊內容
+  ---
+  duration_ms: 0.164229
+  type: 'test'
+  ...
+# Subtest: configured composer height is stable and scales with the stage canvas
+ok 43 - configured composer height is stable and scales with the stage canvas
+  ---
+  duration_ms: 0.614769
+  type: 'test'
+  ...
+# Subtest: reply captions avoid the configured composer on both preview and stage
+ok 44 - reply captions avoid the configured composer on both preview and stage
+  ---
+  duration_ms: 0.30024
+  type: 'test'
+  ...
+# Subtest: Chinese IME confirmation and shift-enter do not send
+ok 45 - Chinese IME confirmation and shift-enter do not send
+  ---
+  duration_ms: 0.919241
+  type: 'test'
+  ...
+# Subtest: new uploads and existing references share the four-file budget
+ok 46 - new uploads and existing references share the four-file budget
+  ---
+  duration_ms: 0.423399
+  type: 'test'
+  ...
+# Subtest: composer remains inside stage after keyboard shrinks viewport
+ok 47 - composer remains inside stage after keyboard shrinks viewport
+  ---
+  duration_ms: 0.143075
+  type: 'test'
+  ...
+# Subtest: console editing preserves enabled capture while the avatar is answering
+ok 48 - console editing preserves enabled capture while the avatar is answering
+  ---
+  duration_ms: 1.867296
+  type: 'test'
+  ...
+# Subtest: failed acceptance preserves local files and retries without uploading twice
+ok 49 - failed acceptance preserves local files and retries without uploading twice
+  ---
+  duration_ms: 20.760209
+  type: 'test'
+  ...
+# Subtest: new sessions reupload retained local drafts instead of reusing old attachment IDs
+ok 50 - new sessions reupload retained local drafts instead of reusing old attachment IDs
+  ---
+  duration_ms: 2.49737
+  type: 'test'
+  ...
+# Subtest: late cancellation cannot overwrite a new accepted turn (new session)
+ok 51 - late cancellation cannot overwrite a new accepted turn (new session)
+  ---
+  duration_ms: 2.618015
+  type: 'test'
+  ...
+# Subtest: late cancellation cannot overwrite a new accepted turn (same session)
+ok 52 - late cancellation cannot overwrite a new accepted turn (same session)
+  ---
+  duration_ms: 1.651698
+  type: 'test'
+  ...
+# Subtest: a new question supersedes pending HTTP without waiting for cancellation (old success)
+ok 53 - a new question supersedes pending HTTP without waiting for cancellation (old success)
+  ---
+  duration_ms: 1.958761
+  type: 'test'
+  ...
+# Subtest: a new question supersedes pending HTTP without waiting for cancellation (old failure)
+ok 54 - a new question supersedes pending HTTP without waiting for cancellation (old failure)
+  ---
+  duration_ms: 1.791486
+  type: 'test'
+  ...
+# Subtest: acceptance keeps text edited while the previous question was sending
+ok 55 - acceptance keeps text edited while the previous question was sending
+  ---
+  duration_ms: 1.619682
+  type: 'test'
+  ...
+# Subtest: a stale attachment poll cannot undo a successfully saved selection
+ok 56 - a stale attachment poll cannot undo a successfully saved selection
+  ---
+  duration_ms: 1.111303
+  type: 'test'
+  ...
+# Subtest: selection writes are queued and submission waits for the latest selection
+ok 57 - selection writes are queued and submission waits for the latest selection
+  ---
+  duration_ms: 6.1817
+  type: 'test'
+  ...
+# Subtest: queued selections and old write failures cannot cross a session change
+ok 58 - queued selections and old write failures cannot cross a session change
+  ---
+  duration_ms: 1.760488
+  type: 'test'
+  ...
+# Subtest: voice events neither expose text cancellation nor restore a completed text retry
+ok 59 - voice events neither expose text cancellation nor restore a completed text retry
+  ---
+  duration_ms: 1.265952
+  type: 'test'
+  ...
+# Subtest: owned analysis errors restore the question for retry
+ok 60 - owned analysis errors restore the question for retry
+  ---
+  duration_ms: 2.248589
+  type: 'test'
+  ...
+# Subtest: disconnection preserves drafts until the configured 60s deadline
+ok 61 - disconnection preserves drafts until the configured 60s deadline
+  ---
+  duration_ms: 1.4393
+  type: 'test'
+  ...
+# Subtest: disconnection preserves drafts until the configured 90s deadline
+ok 62 - disconnection preserves drafts until the configured 90s deadline
+  ---
+  duration_ms: 1.107062
+  type: 'test'
+  ...
+# Subtest: keyboard viewport bounds panel height and restores the configured position
+ok 63 - keyboard viewport bounds panel height and restores the configured position
+  ---
+  duration_ms: 0.987475
+  type: 'test'
+  ...
+# Subtest: desktop Enter sends while IME, Shift+Enter and touch keyboard Enter do not
+ok 64 - desktop Enter sends while IME, Shift+Enter and touch keyboard Enter do not
+  ---
+  duration_ms: 3.237122
+  type: 'test'
+  ...
+# Subtest: lazy microphone enabling consumes its gesture (permission before pointerup)
+ok 65 - lazy microphone enabling consumes its gesture (permission before pointerup)
+  ---
+  duration_ms: 1.273627
+  type: 'test'
+  ...
+# Subtest: lazy microphone enabling consumes its gesture (permission after pointerup)
+ok 66 - lazy microphone enabling consumes its gesture (permission after pointerup)
+  ---
+  duration_ms: 2.23406
+  type: 'test'
+  ...
+# Subtest: 控制台記憶面板顯示本場自動清場及返回時間
+ok 67 - 控制台記憶面板顯示本場自動清場及返回時間
+  ---
+  duration_ms: 9.066318
+  type: 'test'
+  ...
+# Subtest: 控制台記憶面板顯示自動清場已停用
+ok 68 - 控制台記憶面板顯示自動清場已停用
+  ---
+  duration_ms: 1.703136
+  type: 'test'
+  ...
+# Subtest: 控制台語系摘要不會被正在檢視的舞台場次取代，並隨重新整理更新
+ok 69 - 控制台語系摘要不會被正在檢視的舞台場次取代，並隨重新整理更新
+  ---
+  duration_ms: 4.601474
+  type: 'test'
+  ...
+# Subtest: 設定面板提供有標籤與說明的預設 Prompt 欄位
+ok 70 - 設定面板提供有標籤與說明的預設 Prompt 欄位
+  ---
+  duration_ms: 0.580102
+  type: 'test'
+  ...
+# Subtest: 套用 LLM 設定時會送出並同步預設 Prompt
+ok 71 - 套用 LLM 設定時會送出並同步預設 Prompt
+  ---
+  duration_ms: 0.158725
+  type: 'test'
+  ...
+# Subtest: 設定面板提供可存取且有範圍限制的約略回覆字數欄位
+ok 72 - 設定面板提供可存取且有範圍限制的約略回覆字數欄位
+  ---
+  duration_ms: 0.089605
+  type: 'test'
+  ...
+# Subtest: 設定面板可調整看板項目上限並說明系統固定規則
+ok 73 - 設定面板可調整看板項目上限並說明系統固定規則
+  ---
+  duration_ms: 0.172038
+  type: 'test'
+  ...
+# Subtest: 設定面板可調整嘴型銳化、貼回插值與 MuseTalk 製作參數
+ok 74 - 設定面板可調整嘴型銳化、貼回插值與 MuseTalk 製作參數
+  ---
+  duration_ms: 0.158034
+  type: 'test'
+  ...
+# Subtest: 語音引擎只在數位人設定檔選擇，只剩 BreezyVoice 與 Edge TTS，已移除引擎改用 Edge 時顯示說明
+ok 75 - 語音引擎只在數位人設定檔選擇，只剩 BreezyVoice 與 Edge TTS，已移除引擎改用 Edge 時顯示說明
+  ---
+  duration_ms: 2.590844
+  type: 'test'
+  ...
+# Subtest: BreezyVoice 參考音檔上傳時一併保存逐字稿
+ok 76 - BreezyVoice 參考音檔上傳時一併保存逐字稿
+  ---
+  duration_ms: 0.135293
+  type: 'test'
+  ...
+# Subtest: 參考音訊與模型只能從伺服器清單選擇，不再開本機路徑選擇器
+ok 77 - 參考音訊與模型只能從伺服器清單選擇，不再開本機路徑選擇器
+  ---
+  duration_ms: 0.146596
+  type: 'test'
+  ...
+# Subtest: 套用舞台設定時會送出看板視窗樣式
+ok 78 - 套用舞台設定時會送出看板視窗樣式
+  ---
+  duration_ms: 0.223309
+  type: 'test'
+  ...
+# Subtest: 舞台預覽共用看板、麥克風與展開看板按鈕的位置，控制台右側不重複顯示麥克風
+ok 79 - 舞台預覽共用看板、麥克風與展開看板按鈕的位置，控制台右側不重複顯示麥克風
+  ---
+  duration_ms: 0.295493
+  type: 'test'
+  ...
+# Subtest: 舞台預覽麥克風尺寸與 stage.html 一致
+ok 80 - 舞台預覽麥克風尺寸與 stage.html 一致
+  ---
+  duration_ms: 0.162214
+  type: 'test'
+  ...
+# Subtest: 展開看板按鈕在預覽與 stage.html 都會依左右邊緣切換圖示
+ok 81 - 展開看板按鈕在預覽與 stage.html 都會依左右邊緣切換圖示
+  ---
+  duration_ms: 0.079602
+  type: 'test'
+  ...
+# Subtest: 展開看板按鈕在各舞台位置都維持單行且不被壓縮
+ok 82 - 展開看板按鈕在各舞台位置都維持單行且不被壓縮
+  ---
+  duration_ms: 0.126405
+  type: 'test'
+  ...
+# Subtest: 展開看板按鈕可在開啟與關閉間切換，並宣告目前狀態
+ok 83 - 展開看板按鈕可在開啟與關閉間切換，並宣告目前狀態
+  ---
+  duration_ms: 0.076983
+  type: 'test'
+  ...
+# Subtest: 即時字幕帶可用滑桿或直接拖曳調整展示區域並持久化
+ok 84 - 即時字幕帶可用滑桿或直接拖曳調整展示區域並持久化
+  ---
+  duration_ms: 0.174798
+  type: 'test'
+  ...
+# Subtest: 舞台直接編輯提供拖曳與滑桿兩種調整方式
+ok 85 - 舞台直接編輯提供拖曳與滑桿兩種調整方式
+  ---
+  duration_ms: 0.073331
+  type: 'test'
+  ...
+# Subtest: 所見即所得預覽以獨立 stage.html 的舞台結構呈現
+ok 86 - 所見即所得預覽以獨立 stage.html 的舞台結構呈現
+  ---
+  duration_ms: 0.117776
+  type: 'test'
+  ...
+# Subtest: 獨立 stage.html 套用展開看板按鈕位置
+ok 87 - 獨立 stage.html 套用展開看板按鈕位置
+  ---
+  duration_ms: 0.053463
+  type: 'test'
+  ...
+# Subtest: 套用 LLM 設定時會送出並同步回覆字數
+ok 88 - 套用 LLM 設定時會送出並同步回覆字數
+  ---
+  duration_ms: 0.080098
+  type: 'test'
+  ...
+# Subtest: 設定面板可選擇舊有或串流回覆模式並持久化
+ok 89 - 設定面板可選擇舊有或串流回覆模式並持久化
+  ---
+  duration_ms: 0.096781
+  type: 'test'
+  ...
+# Subtest: 角色設定檔提供三區可編輯規則並以設定檔版本一次儲存
+ok 90 - 角色設定檔提供三區可編輯規則並以設定檔版本一次儲存
+  ---
+  duration_ms: 0.139638
+  type: 'test'
+  ...
+# Subtest: 設定中心顯示載入失敗與角色空狀態
+ok 91 - 設定中心顯示載入失敗與角色空狀態
+  ---
+  duration_ms: 0.140202
+  type: 'test'
+  ...
+# Subtest: 語音辨識設定保留目前 STT 引擎
+ok 92 - 語音辨識設定保留目前 STT 引擎
+  ---
+  duration_ms: 0.036789
+  type: 'test'
+  ...
+# Subtest: 舞台設定保留麥克風定位並以真實數位人預覽 9:16 對照畫面
+ok 93 - 舞台設定保留麥克風定位並以真實數位人預覽 9:16 對照畫面
+  ---
+  duration_ms: 0.161998
+  type: 'test'
+  ...
+# Subtest: 放大的 9:16 舞台可直接拖曳看板與麥克風並保存位置
+ok 94 - 放大的 9:16 舞台可直接拖曳看板與麥克風並保存位置
+  ---
+  duration_ms: 0.076638
+  type: 'test'
+  ...
+# Subtest: 數位人內容由設定檔頁套用，其他頁不跨頁儲存角色草稿
+ok 95 - 數位人內容由設定檔頁套用，其他頁不跨頁儲存角色草稿
+  ---
+  duration_ms: 0.059251
+  type: 'test'
+  ...
+# Subtest: 主題選擇提供跟隨系統、淺色與深色，並同步目前生效的偏好
+ok 96 - 主題選擇提供跟隨系統、淺色與深色，並同步目前生效的偏好
+  ---
+  duration_ms: 0.106313
+  type: 'test'
+  ...
+# Subtest: 主題只保留卡片選擇，角色 Prompt 與 Rule 編輯器保留高度偏好
+ok 97 - 主題只保留卡片選擇，角色 Prompt 與 Rule 編輯器保留高度偏好
+  ---
+  duration_ms: 0.060537
+  type: 'test'
+  ...
+# Subtest: 控制台空狀態不以固定示範對話與看板冒充即時資料
+ok 98 - 控制台空狀態不以固定示範對話與看板冒充即時資料
+  ---
+  duration_ms: 0.135991
+  type: 'test'
+  ...
+# Subtest: 正式控制台不顯示原型展示列、假延遲，且可預覽目前數位人
+ok 99 - 正式控制台不顯示原型展示列、假延遲，且可預覽目前數位人
+  ---
+  duration_ms: 0.055891
+  type: 'test'
+  ...
+# Subtest: 文字回覆由事件模式呈現而非 HTTP 完整 response
+ok 100 - 文字回覆由事件模式呈現而非 HTTP 完整 response
+  ---
+  duration_ms: 0.107759
+  type: 'test'
+  ...
+# Subtest: 文字 delta 拒絕重複、逆序與完成後的舊事件
+ok 101 - 文字 delta 拒絕重複、逆序與完成後的舊事件
+  ---
+  duration_ms: 0.066849
+  type: 'test'
+  ...
+# Subtest: 輪次提交後控制台對齊已播回覆
+ok 102 - 輪次提交後控制台對齊已播回覆
+  ---
+  duration_ms: 0.053973
+  type: 'test'
+  ...
+# Subtest: 招呼字數以字素計數，包含標點並忽略空白
+ok 103 - 招呼字數以字素計數，包含標點並忽略空白
+  ---
+  duration_ms: 0.583806
+  type: 'test'
+  ...
+# Subtest: 草稿驗證接受超限文案，但拒絕空內容及無效範圍
+ok 104 - 草稿驗證接受超限文案，但拒絕空內容及無效範圍
+  ---
+  duration_ms: 0.159288
+  type: 'test'
+  ...
+# Subtest: 預覽與試播使用未儲存草稿，不切換舞台輸入
+ok 105 - 預覽與試播使用未儲存草稿，不切換舞台輸入
+  ---
+  duration_ms: 33.044617
+  type: 'test'
+  ...
+# Subtest: 閒置時 scripts 招呼內容不得輸出原生 disabled 屬性
+ok 106 - 閒置時 scripts 招呼內容不得輸出原生 disabled 屬性
+  ---
+  duration_ms: 2.130741
+  type: 'test'
+  ...
+# Subtest: 閒置時 ai 招呼內容不得輸出原生 disabled 屬性
+ok 107 - 閒置時 ai 招呼內容不得輸出原生 disabled 屬性
+  ---
+  duration_ms: 0.464012
+  type: 'test'
+  ...
+# Subtest: 父頁載入或儲存時，仍正確鎖住招呼欄位
+ok 108 - 父頁載入或儲存時，仍正確鎖住招呼欄位
+  ---
+  duration_ms: 0.341026
+  type: 'test'
+  ...
+# Subtest: 預覽完成後，招呼內容恢復可編輯
+ok 109 - 預覽完成後，招呼內容恢復可編輯
+  ---
+  duration_ms: 21.958645
+  type: 'test'
+  ...
+# Subtest: 預覽失敗後，招呼內容恢復可編輯
+ok 110 - 預覽失敗後，招呼內容恢復可編輯
+  ---
+  duration_ms: 11.650247
+  type: 'test'
+  ...
+# Subtest: 試播完成後，招呼內容恢復可編輯
+ok 111 - 試播完成後，招呼內容恢復可編輯
+  ---
+  duration_ms: 6.235164
+  type: 'test'
+  ...
+# Subtest: 試播失敗後，招呼內容恢復可編輯
+ok 112 - 試播失敗後，招呼內容恢復可編輯
+  ---
+  duration_ms: 6.925887
+  type: 'test'
+  ...
+# Subtest: 同一招呼頁編輯開關、時間、Prompt、字數並預覽，儲存後留在本頁
+ok 113 - 同一招呼頁編輯開關、時間、Prompt、字數並預覽，儲存後留在本頁
+  ---
+  duration_ms: 19.022361
+  type: 'test'
+  ...
+# Subtest: 停用與清空內容可在同一頁儲存，先停止招呼再套用空草稿
+ok 114 - 停用與清空內容可在同一頁儲存，先停止招呼再套用空草稿
+  ---
+  duration_ms: 2.546397
+  type: 'test'
+  ...
+# Subtest: 套用失敗會保留同頁草稿並說明哪些步驟未完成
+ok 115 - 套用失敗會保留同頁草稿並說明哪些步驟未完成
+  ---
+  duration_ms: 2.313522
+  type: 'test'
+  ...
+# Subtest: 套用舞台排版不會送出其他頁的招呼或清場草稿
+ok 116 - 套用舞台排版不會送出其他頁的招呼或清場草稿
+  ---
+  duration_ms: 0.760449
+  type: 'test'
+  ...
+# Subtest: 套用模型時送出控制台所選 provider 的端點，而非目前端點
+ok 117 - 套用模型時送出控制台所選 provider 的端點，而非目前端點
+  ---
+  duration_ms: 1.417555
+  type: 'test'
+  ...
+# Subtest: 所選 provider 沒有設定端點時拒絕套用，不改送目前端點
+ok 118 - 所選 provider 沒有設定端點時拒絕套用，不改送目前端點
+  ---
+  duration_ms: 0.42421
+  type: 'test'
+  ...
+# Subtest: 惡意 Markdown 與原始 HTML 渲染後皆無害
+ok 119 - 惡意 Markdown 與原始 HTML 渲染後皆無害
+  ---
+  duration_ms: 72.033014
+  type: 'test'
+  ...
+# Subtest: 一般 Markdown 仍正常渲染
+ok 120 - 一般 Markdown 仍正常渲染
+  ---
+  duration_ms: 13.232396
+  type: 'test'
+  ...
+# Subtest: 渲染前先剝除協定標記
+ok 121 - 渲染前先剝除協定標記
+  ---
+  duration_ms: 0.556082
+  type: 'test'
+  ...
+# Subtest: 無 DOM 時預設渲染器失效關閉，只輸出跳脫後的純文字
+ok 122 - 無 DOM 時預設渲染器失效關閉，只輸出跳脫後的純文字
+  ---
+  duration_ms: 0.119812
+  type: 'test'
+  ...
+# Subtest: App.vue 不再直接使用 marked、highlight.js 或舊的 sanitizeChatText
+ok 123 - App.vue 不再直接使用 marked、highlight.js 或舊的 sanitizeChatText
+  ---
+  duration_ms: 0.546267
+  type: 'test'
+  ...
+# Subtest: index.html 不從外部 CDN 載入樣式、字型或腳本
+ok 124 - index.html 不從外部 CDN 載入樣式、字型或腳本
+  ---
+  duration_ms: 1.470072
+  type: 'test'
+  ...
+# Subtest: stage.html 不從外部 CDN 載入樣式、字型或腳本
+ok 125 - stage.html 不從外部 CDN 載入樣式、字型或腳本
+  ---
+  duration_ms: 0.148937
+  type: 'test'
+  ...
+# Subtest: Bootstrap 與 bootstrap-icons 由 npm 套件打包
+ok 126 - Bootstrap 與 bootstrap-icons 由 npm 套件打包
+  ---
+  duration_ms: 0.15267
+  type: 'test'
+  ...
+# Subtest: 介面字型 Plus Jakarta Sans 與 JetBrains Mono 由 npm 套件打包
+ok 127 - 介面字型 Plus Jakarta Sans 與 JetBrains Mono 由 npm 套件打包
+  ---
+  duration_ms: 0.095378
+  type: 'test'
+  ...
+# Subtest: 控制台與舞台 offer 帶有不同 client role
+ok 128 - 控制台與舞台 offer 帶有不同 client role
+  ---
+  duration_ms: 0.514719
+  type: 'test'
+  ...
+# Subtest: 啟動資訊只把控制台列為區網網址，舞台僅限本機
+ok 129 - 啟動資訊只把控制台列為區網網址，舞台僅限本機
+  ---
+  duration_ms: 0.078534
+  type: 'test'
+  ...
+# Subtest: 整合啟動先建置前端，由後端同源提供，不再啟動 Vite 開發伺服器
+ok 130 - 整合啟動先建置前端，由後端同源提供，不再啟動 Vite 開發伺服器
+  ---
+  duration_ms: 0.143862
+  type: 'test'
+  ...
+# Subtest: 舞台字幕只接受播放提交事件並取消舊淡出計時
+ok 131 - 舞台字幕只接受播放提交事件並取消舊淡出計時
+  ---
+  duration_ms: 0.210528
+  type: 'test'
+  ...
+# Subtest: 控制台提供獨立舞台字幕設定與套用操作
+ok 132 - 控制台提供獨立舞台字幕設定與套用操作
+  ---
+  duration_ms: 0.267325
+  type: 'test'
+  ...
+# Subtest: 舞台讀取控制台套用的看板視窗樣式
+ok 133 - 舞台讀取控制台套用的看板視窗樣式
+  ---
+  duration_ms: 0.097863
+  type: 'test'
+  ...
+# Subtest: 控制台與舞台在看板項目完成渲染後回傳一次顯示收據
+ok 134 - 控制台與舞台在看板項目完成渲染後回傳一次顯示收據
+  ---
+  duration_ms: 0.109872
+  type: 'test'
+  ...
+# Subtest: 控制台不會把舊模式完整回覆與播放提交片段重複顯示
+ok 135 - 控制台不會把舊模式完整回覆與播放提交片段重複顯示
+  ---
+  duration_ms: 0.241354
+  type: 'test'
+  ...
+# Subtest: 控制台忽略另一端問答與重置，只重播自己對話的已播內容
+ok 136 - 控制台忽略另一端問答與重置，只重播自己對話的已播內容
+  ---
+  duration_ms: 1.411449
+  type: 'test'
+  ...
+# Subtest: 切換設定檔保留各自草稿，複製互不影響，只送設定檔清單與設定檔版本
+ok 137 - 切換設定檔保留各自草稿，複製互不影響，只送設定檔清單與設定檔版本
+  ---
+  duration_ms: 26.790038
+  type: 'test'
+  ...
+# Subtest: 數位人設定檔只選擇伺服器設定的 LLM 端點，不能填寫服務網址
+ok 138 - 數位人設定檔只選擇伺服器設定的 LLM 端點，不能填寫服務網址
+  ---
+  duration_ms: 0.238475
+  type: 'test'
+  ...
+# Subtest: BreezyVoice 設定檔未選參考音檔時阻擋儲存並提示，不送出儲存或套用
+ok 139 - BreezyVoice 設定檔未選參考音檔時阻擋儲存並提示，不送出儲存或套用
+  ---
+  duration_ms: 3.614397
+  type: 'test'
+  ...
+# Subtest: 移除知識庫後保持指定文本模式，空選擇不會變成全庫檢索
+ok 140 - 移除知識庫後保持指定文本模式，空選擇不會變成全庫檢索
+  ---
+  duration_ms: 0.993855
+  type: 'test'
+  ...
+# Subtest: RAG 編輯器列出文件名稱，測試使用當前角色與草稿，舊測試不能覆蓋新範圍
+ok 141 - RAG 編輯器列出文件名稱，測試使用當前角色與草稿，舊測試不能覆蓋新範圍
+  ---
+  duration_ms: 11.849493
+  type: 'test'
+  ...
+# Subtest: RAG 與 AI 編輯整合進數位人設定檔，沿用舊頁籤連結
+ok 142 - RAG 與 AI 編輯整合進數位人設定檔，沿用舊頁籤連結
+  ---
+  duration_ms: 0.560356
+  type: 'test'
+  ...
+# Subtest: 檢索參考與故障可顯示，但空結果不混入對話
+ok 143 - 檢索參考與故障可顯示，但空結果不混入對話
+  ---
+  duration_ms: 0.253251
+  type: 'test'
+  ...
+# Subtest: 每位成員、主數位人與轉場各自一份草稿，只有被編輯的那一份變成未儲存
+ok 144 - 每位成員、主數位人與轉場各自一份草稿，只有被編輯的那一份變成未儲存
+  ---
+  duration_ms: 0.87114
+  type: 'test'
+  ...
+# Subtest: 重新整理時保留未儲存的草稿與它原本的修訂版本，其他位改用伺服器的新內容
+ok 145 - 重新整理時保留未儲存的草稿與它原本的修訂版本，其他位改用伺服器的新內容
+  ---
+  duration_ms: 1.001013
+  type: 'test'
+  ...
+# Subtest: 儲存計畫：成員只送自己的修訂；改啟用或換設定檔才附組合修訂
+ok 146 - 儲存計畫：成員只送自己的修訂；改啟用或換設定檔才附組合修訂
+  ---
+  duration_ms: 0.38562
+  type: 'test'
+  ...
+# Subtest: 生效中的成員：交接開啟、成員啟用且與主數位人相容；天氣工具同時只限一位
+ok 147 - 生效中的成員：交接開啟、成員啟用且與主數位人相容；天氣工具同時只限一位
+  ---
+  duration_ms: 0.125904
+  type: 'test'
+  ...
+# Subtest: 伺服器錯誤轉為欄位錯誤、版本衝突或需確認停用的成員
+ok 148 - 伺服器錯誤轉為欄位錯誤、版本衝突或需確認停用的成員
+  ---
+  duration_ms: 0.15621
+  type: 'test'
+  ...
+# Subtest: 交接路線的節點環狀排列：主數位人在正上方，其他依序分布
+ok 149 - 交接路線的節點環狀排列：主數位人在正上方，其他依序分布
+  ---
+  duration_ms: 0.143376
+  type: 'test'
+  ...
+# Subtest: 名單列出主數位人、啟用／不相容成員與空位，不相容原因來自伺服器
+ok 150 - 名單列出主數位人、啟用／不相容成員與空位，不相容原因來自伺服器
+  ---
+  duration_ms: 25.886406
+  type: 'test'
+  ...
+# Subtest: 每位成員各自儲存：只送自己的修訂，其他成員的草稿保留
+ok 151 - 每位成員各自儲存：只送自己的修訂，其他成員的草稿保留
+  ---
+  duration_ms: 18.283904
+  type: 'test'
+  ...
+# Subtest: 版本衝突只影響那一位：顯示另一個控制台的版本，可載入或以草稿覆寫
+ok 152 - 版本衝突只影響那一位：顯示另一個控制台的版本，可載入或以草稿覆寫
+  ---
+  duration_ms: 9.799908
+  type: 'test'
+  ...
+# Subtest: 主數位人與成員有相同的交接欄位；交接說明必填，交接開關另存組合
+ok 153 - 主數位人與成員有相同的交接欄位；交接說明必填，交接開關另存組合
+  ---
+  duration_ms: 10.759727
+  type: 'test'
+  ...
+# Subtest: 天氣工具同時只限一位；場域預設地點屬於持有者
+ok 154 - 天氣工具同時只限一位；場域預設地點屬於持有者
+  ---
+  duration_ms: 12.785999
+  type: 'test'
+  ...
+# Subtest: 加入專門數位人：選設定檔後預設未啟用，儲存時才建立
+ok 155 - 加入專門數位人：選設定檔後預設未啟用，儲存時才建立
+  ---
+  duration_ms: 8.130871
+  type: 'test'
+  ...
+# Subtest: 角色轉場：預設＋個別方向，重複方向不新增，另存轉場修訂
+ok 156 - 角色轉場：預設＋個別方向，重複方向不新增，另存轉場修訂
+  ---
+  duration_ms: 7.835352
+  type: 'test'
+  ...
+# Subtest: 交接試算以已儲存的組合詢問路由並顯示由誰回答與原因
+ok 157 - 交接試算以已儲存的組合詢問路由並顯示由誰回答與原因
+  ---
+  duration_ms: 10.419499
+  type: 'test'
+  ...
+# Subtest: 沒有生效成員時交接試算停用並說明原因
+ok 158 - 沒有生效成員時交接試算停用並說明原因
+  ---
+  duration_ms: 3.464867
+  type: 'test'
+  ...
+# Subtest: 每一頁只依自己的角色狀態決定能否輸入
+ok 159 - 每一頁只依自己的角色狀態決定能否輸入
+  ---
+  duration_ms: 0.593569
+  type: 'test'
+  ...
+# Subtest: 返回僅在專門角色就緒時可操作
+ok 160 - 返回僅在專門角色就緒時可操作
+  ---
+  duration_ms: 0.146457
+  type: 'test'
+  ...
+# Subtest: 單角色與招呼不再引入跨頁輸入權
+ok 161 - 單角色與招呼不再引入跨頁輸入權
+  ---
+  duration_ms: 0.083678
+  type: 'test'
+  ...
+# Subtest: 控制台離線畫面與舞台設定預覽都使用合成後的數字人背景
+ok 162 - 控制台離線畫面與舞台設定預覽都使用合成後的數字人背景
+  ---
+  duration_ms: 0.434609
+  type: 'test'
+  ...
+# Subtest: 選定背景時才以合成場景取代綠幕縮圖
+ok 163 - 選定背景時才以合成場景取代綠幕縮圖
+  ---
+  duration_ms: 0.104685
+  type: 'test'
+  ...
+# Subtest: 背景卡片可刪除，且本機回收區可復原
+ok 164 - 背景卡片可刪除，且本機回收區可復原
+  ---
+  duration_ms: 0.121367
+  type: 'test'
+  ...
+# Subtest: 數字人回收區的復原旁可永久刪除，且需確認
+ok 165 - 數字人回收區的復原旁可永久刪除，且需確認
+  ---
+  duration_ms: 0.167838
+  type: 'test'
+  ...
+# Subtest: 系統設定中心各分頁在 1920×1080 與 1280×720 不橫向捲動、區塊不重疊且在格內捲動
+ok 166 - 系統設定中心各分頁在 1920×1080 與 1280×720 不橫向捲動、區塊不重疊且在格內捲動
+  ---
+  duration_ms: 17008.611387
+  type: 'test'
+  ...
+# Subtest: 設定導覽直接提供閒置招呼；訪客互動是數位人設定的第三個分頁，排版頁只含視覺設定
+ok 167 - 設定導覽直接提供閒置招呼；訪客互動是數位人設定的第三個分頁，排版頁只含視覺設定
+  ---
+  duration_ms: 18.870438
+  type: 'test'
+  ...
+# Subtest: 儲存排版頁只套用本頁，不提交訪客設定且不離開目前頁面
+ok 168 - 儲存排版頁只套用本頁，不提交訪客設定且不離開目前頁面
+  ---
+  duration_ms: 10.455198
+  type: 'test'
+  ...
+# Subtest: 對話設定分類沿用目前場次、轉送摘要，設定中心不再有返回控制台按鈕
+ok 169 - 對話設定分類沿用目前場次、轉送摘要，設定中心不再有返回控制台按鈕
+  ---
+  duration_ms: 2.886806
+  type: 'test'
+  ...
+# Subtest: 數位人、AI 與知識設定分成三個分頁，方向鍵切換，組合分頁顯示未儲存數
+ok 170 - 數位人、AI 與知識設定分成三個分頁，方向鍵切換，組合分頁顯示未儲存數
+  ---
+  duration_ms: 6.448164
+  type: 'test'
+  ...
+# Subtest: 最小靜音判定時間滑桿編輯 min_silence_ms，可選 192 ms（6 個 32 ms 幀）並顯示目前值
+ok 171 - 最小靜音判定時間滑桿編輯 min_silence_ms，可選 192 ms（6 個 32 ms 幀）並顯示目前值
+  ---
+  duration_ms: 3.913956
+  type: 'test'
+  ...
+# Subtest: 語音辨識併入訪客互動頁，依後端引擎資料呈現，且不再有全域語音合成設定
+ok 172 - 語音辨識併入訪客互動頁，依後端引擎資料呈現，且不再有全域語音合成設定
+  ---
+  duration_ms: 8.293852
+  type: 'test'
+  ...
+# Subtest: 展開看板按鈕靠舞台邊緣時改用朝內圖示並避免溢出
+ok 173 - 展開看板按鈕靠舞台邊緣時改用朝內圖示並避免溢出
+  ---
+  duration_ms: 0.72987
+  type: 'test'
+  ...
+# Subtest: 字幕帶寬度與中心位置會限制在舞台可見範圍
+ok 174 - 字幕帶寬度與中心位置會限制在舞台可見範圍
+  ---
+  duration_ms: 0.096285
+  type: 'test'
+  ...
+# Subtest: 右上對齊時看板貼近影像右上，不進入字幕帶
+ok 175 - 右上對齊時看板貼近影像右上，不進入字幕帶
+  ---
+  duration_ms: 0.139756
+  type: 'test'
+  ...
+# Subtest: 控制台縮圖與參考舞台使用同一相對位置
+ok 176 - 控制台縮圖與參考舞台使用同一相對位置
+  ---
+  duration_ms: 0.559718
+  type: 'test'
+  ...
+# Subtest: 不同大小的 9:16 舞台會維持相同看板比例與安全區
+ok 177 - 不同大小的 9:16 舞台會維持相同看板比例與安全區
+  ---
+  duration_ms: 0.120984
+  type: 'test'
+  ...
+# Subtest: 淘汰片段立即離開正常排版，離場複本才負責動畫
+ok 178 - 淘汰片段立即離開正常排版，離場複本才負責動畫
+  ---
+  duration_ms: 0.745098
+  type: 'test'
+  ...
+# Subtest: 舞台呈現器不使用像素捲動來維持最新字幕
+ok 179 - 舞台呈現器不使用像素捲動來維持最新字幕
+  ---
+  duration_ms: 0.100344
+  type: 'test'
+  ...
+# Subtest: 舞台字幕以使用者感知字元計算
+ok 180 - 舞台字幕以使用者感知字元計算
+  ---
+  duration_ms: 0.59298
+  type: 'test'
+  ...
+# Subtest: 舞台字幕超限時淘汰最早的完整片段
+ok 181 - 舞台字幕超限時淘汰最早的完整片段
+  ---
+  duration_ms: 0.679092
+  type: 'test'
+  ...
+# Subtest: 單一片段超過上限時仍保留完整片段
+ok 182 - 單一片段超過上限時仍保留完整片段
+  ---
+  duration_ms: 0.194189
+  type: 'test'
+  ...
+# Subtest: 不同輪次不共用字幕片段，取消可清空窗口
+ok 183 - 不同輪次不共用字幕片段，取消可清空窗口
+  ---
+  duration_ms: 0.091561
+  type: 'test'
+  ...
+# Subtest: 逾時常數：輪詢短於 5 秒輪詢週期，整體連線看門狗長於 offer 請求
+ok 184 - 逾時常數：輪詢短於 5 秒輪詢週期，整體連線看門狗長於 offer 請求
+  ---
+  duration_ms: 0.533838
+  type: 'test'
+  ...
+# Subtest: 正常回應回傳狀態與 JSON，並帶上 AbortSignal、清除計時器
+ok 185 - 正常回應回傳狀態與 JSON，並帶上 AbortSignal、清除計時器
+  ---
+  duration_ms: 0.689505
+  type: 'test'
+  ...
+# Subtest: 後端接受連線後不回應時，逾時一到就中止請求並拋出逾時錯誤
+ok 186 - 後端接受連線後不回應時，逾時一到就中止請求並拋出逾時錯誤
+  ---
+  duration_ms: 1.296022
+  type: 'test'
+  ...
+# Subtest: 回應標頭到了但內容卡住時同樣會逾時
+ok 187 - 回應標頭到了但內容卡住時同樣會逾時
+  ---
+  duration_ms: 2.503746
+  type: 'test'
+  ...
+# Subtest: 非 JSON 回應不視為錯誤，data 為 null
+ok 188 - 非 JSON 回應不視為錯誤，data 為 null
+  ---
+  duration_ms: 0.248451
+  type: 'test'
+  ...
+# Subtest: 網路錯誤照原樣拋出並清除計時器
+ok 189 - 網路錯誤照原樣拋出並清除計時器
+  ---
+  duration_ms: 0.133476
+  type: 'test'
+  ...
+# Subtest: 輪次錯誤只給訪客簡短提示，不論後端代碼或例外文字
+ok 190 - 輪次錯誤只給訪客簡短提示，不論後端代碼或例外文字
+  ---
+  duration_ms: 0.533588
+  type: 'test'
+  ...
+# Subtest: 語音會話降級時顯示暫時無法使用，不洩漏準備失敗原因
+ok 191 - 語音會話降級時顯示暫時無法使用，不洩漏準備失敗原因
+  ---
+  duration_ms: 0.106812
+  type: 'test'
+  ...
+# Subtest: 沒有錯誤或不是錯誤狀態時不顯示任何提示
+ok 192 - 沒有錯誤或不是錯誤狀態時不顯示任何提示
+  ---
+  duration_ms: 0.109134
+  type: 'test'
+  ...
+# Subtest: 友善提示文字不含技術用語
+ok 193 - 友善提示文字不含技術用語
+  ---
+  duration_ms: 0.20361
+  type: 'test'
+  ...
+# Subtest: 獨立舞台以友善提示取代後端錯誤字串，技術細節只寫瀏覽器主控台
+ok 194 - 獨立舞台以友善提示取代後端錯誤字串，技術細節只寫瀏覽器主控台
+  ---
+  duration_ms: 0.161658
+  type: 'test'
+  ...
+# Subtest: 只有 kiosk=1 才進入 kiosk 模式
+ok 195 - 只有 kiosk=1 才進入 kiosk 模式
+  ---
+  duration_ms: 0.458422
+  type: 'test'
+  ...
+# Subtest: 重連延遲逐步拉長並設上限
+ok 196 - 重連延遲逐步拉長並設上限
+  ---
+  duration_ms: 0.385059
+  type: 'test'
+  ...
+# Subtest: 啟用文字附件的舞台進入後也會自動收音，不必再點麥克風
+ok 197 - 啟用文字附件的舞台進入後也會自動收音，不必再點麥克風
+  ---
+  duration_ms: 5.247384
+  type: 'test'
+  ...
+# Subtest: 舞台拒絕麥克風權限時仍可連線使用文字附件
+ok 198 - 舞台拒絕麥克風權限時仍可連線使用文字附件
+  ---
+  duration_ms: 0.990354
+  type: 'test'
+  ...
+# Subtest: 舞台暫停後重新進入會恢復自動收音
+ok 199 - 舞台暫停後重新進入會恢復自動收音
+  ---
+  duration_ms: 2.205421
+  type: 'test'
+  ...
+# Subtest: 舞台插話的按下與鬆開不會在多輪後關閉收音
+ok 200 - 舞台插話的按下與鬆開不會在多輪後關閉收音
+  ---
+  duration_ms: 1.22788
+  type: 'test'
+  ...
+# Subtest: 暫停中的舞台插話會同步恢復前後端收音狀態
+ok 201 - 暫停中的舞台插話會同步恢復前後端收音狀態
+  ---
+  duration_ms: 0.960779
+  type: 'test'
+  ...
+# Subtest: 一般開啟舞台時維持點擊進入，不會自動連線
+ok 202 - 一般開啟舞台時維持點擊進入，不會自動連線
+  ---
+  duration_ms: 3.692528
+  type: 'test'
+  ...
+# Subtest: kiosk 標記開啟舞台時不需點擊就自動連線
+ok 203 - kiosk 標記開啟舞台時不需點擊就自動連線
+  ---
+  duration_ms: 3.367618
+  type: 'test'
+  ...
+# Subtest: kiosk 連線中斷時顯示簡短提示並自動重連
+ok 204 - kiosk 連線中斷時顯示簡短提示並自動重連
+  ---
+  duration_ms: 1.536334
+  type: 'test'
+  ...
+# Subtest: 一般舞台連線中斷仍顯示原本的重新連線畫面且不自動重連
+ok 205 - 一般舞台連線中斷仍顯示原本的重新連線畫面且不自動重連
+  ---
+  duration_ms: 1.216352
+  type: 'test'
+  ...
+# Subtest: 對話重置事件清除舞台字幕、看板與使用者字句，但不斷線也不關收音
+ok 206 - 對話重置事件清除舞台字幕、看板與使用者字句，但不斷線也不關收音
+  ---
+  duration_ms: 1.263312
+  type: 'test'
+  ...
+# Subtest: 舞台忽略舊同步展示事件並保持自己的收音及問答
+ok 207 - 舞台忽略舊同步展示事件並保持自己的收音及問答
+  ---
+  duration_ms: 1.221093
+  type: 'test'
+  ...
+# Subtest: 只有此場角色轉場才暫停舞台收音，恢復時不重建連線
+ok 208 - 只有此場角色轉場才暫停舞台收音，恢復時不重建連線
+  ---
+  duration_ms: 1.069032
+  type: 'test'
+  ...
+# Subtest: 轉場清畫面後保留連線，返回主角色時隱藏返回按鈕
+ok 209 - 轉場清畫面後保留連線，返回主角色時隱藏返回按鈕
+  ---
+  duration_ms: 1.618632
+  type: 'test'
+  ...
+# Subtest: 招呼就緒回報要求有聲播放、麥克風與未手動暫停，斷線立即撤銷
+ok 210 - 招呼就緒回報要求有聲播放、麥克風與未手動暫停，斷線立即撤銷
+  ---
+  duration_ms: 0.932945
+  type: 'test'
+  ...
+# Subtest: 片段播放結束不會在整輪回答完成前淡出字幕
+ok 211 - 片段播放結束不會在整輪回答完成前淡出字幕
+  ---
+  duration_ms: 0.863361
+  type: 'test'
+  ...
+# Subtest: 整輪語音播放結束後才淡出字幕
+ok 212 - 整輪語音播放結束後才淡出字幕
+  ---
+  duration_ms: 0.063334
+  type: 'test'
+  ...
+# Subtest: 獨立舞台把整輪淡出策略接到事件處理器
+ok 213 - 獨立舞台把整輪淡出策略接到事件處理器
+  ---
+  duration_ms: 0.197195
+  type: 'test'
+  ...
+# Subtest: 後端接受 /offer 卻不回應時，逾時後顯示重試並自動重連
+ok 214 - 後端接受 /offer 卻不回應時，逾時後顯示重試並自動重連
+  ---
+  duration_ms: 7.048604
+  type: 'test'
+  ...
+# Subtest: offer 成功但 WebRTC 一直未連上時，看門狗逾時後顯示重試並自動重連
+ok 215 - offer 成功但 WebRTC 一直未連上時，看門狗逾時後顯示重試並自動重連
+  ---
+  duration_ms: 2.702533
+  type: 'test'
+  ...
+# Subtest: kiosk 卡在連線中時同樣逾時重連，並顯示 kiosk 提示
+ok 216 - kiosk 卡在連線中時同樣逾時重連，並顯示 kiosk 提示
+  ---
+  duration_ms: 1.433176
+  type: 'test'
+  ...
+# Subtest: 連上後解除連線看門狗
+ok 217 - 連上後解除連線看門狗
+  ---
+  duration_ms: 1.148987
+  type: 'test'
+  ...
+# Subtest: 設定輪詢卡住時，逾時後仍繼續建立連線
+ok 218 - 設定輪詢卡住時，逾時後仍繼續建立連線
+  ---
+  duration_ms: 1.979113
+  type: 'test'
+  ...
+# Subtest: 看門狗逾時時仍在等麥克風，舊嘗試稍後取得的音軌會釋放且不送出 offer
+ok 219 - 看門狗逾時時仍在等麥克風，舊嘗試稍後取得的音軌會釋放且不送出 offer
+  ---
+  duration_ms: 1.26324
+  type: 'test'
+  ...
+# Subtest: data channel close 而影像仍在時，停用互動並自動重連
+ok 220 - data channel close 而影像仍在時，停用互動並自動重連
+  ---
+  duration_ms: 2.147942
+  type: 'test'
+  ...
+# Subtest: data channel error 而影像仍在時，停用互動並自動重連
+ok 221 - data channel error 而影像仍在時，停用互動並自動重連
+  ---
+  duration_ms: 1.222087
+  type: 'test'
+  ...
+# Subtest: 同一連線已處理中斷後，隨後的 data channel 關閉不再重複處理
+ok 222 - 同一連線已處理中斷後，隨後的 data channel 關閉不再重複處理
+  ---
+  duration_ms: 1.261736
+  type: 'test'
+  ...
+# Subtest: kiosk 連線失敗後通道關閉不會額外拉長退避時間
+ok 223 - kiosk 連線失敗後通道關閉不會額外拉長退避時間
+  ---
+  duration_ms: 1.546679
+  type: 'test'
+  ...
+# Subtest: 逾時提示有英文介面文字
+ok 224 - 逾時提示有英文介面文字
+  ---
+  duration_ms: 0.179793
+  type: 'test'
+  ...
+# Subtest: npm run lint 涵蓋 stage.html 的 inline 舞台腳本
+ok 225 - npm run lint 涵蓋 stage.html 的 inline 舞台腳本
+  ---
+  duration_ms: 0.317856
+  type: 'test'
+  ...
+# Subtest: 舞台腳本的所有請求都經過逾時包裝
+ok 226 - 舞台腳本的所有請求都經過逾時包裝
+  ---
+  duration_ms: 0.309486
+  type: 'test'
+  ...
+# Subtest: uses the Nova Avatar value when both storage generations exist
+ok 227 - uses the Nova Avatar value when both storage generations exist
+  ---
+  duration_ms: 0.41994
+  type: 'test'
+  ...
+# Subtest: migrates a pre-rebrand value to the Nova Avatar key
+ok 228 - migrates a pre-rebrand value to the Nova Avatar key
+  ---
+  duration_ms: 0.083295
+  type: 'test'
+  ...
+# Subtest: STT 預熱期間顯示可存取的不確定進度條
+ok 229 - STT 預熱期間顯示可存取的不確定進度條
+  ---
+  duration_ms: 0.673362
+  type: 'test'
+  ...
+# Subtest: STT 預熱進度尊重減少動態效果偏好
+ok 230 - STT 預熱進度尊重減少動態效果偏好
+  ---
+  duration_ms: 0.151537
+  type: 'test'
+  ...
+# Subtest: 輸出字元集選項來自伺服器的引擎資料，不寫死引擎名稱
+ok 231 - 輸出字元集選項來自伺服器的引擎資料，不寫死引擎名稱
+  ---
+  duration_ms: 0.163227
+  type: 'test'
+  ...
+# Subtest: 每列都有名稱、文字、圖示與語氣，不只靠顏色
+ok 232 - 每列都有名稱、文字、圖示與語氣，不只靠顏色
+  ---
+  duration_ms: 3.898406
+  type: 'test'
+  ...
+# Subtest: 控制台連線依 WebRTC 狀態顯示
+ok 233 - 控制台連線依 WebRTC 狀態顯示
+  ---
+  duration_ms: 0.226604
+  type: 'test'
+  ...
+# Subtest: 本機 LLM 未全部載入 GPU 時顯示警示
+ok 234 - 本機 LLM 未全部載入 GPU 時顯示警示
+  ---
+  duration_ms: 0.110046
+  type: 'test'
+  ...
+# Subtest: 後端模型載入中、讀取失敗與待套用設定各有語氣
+ok 235 - 後端模型載入中、讀取失敗與待套用設定各有語氣
+  ---
+  duration_ms: 1.023247
+  type: 'test'
+  ...
+# Subtest: 舞台場次與語音辨識引擎
+ok 236 - 舞台場次與語音辨識引擎
+  ---
+  duration_ms: 0.194242
+  type: 'test'
+  ...
+# Subtest: 角色聲音引擎選單顯示伺服器目錄的授權限制標示
+ok 237 - 角色聲音引擎選單顯示伺服器目錄的授權限制標示
+  ---
+  duration_ms: 7.239047
+  type: 'test'
+  ...
+# Subtest: 選用 Edge TTS 的角色會顯示伺服器目錄的開發用限制說明
+ok 238 - 選用 Edge TTS 的角色會顯示伺服器目錄的開發用限制說明
+  ---
+  duration_ms: 1.547965
+  type: 'test'
+  ...
+# 啟動語音識別，連續模式: true
+# Subtest: 互動對話不再使用瀏覽器 Web Speech API
+ok 239 - 互動對話不再使用瀏覽器 Web Speech API
+  ---
+  duration_ms: 0.959911
+  type: 'test'
+  ...
+# Subtest: 支援語音辨識時可以啟動瀏覽器辨識器
+ok 240 - 支援語音辨識時可以啟動瀏覽器辨識器
+  ---
+  duration_ms: 1.039039
+  type: 'test'
+  ...
+# Subtest: WebRTC 同時承載麥克風上行與語音事件
+ok 241 - WebRTC 同時承載麥克風上行與語音事件
+  ---
+  duration_ms: 0.59653
+  type: 'test'
+  ...
+# Subtest: 麥克風請求啟用瀏覽器迴音與噪音處理
+ok 242 - 麥克風請求啟用瀏覽器迴音與噪音處理
+  ---
+  duration_ms: 0.150432
+  type: 'test'
+  ...
+# Subtest: 資料通道失效時會關閉收音並進入重連狀態
+ok 243 - 資料通道失效時會關閉收音並進入重連狀態
+  ---
+  duration_ms: 0.131483
+  type: 'test'
+  ...
+# Subtest: 控制台連線後維持收音關閉，需由麥克風按鈕手動開啟
+ok 244 - 控制台連線後維持收音關閉，需由麥克風按鈕手動開啟
+  ---
+  duration_ms: 0.14097
+  type: 'test'
+  ...
+# Subtest: 重複 startPlay 共用 offer，分開抵達的音畫軌維持同一播放器
+ok 245 - 重複 startPlay 共用 offer，分開抵達的音畫軌維持同一播放器
+  ---
+  duration_ms: 1.453056
+  type: 'test'
+  ...
+# Subtest: 從 Edge 切到 BreezyVoice 清掉 Edge 聲線且不自動帶入音檔，切回 Edge 清掉音訊庫選擇
+ok 246 - 從 Edge 切到 BreezyVoice 清掉 Edge 聲線且不自動帶入音檔，切回 Edge 清掉音訊庫選擇
+  ---
+  duration_ms: 0.954082
+  type: 'test'
+  ...
+# Subtest: BreezyVoice 只列有逐字稿的參考音檔，未選或選了不可用的音檔不能儲存
+ok 247 - BreezyVoice 只列有逐字稿的參考音檔，未選或選了不可用的音檔不能儲存
+  ---
+  duration_ms: 0.22151
+  type: 'test'
+  ...
+# Subtest: 開發用音檔標示未取得說話者授權
+ok 248 - 開發用音檔標示未取得說話者授權
+  ---
+  duration_ms: 0.099829
+  type: 'test'
+  ...
+# Subtest: 音訊庫管理：上傳必須附逐字稿、可試聽、刪除需再次確認、標示開發用
+ok 249 - 音訊庫管理：上傳必須附逐字稿、可試聽、刪除需再次確認、標示開發用
+  ---
+  duration_ms: 41.299771
+  type: 'test'
+  ...
+# Subtest: 音訊庫沒有可用音檔時提示先上傳
+ok 250 - 音訊庫沒有可用音檔時提示先上傳
+  ---
+  duration_ms: 17.238415
+  type: 'test'
+  ...
+# Subtest: 設定檔編輯器：BreezyVoice 選單只列有逐字稿的音檔，切換引擎清掉另一種聲線並提供音訊庫
+ok 251 - 設定檔編輯器：BreezyVoice 選單只列有逐字稿的音檔，切換引擎清掉另一種聲線並提供音訊庫
+  ---
+  duration_ms: 38.044486
+  type: 'test'
+  ...
+# Subtest: 設定檔編輯器試聽：以目前未儲存的 BreezyVoice 設定合成，伺服器未就緒時顯示啟動中
+ok 252 - 設定檔編輯器試聽：以目前未儲存的 BreezyVoice 設定合成，伺服器未就緒時顯示啟動中
+  ---
+  duration_ms: 24.479223
+  type: 'test'
+  ...
+# Subtest: 設定檔編輯器試聽：Edge 聲線不查 BreezyVoice，失敗時顯示伺服器原因
+ok 253 - 設定檔編輯器試聽：Edge 聲線不查 BreezyVoice，失敗時顯示伺服器原因
+  ---
+  duration_ms: 17.77229
+  type: 'test'
+  ...
+# Subtest: 語音驗證面板使用真實 API 並等待相同 turn metrics
+ok 254 - 語音驗證面板使用真實 API 並等待相同 turn metrics
+  ---
+  duration_ms: 0.624815
+  type: 'test'
+  ...
+# Subtest: 自訂 prompt、執行狀態、歷史與內容保存提示都可見
+ok 255 - 自訂 prompt、執行狀態、歷史與內容保存提示都可見
+  ---
+  duration_ms: 0.220613
+  type: 'test'
+  ...
+# Subtest: 延遲與狀態格式不把缺值顯示成零
+ok 256 - 延遲與狀態格式不把缺值顯示成零
+  ---
+  duration_ms: 0.224142
+  type: 'test'
+  ...
+# Subtest: 單次測試清楚標示 P95 gate 與多輪指標不適用
+ok 257 - 單次測試清楚標示 P95 gate 與多輪指標不適用
+  ---
+  duration_ms: 0.117118
+  type: 'test'
+  ...
+# Subtest: 搜尋事件只更新目前輪次，取消、換角及清場丟棄舊來源
+ok 258 - 搜尋事件只更新目前輪次，取消、換角及清場丟棄舊來源
+  ---
+  duration_ms: 0.523652
+  type: 'test'
+  ...
+# Subtest: 來源元件區分全文與摘要，網址只接受安全 HTTP 連結
+ok 259 - 來源元件區分全文與摘要，網址只接受安全 HTTP 連結
+  ---
+  duration_ms: 4.95063
+  type: 'test'
+  ...
+# Subtest: 舊角色設定預設不搜尋，編輯開關與網域保留為角色自己的政策
+ok 260 - 舊角色設定預設不搜尋，編輯開關與網域保留為角色自己的政策
+  ---
+  duration_ms: 44.579386
+  type: 'test'
+  ...
+# Subtest: 整理階段顯示進度，直接播出事實後清除等待且保留來源
+ok 261 - 整理階段顯示進度，直接播出事實後清除等待且保留來源
+  ---
+  duration_ms: 0.574524
+  type: 'test'
+  ...
+1..261
+# tests 261
+# suites 0
+# pass 261
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 37642.237168

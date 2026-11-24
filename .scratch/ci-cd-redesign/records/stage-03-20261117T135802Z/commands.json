@@ -1,0 +1,80 @@
+[
+  {
+    "name": "environment-check",
+    "argv": [
+      "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python",
+      "-c",
+      "import sys,json,torch; assert torch.version.cuda is not None and torch.cuda.is_available(); print(json.dumps({\"python\":sys.version.split()[0],\"torch\":torch.__version__,\"cuda\":torch.version.cuda,\"cuda_available\":torch.cuda.is_available()}))"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:58:02.543264+00:00",
+    "ended_at": "2026-11-17T13:58:03.443922+00:00",
+    "exit_code": 0,
+    "log": "environment-check.log"
+  },
+  {
+    "name": "offline-integration",
+    "argv": [
+      "uv",
+      "run",
+      "--no-sync",
+      "python",
+      "scripts/check-integration.py"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:58:03.444114+00:00",
+    "ended_at": "2026-11-17T13:58:05.887770+00:00",
+    "exit_code": 0,
+    "log": "offline-integration.log"
+  },
+  {
+    "name": "governance-collection",
+    "argv": [
+      "uv",
+      "run",
+      "--no-sync",
+      "pytest",
+      "--collect-only",
+      "-q",
+      "-m",
+      "governance"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:58:05.888152+00:00",
+    "ended_at": "2026-11-17T13:58:09.446118+00:00",
+    "exit_code": 0,
+    "log": "governance-collection.log"
+  },
+  {
+    "name": "governance-tests",
+    "argv": [
+      "uv",
+      "run",
+      "--no-sync",
+      "pytest",
+      "-v",
+      "-ra",
+      "--durations=0",
+      "-m",
+      "governance",
+      "--junitxml=/home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/stage-03-20261117T135802Z/governance.xml"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:58:09.446375+00:00",
+    "ended_at": "2026-11-17T13:58:12.142539+00:00",
+    "exit_code": 0,
+    "log": "governance-tests.log"
+  }
+]

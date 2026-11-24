@@ -720,12 +720,12 @@ class LlamaCppCatalogTests(unittest.TestCase):
     def test_lists_and_resolves_gguf(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
-            gguf = folder / "LFM2.5-2.6B-Q4_K_M.gguf"
+            gguf = folder / "fixture-model.gguf"
             gguf.write_bytes(b"fake")
             models = list_gguf_models(str(folder))
             names = [item["name"] for item in models]
-            self.assertIn("LFM2.5-2.6B-Q4_K_M", names)
-            self.assertEqual(resolve_gguf("LFM2.5-2.6B-Q4_K_M", str(folder)), gguf)
+            self.assertIn("fixture-model", names)
+            self.assertEqual(resolve_gguf("fixture-model", str(folder)), gguf)
 
     def test_failed_reload_does_not_mutate_config(self):
         class LLM:

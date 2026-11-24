@@ -80,7 +80,6 @@ AREA_BY_FILE = {
     "test_live_llm_board_contract.py": "conversation",
     "test_llamacpp.py": "llm",
     "test_llm_endpoints.py": "llm",
-    "test_llm_router.py": "llm",
     "test_llm_text_normalizer.py": "llm",
     "test_gemma_e2b.py": "llm",
     "test_default_llm_endpoint.py": "llm",
@@ -128,6 +127,9 @@ AREA_BY_FILE = {
 }
 
 LIVE_FILES = frozenset({"test_live_llm_board_contract.py"})
+LIVE_TESTS = frozenset({
+    "tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
+})
 
 SLOW_TESTS = frozenset(
     {
@@ -145,7 +147,7 @@ def _matching_markers(item: pytest.Item) -> Iterable[str]:
     area = AREA_BY_FILE.get(file_name)
     if area:
         yield area
-    if file_name in LIVE_FILES:
+    if file_name in LIVE_FILES or item.nodeid.replace("\\", "/") in LIVE_TESTS:
         yield "live"
     if item.nodeid.replace("\\", "/") in SLOW_TESTS:
         yield "slow"

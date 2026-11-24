@@ -1,0 +1,52 @@
+{
+  "scope": "CUDA-only, user confirmed",
+  "source_commit": "b1afdce7429eb166d3d36f6e233a07a14fbc2d52",
+  "source_dir": "/home/oliver/nova-avatar",
+  "python_env": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z",
+  "record_dir": "/home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/stage-01-cuda-20261117T134344Z",
+  "gpu_probe": {
+    "python": "3.11.16",
+    "torch": "2.5.0+cu124",
+    "cuda_build": "12.4",
+    "cuda_available": true,
+    "device": "NVIDIA GeForce RTX 4090",
+    "gpu_matrix_multiply": "passed",
+    "pytest": "9.1.1",
+    "silero-vad": "6.2.1"
+  },
+  "frontend_environment_record": "/home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/stage-01-20261117T133233Z/frontend-environment.json",
+  "next_stage": "Review current-version local baseline, then set up GitHub GPU runner and release acceptance",
+  "last_completed_stage": 3,
+  "latest_record_dir": "/home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/current-version-baseline-20261117T143902Z",
+  "completed_backend_groups": [
+    "runtime",
+    "speech"
+  ],
+  "snapshot_git_initialized": true,
+  "snapshot_git_metadata_record": "/home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/stage-04-runtime-20261117T140638Z/environment-repair.json",
+  "backend_group_results": {
+    "llm": {
+      "passed": 116,
+      "skipped": 1,
+      "failed": 0,
+      "status": "superseded_by_scope_cleanup_not_an_accepted_skip"
+    }
+  },
+  "source_state": "Working tree with recorded HEAD, diff and hashes; supersedes original clean archive baseline",
+  "current_version_baseline": "/home/oliver/nova-avatar/tests/current-version-baseline.json",
+  "primary_results": {
+    "python_passed": 1515,
+    "python_skipped": 0,
+    "web_passed": 261,
+    "web_skipped": 0,
+    "areas": {
+      "governance": 19,
+      "runtime": 242,
+      "speech": 279,
+      "llm": 105,
+      "avatar": 99,
+      "ragflow": 33,
+      "conversation": 738
+    }
+  }
+}

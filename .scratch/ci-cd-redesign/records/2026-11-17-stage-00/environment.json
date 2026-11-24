@@ -1,0 +1,131 @@
+{
+  "started_at": "2026-11-17T13:27:15.531774+00:00",
+  "kind": "stage-00-read-only-inventory",
+  "platform": "Linux-7.0.0-42-generic-x86_64-with-glibc2.43",
+  "commands": {
+    "git_head": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "stdout": "b1afdce7429eb166d3d36f6e233a07a14fbc2d52\n",
+      "stderr": ""
+    },
+    "git_branch": {
+      "argv": [
+        "git",
+        "branch",
+        "--show-current"
+      ],
+      "exit_code": 0,
+      "stdout": "main\n",
+      "stderr": ""
+    },
+    "git_status": {
+      "argv": [
+        "git",
+        "status",
+        "--porcelain=v1"
+      ],
+      "exit_code": 0,
+      "stdout": "?? .scratch/ci-cd-redesign/\n?? .scratch/first-audio-latency/tts-bakeoff/index.html\n?? tmp/\n",
+      "stderr": ""
+    },
+    "tracked_diff": {
+      "argv": [
+        "git",
+        "diff",
+        "HEAD",
+        "--"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "uv_version": {
+      "argv": [
+        "uv",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "uv 0.11.21 (x86_64-unknown-linux-gnu)\n",
+      "stderr": ""
+    },
+    "project_python_version": {
+      "argv": [
+        "/home/oliver/nova-avatar/.venv/bin/python",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "Python 3.10.19\n",
+      "stderr": ""
+    },
+    "audit_python_version": {
+      "argv": [
+        "/tmp/nova-avatar-ci-audit.uqo18d/venv/bin/python",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "Python 3.11.16\n",
+      "stderr": ""
+    },
+    "default_node_version": {
+      "argv": [
+        "node",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "v24.18.1\n",
+      "stderr": ""
+    },
+    "npm_version": {
+      "argv": [
+        "npm",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "11.16.0\n",
+      "stderr": ""
+    },
+    "cached_node22_version": {
+      "argv": [
+        "npm",
+        "exec",
+        "--offline",
+        "--yes",
+        "--package=node@22",
+        "--",
+        "node",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "v22.23.5\n",
+      "stderr": ""
+    },
+    "gpu_inventory": {
+      "argv": [
+        "nvidia-smi",
+        "--query-gpu=name,driver_version,memory.total",
+        "--format=csv,noheader"
+      ],
+      "exit_code": 0,
+      "stdout": "NVIDIA GeForce RTX 4090, 580.178.04, 24564 MiB\n",
+      "stderr": ""
+    }
+  },
+  "lock_sha256": {
+    "uv.lock": "813c27f3bb458ce41c725446cee4c7262704096ef162e5998269a60dd8fea454",
+    "pyproject.toml": "bd1529cf4d16b546c86df827799e1603407993f17fc96ff6c87fb917b04d1051",
+    "web/package-lock.json": "e7b3ca1f5c6d2ee007cf9800cebe86f5565a719c0f7be7189a71a08a3bd2084d",
+    "web/package.json": "af7c6f723c98192b7410648076fe0491cbc41bc159c846590588d5dcb2aa30f7",
+    ".github/workflows/ci.yml": "17b2d8a4299c7f29865c99d4b26b95d4289f7e01cdec390b230181a567c4f393"
+  },
+  "ended_at": "2026-11-17T13:27:15.777549+00:00",
+  "limitations": [
+    "git status aggregates untracked directories; untracked contents are not archived",
+    "Current environment snapshot, not environment evidence captured at the previous baseline run",
+    "No dependency installation or functional test suite execution in this stage"
+  ]
+}

@@ -1,0 +1,94 @@
+[
+  {
+    "name": "lock-check",
+    "argv": [
+      "uv",
+      "lock",
+      "--check"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:43:44.784392+00:00",
+    "ended_at": "2026-11-17T13:43:44.800273+00:00",
+    "exit_code": 0,
+    "log": "lock-check.log"
+  },
+  {
+    "name": "locked-install",
+    "argv": [
+      "uv",
+      "sync",
+      "--frozen",
+      "--python",
+      "3.11",
+      "--group",
+      "dev",
+      "--group",
+      "ci",
+      "--extra",
+      "vad"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:43:44.800425+00:00",
+    "ended_at": "2026-11-17T13:48:56.988407+00:00",
+    "exit_code": 0,
+    "log": "locked-install.log"
+  },
+  {
+    "name": "dependency-consistency",
+    "argv": [
+      "uv",
+      "pip",
+      "check",
+      "--python",
+      "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:48:56.988657+00:00",
+    "ended_at": "2026-11-17T13:48:57.026984+00:00",
+    "exit_code": 0,
+    "log": "dependency-consistency.log"
+  },
+  {
+    "name": "installed-packages",
+    "argv": [
+      "uv",
+      "pip",
+      "freeze",
+      "--python",
+      "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:48:57.027207+00:00",
+    "ended_at": "2026-11-17T13:48:57.034288+00:00",
+    "exit_code": 0,
+    "log": "installed-packages.log"
+  },
+  {
+    "name": "gpu-compute-check",
+    "argv": [
+      "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python",
+      "-c",
+      "import json,sys,torch\nfrom importlib.metadata import version\nassert torch.version.cuda is not None, \"CPU-only PyTorch is disallowed\"\nassert torch.cuda.is_available(), \"CUDA unavailable\"\na=torch.arange(64,dtype=torch.float32).reshape(8,8)\ng=a.to(\"cuda\")\nr=g@g\nassert r.is_cuda\nassert torch.equal(r.cpu(),a@a)\ntorch.cuda.synchronize()\nprint(json.dumps({\"python\":sys.version.split()[0],\"torch\":torch.__version__,\"cuda_build\":torch.version.cuda,\"cuda_available\":True,\"device\":torch.cuda.get_device_name(0),\"gpu_matrix_multiply\":\"passed\", \"pytest\":version(\"pytest\"),\"silero-vad\":version(\"silero-vad\")}))\n"
+    ],
+    "cwd": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+    "environment_overrides": {
+      "UV_PROJECT_ENVIRONMENT": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z"
+    },
+    "started_at": "2026-11-17T13:48:57.034492+00:00",
+    "ended_at": "2026-11-17T13:48:58.878541+00:00",
+    "exit_code": 0,
+    "log": "gpu-compute-check.log"
+  }
+]

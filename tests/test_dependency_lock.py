@@ -1,7 +1,7 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""CI tests the dependency versions pinned in the tracked uv.lock."""
+"""Lock freshness and existing CI ordering contracts."""
 from __future__ import annotations
 
 import shutil
@@ -52,8 +52,6 @@ class DependencyLockTests(unittest.TestCase):
         install = _step_index(steps, "uv pip install")
         self.assertLess(lock_check, install)
         self.assertNotIn("continue-on-error", steps[lock_check])
-        # The CPU-only PyTorch install path is unchanged.
-        self.assertIn("--torch-backend cpu", steps[install]["run"])
 
     def test_web_ci_audits_production_dependencies_without_blocking(self):
         steps = _steps("web")

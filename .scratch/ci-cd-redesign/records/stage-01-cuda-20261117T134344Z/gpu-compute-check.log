@@ -1,0 +1,1 @@
+{"python": "3.11.16", "torch": "2.5.0+cu124", "cuda_build": "12.4", "cuda_available": true, "device": "NVIDIA GeForce RTX 4090", "gpu_matrix_multiply": "passed", "pytest": "9.1.1", "silero-vad": "6.2.1"}

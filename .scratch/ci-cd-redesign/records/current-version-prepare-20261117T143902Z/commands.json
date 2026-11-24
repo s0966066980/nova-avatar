@@ -1,0 +1,34 @@
+[
+  {
+    "name": "lock-check",
+    "argv": [
+      "uv",
+      "lock",
+      "--check"
+    ],
+    "cwd": "/home/oliver/nova-avatar",
+    "started_at": "2026-11-17T14:39:02.246024+00:00",
+    "ended_at": "2026-11-17T14:39:02.260440+00:00",
+    "exit_code": 0
+  },
+  {
+    "name": "frozen-install",
+    "argv": [
+      "uv",
+      "sync",
+      "--frozen",
+      "--python",
+      "3.11",
+      "--group",
+      "dev",
+      "--group",
+      "ci",
+      "--extra",
+      "vad"
+    ],
+    "cwd": "/home/oliver/nova-avatar",
+    "started_at": "2026-11-17T14:39:02.260571+00:00",
+    "ended_at": "2026-11-17T14:39:02.286772+00:00",
+    "exit_code": 0
+  }
+]

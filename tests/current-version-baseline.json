@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_version": "1.0.0",
+  "python_minor": "3.11",
+  "node_major": 22,
+  "cuda_build": "12.4",
+  "torch_version": "2.5.0+cu124",
+  "defaults": {
+    "model.type": "musetalk",
+    "asr.type": "whisper",
+    "asr.model_size": "small",
+    "vad.type": "silero",
+    "tts.type": "edgetts",
+    "llm.provider": "llamacpp",
+    "llm.model": "gemma-4-E2B_q4_0-it"
+  },
+  "supported_options": {
+    "llm_models": ["Qwen3.5-9B-UD-Q4_K_XL"],
+    "llm_endpoints": ["llamacpp", "ollama", "openai"],
+    "asr": ["whisper", "funasr"],
+    "tts": ["edgetts", "breezyvoice"]
+  },
+  "python_selection": "not live",
+  "areas": ["governance", "runtime", "speech", "llm", "avatar", "ragflow", "conversation"],
+  "max_skipped": 0,
+  "release_checks": [
+    "Installed llama-server binary and CUDA libraries",
+    "Configured current model live reply/board contract",
+    "Selected deployment model real CUDA inference",
+    "Selected voice, WebRTC, interruption and field audiovisual acceptance"
+  ]
+}

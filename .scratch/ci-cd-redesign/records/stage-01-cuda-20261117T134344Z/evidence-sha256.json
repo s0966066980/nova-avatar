@@ -1,0 +1,11 @@
+{
+  "README.md": "ae00561b0256cf93bdf23154d8e4fae624f4547576b7950bf30792626d3cfab2",
+  "commands.json": "bd72e475c929b5091016ea20a6ee89683cf95d470b429c7840507f0a73206dc0",
+  "dependency-consistency.log": "e073ab41e7325bbda2ac4e492ea0f24f5159338fbd43a7afd5c924ffccd90ef4",
+  "gpu-compute-check.log": "180891634f5f1d6fc26a2ee4d9e2fae1731a950fdbe1c962c5d6ddc12ff07646",
+  "installed-packages.log": "41bb9a951f264db581801ae31db8210e704ada69ca4985c3b8af2dc7ee5b6dd0",
+  "lock-check.log": "47f1cbc97bde6136e72c64bd81ff4716c15a3b2bd3a489e57c8ee3b2c365fe0d",
+  "locked-install.log": "53ce60d9008f6eaf9a7787bff6726595c5c451e97f0c7b0d8cef5cc3b07e572a",
+  "manifest.json": "e56c6c3c6ede63b9580501cb870a19cba0d29f18038db6dc7b4a95b41a295a31",
+  "working-tree-status-before.txt": "9caba90ce5552d796599ad8a6e3f1cc4143a8e76eeed1d5140df9fa93192985a"
+}

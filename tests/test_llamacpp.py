@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import struct
 import subprocess
@@ -73,11 +76,10 @@ class GpuLayerPlanningTests(unittest.TestCase):
     def test_cpu_only_when_no_free_vram(self):
         self.assertEqual(suggest_gpu_layers(16 * 1024**3, 512, 65), 0)
 
-    def test_reads_qwen_block_count(self):
-        gguf = resolve_gguf("Qwen3.8-27B-Q4_K_M", extra_dir=str(Path.home() / "llama"))
-        if gguf is None:
-            self.skipTest("Qwen3.8-27B-Q4_K_M.gguf is not installed")
-        self.assertEqual(gguf_block_count(gguf), 65)
+    def test_reads_gguf_block_count_from_local_fixture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gguf = _write_gguf(Path(tmp) / "fixture-model.gguf", 32, 256)
+            self.assertEqual(gguf_block_count(gguf), 32)
 
 
 class StopLlamaOnPortTests(unittest.TestCase):
@@ -99,7 +101,7 @@ class StopLlamaOnPortTests(unittest.TestCase):
         with patch("src.llm.llamacpp._pids_listening_on", return_value=[335955]):
             with patch(
                 "src.llm.llamacpp._process_cmdline",
-                return_value="/home/oliver/llama/llama.cpp/build/bin/llama-server -m LFM.gguf",
+                return_value="/fixture/llama-server -m fixture-model.gguf",
             ):
                 with patch("src.llm.llamacpp.os.kill", side_effect=fake_kill):
                     stop_llama_on_port(8080)
@@ -129,7 +131,7 @@ class ShutdownOwnedServerTests(unittest.TestCase):
 
         process = Process()
         with patch.object(llamacpp, "_server_proc", process), patch.object(
-            llamacpp, "_loaded_model", "LFM"
+            llamacpp, "_loaded_model", "fixture-model"
         ):
             shutdown_llama_server()
             shutdown_llama_server()
@@ -153,8 +155,7 @@ class ShutdownOwnedServerTests(unittest.TestCase):
 class LlamaServerLaunchEnvTests(unittest.TestCase):
     def test_llama_server_loads_with_discovered_cuda_libs(self):
         binary = find_llama_server()
-        if binary is None:
-            self.skipTest("llama-server is not installed")
+        self.assertIsNotNone(binary, "live environment requires llama-server")
         env = build_server_env(binary)
         result = subprocess.run(
             [str(binary), "-h"],

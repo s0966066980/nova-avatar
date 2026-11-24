@@ -1,0 +1,383 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python
+cachedir: .pytest_cache
+rootdir: /home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 1529 items / 1250 deselected / 279 selected
+
+tests/test_asr_comparison.py::RecognitionTokenTests::test_chinese_is_scored_per_character_without_punctuation PASSED [  0%]
+tests/test_asr_comparison.py::RecognitionTokenTests::test_english_is_scored_per_word_case_and_punctuation_insensitive PASSED [  0%]
+tests/test_asr_comparison.py::RecognitionTokenTests::test_mixed_text_keeps_latin_words_whole PASSED [  1%]
+tests/test_asr_comparison.py::RecognitionTokenTests::test_script_differences_are_not_recognition_errors PASSED [  1%]
+tests/test_asr_comparison.py::ErrorCountTests::test_counts_substitutions_insertions_and_deletions PASSED [  1%]
+tests/test_asr_comparison.py::UtteranceAudioTests::test_trailing_silence_is_cut_to_the_vad_endpoint PASSED [  2%]
+tests/test_asr_comparison.py::MeasureEngineTests::test_each_round_times_one_recognition_detecting_chinese_or_english PASSED [  2%]
+tests/test_asr_comparison.py::MeasureEngineTests::test_engines_without_language_options_get_audio_only PASSED [  2%]
+tests/test_asr_comparison.py::BuildReportTests::test_reports_how_often_chinese_or_english_was_detected_correctly PASSED [  3%]
+tests/test_asr_comparison.py::BuildReportTests::test_reports_latency_percentiles_and_corpus_error_rate_per_language PASSED [  3%]
+tests/test_asr_comparison.py::test_funasr_compares_fun_asr_nano_by_default PASSED [  3%]
+tests/test_breezyvoice_tts.py::test_every_breezyvoice_download_is_pinned PASSED [  4%]
+tests/test_breezyvoice_tts.py::test_url_file_with_wrong_checksum_is_not_kept PASSED [  4%]
+tests/test_breezyvoice_tts.py::test_g2pw_archive_cannot_write_outside_its_folder PASSED [  5%]
+tests/test_breezyvoice_tts.py::test_reading_tables_are_parsed_without_running_the_file PASSED [  5%]
+tests/test_breezyvoice_tts.py::test_rare_characters_and_uncommon_readings_get_zhuyin PASSED [  5%]
+tests/test_breezyvoice_tts.py::test_existing_hints_and_missing_predictions_are_left_alone PASSED [  6%]
+tests/test_breezyvoice_tts.py::test_frontend_prepares_text_with_g2pw_readings PASSED [  6%]
+tests/test_breezyvoice_tts.py::test_frontend_requires_the_downloaded_g2pw_model PASSED [  6%]
+tests/test_breezyvoice_tts.py::test_top_k_sampling_only_returns_top_k_ids PASSED [  7%]
+tests/test_breezyvoice_tts.py::test_g2pw_onnx_session_is_pinned_to_cpu PASSED [  7%]
+tests/test_breezyvoice_tts.py::test_breezyvoice_model_loads_with_yaml_overrides_only_during_construction PASSED [  7%]
+tests/test_breezyvoice_tts.py::test_prompt_mel_is_computed_at_the_model_rate PASSED [  8%]
+tests/test_breezyvoice_tts.py::test_breezyvoice_models_are_listed_by_their_reading_tables PASSED [  8%]
+tests/test_breezyvoice_tts.py::test_missing_default_breezyvoice_model_names_the_download_script PASSED [  8%]
+tests/test_breezyvoice_tts.py::test_voice_library_keeps_a_cleaned_transcript PASSED [  9%]
+tests/test_breezyvoice_tts.py::test_engine_uses_library_audio_and_transcript_for_zero_shot PASSED [  9%]
+tests/test_breezyvoice_tts.py::test_engine_refuses_without_library_voice_or_transcript PASSED [ 10%]
+tests/test_breezyvoice_tts.py::test_engine_resamples_breezyvoice_22050_hz_audio_per_fragment PASSED [ 10%]
+tests/test_breezyvoice_tts.py::test_breezyvoice_is_a_selectable_local_engine PASSED [ 10%]
+tests/test_breezyvoice_tts.py::test_apply_requires_a_library_voice_with_transcript PASSED [ 11%]
+tests/test_breezyvoice_tts.py::test_apply_starts_the_owned_server_for_breezyvoice PASSED [ 11%]
+tests/test_breezyvoice_tts.py::test_engine_reports_http_errors_and_empty_audio_after_notifying PASSED [ 11%]
+tests/test_default_voice.py::test_old_override_tts_block_is_not_a_second_voice_source PASSED [ 12%]
+tests/test_default_voice.py::test_saving_overrides_drops_the_old_tts_block PASSED [ 12%]
+tests/test_default_voice.py::test_startup_config_adopts_the_saved_main_voice PASSED [ 12%]
+tests/test_default_voice.py::test_startup_keeps_the_configured_voice_without_saved_profiles PASSED [ 13%]
+tests/test_default_voice.py::test_startup_keeps_the_configured_voice_when_saved_profiles_are_unreadable PASSED [ 13%]
+tests/test_default_voice.py::test_failed_startup_apply_still_speaks_with_the_main_voice PASSED [ 13%]
+tests/test_default_voice.py::test_startup_with_a_breezyvoice_main_starts_its_server_without_a_preview PASSED [ 14%]
+tests/test_default_voice.py::test_applying_a_new_main_voice_updates_the_default_voice_without_saving_it PASSED [ 14%]
+tests/test_default_voice.py::test_a_pending_global_tts_change_from_the_removed_page_is_dropped PASSED [ 15%]
+tests/test_edge_connection.py::StartupConnectionTests::test_a_session_closing_keeps_the_startup_socket_available_for_other_sessions PASSED [ 15%]
+tests/test_edge_connection.py::StartupConnectionTests::test_backend_shutdown_closes_the_shared_loop_and_sockets PASSED [ 15%]
+tests/test_edge_connection.py::StartupConnectionTests::test_invalid_audio_never_marks_startup_ready PASSED [ 16%]
+tests/test_edge_connection.py::StartupConnectionTests::test_startup_audio_is_available_without_another_handshake PASSED [ 16%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_a_reused_socket_closed_by_the_peer_is_replaced_before_audio PASSED [ 16%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_background_connection_failures_back_off PASSED [ 17%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_cancelled_request_discards_its_socket PASSED [ 17%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_concurrent_requests_can_prune_multiple_expired_sockets PASSED [ 17%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_expired_socket_is_replaced PASSED [ 18%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_missing_audio_is_an_error_and_socket_is_not_reused PASSED [ 18%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_rate_limit_cooldown_is_shared_with_new_requests_and_is_cancellable PASSED [ 18%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_refresh_replaces_the_old_socket_when_the_idle_pool_is_full PASSED [ 19%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_sequential_replies_reuse_connections PASSED [ 19%]
+tests/test_edge_connection.py::ConnectionPoolTests::test_silent_warm_socket_is_replaced_before_the_first_audio_deadline PASSED [ 20%]
+tests/test_edge_endpoint.py::EdgeEndpointTests::test_edge_tts_is_pointed_at_the_primary_host_on_import PASSED [ 20%]
+tests/test_edge_endpoint.py::EdgeEndpointTests::test_failures_that_do_not_name_a_bad_host_keep_the_choice 
+tests/test_edge_endpoint.py::EdgeEndpointTests::test_failures_that_do_not_name_a_bad_host_keep_the_choice PASSED [ 20%]
+tests/test_edge_endpoint.py::EdgeEndpointTests::test_missing_wss_url_attribute_disables_selection_without_raising PASSED [ 21%]
+tests/test_edge_endpoint.py::EdgeEndpointTests::test_prewarm_rejection_retries_the_other_host_before_first_turn PASSED [ 21%]
+tests/test_edge_endpoint.py::EdgeEndpointTests::test_rejected_handshake_swaps_host_and_swaps_back_on_next_rejection PASSED [ 21%]
+tests/test_edge_endpoint.py::EdgeWorkerHostFailoverTests::test_first_attempt_rejection_retries_on_the_other_host_and_speaks PASSED [ 22%]
+tests/test_edge_resilience.py::EdgeResilienceTests::test_a_429_is_retried_after_the_shared_cooldown PASSED [ 22%]
+tests/test_edge_resilience.py::EdgeResilienceTests::test_repeated_429_cannot_expand_the_retry_budget PASSED [ 22%]
+tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_edge_prewarm_finishes_before_readiness PASSED [ 23%]
+tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_non_edge_engine_does_not_start_edge_prewarm PASSED [ 23%]
+tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_startup_prewarm_recovers_from_a_temporary_failure PASSED [ 24%]
+tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_startup_prewarm_stops_after_three_failures PASSED [ 24%]
+tests/test_edge_tts_worker.py::EdgeTTSTransportTests::test_prewarm_migrates_the_rejected_legacy_synthesis_endpoint PASSED [ 24%]
+tests/test_edge_tts_worker.py::EdgeTTSTransportTests::test_prewarm_preserves_an_upstream_replacement_endpoint PASSED [ 25%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_all_queued_fragments_begin_synthesis_before_first_finishes PASSED [ 25%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_cancelling_prefetch_handoff_discards_unsent_pcm PASSED [ 25%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request PASSED [ 26%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio PASSED [ 26%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_in_flight_poll_timeout_is_not_a_synthesis_failure PASSED [ 26%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_last_fragment_prefetch_releases_and_completes_promptly PASSED [ 27%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_mouth_backpressure_does_not_block_later_tts_network_requests PASSED [ 27%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_persistent_worker_reuses_the_same_event_loop PASSED [ 27%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_handoff_preserves_pcm_order_while_output_is_blocked PASSED [ 28%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_limits_requests_and_eventually_emits_all_fragments_in_order PASSED [ 28%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetched_first_reply_does_not_wait_past_its_retry_budget PASSED [ 29%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limit_does_not_exceed_the_shared_retry_budget PASSED [ 29%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limit_wait_can_be_cancelled_without_another_request PASSED [ 29%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limited_synthesis_waits_before_retrying PASSED [ 30%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_ready_next_fragment_is_enqueued_before_previous_playback_ends PASSED [ 30%]
+tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_worker_close_stops_the_background_loop PASSED [ 30%]
+tests/test_funasr.py::test_fun_asr_nano_download_is_pinned_and_complete PASSED [ 31%]
+tests/test_funasr.py::test_service_model_folder_is_where_the_download_puts_it PASSED [ 31%]
+tests/test_funasr.py::test_fun_asr_nano_download_passes_pinned_revision_and_files PASSED [ 31%]
+tests/test_funasr.py::test_fun_asr_nano_check_fails_when_weights_are_missing PASSED [ 32%]
+tests/test_funasr.py::test_server_converts_output_to_taiwan_traditional PASSED [ 32%]
+tests/test_funasr.py::test_server_can_keep_simplified_and_reports_english PASSED [ 32%]
+tests/test_funasr.py::test_server_passes_the_requested_language_to_the_prompt PASSED [ 33%]
+tests/test_funasr.py::test_server_rejects_malformed_requests[-options0-\u6c92\u6709\u97f3\u8a0a] PASSED [ 33%]
+tests/test_funasr.py::test_server_rejects_malformed_requests[\x00-options1-16-bit] PASSED [ 34%]
+tests/test_funasr.py::test_server_rejects_malformed_requests[\x00\x00-options2-\u8a9e\u8a00] PASSED [ 34%]
+tests/test_funasr.py::test_server_rejects_malformed_requests[\x00\x00-options3-\u8f38\u51fa\u6587\u5b57] PASSED [ 34%]
+tests/test_funasr.py::test_http_routes_serve_health_and_recognition PASSED [ 35%]
+tests/test_funasr.py::test_http_rejects_oversized_and_invalid_audio PASSED [ 35%]
+tests/test_funasr.py::test_server_binds_only_to_loopback[0.0.0.0] PASSED [ 35%]
+tests/test_funasr.py::test_server_binds_only_to_loopback[192.168.1.5] PASSED [ 36%]
+tests/test_funasr.py::test_server_binds_only_to_loopback[example.com] PASSED [ 36%]
+tests/test_funasr.py::test_server_loads_bundled_model_class_without_remote_code PASSED [ 36%]
+tests/test_funasr.py::test_models_resolve_only_from_the_server_managed_list PASSED [ 37%]
+tests/test_funasr.py::test_availability_reports_missing_venv_or_weights PASSED [ 37%]
+tests/test_funasr.py::test_ensure_server_reuses_a_healthy_matching_service PASSED [ 37%]
+tests/test_funasr.py::test_ensure_server_starts_the_owned_loopback_process PASSED [ 38%]
+tests/test_funasr.py::test_ensure_server_reports_a_crashed_start PASSED  [ 38%]
+tests/test_funasr.py::test_ensure_server_refuses_non_loopback_hosts PASSED [ 39%]
+tests/test_funasr.py::test_service_urls_bracket_ipv6_loopback PASSED     [ 39%]
+tests/test_funasr.py::test_stop_server_interrupts_a_start_in_progress PASSED [ 39%]
+tests/test_funasr.py::test_service_and_server_share_one_protocol_definition PASSED [ 40%]
+tests/test_funasr.py::test_engine_starts_the_service_only_when_loaded PASSED [ 40%]
+tests/test_funasr.py::test_engine_sends_16k_mono_pcm_and_returns_the_service_text PASSED [ 40%]
+tests/test_funasr.py::test_audio_is_resampled_and_downmixed_to_16k_pcm16 PASSED [ 41%]
+tests/test_funasr.py::test_engine_rejects_unknown_devices_and_scripts PASSED [ 41%]
+tests/test_funasr.py::test_settings_offer_fun_asr_nano_from_the_service PASSED [ 41%]
+tests/test_funasr.py::test_settings_report_a_missing_service_venv PASSED [ 42%]
+tests/test_funasr.py::test_applying_unavailable_fun_asr_names_what_is_missing PASSED [ 42%]
+tests/test_funasr.py::test_applying_fun_asr_rejects_unlisted_models PASSED [ 43%]
+tests/test_funasr.py::test_applying_fun_asr_over_saved_paraformer_uses_fun_asr_nano PASSED [ 43%]
+tests/test_funasr.py::test_switching_back_to_whisper_stops_the_fun_asr_service PASSED [ 43%]
+tests/test_funasr.py::test_english_conversations_accept_fun_asr PASSED   [ 44%]
+tests/test_profile_voice_preview.py::test_preview_routes_are_admin_only PASSED [ 44%]
+tests/test_profile_voice_preview.py::test_breezyvoice_preview_starts_the_server_and_speaks_with_the_library_clip PASSED [ 44%]
+tests/test_profile_voice_preview.py::test_edge_preview_needs_no_server PASSED [ 45%]
+tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts0-\u97f3\u8a0a\u5eab] PASSED [ 45%]
+tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts1-\u672c\u6a5f] PASSED [ 45%]
+tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts2-\u53c3\u8003\u97f3\u6a94] PASSED [ 46%]
+tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts3-\u8072\u7dda] PASSED [ 46%]
+tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts4-TTS] PASSED [ 46%]
+tests/test_profile_voice_preview.py::test_preview_needs_the_library_transcript PASSED [ 47%]
+tests/test_profile_voice_preview.py::test_preview_does_not_start_or_replace_a_server_under_a_conversation PASSED [ 47%]
+tests/test_profile_voice_preview.py::test_preview_does_not_replace_the_default_voices_breezyvoice_server PASSED [ 48%]
+tests/test_profile_voice_preview.py::test_concurrent_breezyvoice_starts_launch_one_server PASSED [ 48%]
+tests/test_profile_voice_preview.py::test_breezyvoice_server_urls_bracket_ipv6_loopback PASSED [ 48%]
+tests/test_tts_bakeoff.py::SentenceSetTests::test_english_set_is_english PASSED [ 49%]
+tests/test_tts_bakeoff.py::SentenceSetTests::test_first_fragments_are_about_fifteen_characters PASSED [ 49%]
+tests/test_tts_bakeoff.py::SentenceSetTests::test_focus_words_appear_in_their_sentences PASSED [ 49%]
+tests/test_tts_bakeoff.py::SentenceSetTests::test_zh_tw_set_covers_taiwan_readings_places_money_dates_and_code_switching PASSED [ 50%]
+tests/test_tts_bakeoff.py::SentenceSetTests::test_zh_tw_set_has_one_hundred_sentences_with_unique_ids PASSED [ 50%]
+tests/test_tts_bakeoff.py::ScoringTests::test_extra_or_repeated_speech_is_hallucination PASSED [ 50%]
+tests/test_tts_bakeoff.py::ScoringTests::test_missing_ending_is_truncation PASSED [ 51%]
+tests/test_tts_bakeoff.py::ScoringTests::test_spoken_and_written_numbers_score_alike PASSED [ 51%]
+tests/test_tts_bakeoff.py::ScoringTests::test_the_closest_accepted_transcript_is_scored PASSED [ 51%]
+tests/test_tts_bakeoff.py::DurationFlagTests::test_audio_far_too_short_or_long_for_the_text PASSED [ 52%]
+tests/test_tts_bakeoff.py::DurationFlagTests::test_plausible_audio_has_no_flags PASSED [ 52%]
+tests/test_tts_bakeoff.py::DurationFlagTests::test_silent_or_missing_audio_is_empty PASSED [ 53%]
+tests/test_tts_bakeoff.py::VramTests::test_missing_nvidia_smi_is_recorded_not_fatal PASSED [ 53%]
+tests/test_tts_bakeoff.py::VramTests::test_reads_gpu_and_process_memory_from_nvidia_smi PASSED [ 53%]
+tests/test_tts_bakeoff.py::VramTests::test_sampler_reports_peak_delta_over_the_pre_launch_baseline PASSED [ 54%]
+tests/test_tts_bakeoff.py::ZeroShotClientTests::test_http_errors_are_recorded_not_raised PASSED [ 54%]
+tests/test_tts_bakeoff.py::ZeroShotClientTests::test_times_first_audio_and_whole_fragment_and_decodes_pcm PASSED [ 54%]
+tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_run_records_latency_phases_vram_and_saves_audio PASSED [ 55%]
+tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_score_and_report_build_rates_and_an_escaped_listening_page PASSED [ 55%]
+tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_soak_streams_json_lines_and_summarizes_on_exit PASSED [ 55%]
+tests/test_tts_bakeoff.py::SoakSummaryTests::test_hourly_latency_drift_failures_and_vram_growth PASSED [ 56%]
+tests/test_tts_engine_cleanup.py::test_only_breezyvoice_and_edge_tts_are_offered PASSED [ 56%]
+tests/test_tts_engine_cleanup.py::test_removed_engine_settings_fields_are_gone PASSED [ 56%]
+tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[cosyvoice] PASSED [ 57%]
+tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[fun-cosyvoice3] PASSED [ 57%]
+tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[fishtts] PASSED [ 58%]
+tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[gpt-sovits] PASSED [ 58%]
+tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[indextts2] PASSED [ 58%]
+tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[xtts] PASSED [ 59%]
+tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[cosyvoice] PASSED [ 59%]
+tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[fun-cosyvoice3] PASSED [ 59%]
+tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[fishtts] PASSED [ 60%]
+tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[gpt-sovits] PASSED [ 60%]
+tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[indextts2] PASSED [ 60%]
+tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[xtts] PASSED [ 61%]
+tests/test_tts_engine_cleanup.py::test_supported_engines_keep_their_settings_and_leave_no_notice PASSED [ 61%]
+tests/test_tts_engine_cleanup.py::test_startup_config_with_a_removed_engine_and_legacy_fields_loads_on_edge_tts PASSED [ 62%]
+tests/test_tts_engine_cleanup.py::test_applying_a_tts_engine_clears_the_fallback_notice PASSED [ 62%]
+tests/test_tts_engine_cleanup.py::test_saved_role_with_a_removed_engine_starts_on_edge_tts PASSED [ 62%]
+tests/test_vad.py::BaseVADTests::test_frame_geometry PASSED              [ 63%]
+tests/test_vad.py::BaseVADTests::test_frames_drop_partial_tail PASSED    [ 63%]
+tests/test_vad.py::BaseVADTests::test_lazy_model_load PASSED             [ 63%]
+tests/test_vad.py::BaseVADTests::test_rejects_unsupported_sample_rate PASSED [ 64%]
+tests/test_vad.py::BaseVADTests::test_to_int16_accepts_bytes_and_float PASSED [ 64%]
+tests/test_vad.py::BaseVADTests::test_wrong_frame_length_raises PASSED   [ 64%]
+tests/test_vad.py::SegmenterTests::test_accepts_raw_bytes PASSED         [ 65%]
+tests/test_vad.py::SegmenterTests::test_endpoint_reports_how_long_vad_held_speech_after_the_voice_ended PASSED [ 65%]
+tests/test_vad.py::SegmenterTests::test_extract_speech_drops_silence PASSED [ 65%]
+tests/test_vad.py::SegmenterTests::test_extract_speech_returns_none_on_silence PASSED [ 66%]
+tests/test_vad.py::SegmenterTests::test_flush_closes_open_segment PASSED [ 66%]
+tests/test_vad.py::SegmenterTests::test_max_speech_forces_cut PASSED     [ 67%]
+tests/test_vad.py::SegmenterTests::test_only_an_endpoint_measures_the_speech_tail PASSED [ 67%]
+tests/test_vad.py::SegmenterTests::test_segment_reports_speech_ms PASSED [ 67%]
+tests/test_vad.py::SegmenterTests::test_short_blip_discarded PASSED      [ 68%]
+tests/test_vad.py::SegmenterTests::test_single_segment_with_padding PASSED [ 68%]
+tests/test_vad.py::SegmenterTests::test_streaming_chunks_match_single_shot PASSED [ 68%]
+tests/test_vad.py::SegmenterTests::test_two_segments_split_by_silence PASSED [ 69%]
+tests/test_vad.py::SegmenterTests::test_voiced_end_ignores_leading_and_trailing_silence PASSED [ 69%]
+tests/test_vad.py::FrameNormalizationTests::test_silero_fixed_frame_samples PASSED [ 69%]
+tests/test_vad.py::FrameNormalizationTests::test_silero_rejects_unsupported_rate PASSED [ 70%]
+tests/test_vad.py::FactoryTests::test_create_by_type_and_alias PASSED    [ 70%]
+tests/test_vad.py::FactoryTests::test_singleton_rebuilds_on_param_change PASSED [ 70%]
+tests/test_vad.py::FactoryTests::test_singleton_reuses_same_configuration PASSED [ 71%]
+tests/test_vad.py::FactoryTests::test_unknown_type_raises PASSED         [ 71%]
+tests/test_vad.py::ConfigTests::test_defaults PASSED                     [ 72%]
+tests/test_vad.py::ConfigTests::test_shipped_end_of_speech_wait_is_about_200_ms_in_silero_frames PASSED [ 72%]
+tests/test_vad.py::ConfigTests::test_yaml_override PASSED                [ 72%]
+tests/test_vad.py::AudioUtilTests::test_decode_rejects_garbage PASSED    [ 73%]
+tests/test_vad.py::AudioUtilTests::test_resample_changes_length PASSED   [ 73%]
+tests/test_vad.py::AudioUtilTests::test_wav_roundtrip PASSED             [ 73%]
+tests/test_vad.py::ServiceTests::test_broken_audio_degrades_to_original PASSED [ 74%]
+tests/test_vad.py::ServiceTests::test_disabled_passthrough PASSED        [ 74%]
+tests/test_vad.py::ServiceTests::test_no_config_passthrough PASSED       [ 74%]
+tests/test_vad.py::SileroEngineTests::test_detects_speech_and_ignores_silence PASSED [ 75%]
+tests/test_vad.py::SileroEngineTests::test_service_reports_no_speech PASSED [ 75%]
+tests/test_vad.py::SileroEngineTests::test_service_trims_silence PASSED  [ 75%]
+tests/test_vad.py::SettingsApiTests::test_disable_skips_dependency_check PASSED [ 76%]
+tests/test_vad.py::SettingsApiTests::test_missing_dependency_reports_install_command PASSED [ 76%]
+tests/test_vad.py::SettingsApiTests::test_silero_is_enforced_and_persisted PASSED [ 77%]
+tests/test_vad.py::SettingsApiTests::test_snapshot_is_always_server_side PASSED [ 77%]
+tests/test_vad.py::SettingsApiTests::test_unknown_engine_rejected PASSED [ 77%]
+tests/test_vad.py::SettingsApiTests::test_values_are_clamped PASSED      [ 78%]
+tests/test_voice_library.py::test_upload_is_converted_to_a_wav_in_the_library PASSED [ 78%]
+tests/test_voice_library.py::test_non_audio_uploads_are_rejected[root:x:0:0:root:/root:/bin/bash\n] PASSED [ 78%]
+tests/test_voice_library.py::test_non_audio_uploads_are_rejected[#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\nfile:///etc/passwd\n#EXT-X-ENDLIST\n] PASSED [ 79%]
+tests/test_voice_library.py::test_non_audio_uploads_are_rejected[ffconcat version 1.0\nfile '/etc/passwd'\n] PASSED [ 79%]
+tests/test_voice_library.py::test_non_audio_uploads_are_rejected[] PASSED [ 79%]
+tests/test_voice_library.py::test_overlong_audio_is_rejected_from_its_header PASSED [ 80%]
+tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[] PASSED [ 80%]
+tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[../voices] PASSED [ 81%]
+tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[/etc/passwd] PASSED [ 81%]
+tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[ABCDEF0123456789] PASSED [ 81%]
+tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[000000000000000] PASSED [ 82%]
+tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[0000000000000000] PASSED [ 82%]
+tests/test_voice_library.py::test_development_voices_are_marked_for_the_console PASSED [ 82%]
+tests/test_voice_library.py::test_dev_voice_import_script_is_repeatable PASSED [ 83%]
+tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[/etc/passwd] PASSED [ 83%]
+tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[config/ragflow.env] PASSED [ 83%]
+tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source/config/ragflow.env] PASSED [ 84%]
+tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[../config/admin.env] PASSED [ 84%]
+tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[zh-TW-HsiaoChenNeural/../../etc/passwd] PASSED [ 84%]
+tests/test_voice_library.py::test_server_side_references_cannot_be_paths[/etc/passwd] PASSED [ 85%]
+tests/test_voice_library.py::test_server_side_references_cannot_be_paths[config/ragflow.env] PASSED [ 85%]
+tests/test_voice_library.py::test_server_side_references_cannot_be_paths[/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source/config/ragflow.env] PASSED [ 86%]
+tests/test_voice_library.py::test_server_side_references_cannot_be_paths[../config/admin.env] PASSED [ 86%]
+tests/test_voice_library.py::test_server_side_references_cannot_be_paths[zh-TW-HsiaoChenNeural/../../etc/passwd] PASSED [ 86%]
+tests/test_voice_library.py::test_tts_server_must_be_loopback[http://evil.example:8020] PASSED [ 87%]
+tests/test_voice_library.py::test_tts_server_must_be_loopback[http://192.168.50.9:8020] PASSED [ 87%]
+tests/test_voice_library.py::test_tts_server_must_be_loopback[http://127.0.0.1@evil.example:8020] PASSED [ 87%]
+tests/test_voice_library.py::test_tts_server_must_be_loopback[https://8.8.8.8] PASSED [ 88%]
+tests/test_voice_library.py::test_tts_server_must_be_loopback[file:///etc/passwd] PASSED [ 88%]
+tests/test_voice_library.py::test_tts_server_must_be_loopback[http://127.0.0.1:8020/upload?x=1] PASSED [ 88%]
+tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[http://127.0.0.1:9880-http://127.0.0.1:9880] PASSED [ 89%]
+tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[http://localhost:8020/-http://localhost:8020] PASSED [ 89%]
+tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[http://[::1]:50000-http://[::1]:50000] PASSED [ 89%]
+tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[-] PASSED [ 90%]
+tests/test_voice_library.py::test_tts_models_come_from_the_models_folder PASSED [ 90%]
+tests/test_voice_library.py::test_global_tts_route_is_gone PASSED        [ 91%]
+tests/test_voice_library.py::test_path_picker_route_is_gone PASSED       [ 91%]
+tests/test_voice_library.py::test_voice_library_routes_upload_list_and_delete PASSED [ 91%]
+tests/test_voice_library.py::test_voice_library_audio_can_be_previewed_by_administrators_only PASSED [ 92%]
+tests/test_voice_library.py::test_voice_upload_keeps_its_transcript PASSED [ 92%]
+tests/test_voice_library.py::test_oversized_voice_upload_is_rejected_and_cleaned PASSED [ 92%]
+tests/test_voice_library.py::test_saved_paths_migrate_into_the_library_or_are_cleared PASSED [ 93%]
+tests/test_voice_library.py::test_load_config_migrates_runtime_override_paths PASSED [ 93%]
+tests/test_voice_library.py::test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones PASSED [ 93%]
+tests/test_voice_library.py::test_breezyvoice_profiles_need_a_transcribed_reference_before_saving PASSED [ 94%]
+tests/test_voice_library.py::test_library_transcript_is_the_only_reference_transcript PASSED [ 94%]
+tests/test_voice_library.py::test_profile_voice_migration_runs_once_at_startup_and_is_saved PASSED [ 94%]
+tests/test_voice_library.py::test_breezyvoice_prompt_comes_from_the_library PASSED [ 95%]
+tests/test_whisper_asr.py::WhisperASRLoadingTests::test_loads_faster_whisper_with_cpu_int8 PASSED [ 95%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_16k_wav_is_decoded_in_memory_and_decoded_greedily PASSED [ 96%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_auto_detects_chinese_or_english_in_one_pass 
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_auto_detects_chinese_or_english_in_one_pass PASSED [ 96%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_auto_restricts_detection_to_chinese_or_english PASSED [ 96%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_completion_log_names_the_recognized_language PASSED [ 97%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_fixed_language_reports_that_language PASSED [ 97%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_other_sample_rates_and_containers_stay_in_memory 
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_other_sample_rates_and_containers_stay_in_memory PASSED [ 97%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_prewarm_primes_language_detection PASSED [ 98%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_restricted_retry_rereads_in_memory_containers PASSED [ 98%]
+tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_stereo_audio_is_downmixed_to_mono PASSED [ 98%]
+tests/test_whisper_asr.py::ConversationLanguageTests::test_conversation_locale_maps_to_a_recognizer_language PASSED [ 99%]
+tests/test_whisper_asr.py::ConversationLanguageTests::test_detection_covers_exactly_the_conversation_languages PASSED [ 99%]
+tests/test_whisper_asr.py::ASRFactoryConcurrencyTests::test_concurrent_sessions_load_one_shared_engine PASSED [100%]
+
+=============================== warnings summary ===============================
+tests/test_vad.py::SileroEngineTests::test_detects_speech_and_ignores_silence
+tests/test_vad.py::SileroEngineTests::test_service_reports_no_speech
+tests/test_vad.py::SileroEngineTests::test_service_trims_silence
+tests/test_vad.py::SettingsApiTests::test_silero_is_enforced_and_persisted
+tests/test_vad.py::SettingsApiTests::test_values_are_clamped
+  /home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/lib/python3.11/site-packages/silero_vad/model.py:26: DeprecationWarning: path is deprecated. Use files() instead. Refer to https://importlib-resources.readthedocs.io/en/latest/using.html#migrating-from-legacy for migration advice.
+    with impresources.path(package_path, model_name) as f:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/stage-04-speech-20261117T141759Z/speech.xml -
+============================== slowest durations ===============================
+1.17s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_limits_requests_and_eventually_emits_all_fragments_in_order
+1.06s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request
+1.06s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_all_queued_fragments_begin_synthesis_before_first_finishes
+1.06s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio
+1.01s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limited_synthesis_waits_before_retrying
+1.00s call     tests/test_funasr.py::test_stop_server_interrupts_a_start_in_progress
+0.52s call     tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_run_records_latency_phases_vram_and_saves_audio
+0.51s call     tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_score_and_report_build_rates_and_an_escaped_listening_page
+0.50s call     tests/test_tts_bakeoff.py::ZeroShotClientTests::test_times_first_audio_and_whole_fragment_and_decodes_pcm
+0.50s call     tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_soak_streams_json_lines_and_summarizes_on_exit
+0.50s call     tests/test_tts_bakeoff.py::ZeroShotClientTests::test_http_errors_are_recorded_not_raised
+0.50s teardown tests/test_funasr.py::test_http_routes_serve_health_and_recognition
+0.50s teardown tests/test_funasr.py::test_http_rejects_oversized_and_invalid_audio
+0.47s call     tests/test_vad.py::AudioUtilTests::test_resample_changes_length
+0.31s call     tests/test_breezyvoice_tts.py::test_engine_resamples_breezyvoice_22050_hz_audio_per_fragment
+0.21s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_in_flight_poll_timeout_is_not_a_synthesis_failure
+0.20s call     tests/test_vad.py::SileroEngineTests::test_detects_speech_and_ignores_silence
+0.20s call     tests/test_profile_voice_preview.py::test_concurrent_breezyvoice_starts_launch_one_server
+0.18s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_last_fragment_prefetch_releases_and_completes_promptly
+0.17s call     tests/test_voice_library.py::test_dev_voice_import_script_is_repeatable
+0.09s call     tests/test_profile_voice_preview.py::test_breezyvoice_preview_starts_the_server_and_speaks_with_the_library_clip
+0.09s call     tests/test_voice_library.py::test_voice_library_routes_upload_list_and_delete
+0.08s call     tests/test_voice_library.py::test_voice_library_audio_can_be_previewed_by_administrators_only
+0.06s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_mouth_backpressure_does_not_block_later_tts_network_requests
+0.06s call     tests/test_profile_voice_preview.py::test_preview_does_not_start_or_replace_a_server_under_a_conversation
+0.06s call     tests/test_profile_voice_preview.py::test_preview_needs_the_library_transcript
+0.06s call     tests/test_profile_voice_preview.py::test_edge_preview_needs_no_server
+0.06s call     tests/test_profile_voice_preview.py::test_preview_does_not_replace_the_default_voices_breezyvoice_server
+0.06s call     tests/test_vad.py::SileroEngineTests::test_service_trims_silence
+0.05s call     tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts1-\u672c\u6a5f]
+0.05s call     tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts2-\u53c3\u8003\u97f3\u6a94]
+0.05s call     tests/test_voice_library.py::test_oversized_voice_upload_is_rejected_and_cleaned
+0.05s call     tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts4-TTS]
+0.05s call     tests/test_voice_library.py::test_path_picker_route_is_gone
+0.05s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limit_wait_can_be_cancelled_without_another_request
+0.05s call     tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts3-\u8072\u7dda]
+0.05s call     tests/test_voice_library.py::test_global_tts_route_is_gone
+0.05s call     tests/test_voice_library.py::test_voice_upload_keeps_its_transcript
+0.05s call     tests/test_vad.py::SileroEngineTests::test_service_reports_no_speech
+0.05s call     tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts0-\u97f3\u8a0a\u5eab]
+0.04s call     tests/test_voice_library.py::test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones
+0.04s call     tests/test_edge_connection.py::ConnectionPoolTests::test_silent_warm_socket_is_replaced_before_the_first_audio_deadline
+0.04s call     tests/test_edge_connection.py::ConnectionPoolTests::test_rate_limit_cooldown_is_shared_with_new_requests_and_is_cancellable
+0.03s call     tests/test_edge_connection.py::ConnectionPoolTests::test_refresh_replaces_the_old_socket_when_the_idle_pool_is_full
+0.03s call     tests/test_edge_connection.py::ConnectionPoolTests::test_a_reused_socket_closed_by_the_peer_is_replaced_before_audio
+0.03s call     tests/test_voice_library.py::test_library_transcript_is_the_only_reference_transcript
+0.03s call     tests/test_edge_connection.py::ConnectionPoolTests::test_background_connection_failures_back_off
+0.02s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_ready_next_fragment_is_enqueued_before_previous_playback_ends
+0.02s call     tests/test_tts_engine_cleanup.py::test_saved_role_with_a_removed_engine_starts_on_edge_tts
+0.02s call     tests/test_voice_library.py::test_profile_voice_migration_runs_once_at_startup_and_is_saved
+0.02s call     tests/test_vad.py::SettingsApiTests::test_silero_is_enforced_and_persisted
+0.02s call     tests/test_vad.py::SettingsApiTests::test_values_are_clamped
+0.02s call     tests/test_whisper_asr.py::ASRFactoryConcurrencyTests::test_concurrent_sessions_load_one_shared_engine
+0.02s call     tests/test_default_voice.py::test_failed_startup_apply_still_speaks_with_the_main_voice
+0.02s call     tests/test_default_voice.py::test_startup_with_a_breezyvoice_main_starts_its_server_without_a_preview
+0.02s call     tests/test_voice_library.py::test_breezyvoice_profiles_need_a_transcribed_reference_before_saving
+0.01s call     tests/test_edge_connection.py::StartupConnectionTests::test_a_session_closing_keeps_the_startup_socket_available_for_other_sessions
+0.01s call     tests/test_breezyvoice_tts.py::test_top_k_sampling_only_returns_top_k_ids
+0.01s call     tests/test_default_voice.py::test_applying_a_new_main_voice_updates_the_default_voice_without_saving_it
+0.01s call     tests/test_default_voice.py::test_startup_config_adopts_the_saved_main_voice
+0.01s call     tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_persistent_worker_reuses_the_same_event_loop
+0.01s call     tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_16k_wav_is_decoded_in_memory_and_decoded_greedily
+0.01s call     tests/test_edge_connection.py::StartupConnectionTests::test_invalid_audio_never_marks_startup_ready
+0.01s call     tests/test_edge_connection.py::ConnectionPoolTests::test_cancelled_request_discards_its_socket
+0.01s call     tests/test_edge_connection.py::StartupConnectionTests::test_startup_audio_is_available_without_another_handshake
+0.01s call     tests/test_edge_connection.py::ConnectionPoolTests::test_expired_socket_is_replaced
+0.01s call     tests/test_edge_resilience.py::EdgeResilienceTests::test_a_429_is_retried_after_the_shared_cooldown
+0.01s call     tests/test_voice_library.py::test_development_voices_are_marked_for_the_console
+0.01s call     tests/test_edge_connection.py::StartupConnectionTests::test_backend_shutdown_closes_the_shared_loop_and_sockets
+0.01s call     tests/test_voice_library.py::test_upload_is_converted_to_a_wav_in_the_library
+0.01s call     tests/test_funasr.py::test_audio_is_resampled_and_downmixed_to_16k_pcm16
+0.01s call     tests/test_edge_connection.py::ConnectionPoolTests::test_sequential_replies_reuse_connections
+0.01s call     tests/test_edge_endpoint.py::EdgeWorkerHostFailoverTests::test_first_attempt_rejection_retries_on_the_other_host_and_speaks
+0.01s call     tests/test_breezyvoice_tts.py::test_apply_requires_a_library_voice_with_transcript
+0.01s call     tests/test_funasr.py::test_http_rejects_oversized_and_invalid_audio
+0.01s call     tests/test_edge_resilience.py::EdgeResilienceTests::test_repeated_429_cannot_expand_the_retry_budget
+0.01s call     tests/test_edge_connection.py::ConnectionPoolTests::test_missing_audio_is_an_error_and_socket_is_not_reused
+
+(768 durations < 0.005s hidden.  Use -vv to show these durations.)
+===== 279 passed, 1250 deselected, 5 warnings, 8 subtests passed in 15.29s =====

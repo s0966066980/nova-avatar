@@ -1,0 +1,1696 @@
+[
+  {
+    "nodeid": "tests/test_avatar_import.py::test_overwrite_refused_when_guard_reports_avatar_in_use",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_failed_overwrite_keeps_old_avatar_and_removes_only_staging",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_successful_overwrite_moves_old_avatar_to_recycle_bin",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_new_avatar_appears_only_after_a_successful_build",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_unexpected_job_error_does_not_leak_absolute_paths",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.011,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_finished_jobs_are_pruned",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.188,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_import_refuses_to_overwrite_the_live_avatar",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.058,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_avatars_referenced_by_a_profile_cannot_be_replaced",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_unreadable_profiles_refuse_overwrite_before_the_build",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.063,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_import_refuses_existing_avatar_without_overwrite_before_upload",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_oversized_upload_is_rejected_with_413_and_leaves_no_files",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_invalid_engine_is_rejected_before_anything_is_written",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.054,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_multiple_video_parts_are_rejected",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.056,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_quality_is_not_persisted_when_the_import_is_rejected",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_import.py::test_accepted_import_persists_quality_and_hands_upload_to_job",
+    "file": "tests/test_avatar_import.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_migration_is_once_only_and_excludes_credentials",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.008,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_old_libraries_gain_a_main_announcement_once_without_overwriting_content",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.023,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_main_announcements_do_not_replace_saved_settings[42]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_main_announcements_do_not_replace_saved_settings[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_role_identity_is_independent_of_reused_visual_material",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.013,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_stale_editor_cannot_overwrite_a_saved_revision",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.016,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_site_location_normalizes_common_tai_spelling",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.009,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_save_does_not_damage_current_settings[<lambda>0]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_save_does_not_damage_current_settings[<lambda>1]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_save_does_not_damage_current_settings[<lambda>2]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_save_does_not_damage_current_settings[<lambda>3]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_save_does_not_damage_current_settings[<lambda>4]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_transition_does_not_damage_current_settings[edge0]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_invalid_transition_does_not_damage_current_settings[edge1]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_different_model_can_be_saved_but_not_activated_as_live_member",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.009,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_live_pair_shares_one_breezyvoice_model_and_server[model-tts/BreezyVoice-other]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_live_pair_shares_one_breezyvoice_model_and_server[tts_server-http://127.0.0.1:50001]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_return_resumes_only_that_roles_played_history_and_reset_clears_both",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_document_scope_and_model_rules_are_per_profile_snapshots",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.012,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_bad_document_scope_does_not_replace_saved_library[change0]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_bad_document_scope_does_not_replace_saved_library[change1]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_bad_document_scope_does_not_replace_saved_library[change2]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_bad_document_scope_does_not_replace_saved_library[change3]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_bad_document_scope_does_not_replace_saved_library[change4]",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_existing_profiles_migrate_effective_shared_playback_choices_once",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.016,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_avatar_profiles.py::test_web_search_policy_is_role_owned_persisted_and_snapshotted",
+    "file": "tests/test_avatar_profiles.py",
+    "status": "passed",
+    "duration_seconds": 0.013,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_deferred_settings.py::test_saved_resource_settings_wait_for_both_peers_and_survive_restart",
+    "file": "tests/test_deferred_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_deferred_settings.py::test_resource_update_failure_preserves_pending_settings",
+    "file": "tests/test_deferred_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_deferred_settings.py::test_body_finishing_after_last_disconnect_applies_without_waiting_for_another_peer",
+    "file": "tests/test_deferred_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_deferred_settings.py::test_queue_write_failure_keeps_settings_retryable[disconnect]",
+    "file": "tests/test_deferred_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_deferred_settings.py::test_queue_write_failure_keeps_settings_retryable[request]",
+    "file": "tests/test_deferred_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_checks_the_session_before_decoding",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.05,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_rejects_long_audio_from_its_header_without_decoding_it",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.151,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_bounds_decoding_of_audio_without_a_duration_header",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_reuses_the_session_recognizer",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.052,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_rejects_playlists_that_read_files_on_the_host",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_decodes_the_upload_once_and_hands_asr_only_decoded_audio",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.051,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_without_vad_hands_asr_only_decoded_audio",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.057,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_decodes_and_loads_the_recognizer_off_the_loop[decode]",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.067,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_asr_decodes_and_loads_the_recognizer_off_the_loop[load]",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.059,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_humanaudio_checks_the_session_before_decoding",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_humanaudio_rejects_long_audio_from_its_header",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.154,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_humanaudio_decodes_resamples_and_queues_audio",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.496,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_humanaudio_decodes_once_with_libsndfile_and_never_follows_playlists",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.062,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_humanaudio_queues_audio_off_the_loop",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.067,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_stop_recording_merges_with_an_argv_subprocess_and_clears_temporaries",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_record_route_waits_for_ffmpeg_off_the_loop",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.066,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_discarding_a_recording_stops_ffmpeg_and_clears_temporaries",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_stopped_ffmpeg_that_hangs_is_killed",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_speech_snapshot_scans_files_off_the_loop[/api/speech]",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.065,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_speech_snapshot_scans_files_off_the_loop[/api/settings]",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.064,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_event_loop_blocking.py::test_deferred_speech_settings_snapshot_scans_files_off_the_loop",
+    "file": "tests/test_event_loop_blocking.py",
+    "status": "passed",
+    "duration_seconds": 0.068,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_frontend_serving.py::test_default_frontend_is_the_absolute_vite_build_directory",
+    "file": "tests/test_frontend_serving.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_frontend_serving.py::test_missing_build_fails_instead_of_serving_the_web_source_tree",
+    "file": "tests/test_frontend_serving.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_frontend_serving.py::test_lan_visitor_gets_the_console_page_and_nothing_outside_the_build",
+    "file": "tests/test_frontend_serving.py",
+    "status": "passed",
+    "duration_seconds": 0.031,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_frontend_serving.py::test_built_frontend_helper_emits_both_entry_pages",
+    "file": "tests/test_frontend_serving.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_frontend_serving.py::test_vite_build_emits_the_stage_page",
+    "file": "tests/test_frontend_serving.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_frontend_serving.py::test_vite_dev_server_binds_loopback_by_default",
+    "file": "tests/test_frontend_serving.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_frontend_serving.py::test_web_logs_are_ignored_by_git",
+    "file": "tests/test_frontend_serving.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_health_route.py::HealthRouteTests::test_health_endpoint_returns_readiness_json",
+    "file": "tests/test_health_route.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_health_route.py::HealthLlmGpuWarningTests::test_field_absent_when_unknown_or_not_local",
+    "file": "tests/test_health_route.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_health_route.py::HealthLlmGpuWarningTests::test_full_gpu_is_reported",
+    "file": "tests/test_health_route.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_health_route.py::HealthLlmGpuWarningTests::test_partial_offload_is_flagged_without_detail",
+    "file": "tests/test_health_route.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_health_route.py::ServerRouteRegistrationTests::test_speech_routes_are_exported_and_registered",
+    "file": "tests/test_health_route.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_browser_is_full_screen_and_skips_the_click_requirements",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_config_without_ssl_uses_http",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_default_config_opens_the_backend_served_https_stage_with_the_kiosk_marker",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_dry_run_does_not_touch_the_profile",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_environment_overrides_url_and_profile",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_kiosk_profile_allows_the_microphone_only_for_the_stage_origin",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.021,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_kiosk_profile_keeps_other_preferences_and_drops_stale_microphone_grants",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.021,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_microphone_is_not_granted_to_every_page",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_missing_config_fails_with_a_clear_message",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_kiosk_launcher.py::KioskLauncherTests::test_profile_is_separate_from_the_users_browser_and_ignored_by_git",
+    "file": "tests/test_kiosk_launcher.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_optional_runtime_extras.py::test_musetalk_has_a_reproducible_root_extra",
+    "file": "tests/test_optional_runtime_extras.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_optional_runtime_extras.py::AvatarEnvironmentTests::test_pkg_resources_is_available_for_openmmlab",
+    "file": "tests/test_optional_runtime_extras.py",
+    "status": "passed",
+    "duration_seconds": 0.017,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_setup_env_does_not_pipe_a_remote_installer_into_a_shell",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_uv_installer_rejects_a_release_archive_with_the_wrong_checksum",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.036,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_uv_installer_installs_the_verified_release",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.04,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_setup_env_packages_outside_the_lock_are_pinned",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_every_weight_source_has_a_commit_and_file_checksums",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_download_passes_the_pinned_revision",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_verify_rejects_tampered_and_missing_weights",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_main_exits_non_zero_when_verification_fails",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_download_script_delegates_to_the_pinned_module",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_ragflow_image_is_pinned_by_digest_everywhere",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_existing_managed_env_is_moved_to_the_pinned_image_without_touching_secrets",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_bge_m3_pull_is_verified_and_copied_for_the_embedding_server",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.062,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_bge_m3_pull_fails_when_the_registry_serves_other_weights",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.052,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_existing_bge_m3_with_other_weights_is_rejected_without_pulling",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.052,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_verified_gguf_needs_no_ollama",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_gguf_with_other_content_is_kept_and_reported",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_mkcert_is_preferred_when_available",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.041,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_self_signed_fallback_without_mkcert",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.027,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_pinned_resources.py::test_self_signed_can_be_forced_even_with_mkcert",
+    "file": "tests/test_pinned_resources.py",
+    "status": "passed",
+    "duration_seconds": 0.027,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_live_v1_library_becomes_a_composition_once_with_a_backup",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.019,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_loading_a_version_1_file_converts_without_writing",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_seeded_library_is_a_one_member_composition",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.034,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_at_most_five_specialists_are_enabled_but_more_may_wait_disabled",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.196,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_invalid_members_leave_the_saved_composition_untouched[fields0-\\u5df2\\u5728\\u89d2\\u8272\\u7d44\\u5408\\u4e2d-409]",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.037,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_invalid_members_leave_the_saved_composition_untouched[fields1-\\u662f\\u4e3b\\u6578\\u4f4d\\u4eba-409]",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.038,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_invalid_members_leave_the_saved_composition_untouched[fields2-\\u4e0d\\u5b58\\u5728-409]",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.038,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_invalid_members_leave_the_saved_composition_untouched[fields3-\\u5929\\u6c23\\u5de5\\u5177\\u540c\\u6642\\u53ea\\u9650\\u4e00\\u4f4d-409]",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.039,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_invalid_members_leave_the_saved_composition_untouched[fields4-\\u4ea4\\u63a5\\u8aaa\\u660e-400]",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.038,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_invalid_members_leave_the_saved_composition_untouched[fields5-\\u672a\\u77e5\\u6b04\\u4f4d-400]",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.039,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_saving_one_member_checks_and_bumps_only_its_own_revision",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.176,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_enabling_a_member_also_checks_the_composition_revision",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.183,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_an_incompatible_member_cannot_be_enabled_but_keeps_its_settings",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.157,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_changing_the_main_avatar_disables_incompatible_members_only_when_confirmed",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.154,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_main_avatar_has_the_same_handoff_fields_and_its_own_revision",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.057,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_removing_a_member_keeps_its_profile_and_transition_overrides",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.121,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_profile_list_saves_protect_members_and_drop_orphaned_overrides",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.164,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_transitions_fall_back_to_the_saved_default_in_the_runtime",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.044,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_profiles_and_stored_libraries_no_longer_carry_tools_or_two_role_keys",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.127,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_only_the_saved_default_and_overrides_reference_transition_clips",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.046,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_member_routes_report_conflicts_with_the_saved_member",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.489,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_whole_library_saves_are_refused_and_profile_lists_save_over_http",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.239,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_role_composition.py::test_a_composition_without_members_has_only_the_main_avatar",
+    "file": "tests/test_role_composition.py",
+    "status": "passed",
+    "duration_seconds": 0.058,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_every_route_has_exactly_one_access_class",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_spec_route_classes",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_admin_routes_reject_requests_without_login_even_from_loopback",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.036,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_admin_routes_answer_503_until_a_password_is_configured",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.014,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_stage_routes_only_accept_loopback_without_login",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.045,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_stage_offer_is_loopback_only_and_console_offer_needs_login",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.044,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_stage_session_routes_follow_the_target_session",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.146,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_logged_in_admin_from_lan_reaches_admin_and_stage_routes",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.049,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_cross_origin_state_changes_are_rejected",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.06,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_login_sets_strict_cookie_and_logout_ends_the_session",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.575,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_forwarded_requests_from_a_local_proxy_use_the_original_client",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[127.0.0.1-True]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[127.8.0.1-True]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[::1-True]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[::ffff:127.0.0.1-True]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[192.168.1.2-False]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[::ffff:192.168.1.2-False]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[-False]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[None-False]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_loopback_addresses[localhost-False]",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_failed_logins_wait_longer_each_time_and_success_resets",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.115,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_sessions_expire",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.05,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_password_hash_round_trip_and_admin_env_permissions",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.106,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_new_password_after_admin_env_removal_signs_everyone_out",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.067,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_stage_routes_reject_dns_rebinding_hosts",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.027,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_admin_env_is_gitignored",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_route_access.py::test_cors_middleware_is_gone",
+    "file": "tests/test_route_access.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::AvatarCatalogTests::test_detect_musetalk_and_wav2lip",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::AvatarCatalogTests::test_list_characters_and_engines",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::AvatarCatalogTests::test_preview_prefers_numbered_full_imgs",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::AvatarCatalogTests::test_safe_avatar_id",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::OllamaHelperTests::test_format_bytes",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::OllamaHelperTests::test_native_url_strips_v1",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::OllamaHelperTests::test_skip_embedding_models",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::Wav2LipWeightsTests::test_prefers_existing_256_checkpoint",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::Wav2LipWeightsTests::test_prefers_standard_name_when_both_exist",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::OverridePersistTests::test_failed_replace_preserves_previous_settings_and_cleans_temporary_file",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::OverridePersistTests::test_roundtrip",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_llm_persists_and_updates_prompt",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_llm_rejects_empty_prompt",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_llm_rejects_invalid_response_length",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_llm_updates_and_persists_reply_mode",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_llm_updates_and_validates_board_item_limit",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_llm_updates_response_length_and_token_budget",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_stage_settings_rejects_invalid_values",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_stage_settings_updates_and_persists",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_apply_stage_settings_updates_board_window",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_idle_reset_seconds_defaults_to_sixty_and_persists_when_changed",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_idle_reset_seconds_rejects_values_outside_three_to_three_hundred",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_length_instruction_preserves_prompt_and_requests_complete_sentence",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_snapshot_exposes_board_item_limit",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_snapshot_exposes_effective_default_prompt",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_snapshot_exposes_response_length",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_snapshot_exposes_stage_caption_limit",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_snapshot_exposes_user_selectable_reply_mode",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_stage_snapshot_rejects_invalid_config_value",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::DefaultPromptSettingsTests::test_token_budget_is_a_ceiling_above_the_character_target",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::ApplyAvatarGuardTests::test_rejects_unknown_engine",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::ApplyAvatarGuardTests::test_requires_disconnect_when_session_active",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_breezyvoice_missing_reference_does_not_silently_fall_back",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_catalog_contains_only_keyless_tts",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_edge_tts_rejects_non_zh_tw_voice",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_removed_qwen_speech_engines_are_rejected",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_snapshot_lists_all_edge_tts_zh_tw_voices",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_speech_engine_change_requires_disconnect",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_stt_engines_describe_their_models_and_output_scripts",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_stt_prewarms_before_commit",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.032,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_tts_commits_only_after_preview",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_tts_rejects_removed_provider",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::SpeechSettingsTests::test_tts_snapshot_has_no_global_voice",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::AvatarNameTests::test_slugify_and_suggest",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::LlamaCppCatalogTests::test_failed_reload_does_not_mutate_config",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_runtime_settings.py::LlamaCppCatalogTests::test_lists_and_resolves_gguf",
+    "file": "tests/test_runtime_settings.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_server_shutdown.py::ServerShutdownTests::test_a_hanging_shutdown_hook_cannot_hold_the_process_past_the_deadline",
+    "file": "tests/test_server_shutdown.py",
+    "status": "passed",
+    "duration_seconds": 3.32,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_server_shutdown.py::ServerShutdownTests::test_a_repeated_ctrl_c_does_not_cut_the_orderly_stop_short",
+    "file": "tests/test_server_shutdown.py",
+    "status": "passed",
+    "duration_seconds": 3.188,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_server_shutdown.py::ServerShutdownTests::test_a_thread_that_never_stops_cannot_hold_the_process_past_the_deadline",
+    "file": "tests/test_server_shutdown.py",
+    "status": "passed",
+    "duration_seconds": 3.32,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_server_shutdown.py::ServerShutdownTests::test_sigint_takes_the_same_orderly_path",
+    "file": "tests/test_server_shutdown.py",
+    "status": "passed",
+    "duration_seconds": 1.68,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_server_shutdown.py::ServerShutdownTests::test_sigterm_after_ctrl_c_does_not_cut_the_orderly_stop_short",
+    "file": "tests/test_server_shutdown.py",
+    "status": "passed",
+    "duration_seconds": 3.243,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_server_shutdown.py::ServerShutdownTests::test_sigterm_runs_shutdown_hooks_and_releases_session_threads",
+    "file": "tests/test_server_shutdown.py",
+    "status": "passed",
+    "duration_seconds": 1.796,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_builds_the_frontend_and_serves_it_from_the_backend",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.156,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_passes_an_absolute_config_resolved_from_the_callers_directory",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.161,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_backend_resolves_the_config_before_changing_directory",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.101,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_frontend_builds_by_default_and_points_at_the_backend",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.086,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_frontend_dev_server_is_loopback_only_and_reads_the_given_config",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.099,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_starts_docker_and_all_services_then_cleans_up",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.752,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_existing_ragflow_is_preserved_including_docker_auto_restart[False]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.511,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_existing_ragflow_is_preserved_including_docker_auto_restart[True]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.632,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_docker_authentication_failure_skips_ragflow_but_starts_the_avatar",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.296,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_remote_docker_failure_does_not_start_local_daemon",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.046,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_active_daemon_with_socket_permission_error_is_not_restarted",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.099,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_ragflow_startup_failure_is_stopped_and_the_avatar_still_starts[api-unavailable]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 4.619,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_ragflow_startup_failure_is_stopped_and_the_avatar_still_starts[compose-fails]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.52,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_explicitly_disabled_ragflow_does_not_require_docker",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.156,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_read_only_status_does_not_start_docker",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.022,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_launchers_refuse_to_stop_a_listener_from_another_program[start-all.sh-args0-8010-src/server/app.py-.]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.1,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_launchers_refuse_to_stop_a_listener_from_another_program[start-backend.sh-args1-8010-src/server/app.py-.]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.123,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_launchers_refuse_to_stop_a_listener_from_another_program[start-frontend.sh-args2-3000-web/node_modules/.bin/vite-web]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.136,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_launchers_stop_a_stale_nova_listener_gracefully[start-all.sh-args0-8010-src/server/app.py-.]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.737,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_launchers_stop_a_stale_nova_listener_gracefully[start-backend.sh-args1-8010-src/server/app.py-.]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.68,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_launchers_stop_a_stale_nova_listener_gracefully[start-frontend.sh-args2-3000-web/node_modules/.bin/vite-web]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.672,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_stale_backend_ignoring_sigterm_is_killed_after_the_shared_grace",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 4.38,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_stops_stale_model_servers_of_this_checkout_only[cosyvoice_fastapi_server.py]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.762,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_stops_stale_model_servers_of_this_checkout_only[fun_asr_nano_server.py]",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.763,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_reaps_the_backend_group_and_cosyvoice_when_the_backend_exits",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.661,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_stops_the_whole_backend_group_and_cosyvoice_when_stopped",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 1.234,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_post_musetalk_install_patches_the_project_venv_not_the_active_one",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.008,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_post_musetalk_install_fails_when_mmdet_is_missing",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_reinstalls_frontend_dependencies_when_the_lockfile_changed",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.159,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_startup_scripts.py::test_start_all_keeps_current_frontend_dependencies",
+    "file": "tests/test_startup_scripts.py",
+    "status": "passed",
+    "duration_seconds": 3.14,
+    "reason": ""
+  }
+]

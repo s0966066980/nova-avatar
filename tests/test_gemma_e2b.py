@@ -58,10 +58,11 @@ def test_e2b_answer_turns_thinking_off_and_uses_the_plain_reply_grammar():
     assert request["temperature"] == 0.0
 
 
-def test_lfm_keeps_its_bounded_thinking_envelope():
-    extra = _answer_request("LFM2.5-2.6B-Q4_K_M")["extra_body"]
-    assert "chat_template_kwargs" not in extra
-    assert "</think>" in extra["grammar"]
+def test_current_qwen_option_also_disables_thinking():
+    extra = _answer_request("Qwen3.5-9B-UD-Q4_K_XL")["extra_body"]
+    assert extra["chat_template_kwargs"] == {"enable_thinking": False}
+    assert extra["grammar"].startswith("root ::= (simple | board)")
+    assert "</think>" not in extra["grammar"]
 
 
 def _library(config):

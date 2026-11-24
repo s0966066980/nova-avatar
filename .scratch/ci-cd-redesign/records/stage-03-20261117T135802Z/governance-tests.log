@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.16, pytest-9.1.1, pluggy-1.6.0 -- /home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python
+cachedir: .pytest_cache
+rootdir: /home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 1529 items / 1510 deselected / 19 selected
+
+tests/test_branding_compliance.py::BrandingComplianceTests::test_commercial_review_profile_and_audits_are_present PASSED [  5%]
+tests/test_branding_compliance.py::BrandingComplianceTests::test_legal_attribution_and_restrictions_are_present PASSED [ 10%]
+tests/test_branding_compliance.py::BrandingComplianceTests::test_project_metadata_uses_nova_avatar PASSED [ 15%]
+tests/test_branding_compliance.py::BrandingComplianceTests::test_restricted_tts_engines_are_labeled_in_catalog_ui_and_notices 
+tests/test_branding_compliance.py::BrandingComplianceTests::test_restricted_tts_engines_are_labeled_in_catalog_ui_and_notices PASSED [ 21%]
+tests/test_branding_compliance.py::BrandingComplianceTests::test_user_visible_surfaces_do_not_show_old_brand 
+tests/test_branding_compliance.py::BrandingComplianceTests::test_user_visible_surfaces_do_not_show_old_brand PASSED [ 26%]
+tests/test_branding_compliance.py::BrandingComplianceTests::test_wav2lip_is_labeled_non_commercial_in_runtime_and_ui PASSED [ 31%]
+tests/test_dependency_lock.py::DependencyLockTests::test_lock_is_present_and_not_ignored_by_git PASSED [ 36%]
+tests/test_dependency_lock.py::DependencyLockTests::test_python_ci_checks_the_lock_before_installing PASSED [ 42%]
+tests/test_dependency_lock.py::DependencyLockTests::test_web_ci_audits_production_dependencies_without_blocking PASSED [ 47%]
+tests/test_dependency_lock.py::LockCheckTests::test_dependency_change_without_lock_update_fails PASSED [ 52%]
+tests/test_dependency_lock.py::LockCheckTests::test_lock_matches_pyproject PASSED [ 57%]
+tests/test_integration_check.py::IntegrationCheckTests::test_commercial_profile_uses_the_supported_avatar_path PASSED [ 63%]
+tests/test_integration_check.py::IntegrationCheckTests::test_parse_args_defaults_to_the_offline_check PASSED [ 68%]
+tests/test_integration_check.py::IntegrationCheckTests::test_required_project_contract_includes_legal_and_audit_artifacts PASSED [ 73%]
+tests/test_integration_check.py::IntegrationCheckTests::test_runtime_module_contract_covers_selected_optional_engines PASSED [ 78%]
+tests/test_ruff_security.py::RuffSecurityGateTests::test_assert_is_allowed_only_in_tests PASSED [ 84%]
+tests/test_ruff_security.py::RuffSecurityGateTests::test_each_rule_rejects_a_representative_violation 
+tests/test_ruff_security.py::RuffSecurityGateTests::test_each_rule_rejects_a_representative_violation PASSED [ 89%]
+tests/test_ruff_security.py::RuffSecurityGateTests::test_requests_without_timeout_fails_and_with_timeout_passes PASSED [ 94%]
+tests/test_ruff_security.py::RuffSecurityGateTests::test_rules_apply_to_tests_and_scripts PASSED [100%]
+
+- generated xml file: /home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/stage-03-20261117T135802Z/governance.xml -
+============================== slowest durations ===============================
+0.16s call     tests/test_ruff_security.py::RuffSecurityGateTests::test_each_rule_rejects_a_representative_violation
+0.13s call     tests/test_dependency_lock.py::LockCheckTests::test_dependency_change_without_lock_update_fails
+0.03s call     tests/test_ruff_security.py::RuffSecurityGateTests::test_assert_is_allowed_only_in_tests
+0.03s call     tests/test_ruff_security.py::RuffSecurityGateTests::test_rules_apply_to_tests_and_scripts
+0.03s call     tests/test_ruff_security.py::RuffSecurityGateTests::test_requests_without_timeout_fails_and_with_timeout_passes
+0.01s call     tests/test_dependency_lock.py::LockCheckTests::test_lock_matches_pyproject
+0.01s call     tests/test_branding_compliance.py::BrandingComplianceTests::test_user_visible_surfaces_do_not_show_old_brand
+
+(76 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========== 19 passed, 1510 deselected, 26 subtests passed in 1.99s ============

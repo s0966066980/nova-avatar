@@ -1,0 +1,395 @@
+{
+  "started_at": "2026-11-17T14:39:02.322596+00:00",
+  "stage": "all",
+  "baseline": {
+    "schema_version": 1,
+    "project_version": "1.0.0",
+    "python_minor": "3.11",
+    "node_major": 22,
+    "cuda_build": "12.4",
+    "torch_version": "2.5.0+cu124",
+    "defaults": {
+      "model.type": "musetalk",
+      "asr.type": "whisper",
+      "asr.model_size": "small",
+      "vad.type": "silero",
+      "tts.type": "edgetts",
+      "llm.provider": "llamacpp",
+      "llm.model": "gemma-4-E2B_q4_0-it"
+    },
+    "supported_options": {
+      "llm_models": [
+        "Qwen3.5-9B-UD-Q4_K_XL"
+      ],
+      "llm_endpoints": [
+        "llamacpp",
+        "ollama",
+        "openai"
+      ],
+      "asr": [
+        "whisper",
+        "funasr"
+      ],
+      "tts": [
+        "edgetts",
+        "breezyvoice"
+      ]
+    },
+    "python_selection": "not live",
+    "areas": [
+      "governance",
+      "runtime",
+      "speech",
+      "llm",
+      "avatar",
+      "ragflow",
+      "conversation"
+    ],
+    "max_skipped": 0,
+    "release_checks": [
+      "Installed llama-server binary and CUDA libraries",
+      "Configured current model live reply/board contract",
+      "Selected deployment model real CUDA inference",
+      "Selected voice, WebRTC, interruption and field audiovisual acceptance"
+    ]
+  },
+  "steps": [
+    {
+      "name": "source-head",
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:02.322641+00:00",
+      "advisory": false,
+      "log": "source-head.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:02.323849+00:00"
+    },
+    {
+      "name": "source-status",
+      "argv": [
+        "git",
+        "status",
+        "--porcelain=v1"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:02.323994+00:00",
+      "advisory": false,
+      "log": "source-status.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:02.328610+00:00"
+    },
+    {
+      "name": "source-diff",
+      "argv": [
+        "git",
+        "diff",
+        "HEAD",
+        "--"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:02.328786+00:00",
+      "advisory": false,
+      "log": "source-diff.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:02.332563+00:00"
+    },
+    {
+      "name": "uv-version",
+      "argv": [
+        "uv",
+        "--version"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:02.512944+00:00",
+      "advisory": false,
+      "log": "uv-version.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:02.516968+00:00"
+    },
+    {
+      "name": "lock-check",
+      "argv": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:02.517226+00:00",
+      "advisory": false,
+      "log": "lock-check.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:02.533348+00:00"
+    },
+    {
+      "name": "frozen-environment",
+      "argv": [
+        "uv",
+        "sync",
+        "--frozen",
+        "--check",
+        "--group",
+        "dev",
+        "--group",
+        "ci",
+        "--extra",
+        "vad"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:02.533618+00:00",
+      "advisory": false,
+      "log": "frozen-environment.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:02.550193+00:00"
+    },
+    {
+      "name": "cuda",
+      "argv": [
+        "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python3",
+        "-c",
+        "import json,sys,torch\nassert '.'.join(map(str,sys.version_info[:2])) == '3.11'\nassert torch.__version__ == '2.5.0+cu124'\nassert torch.version.cuda == '12.4' and torch.cuda.is_available()\na=torch.arange(64,dtype=torch.float32).reshape(8,8)\ng=a.to('cuda'); result=g@g\nassert result.is_cuda and torch.equal(result.cpu(),a@a)\ntorch.cuda.synchronize()\nprint(json.dumps(dict(python=sys.version,torch=torch.__version__,cuda=torch.version.cuda,gpu=torch.cuda.get_device_name(0))))\n"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:02.550470+00:00",
+      "advisory": false,
+      "log": "cuda.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:03.586611+00:00"
+    },
+    {
+      "name": "node-version",
+      "argv": [
+        "node",
+        "--version"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:03.587450+00:00",
+      "advisory": false,
+      "log": "node-version.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:03.591943+00:00"
+    },
+    {
+      "name": "python-packages",
+      "argv": [
+        "uv",
+        "pip",
+        "freeze",
+        "--python",
+        "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python3"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:03.592184+00:00",
+      "advisory": false,
+      "log": "python-packages.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:03.599399+00:00"
+    },
+    {
+      "name": "npm-version",
+      "argv": [
+        "npm",
+        "--version"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:03.599643+00:00",
+      "advisory": false,
+      "log": "npm-version.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:03.645311+00:00"
+    },
+    {
+      "name": "ruff",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "ruff",
+        "check",
+        "."
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:03.645629+00:00",
+      "advisory": false,
+      "log": "ruff.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:03.664261+00:00"
+    },
+    {
+      "name": "pyright",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "pyright"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:03.664566+00:00",
+      "advisory": false,
+      "log": "pyright.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:07.577124+00:00"
+    },
+    {
+      "name": "offline-integration",
+      "argv": [
+        "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z/bin/python3",
+        "scripts/check-integration.py"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {
+        "NOVA_AVATAR_RUNTIME_OVERRIDES_ENABLED": "0"
+      },
+      "started_at": "2026-11-17T14:39:07.577493+00:00",
+      "advisory": false,
+      "log": "offline-integration.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:08.977390+00:00"
+    },
+    {
+      "name": "python-collection",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "pytest",
+        "--collect-only",
+        "-q",
+        "-m",
+        "not live"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:08.978376+00:00",
+      "advisory": false,
+      "log": "python-collection.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:39:11.890803+00:00"
+    },
+    {
+      "name": "python-tests",
+      "argv": [
+        "uv",
+        "run",
+        "--no-sync",
+        "pytest",
+        "-v",
+        "-ra",
+        "--durations=20",
+        "-m",
+        "not live",
+        "--junitxml=/home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/current-version-baseline-20261117T143902Z/python.xml"
+      ],
+      "cwd": "/home/oliver/nova-avatar",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:39:11.891284+00:00",
+      "advisory": false,
+      "log": "python-tests.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:41:54.413990+00:00"
+    },
+    {
+      "name": "npm-ci",
+      "argv": [
+        "npm",
+        "ci"
+      ],
+      "cwd": "/home/oliver/nova-avatar/web",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:41:54.416560+00:00",
+      "advisory": false,
+      "log": "npm-ci.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:41:56.685340+00:00"
+    },
+    {
+      "name": "npm-audit",
+      "argv": [
+        "npm",
+        "audit",
+        "--omit=dev"
+      ],
+      "cwd": "/home/oliver/nova-avatar/web",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:41:56.685742+00:00",
+      "advisory": true,
+      "log": "npm-audit.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:41:57.221862+00:00"
+    },
+    {
+      "name": "eslint",
+      "argv": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/home/oliver/nova-avatar/web",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:41:57.222356+00:00",
+      "advisory": false,
+      "log": "eslint.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:41:58.153947+00:00"
+    },
+    {
+      "name": "web-tests",
+      "argv": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/home/oliver/nova-avatar/web",
+      "environment_overrides": {
+        "CI": "1"
+      },
+      "started_at": "2026-11-17T14:41:58.154363+00:00",
+      "advisory": false,
+      "log": "web-tests.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:42:35.857631+00:00"
+    },
+    {
+      "name": "web-build",
+      "argv": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "/home/oliver/nova-avatar/web",
+      "environment_overrides": {},
+      "started_at": "2026-11-17T14:42:35.858642+00:00",
+      "advisory": false,
+      "log": "web-build.log",
+      "exit_code": 0,
+      "ended_at": "2026-11-17T14:42:37.189671+00:00"
+    }
+  ],
+  "validation_errors": [],
+  "python": {
+    "collected": 1515,
+    "skipped": 0,
+    "failed": 0
+  },
+  "web": {
+    "tests": 261,
+    "fail": 0,
+    "skipped": 0
+  },
+  "ended_at": "2026-11-17T14:42:37.190183+00:00",
+  "passed": true
+}

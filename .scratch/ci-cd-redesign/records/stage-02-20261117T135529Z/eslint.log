@@ -1,0 +1,4 @@
+
+> nova-avatar-web@1.0.0 lint
+> eslint src tests stage.html vite.config.js eslint.config.js --max-warnings 0
+

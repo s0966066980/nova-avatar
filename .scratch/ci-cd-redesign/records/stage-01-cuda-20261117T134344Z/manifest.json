@@ -1,0 +1,20 @@
+{
+  "run_id": "20261117T134344Z",
+  "source_commit": "b1afdce7429eb166d3d36f6e233a07a14fbc2d52",
+  "source_dir": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+  "python_env": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z",
+  "record_dir": "/home/oliver/nova-avatar/.scratch/ci-cd-redesign/records/stage-01-cuda-20261117T134344Z",
+  "source_kind": "Reused clean git archive of tracked HEAD from previous stage; input hashes checked again",
+  "started_at": "2026-11-17T13:43:44.779520+00:00",
+  "input_sha256": {
+    "pyproject.toml": "bd1529cf4d16b546c86df827799e1603407993f17fc96ff6c87fb917b04d1051",
+    "uv.lock": "813c27f3bb458ce41c725446cee4c7262704096ef162e5998269a60dd8fea454",
+    "web/package-lock.json": "e7b3ca1f5c6d2ee007cf9800cebe86f5565a719c0f7be7189a71a08a3bd2084d",
+    ".github/workflows/ci.yml": "17b2d8a4299c7f29865c99d4b26b95d4289f7e01cdec390b230181a567c4f393"
+  },
+  "user_decision": "CUDA-only validation for this release; CPU-only lane superseded",
+  "frontend_evidence": "../stage-01-20261117T133233Z/README.md",
+  "ended_at": "2026-11-17T13:48:58.878777+00:00",
+  "status": "dependency preparation and basic CUDA compute passed; no functional suites or model inference executed",
+  "inputs_unchanged": true
+}

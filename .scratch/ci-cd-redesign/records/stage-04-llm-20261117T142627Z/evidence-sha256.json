@@ -1,0 +1,14 @@
+{
+  "README.md": "fa9166134c3fa7effa2418a873b2d13935005f0a656a7c22d5a9fe3b9dc95779",
+  "case-results.md": "ef524270049787f04369c7d48570754c6cc58e7ce9422af39b836fc988b732da",
+  "cases.json": "9813a016f68f088c434cc9a6f77bd7e4750582d58625a97a810df8c1e4b60261",
+  "commands.json": "e5f2c0933ecfcfde0fd2e2dafcaace2a03740d74f8cd79dab379f157ac436565",
+  "environment-check.log": "0fb4d1fb2f8b571c8092a3e923a260f7503ad64a9bb09b754290e6d5a53497ff",
+  "llm-collection.log": "20c37dfddc9b4fc1a412eb09dfa621309d2ea9126020ae8038151c6318ccdbfa",
+  "llm-tests.log": "89b5acaed8ac954b5a2933aebac68a3edc88d9f5d5b88b745410233a8ff25da9",
+  "llm.xml": "3c087064d80710e3c2dc82f656e71a02d87d2961a5c788d0254fb1c527a238b8",
+  "manifest-initial-classification.json": "324a10e61831de9105030a50151604256427b1113407c493be67bb6a78d7c9b2",
+  "manifest.json": "494b1697e18fb0998e5f47a320b378c2a8c8bcda696cfce95285eb7e6c530116",
+  "proposed-skip-policy.json": "14784807fa98ca06d7a77b89302a567b809e3cc464ef1ca0b705937bbb0f014c",
+  "working-tree-status-before.txt": "9caba90ce5552d796599ad8a6e3f1cc4143a8e76eeed1d5140df9fa93192985a"
+}

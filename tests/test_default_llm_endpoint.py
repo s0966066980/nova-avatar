@@ -13,8 +13,7 @@ from src.config.loader import load_config
 
 ROOT = Path(__file__).resolve().parents[1]
 OLLAMA_URL = "http://localhost:11434/v1"
-# Ticket 04 may switch the default GGUF to Gemma 4 E2B after user acceptance.
-DEFAULT_GGUFS = {"Qwen3.5-9B-UD-Q4_K_XL", "gemma-4-E2B_q4_0-it"}
+DEFAULT_GGUF = "gemma-4-E2B_q4_0-it"
 
 
 @pytest.fixture
@@ -31,7 +30,7 @@ def test_shipped_config_selects_the_managed_llama_server(overrides):
     assert (llm.endpoint, llm.provider) == ("llamacpp", "llamacpp")
     assert llm.base_url == "http://127.0.0.1:8080/v1"
     assert (llm.llamacpp_host, llm.llamacpp_port) == ("127.0.0.1", 8080)
-    assert llm.model in DEFAULT_GGUFS
+    assert llm.model == DEFAULT_GGUF
     assert "11434" not in llm.base_url
 
 

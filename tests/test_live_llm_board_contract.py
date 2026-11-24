@@ -1,3 +1,6 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
 """Opt-in contract probe for the configured real LLM board protocol.
 
 This is deliberately excluded from the default unit suite: it calls the local
@@ -25,7 +28,7 @@ class LiveLLMBoardContractTests(unittest.TestCase):
         config = load_config("config/config.yaml")
         if "127.0.0.1:8080" in config.llm.base_url or "localhost:8080" in config.llm.base_url:
             from src.llm.llamacpp import ensure_server
-            ensure_server(model=config.llm.model, extra_dir="/home/oliver/llama")
+            ensure_server(model=config.llm.model, extra_dir=config.llm.llamacpp_dir)
 
     def make_default_rules(self) -> RulesSnapshot:
         values = default_rules()

@@ -12,7 +12,7 @@ const base = {
   llmPartialGpu: false,
   loading: false,
   error: '',
-  runtime: { ready: true, model_ready: true, session_count: 0, llm: { model: 'gemma-3' }, pending_settings: { items: [] } },
+  runtime: { ready: true, model_ready: true, session_count: 0, llm: { model: 'gemma-4-E2B_q4_0-it' }, pending_settings: { items: [] } },
   stt: { type: 'whisper', model_size: 'small' }
 }
 const row = (rows, id) => rows.find(item => item.id === id)
@@ -36,7 +36,7 @@ test('控制台連線依 WebRTC 狀態顯示', () => {
 
 test('本機 LLM 未全部載入 GPU 時顯示警示', () => {
   assert.equal(row(systemStatusRows(base), 'llm').tone, 'ok')
-  assert.match(row(systemStatusRows(base), 'llm').text, /gemma-3/)
+  assert.match(row(systemStatusRows(base), 'llm').text, /gemma-4-E2B_q4_0-it/)
   const partial = row(systemStatusRows({ ...base, llmPartialGpu: true }), 'llm')
   assert.equal(partial.tone, 'warn')
   assert.match(partial.text, /GPU/)

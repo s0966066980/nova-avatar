@@ -1,0 +1,8 @@
+{
+  "status": "proposed, not approved",
+  "optional_check": "tests/test_llamacpp.py::GpuLayerPlanningTests::test_reads_qwen_block_count",
+  "accepted_reason_if_approved": "Qwen3.8-27B-Q4_K_M.gguf is not installed",
+  "rationale": "Specific external model artifact metadata check; no inference. Current release need not install that model solely for this test.",
+  "other_skips": "Require separate review; not automatically permitted",
+  "mandatory_release_validation_proposal": "Actual selected deployment model must load and run real CUDA inference, with evidence; no substitution by mock startup or help output."
+}

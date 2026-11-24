@@ -1,0 +1,41 @@
+{
+  "run_id": "20261117T140638Z",
+  "stage": "4-runtime",
+  "source_commit": "b1afdce7429eb166d3d36f6e233a07a14fbc2d52",
+  "source_dir": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source",
+  "python_env": "/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/python311-cu124-20261117T134344Z",
+  "started_at": "2026-11-17T14:06:38.116930+00:00",
+  "selection": "pytest -m runtime",
+  "expected_cases": 242,
+  "input_sha256": {
+    "pyproject.toml": "bd1529cf4d16b546c86df827799e1603407993f17fc96ff6c87fb917b04d1051",
+    "uv.lock": "813c27f3bb458ce41c725446cee4c7262704096ef162e5998269a60dd8fea454",
+    "tests/conftest.py": "f605d520d19de2a65b4eb744391617e72b5a3f18c41ee3462d3a0f3cdba074fc",
+    "tests/test_avatar_import.py": "d4cf90fdc4b9fd50512fd8cb0b41e66429011d11db2972b91532e29697957ce6",
+    "tests/test_avatar_profiles.py": "c3bb399137fb0dd712847624f39ddda4991bac71b699b18a0b5b85c9ec9df5e5",
+    "tests/test_deferred_settings.py": "ecf3856a7ff2d4f73428c6163969aba22875775d788a8cd51aa8203323e2e10c",
+    "tests/test_event_loop_blocking.py": "3eb9890fb6453ee814741821e56032849ddb1b4476b6f4413e4a6336b02f28ba",
+    "tests/test_frontend_serving.py": "7607cec1b03cd7392e9d098cf08801a0a24d0616dad47580bfb00e9135ddf1dd",
+    "tests/test_health_route.py": "9910175ae208a0468b73de5ab7babb2a27fe055eee79fa5db5faeb912d55ddd5",
+    "tests/test_kiosk_launcher.py": "3f18fd7613f332f714a871f90ca1dc06f910ba1dd66b112d9beed07ba9fbd96b",
+    "tests/test_optional_runtime_extras.py": "0b62991947488a2c7ba4b57c0cc39e9e5b93110bf97fa73ac89c57f4502bd0cc",
+    "tests/test_pinned_resources.py": "8e74660c771ec374c8b00f67b659d9f79567e11adcbb378c907f19ff4a92521e",
+    "tests/test_role_composition.py": "dd12788672dd498400f6a61a15c63a7f6e18f495e6ff88e93616acfaf09d06af",
+    "tests/test_route_access.py": "ab2e7a55156bf1adce13f530ebb03068e9342cb3d2d776fa9e17c52bad3c4c26",
+    "tests/test_runtime_settings.py": "33fcd85b3d896e9ed65d5e2a6d7fce8b3f0a79d3da0385ef31715f997c96a783",
+    "tests/test_server_shutdown.py": "a6c87e268d56b48f1ecf0f41519affd84d93e0a25703f78a4015676747890445",
+    "tests/test_startup_scripts.py": "f06fc1570d6576af31f7bce30cf0f4f08bffd08b627311ffabb95714e6dd4cf8"
+  },
+  "scope": "Runtime group only; clean source snapshot; no frontend, build, live model or venue lifecycle commands",
+  "status": "failed",
+  "actual_cases": 242,
+  "counts": {
+    "passed": 241,
+    "failed": 1,
+    "error": 0,
+    "skipped": 0
+  },
+  "ended_at": "2026-11-17T14:09:23.451550+00:00",
+  "reporting_recovery": "Initial JUnit converter expected historical pytest 9.2 parameter IDs; locked pytest 9.1 uses a different generated ID for a long string. Reconstructed current IDs from actual JUnit module/class/name, without changing tests.",
+  "failure_cause": "The clean git archive lacks .git; git check-ignore cannot run."
+}

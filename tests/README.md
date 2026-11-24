@@ -1,23 +1,25 @@
 <!-- Copyright (c) 2026 HongXian0903 -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Nova Avatar test suites
+# Nova Avatar current-version test baseline
 
-The test suite is organized by product area through markers in `conftest.py`.
-File paths stay stable because design records and incident notes link directly to
-individual regression tests.
+The release scope and acceptance rules are defined in
+[`current-version-baseline.json`](current-version-baseline.json) and explained in
+the [current-version testing guide](../docs/current-version-testing.md).
+Use `scripts/check-current-version.py` in the prepared CUDA environment for the
+primary local baseline. The GitHub GPU runner is a separate pending setup.
 
 ## Goals
 
-1. The default suite stays offline, deterministic, and safe to run on every change.
+1. The primary suite (`not live`) stays offline, deterministic, and self-contained.
 2. Every collected test belongs to exactly one product area; an unclassified test
    module fails collection.
-3. The quick suite gives fast local feedback while the full suite remains the
-   handoff gate.
+3. The primary baseline requires zero failures and zero skips. Missing GPU or
+   required dependencies is a failure, not an accepted skip.
 4. Live-service checks are explicit opt-ins and never silently call external
-   services during the default run.
-5. Tests are removed only when their product contract is gone or equivalent
-   coverage is proven. File age alone is not a deletion criterion.
+   services during the primary run.
+5. Remove tests whose product contract is gone; preserve generic coverage with
+   self-contained fixtures instead of dependencies on retired model files.
 
 ## Product areas
 
@@ -26,46 +28,46 @@ individual regression tests.
 | `avatar` | MuseTalk transitions, mouth continuity, and rendering quality |
 | `conversation` | Reply protocol, streaming, media fencing, playback, and voice sessions |
 | `governance` | Branding, licensing, packaging, and integration audit contracts |
-| `llm` | Model routing, profiles, normalization, and local llama.cpp lifecycle |
+| `llm` | Model requests, profiles, normalization, and local llama.cpp lifecycle |
 | `ragflow` | Optional RAGFlow deployment, settings, client, and turn integration |
 | `runtime` | Server health, runtime settings, and optional dependency contracts |
 | `speech` | ASR, VAD, TTS engines, and Edge TTS worker lifecycle |
 
-`slow` identifies deterministic tests whose normal duration exceeds roughly one
-second. `live` identifies tests that require an explicitly enabled external model.
+`slow` is a manually maintained execution hint, not a complete duration budget.
+`live` identifies configured-model or installed llama-server environment checks.
 These execution markers supplement, rather than replace, the product-area marker.
 
 ## Commands
 
 ```bash
-# Fast local feedback
-uv run pytest -q -m "not slow and not live"
+# Prepared isolated CUDA environment, Node 22 on PATH; full local baseline
+uv run --no-sync python scripts/check-current-version.py
 
-# One product area
-uv run pytest -q -m speech
-uv run pytest -q -m conversation
+# One primary product area
+uv run --no-sync pytest -v -ra -m "speech and not live"
+uv run --no-sync pytest -v -ra -m "conversation and not live"
 
-# Deterministic full Python gate
-uv run pytest
+# Primary Python regression only (the runner additionally rejects skips)
+uv run --no-sync pytest -v -ra -m "not live"
 
-# Explicit real-model contract (requires configured credentials/model)
-NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run pytest -q -m live
+# Explicit configured-model and installed-binary checks
+NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -v -ra -m live
 ```
 
-The repository handoff gate remains:
-
-```bash
-uv run python scripts/check-integration.py
-uv run pytest
-cd web
-npm test
-npm run build
-```
+The local baseline records lock/environment checks, real CUDA tensor execution,
+Ruff/Pyright/ESLint, offline integration, primary Python tests, frontend tests
+with `CI=1`, and the production frontend build. Actual deployment-model GPU
+inference and field audiovisual acceptance remain release checks; the local
+baseline does not claim to execute them.
 
 ## Consolidation policy
 
-Keep a separate module when it owns a distinct product contract or has a special
-execution boundary. Merge very small modules into their owning suite when doing so
-does not weaken the assertions or make the ownership ambiguous. Before deleting a
-test, record which current test covers the same failure mode; if no replacement
-exists, keep it.
+Keep a separate module when it owns a distinct current product contract or has a
+special execution boundary. Merge small modules only when the assertions and
+ownership stay clear. File paths otherwise stay stable for linked design records.
+
+An obsolete product contract need not be retained as an optional skip. For a
+still-supported generic behavior, replace retired-model dependencies with a
+self-contained fixture. Record the current contract or accepted ADR that
+justifies a deletion; do not delete valid migration, security, or notice tests
+because they contain an older name.

@@ -1,0 +1,42 @@
+
+> nova-avatar-web@1.0.0 build
+> vite build
+
+┌─────────────────────────────────────────────┐
+│  📡 Nova Avatar 配置載入成功                │
+├─────────────────────────────────────────────┤
+│  配置檔案:  config.yaml                 │
+│  SSL/HTTPS: ✅ 已啟用                        │
+│  後端地址:  https://localhost:8010    │
+│  開發伺服器: https://127.0.0.1:3000   │
+└─────────────────────────────────────────────┘
+vite v5.4.21 building for production...
+transforming...
+✓ 92 modules transformed.
+Generated an empty chunk: "bootstrap".
+rendering chunks...
+computing gzip size...
+dist/index.html                                                  0.97 kB │ gzip:   0.63 kB
+dist/assets/plus-jakarta-sans-latin-400-normal-Dhut76fR.woff2   11.82 kB
+dist/assets/plus-jakarta-sans-latin-600-normal-DLTa1BUW.woff2   12.19 kB
+dist/assets/plus-jakarta-sans-latin-700-normal-CfpNZvy6.woff2   12.24 kB
+dist/assets/plus-jakarta-sans-latin-500-normal-Bf-nb4oT.woff2   12.31 kB
+dist/assets/plus-jakarta-sans-latin-400-normal-BDKaGhyp.woff    15.73 kB
+dist/assets/plus-jakarta-sans-latin-600-normal-BR_Ojra4.woff    16.08 kB
+dist/assets/plus-jakarta-sans-latin-500-normal-DYtqi0QS.woff    16.12 kB
+dist/assets/plus-jakarta-sans-latin-700-normal-DqEcQeE5.woff    16.14 kB
+dist/stage.html                                                 16.39 kB │ gzip:   5.64 kB
+dist/assets/jetbrains-mono-latin-400-normal-V6pRDFza.woff2      21.17 kB
+dist/assets/jetbrains-mono-latin-500-normal-BWZEU5yA.woff2      21.83 kB
+dist/assets/jetbrains-mono-latin-400-normal-6-qcROiO.woff       27.50 kB
+dist/assets/jetbrains-mono-latin-500-normal-CJOVTJB7.woff       28.21 kB
+dist/assets/bootstrap-icons-mSm7cUeB.woff2                     134.04 kB
+dist/assets/bootstrap-icons-BeopsB42.woff                      180.29 kB
+dist/assets/roleState-BNvWtW0q.css                               2.96 kB │ gzip:   1.04 kB
+dist/assets/console-BLZUTyEI.css                               417.32 kB │ gzip:  64.25 kB
+dist/assets/bootstrap-l0sNRNKZ.js                                0.00 kB │ gzip:   0.02 kB
+dist/assets/roleState-t8zykMEJ.js                               21.64 kB │ gzip:   9.84 kB
+dist/assets/stage-DNTb6SlD.js                                   24.38 kB │ gzip:  10.78 kB
+dist/assets/vendor-DO23CT1E.js                                  79.73 kB │ gzip:  31.44 kB
+dist/assets/console-gDybpDwU.js                                433.83 kB │ gzip: 150.93 kB
+✓ built in 1.11s

@@ -1,0 +1,5 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+# Keep validation evidence available for version control despite root *.log.
+!*.log

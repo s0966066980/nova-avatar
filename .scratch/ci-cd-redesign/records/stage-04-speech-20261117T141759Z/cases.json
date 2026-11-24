@@ -1,0 +1,1955 @@
+[
+  {
+    "nodeid": "tests/test_asr_comparison.py::RecognitionTokenTests::test_chinese_is_scored_per_character_without_punctuation",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::RecognitionTokenTests::test_english_is_scored_per_word_case_and_punctuation_insensitive",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::RecognitionTokenTests::test_mixed_text_keeps_latin_words_whole",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::RecognitionTokenTests::test_script_differences_are_not_recognition_errors",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::ErrorCountTests::test_counts_substitutions_insertions_and_deletions",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::UtteranceAudioTests::test_trailing_silence_is_cut_to_the_vad_endpoint",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::MeasureEngineTests::test_each_round_times_one_recognition_detecting_chinese_or_english",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::MeasureEngineTests::test_engines_without_language_options_get_audio_only",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::BuildReportTests::test_reports_how_often_chinese_or_english_was_detected_correctly",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::BuildReportTests::test_reports_latency_percentiles_and_corpus_error_rate_per_language",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_asr_comparison.py::test_funasr_compares_fun_asr_nano_by_default",
+    "file": "tests/test_asr_comparison.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_every_breezyvoice_download_is_pinned",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_url_file_with_wrong_checksum_is_not_kept",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_g2pw_archive_cannot_write_outside_its_folder",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_reading_tables_are_parsed_without_running_the_file",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_rare_characters_and_uncommon_readings_get_zhuyin",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_existing_hints_and_missing_predictions_are_left_alone",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_frontend_prepares_text_with_g2pw_readings",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_frontend_requires_the_downloaded_g2pw_model",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_top_k_sampling_only_returns_top_k_ids",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.012,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_g2pw_onnx_session_is_pinned_to_cpu",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_breezyvoice_model_loads_with_yaml_overrides_only_during_construction",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_prompt_mel_is_computed_at_the_model_rate",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_breezyvoice_models_are_listed_by_their_reading_tables",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_missing_default_breezyvoice_model_names_the_download_script",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_voice_library_keeps_a_cleaned_transcript",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_engine_uses_library_audio_and_transcript_for_zero_shot",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_engine_refuses_without_library_voice_or_transcript",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_engine_resamples_breezyvoice_22050_hz_audio_per_fragment",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.307,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_breezyvoice_is_a_selectable_local_engine",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_apply_requires_a_library_voice_with_transcript",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_apply_starts_the_owned_server_for_breezyvoice",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_breezyvoice_tts.py::test_engine_reports_http_errors_and_empty_audio_after_notifying",
+    "file": "tests/test_breezyvoice_tts.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_old_override_tts_block_is_not_a_second_voice_source",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_saving_overrides_drops_the_old_tts_block",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_startup_config_adopts_the_saved_main_voice",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.011,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_startup_keeps_the_configured_voice_without_saved_profiles",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_startup_keeps_the_configured_voice_when_saved_profiles_are_unreadable",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_failed_startup_apply_still_speaks_with_the_main_voice",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.02,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_startup_with_a_breezyvoice_main_starts_its_server_without_a_preview",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.02,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_applying_a_new_main_voice_updates_the_default_voice_without_saving_it",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.012,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_default_voice.py::test_a_pending_global_tts_change_from_the_removed_page_is_dropped",
+    "file": "tests/test_default_voice.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::StartupConnectionTests::test_a_session_closing_keeps_the_startup_socket_available_for_other_sessions",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.013,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::StartupConnectionTests::test_backend_shutdown_closes_the_shared_loop_and_sockets",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::StartupConnectionTests::test_invalid_audio_never_marks_startup_ready",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.008,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::StartupConnectionTests::test_startup_audio_is_available_without_another_handshake",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.008,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_a_reused_socket_closed_by_the_peer_is_replaced_before_audio",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.027,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_background_connection_failures_back_off",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.025,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_cancelled_request_discards_its_socket",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.008,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_concurrent_requests_can_prune_multiple_expired_sockets",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_expired_socket_is_replaced",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_missing_audio_is_an_error_and_socket_is_not_reused",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_rate_limit_cooldown_is_shared_with_new_requests_and_is_cancellable",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.036,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_refresh_replaces_the_old_socket_when_the_idle_pool_is_full",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.032,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_sequential_replies_reuse_connections",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_connection.py::ConnectionPoolTests::test_silent_warm_socket_is_replaced_before_the_first_audio_deadline",
+    "file": "tests/test_edge_connection.py",
+    "status": "passed",
+    "duration_seconds": 0.038,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_endpoint.py::EdgeEndpointTests::test_edge_tts_is_pointed_at_the_primary_host_on_import",
+    "file": "tests/test_edge_endpoint.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_endpoint.py::EdgeEndpointTests::test_failures_that_do_not_name_a_bad_host_keep_the_choice",
+    "file": "tests/test_edge_endpoint.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_endpoint.py::EdgeEndpointTests::test_missing_wss_url_attribute_disables_selection_without_raising",
+    "file": "tests/test_edge_endpoint.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_endpoint.py::EdgeEndpointTests::test_prewarm_rejection_retries_the_other_host_before_first_turn",
+    "file": "tests/test_edge_endpoint.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_endpoint.py::EdgeEndpointTests::test_rejected_handshake_swaps_host_and_swaps_back_on_next_rejection",
+    "file": "tests/test_edge_endpoint.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_endpoint.py::EdgeWorkerHostFailoverTests::test_first_attempt_rejection_retries_on_the_other_host_and_speaks",
+    "file": "tests/test_edge_endpoint.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_resilience.py::EdgeResilienceTests::test_a_429_is_retried_after_the_shared_cooldown",
+    "file": "tests/test_edge_resilience.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_resilience.py::EdgeResilienceTests::test_repeated_429_cannot_expand_the_retry_budget",
+    "file": "tests/test_edge_resilience.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_edge_prewarm_finishes_before_readiness",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_non_edge_engine_does_not_start_edge_prewarm",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_startup_prewarm_recovers_from_a_temporary_failure",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSStartupTests::test_startup_prewarm_stops_after_three_failures",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSTransportTests::test_prewarm_migrates_the_rejected_legacy_synthesis_endpoint",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSTransportTests::test_prewarm_preserves_an_upstream_replacement_endpoint",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_all_queued_fragments_begin_synthesis_before_first_finishes",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 1.06,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_cancelling_prefetch_handoff_discards_unsent_pcm",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 1.064,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 1.059,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_in_flight_poll_timeout_is_not_a_synthesis_failure",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.213,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_last_fragment_prefetch_releases_and_completes_promptly",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.183,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_mouth_backpressure_does_not_block_later_tts_network_requests",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.062,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_persistent_worker_reuses_the_same_event_loop",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.01,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_handoff_preserves_pcm_order_while_output_is_blocked",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_limits_requests_and_eventually_emits_all_fragments_in_order",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 1.17,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetched_first_reply_does_not_wait_past_its_retry_budget",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limit_does_not_exceed_the_shared_retry_budget",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limit_wait_can_be_cancelled_without_another_request",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.053,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_rate_limited_synthesis_waits_before_retrying",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 1.013,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_ready_next_fragment_is_enqueued_before_previous_playback_ends",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.025,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_worker_close_stops_the_background_loop",
+    "file": "tests/test_edge_tts_worker.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_fun_asr_nano_download_is_pinned_and_complete",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_service_model_folder_is_where_the_download_puts_it",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_fun_asr_nano_download_passes_pinned_revision_and_files",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_fun_asr_nano_check_fails_when_weights_are_missing",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_converts_output_to_taiwan_traditional",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_can_keep_simplified_and_reports_english",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_passes_the_requested_language_to_the_prompt",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_rejects_malformed_requests[-options0-\\u6c92\\u6709\\u97f3\\u8a0a]",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_rejects_malformed_requests[\\x00-options1-16-bit]",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_rejects_malformed_requests[\\x00\\x00-options2-\\u8a9e\\u8a00]",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_rejects_malformed_requests[\\x00\\x00-options3-\\u8f38\\u51fa\\u6587\\u5b57]",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_http_routes_serve_health_and_recognition",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.506,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_http_rejects_oversized_and_invalid_audio",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.507,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_binds_only_to_loopback[0.0.0.0]",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_binds_only_to_loopback[192.168.1.5]",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_binds_only_to_loopback[example.com]",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_server_loads_bundled_model_class_without_remote_code",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_models_resolve_only_from_the_server_managed_list",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_availability_reports_missing_venv_or_weights",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_ensure_server_reuses_a_healthy_matching_service",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_ensure_server_starts_the_owned_loopback_process",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_ensure_server_reports_a_crashed_start",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_ensure_server_refuses_non_loopback_hosts",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_service_urls_bracket_ipv6_loopback",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_stop_server_interrupts_a_start_in_progress",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 1.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_service_and_server_share_one_protocol_definition",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_engine_starts_the_service_only_when_loaded",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_engine_sends_16k_mono_pcm_and_returns_the_service_text",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_audio_is_resampled_and_downmixed_to_16k_pcm16",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_engine_rejects_unknown_devices_and_scripts",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_settings_offer_fun_asr_nano_from_the_service",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_settings_report_a_missing_service_venv",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_applying_unavailable_fun_asr_names_what_is_missing",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_applying_fun_asr_rejects_unlisted_models",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_applying_fun_asr_over_saved_paraformer_uses_fun_asr_nano",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_switching_back_to_whisper_stops_the_fun_asr_service",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_funasr.py::test_english_conversations_accept_fun_asr",
+    "file": "tests/test_funasr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_routes_are_admin_only",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_breezyvoice_preview_starts_the_server_and_speaks_with_the_library_clip",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.095,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_edge_preview_needs_no_server",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.059,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts0-\\u97f3\\u8a0a\\u5eab]",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.05,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts1-\\u672c\\u6a5f]",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts2-\\u53c3\\u8003\\u97f3\\u6a94]",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts3-\\u8072\\u7dda]",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.053,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_rejects_unusable_or_unsafe_voices[tts4-TTS]",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_needs_the_library_transcript",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.059,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_does_not_start_or_replace_a_server_under_a_conversation",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.06,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_preview_does_not_replace_the_default_voices_breezyvoice_server",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.059,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_concurrent_breezyvoice_starts_launch_one_server",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.203,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_profile_voice_preview.py::test_breezyvoice_server_urls_bracket_ipv6_loopback",
+    "file": "tests/test_profile_voice_preview.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::SentenceSetTests::test_english_set_is_english",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::SentenceSetTests::test_first_fragments_are_about_fifteen_characters",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::SentenceSetTests::test_focus_words_appear_in_their_sentences",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::SentenceSetTests::test_zh_tw_set_covers_taiwan_readings_places_money_dates_and_code_switching",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::SentenceSetTests::test_zh_tw_set_has_one_hundred_sentences_with_unique_ids",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::ScoringTests::test_extra_or_repeated_speech_is_hallucination",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::ScoringTests::test_missing_ending_is_truncation",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::ScoringTests::test_spoken_and_written_numbers_score_alike",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::ScoringTests::test_the_closest_accepted_transcript_is_scored",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::DurationFlagTests::test_audio_far_too_short_or_long_for_the_text",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::DurationFlagTests::test_plausible_audio_has_no_flags",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::DurationFlagTests::test_silent_or_missing_audio_is_empty",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::VramTests::test_missing_nvidia_smi_is_recorded_not_fatal",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::VramTests::test_reads_gpu_and_process_memory_from_nvidia_smi",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::VramTests::test_sampler_reports_peak_delta_over_the_pre_launch_baseline",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::ZeroShotClientTests::test_http_errors_are_recorded_not_raised",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.503,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::ZeroShotClientTests::test_times_first_audio_and_whole_fragment_and_decodes_pcm",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.505,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_run_records_latency_phases_vram_and_saves_audio",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.516,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_score_and_report_build_rates_and_an_escaped_listening_page",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.505,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::BakeoffPipelineTests::test_soak_streams_json_lines_and_summarizes_on_exit",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.505,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_bakeoff.py::SoakSummaryTests::test_hourly_latency_drift_failures_and_vram_growth",
+    "file": "tests/test_tts_bakeoff.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_only_breezyvoice_and_edge_tts_are_offered",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_removed_engine_settings_fields_are_gone",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[cosyvoice]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[fun-cosyvoice3]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[fishtts]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[gpt-sovits]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[indextts2]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_removed_engines_are_rejected_when_applied_or_built[xtts]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[cosyvoice]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[fun-cosyvoice3]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[fishtts]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[gpt-sovits]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[indextts2]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_notice[xtts]",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_supported_engines_keep_their_settings_and_leave_no_notice",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_startup_config_with_a_removed_engine_and_legacy_fields_loads_on_edge_tts",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_applying_a_tts_engine_clears_the_fallback_notice",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_tts_engine_cleanup.py::test_saved_role_with_a_removed_engine_starts_on_edge_tts",
+    "file": "tests/test_tts_engine_cleanup.py",
+    "status": "passed",
+    "duration_seconds": 0.027,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::BaseVADTests::test_frame_geometry",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::BaseVADTests::test_frames_drop_partial_tail",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::BaseVADTests::test_lazy_model_load",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::BaseVADTests::test_rejects_unsupported_sample_rate",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::BaseVADTests::test_to_int16_accepts_bytes_and_float",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::BaseVADTests::test_wrong_frame_length_raises",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_accepts_raw_bytes",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_endpoint_reports_how_long_vad_held_speech_after_the_voice_ended",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_extract_speech_drops_silence",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_extract_speech_returns_none_on_silence",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_flush_closes_open_segment",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_max_speech_forces_cut",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_only_an_endpoint_measures_the_speech_tail",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_segment_reports_speech_ms",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_short_blip_discarded",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_single_segment_with_padding",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_streaming_chunks_match_single_shot",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_two_segments_split_by_silence",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SegmenterTests::test_voiced_end_ignores_leading_and_trailing_silence",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::FrameNormalizationTests::test_silero_fixed_frame_samples",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::FrameNormalizationTests::test_silero_rejects_unsupported_rate",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::FactoryTests::test_create_by_type_and_alias",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::FactoryTests::test_singleton_rebuilds_on_param_change",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::FactoryTests::test_singleton_reuses_same_configuration",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::FactoryTests::test_unknown_type_raises",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::ConfigTests::test_defaults",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::ConfigTests::test_shipped_end_of_speech_wait_is_about_200_ms_in_silero_frames",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.004,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::ConfigTests::test_yaml_override",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::AudioUtilTests::test_decode_rejects_garbage",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::AudioUtilTests::test_resample_changes_length",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.472,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::AudioUtilTests::test_wav_roundtrip",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::ServiceTests::test_broken_audio_degrades_to_original",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::ServiceTests::test_disabled_passthrough",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::ServiceTests::test_no_config_passthrough",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SileroEngineTests::test_detects_speech_and_ignores_silence",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.204,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SileroEngineTests::test_service_reports_no_speech",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.051,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SileroEngineTests::test_service_trims_silence",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.057,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SettingsApiTests::test_disable_skips_dependency_check",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SettingsApiTests::test_missing_dependency_reports_install_command",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SettingsApiTests::test_silero_is_enforced_and_persisted",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.022,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SettingsApiTests::test_snapshot_is_always_server_side",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SettingsApiTests::test_unknown_engine_rejected",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_vad.py::SettingsApiTests::test_values_are_clamped",
+    "file": "tests/test_vad.py",
+    "status": "passed",
+    "duration_seconds": 0.022,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_upload_is_converted_to_a_wav_in_the_library",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.006,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_non_audio_uploads_are_rejected[root:x:0:0:root:/root:/bin/bash\\n]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_non_audio_uploads_are_rejected[#EXTM3U\\n#EXT-X-TARGETDURATION:1\\n#EXTINF:1,\\nfile:///etc/passwd\\n#EXT-X-ENDLIST\\n]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_non_audio_uploads_are_rejected[ffconcat version 1.0\\nfile '/etc/passwd'\\n]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_non_audio_uploads_are_rejected[]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_overlong_audio_is_rejected_from_its_header",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.002,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[../voices]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[/etc/passwd]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[ABCDEF0123456789]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[000000000000000]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_unknown_or_malformed_ids_do_not_resolve[0000000000000000]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_development_voices_are_marked_for_the_console",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.007,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_dev_voice_import_script_is_repeatable",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.172,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[/etc/passwd]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[config/ragflow.env]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source/config/ragflow.env]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[../config/admin.env]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_reference_audio_engines_only_accept_library_ids[zh-TW-HsiaoChenNeural/../../etc/passwd]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_server_side_references_cannot_be_paths[/etc/passwd]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_server_side_references_cannot_be_paths[config/ragflow.env]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_server_side_references_cannot_be_paths[/home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source/config/ragflow.env]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_server_side_references_cannot_be_paths[../config/admin.env]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_server_side_references_cannot_be_paths[zh-TW-HsiaoChenNeural/../../etc/passwd]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_tts_server_must_be_loopback[http://evil.example:8020]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_tts_server_must_be_loopback[http://192.168.50.9:8020]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_tts_server_must_be_loopback[http://127.0.0.1@evil.example:8020]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_tts_server_must_be_loopback[https://8.8.8.8]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_tts_server_must_be_loopback[file:///etc/passwd]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_tts_server_must_be_loopback[http://127.0.0.1:8020/upload?x=1]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[http://127.0.0.1:9880-http://127.0.0.1:9880]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[http://localhost:8020/-http://localhost:8020]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[http://[::1]:50000-http://[::1]:50000]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_loopback_tts_servers_are_accepted[-]",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_tts_models_come_from_the_models_folder",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_global_tts_route_is_gone",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.052,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_path_picker_route_is_gone",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.053,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_voice_library_routes_upload_list_and_delete",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.088,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_voice_library_audio_can_be_previewed_by_administrators_only",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.085,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_voice_upload_keeps_its_transcript",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.051,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_oversized_voice_upload_is_rejected_and_cleaned",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.055,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_saved_paths_migrate_into_the_library_or_are_cleared",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.005,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_load_config_migrates_runtime_override_paths",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.043,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_breezyvoice_profiles_need_a_transcribed_reference_before_saving",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.022,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_library_transcript_is_the_only_reference_transcript",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.029,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_profile_voice_migration_runs_once_at_startup_and_is_saved",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.023,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_voice_library.py::test_breezyvoice_prompt_comes_from_the_library",
+    "file": "tests/test_voice_library.py",
+    "status": "passed",
+    "duration_seconds": 0.003,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRLoadingTests::test_loads_faster_whisper_with_cpu_int8",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_16k_wav_is_decoded_in_memory_and_decoded_greedily",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.009,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_auto_detects_chinese_or_english_in_one_pass",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_auto_restricts_detection_to_chinese_or_english",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_completion_log_names_the_recognized_language",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_fixed_language_reports_that_language",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_other_sample_rates_and_containers_stay_in_memory",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_prewarm_primes_language_detection",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_restricted_retry_rereads_in_memory_containers",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::WhisperASRTranscribeTests::test_stereo_audio_is_downmixed_to_mono",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.001,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::ConversationLanguageTests::test_conversation_locale_maps_to_a_recognizer_language",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::ConversationLanguageTests::test_detection_covers_exactly_the_conversation_languages",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.0,
+    "reason": ""
+  },
+  {
+    "nodeid": "tests/test_whisper_asr.py::ASRFactoryConcurrencyTests::test_concurrent_sessions_load_one_shared_engine",
+    "file": "tests/test_whisper_asr.py",
+    "status": "passed",
+    "duration_seconds": 0.022,
+    "reason": ""
+  }
+]

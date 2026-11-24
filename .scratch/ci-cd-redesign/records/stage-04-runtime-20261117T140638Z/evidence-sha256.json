@@ -1,0 +1,13 @@
+{
+  "README.md": "e3f054a3ce8e7d8e09f33c7f58b88f459c43e355247bd9906428b54753f7f47c",
+  "case-results.md": "7257ab1b4994c0beae85a79f69822656b25343ff7edd40349cf3bd60225dd928",
+  "cases.json": "80320adfa702696aeb0ae3789abef8d5f17d4f6a36c38b7ba3712fd78a0e9657",
+  "commands.json": "b0c27d1c05b7274fb03d149d6639d0056bf831326b0eb18a3be0d5a191b2c143",
+  "environment-check.log": "0fb4d1fb2f8b571c8092a3e923a260f7503ad64a9bb09b754290e6d5a53497ff",
+  "environment-repair.json": "50f8e745f36c7cf451e014446bdede813a2019952d08354137649418610d5101",
+  "manifest.json": "336287a1666000b4d58e04a9c5b969d0a78ebcfa93f50da681f5278c875461f3",
+  "runtime-collection.log": "36f7efe379011b93901babaf73c198c166593566f109f0d4b9bf268f15b73b45",
+  "runtime-tests.log": "4d992cb8590aeee3de2cce0ca4297e28bfb4acdc14855ac4d87d0eef563660de",
+  "runtime.xml": "fe641a60ed33db9b69901c62dc8d94664cf1adb5cae77fbd27c39a35f6c27847",
+  "working-tree-status-before.txt": "9caba90ce5552d796599ad8a6e3f1cc4143a8e76eeed1d5140df9fa93192985a"
+}

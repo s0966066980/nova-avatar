@@ -1,0 +1,13 @@
+======================================================
+[32m✓[0m 設定載入: config/config.yaml
+    Avatar: musetalk / musetalk_angela
+    STT   : whisper / small
+    VAD   : silero / enabled
+    LLM   : llamacpp / gemma-4-E2B_q4_0-it @ http://127.0.0.1:8080/v1
+    TTS   : edgetts / zh-TW-HsiaoChenNeural
+[32m✓[0m 品牌、授權與 release 文件契約正常
+[32m✓[0m 核心 Python 整合依賴可匯入
+[32m✓[0m 目前 Avatar 引擎依賴可匯入
+[32m✓[0m 商業審查設定檔使用 musetalk
+======================================================
+全部通過：Nova Avatar 專案檢查正常。

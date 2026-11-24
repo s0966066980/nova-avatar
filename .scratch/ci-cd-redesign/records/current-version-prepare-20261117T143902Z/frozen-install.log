@@ -1,0 +1,4 @@
+Uninstalled 1 package in 0.50ms
+Installed 1 package in 3ms
+ - nova-avatar==1.0.0 (from file:///home/oliver/.cache/nova-avatar/ci-validation/20261117T133233Z/source)
+ + nova-avatar==1.0.0 (from file:///home/oliver/nova-avatar)
