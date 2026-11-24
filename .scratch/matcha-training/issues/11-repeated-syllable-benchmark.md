@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 疊字評量腳本
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)「疊音與跳音診斷」與驗收。把診斷時的做法固定成可重複的評量，讓重訓後的聲線模型能和曉臻、base 模型直接比較。
 
