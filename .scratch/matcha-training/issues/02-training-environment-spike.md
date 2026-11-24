@@ -48,4 +48,4 @@ MATCHA_TRAIN_TORCH=cpu bash scripts/setup-matcha-train.sh   # 本次實驗使用
 5. `torch.load(..., weights_only=True)` 對此底模可用，建議保留，避免載入第三方 pickle 時執行任意程式。
 6. 這次沒有改 `THIRD_PARTY_NOTICES.md`（屬工單 09）；09 應加入 Matcha-TTS（MIT，Shivam Mehta）與底模（授權欄 Apache License 2.0，資料來源未說明）。
 
-**驗證**：`uv lock --check`、ruff、pyright、`scripts/check-integration.py` 通過；pytest 數字見交接報告。
+**驗證**：`uv lock --check`、ruff、pyright、`scripts/check-integration.py` 通過；pytest 1578 passed、2 failed、3 skipped（基準 1564 passed、同樣 2 failed 與 3 skipped：PDF OCR 與 role coordinator 既有失敗，新增的 14 個測試全過、無跳過）。
