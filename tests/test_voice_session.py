@@ -779,61 +779,6 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
         await session.close()
 
 
-class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
-    async def test_offer_rejects_before_loading_when_session_capacity_is_full(self):
-        from src.server.routes.webrtc import offer
-        from src.server.state import state
-
-        request = AsyncMock()
-        request.json.return_value = {
-            "client_role": "console",
-            "sdp": "offer",
-            "type": "offer",
-        }
-        config = SimpleNamespace(app=SimpleNamespace(max_session=1))
-        with (
-            patch.object(state, "model_ready", True),
-            patch.object(state, "model", object()),
-            patch.object(state, "avatar", object()),
-            patch.object(state, "config", config),
-            patch.object(state, "avatar_streams", {1: object()}),
-            patch.object(state, "session_roles", {1: "console"}, create=True),
-        ):
-            response = await offer(request)
-
-        self.assertEqual(response.status, 429)
-        request.json.assert_awaited_once()
-
-    async def test_console_and_stage_have_independent_capacity(self):
-        from src.server.routes.webrtc import offer
-        from src.server.state import state
-
-        class ReachedOfferParsing(Exception):
-            pass
-
-        request = AsyncMock()
-        request.json.return_value = {
-            "client_role": "console",
-            "sdp": "offer",
-            "type": "offer",
-        }
-        config = SimpleNamespace(app=SimpleNamespace(max_session=1))
-        with (
-            patch.object(state, "model_ready", True),
-            patch.object(state, "model", object()),
-            patch.object(state, "avatar", object()),
-            patch.object(state, "config", config),
-            patch.object(state, "avatar_streams", {1: object()}),
-            patch.object(state, "session_roles", {1: "stage"}, create=True),
-            patch(
-                "src.server.routes.webrtc.RTCSessionDescription",
-                side_effect=ReachedOfferParsing,
-            ),
-        ):
-            with self.assertRaises(ReachedOfferParsing):
-                await offer(request)
-
-
 class ChatReplyModeRouteTests(unittest.IsolatedAsyncioTestCase):
     async def test_human_chat_delegates_to_text_turn_and_returns_ack(self):
         from src.server.routes.chat import human

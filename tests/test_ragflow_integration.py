@@ -5,26 +5,32 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import tempfile
 import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from aiohttp import web
 
+from scripts.ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
 from src.config.schema import Config
 from src.llm.base import BaseLLM
 from src.ragflow import client as ragflow_client
 from src.ragflow import settings
 from src.ragflow.client import (
-    RagFlowClient, RagFlowConnection, RagFlowError, close_shared_session, retrieval_prompt,
+    RagFlowClient,
+    RagFlowConnection,
+    RagFlowError,
+    close_shared_session,
+    retrieval_prompt,
 )
 from src.server.routes.ragflow import get_ragflow_settings
+from src.server.state import state
 from src.server.voice_session import VoiceTurnSession
-from scripts.ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
 
 DATASET_A = "a" * 32
 DATASET_B = "b" * 32
@@ -346,9 +352,7 @@ class RagFlowRouteTests(unittest.IsolatedAsyncioTestCase):
 
 class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
     async def test_saved_profile_and_draft_tests_use_role_scope_not_visual_id(self):
-        from unittest.mock import AsyncMock
         from src.server.routes.ragflow import test_ragflow_retrieval
-        from src.server.state import state
         saved_selection = {'enabled': True, 'dataset_ids': [DATASET_A],
                            'document_scope': 'selected', 'document_ids': ['c' * 32]}
         profile = {'id': 'main', 'avatar_id': 'shared_visual', 'rag': saved_selection}
@@ -367,7 +371,6 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(profile['rag'], saved_selection)
 
     async def test_empty_explicit_document_scope_never_searches_entire_dataset(self):
-        from unittest.mock import AsyncMock
         from src.server.routes.ragflow import test_ragflow_retrieval
         retrieve = AsyncMock()
         request = SimpleNamespace(json=AsyncMock(return_value={
@@ -380,7 +383,6 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
         retrieve.assert_not_awaited()
 
     async def test_turn_uses_its_profiles_document_filter(self):
-        from unittest.mock import AsyncMock
         config = Config()
         config.profile_id = 'main'
         config.profile_rag = {'enabled': True, 'dataset_ids': [DATASET_A],
@@ -402,7 +404,6 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
             await session.close()
 
     async def test_document_listing_is_paginated_and_retrieval_discards_other_documents(self):
-        from unittest.mock import AsyncMock
         client = RagFlowClient()
         client._request = AsyncMock(return_value={'code': 0, 'data': {
             'docs': [{'id': 'c' * 32, 'name': '服務說明.txt', 'run': 'DONE', 'chunk_count': 4}],
@@ -420,3 +421,39 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([s['content'] for s in result['sources']], ['正確文本'])
         self.assertEqual(result['sources'][0]['dataset_id'], DATASET_A)
         self.assertEqual(client._request.call_args.kwargs['body']['document_ids'], ['c' * 32])
+
+
+def script(name):
+    path = Path(__file__).resolve().parents[1] / 'scripts' / name
+    spec = importlib.util.spec_from_file_location('pc_port_' + path.stem, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_ragflow_sync_is_additive_and_idempotent_without_changing_defaults(monkeypatch):
+    module = script('ragflow_connection.py')
+    models = [{'name': 'bge-m3', 'provider_name': 'Ollama', 'instance_name': 'nova-chat'}]
+    mutations = []
+
+    def api(key, method, path, body=None):
+        if method == 'GET':
+            return {
+                '/providers': [{'name': 'Ollama'}],
+                '/providers/Ollama/instances': [{'instance_name': 'nova-chat'}],
+                '/providers/Ollama/instances/nova-chat': {'base_url': module.SHARED_MODEL_URL},
+                '/models': models,
+            }[path]
+        mutations.append((method, path, body))
+        assert method == 'POST' and path.endswith('/models')
+        models.append({'name': body['model_name'], 'provider_name': 'Ollama', 'instance_name': 'nova-chat'})
+
+    monkeypatch.setattr(module, 'model_api', api)
+    monkeypatch.setattr(module, 'ollama_api', lambda path, *args: (
+        {'models': [{'name': 'bge-m3:latest'}, {'name': 'new:latest'}]}
+        if path == '/api/tags' else {'capabilities': ['completion']}))
+    module.sync_models('test-key')
+    module.sync_models('test-key')
+    assert len(mutations) == 1
+    assert mutations[0][2]['model_name'] == 'new:latest'
+    assert models[0]['name'] == 'bge-m3'

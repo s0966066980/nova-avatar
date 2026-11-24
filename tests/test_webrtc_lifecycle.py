@@ -3,12 +3,18 @@
 """Exercise reservation, negotiation and cleanup through the real offer route."""
 import asyncio
 import json
+import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 import pytest
+
 from src.config.schema import Config
-from src.server.state import state
 from src.server.routes import webrtc
+from src.server.state import state
+from src.server.voice_session import (
+    VoiceTurnSession,
+)
 
 
 @pytest.fixture
@@ -150,6 +156,7 @@ def test_cancelled_offer_waits_for_worker_then_releases_reservation(rtc, monkeyp
 
 def test_disconnect_releases_all_role_llm_parents(rtc, monkeypatch):
     import json
+
     from src.llm import service
     monkeypatch.setattr(service, '_session_llm_instances', {})
     monkeypatch.setattr(service, '_active_profiles', {})
@@ -197,7 +204,6 @@ def test_single_profile_config_drives_new_voice_sessions_without_handoff(rtc, mo
 @pytest.mark.parametrize('source_role', ['console', 'stage'])
 @pytest.mark.parametrize('late_join', [False, True])
 def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, source_role, late_join):
-    from src.server.voice_session import VoiceTurnSession
 
     roles = SimpleNamespace(enabled=False, profiles_applied=False, phase='disabled', _apply_waiting=False, cancel=Mock(), unregister=Mock(), notify=Mock(),
         apply_pending=AsyncMock(),
@@ -307,3 +313,58 @@ def test_lost_microphone_track_closes_the_peer_so_the_page_reconnects(rtc):
         assert not state.voice_sessions and not state.pcs
         assert state.count_sessions('console') == 0
     asyncio.run(run())
+
+
+class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
+    async def test_offer_rejects_before_loading_when_session_capacity_is_full(self):
+        from src.server.routes.webrtc import offer
+        from src.server.state import state
+
+        request = AsyncMock()
+        request.json.return_value = {
+            "client_role": "console",
+            "sdp": "offer",
+            "type": "offer",
+        }
+        config = SimpleNamespace(app=SimpleNamespace(max_session=1))
+        with (
+            patch.object(state, "model_ready", True),
+            patch.object(state, "model", object()),
+            patch.object(state, "avatar", object()),
+            patch.object(state, "config", config),
+            patch.object(state, "avatar_streams", {1: object()}),
+            patch.object(state, "session_roles", {1: "console"}, create=True),
+        ):
+            response = await offer(request)
+
+        self.assertEqual(response.status, 429)
+        request.json.assert_awaited_once()
+
+    async def test_console_and_stage_have_independent_capacity(self):
+        from src.server.routes.webrtc import offer
+        from src.server.state import state
+
+        class ReachedOfferParsing(Exception):
+            pass
+
+        request = AsyncMock()
+        request.json.return_value = {
+            "client_role": "console",
+            "sdp": "offer",
+            "type": "offer",
+        }
+        config = SimpleNamespace(app=SimpleNamespace(max_session=1))
+        with (
+            patch.object(state, "model_ready", True),
+            patch.object(state, "model", object()),
+            patch.object(state, "avatar", object()),
+            patch.object(state, "config", config),
+            patch.object(state, "avatar_streams", {1: object()}),
+            patch.object(state, "session_roles", {1: "stage"}, create=True),
+            patch(
+                "src.server.routes.webrtc.RTCSessionDescription",
+                side_effect=ReachedOfferParsing,
+            ),
+        ):
+            with self.assertRaises(ReachedOfferParsing):
+                await offer(request)

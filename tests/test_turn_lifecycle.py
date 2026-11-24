@@ -253,8 +253,9 @@ class PerTurnMemoryTests(unittest.IsolatedAsyncioTestCase):
         await session.close()
 
     def test_avatar_media_sequences_do_not_grow_per_turn(self):
-        from src.avatars.base import BaseAvatar
         from threading import RLock
+
+        from src.avatars.base import BaseAvatar
 
         avatar = BaseAvatar.__new__(BaseAvatar)
         avatar._media_guard = None
@@ -276,6 +277,59 @@ class PerTurnMemoryTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(frames[-1]["media_sequence"], 3)
         self.assertLessEqual(len(avatar._media_sequences), 8)
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        return self.now
+
+    def advance(self, seconds):
+        self.now += seconds
+
+
+class ReplyCircuitBreakerTests(unittest.TestCase):
+    def test_third_error_opens_breaker_for_next_turn_only(self):
+        clock = FakeClock()
+        breaker = ReplyCircuitBreaker(clock=clock)
+
+        self.assertEqual(breaker.mode_for_next_turn(), "streaming")
+        for _ in range(2):
+            self.assertFalse(breaker.record_pipeline_error())
+            self.assertEqual(breaker.mode_for_active_turn(), "streaming")
+        self.assertTrue(breaker.record_pipeline_error())
+        self.assertEqual(breaker.mode_for_active_turn(), "streaming")
+
+        self.assertEqual(breaker.mode_for_next_turn(), "legacy")
+        self.assertEqual(breaker.mode_for_active_turn(), "legacy")
+
+    def test_old_errors_expire_and_probe_is_required_to_recover(self):
+        clock = FakeClock()
+        breaker = ReplyCircuitBreaker(clock=clock)
+        for _ in range(3):
+            breaker.record_pipeline_error()
+        self.assertEqual(breaker.mode_for_next_turn(), "legacy")
+        self.assertFalse(breaker.record_health_probe(False))
+        self.assertEqual(breaker.mode_for_next_turn(), "legacy")
+        self.assertTrue(breaker.record_health_probe(True))
+        self.assertEqual(breaker.mode_for_next_turn(), "streaming")
+
+        breaker.record_pipeline_error()
+        clock.advance(301)
+        breaker.record_pipeline_error()
+        breaker.record_pipeline_error()
+        self.assertEqual(breaker.mode_for_next_turn(), "streaming")
+
+    def test_successful_streaming_turn_resets_consecutive_error_streak(self):
+        breaker = ReplyCircuitBreaker()
+        breaker.record_pipeline_error()
+        breaker.record_pipeline_error()
+        breaker.record_turn_success()
+        breaker.record_pipeline_error()
+
+        self.assertEqual(breaker.mode_for_next_turn(), "streaming")
 
 
 if __name__ == "__main__":

@@ -305,34 +305,6 @@ def test_settings_migration_keeps_existing_models_content_and_enable_switches(tm
     assert len(list((tmp_path / 'backups').iterdir())) == 1
 
 
-def test_ragflow_sync_is_additive_and_idempotent_without_changing_defaults(monkeypatch):
-    module = script('ragflow_connection.py')
-    models = [{'name': 'bge-m3', 'provider_name': 'Ollama', 'instance_name': 'nova-chat'}]
-    mutations = []
-
-    def api(key, method, path, body=None):
-        if method == 'GET':
-            return {
-                '/providers': [{'name': 'Ollama'}],
-                '/providers/Ollama/instances': [{'instance_name': 'nova-chat'}],
-                '/providers/Ollama/instances/nova-chat': {'base_url': module.SHARED_MODEL_URL},
-                '/models': models,
-            }[path]
-        mutations.append((method, path, body))
-        assert method == 'POST' and path.endswith('/models')
-        models.append({'name': body['model_name'], 'provider_name': 'Ollama', 'instance_name': 'nova-chat'})
-
-    monkeypatch.setattr(module, 'model_api', api)
-    monkeypatch.setattr(module, 'ollama_api', lambda path, *args: (
-        {'models': [{'name': 'bge-m3:latest'}, {'name': 'new:latest'}]}
-        if path == '/api/tags' else {'capabilities': ['completion']}))
-    module.sync_models('test-key')
-    module.sync_models('test-key')
-    assert len(mutations) == 1
-    assert mutations[0][2]['model_name'] == 'new:latest'
-    assert models[0]['name'] == 'bge-m3'
-
-
 @async_test
 async def test_english_fixed_weather_failure_is_spoken_in_english(field):
     voice, _ = connect(field)
