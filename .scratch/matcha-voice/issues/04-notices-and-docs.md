@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # notices 與安裝文件
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 依[規格](../spec.md)「使用限制」與第 9 點。
@@ -11,7 +11,7 @@ Blocked by: 01
   - vocos 聲碼器
   - hsiaochen-edge：Development only，附 MSA §14(s)(iv) 的說明
 - 新增安裝文件：聲線模型的目錄結構、使用限制標示的格式、手動複製步驟，以及檔案清單和 SHA-256。
-- 更新 `docs/software-stack.md`、`docs/models.md` 和 README 中的 TTS 支援清單。
+- 更新 `docs/software-stack.md` 和 README（`docs/models.md` 只存在於 jetson-orin，不新建） 中的 TTS 支援清單。
 - `scripts/check-integration.py`（品牌與來源稽核）必須通過。
 
 ## Comments
