@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 訓練語料資料模型
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)第 2、3、5、6、7 點與 `CONTEXT.md`「訓練語料」「使用限制標示」。
 
