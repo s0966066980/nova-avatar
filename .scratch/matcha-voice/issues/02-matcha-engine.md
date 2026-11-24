@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # Matcha 引擎與設定檔整合
-Status: ready-for-agent
+Status: resolved
 Blocked by: 01
 
 依[規格](../spec.md)第 6、10、11 點與「第一階段範圍」。
