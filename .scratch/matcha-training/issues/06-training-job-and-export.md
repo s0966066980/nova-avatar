@@ -82,3 +82,35 @@ Blocked by: 02, 03, 04
 - 完整 `matcha-tts` 以外多裝了 `onnx==1.17.0`（Apache-2.0）與 `protobuf`（BSD-3-Clause）；`THIRD_PARTY_NOTICES.md` 屬工單 09。
 
 **驗證**：基準（`matcha-training` tip，含工單 05）2 failed（PDF OCR 與 role coordinator，既有）、2010 passed（取自工單 05 紀錄的合併後基準）、3 skipped；本分支 2 failed（同兩項）、2179 passed、3 skipped，新測試 0 失敗 0 跳過。lock check、ruff、pyright（0 錯誤）、`check-integration.py` 通過；未動 `web/`，略過網頁步驟。
+
+### 2026-11-24 程式審查修正（分支 `mv2/review-fixes`，涵蓋工單 05、06、12、13、14）
+
+沒有啟動伺服器、沒有載入模型、不碰 GPU；全部用假程序、假 Edge、假 Whisper、假探測驗證。Python 3.10 相容（`python3.10 -m py_compile` 通過；逾時仍用 `asyncio.TimeoutError`）。
+
+**A. 訓練工作生命週期**（`tts_training_jobs.py`、`routes/tts_training.py`、`asr.py`、`transcription.py`）
+
+- 伺服器關閉：`TrainingJobManager.shutdown()` 取消進行中的工作（SIGTERM、寬限期、SIGKILL），逾時（寬限期加 5 秒）仍未結束就直接 `kill()` 子程序；`routes/tts_training.py` 的 `register` 加 `on_shutdown`。測試：`test_shutdown_cancels_the_running_job_and_stops_its_child_so_the_gpu_is_freed`、`test_shutdown_escalates_to_sigkill_for_a_child_that_ignores_sigterm`、`test_shutdown_kills_the_child_directly_when_the_worker_cannot_finish_in_time`、`test_shutdown_with_nothing_running_does_nothing`、`test_shutdown_during_edge_synthesis_stops_it`、`test_shutdown_kills_a_stuck_whisper_child`、路由 `test_startup_recovers_interrupted_jobs_and_shutdown_stops_the_running_one`、`test_a_job_running_at_shutdown_is_cancelled_and_its_child_stopped`。
+- 啟動時復原：`recover()` 改為公開，由 `on_startup` 在背景執行緒執行一次；`status`、`read_log`、`start` 不再延遲復原。孤兒清理 `stop_orphan_training` 改為 SIGTERM、等寬限期、SIGKILL、再有界等待群組消失；比對字串加入 Whisper 工作程式。測試：`test_recovery_runs_at_startup_not_on_the_first_request`、`test_an_interrupted_job_that_was_cancelling_is_also_recovered`、`test_an_orphan_that_exits_on_sigterm_is_not_killed`、`test_an_orphan_that_ignores_sigterm_is_killed_after_the_grace_period`、`test_the_orphan_cleanup_waits_for_the_group_to_be_gone_but_not_for_ever`、`test_a_whisper_worker_left_behind_is_stopped_too`、`test_a_reused_pid_of_an_unrelated_process_is_left_alone`；既有三個重啟測試改為先呼叫 `recover()`。
+- 取消競態：`cancel()` 在 `job.lock` 內才判斷是否仍進行中，剛結束的工作不會被蓋成 `cancelling`，「已有工作進行中」也不會卡住。測試：`test_cancel_does_not_overwrite_a_job_that_finished_meanwhile`。
+- Whisper 子程序：`SubprocessTranscriber` 加啟動逾時（300 秒）與每句逾時（120 秒，`TrainingSettings.whisper_utterance_timeout_seconds`）、監看取消事件並立即 `kill()`（`TranscriberCancelled`）；子程序經 `_tracked_spawn` 追蹤，pid 寫進工作狀態（`Job.process`，`pid` 為衍生屬性），訓練階段結束與逾時都會清除；`_quality` 把取消造成的錯誤轉成取消，其他轉成 `JobFailed`。測試（`test_training_asr.py`）：`test_an_utterance_that_gets_no_answer_times_out_and_the_child_is_killed`、`test_after_a_timeout_the_transcriber_does_not_use_the_dead_child_again`、`test_the_timeout_counts_per_utterance_not_for_the_whole_run`、`test_a_child_that_never_gets_ready_times_out`、`test_cancel_kills_the_child_without_waiting_for_the_utterance`、`test_a_cancel_before_the_first_utterance_sends_nothing`；（`test_training_jobs.py`）`test_the_whisper_child_pid_is_saved_in_the_job_state_and_cleared_afterwards`、`test_cancel_kills_a_stuck_whisper_child_at_once`、`test_a_whisper_child_that_stops_answering_fails_the_job_with_the_reason`。
+- 自動逐字稿進行中拒絕開始訓練：新增前置檢查 `transcription`（排在 `other_job` 之後，附原因），`TranscriptionJobs.running()`，`build_manager(app)` 在被詢問時才去找語料路由的 `TranscriptionJobs`（與註冊順序無關）；前端三份 locale 補 `checks.transcription`。測試：`test_an_automatic_transcription_in_progress_blocks_a_start_with_a_reason`、`test_without_a_transcription_the_check_passes_and_follows_the_other_job_check`、`test_running_is_true_only_while_a_job_works`、`test_the_live_manager_refuses_a_start_while_the_corpus_transcription_runs`、`test_the_live_manager_without_corpus_routes_has_no_transcription_to_wait_for`。
+- `start()` 不再在 `self._lock` 內跑 nvidia-smi：慢檢查在鎖外，鎖內只重做便宜的互斥檢查（其他工作、逐字稿）並登記工作，兩個同時開始只會有一個成功。測試：`test_start_does_not_hold_the_manager_lock_while_the_gpu_is_probed`、`test_two_starts_at_the_same_time_run_one_job`。
+- 附帶：`tests/conftest.py` 加自動套用的 fixture，把 `corpus.TRAINING_ROOT` 指到暫存目錄，避免測試啟動的伺服器在開機時復原（甚至終止）場域真實的訓練工作。
+
+**B. 數字的縱深防禦**：`edge_teacher.synthesize_corpus` 在任何 Edge 請求之前拒絕含未展開數字的清單（409，列出每一句與片段）；`sentences.select_preset` 每次選取都檢查內建句庫，發現未展開數字就報錯。測試：`test_a_list_with_unresolved_digits_is_refused_before_any_edge_request`、`test_every_unresolved_fragment_is_listed_in_the_refusal`、`test_a_preset_whose_sentence_cannot_be_expanded_is_refused_at_runtime`、`test_the_real_presets_expand_every_digit`；原本預期「合成但待校對」的兩個測試改為新行為。
+
+**C. 逐字稿比對**：`verify_with_asr` 同時比對數字展開後的文字與原文，取較高分（排除時回報展開後的文字）。測試：`test_a_proofread_digit_line_is_compared_with_the_digits_read_out`、`test_the_raw_text_still_counts_when_whisper_writes_digits`、`test_a_digit_line_that_really_differs_is_still_excluded_and_reports_the_spoken_text`（「2026年11月24日」對「二零二六年十一月二十四日」）。
+
+**D. Edge 音檔**：`GET /api/tts/corpora/{slug}/lines/{id}/audio` 對 `edge-test-teacher` 語料回 403（繁體中文訊息），上傳語料不變；`VtDone.vue` 的試聽播放器加 `controlsList="nodownload"`，保留 `autoplay`。測試：`test_edge_teacher_audio_is_neither_played_back_nor_taken_out`、`test_an_unknown_corpus_or_line_is_still_404_for_the_audio_route`；網頁 `完成畫面：三個試聽按鈕…`（補斷言）。
+
+**E. 條文確認**：`POST .../acknowledgement` 除了完全一致的 `shown_text`，還必須 `confirmed: true`（缺少、非布林 `true` 一律 400，什麼都不寫）。`api.recordAcknowledgement(slug, shownText, confirmed)` 只在明確傳入 `true` 時送 `true`；`store.confirmEdge` 在核取方塊通過檢查後送 `state.edge.checked`（`VtEdgeConfirm.vue` 本身經 store 送出，沒有另外改動）。測試：`test_the_exact_text_alone_is_not_a_confirmation`、`test_a_body_without_the_confirmed_flag_records_nothing`（既有確認測試改為送 `confirmed`）；網頁 `條文確認只有明確傳入 true 才送 confirmed: true，其他一律送 false`，並補 `建立語料與記錄 Edge 條文確認…`、`Edge 確認：條文來自伺服器…`的斷言。
+
+**F. 事件迴圈**：`list_corpora`、`get_corpus`、`edit_line`、`confirm_lines`、`upload_line` 的 `_summary`／`_detail`／`_line_payload` 與 `import_transcripts` 的解析（`_parse_transcript_files`）都進 `asyncio.to_thread`。測試：`test_review_payloads_are_built_off_the_event_loop`、`test_transcript_files_are_parsed_off_the_event_loop`。`endpoint` 裝飾器補上型別標註（重構後 pyright 才不會推論失敗）。
+
+**G. 小項**：`scripts/setup-matcha-train.sh` 的註解改為英文；診斷證據的四個 `.py` 補 Nova Avatar SPDX 檔頭；`_corpus_checks` 用 `REVIEW_CONFIRMED` 常數。
+
+**未處理（已寫進規格的 Follow-ups）**：重複的 Whisper 模型清單與預設值、兩個 `Transcriber` 型別、重複的 8.0／`small` 預設、前後端重複的 `strictest`、重複的 `source == SOURCE_EDGE_TEST_TEACHER` 分支、分層匯入問題、`VtJob.vue` 的鍵比對與後端 `STAGE_LABELS` 繞過 i18n、`openCorpus` 重開草稿時遺失 Edge 聲音／份量／自訂清單。
+
+**驗證**：基準（`matcha-training` tip，Python 3.11 的 CI venv）2 failed（PDF OCR 與 role coordinator，既有）、2308 passed、3 skipped；網頁（Node 22）357 pass、0 fail、0 skip。本分支 lock check、ruff、pyright（0 錯誤）、`check-integration.py` 通過；pytest 2 failed（同兩項）、2357 passed（新增 49）、3 skipped；網頁 lint 通過、358 pass（新增 1，其餘為修改既有測試）、0 fail、0 skip、`npm run build` 通過。新測試 0 失敗 0 跳過。
+
+**工單 10 實機驗收補充**：真實 `nvidia-smi` 與真 faster-whisper 子程序的逾時／取消、真的關閉伺服器時 GPU 顯存是否回到訓練前、真的重啟後孤兒行程（含 Whisper）的 SIGTERM 到 SIGKILL 清理，都只用假程序驗證過。
