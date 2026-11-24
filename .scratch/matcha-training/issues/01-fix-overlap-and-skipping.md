@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 修正跳音：Matcha 片段預取
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)第 1 點與「疊音與跳音診斷」。診斷結論：跳音最可能來自 Matcha 沒有預取，疊音則是模型權重本身的問題（改由 11 評量、重訓後驗證，main 沒有程式修法）。
 
