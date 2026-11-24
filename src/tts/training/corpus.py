@@ -121,6 +121,12 @@ class Counts:
 
 
 @dataclass(frozen=True)
+class BulkConfirm:
+    confirmed: int
+    without_text: int
+
+
+@dataclass(frozen=True)
 class Trainability:
     trainable: bool
     reasons: tuple[str, ...]
@@ -273,7 +279,7 @@ class CorpusStore:
             raise CorpusError("音檔是空的")
         if len(audio) > MAX_AUDIO_BYTES:
             raise CorpusError("音檔太大", status=413)
-        text = _clean_text(text)
+        text = clean_text(text)
         with _LOCK:
             corpus = self.get(slug)
             if len(corpus.lines) >= MAX_LINES:
@@ -290,11 +296,18 @@ class CorpusStore:
                 raise
             return line
 
-    def set_text(self, slug: str, line_id: str, text: str) -> Line:
-        """Replace a line's transcript; a confirmed line goes back to pending."""
-        text = _clean_text(text)
+    def set_text(self, slug: str, line_id: str, text: str, *, only_if_empty: bool = False) -> Line:
+        """Replace a line's transcript; a confirmed line goes back to pending.
+
+        With ``only_if_empty`` a line that already has a transcript is returned
+        unchanged, so an automatic transcript never overwrites one that the
+        administrator typed in the meantime.
+        """
+        text = clean_text(text)
 
         def change(line: Line) -> Line:
+            if only_if_empty and line.text:
+                return line
             review = REVIEW_PENDING if line.review == REVIEW_CONFIRMED else line.review
             return Line(line.id, line.ext, line.original_name, text, review)
 
@@ -310,6 +323,35 @@ class CorpusStore:
             return Line(line.id, line.ext, line.original_name, line.text, review)
 
         return self._change_line(slug, line_id, change)
+
+    def confirm_pending(self, slug: str, line_ids: list[str] | None = None) -> BulkConfirm:
+        """Confirm the pending lines (or just ``line_ids``) in one write.
+
+        A pending line without a transcript is left pending and counted in
+        ``without_text``; confirmed and excluded lines are not touched.
+        """
+        with _LOCK:
+            corpus = self.get(slug)
+            chosen = None
+            if line_ids is not None:
+                for line_id in line_ids:
+                    if not isinstance(line_id, str) or not LINE_ID.fullmatch(line_id):
+                        raise CorpusError("找不到這一句", status=404)
+                    _find(corpus, line_id)
+                chosen = set(line_ids)
+            confirmed = without_text = 0
+            lines = []
+            for line in corpus.lines:
+                if line.review == REVIEW_PENDING and (chosen is None or line.id in chosen):
+                    if line.text:
+                        line = Line(line.id, line.ext, line.original_name, line.text, REVIEW_CONFIRMED)
+                        confirmed += 1
+                    else:
+                        without_text += 1
+                lines.append(line)
+            if confirmed:
+                self._save(Corpus(corpus.slug, corpus.source, corpus.declared_at, tuple(lines)))
+            return BulkConfirm(confirmed, without_text)
 
     def audio_path(self, slug: str, line_id: str) -> Path:
         """The server-built path of a line's audio file."""
@@ -408,7 +450,7 @@ def _check_extension(extension: Any) -> str:
     return extension
 
 
-def _clean_text(text: Any) -> str:
+def clean_text(text: Any) -> str:
     if not isinstance(text, str):
         raise CorpusError("逐字稿必須是文字")
     if any(unicodedata.category(ch) == "Cc" and not ch.isspace() for ch in text):

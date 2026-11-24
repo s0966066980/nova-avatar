@@ -9,6 +9,7 @@ from .audio import humanaudio, asr
 from .video import set_audiotype, record, download_record
 from .health import health_check
 from .voice_tests import list_voice_tests, run_voice_test, clear_voice_tests
+from .tts_corpus import register as register_tts_corpus_routes
 from .ragflow import (
     get_ragflow_settings,
     put_ragflow_settings,
@@ -71,6 +72,7 @@ __all__ = [
     'list_voice_tests',
     'run_voice_test',
     'clear_voice_tests',
+    'register_tts_corpus_routes',
     'get_ragflow_settings',
     'put_ragflow_settings',
     'list_ragflow_datasets',

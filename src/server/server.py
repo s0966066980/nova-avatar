@@ -124,6 +124,7 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
             await initialize_roles(state)
     app.on_startup.append(prepare_roles)
     register_profile_routes(app)
+    routes.register_tts_corpus_routes(app)
     from src.server.routes.tts_training import register as register_tts_training
     register_tts_training(app)
 

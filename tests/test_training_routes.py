@@ -20,7 +20,7 @@ from tests.access_helpers import LAN_ADDRESS, access_client, built_frontend, sam
 from tests.test_training_jobs import ENOUGH_VRAM_MIB, rig
 from src.tts.training.gpu_probe import VramReading
 
-BASE = "/api/tts-training"
+BASE = "/api/tts/training"
 ROUTES = [("GET", BASE), ("POST", BASE + "/start"), ("POST", BASE + "/cancel"), ("GET", BASE + "/log")]
 
 

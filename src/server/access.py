@@ -162,6 +162,18 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     ("DELETE", "/api/speech/voices/{voice_id}"): ADMIN,
     ("GET", "/api/speech/voices/{voice_id}/audio"): ADMIN,
     ("GET", "/api/speech/breezyvoice/status"): ADMIN,
+    # Console: training corpora (src/server/routes/tts_corpus.py)
+    ("GET", "/api/tts/corpora"): ADMIN,
+    ("POST", "/api/tts/corpora"): ADMIN,
+    ("GET", "/api/tts/corpora/{slug}"): ADMIN,
+    ("POST", "/api/tts/corpora/{slug}/lines"): ADMIN,
+    ("PUT", "/api/tts/corpora/{slug}/lines/{line_id}"): ADMIN,
+    ("GET", "/api/tts/corpora/{slug}/lines/{line_id}/audio"): ADMIN,
+    ("POST", "/api/tts/corpora/{slug}/transcripts"): ADMIN,
+    ("POST", "/api/tts/corpora/{slug}/confirm"): ADMIN,
+    ("POST", "/api/tts/corpora/{slug}/transcription"): ADMIN,
+    ("GET", "/api/tts/corpora/{slug}/transcription"): ADMIN,
+    ("DELETE", "/api/tts/corpora/{slug}/transcription"): ADMIN,
     ("POST", "/api/speech/preview"): ADMIN,
     ("GET", "/api/llm/models"): ADMIN,
     ("POST", "/api/llm/model"): ADMIN,
@@ -198,10 +210,10 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     ("POST", "/api/voice-tests/run"): ADMIN,
     ("DELETE", "/api/voice-tests"): ADMIN,
     # Console: Matcha voice-model training job
-    ("GET", "/api/tts-training"): ADMIN,
-    ("POST", "/api/tts-training/start"): ADMIN,
-    ("POST", "/api/tts-training/cancel"): ADMIN,
-    ("GET", "/api/tts-training/log"): ADMIN,
+    ("GET", "/api/tts/training"): ADMIN,
+    ("POST", "/api/tts/training/start"): ADMIN,
+    ("POST", "/api/tts/training/cancel"): ADMIN,
+    ("GET", "/api/tts/training/log"): ADMIN,
 }
 
 

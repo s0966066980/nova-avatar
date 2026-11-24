@@ -605,6 +605,47 @@ def test_training_lines_carry_the_expanded_text(store):
     assert (line_out.id, text) == ("000001", "共十五人")
 
 
+# ------------------------------------------------------------------ bulk confirm and guarded text
+
+
+def test_confirm_pending_confirms_lines_with_text_in_one_write(store):
+    store.create("bulk", source="self-recorded")
+    with_text = [_add(store, "bulk", text=f"句{i}").id for i in range(3)]
+    without_text = _add(store, "bulk", text="").id
+    excluded = _add(store, "bulk", text="排除").id
+    store.set_review("bulk", excluded, REVIEW_EXCLUDED)
+
+    result = store.confirm_pending("bulk")
+
+    assert (result.confirmed, result.without_text) == (3, 1)
+    states = {line.id: line.review for line in store.get("bulk").lines}
+    assert [states[i] for i in with_text] == [REVIEW_CONFIRMED] * 3
+    assert states[without_text] == REVIEW_PENDING and states[excluded] == REVIEW_EXCLUDED
+
+
+def test_confirm_pending_can_be_limited_to_chosen_lines(store):
+    store.create("bulk", source="self-recorded")
+    first, second = _add(store, "bulk").id, _add(store, "bulk").id
+
+    result = store.confirm_pending("bulk", [second])
+
+    assert result.confirmed == 1
+    assert [line.review for line in store.get("bulk").lines] == [REVIEW_PENDING, REVIEW_CONFIRMED]
+    with pytest.raises(CorpusError) as excinfo:
+        store.confirm_pending("bulk", ["999999"])
+    assert excinfo.value.status == 404
+    assert first != second
+
+
+def test_set_text_only_if_empty_never_overwrites_a_typed_transcript(store):
+    store.create("guarded", source="self-recorded")
+    empty = _add(store, "guarded", text="").id
+    typed = _add(store, "guarded", text="自己打的").id
+
+    assert store.set_text("guarded", empty, "自動產生", only_if_empty=True).text == "自動產生"
+    assert store.set_text("guarded", typed, "自動產生", only_if_empty=True).text == "自己打的"
+
+
 # ------------------------------------------------------------------ server-managed sidecar files
 
 
