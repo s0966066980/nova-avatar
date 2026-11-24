@@ -112,7 +112,6 @@ target-version = "py310"
 include = ["src/**/*.py", "scripts/**/*.py", "tests/**/*.py"]
 force-exclude = true
 extend-exclude = [
-    "src/avatars/wav2lip",
     "src/avatars/musetalk/utils",
     "src/avatars/musetalk/whisper",
 ]

@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
 | --- | --- |
 | 驗證環境 | Python 3.11、lock frozen、PyTorch 2.5.0+cu124、CUDA 12.4 與實際 NVIDIA GPU；Node 22 |
 | 出廠預設 | MuseTalk、Whisper small、Silero、Edge TTS、llama.cpp／Gemma 4 E2B |
-| 現行可選能力 | Qwen3.5-9B、Fun-ASR-Nano、BreezyVoice、Matcha 聲線模型、Wav2Lip（Research / Non-commercial）、Ollama／已配置的 OpenAI-compatible 端點 |
+| 現行可選能力 | Qwen3.5-9B、Fun-ASR-Nano、BreezyVoice、Matcha 聲線模型、Ollama／已配置的 OpenAI-compatible 端點 |
 | 對話能力 | 目前的回覆規則、看板、串流、輪次隔離、角色交接、控制台與舞台隔離 |
 | 安全與維護 | 路由權限、來源與限制標示、資產回收、舊設定拒絕／安全遷移、依賴契約 |
 
@@ -95,7 +95,7 @@ npm exec --yes --package=node@22 -- \
 | 需要主機 binary 的 help 檢查 | 改列 live 前置，不混入自足主要回歸 | 真 binary 檢查保留，不用 mock 冒充可執行性 |
 
 舊模型名稱若只是 catalog／程序所有權的假資料，改為中性 fixture 名稱並保留
-行為驗證。舊設定遷移／拒絕、適用來源 notices、Wav2Lip 非商用標示，以及現行
+行為驗證。舊設定遷移／拒絕、適用來源 notices、Wav2Lip 非商用限制紀錄，以及現行
 CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 
 歷史測試結果原樣保留，包含舊模型 skip；它們是當時證據，不是本版允許清單。
@@ -126,4 +126,6 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 清理時發現、沒有呼叫者或不在本版範圍的正式程式碼，已依
 [issue](../.scratch/test-suite-cleanup/issues/01-dead-code-left-by-test-cleanup.md) 的決定連同測試刪除：
 舊路由器、舊看板標記、LFM 2.5 路徑、reply_streaming 未接線元件，以及 UltraLight、ER-NeRF、
-TalkingGaussian 數位人引擎。主要回歸因此再減為 2220 個案例。
+TalkingGaussian 數位人引擎。之後使用者決定不再使用 Wav2Lip，也一併移除（程式碼、權重、控制台選項、
+設定檔與測試）；「非商用」限制紀錄保留在 `THIRD_PARTY_NOTICES.md` 與 `third_party/licenses/`。
+主要回歸因此再變為 2221 個案例（移除測試的同時新增了舊設定仍可載入的保護）。

@@ -21,7 +21,6 @@ from src.avatars.catalog import (
     is_safe_avatar_id,
     list_avatar_characters,
     list_engines,
-    resolve_wav2lip_weights,
 )
 from src.config.overrides import load_runtime_overrides, persist_runtime_overrides
 from src.llm.base import with_response_length_instruction
@@ -47,17 +46,18 @@ from src.config.schema import Config
 class AvatarCatalogTests(unittest.TestCase):
     def test_safe_avatar_id(self):
         self.assertTrue(is_safe_avatar_id("musetalk_avatar1"))
-        self.assertTrue(is_safe_avatar_id("wav2lip-avatar.2"))
+        self.assertTrue(is_safe_avatar_id("musetalk-avatar.2"))
         self.assertFalse(is_safe_avatar_id("../etc/passwd"))
         self.assertFalse(is_safe_avatar_id("a/b"))
         self.assertFalse(is_safe_avatar_id(""))
 
-    def test_detect_musetalk_and_wav2lip(self):
+    def test_detect_musetalk_and_unknown(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             muse = root / "muse_role"
             (muse / "mask").mkdir(parents=True)
             (muse / "latents.pt").write_bytes(b"x")
+            # An avatar made for the removed Wav2Lip engine is not recognised.
             wav = root / "wav_role"
             (wav / "face_imgs").mkdir(parents=True)
             (wav / "coords.pkl").write_bytes(b"x")
@@ -66,7 +66,7 @@ class AvatarCatalogTests(unittest.TestCase):
             (unknown / "readme.txt").write_text("nope")
 
             self.assertEqual(detect_avatar_type(muse), "musetalk")
-            self.assertEqual(detect_avatar_type(wav), "wav2lip")
+            self.assertIsNone(detect_avatar_type(wav))
             self.assertIsNone(detect_avatar_type(unknown))
 
     def test_preview_prefers_numbered_full_imgs(self):
@@ -109,9 +109,7 @@ class AvatarCatalogTests(unittest.TestCase):
             self.assertTrue(characters[0]["has_preview"])
             self.assertTrue(engines["musetalk"]["available"])
             self.assertTrue(engines["musetalk"]["can_import"])
-            self.assertFalse(engines["wav2lip"]["available"])
-            self.assertTrue(engines["wav2lip"]["can_import"])
-            self.assertEqual(set(engines), {"musetalk", "wav2lip"})
+            self.assertEqual(set(engines), {"musetalk"})
             self.assertTrue(ok, reason)
             self.assertFalse(missing_ok)
             self.assertIn("找不到角色", missing_reason)
@@ -136,25 +134,6 @@ class OllamaHelperTests(unittest.TestCase):
     def test_skip_embedding_models(self):
         self.assertTrue(_is_embedding_model("nomic-embed-text:latest", "nomic-bert"))
         self.assertFalse(_is_embedding_model("qwen3.5:4b", "qwen35"))
-
-
-class Wav2LipWeightsTests(unittest.TestCase):
-    def test_prefers_existing_256_checkpoint(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            models = Path(tmp)
-            (models / "wav2lip256.pth").write_bytes(b"w")
-            with patch("src.avatars.catalog.get_models_dir", return_value=models):
-                path = resolve_wav2lip_weights()
-            self.assertEqual(path.name, "wav2lip256.pth")
-
-    def test_prefers_standard_name_when_both_exist(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            models = Path(tmp)
-            (models / "wav2lip.pth").write_bytes(b"a")
-            (models / "wav2lip256.pth").write_bytes(b"b")
-            with patch("src.avatars.catalog.get_models_dir", return_value=models):
-                path = resolve_wav2lip_weights()
-            self.assertEqual(path.name, "wav2lip.pth")
 
 
 class OverridePersistTests(unittest.TestCase):
@@ -691,8 +670,8 @@ class AvatarNameTests(unittest.TestCase):
             "musetalk_jonghyun_2",
         )
         self.assertEqual(
-            suggest_avatar_id("wav2lip", "silent.mp4", set()),
-            "wav2lip_silent",
+            suggest_avatar_id("musetalk", "silent.mp4", set()),
+            "musetalk_silent",
         )
 
 
@@ -725,11 +704,10 @@ class LlamaCppCatalogTests(unittest.TestCase):
         config = Config()
         characters = [
             {"id": "musetalk_avatar1", "type": "musetalk"},
-            {"id": "wav2lip256_avatar1", "type": "wav2lip"},
+            {"id": "musetalk_avatar2", "type": "musetalk"},
         ]
         engines = [
             {"id": "musetalk", "available": True, "message": ""},
-            {"id": "wav2lip", "available": True, "message": ""},
         ]
 
         def boom(_config):
@@ -744,9 +722,12 @@ class LlamaCppCatalogTests(unittest.TestCase):
         ), patch(
             "src.avatars.factory.prepare_avatar_model",
             side_effect=boom,
+        ), patch(
+            "src.avatars.factory.load_avatar_data",
+            side_effect=boom,
         ):
             with self.assertRaises(SettingsError):
-                apply_avatar(config, "wav2lip", "wav2lip256_avatar1", session_count=0)
+                apply_avatar(config, "musetalk", "musetalk_avatar2", session_count=0)
 
         self.assertEqual(config.model.type, "musetalk")
         self.assertEqual(config.model.avatar_id, "musetalk_avatar1")

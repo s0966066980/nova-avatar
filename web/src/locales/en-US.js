@@ -217,8 +217,6 @@ export default {
       upperBoundaryDesc: 'Only the region below this ratio is replaced, so the eyes stay sharp. Applies at create time.',
       maskBlur: 'Mask feathering',
       maskBlurDesc: 'More feathering looks smoother but softer. Lower it for a crisper mouth. Applies at create time.',
-      padBottom: 'Chin padding',
-      padBottomDesc: 'Extra pixels under the Wav2Lip face box. Applies at create time.',
       rebuildHint: 'Box shift, chin padding and the mask are written when you create a character. Rebuild from video to apply them to an existing one.'
     },
 
@@ -232,7 +230,6 @@ export default {
       roleNameDesc: 'Leave empty to name it from the file name',
       start: 'Create character',
       working: 'Creating character...',
-      unsupported: 'This engine cannot be created from a video. Choose MuseTalk, or Wav2Lip for research/non-commercial use only.',
       needDisconnect: 'Creating a character uses the GPU. Disconnect the current session first.'
     },
     

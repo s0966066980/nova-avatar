@@ -99,7 +99,7 @@ const responses = {
   '/api/settings': { code: 0, data: {
     llm: { model: 'local-model', endpoint: 'local', provider: 'llamacpp', system_prompt: '', reply_rules: { revision: 1, activation: '', speech: '', board: '' } },
     stage, avatar: { type: 'musetalk', avatar_id: 'avatar_1' }, characters,
-    engines: [{ id: 'musetalk' }, { id: 'wav2lip' }], ready: true, model_ready: true,
+    engines: [{ id: 'musetalk' }], ready: true, model_ready: true,
     vad: { supported: true, enabled: true, threshold: 0.5, min_silence_ms: 500, asr_mode: 'server' }
   } },
   '/api/llm/rules': { code: 0, data: { rules: { activation: '', speech: '', board: '' }, defaults: { activation: 'a', speech: 's', board: 'b' }, limits: {} } },

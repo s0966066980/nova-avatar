@@ -118,7 +118,7 @@ def test_render_stops_workers_when_its_loop_fails(monkeypatch, module_name, cls_
     def inference(infer_quit, *_args):
         infer_quit.wait()
         # Joining inference before telling the frame processor to stop was
-        # the Wav2Lip deadlock.
+        # a deadlock in the inherited engines.
         seen["process_quit_set"] = process_quit[0].wait(1) if process_quit else False
 
     def process_frames(quit_event, *_args):

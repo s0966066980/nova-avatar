@@ -43,7 +43,6 @@ show_usage() {
     echo ""
     echo -e "${YELLOW}支援的 Avatar:${NC}"
     echo -e "${YELLOW}  musetalk         # 2D Avatar（預設，MIT code）${NC}"
-    echo -e "${YELLOW}  wav2lip          # 2D Avatar（僅限研究／學術／個人用途，不可商用）${NC}"
     echo ""
     echo -e "${YELLOW}示例:${NC}"
     echo -e "${YELLOW}  $0                # 安裝 musetalk 環境${NC}"
@@ -54,7 +53,7 @@ show_usage() {
 # 檢查 Avatar 引數
 check_avatar() {
     case "$DEFAULT_AVATAR" in
-        wav2lip|musetalk)
+        musetalk)
             echo -e "${GREEN}✓${NC} 選擇數字人: $DEFAULT_AVATAR"
             ;;
         *)

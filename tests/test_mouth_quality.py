@@ -76,7 +76,17 @@ class QualityNormalizeTests(unittest.TestCase):
         self.assertTrue(quality["musetalk"]["mouth_continuity_idle_alignment"])
         self.assertTrue(quality["musetalk"]["settling_enabled"])
         self.assertEqual(quality["musetalk"]["settling_frames"], 12)
-        self.assertEqual(quality["wav2lip"]["pad_bottom"], 10)
+
+    def test_fields_of_the_removed_wav2lip_engine_are_ignored(self):
+        quality = normalize_quality({"pad_bottom": 14, "wav2lip": {"pad_top": 3}})
+        self.assertEqual(set(quality), {"mouth_sharpen", "paste_interpolation", "musetalk"})
+
+    def test_a_saved_model_section_for_wav2lip_still_loads(self):
+        from src.config.loader import dict_to_config
+
+        config = dict_to_config({"model": {"type": "musetalk", "wav2lip": {"pad_bottom": 10}}})
+        self.assertEqual(config.model.type, "musetalk")
+        self.assertFalse(hasattr(config.model, "wav2lip"))
 
     def test_accepts_flat_or_nested_build_fields(self):
         nested = normalize_quality({"musetalk": {"bbox_shift": 7}})
@@ -114,7 +124,6 @@ class QualitySettingsTests(unittest.TestCase):
                     "paste_interpolation": "cubic",
                     "bbox_shift": -4,
                     "extra_margin": 16,
-                    "pad_bottom": 14,
                 },
             )
         persist.assert_called_once()
@@ -122,7 +131,6 @@ class QualitySettingsTests(unittest.TestCase):
         self.assertEqual(config.model.paste_interpolation, "cubic")
         self.assertEqual(config.model.musetalk.bbox_shift, -4)
         self.assertEqual(config.model.musetalk.extra_margin, 16)
-        self.assertEqual(config.model.wav2lip.pad_bottom, 14)
         self.assertEqual(result["mouth_sharpen"], 0.8)
 
     def test_apply_mouth_quality_rejects_invalid_values(self):

@@ -16,8 +16,7 @@ app:
     host: 127.0.0.1
 
 model:
-  # MuseTalk is the recommended Avatar integration path. Wav2Lip is excluded
-  # because its bundled upstream integration is Research / Non-commercial.
+  # MuseTalk is the Avatar integration path.
   type: musetalk
   avatar_id: musetalk_avatar1
   batch_size: 8

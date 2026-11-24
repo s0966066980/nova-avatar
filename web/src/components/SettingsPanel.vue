@@ -336,17 +336,6 @@
                 </div>
                 <span class="opt-detail">潛空間擴散模型，口型細緻自然，邊緣連續無抖動。</span>
               </div>
-              <div
-                class="option-card-btn"
-                :class="{ selected: selectedEngine === 'wav2lip' }"
-                @click="selectEngine('wav2lip')"
-              >
-                <div class="opt-header-line">
-                  <span class="opt-title">Wav2Lip (Research / Non-commercial)</span>
-                  <span class="opt-badge opt-badge-info">極速輕量</span>
-                </div>
-                <span class="opt-detail">傳統 GAN 架構，顯存消耗低，適合輕量邊緣設備。</span>
-              </div>
             </div>
 
             <div class="setting-form-row">
@@ -1272,7 +1261,7 @@ const settingsTabs = computed(() => [
   { id: 'conversation', icon: 'bi bi-chat-square-text', label: '對話記憶與語系' },
   { id: 'roles', icon: 'bi bi-people-fill', label: '數位人、AI 與知識設定' },
   { id: 'greeting', icon: 'bi bi-chat-heart', label: '閒置招呼' },
-  { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
+  { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: 'MuseTalk' },
   { id: 'voiceTraining', icon: 'bi bi-soundwave', label: t('settings.voiceTraining.tab') },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }

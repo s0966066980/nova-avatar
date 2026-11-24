@@ -18,8 +18,7 @@
     "llm_models": ["Qwen3.5-9B-UD-Q4_K_XL"],
     "llm_endpoints": ["llamacpp", "ollama", "openai"],
     "asr": ["whisper", "funasr"],
-    "tts": ["edgetts", "breezyvoice", "matcha"],
-    "avatar": ["wav2lip"]
+    "tts": ["edgetts", "breezyvoice", "matcha"]
   },
   "python_selection": "not live",
   "areas": ["governance", "runtime", "speech", "llm", "avatar", "ragflow", "conversation"],

@@ -19,8 +19,7 @@ applicable.
 | --- | --- | --- | --- |
 | `src/server/`, `src/config/`, `src/llm/`, `src/tts/`, `src/vad/`, `src/asr/`, `web/`, `scripts/` | Inherited and substantially modified Nova Avatar application code | Retain applicable Linly-Talker-Stream / LiveTalking attribution and an explicit modification notice. | Audit headers individually before changing them; do not bulk replace. |
 | `src/avatars/musetalk/` | MuseTalk-derived integration plus Nova Avatar orchestration | Retain Tencent Music Entertainment Group copyright and MIT attribution for derived code. Models and dependencies need their own review. | Local MuseTalk license copy is retained. Individual-file origin review remains open. |
-| `src/avatars/wav2lip/` | Wav2Lip-derived integration | Retain upstream restriction and label the integration **Research / Non-commercial**. | Excluded from `config/config_commercial.yaml`; no commercial distribution claim. |
-| `third_party/licenses/` | Third-party license notices | Keep without rebranding. | MuseTalk MIT and Wav2Lip non-commercial notices are present. |
+| `third_party/licenses/` | Third-party license notices | Keep without rebranding. | MuseTalk MIT notice and the Wav2Lip non-commercial restriction record (for the removed integration) are present. |
 | `src/scene/`, `src/ragflow/`, `integrations/ragflow/` | Nova Avatar-authored integration code | Nova Avatar Apache-2.0 SPDX header; RAGFlow itself is an external service, not bundled source. | Files carry the Nova Avatar header. |
 | `docs/`, `tests/` and new Nova Avatar-only files | Nova Avatar-authored unless a file identifies another source | Use the Nova Avatar Apache-2.0 SPDX header only after confirming no copied third-party source. | New audit, workflow, stack, and profile files use Nova Avatar attribution. |
 
@@ -28,9 +27,8 @@ applicable.
 
 - `NOTICE` retains Kedreamix, Linly-Talker-Stream, and LiveTalking attribution.
 - `THIRD_PARTY_NOTICES.md` records the MuseTalk MIT boundary and Wav2Lip's
-  non-commercial restriction.
-- Runtime catalog and settings label Wav2Lip as `Research / Non-commercial`.
-- `config/config_commercial.yaml` uses MuseTalk, not Wav2Lip. It is a
+  non-commercial restriction; the Wav2Lip integration itself was removed on 2026-11-24.
+- `config/config_commercial.yaml` uses MuseTalk. It is a
   deployment starting point, not an entitlement to distribute any artifact.
 
 ## Follow-up source work
@@ -75,4 +73,4 @@ The console stylesheet carries an explicit modification notice and points to
 the root LICENSE and NOTICE. The conversation and voice-test panels, behavioral
 regression tests, design notes and layout preview retain Nova Avatar Apache-2.0
 headers. No third-party implementation, model, weight or license was changed;
-the Wav2Lip Research / Non-commercial label is retained.
+the Wav2Lip Research / Non-commercial restriction record is retained.

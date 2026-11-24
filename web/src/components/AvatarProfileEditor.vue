@@ -10,7 +10,7 @@
       <div class="profile-grid">
         <label>顯示名稱<input v-model="profile.name" required maxlength="80"></label>
         <label>人物素材<select v-model="profile.avatar_id"><option v-for="a in avatars" :key="a.id" :value="a.id">{{ a.label || a.name || a.id }}</option><option v-if="!avatars.some(a => a.id === profile.avatar_id)" :value="profile.avatar_id">{{ profile.avatar_id }}</option></select></label>
-        <label>推理引擎<select v-model="profile.engine"><option value="musetalk">MuseTalk</option><option value="wav2lip">Wav2Lip · Research / Non-commercial</option><option v-if="!['musetalk','wav2lip'].includes(profile.engine)" :value="profile.engine">{{ profile.engine }}</option></select></label>
+        <label>推理引擎<select v-model="profile.engine"><option value="musetalk">MuseTalk</option><option v-if="profile.engine !== 'musetalk'" :value="profile.engine">{{ profile.engine }}</option></select></label>
         <label>助手自稱<input v-model="profile.assistant_profile.assistant_name" maxlength="200"></label>
       </div>
       <p>即時角色組合使用 MuseTalk。變更推理或語音引擎前，請先在對應設定頁載入引擎。</p>

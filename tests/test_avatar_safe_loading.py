@@ -23,10 +23,9 @@ from src.avatars.asset_io import (
     load_coords,
     save_coords,
 )
-from src.avatars.catalog import detect_avatar_type
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCANNED_ENGINES = ("musetalk", "wav2lip")
+SCANNED_ENGINES = ("musetalk",)
 TORCH_LOADERS = {"load_url", "load_state_dict_from_url"}
 
 
@@ -218,39 +217,6 @@ def test_musetalk_avatar_converts_legacy_coords(tmp_path, monkeypatch):
     assert len(latents) == 1
     assert (avatar / "coords.json").is_file()
     assert (avatar / "mask_coords.json").is_file()
-
-
-def test_wav2lip_build_writes_json_coords(tmp_path, monkeypatch):
-    import cv2
-
-    from src.avatars import builder
-    from src.avatars.mouth_quality import normalize_quality
-
-    class FakeDetector:
-        def __init__(self, *_args, **_kwargs):
-            pass
-
-        def get_detections_for_batch(self, frames):
-            return [(8, 8, 40, 40) for _ in frames]
-
-    monkeypatch.setattr("src.avatars.wav2lip.face_detection.FaceAlignment", FakeDetector)
-    full_imgs = tmp_path / "full_imgs"
-    full_imgs.mkdir()
-    for index in range(2):
-        cv2.imwrite(str(full_imgs / f"{index:08d}.png"), np.zeros((64, 64, 3), np.uint8))
-
-    builder._build_wav2lip(tmp_path, lambda *_: None, normalize_quality(None))
-
-    assert not (tmp_path / "coords.pkl").exists()
-    assert load_coords(tmp_path, "coords") == [[8, 50, 8, 40], [8, 50, 8, 40]]
-
-
-def test_catalog_recognizes_wav2lip_avatars_with_json_coords(tmp_path):
-    avatar = tmp_path / "host"
-    (avatar / "face_imgs").mkdir(parents=True)
-    save_coords(avatar / "coords.json", [[1, 2, 3, 4]])
-
-    assert detect_avatar_type(avatar) == "wav2lip"
 
 
 # ------------------------------------------------------------ static guard

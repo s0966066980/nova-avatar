@@ -19,7 +19,7 @@ app:
 
 model:
   # 啟動時若該角色素材齊全會預載；否則服務仍會啟動，到設定裡再選
-  type: musetalk  # musetalk | wav2lip（僅限研究非商用）
+  type: musetalk
   avatar_id: musetalk_avatar1
   # Low-latency conversation: 8 frames = 320ms at 25fps (was 640ms at 16).
   batch_size: 8
@@ -54,11 +54,6 @@ model:
     micro_crossfade_frames: 2
     micro_crossfade_fullframe_max_diff: 18.0
     gap_grace_frames: 1
-  wav2lip:
-    pad_top: 0
-    pad_bottom: 10
-    pad_left: 0
-    pad_right: 0
 
 # TTS：第一次建立數位人設定檔時成為主數位人的初始聲音；之後預設聲音由主數位人設定檔決定
 tts:

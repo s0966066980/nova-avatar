@@ -66,12 +66,6 @@ const runtime = reactive({
       upper_boundary_ratio: 0.5,
       expand: 1.5,
       mask_blur_ratio: 0.05
-    },
-    wav2lip: {
-      pad_top: 0,
-      pad_bottom: 10,
-      pad_left: 0,
-      pad_right: 0
     }
   },
   engines: [],
@@ -447,12 +441,6 @@ const QUALITY_DEFAULTS = {
     upper_boundary_ratio: 0.5,
     expand: 1.5,
     mask_blur_ratio: 0.05
-  },
-  wav2lip: {
-    pad_top: 0,
-    pad_bottom: 10,
-    pad_left: 0,
-    pad_right: 0
   }
 }
 
@@ -461,8 +449,7 @@ function mergeQuality(raw) {
   return {
     mouth_sharpen: Number(value.mouth_sharpen ?? QUALITY_DEFAULTS.mouth_sharpen),
     paste_interpolation: value.paste_interpolation || QUALITY_DEFAULTS.paste_interpolation,
-    musetalk: { ...QUALITY_DEFAULTS.musetalk, ...(value.musetalk || {}) },
-    wav2lip: { ...QUALITY_DEFAULTS.wav2lip, ...(value.wav2lip || {}) }
+    musetalk: { ...QUALITY_DEFAULTS.musetalk, ...(value.musetalk || {}) }
   }
 }
 
@@ -496,7 +483,6 @@ function assignQualityDraft(value) {
   qualityDraft.mouth_sharpen = merged.mouth_sharpen
   qualityDraft.paste_interpolation = merged.paste_interpolation
   Object.assign(qualityDraft.musetalk, merged.musetalk)
-  Object.assign(qualityDraft.wav2lip, merged.wav2lip)
 }
 
 const qualityDirty = computed(() => (

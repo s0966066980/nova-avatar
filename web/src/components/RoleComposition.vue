@@ -288,7 +288,7 @@ const holder = computed(() => library.value ? weatherHolder(library.value) : '')
 // Server catalog labels carry each engine's usage restriction, as in the profile editor.
 const ttsLabel = p => speech.tts.engines.find(engine => engine.id === p?.tts?.type)?.label || p?.tts?.type || '—'
 const llmLabel = p => p ? `${p.llm?.endpoint || '未選端點'} · ${p.llm?.model || '未選模型'}` : '—'
-const engineLabel = p => ({ musetalk: 'MuseTalk', wav2lip: 'Wav2Lip · Research / Non-commercial' })[p?.engine] || p?.engine || '—'
+const engineLabel = p => ({ musetalk: 'MuseTalk' })[p?.engine] || p?.engine || '—'
 // A Matcha voice is a voice model: show its name and usage label, as the profile editor does.
 function voiceName(tts) {
   if (!tts?.ref_file) return '未選聲音'

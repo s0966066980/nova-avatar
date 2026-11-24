@@ -49,15 +49,18 @@ verify those terms before redistribution.
 
 ## Wav2Lip
 
-- Role: optional lip-sync avatar engine
+- Role: formerly an optional lip-sync avatar engine; **removed on 2026-11-24**
+  and no longer bundled
 - Usage classification: **Research / Non-commercial**
 - Permitted upstream uses: research, academic, and personal use
 - Commercial use: **not permitted** for the upstream open-source code or models
 - Source: <https://github.com/Rudrabha/Wav2Lip>
 - Local restriction notice: [`third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt`](third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt)
 
-The `src/avatars/wav2lip/` integration and its upstream open-source weights
-must not be included in or used for a commercial Nova Avatar distribution.
+Earlier revisions in the Git history contain the `src/avatars/wav2lip/`
+integration; it and the upstream open-source weights must not be included in or
+used for a commercial Nova Avatar distribution. The restriction notice is kept
+for those revisions and for any copy that still carries them.
 
 ## Whisper
 

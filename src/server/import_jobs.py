@@ -80,7 +80,7 @@ def validate_import_request(
     """Check an import before its upload is written; return (engine, avatar_id)."""
     engine = (engine or "").strip().lower()
     if engine not in IMPORTABLE_ENGINES:
-        raise SettingsError("請先選擇 MuseTalk 或 Wav2Lip，這兩個引擎才能從影片製作角色")
+        raise SettingsError("目前只有 MuseTalk 能從影片製作角色")
     if session_count > 0:
         raise SettingsError(
             "製作角色會佔用 GPU，請先斷開當前連線",

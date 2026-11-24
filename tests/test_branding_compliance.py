@@ -72,15 +72,15 @@ class BrandingComplianceTests(unittest.TestCase):
         self.assertTrue((ROOT / "README.md").read_text(encoding="utf-8").startswith("# Nova Avatar\n"))
         self.assertIn("<title>Nova Avatar</title>", (ROOT / "web/index.html").read_text(encoding="utf-8"))
 
-    def test_wav2lip_is_labeled_non_commercial_in_runtime_and_ui(self):
-        catalog = (ROOT / "src/avatars/catalog.py").read_text(encoding="utf-8")
-        settings = (ROOT / "web/src/components/SettingsPanel.vue").read_text(encoding="utf-8")
-        wav2lip_package = (ROOT / "src/avatars/wav2lip/pyproject.toml").read_text(encoding="utf-8")
+    def test_wav2lip_is_gone_but_its_restriction_record_is_kept(self):
+        """The engine was removed 2026-11-24; earlier revisions still carry the restriction."""
+        self.assertFalse((ROOT / "src/avatars/wav2lip").exists())
+        notice = (ROOT / "third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt").read_text(encoding="utf-8")
+        self.assertIn("Non-commercial", notice)
+        from src.avatars.catalog import ENGINE_META, IMPORTABLE_ENGINES
 
-        for text in (catalog, settings):
-            self.assertIn("Wav2Lip (Research / Non-commercial)", text)
-        self.assertIn("nova-avatar-wav2lip-research", wav2lip_package)
-        self.assertNotIn('license = "Apache-2.0"', wav2lip_package)
+        self.assertEqual(set(ENGINE_META), {"musetalk"})
+        self.assertEqual(IMPORTABLE_ENGINES, ("musetalk",))
 
     def test_restricted_tts_engines_are_labeled_in_catalog_ui_and_notices(self):
         from src.server.runtime_settings import TTS_ENGINE_META, _catalog

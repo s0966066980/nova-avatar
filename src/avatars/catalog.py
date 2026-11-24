@@ -10,7 +10,6 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.avatars.asset_io import coords_present
 from src.utils.paths import get_data_dir, get_models_dir
 
 AVATAR_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.-]*$"
@@ -20,14 +19,10 @@ ENGINE_META: Dict[str, Dict[str, str]] = {
         "label": "MuseTalk (Supported / Commercial)",
         "description": "MIT code；高質量唇形同步，模型與依賴需另行核對授權",
     },
-    "wav2lip": {
-        "label": "Wav2Lip (Research / Non-commercial)",
-        "description": "上游公開版僅限研究、學術與個人用途，不可商用",
-    },
 }
 
 ENGINE_ORDER = list(ENGINE_META.keys())
-IMPORTABLE_ENGINES = ("musetalk", "wav2lip")
+IMPORTABLE_ENGINES = ("musetalk",)
 # The existing project trial asset has a verified uniform green backdrop. Keep
 # its files untouched; newly imported assets declare this in avator_info.json.
 CURRENT_GREEN_SCREEN_AVATAR_ID = "musetalk_avatar"
@@ -50,8 +45,6 @@ def detect_avatar_type(avatar_dir: Path) -> Optional[str]:
 
     if (avatar_dir / "latents.pt").exists() and (avatar_dir / "mask").is_dir():
         return "musetalk"
-    if (avatar_dir / "face_imgs").is_dir() and coords_present(avatar_dir, "coords"):
-        return "wav2lip"
 
     name = avatar_dir.name.lower()
     for engine in ENGINE_ORDER:
@@ -240,16 +233,6 @@ def avatar_bootable(engine: str, avatar_id: str) -> tuple[bool, str]:
     return True, ""
 
 
-def resolve_wav2lip_weights() -> Optional[Path]:
-    """Wav2Lip 實際載入路徑，與 factory 保持一致。"""
-    models = get_models_dir()
-    for name in ("wav2lip.pth", "wav2lip256.pth"):
-        candidate = models / name
-        if candidate.is_file():
-            return candidate
-    return None
-
-
 def _engine_weights_ready(engine: str) -> tuple[bool, str]:
     models = get_models_dir()
     if engine == "musetalk":
@@ -257,10 +240,6 @@ def _engine_weights_ready(engine: str) -> tuple[bool, str]:
         if unet.exists():
             return True, ""
         return False, "缺少 MuseTalk 權重 (models/musetalk)"
-    if engine == "wav2lip":
-        if resolve_wav2lip_weights() is not None:
-            return True, ""
-        return False, "缺少 Wav2Lip 權重 (models/wav2lip.pth 或 models/wav2lip256.pth)"
     return False, "未知引擎"
 
 

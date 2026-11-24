@@ -128,9 +128,9 @@ Third-party engine names are not expected to reach zero matches.
 
 - Legal: `LICENSE` and `NOTICE` exist; Kedreamix, LiveTalking (where
   applicable), and MuseTalk MIT attribution are retained; modified inherited
-  sources carry a change notice; Wav2Lip is marked
-  **Research / Non-commercial**; no third-party model is described as
-  Apache-2.0.
+  sources carry a change notice; no Wav2Lip integration is bundled and its
+  **Research / Non-commercial** restriction record stays in
+  `THIRD_PARTY_NOTICES.md`; no third-party model is described as Apache-2.0.
 - Branding: user-visible product name is Nova Avatar; package slugs are
   `nova-avatar` and `nova-avatar-web`; the repository URL is correct; old
   branding does not appear in the current UI.

@@ -68,18 +68,9 @@ class MuseTalkQualityConfig:
 
 
 @dataclass
-class Wav2LipQualityConfig:
-    """Wav2Lip 角色製作時的臉框留白。"""
-    pad_top: int = 0
-    pad_bottom: int = 10
-    pad_left: int = 0
-    pad_right: int = 0
-
-
-@dataclass
 class ModelConfig:
     """模型配置"""
-    type: str = "musetalk"  # musetalk | wav2lip
+    type: str = "musetalk"
     avatar_id: str = "avator_1"
     batch_size: int = 16
     model_path: str = "./models"
@@ -89,7 +80,6 @@ class ModelConfig:
 
     # 模型專屬配置
     musetalk: MuseTalkQualityConfig = field(default_factory=MuseTalkQualityConfig)
-    wav2lip: Wav2LipQualityConfig = field(default_factory=Wav2LipQualityConfig)
 
 
 @dataclass

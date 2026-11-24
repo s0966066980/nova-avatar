@@ -209,8 +209,6 @@ export default {
       upperBoundaryDesc: '遮罩從這個比例以下才替換，避免眼睛被糊掉。製作時生效。',
       maskBlur: '遮罩羽化',
       maskBlurDesc: '邊緣越羽化越自然，但嘴型會更糊。想清晰就調低。製作時生效。',
-      padBottom: '下巴留白',
-      padBottomDesc: 'Wav2Lip 臉框底部多留的像素。製作時生效。',
       rebuildHint: '臉框位移、下巴留白與遮罩只在「開始製作角色」時寫入素材。已有角色請重新匯入影片。'
     },
 
@@ -224,7 +222,6 @@ export default {
       roleNameDesc: '可留空，系統會按檔名自動命名',
       start: '開始製作角色',
       working: '正在製作角色...',
-      unsupported: '當前引擎不能從影片生成。請改選 MuseTalk，或僅限研究／非商用的 Wav2Lip。',
       needDisconnect: '製作角色會佔用 GPU，請先斷開當前連線。'
     },
     

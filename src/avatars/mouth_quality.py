@@ -3,7 +3,7 @@
 
 """嘴型貼回與角色製作的畫質參數。
 
-MuseTalk / Wav2Lip 的口型模型輸出固定 256 像素。貼回較大的臉框時，
+MuseTalk 的口型模型輸出固定 256 像素。貼回較大的臉框時，
 插值與銳化決定觀感；臉框位移、下巴留白與遮罩則在製作角色時寫入素材。
 """
 from __future__ import annotations
@@ -41,13 +41,6 @@ DEFAULT_MUSETALK = {
     "settling_frames": 12,
 }
 
-DEFAULT_WAV2LIP = {
-    "pad_top": 0,
-    "pad_bottom": 10,
-    "pad_left": 0,
-    "pad_right": 0,
-}
-
 _LIMITS = {
     "mouth_sharpen": (0.0, 2.0),
     "bbox_shift": (-30, 30),
@@ -58,10 +51,6 @@ _LIMITS = {
     "expand": (1.2, 2.0),
     "mask_blur_ratio": (0.0, 0.15),
     "settling_frames": (1, 50),
-    "pad_top": (0, 40),
-    "pad_bottom": (0, 40),
-    "pad_left": (0, 40),
-    "pad_right": (0, 40),
 }
 
 
@@ -74,7 +63,6 @@ def default_quality() -> dict[str, Any]:
         "mouth_sharpen": DEFAULT_MOUTH_SHARPEN,
         "paste_interpolation": DEFAULT_PASTE_INTERPOLATION,
         "musetalk": dict(DEFAULT_MUSETALK),
-        "wav2lip": dict(DEFAULT_WAV2LIP),
     }
 
 
@@ -94,9 +82,6 @@ def quality_from_model(model: Any) -> dict[str, Any]:
     payload["musetalk"] = _mapping_or_defaults(
         getattr(model, "musetalk", None), DEFAULT_MUSETALK
     )
-    payload["wav2lip"] = _mapping_or_defaults(
-        getattr(model, "wav2lip", None), DEFAULT_WAV2LIP
-    )
     return payload
 
 
@@ -104,9 +89,7 @@ def normalize_quality(params: Optional[Mapping[str, Any]] = None) -> dict[str, A
     source = dict(params or {})
     current = default_quality()
     musetalk_in = source.get("musetalk") if isinstance(source.get("musetalk"), Mapping) else {}
-    wav2lip_in = source.get("wav2lip") if isinstance(source.get("wav2lip"), Mapping) else {}
-    nested_keys = set(DEFAULT_MUSETALK) | set(DEFAULT_WAV2LIP)
-    flat = {key: source[key] for key in nested_keys if key in source}
+    flat = {key: source[key] for key in DEFAULT_MUSETALK if key in source}
 
     mouth_sharpen = source.get("mouth_sharpen", current["mouth_sharpen"])
     interpolation = str(
@@ -120,12 +103,6 @@ def normalize_quality(params: Optional[Mapping[str, Any]] = None) -> dict[str, A
     for key in DEFAULT_MUSETALK:
         if key in flat:
             musetalk[key] = flat[key]
-
-    wav2lip = dict(DEFAULT_WAV2LIP)
-    wav2lip.update(wav2lip_in)
-    for key in DEFAULT_WAV2LIP:
-        if key in flat:
-            wav2lip[key] = flat[key]
 
     musetalk["bbox_shift"] = _bounded_int(musetalk["bbox_shift"], "bbox_shift")
     musetalk["extra_margin"] = _bounded_int(musetalk["extra_margin"], "extra_margin")
@@ -157,16 +134,10 @@ def normalize_quality(params: Optional[Mapping[str, Any]] = None) -> dict[str, A
         raise QualityError("融合遮罩只能是 jaw 或 raw")
     musetalk["parsing_mode"] = parsing_mode
 
-    wav2lip["pad_top"] = _bounded_int(wav2lip["pad_top"], "pad_top")
-    wav2lip["pad_bottom"] = _bounded_int(wav2lip["pad_bottom"], "pad_bottom")
-    wav2lip["pad_left"] = _bounded_int(wav2lip["pad_left"], "pad_left")
-    wav2lip["pad_right"] = _bounded_int(wav2lip["pad_right"], "pad_right")
-
     return {
         "mouth_sharpen": _bounded_float(mouth_sharpen, "mouth_sharpen"),
         "paste_interpolation": interpolation,
         "musetalk": musetalk,
-        "wav2lip": wav2lip,
     }
 
 
@@ -175,9 +146,7 @@ def apply_quality_to_model(model: Any, quality: Mapping[str, Any]) -> dict[str, 
     model.mouth_sharpen = normalized["mouth_sharpen"]
     model.paste_interpolation = normalized["paste_interpolation"]
     musetalk = getattr(model, "musetalk", None)
-    wav2lip = getattr(model, "wav2lip", None)
     _assign_fields(musetalk, normalized["musetalk"])
-    _assign_fields(wav2lip, normalized["wav2lip"])
     return normalized
 
 

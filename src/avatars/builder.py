@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Callable, Optional
 
 import cv2
-import numpy as np
 
 from src.avatars.asset_io import save_coords
 from src.avatars.catalog import (
@@ -112,7 +111,7 @@ def build_character(
     engine = (engine or "").strip().lower()
     avatar_id = (avatar_id or "").strip()
     if engine not in IMPORTABLE_ENGINES:
-        raise BuildError("這個引擎不能從影片生成角色，請改選 MuseTalk 或 Wav2Lip")
+        raise BuildError("這個引擎不能從影片生成角色，目前只支援 MuseTalk")
     if not is_safe_avatar_id(avatar_id):
         raise BuildError("角色名稱只能使用字母、數字、下劃線和短橫線")
     if not video_path.is_file():
@@ -146,12 +145,9 @@ def build_character(
             options = normalize_quality(quality)
         except QualityError as exc:
             raise BuildError(str(exc)) from exc
-        options["green_screen"] = bool(green_screen) if engine == "musetalk" else False
+        options["green_screen"] = bool(green_screen)
 
-        if engine == "musetalk":
-            _build_musetalk(work_dir, avatar_id, source_name, report, options)
-        else:
-            _build_wav2lip(work_dir, report, options)
+        _build_musetalk(work_dir, avatar_id, source_name, report, options)
 
         _install_character(work_dir, dest, avatar_id, overwrite, replace_guard)
         report(100, "角色製作完成")
@@ -323,90 +319,3 @@ def _musetalk_vae():
     vae, _unet, _pe = load_all_model(device=device)
     vae.vae = vae.vae.half().to(device)
     return vae
-
-
-def _build_wav2lip(
-    work_dir: Path, report: Callable[[int, str], None], options: dict
-) -> None:
-    from src.avatars.wav2lip.face_detection import FaceAlignment, LandmarksType
-
-    full_imgs = work_dir / "full_imgs"
-    face_imgs = work_dir / "face_imgs"
-    face_imgs.mkdir(parents=True, exist_ok=True)
-    images = _sorted_images(full_imgs)
-    frames = [cv2.imread(str(path)) for path in images]
-    frames = [frame for frame in frames if frame is not None]
-    if not frames:
-        raise BuildError("讀取影片幀失敗")
-
-    report(35, "正在檢測人臉")
-    device = "cuda" if _cuda_ready() else "cpu"
-    detector = FaceAlignment(LandmarksType._2D, flip_input=False, device=device)
-    batch_size = 16
-    predictions = []
-    try:
-        start = 0
-        while start < len(frames):
-            try:
-                chunk = np.array(frames[start:start + batch_size])
-                predictions.extend(detector.get_detections_for_batch(chunk))
-                start += batch_size
-                report(35 + int(40 * start / len(frames)), f"人臉檢測 {min(start, len(frames))}/{len(frames)}")
-            except RuntimeError:
-                if batch_size == 1:
-                    raise BuildError("畫面太大，無法做人臉檢測")
-                batch_size //= 2
-    finally:
-        del detector
-
-    pads = options["wav2lip"]
-    pady1, pady2, padx1, padx2 = (
-        pads["pad_top"],
-        pads["pad_bottom"],
-        pads["pad_left"],
-        pads["pad_right"],
-    )
-    raw_boxes = []
-    for rect, image in zip(predictions, frames):
-        if rect is None:
-            raise BuildError("有畫面沒偵測到臉，請使用全程露臉、閉嘴的正面影片")
-        y1 = max(0, rect[1] - pady1)
-        y2 = min(image.shape[0], rect[3] + pady2)
-        x1 = max(0, rect[0] - padx1)
-        x2 = min(image.shape[1], rect[2] + padx2)
-        raw_boxes.append([x1, y1, x2, y2])
-
-    boxes = _smooth_boxes(np.array(raw_boxes, dtype=np.float32), window=5)
-    coords = []
-    for index, (box, image) in enumerate(zip(boxes, frames)):
-        x1, y1, x2, y2 = [int(v) for v in box]
-        y1 = max(0, y1)
-        x1 = max(0, x1)
-        y2 = min(image.shape[0], y2)
-        x2 = min(image.shape[1], x2)
-        crop = image[y1:y2, x1:x2]
-        if crop.size == 0:
-            raise BuildError("人臉裁切失敗，請換一段臉部更居中的影片")
-        resized = cv2.resize(crop, (256, 256), interpolation=cv2.INTER_LANCZOS4)
-        cv2.imwrite(str(face_imgs / f"{index:08d}.png"), resized)
-        coords.append((y1, y2, x1, x2))
-
-    save_coords(work_dir / "coords.json", coords)
-
-
-def _smooth_boxes(boxes: np.ndarray, window: int = 5) -> np.ndarray:
-    smoothed = boxes.copy()
-    length = len(boxes)
-    for i in range(length):
-        chunk = boxes[i:length] if i + window > length else boxes[i:i + window]
-        smoothed[i] = np.mean(chunk, axis=0)
-    return smoothed
-
-
-def _cuda_ready() -> bool:
-    try:
-        import torch
-
-        return torch.cuda.is_available()
-    except Exception:
-        return False

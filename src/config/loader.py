@@ -12,7 +12,7 @@ from typing import Optional, Dict
 from .schema import (
     Config, AppConfig, ModelConfig, TTSConfig, MatchaConfig, ASRConfig, VADConfig, LLMConfig,
     AudioConfig, VideoConfig, CustomVideoConfig,
-    MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
+    MuseTalkQualityConfig, ReplyStreamingConfig, StageConfig,
     BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
 )
 
@@ -79,19 +79,18 @@ def dict_to_config(config_dict: Dict) -> Config:
     model_dict = config_dict.get('model', {})
     
     musetalk_config = MuseTalkQualityConfig(**model_dict.get('musetalk', {}))
-    wav2lip_config = Wav2LipQualityConfig(**model_dict.get('wav2lip', {}))
 
     # 建立 ModelConfig
     model_dict_for_init = {
         k: v
         for k, v in model_dict.items()
-        # ernerf / talkinggaussian: settings of avatar engines removed in 2026.
-        if k not in ['ernerf', 'talkinggaussian', 'musetalk', 'wav2lip']
+        # ernerf / talkinggaussian / wav2lip: sections of avatar engines removed in
+        # 2026; saved settings may still carry them.
+        if k not in ['ernerf', 'talkinggaussian', 'wav2lip', 'musetalk']
     }
     model_config = ModelConfig(
         **model_dict_for_init,
         musetalk=musetalk_config,
-        wav2lip=wav2lip_config,
     )
     
     from src.tts.voice_library import REMOVED_TTS_FIELDS

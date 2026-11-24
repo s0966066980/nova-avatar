@@ -455,7 +455,7 @@ npm run build
 ## 授權與來源
 
 Nova Avatar 自行撰寫的程式採 [Apache-2.0](LICENSE)。MuseTalk 程式採 MIT 授權；
-模型、權重與依賴另有條款。內含 Wav2Lip 整合僅供 **Research / Non-commercial**
-使用，不得視為可商用。RAGFlow、BGE-M3、語音、資料集與外部服務也須各自核對條款；
+模型、權重與依賴另有條款。Wav2Lip 整合已於 2026-11-24 移除；早期版本中的 Wav2Lip
+整合僅供 **Research / Non-commercial** 使用，不得視為可商用。RAGFlow、BGE-M3、語音、資料集與外部服務也須各自核對條款；
 根目錄授權不會擴及它們。詳見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)、
 [NOTICE](NOTICE) 和 [軟體組合](docs/software-stack.md)。

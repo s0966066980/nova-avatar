@@ -35,3 +35,11 @@ Status: resolved
   Qwen3.5-4B、Qwen3.8-27B GGUF；Ollama 的 `lfm2.5-thinking` 與三個 `qwen3.6`。
 - **不動**：`~/.cache` 全域快取，以及 Ollama 的 `bge-m3`、`qwen3.5:4b`／`9b`、`nomic-embed-text`。
 
+### 2026-11-24 追加：Wav2Lip 也移除
+
+上面「保留 Wav2Lip」的決定被使用者推翻（不會再使用）。已刪除 `src/avatars/wav2lip/`、
+`models/wav2lip256.pth`、`config/config_wav2lip.yaml`、控制台的引擎選項與畫質欄位、
+`mouth_quality`／`schema`／`loader`／`builder`／`catalog`／`factory` 中的分支，以及相關測試；
+`runtime_overrides.yaml` 裡舊的 `model.wav2lip` 區段會被忽略。MuseTalk 的 import、設定載入與場域
+素材讀取已驗證不受影響。授權紀錄（`THIRD_PARTY_NOTICES.md`、`third_party/licenses/`、`NOTICE`）保留。
+

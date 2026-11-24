@@ -27,10 +27,7 @@ def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseA
     session_config.sessionid = sessionid
     
     # 延遲匯入，避免啟動時載入全部模型依賴
-    if model_type == 'wav2lip':
-        from .wav2lip.avatar import Wav2LipAvatar
-        return Wav2LipAvatar(session_config, model, avatar)
-    elif model_type == 'musetalk':
+    if model_type == 'musetalk':
         from .musetalk.avatar import MuseTalkAvatar
         return MuseTalkAvatar(session_config, model, avatar)
     else:
@@ -61,19 +58,6 @@ def prepare_avatar_model(config: Any):
         if getattr(getattr(config, "app", None), "prewarm", True):
             warm_up(config.model.batch_size, model)
         return model, avatar
-    elif model_type == 'wav2lip':
-        from .wav2lip.avatar import load_model, load_avatar, warm_up
-        from .catalog import resolve_wav2lip_weights
-        ckpt = resolve_wav2lip_weights()
-        if ckpt is None:
-            raise FileNotFoundError(
-                "缺少 Wav2Lip 權重，請放置 models/wav2lip.pth 或 models/wav2lip256.pth"
-            )
-        model = load_model(str(ckpt))
-        avatar = load_avatar(config.model.avatar_id)
-        if getattr(getattr(config, "app", None), "prewarm", True):
-            warm_up(config.model.batch_size, model, 256)
-        return model, avatar
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -85,8 +69,5 @@ def load_avatar_data(config: Any):
 
     if model_type == "musetalk":
         from .musetalk.avatar import load_avatar
-        return load_avatar(avatar_id)
-    if model_type == "wav2lip":
-        from .wav2lip.avatar import load_avatar
         return load_avatar(avatar_id)
     raise ValueError(f"Unknown model type: {model_type}")
