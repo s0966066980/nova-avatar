@@ -8,13 +8,16 @@ from __future__ import annotations
 import io
 import json
 import sys
+import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from src.tts.training import whisper_worker
-from src.tts.training.asr import SubprocessTranscriber, TranscriberError
+from src.tts.training import asr
+from src.tts.training.asr import SubprocessTranscriber, TranscriberCancelled, TranscriberError
 from tests.training_fakes import FakeProcess, FakeSpawner
 
 
@@ -82,6 +85,78 @@ def test_a_worker_error_reply_is_raised():
 def test_an_unknown_model_size_is_refused():
     with pytest.raises(ValueError, match="Whisper model"):
         SubprocessTranscriber("gigantic")
+
+
+# --- timeouts and cancel -------------------------------------------------------
+
+
+@pytest.fixture
+def fast_polling(monkeypatch):
+    monkeypatch.setattr(asr, "POLL_SECONDS", 0.01)
+
+
+def silent_worker():
+    """Ready at once, then never answers a request."""
+    return FakeProcess([json.dumps({"ready": True})], returncode=None, on_line=lambda _: [])
+
+
+def test_an_utterance_that_gets_no_answer_times_out_and_the_child_is_killed(fast_polling):
+    process = silent_worker()
+    with SubprocessTranscriber(spawn=FakeSpawner(lambda *_: process), utterance_timeout=0.1) as transcribe:
+        started = time.monotonic()
+        with pytest.raises(TranscriberError, match="逾時"):
+            transcribe(Path("a.wav"))
+        assert time.monotonic() - started < 5
+    assert "KILL" in process.signals  # a stuck recognition must not hold the CPU or the GPU
+
+
+def test_after_a_timeout_the_transcriber_does_not_use_the_dead_child_again(fast_polling):
+    process = silent_worker()
+    with SubprocessTranscriber(spawn=FakeSpawner(lambda *_: process), utterance_timeout=0.05) as transcribe:
+        with pytest.raises(TranscriberError, match="逾時"):
+            transcribe(Path("a.wav"))
+        written = len(process.written)
+        with pytest.raises(TranscriberError):
+            transcribe(Path("b.wav"))
+        assert len(process.written) == written
+
+
+def test_the_timeout_counts_per_utterance_not_for_the_whole_run(fast_polling):
+    process = worker({"a.wav": "好", "b.wav": "好"})
+    with SubprocessTranscriber(spawn=FakeSpawner(lambda *_: process), utterance_timeout=5.0) as transcribe:
+        assert [transcribe(Path("a.wav")), transcribe(Path("b.wav"))] == ["好", "好"]
+    assert "KILL" not in process.signals
+
+
+def test_a_child_that_never_gets_ready_times_out(fast_polling):
+    process = FakeProcess([], returncode=None)
+    transcriber = SubprocessTranscriber(spawn=FakeSpawner(lambda *_: process), startup_timeout=0.05)
+    with pytest.raises(TranscriberError, match="逾時"):
+        transcriber.__enter__()
+    assert "KILL" in process.signals
+
+
+def test_cancel_kills_the_child_without_waiting_for_the_utterance(fast_polling):
+    process = silent_worker()
+    cancel = threading.Event()
+    transcriber = SubprocessTranscriber(spawn=FakeSpawner(lambda *_: process), utterance_timeout=60, cancel=cancel)
+    with transcriber as transcribe:
+        threading.Timer(0.05, cancel.set).start()
+        started = time.monotonic()
+        with pytest.raises(TranscriberCancelled):
+            transcribe(Path("a.wav"))
+        assert time.monotonic() - started < 5
+    assert "KILL" in process.signals
+
+
+def test_a_cancel_before_the_first_utterance_sends_nothing(fast_polling):
+    process = worker({"a.wav": "好"})
+    cancel = threading.Event()
+    with SubprocessTranscriber(spawn=FakeSpawner(lambda *_: process), cancel=cancel) as transcribe:
+        cancel.set()
+        with pytest.raises(TranscriberCancelled):
+            transcribe(Path("a.wav"))
+    assert process.served == []
 
 
 # --- the worker itself, with a fake faster-whisper model -----------------------

@@ -490,3 +490,64 @@ async def test_the_preview_needs_the_admin_session_and_the_same_origin(tmp_path)
     async with access_client(app_factory=app_with(rig(tmp_path / "b").manager, previewer)) as client:
         assert (await client.post(VOICE_PREVIEW, headers={"Origin": "http://evil.example"}, json=payload)).status == 403
     assert previewer.calls == []
+
+
+# --------------------------------------------------------------------------- server lifecycle
+
+
+@async_test
+async def test_startup_recovers_interrupted_jobs_and_shutdown_stops_the_running_one(tmp_path):
+    r = rig(tmp_path)
+    calls: list[tuple[str, int]] = []
+    r.manager.recover = lambda: calls.append(("recover", threading.get_ident()))  # type: ignore[method-assign]
+    r.manager.shutdown = lambda *a, **k: calls.append(("shutdown", threading.get_ident()))  # type: ignore[method-assign]
+    main = threading.get_ident()
+
+    async with access_client(app_factory=app_with(r.manager)):
+        assert [name for name, _ in calls] == ["recover"]
+    assert [name for name, _ in calls] == ["recover", "shutdown"]
+    assert main not in {ident for _, ident in calls}, "blocking lifecycle work ran on the event loop"
+
+
+@async_test
+async def test_a_job_running_at_shutdown_is_cancelled_and_its_child_stopped(tmp_path):
+    r = rig(tmp_path, train_code=None)
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        started = await client.post(BASE + "/start", headers=same_origin(client), json={"corpus": "voice", "name": "我的聲音"})
+        assert started.status == 200
+        await asyncio.to_thread(wait_until, lambda: r.spawner.processes)
+    assert r.spawner.processes[0].signals == ["TERM"]
+    assert r.manager.status()["status"] == "cancelled"
+
+
+def wait_until(predicate, timeout: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout
+    while not predicate():
+        assert time.monotonic() < deadline, "condition not reached in time"
+        time.sleep(0.01)
+
+
+def test_the_live_manager_refuses_a_start_while_the_corpus_transcription_runs(tmp_path):
+    from types import SimpleNamespace
+
+    from aiohttp import web
+
+    from src.server.routes import tts_corpus
+
+    running = {"value": False}
+    app = web.Application()
+    app[tts_corpus.SERVICES] = tts_corpus.Services(None, SimpleNamespace(running=lambda: running["value"]))  # type: ignore[arg-type]
+    tts_training.register(app)
+    manager = app[tts_training.MANAGER_KEY]
+
+    assert manager._transcription_check().status == "pass"
+    running["value"] = True
+    assert manager._transcription_check().status == "fail"
+
+
+def test_the_live_manager_without_corpus_routes_has_no_transcription_to_wait_for():
+    from aiohttp import web
+
+    app = web.Application()
+    tts_training.register(app)
+    assert app[tts_training.MANAGER_KEY]._transcription_check().status == "pass"

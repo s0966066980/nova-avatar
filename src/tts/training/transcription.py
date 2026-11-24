@@ -139,6 +139,11 @@ class TranscriptionJobs:
         thread.start()
         return started
 
+    def running(self) -> bool:
+        """Whether a job is working now (cheap, lock-guarded); the training job refuses to start meanwhile."""
+        with self._lock:
+            return self._status.state == STATE_RUNNING
+
     def status(self, slug: str | None = None) -> TranscriptionStatus:
         """The current or last job; ``idle`` when it belongs to another corpus."""
         with self._lock:

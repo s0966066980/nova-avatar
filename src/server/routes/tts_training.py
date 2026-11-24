@@ -34,6 +34,7 @@ from typing import Any
 from aiohttp import web
 
 from src.config.schema import Config
+from src.server.routes import tts_corpus
 from src.server.state import state
 from src.server.tts_training_jobs import (
     StartRequest,
@@ -56,9 +57,21 @@ PREFIX = "/api/tts/training"
 PREVIEW_TIMEOUT_SECONDS = 60.0
 
 
-def build_manager() -> TrainingJobManager:
-    """The manager of the running server; its settings follow the live configuration."""
-    return TrainingJobManager(settings=lambda: settings_from_config(state.config))
+def build_manager(app: web.Application | None = None) -> TrainingJobManager:
+    """The manager of the running server; its settings follow the live configuration.
+
+    With ``app`` it also learns whether the corpus routes' automatic transcription is
+    running (looked up when asked, so the registration order does not matter): a training
+    job is refused meanwhile, because both want the same CPU and GPU.
+    """
+
+    def transcription_running() -> bool:
+        services = None if app is None else app.get(tts_corpus.SERVICES)
+        return services is not None and services.jobs.running()
+
+    return TrainingJobManager(
+        settings=lambda: settings_from_config(state.config), transcription_active=transcription_running
+    )
 
 
 def live_previewer(voice_id: object, sentence: object, keep_going: Callable[[], bool]) -> bytes:
@@ -236,9 +249,21 @@ async def read_log(request: web.Request) -> web.Response:
     return _json({"code": 0, "data": await asyncio.to_thread(_manager(request).read_log, offset)})
 
 
+async def _recover_jobs(app: web.Application) -> None:
+    """At startup, before any request: fail interrupted jobs and stop the children they left."""
+    await asyncio.to_thread(app[MANAGER_KEY].recover)
+
+
+async def _stop_jobs(app: web.Application) -> None:
+    """At shutdown: cancel the running job and kill its child, so the GPU is free when the server exits."""
+    await asyncio.to_thread(app[MANAGER_KEY].shutdown)
+
+
 def register(app: web.Application) -> None:
-    app[MANAGER_KEY] = build_manager()
+    app[MANAGER_KEY] = build_manager(app)
     app[PREVIEWER_KEY] = live_previewer
+    app.on_startup.append(_recover_jobs)
+    app.on_shutdown.append(_stop_jobs)
     app.router.add_get(PREFIX, get_status)
     app.router.add_post(PREFIX + "/start", start_job)
     app.router.add_post(PREFIX + "/text-preview", text_preview)

@@ -102,13 +102,17 @@ def rig(
     settings: TrainingSettings = TrainingSettings(),
     synthesize=None,
     train_release: threading.Event | None = None,
+    whisper_process: FakeProcess | None = None,
 ) -> Rig:
     store = make_store(tmp_path, source, texts)
     paths = make_paths(tmp_path, with_env=with_env)
     trained: list[list[dict]] = []
-    state: dict = {"transcriber_models": [], "verified": [], "orphans": [], "synth_calls": []}
+    state: dict = {"transcriber_models": [], "verified": [], "orphans": [], "synth_calls": [], "transcribing": False}
 
     def handler(command, env, cwd):
+        if list(command[1:3]) == ["-m", "src.tts.training.whisper_worker"]:
+            assert whisper_process is not None
+            return whisper_process
         script = Path(command[1]).name
         if script == "train_matcha.py":
             manifest = Path(argument(command, "--manifest"))
@@ -160,9 +164,10 @@ def rig(
         vram_probe=lambda: vram,
         spawn=spawner,
         synthesize=synthesize or default_synthesize,
-        transcriber_factory=transcriber,
+        transcriber_factory=None if whisper_process is not None else transcriber,
         verify_bundle=verify,
         orphan_stopper=lambda pid: state["orphans"].append(pid) or True,
+        transcription_active=lambda: state["transcribing"],
     )
     return Rig(manager, store, paths, spawner, state, trained)
 
@@ -203,7 +208,8 @@ def test_everything_in_order_can_start_and_each_check_has_a_reason(tmp_path):
     preflight = rig(tmp_path).manager.evaluate_preflight("voice", "我的聲音")
     assert preflight.can_start
     assert [c.id for c in preflight.checks] == [
-        "admin", "stage_connections", "free_vram", "environment", "other_job", "corpus", "corpus_size", "model_name",
+        "admin", "stage_connections", "free_vram", "environment", "other_job", "transcription", "corpus", "corpus_size",
+        "model_name",
     ]
     assert all(c.reason and c.label for c in preflight.checks)
     as_dict = preflight.to_dict()
@@ -703,6 +709,7 @@ def test_a_job_that_was_running_when_the_server_stopped_is_marked_failed(tmp_pat
     state_file.write_text(json.dumps({**saved, "status": "running", "finished_at": None}), encoding="utf-8")
     restarted = rig(tmp_path / "again")
     restarted.manager._jobs_dir = tmp_path / "corpora" / ".jobs"
+    restarted.manager.recover()
     status = restarted.manager.status()
     assert status["status"] == "failed" and status["error"] == jobs.INTERRUPTED_MESSAGE
     assert status["stages"][3]["status"] == "failed" and status["finished_at"]
@@ -716,6 +723,7 @@ def test_finished_job_state_survives_a_restart_as_the_latest_status(tmp_path):
     snapshot = finish(r)
     again = rig(tmp_path / "again")
     again.manager._jobs_dir = tmp_path / "corpora" / ".jobs"
+    again.manager.recover()
     latest = again.manager.status()
     assert latest["id"] == snapshot["id"] and latest["status"] == "done"
     assert again.state["orphans"] == []
@@ -728,6 +736,7 @@ def test_after_a_restart_the_log_of_the_last_job_is_read_from_its_file(tmp_path)
     again = rig(tmp_path / "again")
     again.manager._jobs_dir = tmp_path / "corpora" / ".jobs"
     again.manager.store = r.store
+    again.manager.recover()
     page = again.manager.read_log(2, 3)
     assert page["job_id"] == snapshot["id"] and page["lines"] == expected[2:5]
     assert page["start"] == 2 and page["next"] == 5 and page["total"] == len(expected)
@@ -757,6 +766,355 @@ def test_old_job_state_files_are_pruned(tmp_path):
 
 def test_an_orphan_is_only_signalled_when_its_command_line_names_the_training_tools(tmp_path):
     assert jobs.stop_orphan_training(2**30) is False  # no such process
+
+
+# --------------------------------------------------------------------------- lifecycle: shutdown, startup, races
+
+
+def running_rig(tmp_path, **kwargs) -> Rig:
+    """A rig whose training child keeps running until it is signalled."""
+    r = rig(tmp_path, train_code=None, **kwargs)
+    r.manager.start(request())
+    wait_for(lambda: stage_status(r, "training") == "running" and r.spawner.processes)
+    return r
+
+
+def test_shutdown_cancels_the_running_job_and_stops_its_child_so_the_gpu_is_freed(tmp_path):
+    r = running_rig(tmp_path)
+
+    r.manager.shutdown()
+
+    assert r.manager.status()["status"] == "cancelled"
+    assert r.spawner.processes[0].signals == ["TERM"]
+    assert r.manager._thread is not None and not r.manager._thread.is_alive()
+
+
+def test_shutdown_escalates_to_sigkill_for_a_child_that_ignores_sigterm(tmp_path):
+    r = running_rig(tmp_path, train_ignores_term=True, settings=TrainingSettings(cancel_grace_seconds=0.05))
+
+    r.manager.shutdown()
+
+    assert r.spawner.processes[0].signals[:2] == ["TERM", "KILL"]
+    assert r.manager.status()["status"] == "cancelled"
+
+
+def test_shutdown_kills_the_child_directly_when_the_worker_cannot_finish_in_time(tmp_path):
+    # A long grace period would keep the server waiting; after the limit the child is killed outright.
+    r = running_rig(tmp_path, train_ignores_term=True, settings=TrainingSettings(cancel_grace_seconds=60))
+
+    started = time.monotonic()
+    r.manager.shutdown(timeout=0.3)
+
+    assert time.monotonic() - started < 10
+    assert "KILL" in r.spawner.processes[0].signals
+    r.manager.join(20)
+    assert r.manager.status()["status"] == "cancelled"
+
+
+def test_shutdown_with_nothing_running_does_nothing(tmp_path):
+    r = rig(tmp_path)
+    r.manager.shutdown()
+    finish(r)
+    r.manager.shutdown()
+    assert r.manager.status()["status"] == "done"
+
+
+def test_shutdown_during_edge_synthesis_stops_it(tmp_path):
+    started = threading.Event()
+
+    def waits_for_cancel(store, slug, sentences, *, cancel, **kwargs):
+        started.set()
+        assert cancel.wait(10)
+        return edge_teacher.SynthesisReport(len(sentences), 0, 0, 0, 0, 0, True, False, ())
+
+    r = rig(tmp_path, source=SOURCE_EDGE_TEST_TEACHER, texts=[], synthesize=waits_for_cancel)
+    record_acknowledgement(r.store, "voice", MSA_CLAUSE.text)
+    r.manager.start(request(preset="quick-test"))
+    assert started.wait(10)
+
+    r.manager.shutdown()
+
+    assert r.manager.status()["status"] == "cancelled" and r.spawner.commands == []
+
+
+def trained_commands(r: Rig) -> list[list[str]]:
+    """Every child the job started except the Whisper worker."""
+    return [command for command in r.spawner.commands if "whisper_worker" not in " ".join(command)]
+
+
+def stuck_whisper(pid: int = 777) -> FakeProcess:
+    """A Whisper child that is ready and then never answers."""
+    return FakeProcess([json.dumps({"ready": True})], returncode=None, on_line=lambda _: [], pid=pid)
+
+
+def test_the_whisper_child_pid_is_saved_in_the_job_state_and_cleared_afterwards(tmp_path):
+    whisper = stuck_whisper(777)
+    r = rig(tmp_path, whisper_process=whisper)
+    r.manager.start(request())
+    wait_for(lambda: whisper.written)  # the check is waiting for the first answer
+    state_file = next((tmp_path / "corpora" / ".jobs").glob("job-*.json"))
+    saved = json.loads(state_file.read_text(encoding="utf-8"))
+    assert saved["stage"] == "quality" and saved["pid"] == 777
+
+    r.manager.cancel()
+    r.manager.join(20)
+
+    assert json.loads(state_file.read_text(encoding="utf-8"))["pid"] is None
+
+
+def test_cancel_kills_a_stuck_whisper_child_at_once(tmp_path):
+    whisper = stuck_whisper()
+    r = rig(tmp_path, whisper_process=whisper)
+    r.manager.start(request())
+    wait_for(lambda: whisper.written)
+
+    started = time.monotonic()
+    r.manager.cancel()
+    r.manager.join(20)
+
+    assert time.monotonic() - started < 10
+    assert "KILL" in whisper.signals
+    assert r.manager.status()["status"] == "cancelled"  # not "failed": the kill is the cancel's doing
+    assert not trained_commands(r)  # training never started
+
+
+def test_shutdown_kills_a_stuck_whisper_child(tmp_path):
+    whisper = stuck_whisper()
+    r = rig(tmp_path, whisper_process=whisper)
+    r.manager.start(request())
+    wait_for(lambda: whisper.written)
+
+    r.manager.shutdown()
+
+    assert "KILL" in whisper.signals and r.manager.status()["status"] == "cancelled"
+
+
+def test_a_whisper_child_that_stops_answering_fails_the_job_with_the_reason(tmp_path):
+    whisper = stuck_whisper()
+    r = rig(tmp_path, whisper_process=whisper, settings=TrainingSettings(whisper_utterance_timeout_seconds=0.2))
+
+    snapshot = finish(r)
+
+    assert snapshot["status"] == "failed" and "逾時" in snapshot["error"]
+    assert "KILL" in whisper.signals
+    assert not trained_commands(r)  # no training on a corpus that was not checked
+
+
+def test_recovery_runs_at_startup_not_on_the_first_request(tmp_path):
+    jobs_dir = tmp_path / "corpora" / ".jobs"
+    jobs_dir.mkdir(parents=True)
+    saved = {"id": "job-old", "corpus": "voice", "status": "running", "stage": "training", "stages": [], "pid": 4242}
+    (jobs_dir / "job-old.json").write_text(json.dumps(saved), encoding="utf-8")
+    restarted = rig(tmp_path / "again")
+    restarted.manager._jobs_dir = jobs_dir
+
+    # Reading state must stay quick: nothing is stopped or rewritten until recover() runs.
+    assert restarted.manager.status() is None
+    restarted.manager.read_log()
+    restarted.manager.evaluate_preflight("voice", "x")
+    assert restarted.state["orphans"] == []
+    assert json.loads((jobs_dir / "job-old.json").read_text(encoding="utf-8"))["status"] == "running"
+
+    restarted.manager.recover()
+    restarted.manager.recover()  # once is enough
+
+    assert restarted.state["orphans"] == [4242]
+    assert restarted.manager.status()["status"] == "failed"
+
+
+def test_an_interrupted_job_that_was_cancelling_is_also_recovered(tmp_path):
+    jobs_dir = tmp_path / "corpora" / ".jobs"
+    jobs_dir.mkdir(parents=True)
+    (jobs_dir / "job-x.json").write_text(
+        json.dumps({"id": "job-x", "corpus": "voice", "status": "cancelling", "stages": [], "pid": 99}), encoding="utf-8"
+    )
+    r = rig(tmp_path)
+    r.manager._jobs_dir = jobs_dir
+
+    r.manager.recover()
+
+    assert r.state["orphans"] == [99] and r.manager.status()["status"] == "failed"
+
+
+class FakeGroup:
+    """A process group as ``stop_orphan_training`` sees it: signals in, liveness out."""
+
+    def __init__(self, command: str, *, dies_on: str | None = "TERM") -> None:
+        self.command = command
+        self.alive = True
+        self.sent: list[str] = []
+        self._dies_on = dies_on
+        self.now = 0.0
+
+    def signal(self, pid: int, number) -> None:
+        import signal as signal_module
+
+        name = signal_module.Signals(number).name.removeprefix("SIG")
+        self.sent.append(name)
+        if name == self._dies_on:
+            self.alive = False
+
+    def exists(self, pid: int) -> bool:
+        return self.alive
+
+    def read_command(self, pid: int) -> str:
+        return self.command
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+    def clock(self) -> float:
+        return self.now
+
+
+def stop(group: FakeGroup, **kwargs) -> bool:
+    return jobs.stop_orphan_training(
+        4242, signal_group=group.signal, group_exists=group.exists, read_command=group.read_command,
+        sleep=group.sleep, clock=group.clock, **kwargs,
+    )
+
+
+def test_an_orphan_that_exits_on_sigterm_is_not_killed():
+    group = FakeGroup("python tools/tts-distill/train_matcha.py", dies_on="TERM")
+    assert stop(group) is True
+    assert group.sent == ["TERM"]
+
+
+def test_an_orphan_that_ignores_sigterm_is_killed_after_the_grace_period():
+    group = FakeGroup("python tools/tts-distill/train_matcha.py", dies_on="KILL")
+    assert stop(group, grace_seconds=2.0) is True
+    assert group.sent == ["TERM", "KILL"]
+    assert group.now >= 2.0  # it waited for the grace period before killing
+
+
+def test_the_orphan_cleanup_waits_for_the_group_to_be_gone_but_not_for_ever():
+    group = FakeGroup("python tools/tts-distill/train_matcha.py", dies_on=None)  # cannot be killed
+    assert stop(group, grace_seconds=1.0, kill_wait_seconds=1.0) is True
+    assert group.sent == ["TERM", "KILL"] and group.now < 30
+
+
+def test_a_whisper_worker_left_behind_is_stopped_too():
+    group = FakeGroup("/venv/bin/python -m src.tts.training.whisper_worker --model small", dies_on="TERM")
+    assert stop(group) is True and group.sent == ["TERM"]
+
+
+def test_a_reused_pid_of_an_unrelated_process_is_left_alone():
+    group = FakeGroup("/usr/bin/firefox")
+    assert stop(group) is False and group.sent == []
+
+
+def test_cancel_does_not_overwrite_a_job_that_finished_meanwhile(tmp_path):
+    r = rig(tmp_path)
+    finish(r)
+    job = r.manager._job
+    assert job is not None
+
+    class FinishesBeforeTheLock:
+        """The worker ends the job in the gap between cancel's look at it and its lock."""
+
+        def __init__(self) -> None:
+            self._inner = threading.RLock()
+            self._armed = True
+
+        def __enter__(self):
+            if self._armed:
+                self._armed = False
+                job.status = jobs.JOB_DONE
+            self._inner.acquire()
+            return self
+
+        def __exit__(self, *exc):
+            self._inner.release()
+
+    job.status = jobs.JOB_RUNNING
+    job.lock = FinishesBeforeTheLock()
+
+    assert r.manager.cancel() is None
+    assert job.status == jobs.JOB_DONE and not job.cancel.is_set()
+    assert r.manager.evaluate_preflight("voice", "再一個").can_start  # not stuck on "another job running"
+
+
+def test_start_does_not_hold_the_manager_lock_while_the_gpu_is_probed(tmp_path):
+    probing, release = threading.Event(), threading.Event()
+    r = rig(tmp_path)
+
+    def slow_probe():
+        probing.set()
+        assert release.wait(20)
+        return VramReading(ENOUGH_VRAM_MIB)
+
+    r.manager._vram_probe = slow_probe
+    starter = threading.Thread(target=lambda: r.manager.start(request()), daemon=True)
+    starter.start()
+    assert probing.wait(10)
+
+    answered = threading.Event()
+
+    def ask():
+        r.manager.status()
+        r.manager.cancel()
+        r.manager.read_log()
+        answered.set()
+
+    threading.Thread(target=ask, daemon=True).start()
+    try:
+        assert answered.wait(2), "status/cancel blocked behind the nvidia-smi probe"
+    finally:
+        release.set()
+        starter.join(20)
+        r.manager.join(20)
+
+
+def test_two_starts_at_the_same_time_run_one_job(tmp_path):
+    barrier = threading.Barrier(2, timeout=10)
+    release = threading.Event()
+    r = rig(tmp_path, train_release=release)
+    real_probe = r.manager._vram_probe
+
+    def meeting_probe():
+        barrier.wait()  # both starts have passed the other-job check before either creates a job
+        return real_probe()
+
+    r.manager._vram_probe = meeting_probe
+    outcomes: list[str] = []
+
+    def attempt(name):
+        try:
+            r.manager.start(request(name=name))
+            outcomes.append("started")
+        except TrainingError as exc:
+            outcomes.append(f"refused {exc.status} {check_of(exc.preflight, 'other_job').status}")
+
+    threads = [threading.Thread(target=attempt, args=(name,)) for name in ("甲", "乙")]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(20)
+    release.set()
+    r.manager.join(20)
+    assert sorted(outcomes) == ["refused 409 fail", "started"]
+
+
+def test_an_automatic_transcription_in_progress_blocks_a_start_with_a_reason(tmp_path):
+    r = rig(tmp_path)
+    r.state["transcribing"] = True
+
+    preflight = r.manager.evaluate_preflight("voice", "我的聲音")
+    check = check_of(preflight, "transcription")
+
+    assert check.status == "fail" and "逐字稿" in check.reason and not preflight.can_start
+    with pytest.raises(TrainingError) as caught:
+        r.manager.start(request())
+    assert caught.value.status == 409 and check_of(caught.value.preflight, "transcription").status == "fail"
+    assert r.manager.status() is None and r.spawner.commands == []
+
+
+def test_without_a_transcription_the_check_passes_and_follows_the_other_job_check(tmp_path):
+    r = rig(tmp_path)
+    preflight = r.manager.evaluate_preflight("voice", "我的聲音")
+    assert check_of(preflight, "transcription").status == "pass"
+    ids = [c.id for c in preflight.checks]
+    assert ids.index("transcription") == ids.index("other_job") + 1
 
 
 # --------------------------------------------------------------------------- wiring and settings

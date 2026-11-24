@@ -196,3 +196,13 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         session.config.get_terminal_writer().line(
             f"\nTests wrote to the repository's data/ (use tmp_path): {', '.join(added)}", red=True)
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
+@pytest.fixture(autouse=True)
+def _training_data_in_tmp(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> None:
+    """A server started by a test must never recover or stop the venue's real training jobs.
+
+    ``create_app`` builds the training manager on ``corpus.TRAINING_ROOT``, and the manager
+    recovers (and may signal) the jobs saved under it at startup.
+    """
+    monkeypatch.setattr("src.tts.training.corpus.TRAINING_ROOT", tmp_path_factory.mktemp("training-root"))

@@ -156,7 +156,9 @@ def _error(message: str, status: int, **extra: Any) -> web.Response:
     )
 
 
-def endpoint(handler):
+def endpoint(
+    handler: Callable[[web.Request, Services], Awaitable[web.StreamResponse]],
+) -> Callable[[web.Request], Awaitable[web.StreamResponse]]:
     """Turn a ``CorpusError`` into its Traditional Chinese JSON response."""
 
     async def wrapped(request: web.Request) -> web.StreamResponse:

@@ -18,7 +18,8 @@ class FakeProcess:
     ``lines`` is what it prints; ``returncode`` is its exit code once the lines are
     out (``None`` keeps it running until it is signalled). ``ignore_term`` makes it
     survive SIGTERM so that the kill escalation can be observed. ``on_line`` receives
-    each line written to its standard input and may return reply lines.
+    each line written to its standard input and may return reply lines. ``pid`` is what a
+    tracked spawn records in the job state.
     """
 
     def __init__(
@@ -29,7 +30,9 @@ class FakeProcess:
         ignore_term: bool = False,
         on_line: Callable[[str], Sequence[str]] | None = None,
         release: threading.Event | None = None,
+        pid: int | None = None,
     ) -> None:
+        self.pid = pid
         self.signals: list[str] = []
         self.written: list[str] = []
         self._ignore_term = ignore_term

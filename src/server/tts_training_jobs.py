@@ -28,7 +28,14 @@ is saved under ``<training root>/.jobs/`` so that a restart marks a job that was
 failed and stops a training child that outlived the server.
 
 Everything blocking (``nvidia-smi``, files, children) happens in worker threads or in
-the route's ``asyncio.to_thread`` call (CODING_STANDARDS 3).
+the route's ``asyncio.to_thread`` call (CODING_STANDARDS 3); the manager's lock is never
+held across ``nvidia-smi`` or other slow IO, so status and cancel stay responsive.
+
+Lifecycle: the server calls ``recover()`` once at startup (jobs that were running are
+failed and their child processes, the training child or the Whisper child recorded in the
+job state, are stopped with SIGTERM, then SIGKILL) and ``shutdown()`` when it stops (the
+running job is cancelled and its child killed, so the GPU is freed). A training job
+is refused while an automatic transcription runs: both want the same CPU and GPU.
 """
 
 from __future__ import annotations
@@ -39,6 +46,7 @@ import os
 import re
 import secrets
 import shutil
+import signal
 import sys
 import tempfile
 import threading
@@ -51,7 +59,11 @@ from typing import Any
 
 from src.tts.training import edge_teacher
 from src.tts.training.asr import DEFAULT_MODEL as DEFAULT_WHISPER_MODEL
-from src.tts.training.asr import SubprocessTranscriber
+from src.tts.training.asr import (
+    UTTERANCE_TIMEOUT_SECONDS,
+    SubprocessTranscriber,
+    TranscriberError,
+)
 from src.tts.training.bundle import (
     BundleError,
     check_model_name,
@@ -127,6 +139,7 @@ ACTIVE_STATUSES = (JOB_RUNNING, JOB_CANCELLING)
 CHECK_ADMIN = "admin"
 CHECK_ENVIRONMENT = "environment"
 CHECK_OTHER_JOB = "other_job"
+CHECK_TRANSCRIPTION = "transcription"
 CHECK_EDGE = "edge_acknowledgement"
 CHECK_CORPUS = "corpus"
 CHECK_NAME = "model_name"
@@ -142,7 +155,13 @@ JOBS_DIR_NAME = ".jobs"
 LOG_FILE = "log.txt"
 STEP_PATTERN = re.compile(r"step=(\d+)/(\d+)(?:\s+loss=([0-9.]+))?")
 INTERRUPTED_MESSAGE = "伺服器重新啟動，訓練工作已中斷"
-ORPHAN_MARKER = "tts-distill"
+# A recorded pid may have been reused: only a process whose command line names one of the
+# children this job starts (the training tools, the Whisper worker) is ever signalled.
+ORPHAN_MARKERS = ("tts-distill", "src.tts.training.whisper_worker")
+# Server shutdown waits for the cancelled job this long beyond the SIGTERM grace period.
+SHUTDOWN_MARGIN_SECONDS = 5.0
+ORPHAN_KILL_WAIT_SECONDS = 5.0
+ORPHAN_POLL_SECONDS = 0.1
 
 
 # ------------------------------------------------------------------ data
@@ -183,6 +202,7 @@ class TrainingSettings:
     whisper_model: str = DEFAULT_WHISPER_MODEL
     min_similarity: float = DEFAULT_MIN_SIMILARITY
     cancel_grace_seconds: float = DEFAULT_GRACE_SECONDS
+    whisper_utterance_timeout_seconds: float = UTTERANCE_TIMEOUT_SECONDS
 
 
 @dataclass(frozen=True)
@@ -322,7 +342,7 @@ class Job:
     message: str = ""
     started_at: float = 0.0
     finished_at: float | None = None
-    pid: int | None = None
+    process: Any = None  # the running child (training, export or Whisper), if any
     metrics: dict[str, Any] = field(default_factory=dict)
     cancel: threading.Event = field(default_factory=threading.Event)
     lock: threading.RLock = field(default_factory=threading.RLock)
@@ -330,6 +350,11 @@ class Job:
     @property
     def active(self) -> bool:
         return self.status in ACTIVE_STATUSES
+
+    @property
+    def pid(self) -> int | None:
+        process = self.process
+        return getattr(process, "pid", None) if process is not None else None
 
     def note(self, **metrics: Any) -> None:
         with self.lock:
@@ -417,6 +442,7 @@ class TrainingJobManager:
         transcriber_factory: TranscriberFactory | None = None,
         verify_bundle: BundleVerifier | None = None,
         orphan_stopper: Callable[[int], bool] | None = None,
+        transcription_active: Callable[[], bool] = lambda: False,
         jobs_dir: Path | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
@@ -430,7 +456,8 @@ class TrainingJobManager:
         self._synthesize = synthesize
         self._transcriber_factory = transcriber_factory or self._default_transcriber
         self._verify_bundle = verify_bundle or self._default_verify
-        self._orphan_stopper = orphan_stopper or stop_orphan_training
+        self._orphan_stopper = orphan_stopper or self._stop_orphan
+        self._transcription_active = transcription_active
         self._jobs_dir = self.store.root / JOBS_DIR_NAME if jobs_dir is None else jobs_dir
         self._clock = clock
         self._lock = threading.RLock()
@@ -453,6 +480,7 @@ class TrainingJobManager:
             free_vram_check(self._vram_probe(), settings.min_free_vram_gb),
             self._environment_check(),
             self._other_job_check(),
+            self._transcription_check(),
         ]
         checks.extend(self._corpus_checks(corpus))
         checks.append(self._name_check(name))
@@ -473,6 +501,14 @@ class TrainingJobManager:
         if job is not None and job.active:
             return Check(CHECK_OTHER_JOB, "其他訓練工作", FAIL, "已有一件進行中，同一時間只進行一件", {"job_id": job.id})
         return Check(CHECK_OTHER_JOB, "其他訓練工作", PASS, "沒有進行中的訓練工作")
+
+    def _transcription_check(self) -> Check:
+        if self._transcription_active():
+            return Check(
+                CHECK_TRANSCRIPTION, "自動逐字稿", FAIL,
+                "正在自動產生逐字稿，與訓練共用 GPU 與 CPU；請等它完成或取消後再開始",
+            )
+        return Check(CHECK_TRANSCRIPTION, "自動逐字稿", PASS, "沒有進行中的自動逐字稿")
 
     def _corpus_checks(self, slug: str | None) -> list[Check]:
         if slug is None:
@@ -529,13 +565,11 @@ class TrainingJobManager:
 
     def status(self) -> dict[str, Any] | None:
         """The running job, else the latest finished one, else ``None``."""
-        self._recover()
         with self._lock:
             job, last = self._job, self._last
         return job.snapshot() if job is not None else last
 
     def read_log(self, offset: int = 0, limit: int = LOG_PAGE_LINES) -> dict[str, Any]:
-        self._recover()
         with self._lock:
             job, last = self._job, self._last
         if job is not None:
@@ -563,27 +597,34 @@ class TrainingJobManager:
     # ------------------------------------------------------------ start and cancel
 
     def start(self, request: StartRequest) -> dict[str, Any]:
-        """Check, then run the job in a worker thread; raises ``TrainingError`` with the reasons."""
-        self._recover()
+        """Check, then run the job in a worker thread; raises ``TrainingError`` with the reasons.
+
+        The slow checks (``nvidia-smi``, files) run without the manager's lock; under the lock
+        only the cheap exclusivity checks are repeated and the job is registered.
+        """
         sentences = self._sentences_of(request)
+        preflight = self.evaluate_preflight(request.corpus, request.name)
+        if not preflight.can_start:
+            raise self._refusal(preflight)
+        corpus = self.store.get(request.corpus)
+        known = list_voice_models(self.paths.voice_root)
+        name = check_model_name(request.name, [model.name for model in known])
+        is_edge = corpus.source == SOURCE_EDGE_TEST_TEACHER
+        job_id = f"job-{time.strftime('%Y%m%d-%H%M%S', time.localtime(self._clock()))}-{secrets.token_hex(2)}"
+        voice_id = new_model_id(model.id for model in known)
+        workdir = self._workdir(corpus.slug, job_id)
+        stage_ids = [
+            STAGE_ENVIRONMENT,
+            STAGE_SYNTHESIS if is_edge else STAGE_PREPARATION,
+            STAGE_QUALITY,
+            STAGE_TRAINING,
+            STAGE_EXPORT,
+        ]
         with self._lock:
-            preflight = self.evaluate_preflight(request.corpus, request.name)
-            if not preflight.can_start:
-                reasons = "；".join(f"{check.label}：{check.reason}" for check in preflight.checks if check.status == FAIL)
-                raise TrainingError(f"目前不能開始訓練：{reasons}", 409, preflight=preflight)
-            corpus = self.store.get(request.corpus)
-            name = check_model_name(request.name, [m.name for m in list_voice_models(self.paths.voice_root)])
-            is_edge = corpus.source == SOURCE_EDGE_TEST_TEACHER
-            job_id = f"job-{time.strftime('%Y%m%d-%H%M%S', time.localtime(self._clock()))}-{secrets.token_hex(2)}"
-            voice_id = new_model_id(model.id for model in list_voice_models(self.paths.voice_root))
-            workdir = self._workdir(corpus.slug, job_id)
-            stage_ids = [
-                STAGE_ENVIRONMENT,
-                STAGE_SYNTHESIS if is_edge else STAGE_PREPARATION,
-                STAGE_QUALITY,
-                STAGE_TRAINING,
-                STAGE_EXPORT,
-            ]
+            # Another start, or a transcription, may have begun since the pre-flight looked.
+            fresh = {check.id: check for check in (self._other_job_check(), self._transcription_check())}
+            if any(check.status == FAIL for check in fresh.values()):
+                raise self._refusal(Preflight(tuple(fresh.get(check.id, check) for check in preflight.checks)))
             job = Job(
                 id=job_id,
                 corpus=corpus.slug,
@@ -596,27 +637,59 @@ class TrainingJobManager:
                 started_at=self._clock(),
             )
             self._job = job
-            self._persist(job)
             thread = threading.Thread(
                 target=self._run, args=(job, request, sentences), name=f"matcha-training-{job_id}", daemon=True
             )
             self._thread = thread
+        self._persist(job)
         job.log.append(f"訓練工作 {job_id}：語料 {corpus.slug}，聲線模型「{name}」（ID {voice_id}），標示 {job.usage}")
         thread.start()
         return job.snapshot()
 
+    @staticmethod
+    def _refusal(preflight: Preflight) -> TrainingError:
+        reasons = "；".join(f"{check.label}：{check.reason}" for check in preflight.checks if check.status == FAIL)
+        return TrainingError(f"目前不能開始訓練：{reasons}", 409, preflight=preflight)
+
     def cancel(self) -> dict[str, Any] | None:
-        """Ask the running job to stop; ``None`` when nothing is running."""
+        """Ask the running job to stop; ``None`` when nothing is running.
+
+        Whether the job is still running is decided under the job's lock, so a job that
+        has just finished is never turned back into ``cancelling``.
+        """
         with self._lock:
             job = self._job
-        if job is None or not job.active:
+        if job is None:
             return None
         with job.lock:
+            if not job.active:
+                return None
             job.status = JOB_CANCELLING
             job.message = "正在取消，釋放 GPU…"
             job.cancel.set()
         job.log.append("收到取消要求")
         return job.snapshot()
+
+    def shutdown(self, timeout: float | None = None) -> None:
+        """Cancel the running job and wait for its child to be gone; for the server's shutdown.
+
+        The worker sends SIGTERM and, after the grace period, SIGKILL. If it has not finished
+        within ``timeout`` (default: the grace period plus a margin) the child is killed
+        outright, so the GPU is free when the server exits. Blocking: run it in a thread.
+        """
+        with self._lock:
+            job, thread = self._job, self._thread
+        if job is None or thread is None or not job.active:
+            return
+        self.cancel()
+        limit = self.settings().cancel_grace_seconds + SHUTDOWN_MARGIN_SECONDS if timeout is None else timeout
+        thread.join(limit)
+        if thread.is_alive():
+            child = job.process
+            if child is not None:
+                logger.warning("Training job %s did not stop in %.0f s; killing its child", job.id, limit)
+                child.kill()
+            thread.join(SHUTDOWN_MARGIN_SECONDS)
 
     def _sentences_of(self, request: StartRequest) -> list[str] | None:
         """The sentences an Edge job synthesises; validated before anything is created."""
@@ -703,7 +776,7 @@ class TrainingJobManager:
     def _finish(self, job: Job, workdir: Path) -> None:
         with job.lock:
             job.finished_at = self._clock()
-            job.pid = None
+            job.process = None
         job.log.append(f"工作結束：{job.status}")
         job.log.close()
         for child in workdir.iterdir() if workdir.is_dir() else ():
@@ -810,13 +883,22 @@ class TrainingJobManager:
         if not audio.done:
             raise JobFailed("沒有任何句子通過音檔品質檢查")
         job.log.append(f"[品質檢查] Whisper（{settings.whisper_model}，CPU）比對逐字稿；這一步需要一段時間")
-        with self._transcriber_factory(settings.whisper_model) as transcribe:
-            report = verify_with_asr(
-                self.store, job.corpus, transcribe, min_similarity=settings.min_similarity, cancel=job.cancel,
-                on_progress=lambda done, total: self._update(
-                    job, stage, 0.3 + 0.7 * done / max(total, 1), f"逐字稿比對 {done}/{total}"
-                ),
-            )
+        try:
+            with self._transcriber_factory(settings.whisper_model) as transcribe:
+                report = verify_with_asr(
+                    self.store, job.corpus, transcribe, min_similarity=settings.min_similarity, cancel=job.cancel,
+                    on_progress=lambda done, total: self._update(
+                        job, stage, 0.3 + 0.7 * done / max(total, 1), f"逐字稿比對 {done}/{total}"
+                    ),
+                )
+        except TranscriberError as exc:
+            if job.cancel.is_set():  # the cancel killed the child; that is not a failure
+                raise JobCancelled from exc
+            raise JobFailed(str(exc)) from exc
+        finally:
+            with job.lock:
+                job.process = None
+            self._persist(job)
         if report.cancelled or job.cancel.is_set():
             raise JobCancelled
         for mismatch in report.excluded:
@@ -884,7 +966,7 @@ class TrainingJobManager:
             sampler_stop.set()
             sampler.join(5)
         with job.lock:
-            job.pid = None
+            job.process = None
         job.note(training_seconds=round(self._clock() - started, 1))
         if result.cancelled or job.cancel.is_set():
             raise JobCancelled
@@ -955,7 +1037,7 @@ class TrainingJobManager:
         def spawn(command, env, cwd):
             process = self._spawn(command, env, cwd)
             with job.lock:
-                job.pid = getattr(process, "pid", None)
+                job.process = process
             self._persist(job)
             return process
 
@@ -968,7 +1050,16 @@ class TrainingJobManager:
         return env
 
     def _default_transcriber(self, model: str) -> AbstractContextManager[Transcriber]:
-        return SubprocessTranscriber(model, spawn=self._spawn, root=self.paths.root)
+        """The CPU Whisper child of the running job: tracked (its pid is saved), killed by cancel, timed."""
+        with self._lock:
+            job = self._job
+        return SubprocessTranscriber(
+            model,
+            spawn=self._spawn if job is None else self._tracked_spawn(job),
+            root=self.paths.root,
+            utterance_timeout=self.settings().whisper_utterance_timeout_seconds,
+            cancel=None if job is None else job.cancel,
+        )
 
     def _default_verify(self, bundle: Path, cancel: threading.Event) -> None:
         lines: list[str] = []
@@ -982,6 +1073,9 @@ class TrainingJobManager:
             return
         if result.returncode != 0:
             raise JobFailed("匯出的聲線模型無法被 sherpa-onnx 載入：" + (lines[-1] if lines else f"結束碼 {result.returncode}"))
+
+    def _stop_orphan(self, pid: int) -> bool:
+        return stop_orphan_training(pid, grace_seconds=self.settings().cancel_grace_seconds)
 
     # -- persistence
 
@@ -1006,8 +1100,13 @@ class TrainingJobManager:
         for stale in files[KEEP_JOB_FILES:]:
             stale.unlink(missing_ok=True)
 
-    def _recover(self) -> None:
-        """Once per process: jobs that were running when the server stopped are failed."""
+    def recover(self) -> None:
+        """Once per process, at startup: jobs that were running when the server stopped are failed.
+
+        Their children (training, export or the Whisper worker, by the pid saved in the job
+        state) are stopped first, escalating to SIGKILL, so the GPU is free before the server
+        accepts a request. Blocking: the server runs it in a worker thread.
+        """
         with self._lock:
             if self._recovered:
                 return
@@ -1045,22 +1144,63 @@ class TrainingJobManager:
             logger.exception("Could not update training job state %s", path)
 
 
-def stop_orphan_training(pid: int) -> bool:
-    """SIGTERM a training child left by an earlier server run; ``True`` if one was signalled.
+def _read_command(pid: int) -> str:
+    return Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
 
-    A recorded pid may have been reused, so the process is signalled only when its
-    command line names the training tools folder.
-    """
-    import signal
 
+def _group_exists(pid: int) -> bool:
     try:
-        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
+        os.killpg(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def stop_orphan_training(
+    pid: int,
+    *,
+    grace_seconds: float = DEFAULT_GRACE_SECONDS,
+    kill_wait_seconds: float = ORPHAN_KILL_WAIT_SECONDS,
+    signal_group: Callable[[int, int], None] = os.killpg,
+    group_exists: Callable[[int], bool] = _group_exists,
+    read_command: Callable[[int], str] = _read_command,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> bool:
+    """Stop a child process group left by an earlier server run; ``True`` if one was signalled.
+
+    SIGTERM first, then SIGKILL when the group is still there after ``grace_seconds``, and
+    a bounded wait (``kill_wait_seconds``) for it to disappear, so the GPU it held is free
+    when this returns. A recorded pid may have been reused, so the group is signalled only
+    when its command line names the training tools or the Whisper worker (``ORPHAN_MARKERS``).
+    """
+    try:
+        command = read_command(pid)
     except OSError:
         return False
-    if ORPHAN_MARKER not in command:
+    if not any(marker in command for marker in ORPHAN_MARKERS):
         return False
+
+    def gone_within(seconds: float) -> bool:
+        deadline = clock() + seconds
+        while group_exists(pid):
+            if clock() >= deadline:
+                return False
+            sleep(ORPHAN_POLL_SECONDS)
+        return True
+
     try:
-        os.killpg(pid, signal.SIGTERM)
+        signal_group(pid, signal.SIGTERM)
     except (ProcessLookupError, PermissionError):
         return False
+    if gone_within(grace_seconds):
+        return True
+    try:
+        signal_group(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        return True
+    if not gone_within(kill_wait_seconds):
+        logger.error("Training process group %s survived SIGKILL", pid)
     return True

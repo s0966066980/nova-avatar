@@ -486,3 +486,32 @@ def test_a_cpu_failure_is_not_retried(tmp_path):
 
     with pytest.raises(RuntimeError, match="bad audio"):
         transcriber.transcribe(tmp_path / "a.wav")
+
+
+def test_running_is_true_only_while_a_job_works(tmp_path):
+    import threading
+
+    from src.tts.training.corpus import CorpusStore
+    from src.tts.training.gpu_guard import DeviceChoice
+    from src.tts.training.transcription import TranscriptionJobs
+
+    store = CorpusStore(tmp_path / "training")
+    store.create("mine", source="self-recorded")
+    store.add_line("mine", b"RIFF fixture", ".wav")
+    gate = threading.Event()
+
+    class Waiting:
+        def transcribe(self, path):
+            assert gate.wait(10)
+            return "文字"
+
+        def close(self):
+            pass
+
+    jobs = TranscriptionJobs(store, lambda model, device: Waiting(), lambda: DeviceChoice("cpu", "x"))
+    assert jobs.running() is False
+    jobs.start("mine", None, "small")
+    assert jobs.running() is True
+    gate.set()
+    assert jobs.wait(10)
+    assert jobs.running() is False
