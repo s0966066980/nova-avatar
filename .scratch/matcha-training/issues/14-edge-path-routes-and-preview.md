@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # Edge 路徑的路由缺口與三句預設試聽
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)第 2、13、17 點與工單 08 Comments 的「伺服器契約缺口」。工單 04、05、06 各自假設另一張負責 Edge 語料的建立與條文確認，結果沒有任何路由能做這兩件事，Edge 路徑在真實環境走不通。另外 `/api/speech/preview` 只念固定一句，三句預設試聽只剩中文可播。
 
