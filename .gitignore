@@ -89,6 +89,8 @@ results/
 .local/tensorrt/
 .local/jetson-to-pc-port/
 .local/ocr-packages/
+.local/matcha-train/
+.local/matcha-base/
 
 # Saved resource changes awaiting all peers to disconnect.
 config/pending_settings.json

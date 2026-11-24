@@ -1,0 +1,9 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+#
+# Upstream Matcha-TTS (Shivam Mehta, MIT), cp310 wheel. Installed with --no-deps
+# --require-hashes by scripts/setup-matcha-train.sh: its own metadata pins gradio
+# 3.43.2, hydra-optuna-sweeper and jupyter, none of which training imports; the
+# dependencies it does need are in requirements.txt.
+matcha-tts==0.0.7.2 \
+    --hash=sha256:47dc5c4dbdb270bc26af06a3404e89cc3c8cd11e58572975fe0ad1259b6db219
