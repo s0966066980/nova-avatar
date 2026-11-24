@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
 import numpy as np
 SR=16000
 def repeats(x, win=0.05, hop=0.025, lo=0.02, hi=0.3, thr=0.9, min_rms=0.01):

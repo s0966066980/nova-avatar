@@ -88,3 +88,11 @@ Status: 已確認（2026-11-24），疊音／跳音診斷已完成，待介面�
 - 伺服器回傳的原因文字只有繁體中文，在 zh-CN、en-US 介面仍顯示中文。
 - 校對表的「第 N 句」是清理後清單的位置，不是上傳檔案的原始行號。
 - 沒有刪除語料與聲線模型的路由。
+- 程式審查（2026-11-24）後延後、尚未處理的整理項目：
+  - Whisper 模型清單與預設值有兩份（`asr.py` 的 `WHISPER_MODELS`／`DEFAULT_MODEL` 與 `transcription.py` 的 `ALLOWED_MODELS`／`DEFAULT_MODEL`），也有兩個 `Transcriber` 型別（`transcript_check.Transcriber` 與 `transcription.Transcriber`），應合併。
+  - 預設值 8.0（顯存門檻）與 `"small"`（Whisper 模型）在 schema、設定載入與訓練模組各寫一份，應只留一份來源。
+  - `strictest`（使用限制標示取最嚴格者）的判斷在前端與後端各有一份。
+  - `source == SOURCE_EDGE_TEST_TEACHER` 的分支散在 `tts_training_jobs.py`、`routes/tts_corpus.py` 等多處，應收斂成語料自己的屬性。
+  - 分層問題：`config/loader.py`、`gpu_guard.py` 與 `voice_preview.py`（匯入引擎的私有函式 `_build_t2s_converter`）的匯入方向應整理。
+  - `VtJob.vue` 以「鍵等於翻譯結果」判斷缺翻譯，且後端 `STAGE_LABELS` 繞過 i18n 直接回中文。
+  - 介面的 `openCorpus` 重新開啟草稿時，不會帶回該語料先前選的 Edge 聲音、份量預設與自訂文字清單（伺服器端會續做已合成的句子，所以不會重做，只是畫面要重選）。

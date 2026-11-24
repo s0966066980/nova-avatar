@@ -1,3 +1,5 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
 import sys, os, json, re, collections
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 from faster_whisper import WhisperModel

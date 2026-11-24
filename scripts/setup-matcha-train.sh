@@ -2,14 +2,17 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 #
-# 建立 Matcha-TTS 微調專用環境：.local/matcha-train/venv（Python 3.10）與底模
-# .local/matcha-base/pytorch_model_sherpa.bin。與主程式 .venv 完全分開，不會改動它。
-# 可重複執行：已存在且通過檢查的部分不會重做；底模以固定 commit 下載並核對 SHA-256，
-# 已存在但雜湊不符時會停下，不會自動覆蓋。
+# Build the Matcha-TTS fine-tuning environment: .local/matcha-train/venv (Python 3.10) and
+# the base weights .local/matcha-base/pytorch_model_sherpa.bin. It is completely separate
+# from the application's .venv and never touches it.
+# Safe to re-run: parts that already exist and pass their checks are not redone. The base
+# weights are downloaded at a pinned commit and verified against a SHA-256; if a file is
+# already there with a different hash the script stops instead of overwriting it.
 #
-# 用法：bash scripts/setup-matcha-train.sh
-# MATCHA_TRAIN_TORCH=cu124（預設，與主環境同為 torch 2.5.0+cu124，供訓練用）或 cpu
-# （只裝 CPU 版 torch，供檢查與測試）。最後一步用 CPU 嚴格載入底模並跑數個假資料訓練步驟。
+# Usage: bash scripts/setup-matcha-train.sh
+# MATCHA_TRAIN_TORCH=cu124 (default; the same torch 2.5.0+cu124 as the main environment,
+# for training) or cpu (CPU-only torch, for checks and tests). The last step loads the base
+# weights strictly on the CPU and runs a few training steps on fake data.
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -36,13 +39,14 @@ if [ ! -x "$VENV/bin/python" ]; then
     uv venv --python 3.10 "$VENV"
 fi
 
-# torch 的 wheel 索引隨 GPU 版本而異，所以與其他依賴分開安裝。
+# The torch wheel index depends on the GPU build, so torch is installed apart from the other dependencies.
 uv pip install --python "$VENV/bin/python" \
     --index-url "https://download.pytorch.org/whl/$TORCH_VARIANT" \
     --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match \
     "torch==$TORCH_VERSION" "torchaudio==$TORCH_VERSION"
 uv pip install --python "$VENV/bin/python" -r "$DEPS/requirements.txt"
-# 上游 matcha-tts（MIT）不帶依賴安裝：它的 metadata 釘了 gradio 3.43.2、jupyter 等訓練用不到的套件。
+# Upstream matcha-tts (MIT) is installed without its dependencies: its metadata pins gradio 3.43.2,
+# jupyter and other packages that training does not need.
 uv pip install --python "$VENV/bin/python" --no-deps --require-hashes -r "$DEPS/matcha-tts.txt"
 
 "$VENV/bin/python" -I "$PROJECT_ROOT/scripts/matcha_base_weights.py" --dir "$BASE_DIR"
