@@ -603,3 +603,33 @@ def test_training_lines_carry_the_expanded_text(store):
     [(line_out, text)] = store.get(slug).training_lines()
 
     assert (line_out.id, text) == ("000001", "共十五人")
+
+
+# ------------------------------------------------------------------ server-managed sidecar files
+
+
+def test_a_sidecar_file_is_written_and_read_beside_the_manifest(store):
+    store.create("my-voice")
+
+    assert store.read_sidecar("my-voice", "msa-acknowledgement.json") is None
+    store.write_sidecar("my-voice", "msa-acknowledgement.json", b"{}")
+
+    assert store.read_sidecar("my-voice", "msa-acknowledgement.json") == b"{}"
+    assert (store.root / "my-voice" / "msa-acknowledgement.json").read_bytes() == b"{}"
+
+
+@pytest.mark.parametrize("name", ["../corpus.json", "corpus.json", "other.json", "", None])
+def test_only_the_listed_sidecar_names_are_accepted(store, name):
+    store.create("my-voice")
+
+    with pytest.raises(CorpusError):
+        store.write_sidecar("my-voice", name, b"{}")
+    with pytest.raises(CorpusError):
+        store.read_sidecar("my-voice", name)
+
+
+def test_a_sidecar_of_a_missing_corpus_is_not_found(store):
+    with pytest.raises(CorpusError) as caught:
+        store.read_sidecar("nowhere", "msa-acknowledgement.json")
+
+    assert caught.value.status == 404

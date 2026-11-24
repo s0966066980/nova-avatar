@@ -8,6 +8,8 @@ line and one source declaration. Layout::
 
     data/tts/training/<slug>/
         corpus.json                 manifest (UTF-8 JSON, written atomically)
+        msa-acknowledgement.json    optional, ``SIDECAR_FILES``: written by
+                                    ``edge_acknowledgement`` for Edge corpora
         audio/<line id><extension>  one audio file per line
 
 Every path is built by the server from a validated slug (the same rule as a
@@ -59,6 +61,8 @@ TRAINING_ROOT = get_project_root() / "data" / "tts" / "training"
 MANIFEST_FILE = "corpus.json"
 AUDIO_DIR = "audio"
 MANIFEST_VERSION = 1
+# Server-managed files kept beside the manifest (see ``CorpusStore.read_sidecar``).
+SIDECAR_FILES = ("msa-acknowledgement.json",)
 
 REVIEW_PENDING = "pending"
 REVIEW_CONFIRMED = "confirmed"
@@ -233,6 +237,31 @@ class CorpusStore:
             logger.info("Declared source %s for training corpus %s", source, corpus.slug)
             return updated
 
+    def read_sidecar(self, slug: str, name: str) -> bytes | None:
+        """A server-managed file beside the manifest; ``None`` when it does not exist."""
+        slug, name = _slug(slug), _check_sidecar(name)
+        with _LOCK:
+            self._load(slug)
+            path = self._corpus_dir(slug) / name
+            if path.is_symlink():
+                raise CorpusError("訓練語料的附屬檔案不可為符號連結")
+            if not path.is_file():
+                return None
+            try:
+                return path.read_bytes()
+            except OSError as exc:
+                raise CorpusError(f"訓練語料的附屬檔案無法讀取：{exc}", status=500) from exc
+
+    def write_sidecar(self, slug: str, name: str, data: bytes) -> None:
+        """Write a server-managed file beside the manifest, replacing any earlier one."""
+        slug, name = _slug(slug), _check_sidecar(name)
+        with _LOCK:
+            self._load(slug)
+            path = self._corpus_dir(slug) / name
+            if path.is_symlink():
+                raise CorpusError("訓練語料的附屬檔案不可為符號連結")
+            _write_atomic(path, data)
+
     # ------------------------------------------------------------ lines
 
     def add_line(
@@ -364,6 +393,12 @@ def _check_source(source: Any) -> str:
     if not isinstance(source, str) or source not in SOURCE_KINDS:
         raise CorpusError("不明的來源宣告")
     return source
+
+
+def _check_sidecar(name: Any) -> str:
+    if not isinstance(name, str) or name not in SIDECAR_FILES:
+        raise CorpusError("不明的附屬檔案")
+    return name
 
 
 def _check_extension(extension: Any) -> str:
