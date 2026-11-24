@@ -7,11 +7,14 @@ from __future__ import annotations
 
 import importlib.metadata
 import json
+import re
 from pathlib import Path
 
 import pytest
 
-from src.tts.voice_models import list_voice_models
+from src.tts.voice_models import LABEL_FILE, REQUIRED_FILES, RULE_FSTS, list_voice_models
+
+INSTALL_DOC = Path(__file__).resolve().parents[1] / "docs/voice-models.md"
 
 LABEL = {
     "name": "曉臻（測試）",
@@ -152,3 +155,24 @@ def test_sherpa_onnx_is_a_main_dependency_and_importable():
     import sherpa_onnx
 
     assert hasattr(sherpa_onnx, "OfflineTts")
+
+
+def test_install_doc_voice_json_example_is_a_listable_usage_label(tmp_path):
+    """The label people copy from the install doc must be one the catalog accepts."""
+    doc = INSTALL_DOC.read_text(encoding="utf-8")
+    [example] = re.findall(r"```json\n(.*?)```", doc, re.DOTALL)
+    _voice_model_dir(tmp_path, "zh-tw-hsiaochen-edge", json.loads(example))
+
+    [model] = list_voice_models(tmp_path)
+
+    assert model.usage == "Development only"
+    assert model.languages == ("zh-TW", "en-US")
+
+
+def test_install_doc_lists_every_voice_model_file_with_a_sha256():
+    doc = INSTALL_DOC.read_text(encoding="utf-8")
+    hashes = dict(re.findall(r"\| `([^`]+)` \| `([0-9a-f]{64})` \|", doc))
+
+    for name in (*REQUIRED_FILES, *RULE_FSTS):
+        assert name in hashes, name
+    assert LABEL_FILE in doc

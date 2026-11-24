@@ -119,6 +119,29 @@ class BrandingComplianceTests(unittest.TestCase):
         stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
         self.assertRegex(stack, r"\| TTS \| Edge TTS \| \*\*Development only\*\*")
 
+    def test_matcha_voice_models_are_labeled_in_notices_and_docs(self):
+        third_party = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+        matcha = third_party[third_party.index("### Matcha voice models") :]
+        matcha = matcha[: matcha.index("\n## ")]
+
+        self.assertRegex(matcha, r"sherpa-onnx[^\n]*\n[\s\S]*?License: Apache-2\.0")
+        self.assertRegex(
+            matcha,
+            r"dengcunqin/matcha_tts_zh_en_20251010[\s\S]+?\*\*Research / Non-commercial\*\*",
+        )
+        self.assertRegex(matcha, r"vocos-16khz-univ\.onnx[\s\S]+?Charactr Inc\.")
+        self.assertRegex(
+            matcha,
+            r"zh-tw-hsiaochen-edge[\s\S]+?\*\*Development only\*\*[\s\S]+?§14\(s\)\(iv\)",
+        )
+        self.assertIn("No voice model is cleared for commercial use.", matcha)
+
+        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        self.assertRegex(stack, r"\| TTS \| Matcha-TTS voice models[^\n]*Research / Non-commercial")
+        self.assertRegex(stack, r"\| TTS \| Matcha-TTS voice models[^\n]*Development only")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("docs/voice-models.md", readme)
+
     def test_commercial_review_profile_and_audits_are_present(self):
         profile = (ROOT / "config/config_commercial.yaml").read_text(encoding="utf-8")
         stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")

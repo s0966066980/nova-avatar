@@ -32,6 +32,12 @@ class IntegrationCheckTests(unittest.TestCase):
         self.assertIn("docs/source-attribution-audit.md", integration_check.REQUIRED_FILES)
         self.assertIn("docs/software-stack.md", integration_check.REQUIRED_FILES)
 
+    def test_notice_audit_requires_the_matcha_voice_model_entries(self):
+        notices = integration_check.REQUIRED_FILES["THIRD_PARTY_NOTICES.md"]
+        for text in ("sherpa-onnx", "dengcunqin/matcha_tts_zh_en_20251010", "zh-tw-hsiaochen-edge"):
+            self.assertIn(text, notices)
+        self.assertIn("SHA-256", integration_check.REQUIRED_FILES["docs/voice-models.md"])
+
     def test_runtime_module_contract_covers_selected_optional_engines(self):
         self.assertNotIn("funasr", integration_check.RUNTIME_MODULES)
         self.assertEqual(integration_check.RUNTIME_MODULES["musetalk"], ("einops", "ffmpeg"))
