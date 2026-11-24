@@ -210,7 +210,8 @@ terms remain controlling for those files.
 
 ## Optional TTS backends
 
-Edge TTS and BreezyVoice (above) are the only TTS engines. Verify the exact
+The TTS engines are Edge TTS, BreezyVoice (above) and Matcha voice models.
+Verify the exact
 code, service, voice, model, and checkpoint terms before redistribution or
 commercial packaging. The Console engine catalog shows each engine's usage
 classification in its label.
@@ -223,6 +224,75 @@ classification in its label.
   cannot synthesize speech without Internet access.
 - Do not use Edge TTS as the speech engine of a commercial or production
   deployment.
+
+### Matcha voice models
+
+- Role: optional CPU TTS engine (`matcha`); Edge TTS remains the default. Each
+  voice model (聲線模型) under `models/tts/<id>/` speaks one voice for zh-TW and
+  en-US. Voice models are not bundled in this repository and are never
+  downloaded; they are copied by hand. Installation, the `voice.json` usage
+  label and SHA-256 file lists: [docs/voice-models.md](docs/voice-models.md).
+  Design: [ADR 0025](docs/adr/0025-matcha-voice-models-without-edge-distillation.md).
+- No voice model is cleared for commercial use. The usage label is shown in
+  the Console; the system does not block use.
+- Information verified 2026-11-24.
+
+#### sherpa-onnx
+
+- Role: ONNX inference runtime and text frontend for voice models, pinned to
+  `sherpa-onnx==2.0.1` in `uv.lock`
+- License: Apache-2.0
+- Source: <https://github.com/k2-fsa/sherpa-onnx> (`LICENSE`)
+- Installed package metadata and license remain in the Python distribution.
+  Nova Avatar ships no Matcha-TTS model code: sherpa-onnx runs the exported
+  ONNX graphs.
+
+#### Base model `dengcunqin/matcha_tts_zh_en_20251010`
+
+- Role: Chinese/English Matcha-TTS acoustic model, lexicon and tokens; the
+  starting point of every fine-tuned voice model
+- Usage classification: **Research / Non-commercial**, for the base model and
+  every voice model fine-tuned from it, until the training-data license is
+  confirmed
+- Source: <https://modelscope.cn/models/dengcunqin/matcha_tts_zh_en_20251010>
+- The ModelScope metadata declares Apache License 2.0, but the model README
+  names no training-data source. The upstream Baker recipe data is licensed
+  for non-commercial use only and may be part of the training data. The
+  declared code/weight license does not clear the data.
+- The base model has no usage label (`voice.json`), so it is not listed as a
+  selectable voice model.
+
+#### Vocoder `vocos-16khz-univ.onnx`
+
+- Role: 16 kHz vocoder shared by all voice models
+- Source: sherpa-onnx `vocoder-models` release
+  <https://github.com/k2-fsa/sherpa-onnx/releases/tag/vocoder-models>; an
+  identical file (SHA-256 `b599142a1fb8ff03de3e84ac35ff537c619e56f4267a6fe894851a42844acf9e`)
+  is in the `dengcunqin/matcha_tts_zh_en_20251010` repository
+- Weights: that repository's metadata declares Apache-2.0; the weights'
+  training data is unknown
+- Upstream Vocos code: MIT, Copyright (c) 2023 Charactr Inc.,
+  <https://github.com/gemelo-ai/vocos>
+- Carries the classification of the voice model it ships with; it adds no
+  commercial permission.
+
+#### Voice model `zh-tw-hsiaochen-edge`
+
+- Usage classification: **Development only**
+- Distilled from Microsoft Edge read-aloud `zh-TW-HsiaoChenNeural` output,
+  fine-tuned from the base model above.
+- Microsoft Services Agreement §14(s)(iv) (effective 2026-09-30): "You may not
+  use the AI services, or data from the AI services, to create, train, or
+  improve (directly or indirectly) any AI technology". The clause does not
+  distinguish commercial from non-commercial use. Whether the Edge read-aloud
+  endpoint falls under the agreement is unconfirmed; the risk remains.
+- Use it only for development on the operator's own machine. Do not use it at
+  a venue, in a commercial or production deployment, or redistribute it.
+- The legacy `NOTICE-NON-COMMERCIAL.txt` in its directory says Research /
+  Non-commercial; the stricter `Development only` label in `voice.json`
+  governs.
+- Nova Avatar does not use Edge TTS as a teacher for training or distillation
+  (ADR 0025).
 
 ## Models, weights, and datasets
 

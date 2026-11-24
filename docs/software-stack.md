@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Nova Avatar Software Stack
 
-Updated: 2026-10-30
+Updated: 2026-11-24
 
 Nova Avatar is a real-time conversational digital-human application: browser
 microphone input travels over WebRTC to server-owned turn orchestration, then
@@ -33,6 +33,7 @@ the root Apache-2.0 grant.
 | LLM | Ollama | Optional local OpenAI-compatible endpoint; not needed by default | Review the selected model and endpoint terms. |
 | TTS | Edge TTS | **Development only** | Still the checked-in runtime default for development. Non-public Microsoft endpoint with no formal commercial license; needs Internet access. Do not use it in a commercial deployment. |
 | TTS | BreezyVoice (MediaTek Research) with g2pW | Optional, local Taiwanese Mandarin; whole-fragment synthesis in the owned CosyVoice process (upstream CosyVoice v1 code from `~/CosyVoice`, Apache-2.0). On an RTX 4090 shared with MuseTalk and the LLM, the first fragment takes about 2.5 s (P50), so it is not the default yet | Code and weights Apache-2.0 (pinned in `scripts/breezyvoice_weights.py`); the reference voice needs its own consent. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
+| TTS | Matcha-TTS voice models (`matcha` engine, sherpa-onnx on the CPU) | Optional; Edge TTS stays the default. A voice model under `models/tts/<id>/` speaks zh-TW and en-US with one voice; voice models are copied by hand, never downloaded ([voice-models.md](voice-models.md)). `zh-tw-hsiaochen-edge`, measured 2026-11-23 on 4 CPU threads without MuseTalk loaded: warm first audio P50 0.050 s, P95 0.067 s; Chinese CER 13.2%, English WER 5.6% | sherpa-onnx is Apache-2.0. No voice model is cleared for commercial use: `zh-tw-hsiaochen-edge` is **Development only** (distilled from Edge output, MSA §14(s)(iv)); the base model and voice models fine-tuned from it are **Research / Non-commercial** (undocumented training data). See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 | Avatar | MuseTalk | Supported, recommended review-profile path | Code is MIT; models and dependencies retain separate terms. |
 | Avatar | Wav2Lip | **Research / Non-commercial** | Do not include its integration or upstream weights in a commercial Nova Avatar distribution. |
 | Avatar | ER-NeRF, TalkingGaussian, UltraLight | Optional, license review required | Do not infer commercial rights from the root license. |

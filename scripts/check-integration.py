@@ -27,10 +27,19 @@ OK, FAIL = "\033[32m✓\033[0m", "\033[31m✗\033[0m"
 REQUIRED_FILES = {
     "LICENSE": ("Apache License",),
     "NOTICE": ("Kedreamix", "Linly-Talker-Stream", "LiveTalking"),
-    "THIRD_PARTY_NOTICES.md": ("MuseTalk", "Wav2Lip", "Research / Non-commercial"),
+    "THIRD_PARTY_NOTICES.md": (
+        "MuseTalk",
+        "Wav2Lip",
+        "Research / Non-commercial",
+        "sherpa-onnx",
+        "dengcunqin/matcha_tts_zh_en_20251010",
+        "zh-tw-hsiaochen-edge",
+        "Development only",
+    ),
     "third_party/licenses/MuseTalk-LICENSE.txt": (),
     "third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt": (),
     "docs/software-stack.md": ("Nova Avatar Software Stack",),
+    "docs/voice-models.md": ("voice.json", "SHA-256", "Development only"),
     "docs/source-attribution-audit.md": ("Source Attribution Audit",),
     "docs/current-project-workflow.md": ("Current Project Workflow", "清除過往工作項目"),
 }
