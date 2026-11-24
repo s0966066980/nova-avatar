@@ -17,11 +17,20 @@ from src.server.routes import tts_training
 from src.server.server import create_app
 from src.server.tts_training_jobs import TrainingJobManager, TrainingParams
 from tests.access_helpers import LAN_ADDRESS, access_client, built_frontend, same_origin
-from tests.test_training_jobs import ENOUGH_VRAM_MIB, rig
+from tests.test_training_jobs import ENOUGH_VRAM_MIB, edge_synthesis, rig
+from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
+from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
 from src.tts.training.gpu_probe import VramReading
 
 BASE = "/api/tts/training"
-ROUTES = [("GET", BASE), ("POST", BASE + "/start"), ("POST", BASE + "/cancel"), ("GET", BASE + "/log")]
+PREVIEW = BASE + "/text-preview"
+ROUTES = [
+    ("GET", BASE),
+    ("POST", BASE + "/start"),
+    ("POST", BASE + "/cancel"),
+    ("GET", BASE + "/log"),
+    ("POST", PREVIEW),
+]
 
 
 def async_test(function):
@@ -128,6 +137,99 @@ async def test_malformed_start_requests_are_400(tmp_path, payload):
         response = await client.post(BASE + "/start", headers=same_origin(client), json=payload)
         assert response.status == 400 and (await response.json())["code"] == -1
     assert r.manager.status() is None
+
+
+@async_test
+async def test_text_preview_answers_each_sentence_with_its_spoken_form(tmp_path):
+    r = rig(tmp_path)
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(PREVIEW, headers=same_origin(client), json={"sentences": "我有3個蘋果\n今天晴天\n"})
+        body = await response.json()
+    assert response.status == 200 and body["code"] == 0
+    data = body["data"]
+    assert data["ok"] is True and data["total"] == 2 and data["unresolved_count"] == 0
+    assert data["sentences"] == [
+        {"index": 1, "text": "我有3個蘋果", "spoken": "我有三個蘋果", "unresolved": []},
+        {"index": 2, "text": "今天晴天", "spoken": "今天晴天", "unresolved": []},
+    ]
+    assert data["estimated_seconds"] == pytest.approx(round(data["estimated_seconds"], 1), abs=0.05)
+    assert 1 < data["estimated_seconds"] < 10
+
+
+@async_test
+async def test_text_preview_marks_unresolved_fragments_and_is_not_ok(tmp_path):
+    r = rig(tmp_path)
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(PREVIEW, headers=same_origin(client), json={"sentences": "你好\n價錢是$50"})
+        data = (await response.json())["data"]
+    assert response.status == 200 and data["ok"] is False and data["unresolved_count"] == 1
+    assert data["sentences"][1]["unresolved"] == [{"text": "$50", "start": 3, "end": 6, "reason": "currency"}]
+    assert data["sentences"][1]["spoken"] == "價錢是$50"
+
+
+@async_test
+async def test_text_preview_is_pure_and_needs_no_corpus_gpu_or_job(tmp_path):
+    r = rig(tmp_path, sessions=3, vram=VramReading(0))
+    before = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(PREVIEW, headers=same_origin(client), json={"sentences": "第一句\n$5"})
+        assert response.status == 200
+    assert sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*")) == before
+    assert r.spawner.commands == [] and r.manager.status() is None
+
+
+@pytest.mark.parametrize("payload", [{}, {"sentences": 5}, {"sentences": None}, [], "text"])
+@async_test
+async def test_malformed_text_preview_requests_are_400(tmp_path, payload):
+    r = rig(tmp_path)
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(PREVIEW, headers=same_origin(client), json=payload)
+        assert response.status == 400 and (await response.json())["code"] == -1
+
+
+@async_test
+async def test_text_preview_refuses_the_same_lists_as_start(tmp_path):
+    r = rig(tmp_path)
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        empty = await client.post(PREVIEW, headers=same_origin(client), json={"sentences": "\n \n"})
+        control = await client.post(PREVIEW, headers=same_origin(client), json={"sentences": "第一\x07句"})
+        huge = await client.post(PREVIEW, headers=same_origin(client), json={"sentences": "字" * (1024 * 1024 + 1)})
+        assert (empty.status, control.status, huge.status) == (400, 400, 413)
+        for response in (empty, control, huge):
+            assert (await response.json())["code"] == -1
+
+
+@async_test
+async def test_a_bad_json_body_to_text_preview_is_400(tmp_path):
+    r = rig(tmp_path)
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(PREVIEW, data=b"{not json", headers={**same_origin(client), "Content-Type": "application/json"})
+    assert response.status == 400
+
+
+@async_test
+async def test_start_answers_409_with_the_unresolved_fragments_of_an_edge_list(tmp_path):
+    r = rig(tmp_path, source=SOURCE_EDGE_TEST_TEACHER, texts=[])
+    record_acknowledgement(r.store, "voice", MSA_CLAUSE.text)
+    payload = {"corpus": "voice", "name": "我的聲音", "sentences": "第一句\n價錢是$50"}
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(BASE + "/start", headers=same_origin(client), json=payload)
+        body = await response.json()
+    assert response.status == 409 and body["code"] == -1 and "第 2 句" in body["msg"]
+    assert body["unresolved"] == [{"index": 2, "text": "$50", "reason": "currency"}]
+    assert r.manager.status() is None and r.spawner.commands == []
+
+
+@async_test
+async def test_a_list_the_preview_accepts_is_accepted_by_start(tmp_path):
+    r = rig(tmp_path, source=SOURCE_EDGE_TEST_TEACHER, texts=[], synthesize=edge_synthesis())
+    record_acknowledgement(r.store, "voice", MSA_CLAUSE.text)
+    text = "我有3個蘋果\n2026年1月2日下雨"
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        preview = (await (await client.post(PREVIEW, headers=same_origin(client), json={"sentences": text})).json())["data"]
+        response = await client.post(BASE + "/start", headers=same_origin(client), json={"corpus": "voice", "name": "我的聲音", "sentences": text})
+        assert preview["ok"] is True and response.status == 200
+        await wait_done(r.manager)
 
 
 @async_test

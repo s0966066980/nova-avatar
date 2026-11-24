@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 from src.tts.training.corpus import CorpusError, CorpusStore
+from src.tts.training.gpu_guard import DeviceChoice
 from src.tts.training.transcription import (
     ALLOWED_MODELS,
     DEFAULT_MODEL,
@@ -60,14 +61,17 @@ def add(store: CorpusStore, n: int, **kwargs) -> list[str]:
     return [store.add_line("voice", WAV, ".wav", original_name=f"t{i}.wav", **kwargs).id for i in range(n)]
 
 
-def jobs_with(store: CorpusStore, transcriber: FakeTranscriber):
+GPU_OK = DeviceChoice("cuda")
+
+
+def jobs_with(store: CorpusStore, transcriber: FakeTranscriber, choice: DeviceChoice = GPU_OK):
     made: list[str] = []
 
-    def factory(model: str):
+    def factory(model: str, device: str):
         made.append(model)
         return transcriber
 
-    return TranscriptionJobs(store, factory), made
+    return TranscriptionJobs(store, factory, lambda: choice), made
 
 
 # ------------------------------------------------------------------ the job
@@ -159,10 +163,10 @@ def test_a_failing_file_is_reported_and_the_rest_continue(store):
 def test_a_model_that_cannot_load_fails_the_job_with_its_reason(store):
     add(store, 1)
 
-    def factory(model: str):
+    def factory(model: str, device: str):
         raise OSError("model not cached")
 
-    jobs = TranscriptionJobs(store, factory)
+    jobs = TranscriptionJobs(store, factory, lambda: GPU_OK)
     jobs.start("voice")
     assert jobs.wait(WAIT)
 
@@ -291,6 +295,118 @@ def test_only_listed_models_can_be_requested(store):
     jobs.start("voice", model="small")
     assert jobs.wait(WAIT)
     assert made == ["small"]
+
+
+# ------------------------------------------------------------------ the device
+
+
+class RecordingChooser:
+    """A fake guard decision that counts how often it is asked and can change its mind."""
+
+    def __init__(self, *choices: DeviceChoice):
+        self.choices = list(choices)
+        self.calls = 0
+
+    def __call__(self) -> DeviceChoice:
+        self.calls += 1
+        return self.choices[min(self.calls, len(self.choices)) - 1]
+
+
+def test_the_status_reports_the_device_and_why_the_cpu_was_chosen(store):
+    add(store, 1)
+    made: list[tuple[str, str]] = []
+
+    def factory(model: str, device: str):
+        made.append((model, device))
+        return FakeTranscriber()
+
+    jobs = TranscriptionJobs(store, factory, lambda: DeviceChoice("cpu", "有舞台連線"))
+
+    started = jobs.start("voice")
+    assert (started.device, started.fallback_reason) == ("cpu", "有舞台連線")
+    assert jobs.wait(WAIT)
+
+    finished = jobs.status("voice")
+    assert (finished.state, finished.device, finished.fallback_reason) == ("done", "cpu", "有舞台連線")
+    assert made == [("medium", "cpu")]
+
+
+def test_an_allowed_gpu_runs_on_cuda_without_a_reason(store):
+    add(store, 1)
+    jobs, _ = jobs_with(store, FakeTranscriber(), DeviceChoice("cuda"))
+
+    started = jobs.start("voice")
+    assert (started.device, started.fallback_reason) == ("cuda", None)
+    assert jobs.wait(WAIT)
+    assert (jobs.status("voice").device, jobs.status("voice").fallback_reason) == ("cuda", None)
+
+
+def test_a_busy_gpu_still_transcribes_on_the_cpu_instead_of_refusing(store):
+    ids = add(store, 2)
+    jobs, _ = jobs_with(store, FakeTranscriber(), DeviceChoice("cpu", "剩餘顯存不足"))
+
+    jobs.start("voice")
+    assert jobs.wait(WAIT)
+
+    assert jobs.status("voice").state == "done"
+    assert [line.text for line in store.get("voice").lines] == [f"text of {i}" for i in ids]
+
+
+def test_the_device_is_decided_once_at_start_and_a_running_job_does_not_migrate(store):
+    add(store, 2)
+    gate = threading.Event()
+    fake = FakeTranscriber(gate=gate)
+    chooser = RecordingChooser(DeviceChoice("cuda"), DeviceChoice("cpu", "有舞台連線"))
+    devices: list[str] = []
+
+    def factory(model: str, device: str):
+        devices.append(device)
+        return fake
+
+    jobs = TranscriptionJobs(store, factory, chooser)
+    jobs.start("voice")
+    assert fake.entered.wait(WAIT)
+    # The stage connects while the job runs: nothing is asked again and the job stays on the GPU.
+    assert jobs.status("voice").device == "cuda"
+    gate.set()
+    assert jobs.wait(WAIT)
+
+    assert chooser.calls == 1
+    assert devices == ["cuda"]
+    assert (jobs.status("voice").device, jobs.status("voice").fallback_reason) == ("cuda", None)
+
+
+def test_a_gpu_that_fails_while_running_is_shown_as_the_cpu_with_a_reason(store):
+    add(store, 2)
+
+    class FallingBack(FakeTranscriber):
+        device = "cuda"
+
+        def transcribe(self, path: Path) -> str:
+            self.device = "cpu"  # what FasterWhisperTranscriber does when CUDA fails on its first batch
+            return super().transcribe(path)
+
+    jobs, _ = jobs_with(store, FallingBack(), DeviceChoice("cuda"))
+    jobs.start("voice")
+    assert jobs.wait(WAIT)
+
+    status = jobs.status("voice")
+    assert (status.state, status.device) == ("done", "cpu")
+    assert status.fallback_reason == "GPU 執行失敗，已改用 CPU"
+
+
+def test_an_idle_status_has_no_device(store):
+    jobs, _ = jobs_with(store, FakeTranscriber())
+    status = jobs.status("voice")
+    assert (status.state, status.device, status.fallback_reason) == ("idle", None, None)
+
+
+def test_a_job_with_nothing_to_do_does_not_ask_the_guard(store):
+    chooser = RecordingChooser(DeviceChoice("cuda"))
+    jobs = TranscriptionJobs(store, lambda model, device: FakeTranscriber(), chooser)
+    with pytest.raises(CorpusError):
+        jobs.start("voice")
+    assert chooser.calls == 0
 
 
 # ------------------------------------------------------------------ the faster-whisper adapter

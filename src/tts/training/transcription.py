@@ -17,9 +17,15 @@ lines, so they still go through the review table.
 
 ``FasterWhisperTranscriber`` loads a faster-whisper model that is already in the
 local cache (never downloading), detects the language itself and converts the
-text to Traditional Chinese (Taiwan wording) with OpenCC ``s2twp``. It prefers
-the GPU and falls back to the CPU once if the GPU cannot run it, for example
-because the CUDA libraries are not on the library path.
+text to Traditional Chinese (Taiwan wording) with OpenCC ``s2twp``.
+
+The device is decided once, when a job starts, by the GPU guard (``choose_device``,
+``gpu_guard.choose_transcription_device``): a connected stage or too little free VRAM
+means the CPU (int8) with a reason, never a refusal and never a silent switch. The
+status carries ``device`` and ``fallback_reason``; a running job does not migrate when
+the stage connects later. If the GPU still cannot run the model, for example because
+the CUDA libraries are not on the library path, the transcriber falls back to the CPU
+once and the status then says so.
 """
 
 from __future__ import annotations
@@ -32,6 +38,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from src.tts.training.corpus import REVIEW_EXCLUDED, CorpusError, CorpusStore, Line
+from src.tts.training.gpu_guard import DEVICE_CPU, DEVICE_CUDA, DeviceChoice
 from src.utils.logging import logger
 
 # faster-whisper models that may be requested; they must already be in the cache.
@@ -51,7 +58,9 @@ class Transcriber(Protocol):
     def close(self) -> None: ...
 
 
-TranscriberFactory = Callable[[str], Transcriber]
+TranscriberFactory = Callable[[str, str], Transcriber]  # (model size, device)
+DeviceChooser = Callable[[], DeviceChoice]
+REASON_GPU_FAILED = "GPU 執行失敗，已改用 CPU"
 
 
 @dataclass(frozen=True)
@@ -71,6 +80,8 @@ class TranscriptionStatus:
     failed: tuple[FailedLine, ...] = ()
     message: str = ""
     cancel_requested: bool = False
+    device: str | None = None  # "cuda" or "cpu" once a job has started
+    fallback_reason: str | None = None  # why it is "cpu" rather than "cuda"
 
 
 IDLE = TranscriptionStatus(STATE_IDLE)
@@ -79,9 +90,10 @@ IDLE = TranscriptionStatus(STATE_IDLE)
 class TranscriptionJobs:
     """The one transcription job of a store, run on its own worker thread."""
 
-    def __init__(self, store: CorpusStore, factory: TranscriberFactory) -> None:
+    def __init__(self, store: CorpusStore, factory: TranscriberFactory, choose_device: DeviceChooser) -> None:
         self.store = store
         self.factory = factory
+        self.choose_device = choose_device
         self._lock = threading.Lock()
         self._status = IDLE
         self._cancel = threading.Event()
@@ -109,13 +121,18 @@ class TranscriptionJobs:
         ]
         if not targets:
             raise CorpusError("沒有需要自動產生逐字稿的音檔", status=409)
+        # Decided once, outside the lock because it may run nvidia-smi; never changed mid-job.
+        choice = self.choose_device()
         with self._lock:
             if self._status.state == STATE_RUNNING:
                 raise CorpusError("已有一項逐字稿作業進行中，請等它完成或取消", status=409)
             self._cancel.clear()
-            self._status = TranscriptionStatus(STATE_RUNNING, slug, model, total=len(targets))
+            self._status = TranscriptionStatus(
+                STATE_RUNNING, slug, model, total=len(targets),
+                device=choice.device, fallback_reason=choice.fallback_reason,
+            )
             thread = threading.Thread(
-                target=self._run, args=(slug, targets, model), name="tts-corpus-transcription", daemon=True
+                target=self._run, args=(slug, targets, model, choice.device), name="tts-corpus-transcription", daemon=True
             )
             self._thread = thread
             started = self._status
@@ -156,14 +173,14 @@ class TranscriptionJobs:
         with self._lock:
             self._status = replace(self._status, **changes)
 
-    def _run(self, slug: str, targets: list[Line], model: str) -> None:
+    def _run(self, slug: str, targets: list[Line], model: str, device: str) -> None:
         transcriber: Transcriber | None = None
         done = skipped = 0
         failed: list[FailedLine] = []
         final = STATE_DONE
         message = ""
         try:
-            transcriber = self.factory(model)
+            transcriber = self.factory(model, device)
             for line in targets:
                 if self._cancel.is_set():
                     final = STATE_CANCELLED
@@ -180,6 +197,10 @@ class TranscriptionJobs:
                     logger.warning("Transcribing line %s of %s failed: %s", line.id, slug, exc)
                     failed.append(FailedLine(line.id, f"辨識失敗：{exc}"[:300]))
                 self._update(done=done, skipped=skipped, failed=tuple(failed))
+                # The adapter retries on the CPU when the GPU cannot run the model; say so.
+                if device == DEVICE_CUDA and getattr(transcriber, "device", device) == DEVICE_CPU:
+                    device = DEVICE_CPU
+                    self._update(device=device, fallback_reason=REASON_GPU_FAILED)
         except Exception as exc:
             logger.exception("Transcription job for %s failed", slug)
             final = STATE_FAILED
@@ -198,7 +219,7 @@ class TranscriptionJobs:
 # ------------------------------------------------------------------ faster-whisper
 
 
-def _cuda_available() -> bool:
+def cuda_available() -> bool:
     try:
         import ctranslate2
 
@@ -256,7 +277,7 @@ class FasterWhisperTranscriber:
 
     def transcribe(self, path: Path) -> str:
         if self._model is None:
-            self._load(self.device or ("cuda" if _cuda_available() else "cpu"))
+            self._load(self.device or ("cuda" if cuda_available() else "cpu"))
         try:
             text = self._recognize(self._model, path)
         except Exception as exc:
@@ -277,6 +298,6 @@ class FasterWhisperTranscriber:
         gc.collect()
 
 
-def default_factory(model: str) -> Transcriber:
-    """The transcriber the server uses: a cached faster-whisper model, GPU if usable."""
-    return FasterWhisperTranscriber(model)
+def default_factory(model: str, device: str) -> Transcriber:
+    """The transcriber the server uses: a cached faster-whisper model on the decided device."""
+    return FasterWhisperTranscriber(model, device)

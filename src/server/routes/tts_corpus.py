@@ -37,12 +37,21 @@ from src.tts.training.corpus import (
     Line,
     ReviewRow,
 )
+from src.server.state import state
+from src.server.tts_training_jobs import settings_from_config
+from src.tts.training.gpu_guard import (
+    DeviceChoice,
+    choose_transcription_device,
+    count_stage_connections,
+)
+from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.ingest import MAX_UPLOAD_BYTES, create_uploaded_corpus, ingest_audio
 from src.tts.training.numerals import normalize_digits
 from src.tts.training.transcription import (
     DEFAULT_MODEL,
     TranscriptionJobs,
     TranscriptionStatus,
+    cuda_available,
     default_factory,
 )
 from src.tts.training.transcripts import (
@@ -99,7 +108,7 @@ SERVICES = web.AppKey("tts_corpus_services", Services)
 def register(app: web.Application, store: CorpusStore | None = None, jobs: TranscriptionJobs | None = None) -> None:
     """Add the corpus routes to ``app``; tests pass their own store and jobs."""
     store = store if store is not None else CorpusStore()
-    jobs = jobs if jobs is not None else TranscriptionJobs(store, default_factory)
+    jobs = jobs if jobs is not None else TranscriptionJobs(store, default_factory, live_device_choice)
     app[SERVICES] = Services(store, jobs)
 
     async def stop_jobs(_app: web.Application) -> None:
@@ -248,7 +257,24 @@ def _status_payload(status: TranscriptionStatus) -> dict:
         "failed": [{"line_id": item.line_id, "message": item.message} for item in status.failed],
         "message": status.message,
         "cancel_requested": status.cancel_requested,
+        "device": status.device,
+        "fallback_reason": status.fallback_reason,
     }
+
+
+def live_device_choice(
+    *,
+    sessions: Callable[[], int] = count_stage_connections,
+    vram_probe: Callable[[], VramReading] = read_free_vram,
+    cuda_available: Callable[[], bool] = cuda_available,
+) -> DeviceChoice:
+    """The GPU guard's decision for a new transcription job, on the live configuration.
+
+    Uses the same stage count and free-VRAM threshold (``matcha.training_min_free_vram_gb``)
+    as the training start. Blocking (``nvidia-smi``): ``TranscriptionJobs.start`` runs it in a worker thread.
+    """
+    threshold = settings_from_config(state.config).min_free_vram_gb
+    return choose_transcription_device(sessions, vram_probe, threshold, cuda_available)
 
 
 def _slug(request: web.Request) -> str:
