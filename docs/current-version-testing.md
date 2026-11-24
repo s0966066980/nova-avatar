@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
 | --- | --- |
 | 驗證環境 | Python 3.11、lock frozen、PyTorch 2.5.0+cu124、CUDA 12.4 與實際 NVIDIA GPU；Node 22 |
 | 出廠預設 | MuseTalk、Whisper small、Silero、Edge TTS、llama.cpp／Gemma 4 E2B |
-| 現行可選能力 | Qwen3.5-9B、Fun-ASR-Nano、BreezyVoice、Ollama／已配置的 OpenAI-compatible 端點 |
+| 現行可選能力 | Qwen3.5-9B、Fun-ASR-Nano、BreezyVoice、Matcha 聲線模型、Wav2Lip（Research / Non-commercial）、Ollama／已配置的 OpenAI-compatible 端點 |
 | 對話能力 | 目前的回覆規則、看板、串流、輪次隔離、角色交接、控制台與舞台隔離 |
 | 安全與維護 | 路由權限、來源與限制標示、資產回收、舊設定拒絕／安全遷移、依賴契約 |
 
@@ -123,6 +123,7 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 修正的回歸測試，以及天氣關鍵字、數字讀法、corpus 路徑攻擊、SSRF 等參數表；這些參數表的
 每一列都對應不同的規則、邊界或攻擊方式。
 
-清理時發現、沒有呼叫者或不在本版範圍的正式程式碼，記錄在
-[待決 issue](../.scratch/test-suite-cleanup/issues/01-dead-code-left-by-test-cleanup.md)；
-程式碼刪除前，它們現有的測試保留。
+清理時發現、沒有呼叫者或不在本版範圍的正式程式碼，已依
+[issue](../.scratch/test-suite-cleanup/issues/01-dead-code-left-by-test-cleanup.md) 的決定連同測試刪除：
+舊路由器、舊看板標記、LFM 2.5 路徑、reply_streaming 未接線元件，以及 UltraLight、ER-NeRF、
+TalkingGaussian 數位人引擎。主要回歸因此再減為 2220 個案例。

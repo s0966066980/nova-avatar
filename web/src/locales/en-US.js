@@ -106,7 +106,7 @@ export default {
       empty: 'No Ollama models found. Run ollama pull first, or type a model name.',
       llamacppEmpty: 'No .gguf found. Put models in ~/llama or the project llama/ folder.',
       manualPlaceholder: 'e.g. qwen3.5:4b',
-      ggufPlaceholder: 'e.g. LFM2.5-2.6B-Q4_K_M',
+      ggufPlaceholder: 'e.g. gemma-4-E2B_q4_0-it',
       responseLength: 'Response length',
       responseLengthDesc: 'Each reply must finish a complete answer within this many characters, not generate extra text and then cut it off. Enter 20–2000 characters.',
       responseLengthUnit: 'characters',

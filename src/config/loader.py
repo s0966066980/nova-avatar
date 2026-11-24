@@ -13,7 +13,7 @@ from .schema import (
     Config, AppConfig, ModelConfig, TTSConfig, MatchaConfig, ASRConfig, VADConfig, LLMConfig,
     AudioConfig, VideoConfig, CustomVideoConfig,
     MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
-    ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
+    BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
 )
 
 
@@ -116,12 +116,8 @@ def dict_to_config(config_dict: Dict) -> Config:
     asr_config = ASRConfig(**config_dict.get('asr', {}))
     vad_config = VADConfig(**config_dict.get('vad', {}))
     llm_dict = dict(config_dict.get('llm', {}) or {})
-    router_val = llm_dict.get('response_router')
-    if isinstance(router_val, dict):
-        allowed_router = {item.name for item in fields(ResponseRouterConfig)}
-        llm_dict['response_router'] = ResponseRouterConfig(
-            **{k: v for k, v in router_val.items() if k in allowed_router}
-        )
+    # The keyword reply router was removed (ADR-0012); older files may still name it.
+    llm_dict.pop('response_router', None)
     board_val = llm_dict.get('board')
     if isinstance(board_val, dict):
         allowed_board = {item.name for item in fields(BoardConfig)}

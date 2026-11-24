@@ -28,7 +28,6 @@ AREA_BY_FILE = {
     "test_n_way_routing.py": "conversation",
     "test_handoff_dry_run.py": "conversation",
     "test_any_to_any_handoff.py": "conversation",
-    "test_answer_board.py": "conversation",
     "test_assistant_profile.py": "llm",
     "test_auto_response_protocol.py": "conversation",
     "test_avatar_transition.py": "avatar",

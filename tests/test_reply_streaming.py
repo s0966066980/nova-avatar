@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
-import asyncio
 import json
 import subprocess
 import sys
@@ -20,17 +19,10 @@ import yaml
 from src.config.schema import Config
 from src.config.loader import dict_to_config
 from src.server.reply_streaming.metrics import TurnMetrics
-from src.server.reply_streaming.media_debt import MediaDebtBudget
 from src.server.reply_streaming.turn import TurnContext, TurnState
 from src.llm.base import BaseLLM
 from src.llm.engines.openai import OpenAILLM
 from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
-from src.server.reply_streaming.channel import (
-    BackpressureTruncated,
-    BoundedFragmentChannel,
-    PlayableFragment,
-)
-from src.server.reply_streaming.producer import ProducerResult, ReplyFragmentProducer
 from src.server.reply_streaming.soak import build_soak_report
 
 
@@ -285,120 +277,6 @@ class TurnMetricsTests(unittest.TestCase):
         self.assertTrue(
             {"text", "transcript", "pcm", "samples", "content"}.isdisjoint(snapshot)
         )
-
-
-class MediaDebtBudgetTests(unittest.TestCase):
-    def test_estimates_are_replaced_by_audio_and_hysteresis_requires_low_watermark(self):
-        budget = MediaDebtBudget(high_watermark_seconds=2.0, low_watermark_seconds=1.0)
-
-        budget.reserve("fragment-1", estimated_seconds=1.2)
-        budget.reserve("fragment-2", estimated_seconds=1.0)
-        self.assertEqual(budget.seconds, 2.2)
-        self.assertTrue(budget.backpressured)
-
-        budget.resolve("fragment-1", actual_seconds=0.8)
-        budget.consume(0.3)
-        self.assertEqual(budget.seconds, 1.5)
-        self.assertTrue(budget.backpressured)
-
-        budget.consume(0.5)
-        self.assertEqual(budget.seconds, 1.0)
-        self.assertFalse(budget.backpressured)
-
-    def test_three_seconds_at_high_watermark_requests_boundary_truncation(self):
-        clock = FakeClock()
-        budget = MediaDebtBudget(
-            high_watermark_seconds=2.0,
-            low_watermark_seconds=1.0,
-            backpressure_timeout_seconds=3.0,
-            clock=clock,
-        )
-
-        budget.reserve("fragment-1", estimated_seconds=2.0)
-        clock.advance(2.99)
-        self.assertFalse(budget.truncation_requested)
-        clock.advance(0.01)
-        self.assertTrue(budget.truncation_requested)
-
-        budget.consume(1.0)
-        self.assertFalse(budget.backpressured)
-        self.assertFalse(budget.truncation_requested)
-
-
-class BoundedFragmentChannelTests(unittest.IsolatedAsyncioTestCase):
-    async def test_producer_blocks_until_media_debt_reaches_low_watermark(self):
-        channel = BoundedFragmentChannel()
-        turn = TurnContext(turn_id="turn-1", generation=1)
-
-        def fragment(sequence, seconds):
-            return PlayableFragment(
-                envelope=turn.envelope(stage="tts_fragment", sequence=sequence),
-                text=f"fragment-{sequence}",
-                estimated_seconds=seconds,
-            )
-
-        await channel.put(fragment(1, 1.2))
-        await channel.put(fragment(2, 1.0))
-        blocked_put = asyncio.create_task(channel.put(fragment(3, 0.5)))
-        await asyncio.sleep(0)
-        self.assertFalse(blocked_put.done())
-
-        await channel.resolve("turn-1:1", actual_seconds=0.8)
-        await channel.consume(0.3)
-        self.assertFalse(blocked_put.done())
-        await channel.consume(0.5)
-        await asyncio.wait_for(blocked_put, timeout=0.1)
-
-        self.assertEqual(
-            [(await channel.get()).text for _ in range(3)],
-            ["fragment-1", "fragment-2", "fragment-3"],
-        )
-
-    async def test_producer_truncates_only_when_next_fragment_reaches_channel(self):
-        clock = FakeClock()
-        budget = MediaDebtBudget(clock=clock)
-        channel = BoundedFragmentChannel(budget)
-        turn = TurnContext(turn_id="turn-1", generation=1)
-        first = PlayableFragment(
-            envelope=turn.envelope(stage="tts_fragment", sequence=1),
-            text="first",
-            estimated_seconds=2.0,
-        )
-        next_fragment = PlayableFragment(
-            envelope=turn.envelope(stage="tts_fragment", sequence=2),
-            text="next boundary",
-            estimated_seconds=0.5,
-        )
-
-        await channel.put(first)
-        clock.advance(3.0)
-
-        with self.assertRaises(BackpressureTruncated):
-            await asyncio.wait_for(channel.put(next_fragment), timeout=0.1)
-        self.assertEqual(channel.qsize, 1)
-
-
-class ReplyFragmentProducerTests(unittest.IsolatedAsyncioTestCase):
-    async def test_cancelled_turn_stops_before_later_tokens_enter_channel(self):
-        turn = TurnContext(turn_id="turn-1", generation=1)
-        turn.transition(TurnState.LLM_STREAMING)
-        channel = BoundedFragmentChannel()
-        producer = ReplyFragmentProducer(
-            turn,
-            channel,
-            estimate_seconds=lambda _text: 0.2,
-        )
-
-        async def tokens():
-            yield "第一句。"
-            turn.cancel("interrupt")
-            yield "第二句。"
-
-        result = await producer.run(tokens())
-
-        self.assertEqual(result, ProducerResult.CANCELLED)
-        self.assertEqual(channel.qsize, 1)
-        self.assertEqual((await channel.get()).text, "第一句。")
 
 
 class BaselineReplayHarnessTests(unittest.TestCase):

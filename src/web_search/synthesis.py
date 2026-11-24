@@ -120,7 +120,7 @@ async def summarize(config, question, result):
         extra.pop(key, None)
     fmt = {'type': 'json_object'}
     if llm.provider == 'llamacpp':
-        extra.update(thinking_request_fields(llm.model))
+        extra.update(thinking_request_fields())
     # Constrain extractive mode to exactly one quote in the grammar, rather
     # than rejecting a small model after it listed every agreeing source.
     one = deepcopy(schema)

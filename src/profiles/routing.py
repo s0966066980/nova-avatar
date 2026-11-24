@@ -186,7 +186,7 @@ def route_question(config, library, current_id, text, history, confirmed, *,
     if config.llm.provider == "llamacpp":
         for key in ("reasoning_effort", "think", "keep_alive", "options"):
             extra.pop(key, None)
-        extra.update(thinking_request_fields(config.llm.model))
+        extra.update(thinking_request_fields())
         # A grammar from the schema lets small local models such as Gemma 4
         # E2B emit only a parseable decision; target comes first.
         response_format = {"type": "json_schema", "json_schema": {

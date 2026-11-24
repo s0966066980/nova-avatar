@@ -151,17 +151,6 @@ class VADConfig:
 
 
 @dataclass
-class ResponseRouterConfig:
-    """回覆路由配置"""
-    enabled: bool = True
-    rule_first: bool = True
-    llm_fallback: bool = True
-    board_threshold: float = 3.0
-    simple_threshold: float = 0.0
-    classifier_max_tokens: int = 4
-
-
-@dataclass
 class BoardConfig:
     """看板配置"""
     enabled: bool = True
@@ -216,7 +205,6 @@ class LLMConfig:
     # 透傳給 OpenAI 相容介面的額外請求體引數
     # 例如 Ollama 關閉思考鏈：{"reasoning_effort": "none"}
     extra_body: Dict[str, Any] = field(default_factory=dict)
-    response_router: ResponseRouterConfig = field(default_factory=ResponseRouterConfig)
     board: BoardConfig = field(default_factory=BoardConfig)
     reply_rules: ReplyRulesConfig = field(default_factory=ReplyRulesConfig)
     assistant_profile: AssistantProfileConfig = field(default_factory=AssistantProfileConfig)

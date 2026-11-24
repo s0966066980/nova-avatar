@@ -97,8 +97,8 @@ SIMPLE 的完整格式（結束後不可再輸出看板）：
 """ + AUTO_BOARD_SCHEMA_PROMPT
 
 
-def auto_reply_grammar(system_prompt: str, *, max_items: int, thinking: bool = False) -> str | None:
-    """Constrain AUTO syntax for llama.cpp, retaining a required thinking envelope.
+def auto_reply_grammar(system_prompt: str, *, max_items: int) -> str | None:
+    """Constrain AUTO syntax for llama.cpp.
 
     Providers without GBNF support still receive the identical system prompt.
     Grammar constrains structure, while the model follows Rules for meaning.
@@ -106,8 +106,7 @@ def auto_reply_grammar(system_prompt: str, *, max_items: int, thinking: bool = F
     if AUTO_MODE_PROMPT not in system_prompt:
         return None
     count = max(1, min(12, int(max_items))) - 1
-    root = '[^<]* "</think>" "\\n" (simple | board)' if thinking else '(simple | board)'
-    return 'root ::= ' + root + '\n' + r'''simple ::= "[[MODE:SIMPLE]]\n[[SPEECH]]\n" speech "\n[[END]]"
+    return 'root ::= (simple | board)\n' + r'''simple ::= "[[MODE:SIMPLE]]\n[[SPEECH]]\n" speech "\n[[END]]"
 board ::= "[[MODE:BOARD]]\n[[SPEECH]]\n" board-speech "\n[[BOARD_JSON]]\n" board-json "\n[[END]]"
 speech ::= [^\n\r\[\]{}<>`#*|]+
 board-speech ::= [^\n\r\[\]{}<>`#*|:：、。！？.!?]+ [。！？.!?]

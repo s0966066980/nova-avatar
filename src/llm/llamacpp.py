@@ -19,7 +19,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from src.utils.logging import logger
 from src.utils.paths import get_project_root
-from src.llm.llamacpp_protocol import LFM_REASONING_BUDGET, is_lfm25_reasoning
 
 _server_proc: Optional[subprocess.Popen] = None
 _loaded_model: str = ""
@@ -529,12 +528,10 @@ def ensure_server(
         "q8_0",
         "-ctv",
         "q8_0",
-        # LFM 2.5 always thinks. Bound its thinking separately so speech and
-        # board data retain room in the shared output token budget.
         "--reasoning",
-        "on" if is_lfm25_reasoning(gguf.stem) else "off",
+        "off",
         "--reasoning-budget",
-        str(LFM_REASONING_BUDGET) if is_lfm25_reasoning(gguf.stem) else "0",
+        "0",
     ]
     # Only the tested model/projector pairing is automatic. Never attach an
     # arbitrary GGUF from the model directory to another language model.

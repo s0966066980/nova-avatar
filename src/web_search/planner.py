@@ -40,7 +40,7 @@ async def plan(config, question, previous_queries):
         extra.pop(key, None)
     fmt = {'type': 'json_object'}
     if llm.provider == 'llamacpp':
-        extra.update(thinking_request_fields(llm.model))
+        extra.update(thinking_request_fields())
         fmt = {'type': 'json_schema', 'json_schema': {'name': 'web_search', 'schema': SCHEMA}}
     async with AsyncOpenAI(api_key=llm.api_key or 'nova-avatar-local', base_url=llm.base_url,
                            timeout=8, max_retries=0) as client:

@@ -106,7 +106,7 @@ export default {
       empty: 'Ollama 沒有可用模型。請先執行 ollama pull，或手動輸入模型名稱。',
       llamacppEmpty: '沒有找到 .gguf。請把模型放到 ~/llama 或專案的 llama/ 目錄。',
       manualPlaceholder: '例如 qwen3.5:4b',
-      ggufPlaceholder: '例如 LFM2.5-2.6B-Q4_K_M',
+      ggufPlaceholder: '例如 gemma-4-E2B_q4_0-it',
       responseLength: '回覆字數',
       responseLengthDesc: '每次回答必須在這個字數內把話說完，而不是寫到上限再切斷。可設定 20–2000 字。',
       responseLengthUnit: '字',

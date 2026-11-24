@@ -20,7 +20,7 @@ from src.llm.base import (
 )
 from src.utils.logging import logger
 from src.llm.history import HistoryTransaction, TransactionalHistory
-from src.llm.llamacpp_protocol import is_lfm25_reasoning, thinking_request_fields
+from src.llm.llamacpp_protocol import thinking_request_fields
 from src.llm.reply_contract import auto_reply_grammar
 from src.llm.context_usage import (
     ContextCapacityError, cached_capacity, measure_request, with_input_tokens,
@@ -152,22 +152,16 @@ class OpenAILLM(BaseLLM):
             temperature = 0.6
             llm_cfg = getattr(self.config, "llm", None)
             if getattr(llm_cfg, "provider", "") == "llamacpp":
-                thinking = is_lfm25_reasoning(self.model)
-                extra_body.update(thinking_request_fields(self.model))
+                extra_body.update(thinking_request_fields())
                 board_cfg = getattr(llm_cfg, "board", None)
                 grammar = auto_reply_grammar(
                     system_prompt, max_items=getattr(board_cfg, "max_items", 8),
-                    thinking=thinking,
                 )
                 if grammar:
                     # The protocol is system-owned; stale custom grammars must
                     # not replace it when the console switches models.
                     extra_body["grammar"] = grammar
                     temperature = 0.0
-                if thinking:
-                    extra_body.setdefault("repeat_penalty", 1.1)
-                    if not grammar:
-                        temperature = 0.1
             # 構建完整的訊息列表：system + 歷史對話
             messages = [{'role': 'system', 'content': system_prompt}]
             if history_transaction is None:

@@ -122,13 +122,6 @@ llm:
   response_max_chars: 120     # 每次回答要在這個字數內把話說完，不是多出來再切斷
   extra_body:
     reasoning_effort: "none"  # 僅 Ollama：關閉思考鏈，降低首字延遲
-  response_router:
-    enabled: true
-    rule_first: true
-    llm_fallback: true
-    board_threshold: 3.0
-    simple_threshold: 0.0
-    classifier_max_tokens: 4
   board:
     enabled: true
     max_items: 8

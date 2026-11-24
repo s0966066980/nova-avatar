@@ -12,7 +12,6 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, Generator, Optional
 from uuid import uuid4
 
-from src.llm.answer_board import AnswerBoardSplitter, with_board_instruction
 from src.llm.prompts import compose_system_prompt
 from src.llm.identity_policy import IdentityPolicy
 from src.llm.response_protocol import (
@@ -77,7 +76,7 @@ def with_response_length_instruction(system_prompt: str, max_chars: int) -> str:
         "先在限制內把話說完；不要開一個無法在限制內結束的長句或列表。"
         "禁止在句子或條目中途停止。"
     )
-    return with_board_instruction(length_prompt)
+    return length_prompt
 
 
 def load_system_prompt(config=None) -> str:
@@ -368,8 +367,6 @@ class BaseLLM(ABC):
         )
         if norm_mode != ReplyMode.AUTO and callable(on_mode):
             on_mode(norm_mode)
-        legacy_splitter = AnswerBoardSplitter()
-        is_legacy_markup = False
         spoken_response = ""
         web_guard = None
         if getattr(message, 'web_evidence', False):
@@ -487,20 +484,6 @@ class BaseLLM(ABC):
                     summary=payload.summary,
                     items=payload.items,
                 ))
-            else:
-                on_board({"kind": "begin", "title": identity_policy.sanitize(payload.title), "turn_id": turn_id})
-                for index, item in enumerate(payload.items):
-                    title, content = identity_policy.board_item(
-                        item.title, getattr(item, 'body', getattr(item, 'content', ''))
-                    )
-                    on_board({
-                        "kind": "item",
-                        "index": index,
-                        "title": title,
-                        "body": content,
-                        "turn_id": turn_id,
-                    })
-                on_board({"kind": "end", "turn_id": turn_id})
         
         try:
             # 記錄首包延遲，方便定位 LLM 響應瓶頸
@@ -529,11 +512,7 @@ class BaseLLM(ABC):
                 
                 full_response += chunk
 
-                if "<<<BOARD" in chunk or is_legacy_markup:
-                    is_legacy_markup = True
-                    deltas = legacy_splitter.feed(chunk)
-                else:
-                    deltas = parser.feed(chunk)
+                deltas = parser.feed(chunk)
 
                 for spoken in deltas:
                     spoken = normalize_visible_text(spoken)
@@ -559,7 +538,7 @@ class BaseLLM(ABC):
                         spoken_response += spoken
                 if (
                     semantic_fragments is not None
-                    and not is_legacy_markup and parser.speech_complete
+                    and parser.speech_complete
                 ):
                     # The end of SPEECH is a semantic boundary even if the
                     # model omitted sentence punctuation. Board generation
@@ -572,11 +551,7 @@ class BaseLLM(ABC):
                     break
 
             if not fenced and not (web_guard is not None and web_guard.stopped):
-                if is_legacy_markup:
-                    leftover, board_payload = legacy_splitter.flush()
-                    flush_deltas = [leftover] if leftover else []
-                else:
-                    flush_deltas, board_payload = parser.flush()
+                flush_deltas, board_payload = parser.flush()
 
                 for delta in flush_deltas:
                     if not delta:
