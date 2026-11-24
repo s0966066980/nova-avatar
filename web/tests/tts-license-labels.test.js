@@ -17,7 +17,8 @@ test('角色聲音引擎選單顯示伺服器目錄的授權限制標示', async
   const previous = speech.tts.engines
   speech.tts.engines = [
     { id: 'edgetts', label: 'Edge TTS (Development only)' },
-    { id: 'breezyvoice', label: 'BreezyVoice' }
+    { id: 'breezyvoice', label: 'BreezyVoice' },
+    { id: 'matcha', label: 'Matcha-TTS (Research / Non-commercial)' }
   ]
   const profile = { id: 'main', name: '接待員', avatar_id: '', engine: 'musetalk',
     llm: { endpoint: '', model: '' }, assistant_profile: { system_prompt: '', forbidden_self_names: [] }, reply_rules: {},
@@ -30,7 +31,8 @@ test('角色聲音引擎選單顯示伺服器目錄的授權限制標示', async
   const options = all(view.root, node => node.type === 'option').map(textContent)
   assert.ok(options.includes('Edge TTS (Development only)'))
   assert.ok(options.includes('BreezyVoice'))
-  assert.ok(!options.some(option => /cosyvoice|piper|xtts/i.test(option)), '只列出 BreezyVoice 與 Edge TTS')
+  assert.ok(options.includes('Matcha-TTS (Research / Non-commercial)'))
+  assert.ok(!options.some(option => /cosyvoice|piper|xtts/i.test(option)), '只列出 Edge TTS、BreezyVoice 與 Matcha')
 })
 
 test('選用 Edge TTS 的角色會顯示伺服器目錄的開發用限制說明', async t => {

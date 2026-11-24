@@ -5,6 +5,7 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import { h } from 'vue'
 import { loadComponent, mount, all, button, textContent, settle } from './helpers/componentHarness.js'
+import { useRuntimeSettings } from '../src/composables/useRuntimeSettings.js'
 
 const openedSections = []
 const Editor = { default: {
@@ -121,4 +122,38 @@ test('BreezyVoice 設定檔未選參考音檔時阻擋儲存並提示，不送�
   all(view.root, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} })
   await settle()
   assert.deepEqual(requests, [])
+})
+
+test('Matcha 設定檔的聲線模型不在伺服器清單時阻擋儲存，列出後才送出', async t => {
+  const previousFetch = globalThis.fetch
+  const { speech } = useRuntimeSettings()
+  const previousModels = speech.tts.voice_models
+  const hsiaochen = { id: 'zh-tw-hsiaochen-edge', name: '曉臻（Edge 蒸餾）', usage: 'Development only', languages: ['zh-TW', 'en-US'], source: '' }
+  speech.tts.voice_models = []
+  const library = { version: 2, revision: 1, profiles_revision: 1, composition,
+    profiles: [{ id: 'main', name: '接待員', avatar_id: 'shared_visual', engine: 'musetalk',
+      llm: { endpoint: 'local', model: 'local-model' }, tts: { type: 'matcha', ref_file: hsiaochen.id },
+      rag: { enabled: false, dataset_ids: [], document_scope: 'all', document_ids: [] } }] }
+  const requests = []
+  globalThis.fetch = async (url, options = {}) => {
+    const result = data => ({ ok: true, json: async () => data })
+    if (url === '/api/profiles' && (options.method || 'GET') === 'GET') return result({ code: 0, library: structuredClone(library), runtime: { profiles_applied: true, active_revision: 1 }, media: [] })
+    if (url === '/api/speech/voices') return result({ code: 0, data: { items: [] } })
+    if (url === '/api/llm/models' || url === '/api/llm/rules') return result({ code: 0, data: {} })
+    requests.push(url)
+    return result({ code: 0, library: structuredClone(library), runtime: {} })
+  }
+  const view = mount(Component, {})
+  t.after(() => { view.unmount(); globalThis.fetch = previousFetch; speech.tts.voice_models = previousModels })
+  await settle()
+  const submit = () => all(view.root, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} })
+  submit()
+  await settle()
+  assert.deepEqual(requests, [])
+  assert.match(textContent(view.root), /「接待員」所選聲線模型不在已安裝的聲線模型中/)
+  assert.equal(openedSections.at(-1), 'voice')
+  speech.tts.voice_models = [hsiaochen]
+  submit()
+  await settle()
+  assert.deepEqual(requests, ['/api/profiles'])
 })

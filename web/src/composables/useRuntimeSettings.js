@@ -156,6 +156,8 @@ const speech = reactive({
     models: [],
     voices: [],
     edge_voices: [],
+    // Matcha voice models with their usage labels, listed by the server.
+    voice_models: [],
     notice: ''
   }
 })

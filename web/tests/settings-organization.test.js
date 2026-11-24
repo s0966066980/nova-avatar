@@ -17,6 +17,7 @@ const Panel = await loadComponent(new URL('../src/components/SettingsPanel.vue',
   './AvatarProfiles.vue': Profiles,
   './RoleComposition.vue': { default: { setup: (_, { expose }) => { expose({ dirtyCount: 2 }); return () => h('div', '角色組合與交接編輯器') } } },
   './IdleGreetingSettings.vue': { default: { setup: () => () => h('div', '閒置招呼獨立設定頁') } },
+  './VoiceModelCatalog.vue': { default: { setup: () => () => h('div', '聲線模型清單') } },
   '../composables/useI18n': { useI18n: () => ({ t: key => key, setLocale() {} }) },
   '../composables/useRuntimeSettings': { useRuntimeSettings: () => ({ ...useRuntimeSettings(),
     loadRuntimeSettings: async () => {}, loadOllamaModels: async () => {},
@@ -47,6 +48,7 @@ test('設定導覽直接提供閒置招呼；訪客互動是數位人設定的�
   const interaction = all(view.root, node => node.props.id === 'catPanel-interaction')[0]
   assert.match(textContent(interaction), /訪客對話重置/)
   assert.match(textContent(interaction), /收音/)
+  assert.match(textContent(interaction), /聲線模型清單/, '設定頁列出聲線模型與使用限制標示')
   await button(view.root, '閒置招呼').props.onClick()
   await settle()
   assert.equal(button(view.root, '閒置招呼').props['aria-selected'], true)

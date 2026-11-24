@@ -49,11 +49,11 @@ import { useRoles } from '../composables/useRoles.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings.js'
 import { rolePhaseLabel } from '../roleState.js'
 import { ragScopeLabel } from '../ragScope.js'
-import { referenceAudioProblem } from '../voiceSelection.js'
+import { ttsVoiceProblem } from '../voiceSelection.js'
 import AvatarProfileEditor from './AvatarProfileEditor.vue'
 const props = defineProps({ initialSection: { type: String, default: 'identity' } })
 const { libraryRuntime: roleRuntime, roleRequest, roleLibrary } = useRoles()
-const { runtime, ttsVoiceOptions, refreshTtsVoices } = useRuntimeSettings()
+const { runtime, speech, ttsVoiceOptions, refreshTtsVoices } = useRuntimeSettings()
 // draft holds only the profile list; the composition is saved on its own page.
 const draft = ref(null), saved = ref(null), selected = ref(''), endpoints = ref([]), defaults = ref(null)
 const busy = ref(false), error = ref(''), notice = ref(''), savedText = ref('')
@@ -92,7 +92,7 @@ async function load() {
 // Open the first profile whose voice cannot be saved and explain why.
 function requireVoices() {
   for (const p of draft.value.profiles) {
-    const problem = referenceAudioProblem(p.tts, ttsVoiceOptions.value)
+    const problem = ttsVoiceProblem(p.tts, ttsVoiceOptions.value, speech.tts.voice_models)
     if (!problem) continue
     selected.value = p.id; editorRef.value?.openSection('voice')
     throw Error(`「${p.name}」${problem}`)
