@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 訓練工作與寫入聲線模型清單
-Status: ready-for-agent
+Status: resolved
 Blocked by: 02, 03, 04
 
 依[規格](../spec.md)第 8、9 點與「信任邊界與資料位置」。

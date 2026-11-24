@@ -79,3 +79,4 @@ Status: 已確認（2026-11-24），疊音／跳音診斷已完成，待介面�
 - [10 實機驗收](issues/10-live-acceptance.md)
 - [11 疊字評量腳本](issues/11-repeated-syllable-benchmark.md)
 - [12 自動逐字稿與舞台共用 GPU 的保護](issues/12-transcription-gpu-guard.md)
+- [13 Edge 文字清單：合成前校對](issues/13-edge-text-preview.md)
