@@ -3,6 +3,19 @@
 Nova Avatar is an independently maintained derivative project originally based
 on Kedreamix/Linly-Talker-Stream.
 
+## Language
+
+Reply to the user in Traditional Chinese (繁體中文), including progress updates.
+Code, identifiers, commands, and file paths stay in their original language.
+
+Written artifacts follow the existing convention of this repository:
+
+- Commit messages and code comments: English (Conventional Commits prefixes
+  such as `feat:`, `fix:`, `docs:`).
+- `README.md`, `docs/` (including ADRs), and `.scratch/` issues and specs:
+  Traditional Chinese. Keep the English headings of `docs/agents/*`.
+- User-visible UI text: Traditional Chinese.
+
 ## Agent skills
 
 ### Code navigation
@@ -56,3 +69,8 @@ When reviewing a change, apply every rule in `CODING_STANDARDS.md`.
 
 Before handoff, run every step in `.github/workflows/ci.yml`; its
 `scripts/check-integration.py` step is the rebranding audit.
+
+- Run Python steps through `uv run --no-sync`, as CI does. The system Python
+  lacks the project dependencies (for example `opencc`).
+- For a documentation-only change, running `scripts/check-integration.py` is
+  enough; the full test suite and web build can be skipped.
