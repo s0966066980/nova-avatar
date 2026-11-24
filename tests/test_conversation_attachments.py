@@ -87,7 +87,9 @@ def test_page_ranges_have_bounds_and_no_silent_truncation():
             page_numbers(invalid, 10)
 
 
-def test_real_pdf_pages_are_validated_rendered_and_released(store):
+def test_real_pdf_pages_are_validated_rendered_and_released(store, monkeypatch):
+    # OCR needs a local tesseract binary; the page-validation contract does not.
+    monkeypatch.setattr('src.server.attachment_ocr.extract_image_text', lambda _image: '')
     output = BytesIO()
     with pdfium.PdfDocument.new() as document:
         for _ in range(3):
