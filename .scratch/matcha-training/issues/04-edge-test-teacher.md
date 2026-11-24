@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # Edge 測試用老師
-Status: ready-for-agent
+Status: resolved
 Blocked by: 03
 
 依[規格](../spec.md)第 2、4 點與 ADR 0026。
