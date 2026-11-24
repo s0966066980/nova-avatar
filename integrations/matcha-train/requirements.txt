@@ -1,0 +1,207 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+#
+# Generated from requirements.in for Linux x86_64, Python 3.10:
+#   uv pip compile integrations/matcha-train/requirements.in -o integrations/matcha-train/requirements.txt \
+#     --python-version 3.10 --python-platform x86_64-manylinux_2_28 \
+#     --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match \
+#     --no-emit-package torch --no-emit-package torchaudio --no-header
+# Install with scripts/setup-matcha-train.sh, which adds torch, torchaudio and matcha-tts.
+aiohappyeyeballs==2.7.1
+    # via aiohttp
+aiohttp==3.14.5
+    # via fsspec
+aiosignal==1.4.0
+    # via aiohttp
+antlr4-python3-runtime==4.9.3
+    # via
+    #   hydra-core
+    #   omegaconf
+async-timeout==5.0.1
+    # via aiohttp
+attrs==26.1.0
+    # via aiohttp
+beautifulsoup4==4.15.0
+    # via gdown
+certifi==2026.11.20
+    # via requests
+cffi==2.1.1
+    # via soundfile
+charset-normalizer==3.5.3
+    # via requests
+conformer==0.3.2
+    # via -r integrations/matcha-train/requirements.in
+contourpy==1.3.2
+    # via matplotlib
+cycler==0.12.1
+    # via matplotlib
+diffusers==0.30.3
+    # via -r integrations/matcha-train/requirements.in
+einops==0.8.2
+    # via
+    #   -r integrations/matcha-train/requirements.in
+    #   conformer
+filelock==4.1.0
+    # via
+    #   diffusers
+    #   gdown
+    #   huggingface-hub
+    #   torch
+fonttools==4.65.0
+    # via matplotlib
+frozenlist==1.8.0
+    # via
+    #   aiohttp
+    #   aiosignal
+fsspec==2026.9.0
+    # via
+    #   huggingface-hub
+    #   lightning
+    #   pytorch-lightning
+    #   torch
+gdown==6.5.2
+    # via -r integrations/matcha-train/requirements.in
+hf-xet==1.8.0
+    # via huggingface-hub
+huggingface-hub==0.36.2
+    # via
+    #   -r integrations/matcha-train/requirements.in
+    #   diffusers
+hydra-core==1.3.2
+    # via -r integrations/matcha-train/requirements.in
+idna==3.20
+    # via
+    #   requests
+    #   yarl
+importlib-metadata==9.0.1
+    # via diffusers
+jinja2==3.1.6
+    # via torch
+kiwisolver==1.5.1
+    # via matplotlib
+lightning==2.6.6
+    # via -r integrations/matcha-train/requirements.in
+lightning-utilities==0.15.3
+    # via
+    #   lightning
+    #   pytorch-lightning
+    #   torchmetrics
+markdown-it-py==4.3.0
+    # via rich
+markupsafe==3.0.4
+    # via jinja2
+matplotlib==3.10.9
+    # via -r integrations/matcha-train/requirements.in
+mdurl==0.1.2
+    # via markdown-it-py
+mpmath==1.3.0
+    # via sympy
+multidict==7.1.0
+    # via
+    #   aiohttp
+    #   yarl
+networkx==3.4.2
+    # via torch
+numpy==1.26.4
+    # via
+    #   -r integrations/matcha-train/requirements.in
+    #   contourpy
+    #   diffusers
+    #   matplotlib
+    #   soundfile
+    #   torchmetrics
+omegaconf==2.3.1
+    # via hydra-core
+packaging==26.4
+    # via
+    #   huggingface-hub
+    #   hydra-core
+    #   lightning
+    #   lightning-utilities
+    #   matplotlib
+    #   pytorch-lightning
+    #   torchmetrics
+pillow==12.3.0
+    # via
+    #   diffusers
+    #   matplotlib
+propcache==0.5.4
+    # via
+    #   aiohttp
+    #   yarl
+pycparser==3.11
+    # via cffi
+pygments==2.21.0
+    # via rich
+pyparsing==3.3.3
+    # via matplotlib
+pysocks==1.7.1
+    # via requests
+python-dateutil==3.0.0
+    # via matplotlib
+pytorch-lightning==2.6.6
+    # via lightning
+pyyaml==6.0.4
+    # via
+    #   huggingface-hub
+    #   lightning
+    #   omegaconf
+    #   pytorch-lightning
+regex==2026.9.29
+    # via diffusers
+requests==2.34.2
+    # via
+    #   diffusers
+    #   gdown
+    #   huggingface-hub
+rich==15.0.0
+    # via -r integrations/matcha-train/requirements.in
+safetensors==0.8.0
+    # via diffusers
+six==1.17.0
+    # via python-dateutil
+soundfile==0.14.0
+    # via -r integrations/matcha-train/requirements.in
+soupsieve==2.10
+    # via beautifulsoup4
+sympy==1.13.1
+    # via torch
+torchmetrics==1.9.0
+    # via
+    #   lightning
+    #   pytorch-lightning
+tqdm==4.70.1
+    # via
+    #   gdown
+    #   huggingface-hub
+    #   lightning
+    #   pytorch-lightning
+typing-extensions==4.16.0
+    # via
+    #   aiohttp
+    #   aiosignal
+    #   beautifulsoup4
+    #   gdown
+    #   huggingface-hub
+    #   lightning
+    #   lightning-utilities
+    #   multidict
+    #   pytorch-lightning
+    #   soundfile
+    #   torch
+tzdata==2026.6
+    # via python-dateutil
+urllib3==2.8.0
+    # via
+    #   gdown
+    #   requests
+wget==3.2
+    # via -r integrations/matcha-train/requirements.in
+yarl==1.25.1
+    # via aiohttp
+zipp==4.1.2
+    # via importlib-metadata
+
+# The following packages were excluded from the output:
+# torch
+# torchaudio

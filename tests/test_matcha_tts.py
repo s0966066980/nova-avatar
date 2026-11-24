@@ -15,6 +15,8 @@ import json
 import shutil
 import logging
 import sys
+import threading
+import time
 import types
 from copy import deepcopy
 from pathlib import Path
@@ -395,3 +397,269 @@ def test_matcha_speaks_both_conversation_languages():
     config = matcha_config()
     for locale in ("zh-TW", "en-US"):
         check_language_support(config, locale)
+
+
+# --- Fragment prefetch: while fragment N plays, fragment N+1 is synthesised and held. ---
+
+
+def turn(sequence: int, turn_id: str = "turn-1", generation: int = 1) -> dict:
+    return {"turn_id": turn_id, "generation": generation, "fragment_sequence": sequence}
+
+
+class ClockParent(Parent):
+    """Plays emitted 20 ms frames back to back on a simulated audio clock."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.clock = 0.0  # when the queued audio runs out, in monotonic seconds
+        self.starts: dict[tuple[str, int], tuple[float, float]] = {}  # fragment -> (queued-at, plays-at)
+        self.ends: dict[tuple[str, int], float] = {}
+        self.block_first_frame_of: threading.Event | None = None
+        self.lock = threading.Lock()
+
+    def put_audio_frame(self, samples, eventpoint=None) -> None:
+        ep = dict(eventpoint or {})
+        key = (ep["turn_id"], ep["fragment_sequence"])
+        if ep.get("media_sequence") == 0 and self.block_first_frame_of is not None and key[1] == 0:
+            self.block_first_frame_of.wait(timeout=5)
+        with self.lock:
+            now = time.monotonic()
+            plays_at = max(now, self.clock)
+            self.starts.setdefault(key, (now, plays_at))
+            self.clock = plays_at + 0.02
+            self.ends[key] = self.clock
+            super().put_audio_frame(samples, ep)
+
+    def fragment_playback_ended(self, eventpoint: dict) -> bool:
+        key = (eventpoint["turn_id"], eventpoint["fragment_sequence"])
+        with self.lock:
+            return key in self.ends and time.monotonic() >= self.ends[key]
+
+    def emitted(self) -> list[tuple[str, int]]:
+        seen: list[tuple[str, int]] = []
+        for _, ep in list(self.frames):
+            key = (ep["turn_id"], ep["fragment_sequence"])
+            if key not in seen:
+                seen.append(key)
+        return seen
+
+
+class SlowSherpa(FakeSherpa):
+    """Synthesis takes ``delay`` seconds; ``gates`` can hold a text until released."""
+
+    def __init__(self, samples, delay: float = 0.0):
+        super().__init__(samples)
+        outer = self
+        self.delay = delay
+        self.gates: dict[str, threading.Event] = {}
+        self.started: dict[str, threading.Event] = {}
+        self.running = 0
+        self.max_running = 0
+        self.guard = threading.Lock()
+        base = self.OfflineTts
+
+        class OfflineTts(base):
+            def generate(self, text, sid=0, speed=1.0, callback=None):
+                with outer.guard:
+                    outer.running += 1
+                    outer.max_running = max(outer.max_running, outer.running)
+                    outer.started.setdefault(text, threading.Event()).set()
+                try:
+                    gate = outer.gates.get(text)
+                    if gate is not None:
+                        gate.wait(timeout=5)
+                    time.sleep(outer.delay)
+                    return super().generate(text, sid, speed, callback)
+                finally:
+                    with outer.guard:
+                        outer.running -= 1
+
+        self.OfflineTts = OfflineTts
+
+
+@pytest.fixture
+def slow_sherpa(monkeypatch):
+    def install(samples: np.ndarray | None = None, delay: float = 0.0) -> SlowSherpa:
+        module = SlowSherpa(tone(0.4) if samples is None else samples, delay)
+        monkeypatch.setitem(sys.modules, "sherpa_onnx", module)
+        return module
+
+    return install
+
+
+@pytest.fixture
+def running():
+    """Run ``engine.process_tts`` on a thread; stop and join it at teardown."""
+    started: list[tuple[threading.Event, threading.Thread]] = []
+
+    def start(engine):
+        quit_event = threading.Event()
+        thread = threading.Thread(target=engine.process_tts, args=(quit_event,), daemon=True)
+        thread.start()
+        started.append((quit_event, thread))
+        return thread
+
+    yield start
+    for quit_event, thread in started:
+        quit_event.set()
+        thread.join(timeout=3)
+        assert not thread.is_alive()
+
+
+def wait_until(predicate, timeout: float = 3.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.005)
+    return predicate()
+
+
+def spoken(fake: SlowSherpa, text: str) -> bool:
+    event = fake.started.get(text)
+    return event is not None and event.is_set()
+
+
+def test_next_fragment_is_synthesised_while_the_current_one_plays_so_no_audible_gap(
+        voice_models, slow_sherpa, running):
+    make_voice_model(voice_models)
+    slow_sherpa(delay=0.15)
+    parent = ClockParent()
+    engine = create_tts_engine("matcha", matcha_config(), parent)
+    for sequence in range(3):
+        engine.put_msg_txt(f"第{sequence}段。", turn(sequence))
+
+    running(engine)
+
+    assert wait_until(lambda: len(parent.ends) == 3 and parent.fragment_playback_ended(turn(2)))
+    for before, after in ((0, 1), (1, 2)):
+        gap = parent.starts[("turn-1", after)][1] - parent.ends[("turn-1", before)]
+        assert gap < 0.05, f"audible gap {gap * 1000:.0f} ms between fragments {before} and {after}"
+    assert parent.emitted() == [("turn-1", 0), ("turn-1", 1), ("turn-1", 2)]
+    assert parent.failures == []
+
+
+def test_only_one_fragment_is_synthesised_ahead_of_the_one_being_emitted(
+        voice_models, slow_sherpa, running):
+    make_voice_model(voice_models)
+    fake = slow_sherpa()
+    parent = ClockParent()
+    parent.block_first_frame_of = threading.Event()
+    engine = create_tts_engine("matcha", matcha_config(), parent)
+    for sequence in range(4):
+        engine.put_msg_txt(f"第{sequence}段。", turn(sequence))
+
+    running(engine)
+
+    try:
+        assert wait_until(lambda: spoken(fake, "第1段。"))
+        time.sleep(0.2)
+        assert not spoken(fake, "第2段。")
+        assert engine.has_pending_work()
+    finally:
+        parent.block_first_frame_of.set()
+    assert wait_until(lambda: len(parent.ends) == 4)
+    assert parent.emitted() == [("turn-1", sequence) for sequence in range(4)]
+
+
+def test_flush_drops_the_held_fragment_and_a_new_turn_plays_without_it(
+        voice_models, slow_sherpa, running):
+    make_voice_model(voice_models)
+    fake = slow_sherpa()
+    parent = ClockParent()
+    parent.block_first_frame_of = threading.Event()
+    engine = create_tts_engine("matcha", matcha_config(), parent)
+    engine.put_msg_txt("甲一。", turn(0, "old"))
+    engine.put_msg_txt("甲二。", turn(1, "old"))
+    running(engine)
+    # Fragment 0 is emitting (blocked), fragment 1 is synthesised and held.
+    assert wait_until(lambda: spoken(fake, "甲二。"))
+    time.sleep(0.1)
+
+    engine.flush_talk()
+    parent.block_first_frame_of.set()
+    engine.put_msg_txt("乙一。", turn(0, "new", 2))
+
+    assert wait_until(lambda: ("new", 0) in parent.ends and parent.fragment_playback_ended(turn(0, "new", 2)))
+    assert ("old", 1) not in parent.emitted()
+    assert wait_until(lambda: not engine.has_pending_work())
+
+
+def test_fragment_still_being_synthesised_at_flush_is_never_played(
+        voice_models, slow_sherpa, running):
+    make_voice_model(voice_models)
+    fake = slow_sherpa()
+    fake.gates["甲。"] = threading.Event()
+    parent = ClockParent()
+    engine = create_tts_engine("matcha", matcha_config(), parent)
+    engine.put_msg_txt("甲。", turn(0, "old"))
+    running(engine)
+    assert wait_until(lambda: spoken(fake, "甲。"))
+
+    engine.flush_talk()
+    engine.put_msg_txt("乙。", turn(0, "new", 2))
+    fake.gates["甲。"].set()
+
+    assert wait_until(lambda: ("new", 0) in parent.ends and parent.fragment_playback_ended(turn(0, "new", 2)))
+    assert [key for key in parent.emitted() if key[0] == "old"] == []
+    assert wait_until(lambda: not engine.has_pending_work())
+
+
+def test_a_fragment_held_for_a_superseded_turn_is_not_played_even_without_a_flush(
+        voice_models, slow_sherpa, running):
+    make_voice_model(voice_models)
+    slow_sherpa()
+    parent = ClockParent()
+    parent.block_first_frame_of = threading.Event()
+    stale = {"turn-1"}
+    parent.accepts_media = lambda eventpoint, stage: eventpoint["turn_id"] not in stale
+    engine = create_tts_engine("matcha", matcha_config(), parent)
+    engine.put_msg_txt("第0段。", turn(0, "turn-2"))
+    engine.put_msg_txt("第1段。", turn(0, "turn-1"))
+    engine.put_msg_txt("第2段。", turn(1, "turn-2"))
+
+    running(engine)
+    parent.block_first_frame_of.set()
+
+    assert wait_until(lambda: ("turn-2", 1) in parent.ends)
+    assert ("turn-1", 0) not in parent.emitted()
+
+
+def test_a_failed_held_fragment_is_reported_when_its_turn_comes_up_and_later_ones_still_play(
+        voice_models, sherpa, running, monkeypatch):
+    make_voice_model(voice_models)
+    sherpa()
+    parent = ClockParent()
+    engine = create_tts_engine("matcha", matcha_config(), parent)
+    real = engine._synthesize
+
+    def synthesize(voice, text, *args, **kwargs):
+        if "壞" in text:
+            raise RuntimeError("synthesis blew up")
+        return real(voice, text, *args, **kwargs)
+
+    monkeypatch.setattr(engine, "_synthesize", synthesize)
+    engine.put_msg_txt("好一。", turn(0))
+    engine.put_msg_txt("壞的。", turn(1))
+    engine.put_msg_txt("好二。", turn(2))
+
+    running(engine)
+
+    assert wait_until(lambda: ("turn-1", 2) in parent.ends)
+    assert [(ep["fragment_sequence"], reason) for ep, reason in parent.failures] == [(1, "tts_exhausted_before_audio")]
+    assert parent.emitted() == [("turn-1", 0), ("turn-1", 2)]
+
+
+def test_engines_sharing_a_voice_model_still_synthesise_one_text_at_a_time(
+        voice_models, slow_sherpa, running):
+    make_voice_model(voice_models)
+    fake = slow_sherpa(delay=0.05)
+    parents = [ClockParent(), ClockParent()]
+    engines = [create_tts_engine("matcha", matcha_config(), parent) for parent in parents]
+    for index, engine in enumerate(engines):
+        for sequence in range(3):
+            engine.put_msg_txt(f"引擎{index}第{sequence}段。", turn(sequence, f"turn-{index}"))
+        running(engine)
+
+    assert wait_until(lambda: all(len(parent.ends) == 3 for parent in parents))
+    assert fake.max_running == 1
