@@ -644,3 +644,33 @@ def test_set_text_only_if_empty_never_overwrites_a_typed_transcript(store):
 
     assert store.set_text("guarded", empty, "自動產生", only_if_empty=True).text == "自動產生"
     assert store.set_text("guarded", typed, "自動產生", only_if_empty=True).text == "自己打的"
+
+
+# ------------------------------------------------------------------ server-managed sidecar files
+
+
+def test_a_sidecar_file_is_written_and_read_beside_the_manifest(store):
+    store.create("my-voice")
+
+    assert store.read_sidecar("my-voice", "msa-acknowledgement.json") is None
+    store.write_sidecar("my-voice", "msa-acknowledgement.json", b"{}")
+
+    assert store.read_sidecar("my-voice", "msa-acknowledgement.json") == b"{}"
+    assert (store.root / "my-voice" / "msa-acknowledgement.json").read_bytes() == b"{}"
+
+
+@pytest.mark.parametrize("name", ["../corpus.json", "corpus.json", "other.json", "", None])
+def test_only_the_listed_sidecar_names_are_accepted(store, name):
+    store.create("my-voice")
+
+    with pytest.raises(CorpusError):
+        store.write_sidecar("my-voice", name, b"{}")
+    with pytest.raises(CorpusError):
+        store.read_sidecar("my-voice", name)
+
+
+def test_a_sidecar_of_a_missing_corpus_is_not_found(store):
+    with pytest.raises(CorpusError) as caught:
+        store.read_sidecar("nowhere", "msa-acknowledgement.json")
+
+    assert caught.value.status == 404

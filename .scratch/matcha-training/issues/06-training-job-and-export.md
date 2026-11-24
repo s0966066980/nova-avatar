@@ -1,5 +1,5 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
-# 訓練工作與匯出
+# 訓練工作與寫入聲線模型清單
 Status: ready-for-agent
 Blocked by: 02, 03, 04
 
@@ -8,7 +8,7 @@ Blocked by: 02, 03, 04
 - 從 jetson-orin 帶入並調整 `tts_training_jobs.py`、`routes/tts_training.py`、`train_matcha.py`、`matcha_arch.py`、`export_matcha_onnx.py`：以 `.local/matcha-train/` 的 Python 啟動獨立子程序，同一時間只進行一件，可取消並釋放 GPU，日誌可讀取。
 - 拒絕條件：有舞台連線，或剩餘顯存低於門檻（初始 8 GB，可設定）；回應要說明原因，供介面顯示。
 - 只有狀態為「全部已確認」的語料才能訓練；訓練前再檢查一次。
-- 匯出：寫入 `models/tts/<slug>/` 與 `voice.json`（使用限制標示依 03 計算）；Edge 語料的模型不提供匯出路由。
+- 寫入聲線模型清單：寫入 `models/tts/<slug>/` 與 `voice.json`（使用限制標示依 03 計算）。第一版**不提供任何下載路由**，所有聲線模型只留在這台機器。
 - 新路由全部登記 `ROUTE_ACCESS` 為 ADMIN；測試用假子程序，不載入真實模型，0 失敗、0 跳過。
 
 ## 從工單 02 帶來的注意事項
@@ -20,5 +20,5 @@ Blocked by: 02, 03, 04
 
 ## 範圍補充（2026-11-24）
 
-- 工作步驟為：合成（僅限測試用老師語料，呼叫工單 04 的服務層）→ 品質檢查 → 訓練 → 匯出；上傳錄音的語料略過合成步驟。
+- 工作步驟為：合成（僅限測試用老師語料，呼叫工單 04 的服務層）→ 品質檢查 → 訓練 → 寫入聲線模型清單；上傳錄音的語料略過合成步驟。
 - 工作路由集中在 `routes/tts_training.py`；語料與上傳路由屬於 05（`routes/tts_corpus.py`）。

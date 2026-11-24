@@ -1,0 +1,143 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+"""Sentences for the Edge test teacher: built-in library, presets, administrator lists.
+
+The library lives in ``sentence_data`` (data only). ``select_by_duration`` picks
+sentences until their estimated speaking time reaches a target, taking turns
+across categories so even a short preset covers greetings, weather, traffic,
+colloquial speech, mixed Chinese and English, and digits. The selection is
+deterministic and a smaller target is always a prefix of a larger one, so the
+"quick test" preset is a subset of the "standard" preset.
+
+The duration is an estimate from an average speaking rate, not a measurement;
+the real length of the synthesised audio is only known after synthesis.
+
+An administrator may instead supply a text file (``parse_text_list``): one
+sentence per line, UTF-8. No sentence is ever produced by an LLM.
+"""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+from dataclasses import dataclass
+from functools import cache
+
+from src.tts.training.corpus import MAX_LINES, MAX_TEXT_CHARS, CorpusError
+from src.tts.training.numerals import normalize_digits
+from src.tts.training.sentence_data import CATEGORIES
+
+# Average speaking rates of an Edge zh-TW voice at its default speed.
+CJK_CHARS_PER_SECOND = 5.0
+ENGLISH_WORDS_PER_SECOND = 2.8
+PAUSE_SECONDS_PER_PUNCTUATION = 0.2
+
+MAX_TEXT_LIST_BYTES = 1024 * 1024
+
+_CJK = re.compile(r"[㐀-䶿一-鿿]")
+_ENGLISH_WORD = re.compile(r"[A-Za-z]+(?:['-][A-Za-z]+)*")
+_PUNCTUATION = re.compile(r"[，。？！、；：,.?!;:]")
+
+
+@dataclass(frozen=True)
+class Sentence:
+    text: str
+    category: str
+
+
+@dataclass(frozen=True)
+class Preset:
+    key: str
+    label: str
+    target_seconds: int
+
+
+PRESETS: dict[str, Preset] = {
+    "quick-test": Preset("quick-test", "快速測試", 15 * 60),
+    "standard": Preset("standard", "標準", 60 * 60),
+}
+
+
+@cache
+def library() -> tuple[Sentence, ...]:
+    """Every built-in sentence, category by category."""
+    return tuple(Sentence(text, key) for key, _label, texts in CATEGORIES for text in texts)
+
+
+def category_labels() -> dict[str, str]:
+    """Category key to the Traditional Chinese label shown to the administrator."""
+    return {key: label for key, label, _texts in CATEGORIES}
+
+
+def estimate_seconds(text: str) -> float:
+    """Estimated speaking time of ``text`` once its digits are read out."""
+    spoken = normalize_digits(text).text
+    return (
+        len(_CJK.findall(spoken)) / CJK_CHARS_PER_SECOND
+        + len(_ENGLISH_WORD.findall(spoken)) / ENGLISH_WORDS_PER_SECOND
+        + len(_PUNCTUATION.findall(spoken)) * PAUSE_SECONDS_PER_PUNCTUATION
+    )
+
+
+def select_by_duration(target_seconds: float) -> list[str]:
+    """Library sentences, categories taking turns, until the estimate reaches the target."""
+    if not target_seconds > 0:
+        raise CorpusError("目標長度必須大於零")
+    queues = [[item.text for item in library() if item.category == key] for key, _l, _t in CATEGORIES]
+    chosen: list[str] = []
+    total = 0.0
+    depth = 0
+    while total < target_seconds and any(depth < len(queue) for queue in queues):
+        for queue in queues:
+            if depth < len(queue) and total < target_seconds:
+                chosen.append(queue[depth])
+                total += estimate_seconds(queue[depth])
+        depth += 1
+    return chosen
+
+
+def select_preset(key: str) -> list[str]:
+    """The sentences of a preset in ``PRESETS``."""
+    preset = PRESETS.get(key) if isinstance(key, str) else None
+    if preset is None:
+        raise CorpusError("不明的份量預設")
+    return select_by_duration(preset.target_seconds)
+
+
+def parse_text_list(raw: str | bytes) -> list[str]:
+    """Sentences from an administrator-supplied text file, one per line, in order.
+
+    Blank lines and repeated sentences are dropped; the file must be UTF-8 and
+    free of control characters, with at most ``MAX_LINES`` sentences of
+    ``MAX_TEXT_CHARS`` characters each.
+    """
+    if isinstance(raw, bytes | bytearray):
+        if len(raw) > MAX_TEXT_LIST_BYTES:
+            raise CorpusError("文字檔太大", status=413)
+        try:
+            raw = bytes(raw).decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise CorpusError("文字檔必須是 UTF-8 編碼") from None
+    elif not isinstance(raw, str):
+        raise CorpusError("文字檔必須是文字")
+    elif len(raw.encode("utf-8")) > MAX_TEXT_LIST_BYTES:
+        raise CorpusError("文字檔太大", status=413)
+    sentences: list[str] = []
+    seen: set[str] = set()
+    for number, line in enumerate(raw.lstrip("﻿").splitlines(), start=1):
+        if any(unicodedata.category(ch) == "Cc" and not ch.isspace() for ch in line):
+            raise CorpusError(f"第 {number} 行含有控制字元")
+        text = " ".join(line.split())
+        if not text:
+            continue
+        if len(text) > MAX_TEXT_CHARS:
+            raise CorpusError(f"第 {number} 行超過 {MAX_TEXT_CHARS} 字")
+        if text not in seen:
+            seen.add(text)
+            sentences.append(text)
+    if not sentences:
+        raise CorpusError("文字檔裡沒有任何句子")
+    if len(sentences) > MAX_LINES:
+        raise CorpusError(f"文字檔最多 {MAX_LINES} 句")
+    return sentences

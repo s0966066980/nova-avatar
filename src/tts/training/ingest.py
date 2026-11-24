@@ -15,7 +15,8 @@ An upload corpus declares where its audio comes from before any file is added
   added to one.
 
 ``ingest_audio`` validates the file name's extension and size, really decodes the
-content (``audio_qc.decode_to_16k_mono``), runs the audio QC and stores the
+content (``audio_decode.decode_to_16k_mono``), runs the audio QC
+(``audio_quality.assess_audio``, shared with the Edge teacher) and stores the
 result as a 16 kHz mono PCM16 WAV through ``CorpusStore.add_line``. The client's
 file name is kept only as display text; paths come from the store. The Whisper
 similarity check is optional: pass ``recognizer`` (16 kHz float samples to text)
@@ -32,14 +33,10 @@ from pathlib import PurePosixPath
 
 import numpy as np
 
-from src.tts.training.audio_qc import (
-    MIN_SIMILARITY,
-    decode_to_16k_mono,
-    normalize_utterance,
-    similarity_ratio,
-    to_wav_bytes,
-)
+from src.tts.training.audio_decode import decode_to_16k_mono, quality_message
+from src.tts.training.audio_quality import assess_audio, to_wav_bytes
 from src.tts.training.corpus import AUDIO_EXTENSIONS, Corpus, CorpusError, CorpusStore, Line
+from src.tts.training.transcript_check import DEFAULT_MIN_SIMILARITY, similarity_ratio
 from src.tts.training.usage import (
     SOURCE_DEVELOPMENT_UNLICENSED,
     SOURCE_SELF_RECORDED,
@@ -99,12 +96,12 @@ def ingest_audio(
         raise CorpusError("音檔是空的")
     if len(data) > MAX_UPLOAD_BYTES:
         raise CorpusError(f"音檔不可超過 {MAX_UPLOAD_BYTES // 1024 // 1024} MB", status=413)
-    result = normalize_utterance(decode_to_16k_mono(data))
-    if result.samples is None:
-        raise CorpusError(result.message, status=422)
+    result = assess_audio(decode_to_16k_mono(data))
+    if not result.ok:
+        raise CorpusError(quality_message(result.reasons), status=422)
     if text and recognizer is not None:
         heard = recognizer(result.samples)
-        if similarity_ratio(text, heard) < MIN_SIMILARITY:
+        if similarity_ratio(text, heard) < DEFAULT_MIN_SIMILARITY:
             raise CorpusError("逐字稿與音檔內容不符（語音辨識結果差異過大），請檢查逐字稿或音檔", status=422)
     line = store.add_line(slug, to_wav_bytes(result.samples), ".wav", text=text, original_name=filename)
     return IngestResult(line, result.duration)

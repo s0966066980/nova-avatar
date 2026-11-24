@@ -20,9 +20,9 @@ Blocked by: 03
 
 ### 2026-11-24 實作摘要（分支 `mv2/05-upload-transcripts`）
 
-沒有改 `web/`、沒有啟動伺服器、沒有載入真模型（測試用假轉錄器與假 `WhisperModel`）。新測試 157 個（`tests/test_training_{audio_qc,transcripts,ingest,transcription}.py`、`tests/test_tts_corpus_routes.py`，另在 `test_training_corpus.py` 加 3 個），無跳過。
+沒有改 `web/`、沒有啟動伺服器、沒有載入真模型（測試用假轉錄器與假 `WhisperModel`）。新測試約 155 個（`tests/test_training_{audio_decode,transcripts,ingest,transcription}.py`、`tests/test_tts_corpus_routes.py`，另在 `test_training_corpus.py` 加 3 個），無跳過。
 
-**新模組（`src/tts/training/`）**：`audio_qc.py`（解碼成 16 kHz 單聲道、頭尾靜音修剪、0.5–15 秒、RMS ≥ 0.005、校正到約 0.11 RMS 且峰值上限 0.75、`similarity_ratio`，規則取自 jetson 的 `audio_qc.py`）、`ingest.py`（來源宣告與上傳）、`transcripts.py`（`.txt` 與 `metadata.csv`）、`transcription.py`（背景轉錄工作與 faster-whisper 轉接）。路由在 `src/server/routes/tts_corpus.py`，只在 `routes/__init__.py`、`server.py`、`access.py` 加註冊與權限列。對 03 的 `CorpusStore` 只加兩個小介面：`confirm_pending(slug, line_ids=None)`（一次寫入的批次確認）與 `set_text(..., only_if_empty=True)`；`_clean_text` 改名為公開的 `clean_text`。
+**新模組（`src/tts/training/`）**：`audio_decode.py`（上傳檔解碼成 16 kHz 單聲道，並把品質檢查結果寫成繁體中文訊息）、`ingest.py`（來源宣告與上傳）、`transcripts.py`（`.txt` 與 `metadata.csv`）、`transcription.py`（背景轉錄工作與 faster-whisper 轉接）。品質檢查本身（頭尾靜音修剪、0.5–15 秒、RMS ≥ 0.005、校正到約 0.11 RMS 且峰值上限 0.75、削波）與相似度比對不重寫，直接用工單 04 合併進來的 `audio_quality.assess_audio` 與 `transcript_check.similarity_ratio`（規則同 jetson 的 `audio_qc.py`）。06 若要對上傳語料做 Whisper 比對，可把 `FasterWhisperTranscriber.transcribe` 交給 `transcript_check.verify_with_asr`。路由在 `src/server/routes/tts_corpus.py`，只在 `routes/__init__.py`、`server.py`、`access.py` 加註冊與權限列。對 03 的 `CorpusStore` 只加兩個小介面：`confirm_pending(slug, line_ids=None)`（一次寫入的批次確認）與 `set_text(..., only_if_empty=True)`；`_clean_text` 改名為公開的 `clean_text`。
 
 **路由（全部 ADMIN，已在 `ROUTE_ACCESS`；回應格式 `{"code":0,"msg":"ok","data":...}`，錯誤 `{"code":-1,"msg":"繁體中文原因"}`，轉錄匯入錯誤另有 `"problems":[句子...]`）**
 
