@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Matcha 聲線模型
 
-Status: 已確認（2026-11-24），實作中
+Status: 已確認（2026-11-24），工單 01–04 已實作並通過審查修正，待 05 實機驗收
 
 使用者想做兩件事：導入 Matcha hsiaochen-edge，並把 jetson-orin 分支的 Matcha（含訓練功能）帶進 main，要求先分析是否可行。2026-11-24 經 grilling 後定案的範圍如下；設計依據見 [ADR 0025](../../docs/adr/0025-matcha-voice-models-without-edge-distillation.md)。
 
