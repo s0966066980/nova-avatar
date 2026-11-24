@@ -87,7 +87,6 @@ class DependencyLayoutTests(unittest.TestCase):
             )
 
 
-@unittest.skipIf(UV is None, "uv is not installed")
 class LockCheckTests(unittest.TestCase):
     def _project_copy(self, tmp: Path) -> Path:
         """Copy only the lock inputs: both project manifests and the lock."""

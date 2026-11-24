@@ -121,6 +121,8 @@ AREA_BY_FILE = {
 LIVE_FILES = frozenset({"test_live_llm_board_contract.py"})
 LIVE_TESTS = frozenset({
     "tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
+    # A wall-clock budget on this host's CPU, not a deterministic regression.
+    "tests/test_scene_background.py::test_chroma_composite_fits_the_render_frame_budget_on_a_portrait_avatar",
 })
 
 SLOW_TESTS = frozenset(

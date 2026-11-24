@@ -4,7 +4,6 @@
 """The ruff lint gate rejects the security and async rules it promises to."""
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -60,7 +59,6 @@ def _ruff_codes(source: str, filename: str = "src/ruff_probe.py", *extra: str) -
     return sorted({item["code"] for item in json.loads(result.stdout or "[]")})
 
 
-@unittest.skipIf(importlib.util.find_spec("ruff") is None, "ruff is not installed")
 class RuffSecurityGateTests(unittest.TestCase):
     def test_each_rule_rejects_a_representative_violation(self):
         for rule, snippet in BAD_SNIPPETS.items():

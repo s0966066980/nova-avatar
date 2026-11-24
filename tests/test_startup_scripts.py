@@ -94,6 +94,7 @@ def launcher(tmp_path):
         from pathlib import Path
         import subprocess
         import sys
+        import time
 
         command, args = Path(sys.argv[0]).name, sys.argv[1:]
         state = Path(os.environ["NOVA_TEST_STATE"])
@@ -163,6 +164,7 @@ def launcher(tmp_path):
             elif "8010" in url:
                 if not marked("backend"):
                     fail()
+                mark("backend-probed")
                 print('{"ready": true}')
             else:
                 print("{}")
@@ -183,9 +185,15 @@ def launcher(tmp_path):
                 (state / "cosyvoice-pid").write_text(str(cosyvoice.pid))
             (state / "backend-pid").write_text(str(os.getpid()))
             mark("backend")
-            # A short-lived backend: the launcher stays until its backend exits.
-            seconds = (state / "backend-seconds").read_text() if marked("backend-seconds") else "3"
-            os.execl("/bin/sleep", "sleep", seconds)
+            if marked("backend-seconds"):
+                os.execl("/bin/sleep", "sleep", (state / "backend-seconds").read_text())
+            # A short-lived backend: the launcher stays until its backend exits. It
+            # outlives the launcher's readiness probe however busy the host is, then
+            # exits; start-backend.sh has no probe, so there it lives up to 3 s.
+            deadline = time.monotonic() + 3
+            while not marked("backend-probed") and time.monotonic() < deadline:
+                time.sleep(0.02)
+            time.sleep(0.2)
         elif command == "npm":
             assert "NOVA_RAGFLOW_API_KEY" not in os.environ
             (state / "npm-config").write_text(os.environ.get("CONFIG_FILE", ""))

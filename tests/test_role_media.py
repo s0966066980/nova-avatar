@@ -1,7 +1,6 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-import shutil
 import subprocess
 import asyncio
 from threading import Event
@@ -103,7 +102,6 @@ def test_scheduled_video_holds_source_until_all_peers_are_ready(monkeypatch):
     assert presentation.marker == {'role_transition_id': 'two-peer-video', 'role_transition_end': False}
 
 
-@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="ffmpeg unavailable")
 def test_uploaded_clip_is_fully_decoded_silent_and_protected_while_referenced(tmp_path):
     source = tmp_path / "input.mp4"
     subprocess.run(["ffmpeg", "-nostdin", "-v", "error",
