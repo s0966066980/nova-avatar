@@ -13,10 +13,12 @@ from opencc import OpenCC
 from src.tts.training.corpus import MAX_TEXT_CHARS, CorpusError
 from src.tts.training.numerals import normalize_digits
 from src.tts.training.sentences import (
+    MAX_TEXT_LIST_BYTES,
     PRESETS,
     estimate_seconds,
     library,
     parse_text_list,
+    review_text_list,
     select_by_duration,
     select_preset,
 )
@@ -181,3 +183,47 @@ def test_text_list_is_bounded_in_size_and_in_lines():
         parse_text_list("\n".join(f"第{n}句" for n in range(6000)))
     with pytest.raises(CorpusError):
         parse_text_list("字" * (2 * 1024 * 1024))
+
+
+# ------------------------------------------------------------------ the text review
+
+
+def test_review_expands_digits_per_sentence_and_estimates_the_total():
+    review = review_text_list("我有3個蘋果\n今天晴天\n")
+
+    assert review.ok and review.total == 2
+    assert [(r.index, r.text, r.spoken) for r in review.sentences] == [
+        (1, "我有3個蘋果", "我有三個蘋果"),
+        (2, "今天晴天", "今天晴天"),
+    ]
+    assert review.estimated_seconds == pytest.approx(estimate_seconds("我有3個蘋果") + estimate_seconds("今天晴天"))
+
+
+def test_review_reports_each_unresolved_fragment_with_its_reason_and_span():
+    review = review_text_list("價錢是$50\n你好\n溫度 25°C")
+
+    assert not review.ok
+    first, clean, third = review.sentences
+    assert clean.unresolved == ()
+    assert first.unresolved[0].text == "$50" and first.unresolved[0].reason == "currency"
+    assert first.text[first.unresolved[0].start : first.unresolved[0].end] == "$50"
+    assert [u.reason for u in third.unresolved] == ["degree"]
+    assert [r.index for r in review.sentences if r.unresolved] == [1, 3]
+
+
+def test_review_uses_the_same_sentence_list_as_a_job_would_synthesise():
+    raw = "第一句\n\n第二句\n第一句\n"
+
+    assert [r.text for r in review_text_list(raw).sentences] == parse_text_list(raw)
+
+
+@pytest.mark.parametrize("raw", ["", "\n \n", "含\x07控制字元"])
+def test_review_refuses_what_parse_text_list_refuses(raw):
+    with pytest.raises(CorpusError):
+        review_text_list(raw)
+
+
+def test_review_keeps_the_size_limit_of_a_job():
+    with pytest.raises(CorpusError) as caught:
+        review_text_list("字" * (MAX_TEXT_LIST_BYTES + 1))
+    assert caught.value.status == 413

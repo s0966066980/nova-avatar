@@ -212,6 +212,7 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     # Console: Matcha voice-model training job
     ("GET", "/api/tts/training"): ADMIN,
     ("POST", "/api/tts/training/start"): ADMIN,
+    ("POST", "/api/tts/training/text-preview"): ADMIN,
     ("POST", "/api/tts/training/cancel"): ADMIN,
     ("GET", "/api/tts/training/log"): ADMIN,
 }
