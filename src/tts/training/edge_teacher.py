@@ -91,7 +91,9 @@ REASON_SYNTHESIS_FAILED = "synthesis_failed"
 
 _RETRYABLE = (
     aiohttp.ClientError,
+    # Python 3.10 keeps asyncio.TimeoutError distinct from the builtin one.
     asyncio.TimeoutError,
+    TimeoutError,
     ConnectionError,
     RuntimeError,
     EdgeTTSException,
