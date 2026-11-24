@@ -68,6 +68,16 @@ from src.tts.training.corpus import (
     CorpusStore,
 )
 from src.tts.training.edge_acknowledgement import MSA_CLAUSE, require_acknowledgement
+from src.tts.training.gpu_guard import (
+    DEFAULT_MIN_FREE_VRAM_GB,
+    FAIL,
+    PASS,
+    WARN,
+    Check,
+    count_stage_connections,
+    free_vram_check,
+    stage_connection_check,
+)
 from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.manifest import build_manifest
 from src.tts.training.preparation import PreparationReport, check_quality, convert_uploads
@@ -114,17 +124,13 @@ JOB_RUNNING, JOB_CANCELLING, JOB_DONE, JOB_FAILED, JOB_CANCELLED = (
 ACTIVE_STATUSES = (JOB_RUNNING, JOB_CANCELLING)
 
 CHECK_ADMIN = "admin"
-CHECK_STAGE = "stage_connections"
-CHECK_VRAM = "free_vram"
 CHECK_ENVIRONMENT = "environment"
 CHECK_OTHER_JOB = "other_job"
 CHECK_EDGE = "edge_acknowledgement"
 CHECK_CORPUS = "corpus"
 CHECK_NAME = "model_name"
 CHECK_SIZE = "corpus_size"
-PASS, FAIL, WARN = "pass", "fail", "warn"
 
-DEFAULT_MIN_FREE_VRAM_GB = 8.0
 # Below about 15 minutes of speech a corpus only gets a reminder (spec decision 15).
 SMALL_CORPUS_SECONDS = 15 * 60
 LOG_MEMORY_LINES = 2000
@@ -148,18 +154,6 @@ class TrainingError(Exception):
         self.message = message
         self.status = status
         self.preflight = preflight
-
-
-@dataclass(frozen=True)
-class Check:
-    id: str
-    label: str
-    status: str
-    reason: str
-    detail: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"id": self.id, "label": self.label, "status": self.status, "reason": self.reason, "detail": self.detail}
 
 
 @dataclass(frozen=True)
@@ -393,13 +387,6 @@ def _explain(reasons: Iterable[str], counts: Any) -> str:
     return "；".join(messages[reason] for reason in reasons)
 
 
-def count_stage_connections() -> int:
-    """Every stage session, including one still connecting (its placeholder is ``None``)."""
-    from src.server.state import state
-
-    return len(state.avatar_streams)
-
-
 class TrainingJobManager:
     """Pre-flight checks, the single running job, its log and persisted state.
 
@@ -453,34 +440,14 @@ class TrainingJobManager:
         settings = self.settings()
         checks = [
             Check(CHECK_ADMIN, "管理者登入", PASS, "以管理者身分操作"),
-            self._stage_check(),
-            self._vram_check(settings),
+            stage_connection_check(self._sessions()),
+            free_vram_check(self._vram_probe(), settings.min_free_vram_gb),
             self._environment_check(),
             self._other_job_check(),
         ]
         checks.extend(self._corpus_checks(corpus))
         checks.append(self._name_check(name))
         return Preflight(tuple(checks))
-
-    def _stage_check(self) -> Check:
-        count = self._sessions()
-        if count:
-            return Check(CHECK_STAGE, "舞台連線", FAIL, f"有 {count} 個舞台正在連線，請先關閉再重新檢查", {"count": count})
-        return Check(CHECK_STAGE, "舞台連線", PASS, "目前沒有舞台連線", {"count": 0})
-
-    def _vram_check(self, settings: TrainingSettings) -> Check:
-        threshold = settings.min_free_vram_gb
-        reading = self._vram_probe()
-        detail: dict[str, Any] = {"free_gb": None, "threshold_gb": threshold}
-        if reading.free_gb is None:
-            return Check(
-                CHECK_VRAM, "剩餘顯存", FAIL,
-                f"讀不到剩餘顯存（{reading.reason}），為避免訓練把舞台的 GPU 用光，先不開始", detail,
-            )
-        detail["free_gb"] = round(reading.free_gb, 2)
-        if reading.free_gb < threshold:
-            return Check(CHECK_VRAM, "剩餘顯存", FAIL, f"剩餘 {reading.free_gb:.1f} GB，低於門檻 {threshold:g} GB", detail)
-        return Check(CHECK_VRAM, "剩餘顯存", PASS, f"剩餘 {reading.free_gb:.1f} GB，高於門檻 {threshold:g} GB", detail)
 
     def _environment_check(self) -> Check:
         missing = self.paths.missing()

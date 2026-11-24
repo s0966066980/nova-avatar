@@ -24,11 +24,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-import av
 import numpy as np
 
-from src.tts.training.audio_quality import SAMPLE_RATE, assess_audio, to_wav_bytes
-from src.tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusStore
+from src.tts.training.audio_decode import decode_to_16k_mono
+from src.tts.training.audio_quality import assess_audio, to_wav_bytes
+from src.tts.training.corpus import MAX_AUDIO_BYTES, REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusError, CorpusStore
 from src.utils.logging import logger
 
 CONVERTED_DIR = "converted"
@@ -57,27 +57,23 @@ class PreparationReport:
 
 
 def decode_audio_file(path: Path) -> np.ndarray:
-    """Any audio file as mono 16 kHz float32 samples in [-1, 1]; raises ``DecodeError``."""
-    chunks: list[np.ndarray] = []
+    """Any corpus audio file as mono 16 kHz float32 samples in [-1, 1]; raises ``DecodeError``.
+
+    Decoding goes through ``audio_decode.decode_to_16k_mono``, which names the FFmpeg demuxer
+    from the file's magic bytes instead of letting FFmpeg probe (a playlist format could
+    otherwise lead it to other files on the host) and refuses overlong recordings.
+    """
     try:
-        container = av.open(str(path))
-        try:
-            resampler = av.AudioResampler(format="s16", layout="mono", rate=SAMPLE_RATE)
-            for frame in container.decode(audio=0):
-                chunks.extend(_pcm(part) for part in resampler.resample(frame))
-            chunks.extend(_pcm(part) for part in resampler.resample(None))
-        finally:
-            container.close()
-    except (av.error.FFmpegError, ValueError, OSError, IndexError) as exc:
-        raise DecodeError(f"無法解碼音檔：{exc}") from exc
-    chunks = [chunk for chunk in chunks if chunk.size]
-    if not chunks:
+        if path.is_symlink() or path.stat().st_size > MAX_AUDIO_BYTES:
+            raise DecodeError("音檔不可為符號連結，且不可超過大小上限")
+        samples = decode_to_16k_mono(path.read_bytes())
+    except OSError as exc:
+        raise DecodeError(f"無法讀取音檔：{exc}") from exc
+    except CorpusError as exc:
+        raise DecodeError(exc.message) from exc
+    if not samples.size:
         raise DecodeError("音檔沒有音訊資料")
-    return np.concatenate(chunks)
-
-
-def _pcm(frame) -> np.ndarray:
-    return frame.to_ndarray().reshape(-1).astype(np.float32) / 32768.0
+    return samples
 
 
 def convert_uploads(

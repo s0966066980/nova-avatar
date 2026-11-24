@@ -67,6 +67,19 @@ def test_decode_refuses_files_that_are_not_audio(tmp_path):
         decode_audio_file(path)
 
 
+def test_decode_does_not_let_ffmpeg_probe_playlists_or_follow_links(tmp_path):
+    playlist = tmp_path / "list.wav"
+    playlist.write_text("#EXTM3U\n/etc/passwd\n", encoding="utf-8")
+    with pytest.raises(DecodeError):
+        decode_audio_file(playlist)
+    real = tmp_path / "real.wav"
+    real.write_bytes(tone(1.0))
+    link = tmp_path / "link.wav"
+    link.symlink_to(real)
+    with pytest.raises(DecodeError, match="符號連結"):
+        decode_audio_file(link)
+
+
 def test_uploads_are_converted_and_undecodable_lines_are_excluded(store, tmp_path):
     good = add(store, tone(1.0, rate=44100, channels=2))
     bad = add(store, b"garbage that av cannot read", text="壞")
