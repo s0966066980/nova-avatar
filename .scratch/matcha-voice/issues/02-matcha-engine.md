@@ -24,3 +24,4 @@ Blocked by: 01
   - 伺服器選項：`TTS_ENGINE_META` 新增 `matcha`（`Matcha-TTS (Research / Non-commercial)`），`speech_snapshot()["tts"]["voice_models"]` 列出聲線模型與使用限制標示，供 03 使用。未新增路由，`ROUTE_ACCESS` 不變。
   - 待 03：現有 `web/src/voiceSelection.js` 的 `switchTtsEngine` 切到 matcha 時會填入 Edge 預設聲線，儲存會被拒絕（明確錯誤），需由 03 改為選聲線模型。
   - 以真實 hsiaochen-edge 在 CPU 做一次性手動檢查（非測試）：載入約 1.0 s，暖機首音 0.04–0.06 s，中英文皆有輸出。
+- 2026-11-24 審查修正（分支 `mv/review-fixes`）：載入／遷移時聲線模型 ID 只檢查格式（`VOICE_MODEL_ID`），不在清單中的 ID 保留、不再清空寫回，`ProfileStore.load()` 不因聲線模型目錄被刪除或改名而失敗；格式不正確才清空並記 WARNING。是否已安裝改由 `check_voice_model_installed` 在儲存設定檔（`require_voice`）、套用與試聽時檢查，錯誤訊息指出缺少的聲線模型 ID。合成時的行為不變。BreezyVoice 不受影響。

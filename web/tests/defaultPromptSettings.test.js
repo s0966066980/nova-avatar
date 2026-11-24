@@ -67,8 +67,8 @@ test('設定面板可調整嘴型銳化、貼回插值與 MuseTalk 製作參數'
   assert.match(settings, /form\.append\('quality'/)
 })
 
-test('語音引擎只在數位人設定檔選擇，只有 Edge TTS、BreezyVoice 與 Matcha，已移除引擎改用 Edge 時顯示說明', () => {
-  assert.match(editor, /const ttsEngines = \['edgetts', 'breezyvoice', 'matcha'\]/)
+test('語音引擎只在數位人設定檔選擇，選項取自伺服器引擎目錄，已移除引擎改用 Edge 時顯示說明', () => {
+  assert.match(editor, /const ttsEngines = computed\(\(\) => speech\.tts\.engines\.map\(engine => engine\.id\)\)/)
   for (const removed of ['cosyvoice', 'fishtts', 'gpt-sovits', 'indextts2', 'xtts', 'cosyvoiceLanguage', 'cosyvoiceInstruct']) {
     assert.doesNotMatch(panel + settings + editor, new RegExp(`'${removed}'|settings\\.speech\\.${removed}\\b`))
   }
@@ -79,7 +79,6 @@ test('語音引擎只在數位人設定檔選擇，只有 Edge TTS、BreezyVoice
 
 test('BreezyVoice 參考音檔上傳時一併保存逐字稿', () => {
   assert.match(settings, /form\.append\('transcript', transcript\)/)
-  assert.match(editor, /\['edgetts', 'breezyvoice', 'matcha'\]/)
 })
 
 test('參考音訊與模型只能從伺服器清單選擇，不再開本機路徑選擇器', () => {

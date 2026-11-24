@@ -35,6 +35,27 @@ test('角色聲音引擎選單顯示伺服器目錄的授權限制標示', async
   assert.ok(!options.some(option => /cosyvoice|piper|xtts/i.test(option)), '只列出 Edge TTS、BreezyVoice 與 Matcha')
 })
 
+test('角色聲音引擎選單只列出伺服器目錄中的引擎', async t => {
+  const { speech } = useRuntimeSettings()
+  const previous = speech.tts.engines
+  speech.tts.engines = [
+    { id: 'edgetts', label: 'Edge TTS (Development only)' },
+    { id: 'matcha', label: 'Matcha-TTS (Research / Non-commercial)' }
+  ]
+  const profile = { id: 'main', name: '接待員', avatar_id: '', engine: 'musetalk',
+    llm: { endpoint: '', model: '' }, assistant_profile: { system_prompt: '', forbidden_self_names: [] }, reply_rules: {},
+    tools: { weather: false },
+    tts: { type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural' },
+    rag: { enabled: false, dataset_ids: [], document_scope: 'all', document_ids: [] } }
+  const view = mount(Editor.default ?? Editor, { modelValue: profile, initialSection: 'voice' })
+  t.after(() => { view.unmount(); speech.tts.engines = previous })
+  await settle()
+  const engineSelect = all(view.root, node => node.type === 'select')
+    .find(select => all(select, node => node.type === 'option').some(option => option.props.value === 'edgetts'))
+  const options = all(engineSelect, node => node.type === 'option').map(option => [option.props.value, textContent(option)])
+  assert.deepEqual(options, [['edgetts', 'Edge TTS (Development only)'], ['matcha', 'Matcha-TTS (Research / Non-commercial)']])
+})
+
 test('選用 Edge TTS 的角色會顯示伺服器目錄的開發用限制說明', async t => {
   const { speech } = useRuntimeSettings()
   const previous = speech.tts.engines

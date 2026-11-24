@@ -74,7 +74,7 @@ test('開發用音檔標示未取得說話者授權', () => {
 
 function runtimeStub(voices, voiceModels = []) {
   const calls = []
-  const speech = reactive({ tts: { engines: [], voices, edge_voices: [], voice_models: voiceModels } })
+  const speech = reactive({ tts: { engines: ['edgetts', 'breezyvoice', 'matcha'].map(id => ({ id, label: id })), voices, edge_voices: [], voice_models: voiceModels } })
   const stub = {
     speech,
     ttsVoiceOptions: computed(() => speech.tts.voices),
@@ -297,4 +297,19 @@ test('設定檔編輯器：切到 Matcha 不帶入 Edge 聲線，只列出已安
   profile.tts.ref_file = researchModel.id
   await settle()
   assert.doesNotMatch(textContent(view.root), /CER 13\.2%/, '實測數字只屬於 hsiaochen-edge')
+})
+
+test('設定檔編輯器：已儲存但未安裝的聲線模型仍顯示為目前選擇，並阻擋儲存', async t => {
+  const { stub } = runtimeStub([devVoice], [hsiaochen])
+  const Editor = await loadEditor(stub)
+  const view = mount(Editor, { modelValue: editorProfile({ type: 'matcha', ref_file: 'removed-voice' }), initialSection: 'voice' })
+  t.after(() => view.unmount())
+  await settle()
+  const modelSelect = all(view.root, n => n.type === 'label' && textContent(n).startsWith('聲線模型'))
+    .flatMap(label => all(label, n => n.type === 'select'))[0]
+  const missing = modelSelect.children.filter(n => n.type === 'option').find(n => n.props.value === 'removed-voice')
+  assert.ok(missing, '選擇不會消失')
+  assert.equal(textContent(missing), 'removed-voice（未安裝的聲線模型）')
+  assert.ok('disabled' in missing.props && missing.props.disabled !== false, '不能再選回未安裝的聲線模型')
+  assert.match(all(view.root, n => n.props.role === 'alert').map(textContent).join('\n'), /不在已安裝的聲線模型中/)
 })

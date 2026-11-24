@@ -320,17 +320,44 @@ def test_profiles_save_only_a_listed_voice_model_for_matcha(voice_models, store)
     assert saved["profiles"][0]["tts"]["ref_file"] == VOICE_ID
 
 
-def test_saved_voice_model_that_is_gone_is_cleared_and_never_replaced(voice_models, store, caplog):
+def test_saved_voice_model_that_is_gone_stays_selected_and_is_never_replaced(voice_models, store):
     model_dir = make_voice_model(voice_models)
     _save_voice(store, type="matcha", ref_file=VOICE_ID)
     shutil.rmtree(model_dir)
+
+    loaded = store.load()
+    restarted = store.initialize(store.config)
+
+    for library in (loaded, restarted, store.load()):
+        tts = library["profiles"][0]["tts"]
+        assert (tts["type"], tts["ref_file"]) == ("matcha", VOICE_ID)
+    with pytest.raises(Exception, match=f"聲線模型「{VOICE_ID}」不在 models/tts 清單中"):
+        _save_voice(store, type="matcha", ref_file=VOICE_ID)
+
+
+def test_saved_voice_model_id_that_breaks_the_id_format_is_cleared(voice_models, store, caplog):
+    import yaml
+
+    raw = yaml.safe_load(store.path.read_text("utf-8"))
+    raw["profiles"][0]["tts"].update(type="matcha", ref_file="../escape")
+    store.path.write_text(yaml.safe_dump(raw, allow_unicode=True), "utf-8")
 
     with caplog.at_level(logging.WARNING):
         library = store.initialize(store.config)
 
     tts = library["profiles"][0]["tts"]
     assert (tts["type"], tts["ref_file"]) == ("matcha", "")
-    assert f"聲線模型「{VOICE_ID}」" in caplog.text
+    assert "../escape" in caplog.text
+
+
+def test_applying_a_missing_voice_model_names_it(voice_models, sherpa):
+    from src.server.runtime_settings import SettingsError, apply_tts_settings
+
+    make_voice_model(voice_models)
+    sherpa()
+    for voice_model, message in (("", "選擇聲線模型"), ("zh-tw-missing", "zh-tw-missing」不在 models/tts 清單中")):
+        with pytest.raises(SettingsError, match=message):
+            apply_tts_settings(Config(), {"type": "matcha", "ref_file": voice_model}, session_count=0)
 
 
 def test_console_lists_matcha_and_only_labelled_voice_models(voice_models):

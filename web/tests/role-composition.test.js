@@ -108,19 +108,20 @@ test('名單列出主數位人、啟用／不相容成員與空位，不相容�
 
 test('Matcha 設定檔的聲音顯示聲線模型名稱與使用限制標示', async t => {
   const { speech } = useRuntimeSettings()
-  const previous = speech.tts.voice_models
+  const previous = { voiceModels: speech.tts.voice_models, engines: speech.tts.engines }
   speech.tts.voice_models = [{ id: 'zh-tw-hsiaochen-edge', name: '曉臻（Edge 蒸餾）', usage: 'Development only', languages: ['zh-TW', 'en-US'], source: '' }]
-  t.after(() => { speech.tts.voice_models = previous })
+  speech.tts.engines = [{ id: 'matcha', label: 'Matcha-TTS (Research / Non-commercial)' }]
+  t.after(() => { speech.tts.voice_models = previous.voiceModels; speech.tts.engines = previous.engines })
   const { view } = server(t, library => {
     for (const p of library.profiles.filter(p => ['main', 'guide'].includes(p.id))) p.tts = { type: 'matcha', ref_file: 'zh-tw-hsiaochen-edge' }
     library.profiles.find(p => p.id === 'weather').tts = { type: 'matcha', ref_file: 'removed-voice' }
   })
   await settle()
-  assert.match(textContent(view.root), /Matcha-TTS · 曉臻（Edge 蒸餾） · Development only/, '主數位人的預設聲音')
+  assert.match(textContent(view.root), /Matcha-TTS \(Research \/ Non-commercial\) · 曉臻（Edge 蒸餾） · Development only/, '主數位人的預設聲音：引擎標示取自伺服器目錄')
   await open(view.root, '展覽導覽員')
-  assert.match(textContent(view.root), /設定檔 guide · Matcha-TTS · 曉臻（Edge 蒸餾） · Development only/)
+  assert.match(textContent(view.root), /設定檔 guide · Matcha-TTS \(Research \/ Non-commercial\) · 曉臻（Edge 蒸餾） · Development only/)
   await open(view.root, '氣象員')
-  assert.match(textContent(view.root), /Matcha-TTS · removed-voice（未安裝的聲線模型）/)
+  assert.match(textContent(view.root), /Matcha-TTS \(Research \/ Non-commercial\) · removed-voice（未安裝的聲線模型）/)
 })
 
 test('每位成員各自儲存：只送自己的修訂，其他成員的草稿保留', async t => {

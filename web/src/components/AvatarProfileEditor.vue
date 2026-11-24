@@ -65,7 +65,7 @@
       <div class="profile-grid">
         <label>語音引擎<select :value="profile.tts.type" @change="switchTtsEngine(profile.tts, $event.target.value)"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ ttsEngineLabel(engine) }}</option></select></label>
         <label v-if="usesVoiceLibrary">參考音檔<select v-model="profile.tts.ref_file" :aria-invalid="Boolean(voiceProblem)" :aria-describedby="voiceProblem ? 'profile-voice-problem' : undefined" @change="profile.tts.ref_text = null"><option value="" disabled>請選擇參考音檔</option><option v-for="voice in referenceVoiceOptions" :key="voice.id" :value="voice.id">{{ voiceLabel(voice) }}</option></select></label>
-        <label v-else-if="usesVoiceModel">聲線模型<select v-model="profile.tts.ref_file" :aria-invalid="Boolean(voiceProblem)" :aria-describedby="voiceProblem ? 'profile-voice-problem' : undefined"><option value="" disabled>請選擇聲線模型</option><option v-for="model in voiceModelOptions" :key="model.id" :value="model.id">{{ voiceModelLabel(model) }}</option></select></label>
+        <label v-else-if="usesVoiceModel">聲線模型<select v-model="profile.tts.ref_file" :aria-invalid="Boolean(voiceProblem)" :aria-describedby="voiceProblem ? 'profile-voice-problem' : undefined"><option value="" disabled>請選擇聲線模型</option><option v-for="model in voiceModelOptions" :key="model.id" :value="model.id">{{ voiceModelLabel(model) }}</option><option v-if="profile.tts.ref_file && !voiceModelOptions.some(model => model.id === profile.tts.ref_file)" :value="profile.tts.ref_file" disabled>{{ missingVoiceModelLabel(profile.tts.ref_file) }}</option></select></label>
         <label v-else>聲線<input v-model="profile.tts.ref_file" placeholder="zh-TW-HsiaoChenNeural"></label>
       </div>
       <p v-if="ttsEngineDescription">{{ ttsEngineDescription }}</p>
@@ -93,7 +93,7 @@
 import { computed, ref, watch } from 'vue'
 import RagFlowSettings from './RagFlowSettings.vue'
 import VoiceLibraryManager from './VoiceLibraryManager.vue'
-import { referenceVoices, switchTtsEngine, ttsVoiceProblem, voiceLabel, voiceModelLabel, voiceModelMeasurement } from '../voiceSelection.js'
+import { missingVoiceModelLabel, referenceVoices, switchTtsEngine, ttsVoiceProblem, voiceLabel, voiceModelLabel, voiceModelMeasurement } from '../voiceSelection.js'
 import { useI18n } from '../composables/useI18n.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
@@ -121,8 +121,8 @@ function chooseVoice(id) { profile.value.tts.ref_file = id; profile.value.tts.re
 // Server catalog labels carry each engine's usage restriction (e.g. Edge TTS is development only).
 const ttsEngineLabel = id => speech.tts.engines.find(engine => engine.id === id)?.label || id
 const ttsEngineDescription = computed(() => speech.tts.engines.find(engine => engine.id === profile.value.tts.type)?.description || '')
-// The only TTS engines; the server switches saved roles of removed engines to Edge TTS.
-const ttsEngines = ['edgetts', 'breezyvoice', 'matcha']
+// The server's engine catalog; it switches saved roles of removed engines to Edge TTS.
+const ttsEngines = computed(() => speech.tts.engines.map(engine => engine.id))
 // BreezyVoice clones a voice-library recording and needs what it says.
 const usesVoiceLibrary = computed(() => profile.value.tts.type === 'breezyvoice')
 // Matcha speaks with one of the server's listed voice models, in both languages.

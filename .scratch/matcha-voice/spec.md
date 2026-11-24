@@ -91,3 +91,11 @@ base 模型的目錄沒有使用限制標示檔，所以第一階段**不會被�
 - [03 設定介面](issues/03-settings-ui.md)
 - [04 notices 與安裝文件](issues/04-notices-and-docs.md)
 - [05 實機驗收](issues/05-live-acceptance.md)
+
+## Follow-ups
+
+程式碼審查（2026-11-24）後記錄、不在本輪處理：
+
+- Edge TTS 改用 `src/tts/pcm_emitter.py` 輸出 PCM，與 Matcha 共用同一套切幀。
+- `tts.ref_file` 改名：它在各引擎代表「用哪個聲音」（Edge 聲線名稱、BreezyVoice 音訊庫 ID、Matcha 聲線模型 ID），名稱已不貼切；改名需要設定檔與覆寫檔遷移。
+- 現版基準 `tests/current-version-baseline.json`（尚在 main 工作目錄、未提交）的 `supported_options.tts` 需加入 `matcha`。

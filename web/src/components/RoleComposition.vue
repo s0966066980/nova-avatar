@@ -223,7 +223,7 @@
 import { computed, h, nextTick, onMounted, ref, shallowRef, toRaw, watch } from 'vue'
 import { useRoles } from '../composables/useRoles.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings.js'
-import { voiceModelLabel } from '../voiceSelection.js'
+import { missingVoiceModelLabel, voiceModelLabel } from '../voiceSelection.js'
 import {
   MAX_ENABLED, MAX_MEMBERS, avatarColor, enabledCount, isDirty, liveMemberIds, newMemberScope, readFailure, rebase,
   reconcile, savePlan, scopesFrom, weatherHolder
@@ -285,7 +285,8 @@ const enabled = computed(() => library.value ? enabledCount(library.value) : 0)
 const reasonsOf = id => roleCompatibility.value?.[id] || []
 const live = computed(() => library.value ? liveMemberIds(library.value, roleCompatibility.value) : [])
 const holder = computed(() => library.value ? weatherHolder(library.value) : '')
-const ttsLabel = p => ({ edgetts: 'Edge TTS', breezyvoice: 'BreezyVoice', matcha: 'Matcha-TTS' })[p?.tts?.type] || p?.tts?.type || '—'
+// Server catalog labels carry each engine's usage restriction, as in the profile editor.
+const ttsLabel = p => speech.tts.engines.find(engine => engine.id === p?.tts?.type)?.label || p?.tts?.type || '—'
 const llmLabel = p => p ? `${p.llm?.endpoint || '未選端點'} · ${p.llm?.model || '未選模型'}` : '—'
 const engineLabel = p => ({ musetalk: 'MuseTalk', wav2lip: 'Wav2Lip · Research / Non-commercial' })[p?.engine] || p?.engine || '—'
 // A Matcha voice is a voice model: show its name and usage label, as the profile editor does.
@@ -293,7 +294,7 @@ function voiceName(tts) {
   if (!tts?.ref_file) return '未選聲音'
   if (tts.type !== 'matcha') return tts.ref_file
   const model = (speech.tts.voice_models || []).find(item => item.id === tts.ref_file)
-  return model ? voiceModelLabel(model) : `${tts.ref_file}（未安裝的聲線模型）`
+  return model ? voiceModelLabel(model) : missingVoiceModelLabel(tts.ref_file)
 }
 const voiceLabel = p => p ? `${ttsLabel(p)} · ${voiceName(p.tts)}` : '—'
 const dirty = isDirty

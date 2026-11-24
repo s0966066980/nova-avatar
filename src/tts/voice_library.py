@@ -264,8 +264,13 @@ def delete_voice(voice_id: Any) -> Path:
 
 
 def check_reference(engine: str, value: Any) -> str:
-    """``value`` as a reference for ``engine``: a library ID, a listed voice-model ID,
-    or a server-side voice name."""
+    """``value`` as a reference for ``engine``: a library ID, a voice-model ID
+    or a server-side voice name.
+
+    A voice-model ID is checked for format only, so a saved choice survives
+    while its model is missing; ``check_voice_model_installed`` asks for it
+    to be listed when a voice is saved, applied or previewed.
+    """
     if value is None:
         value = ""
     if not isinstance(value, str):
@@ -273,10 +278,10 @@ def check_reference(engine: str, value: Any) -> str:
     value = value.strip()
     engine = str(engine or "").strip().lower()
     if engine in VOICE_MODEL_ENGINES:
-        from src.tts.voice_models import list_voice_models
+        from src.tts.voice_models import VOICE_MODEL_ID
 
-        if value and value not in {model.id for model in list_voice_models()}:
-            raise VoiceLibraryError(f"聲線模型「{value[:120]}」不在 models/tts 清單中，請改選已安裝的聲線模型")
+        if value and not VOICE_MODEL_ID.fullmatch(value):
+            raise VoiceLibraryError("聲線模型 ID 只能包含英數字、點、底線與連字號")
         return value
     if engine in REFERENCE_AUDIO_ENGINES:
         if value:
@@ -290,6 +295,14 @@ def check_reference(engine: str, value: Any) -> str:
     if value and not SERVER_SIDE_REFERENCE.fullmatch(value):
         raise VoiceLibraryError("聲線名稱只能包含英數字、底線與連字號")
     return value
+
+
+def check_voice_model_installed(value: str) -> None:
+    """Refuse a voice-model ID that ``list_voice_models`` does not list, naming it."""
+    from src.tts.voice_models import list_voice_models
+
+    if value and value not in {model.id for model in list_voice_models()}:
+        raise VoiceLibraryError(f"聲線模型「{value[:120]}」不在 models/tts 清單中，請改選已安裝的聲線模型")
 
 
 def _loopback_host(host: str) -> bool:
@@ -433,8 +446,8 @@ def migrate_tts_values(values: dict, *, where: str) -> bool:
             updated = _import_saved_path(text.strip(), where) if engine in REFERENCE_AUDIO_ENGINES else ""
             if engine in VOICE_MODEL_ENGINES:
                 # Never another voice model: the engine then asks for one to be chosen.
-                logger.warning("%s 的聲線模型「%s」不在 models/tts 清單中，已清空；請把聲線模型複製到 "
-                               "models/tts/ 後在數位人設定檔的「聲音」重新選擇", where, current)
+                logger.warning("%s 的聲線模型 ID 格式不正確，已清空；請在數位人設定檔的「聲音」"
+                               "重新選擇：%r", where, current)
             elif not updated:
                 if engine == "edgetts":
                     updated = DEFAULT_EDGE_VOICE

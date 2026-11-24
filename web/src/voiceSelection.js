@@ -37,6 +37,8 @@ export function switchTtsEngine(tts, engine) {
 
 // A voice model's name followed by its usage label, e.g. "Development only".
 export const voiceModelLabel = model => `${model.name} · ${model.usage}`
+// A saved choice whose voice model is no longer listed stays chosen until the admin changes it.
+export const missingVoiceModelLabel = id => `${id}（未安裝的聲線模型）`
 
 // Quality measured in the 2026-11-23 bake-off (.scratch/matcha-voice/spec.md):
 // 500 sentences, CPU with 4 threads, MuseTalk not loaded.
