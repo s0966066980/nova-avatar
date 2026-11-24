@@ -45,6 +45,7 @@ AREA_BY_FILE = {
     "test_funasr.py": "speech",
     "test_asr_comparison.py": "speech",
     "test_tts_bakeoff.py": "speech",
+    "test_repeated_syllable_benchmark.py": "speech",
     "test_tts_engine_cleanup.py": "speech",
     "test_voice_models.py": "speech",
     "test_training_numerals.py": "speech",
