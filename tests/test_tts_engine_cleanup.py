@@ -46,10 +46,10 @@ def stored_voice(voices, tmp_path):
     return voice_library.add_voice(source, "reference")["id"]
 
 
-def test_only_breezyvoice_and_edge_tts_are_offered():
-    assert set(TTS_ENGINE_META) == {"edgetts", "breezyvoice"}
+def test_only_breezyvoice_edge_tts_and_matcha_are_offered():
+    assert set(TTS_ENGINE_META) == {"edgetts", "breezyvoice", "matcha"}
     engines = {item["id"] for item in speech_snapshot(Config())["tts"]["engines"]}
-    assert engines == {"edgetts", "breezyvoice"}
+    assert engines == {"edgetts", "breezyvoice", "matcha"}
     assert voice_library.TTS_ENGINES == frozenset(TTS_ENGINE_META)
 
 

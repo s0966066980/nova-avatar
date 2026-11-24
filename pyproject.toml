@@ -31,6 +31,8 @@ dependencies = [
     "pydantic",
     "PyYAML",
     "scipy",
+    # CPU runtime for Matcha voice models (聲線模型); see src/tts/voice_models.py.
+    "sherpa-onnx==2.0.1",
     "soundfile==0.12.1",
     "torch==2.5.0",
     "torchvision",

@@ -1289,6 +1289,15 @@ TTS_ENGINE_META = {
         "description": "本機 BreezyVoice（聯發科，Apache-2.0）；台灣華語與注音讀音，整段合成不串流，套用時自動啟動獨立 GPU 服務",
         "setup": "需要 conda 環境 cosyvoice（另裝 g2pw）、scripts/breezyvoice_weights.py 下載的權重，以及音訊庫中附逐字稿的參考音訊",
     },
+    "matcha": {
+        "label": "Matcha-TTS (Research / Non-commercial)",
+        "module": "sherpa_onnx",
+        "description": (
+            "僅限非商用：本機 CPU 合成（sherpa-onnx），一個聲線模型同時說台灣華語與英文，"
+            "不需要參考音檔；各聲線模型另有使用限制標示"
+        ),
+        "setup": "把聲線模型（含 voice.json 使用限制標示）手動複製到 models/tts/<聲線模型 ID>/",
+    },
 }
 
 STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3", "turbo")
@@ -1306,6 +1315,7 @@ EDGE_TTS_ZH_TW_VOICES = (
 EDGE_TTS_ZH_TW_VOICE_IDS = frozenset(
     voice["id"] for voice in EDGE_TTS_ZH_TW_VOICES
 )
+MATCHA_VOICE_MODEL_REQUIRED = "Matcha 需要選擇聲線模型（models/tts 中附使用限制標示的聲線模型）"
 
 
 def _engine_unavailable_reason(item: Dict[str, str]) -> str:
@@ -1353,6 +1363,7 @@ def _stt_catalog() -> list:
 def speech_snapshot(config) -> Dict[str, Any]:
     from src.tts.cosyvoice_runtime import local_models
     from src.tts.voice_library import list_voices, removed_engine_notice
+    from src.tts.voice_models import list_voice_models
 
     asr = config.asr
     return {
@@ -1380,6 +1391,12 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "voices": list_voices(),
             "models": local_models(),
             "edge_voices": [dict(voice) for voice in EDGE_TTS_ZH_TW_VOICES],
+            # Matcha voice models with their usage labels; profiles name one by ID.
+            "voice_models": [
+                {"id": model.id, "name": model.name, "usage": model.usage,
+                 "languages": list(model.languages), "source": model.source}
+                for model in list_voice_models()
+            ],
             # Saved settings that named a removed engine and now use Edge TTS.
             "notice": removed_engine_notice(),
         },
@@ -1471,7 +1488,8 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
 def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
     """Check the TTS fields that name files, models or servers.
 
-    ``ref_file`` must be a voice-library ID (or an Edge voice name),
+    ``ref_file`` must be a voice-library ID, a voice-model ID (Matcha; apply
+    and preview also require it to be installed) or an Edge voice name,
     ``model`` a ``models/`` catalog ID and ``tts_server`` a loopback address.
     Runs before a request is applied or saved for later.
     """
@@ -1512,6 +1530,18 @@ def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
     return {"type": engine, **values}
 
 
+def _require_matcha_voice_model(ref_file: str) -> None:
+    """Before a Matcha apply or preview: a voice model is chosen and installed now."""
+    from src.tts.voice_library import VoiceLibraryError, check_voice_model_installed
+
+    if not ref_file:
+        raise SettingsError(MATCHA_VOICE_MODEL_REQUIRED)
+    try:
+        check_voice_model_installed(ref_file)
+    except VoiceLibraryError as exc:
+        raise SettingsError(exc.message) from None
+
+
 def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) -> Dict[str, Any]:
     """Validate reference/connectivity and synthesize a short preview before commit."""
     _require_no_sessions(session_count)
@@ -1529,6 +1559,9 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     if engine == "edgetts":
         if ref_file not in EDGE_TTS_ZH_TW_VOICE_IDS:
             raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線")
+        tts_server, model = "", ""
+    elif engine == "matcha":
+        _require_matcha_voice_model(ref_file)
         tts_server, model = "", ""
     else:
         from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
@@ -1642,6 +1675,9 @@ def preview_profile_voice(config, params: Dict[str, Any], *, session_count: int)
     if engine == "edgetts":
         if not ref_file:
             raise SettingsError("請先填寫 Edge TTS 聲線")
+        tts_server, model = "", ""
+    elif engine == "matcha":
+        _require_matcha_voice_model(ref_file)
         tts_server, model = "", ""
     else:
         if not ref_file:

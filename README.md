@@ -14,7 +14,7 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 - **對話鏈路**：服務端 Silero VAD、免按對話、按住說話與插話；faster-whisper small
   辨識（預設，中英文自動偵測），Fun-ASR-Nano-2512 可選（中英文）；llama.cpp 回答（預設
   Gemma 4 E2B，Qwen3.5-9B 可選），也可接 Ollama 或其他 OpenAI 相容服務；語音預設
-  Edge TTS（**僅供開發**），本機台灣華語 BreezyVoice 等為可選引擎。主要數位人引擎是
+  Edge TTS（**僅供開發**），本機台灣華語 BreezyVoice、CPU 上的 Matcha 聲線模型為可選引擎。主要數位人引擎是
   MuseTalk，其他引擎的支援與授權見文末。
 - **首音延遲**：角色路由、知識庫檢索與主回答同時開始。2026-10-30 以真實 WebRTC
   量測（Edge TTS），一般輪次從人聲結束到送出第一個可聽回覆音訊 P50 1.99 s、
@@ -134,7 +134,7 @@ Ollama，停用方式見[安裝流程](docs/installation.md#停用預設-ollama1
 **以主機名稱連入**：除 `localhost` 與 IP 外，其他 `Host` 一律拒絕（防 DNS
 rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 `app.allowed_hosts`。
 
-**語音引擎**：只有 BreezyVoice 與 Edge TTS。設定檔或數位人設定檔若仍指向已移除的
+**語音引擎**：Edge TTS（預設）、BreezyVoice 與 Matcha（可選）。設定檔或數位人設定檔若仍指向已移除的
 引擎（CosyVoice、Fun-CosyVoice3、Fish、GPT-SoVITS、IndexTTS2、XTTS），啟動時改用
 Edge TTS，並在日誌與數位人設定檔「聲音」說明，請重新選擇後套用。
 
@@ -170,6 +170,14 @@ transformers ≥ 4.51，與 MuseTalk 所需版本衝突，因此在自己的 ven
 下載權重到 `models/funasr/Fun-ASR-Nano-2512`（固定版本並核對 SHA-256）。模型類別來自固定版本的
 `funasr` 套件，不執行遠端程式碼；輸出經 OpenCC `s2twp` 轉臺灣繁體。服務日誌在
 `logs/fun-asr-nano-server.log`。
+
+**Matcha 聲線模型（選用）**：以 sherpa-onnx 在 CPU 執行，不佔用 GPU，出廠預設仍是
+Edge TTS。數位人設定檔把引擎選為 Matcha 後，再選一個已安裝的聲線模型，中英文都由它
+負責，不需要參考音訊。聲線模型放在 `models/tts/<id>/`，不進版本庫、不自動下載，換機器時
+手動複製並核對 SHA-256；目錄結構、`voice.json` 使用限制標示與檔案清單見
+[聲線模型安裝](docs/voice-models.md)。沒有任何聲線模型可商用：`zh-tw-hsiaochen-edge`
+以 Edge 輸出蒸餾，標示 **Development only**；從 base 模型微調的聲線模型標示
+**Research / Non-commercial**。系統只標示，不阻擋使用。
 
 **Edge TTS**：設定檔預設的語音引擎，只供開發。它使用非公開的微軟端點，沒有正式
 商用授權，場域斷網時無法發聲；正式部署前須換成本機 TTS。

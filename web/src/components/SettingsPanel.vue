@@ -284,6 +284,9 @@
               </div>
             </section>
 
+            <!-- 聲線模型：Matcha 設定檔可選的聲線模型，名稱後面是使用限制標示 -->
+            <VoiceModelCatalog />
+
           </div>
         </div>
 
@@ -1070,6 +1073,7 @@ import { avatarScenePreviewUrl } from '../scenePreview.js'
 import AvatarProfiles from './AvatarProfiles.vue'
 import RoleComposition from './RoleComposition.vue'
 import IdleGreetingSettings from './IdleGreetingSettings.vue'
+import VoiceModelCatalog from './VoiceModelCatalog.vue'
 import {
   boardReopenPresentation,
   captionStyle,

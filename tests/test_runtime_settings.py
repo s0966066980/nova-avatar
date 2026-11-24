@@ -558,7 +558,7 @@ class SpeechSettingsTests(unittest.TestCase):
         ids = {item["id"] for item in speech_snapshot(Config())["tts"]["engines"]}
         self.assertEqual(
             ids,
-            {"edgetts", "breezyvoice"},
+            {"edgetts", "breezyvoice", "matcha"},
         )
         self.assertTrue(ids.isdisjoint({"azuretts", "cosyvoice_api", "doubao", "tencent"}))
 

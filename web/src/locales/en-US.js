@@ -260,6 +260,14 @@ export default {
       sttApplied: 'STT applied; reconnect when ready'
     },
 
+    voiceModels: {
+      title: 'Voice models (Matcha)',
+      desc: 'A role profile that uses the Matcha engine picks one of these voice models. One voice model speaks both Taiwan Mandarin and English, and needs no reference audio. The usage label follows each name; it is a label, not a block.',
+      cpu: 'Synthesized on the CPU by sherpa-onnx, without using the GPU. The thread count is the server setting matcha.num_threads (default 4).',
+      measured: 'Measured: Chinese CER {cer}, English WER {wer}; warm first audio about {firstAudio} s on 4 CPU threads without MuseTalk loaded. On the live system, the app log is authoritative.',
+      empty: 'No voice model is installed. Copy a voice model with its voice.json usage label to models/tts/<voice model ID>/ by hand; see docs/voice-models.md.'
+    },
+
     vad: {
       title: 'Voice Activity Detection (Silero VAD)',
       desc: 'Server-side endpointing decides when you start and stop talking. Silero VAD is the only engine in use.',

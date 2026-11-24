@@ -9,12 +9,13 @@
 
 from typing import Type
 
-from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS
+from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS, MatchaTTS
 
 # Keep in step with src.tts.voice_library.TTS_ENGINES.
 _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
     "edgetts": EdgeTTS,
     "breezyvoice": BreezyVoiceTTS,
+    "matcha": MatchaTTS,
 }
 
 

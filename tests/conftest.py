@@ -46,6 +46,8 @@ AREA_BY_FILE = {
     "test_asr_comparison.py": "speech",
     "test_tts_bakeoff.py": "speech",
     "test_tts_engine_cleanup.py": "speech",
+    "test_voice_models.py": "speech",
+    "test_matcha_tts.py": "speech",
     "test_default_voice.py": "speech",
     "test_health_route.py": "runtime",
     "test_integration_check.py": "governance",
