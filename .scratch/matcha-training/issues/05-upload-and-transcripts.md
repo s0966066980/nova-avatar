@@ -56,4 +56,4 @@ Blocked by: 03
 - 校對：`PUT` 改文字會退回待確認；沒有逐字稿的句子不能確認；整份語料全部確認（無待確認、無未解數字）前 `trainable` 為 false。
 - 不提供刪除語料與刪除單句（要先查訓練工作並移入 `.deleted`，留給 06）。校對表不回傳每句長度（manifest 沒存）；需要時由 08 另議。
 
-**驗證**：基準（`matcha-training` tip）2 failed、1759 passed、3 skipped；本分支 2 failed（同兩項：PDF OCR 與 role coordinator）、1916 passed、3 skipped。lock check、ruff、pyright（0 錯誤）、`check-integration.py` 通過；未動 `web/`，略過網頁步驟。
+**驗證**：基準（`matcha-training` tip）2 failed、1759 passed、3 skipped；本分支 2 failed（同兩項：PDF OCR 與 role coordinator）、1916 passed、3 skipped。合併 `matcha-training`（含工單 04）後：2 failed（同兩項）、2010 passed、3 skipped。lock check、ruff、pyright（0 錯誤）、`check-integration.py` 通過；未動 `web/`，略過網頁步驟。
