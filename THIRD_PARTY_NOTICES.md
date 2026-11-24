@@ -294,6 +294,47 @@ classification in its label.
 - Nova Avatar does not use Edge TTS as a teacher for training or distillation
   (ADR 0025).
 
+#### Voice-model training workbench (development tooling)
+
+- Role: the Console's 聲線訓練 page fine-tunes the base model above into new
+  voice models, in a separate virtual environment under
+  `.local/matcha-train/` (created by `scripts/setup-matcha-train.sh`). It is
+  development tooling for the operator's own machine and is not shipped as part
+  of a deployment. Design: [ADR 0026](docs/adr/0026-edge-as-test-only-matcha-teacher.md).
+- Matcha-TTS (`matcha-tts==0.0.7.2`, Shivam Mehta): MIT,
+  <https://github.com/shivammehta25/Matcha-TTS>. It is installed with
+  `--no-deps --require-hashes`; the packages it would pull in beyond the
+  pinned set in `integrations/matcha-train/requirements.txt` (for example
+  `phonemizer`, which is GPL-3.0) are deliberately not installed.
+- Training dependencies: the pinned list in
+  `integrations/matcha-train/requirements.txt` (PyTorch 2.5.0 and its
+  permissively licensed dependencies; the transitive `certifi` and `tqdm`
+  carry MPL-2.0). No GPL package is installed.
+- Base checkpoint `pytorch_model_sherpa.bin` (ModelScope
+  `dengcunqin/matcha_tts_zh_en_20251010`, commit
+  `839c6c33693e1ac54a17a6c4d24ef44d96904674`, SHA-256
+  `a7b0458c146cb1712824a355de27f3969e074b80d02787c9e852fec7006a38ab`):
+  downloaded by the setup script, never committed. Classification
+  **Research / Non-commercial**, for the same reason as the base model above.
+- Usage classification of a trained voice model is the strictest of the base
+  model and the training-corpus source, and processing never lowers it:
+  - corpus synthesized by the Edge test teacher, or recordings declared
+    "development, unlicensed": **Development only**
+  - the operator's own recordings or recordings with written authorization:
+    **Research / Non-commercial** (the base model's training data is unknown)
+- The Edge test teacher synthesizes training text with the non-public Microsoft
+  Edge read-aloud endpoint. The Microsoft Services Agreement §14(s)(iv) clause
+  quoted above applies in the same way, and the Console requires the
+  administrator to confirm the clause before the first synthesis. Fun-CosyVoice3
+  is not part of this tooling.
+- The Console records, but does not verify, the operator's declaration about a
+  recording's speaker and authorization. Obtaining consent and written
+  authorization is the operator's responsibility.
+- Trained voice models stay on the machine under `models/tts/`. The Console
+  offers no download route; copying a voice model elsewhere is a manual,
+  operator-owned act, and the label travels with it in `voice.json`.
+- Information verified 2026-11-24.
+
 ## Models, weights, and datasets
 
 Model weights and datasets are not relicensed by Nova Avatar. A usable code
