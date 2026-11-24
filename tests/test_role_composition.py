@@ -4,21 +4,18 @@
 """當次角色組合: version 1 migration, validation and per-member saves (ADR 0023)."""
 from __future__ import annotations
 
-import asyncio
 from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
 import yaml
 
-from src.config.schema import Config
 from src.profiles.composition import (
     MAX_ENABLED_MEMBERS, compatibility_report, live_members, profile_ids, referenced_media, transition,
 )
 from src.profiles.coordinator import ConversationRoles
 from src.profiles.store import ProfileError, ProfileStore, validate_profile
-from src.server.state import state
-from tests.access_helpers import access_client, same_origin
+from tests.composition_fakes import _config, _request, composition_routes, store  # noqa: F401
 
 _RULES = """\
   reply_rules:
@@ -130,13 +127,6 @@ migrated: true
 """
 
 
-def _config():
-    config = Config()
-    config.model.type = "musetalk"
-    config.model.avatar_id = "musetalk_angela"
-    return config
-
-
 def test_live_v1_library_becomes_a_composition_once_with_a_backup(tmp_path):
     path = tmp_path / "avatar_profiles.yaml"
     path.write_text(LIVE_V1, encoding="utf-8")
@@ -181,21 +171,6 @@ def test_loading_a_version_1_file_converts_without_writing(tmp_path):
     assert library["composition"]["main"]["profile_id"] == "main"
     assert path.read_text("utf-8") == LIVE_V1
     assert not list(tmp_path.glob("*.bak"))
-
-
-@pytest.fixture
-def store(tmp_path, monkeypatch):
-    """main + weather (seeded) and seven more profiles compatible with main."""
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
-    store = ProfileStore(tmp_path / "avatar_profiles.yaml")
-    library = store.initialize(_config())
-    extra = []
-    for number in range(1, 8):
-        profile = deepcopy(library["profiles"][1])
-        profile.update(id=f"s{number}", name=f"專門{number}")
-        extra.append(profile)
-    store.save_profiles(library["profiles"] + extra, expected_revision=library["profiles_revision"])
-    return store
 
 
 def _member(store, pid):
@@ -428,29 +403,6 @@ def test_only_the_saved_default_and_overrides_reference_transition_clips(store):
     assert referenced_media(library) == {"clip_default", "clip_edge"}
     assert referenced_media({**library, "transitions": [{"kind": "video", "asset_id": "stale"}]}) == {
         "clip_default", "clip_edge"}
-
-
-@pytest.fixture
-def composition_routes(store, monkeypatch):
-    monkeypatch.setattr(state, "config", _config())
-    library = store.load()
-
-    async def close():
-        return None
-
-    roles = SimpleNamespace(store=store, enabled=False, library=library, snapshot=lambda: {"phase": "disabled"},
-                            media=SimpleNamespace(list=lambda: []), close=close,
-                            profiles={p["id"]: p for p in library["profiles"]}, current_id="main")
-    monkeypatch.setattr(state, "roles", roles, raising=False)
-    return store
-
-
-def _request(method, path, body=None):
-    async def run():
-        async with access_client() as client:
-            response = await client.request(method, path, json=body, headers=same_origin(client))
-            return response.status, await response.json()
-    return asyncio.run(run())
 
 
 def test_member_routes_report_conflicts_with_the_saved_member(composition_routes):

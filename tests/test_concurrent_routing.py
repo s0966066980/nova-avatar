@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 from src.llm.history import TransactionalHistory
 from src.profiles.coordinator import ANSWER_CONTEXT
 from src.server.voice_session import VoiceTurnSession
-from tests.test_role_coordinator import async_test, connect, field, route_to  # noqa: F401
+from tests.role_fakes import async_test, connect, field, route_to  # noqa: F401
 
 SPECULATIVE = {"context": ANSWER_CONTEXT}
 FIXED = "接下來請天氣助手為您說明。"

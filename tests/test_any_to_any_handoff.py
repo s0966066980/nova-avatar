@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.llm import service
-from tests.test_role_coordinator import async_test, connect, field, route_to, wait_until  # noqa: F401
+from tests.role_fakes import async_test, connect, field, route_to, wait_until  # noqa: F401
 
 SERVICE_ANNOUNCEMENT = '接下來請客服小幫手為您說明。'
 SERVICE_ANNOUNCEMENT_EN = 'Our service assistant will help you next.'

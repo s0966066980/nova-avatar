@@ -12,7 +12,7 @@ import pytest
 
 from src.llm import service
 from src.profiles.routing import route_question
-from tests.test_role_coordinator import async_test, connect, field, route_to, wait_until  # noqa: F401
+from tests.role_fakes import async_test, connect, field, route_to, wait_until  # noqa: F401
 
 
 def use_weather(voice):
@@ -201,7 +201,7 @@ async def test_mixed_question_clarifies_then_can_hand_back_the_nonweather_topic(
 
 @async_test
 async def test_reverse_handoff_checks_main_attachment_capability_before_announcing(field, monkeypatch):
-    from tests.test_pc_conversations import picture
+    from tests.session_fakes import picture
     field.router = Mock(return_value=route_to('main'))
     voice, _ = connect(field)
     roles = use_weather(voice)
@@ -238,7 +238,7 @@ def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
 @async_test
 async def test_a_new_question_supersedes_continuation_waiting_for_attachment_validation(field, monkeypatch):
     from threading import Event
-    from tests.test_pc_conversations import picture
+    from tests.session_fakes import picture
     field.router = Mock(return_value=route_to('main'))
     voice, _ = connect(field)
     roles = voice._role_coordinator
@@ -276,7 +276,7 @@ async def test_a_new_question_supersedes_continuation_waiting_for_attachment_val
 async def test_stale_handoff_failure_cannot_cancel_a_new_forward_handoff(field, monkeypatch):
     from threading import Event
     from unittest.mock import AsyncMock
-    from tests.test_pc_conversations import picture
+    from tests.session_fakes import picture
     field.router = Mock(return_value=route_to('weather', county='臺北市', town='',
         kind='forecast', start_date='2026-10-29', end_date='2026-10-29'))
     field.weather.query = AsyncMock(return_value={'status': 'available', 'source': 'CWA', 'series': {}})

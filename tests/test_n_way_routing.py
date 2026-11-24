@@ -4,60 +4,18 @@
 """N-way routing: any enabled member, including the main avatar, answers a turn (ticket 02)."""
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime, timedelta
 import json
-from pathlib import Path
-import tempfile
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
-from src.config.schema import Config
-from src.profiles.composition import new_member
 from src.profiles.routing import candidates, route_question, weather_member
-from src.profiles.store import ProfileError, ProfileStore
+from src.profiles.store import ProfileError
 from src.profiles.weather import TAIPEI
-from tests.test_role_coordinator import async_test, connect, field  # noqa: F401
-
-SERVICE = "回答會員、訂單與退換貨問題。"
-TRAFFIC = "回答交通路線、停車與接駁車問題。"
-
-
-def _member(library, profile_id, name, description, rules="", *, enabled=True, weather=False):
-    """Add a profile cloned from ``main`` (so it is compatible) and its member entry."""
-    profile = deepcopy(next(p for p in library["profiles"] if p["id"] == "main"))
-    profile.update(id=profile_id, name=name)
-    library["profiles"].append(profile)
-    member = new_member(profile_id)
-    member.update(enabled=enabled, description=description, rules=rules,
-                  announcement=f"接下來請{name}為您說明。")
-    member["tools"]["weather"]["enabled"] = weather
-    library["composition"]["members"].append(member)
-    return member
-
-
-def composition(*, weather=True, config=None):
-    """main + 客服 + 交通 (+ the default weather member when ``weather``), handoff on."""
-    config = config or _config()
-    library = ProfileStore(Path(tempfile.mkdtemp()) / "profiles.yaml").initialize(config)
-    library["composition"]["enabled"] = True
-    library["composition"]["main"]["description"] = "公司簡介與一般問題。"
-    if not weather:
-        library["composition"]["members"] = []
-    _member(library, "service", "客服小幫手", SERVICE, "會員或訂單問題交給客服。")
-    _member(library, "traffic", "交通嚮導", TRAFFIC)
-    _member(library, "archive", "停用角色", "不應出現的專長。", enabled=False)
-    return library
-
-
-def _config():
-    config = Config()
-    config.llm.provider = "llamacpp"
-    config.llm.model = "gemma-4-E2B_q4_0-it"
-    config.llm.base_url = "http://127.0.0.1:18080/v1"
-    return config
+from tests.role_fakes import async_test, connect, field  # noqa: F401
+from tests.role_fakes import SERVICE, TRAFFIC, _config, _member, _prompt, _schema, composition  # noqa: F401
 
 
 def _route(library, current, text, decision, *, history=(), confirmed=None, config=None):
@@ -75,14 +33,6 @@ def _route(library, current, text, decision, *, history=(), confirmed=None, conf
     routed = route_question(config or _config(), library, current, text, list(history),
                             confirmed or {}, client_factory=Client)
     return routed, create
-
-
-def _prompt(create):
-    return create.call_args.kwargs["messages"][0]["content"]
-
-
-def _schema(create):
-    return create.call_args.kwargs["response_format"]["json_schema"]["schema"]
 
 
 def _data(create):

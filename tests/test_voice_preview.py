@@ -31,7 +31,7 @@ from src.tts.voice_preview import (
     PreviewError,
     synthesize_preview,
 )
-from tests.test_matcha_tts import VOICE_ID, FakeSherpa, Parent, make_voice_model, matcha_config, tone
+from tests.matcha_fakes import VOICE_ID, FakeSherpa, Parent, make_voice_model, matcha_config, tone
 
 
 @pytest.fixture

@@ -9,8 +9,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from tests.test_edge_endpoint import _handshake_error
-from tests.test_edge_tts_worker import _mp3_fixture
+from tests.edge_fakes import _handshake_error
+from tests.edge_fakes import _mp3_fixture
 
 
 class Parent:

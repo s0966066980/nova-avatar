@@ -64,7 +64,7 @@ def test_health_exposes_incomplete_prewarm_without_disabling_runtime_recovery():
 def test_listening_preparation_warms_stt_inference_once_without_a_turn():
     from src.asr.base import BaseASR
     from src.server.voice_session import VoiceTurnSession
-    from tests.test_voice_session import FakeAvatar
+    from tests.session_fakes import FakeAvatar
 
     inferences = []
 
@@ -323,7 +323,7 @@ def test_prewarm_deadline_closes_stream_and_client_even_if_content_arrives():
 
 def test_edge_prewarm_requires_decoded_pcm_when_requested():
     from src.tts.engines.edge import prewarm_edge_tts
-    from tests.test_edge_tts_worker import _mp3_fixture
+    from tests.edge_fakes import _mp3_fixture
 
     for payload, expected in [(_mp3_fixture(), True), (b"not audio", False)]:
         class Communicate:

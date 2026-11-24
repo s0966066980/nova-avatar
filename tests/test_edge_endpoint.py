@@ -8,16 +8,11 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import aiohttp
 from edge_tts import communicate
 
 from src.tts import edge_endpoint
-from tests.test_edge_tts_worker import _mp3_fixture
-
-
-def _handshake_error(status: int) -> aiohttp.WSServerHandshakeError:
-    info = SimpleNamespace(real_url="wss://example.invalid/")
-    return aiohttp.WSServerHandshakeError(info, (), status=status, message="rejected")
+from tests.edge_fakes import _mp3_fixture
+from tests.edge_fakes import _handshake_error  # noqa: F401
 
 
 class EdgeEndpointTests(unittest.TestCase):

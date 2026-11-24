@@ -20,7 +20,7 @@ from src.greetings.content import (GreetingError, greeting_messages, prepare_gre
 from src.llm import service
 from src.profiles.store import ProfileStore, profile_config, validate_library
 from src.server.voice_session import VoiceTurnSession
-from tests.test_voice_session import FakeAvatar, FakeSegmenter
+from tests.session_fakes import FakeAvatar, FakeSegmenter
 
 
 @pytest.mark.parametrize('text,count', [('你好，世界！', 6), ('a e\u0301 👨‍👩‍👧‍👦 🇹🇼\n', 4), ('\t\n　', 0), ('👍🏽！', 2), ('a\u0085b', 2)])

@@ -16,7 +16,7 @@ from edge_tts import communicate
 from src.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
 from src.tts.engines import edge
 from src.tts.edge_connection import EdgeConnectionPool
-from tests.test_edge_tts_worker import _mp3_fixture
+from tests.edge_fakes import _mp3_fixture
 
 
 class FakeEdgeServer:

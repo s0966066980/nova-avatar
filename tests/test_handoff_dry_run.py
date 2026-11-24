@@ -12,8 +12,8 @@ import pytest
 
 from src.profiles.routing import CLARIFY, route_question, route_schema
 from src.profiles.store import ProfileError
-from tests.test_n_way_routing import _config, _prompt, _schema, composition
-from tests.test_role_composition import _request, composition_routes, store  # noqa: F401
+from tests.role_fakes import _config, _prompt, _schema, composition
+from tests.composition_fakes import _request, composition_routes, store  # noqa: F401
 
 DRY_RUN = "/api/profiles/composition/dry-run"
 

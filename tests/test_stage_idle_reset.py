@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 from src.server.voice_session import VoiceTurnSession
-from tests.test_voice_session import FakeASR, FakeAvatar, FakeSegmenter
+from tests.session_fakes import FakeASR, FakeAvatar, FakeSegmenter
 
 DELAY = 0.08
 REPLY = "還沒開始播放的回覆"

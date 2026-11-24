@@ -460,7 +460,7 @@ def test_paused_uplink_is_drained_without_resampling():
     from unittest.mock import Mock
     from src.config.schema import Config
     from src.server.voice_session import VoiceTurnSession
-    from tests.test_voice_session import FakeAvatar
+    from tests.session_fakes import FakeAvatar
 
     async def run():
         session = VoiceTurnSession(7, Config(), FakeAvatar())
@@ -487,7 +487,7 @@ def test_capture_stays_closed_until_preparation_and_preserves_manual_pause():
     from threading import Event
     from src.config.schema import Config
     from src.server.voice_session import VoiceTurnSession
-    from tests.test_voice_session import FakeAvatar
+    from tests.session_fakes import FakeAvatar
 
     async def run():
         ready = Event()

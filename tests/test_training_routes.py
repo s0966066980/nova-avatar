@@ -20,7 +20,7 @@ from src.server.routes import tts_training
 from src.server.server import create_app
 from src.server.tts_training_jobs import TrainingJobManager, TrainingParams
 from tests.access_helpers import access_client, built_frontend, same_origin
-from tests.test_training_jobs import ENOUGH_VRAM_MIB, edge_synthesis, rig
+from tests.training_fakes import ENOUGH_VRAM_MIB, edge_synthesis, rig
 from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
 from src.tts.training.gpu_probe import VramReading
@@ -446,7 +446,7 @@ async def test_a_synthesis_past_the_time_limit_is_504_and_told_to_stop(tmp_path,
 @async_test
 async def test_the_default_previewer_speaks_through_the_shared_loader_with_the_configured_threads(tmp_path, monkeypatch):
     from src.server.state import state
-    from tests.test_matcha_tts import FakeSherpa, make_voice_model, tone
+    from tests.matcha_fakes import FakeSherpa, make_voice_model, tone
 
     root = tmp_path / "models" / "tts"
     root.mkdir(parents=True)

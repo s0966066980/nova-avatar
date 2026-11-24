@@ -3,14 +3,12 @@
 
 """PC-specific contracts where independent Jetson sessions meet role handoffs."""
 from copy import deepcopy
-from io import BytesIO
 import importlib.util
 import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from PIL import Image
 import pytest
 import yaml
 
@@ -19,13 +17,8 @@ from src.llm.history import TransactionalHistory
 from src.profiles.store import profile_config
 from src.server import conversations
 from src.server.state import state
-from tests.test_role_coordinator import async_test, connect, field, wait_until  # noqa: F401
-
-
-def picture():
-    output = BytesIO()
-    Image.new('RGB', (32, 32), 'white').save(output, format='PNG')
-    return output.getvalue()
+from tests.role_fakes import async_test, connect, field, wait_until  # noqa: F401
+from tests.session_fakes import picture  # noqa: F401
 
 
 def engine(text='earlier question'):

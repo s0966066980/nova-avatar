@@ -1,15 +1,30 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Fake child processes for the training tests: no real subprocess, model or GPU."""
+"""Training test rig and fake child processes: no real subprocess, model or GPU."""
 
 from __future__ import annotations
 
+import json
 import queue
 import subprocess
 import threading
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
+
+from src.server.tts_training_jobs import (
+    TrainingJobManager,
+    TrainingParams,
+    TrainingPaths,
+    TrainingSettings,
+)
+from src.tts.training import edge_teacher
+from src.tts.training.corpus import REVIEW_CONFIRMED, CorpusStore
+from src.tts.training.gpu_probe import VramReading
+from src.tts.training.usage import SOURCE_SELF_RECORDED
+from src.tts.voice_models import REQUIRED_FILES
 
 
 class FakeProcess:
@@ -129,3 +144,155 @@ def tone_wav(seconds: float = 1.5, rate: int = 16000, amplitude: float = 0.3) ->
     buffer = io.BytesIO()
     sf.write(buffer, mono, rate, format="WAV", subtype="PCM_16")
     return buffer.getvalue()
+
+
+TOOLS = Path(__file__).resolve().parent.parent / "tools" / "tts-distill"
+
+
+TOKENS = {" ": 1, ",": 4, "wo3": 11, "you3": 12, "san1": 13, "ge4": 14, "ping2": 15, "guo3": 16,
+          "er4": 17, "ling2": 18, "liu4": 19, "nian2": 20, "dian4": 21, "hua4": 22}
+
+
+LEXICON = ["我 wo3", "有 you3", "三 san1", "个 ge4", "苹果 ping2 guo3", "二 er4", "零 ling2", "六 liu4",
+           "年 nian2", "电话 dian4 hua4"]
+
+
+TEXTS = ["我有三個蘋果", "二零二六年", "我有電話"]
+
+
+ENOUGH_VRAM_MIB = 9830
+
+
+@dataclass
+class Rig:
+    manager: TrainingJobManager
+    store: CorpusStore
+    paths: TrainingPaths
+    spawner: FakeSpawner
+    state: dict
+    trained: list[list[dict]]
+
+
+def make_paths(tmp_path: Path, *, with_env: bool = True) -> TrainingPaths:
+    root = tmp_path / "project"
+    base = root / "models" / "tts" / "matcha-icefall-zh-en"
+    base.mkdir(parents=True)
+    (base / "tokens.txt").write_text("".join(f"{t} {i}\n" for t, i in TOKENS.items()), encoding="utf-8")
+    (base / "lexicon.txt").write_text("\n".join(LEXICON) + "\n", encoding="utf-8")
+    (base / "vocos-16khz-univ.onnx").write_bytes(b"vocoder")
+    (base / "number-zh.fst").write_bytes(b"fst")
+    python = root / ".local" / "matcha-train" / "venv" / "bin" / "python"
+    checkpoint = root / ".local" / "matcha-base" / "pytorch_model_sherpa.bin"
+    if with_env:
+        for path in (python, checkpoint):
+            path.parent.mkdir(parents=True)
+            path.write_bytes(b"x")
+    return TrainingPaths(root, python, checkpoint, base, TOOLS, tmp_path / "voices")
+
+
+def make_store(tmp_path: Path, source: str = SOURCE_SELF_RECORDED, texts=TEXTS) -> CorpusStore:
+    store = CorpusStore(tmp_path / "corpora")
+    store.create("voice", source)
+    for text in texts:
+        line = store.add_line("voice", tone_wav(), ".wav", text)
+        store.set_review("voice", line.id, REVIEW_CONFIRMED)
+    return store
+
+
+def rig(
+    tmp_path: Path,
+    *,
+    source: str = SOURCE_SELF_RECORDED,
+    texts=TEXTS,
+    with_env: bool = True,
+    train_lines=("epoch=1 step=1/4 loss=6.9 ema=6.9", "epoch=1 step=4/4 loss=5.5 ema=5.6"),
+    train_code: int | None = 0,
+    train_ignores_term: bool = False,
+    export_code: int = 0,
+    transcript: dict[str, str] | None = None,
+    transcriber_error: Exception | None = None,
+    verify_error: Exception | None = None,
+    sessions: int = 0,
+    vram: VramReading = VramReading(ENOUGH_VRAM_MIB),
+    settings: TrainingSettings = TrainingSettings(),
+    synthesize=None,
+    train_release: threading.Event | None = None,
+    whisper_process: FakeProcess | None = None,
+) -> Rig:
+    store = make_store(tmp_path, source, texts)
+    paths = make_paths(tmp_path, with_env=with_env)
+    trained: list[list[dict]] = []
+    state: dict = {"transcriber_models": [], "verified": [], "orphans": [], "synth_calls": [], "transcribing": False}
+
+    def handler(command, env, cwd):
+        if list(command[1:3]) == ["-m", "src.tts.training.whisper_worker"]:
+            assert whisper_process is not None
+            return whisper_process
+        script = Path(command[1]).name
+        if script == "train_matcha.py":
+            manifest = Path(argument(command, "--manifest"))
+            trained.append([json.loads(line) for line in manifest.read_text(encoding="utf-8").splitlines()])
+            out = Path(argument(command, "--out-dir"))
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "best.pt").write_bytes(b"weights")
+            return FakeProcess(train_lines, train_code, ignore_term=train_ignores_term, release=train_release)
+        if script == "export_matcha_onnx.py":
+            out = Path(argument(command, "--output-dir"))
+            out.mkdir(parents=True, exist_ok=True)
+            for name in (*REQUIRED_FILES, "number-zh.fst"):
+                (out / name).write_bytes(name.encode())
+            state["export_command"] = list(command)
+            return FakeProcess(["Exported Matcha ONNX bundle"], export_code)
+        raise AssertionError(f"unexpected child: {command}")
+
+    spawner = FakeSpawner(handler)
+
+    @contextmanager
+    def transcriber(model: str):
+        state["transcriber_models"].append(model)
+        if transcriber_error is not None:
+            raise transcriber_error
+        by_id = {line.id: line.text for line in store.get("voice").lines}
+        heard = transcript or {}
+
+        def transcribe(path: Path) -> str:
+            line_id = path.stem
+            return heard.get(line_id, by_id[line_id])
+
+        yield transcribe
+
+    def verify(bundle: Path, cancel: threading.Event) -> None:
+        state["verified"].append(sorted(p.name for p in bundle.iterdir()))
+        if verify_error is not None:
+            raise verify_error
+
+    def default_synthesize(store_, slug, sentences, **kwargs):
+        state["synth_calls"].append({"slug": slug, "sentences": list(sentences), **kwargs})
+        return edge_teacher.SynthesisReport(len(sentences), 0, 0, 0, 0, len(sentences), False, False, ())
+
+    manager = TrainingJobManager(
+        store=store,
+        paths=paths,
+        settings=lambda: settings,
+        params=TrainingParams(batch_size=2, epochs=1, num_workers=0, vram_sample_seconds=0),
+        sessions=lambda: sessions,
+        vram_probe=lambda: vram,
+        spawn=spawner,
+        synthesize=synthesize or default_synthesize,
+        transcriber_factory=None if whisper_process is not None else transcriber,
+        verify_bundle=verify,
+        orphan_stopper=lambda pid: state["orphans"].append(pid) or True,
+        transcription_active=lambda: state["transcribing"],
+    )
+    return Rig(manager, store, paths, spawner, state, trained)
+
+
+def edge_synthesis(texts=TEXTS):
+    def synthesize(store, slug, sentences, **kwargs):
+        for text in texts:
+            line = store.add_line(slug, tone_wav(), ".wav", text)
+            store.set_review(slug, line.id, REVIEW_CONFIRMED)
+        kwargs["on_progress"](edge_teacher.Progress(1, 1, "x", edge_teacher.STATUS_STORED))
+        return edge_teacher.SynthesisReport(len(sentences), len(texts), 0, 0, 0, 0, False, False, ())
+
+    return synthesize

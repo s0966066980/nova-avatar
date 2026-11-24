@@ -11,7 +11,7 @@ import pytest
 
 from src.web_search import service
 from src.web_search.settings import settings
-from tests.test_voice_session import FakeAvatar, FakeSegmenter
+from tests.session_fakes import FakeAvatar, FakeSegmenter
 from src.config.schema import Config
 from src.server.voice_session import VoiceTurnSession
 
