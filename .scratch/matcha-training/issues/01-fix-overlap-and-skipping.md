@@ -20,3 +20,13 @@ Status: ready-for-agent
 - 已排除：sherpa callback 區塊重疊、`pcm_emitter` 截斷或重複（輸出與輸入逐樣本相同）、取樣率、併發（有鎖）、main 與 jetson 合成路徑的差異。
 - 未能測試：WebRTC 端實際擷取，所以「聽到的跳音就是片段空白」仍是推論；MuseTalk 滿載下的 CPU 競爭也未量測。
 - 證據：`../evidence/2026-11-24-diagnosis/`（轉寫與四組對照的 JSON 與腳本；音檔約 18 MB 只留在暫存目錄，不進 git）。
+
+### 2026-11-24 實作：Matcha 片段預取（分支 `mv2/01-matcha-prefetch`，提交 f1db0f5）
+
+- 位置：`src/tts/engines/matcha.py` 的 `MatchaTTS`（`process_tts` 覆寫）。一條合成執行緒從 `msgqueue` 取文字並合成，最多在播放中的片段之前暫存 1 片（`MAX_HELD_FRAGMENTS`）；發聲執行緒取出暫存片段逐 20 ms 幀送出。有暫存片段時不等上一片播完就接著送，由有界播放佇列的背壓控制節奏（與 Edge 相同）；沒有暫存時才等播放結束，`_synthesis_active` 與 `has_pending_work` 的語意不變。
+- 取消與換輪：`flush_talk` 在鎖內清空佇列與暫存並遞增 epoch；合成完成時 epoch 已變就丟棄，發聲時每一幀檢查 epoch、引擎狀態與 `parent.accepts_media(…, "tts_held_fragment")`（ADR 0007 的輪次柵欄），所以被取消或被取代的輪次不會播出舊暫存。讀佇列與 epoch 在同一把鎖內，避免舊輪的文字配上新輪的 epoch。
+- 失敗：暫存片段合成失敗時保留錯誤，輪到該片段才回報 `tts_exhausted_before_audio`，不提前打斷正在播放的前一片；後續片段照常播放。
+- 不變：每個模型的合成鎖、`length_scale`、`noise_scale`、執行緒數、`txt_to_audio`（不預取的單片路徑）。
+- 測試（`tests/test_matcha_tts.py`，假合成器、無模型、無 GPU）：用模擬音訊時鐘量到片段間隔（修正前 154 ms，修正後低於 50 ms）；預取只領先 1 片；flush 時暫存與合成中片段不會播出；輪次被取代但沒有 flush 時暫存片段也不播；失敗片段依序回報；兩個引擎共用同一聲線模型時合成仍一次一段。移除 epoch 與狀態檢查的變異測試會使測試失敗。
+- CI：基準（matcha-training 尖端）與修改後都是 ruff、pyright、`scripts/check-integration.py`、`uv lock --check` 通過；pytest 基準 2 failed、1564 passed、3 skipped，修改後 2 failed、1571 passed、3 skipped（同樣兩個既有失敗：PDF OCR、role coordinator；新增 7 個測試，無新增跳過）。未動 `web/`，前端步驟未跑。
+- 尚未驗證（驗收需實機）：Matcha 片段間隔實際降到約 20–50 ms，與舞台是否仍有跳音。檢查方式：用 Matcha 聲線連續對話一段會切成多片的長回覆，從日誌比對片段之間的空白（修正前 221–280 ms）；若仍聽到跳音，依本工單說明在 `put_audio_frame` 記錄逐幀時間與 `media_sequence`、同時錄 WebRTC 輸出，另開工單。
