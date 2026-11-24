@@ -16,6 +16,7 @@ const EdgeTextReview = await loadComponent(url('VtEdgeTextReview'), stubs)
 const Job = await loadComponent(url('VtJob'), stubs)
 const Done = await loadComponent(url('VtDone'), stubs)
 const Text = await loadComponent(url('VtText'), stubs)
+const EdgeConfirm = await loadComponent(url('VtEdgeConfirm'), stubs)
 
 const byId = (root, id) => all(root, node => node.props.id === id)[0]
 
@@ -229,7 +230,7 @@ test('完成畫面：標示、三句預設試聽（無自訂句子）、不含�
   assert.equal(all(view.root, n => n.type === 'button' && /下載|匯出|download|export/i.test(textContent(n))).length, 0, '沒有任何下載或匯出的按鈕')
   const players = all(view.root, n => n.type === 'button' && n.props['aria-pressed'] !== undefined)
   assert.equal(players.length, 3)
-  assert.deepEqual(players.map(n => n.props['aria-disabled']), [undefined, 'true', 'true'])
+  assert.deepEqual(players.map(n => n.props['aria-disabled']), [undefined, undefined, undefined], '三句都能試聽')
   button(view.root, '到數位人設定檔選用').props.onClick()
   assert.equal(opened, 1)
 })
@@ -263,4 +264,47 @@ test('匯入逐字稿失敗：列出每一條問題', async t => {
   const alert = all(view.root, n => n.props.role === 'alert' && /逐字稿無法使用/.test(textContent(n)))[0]
   assert.ok(alert)
   assert.match(textContent(alert), /第 2 行缺少分隔符[\s\S]*clip_9/)
+})
+
+test('完成畫面：三個試聽按鈕各自向伺服器要那一句，播放回傳的音檔', async t => {
+  const requested = []
+  const store = storeWith({ previewVoice: (voiceId, sentence) => { requested.push([voiceId, sentence]); return new Blob(['RIFF'], { type: 'audio/wav' }) } })
+  store.state.job = { id: 'j', status: 'done', name: '展廳導覽員', voice_id: 'trained-1', usage: 'Development only', source: 'edge-test-teacher', metrics: {}, stages: [] }
+  const view = mount(Done, { store })
+  t.after(() => view.unmount())
+  await settle()
+  const players = all(view.root, n => n.type === 'button' && n.props['aria-pressed'] !== undefined)
+  assert.equal(players.length, 3)
+  for (const player of players) { player.props.onClick(); await settle() }
+  assert.deepEqual(requested, [['trained-1', 'zh'], ['trained-1', 'digits'], ['trained-1', 'en']])
+  const audio = all(view.root, n => n.type === 'audio')[0]
+  assert.match(audio.props.src, /^blob:/)
+  assert.equal(all(view.root, n => /目前只能念固定/.test(textContent(n))).length, 0, '不再說只有一句可聽')
+  URL.revokeObjectURL(audio.props.src)
+})
+
+test('Edge 確認畫面：顯示並使用伺服器給的條文，沒有條文時不能勾選', async t => {
+  const clause = { reference: '伺服器出處 §9', effective: '2031-02-03', text: 'Only the server knows this clause wording.' }
+  const store = storeWith({ getTraining: { job: null, preflight: null, settings: { edge_clause: clause } } })
+  store.chooseSource('edge')
+  await store.loadEdgeClause()
+  const view = mount(EdgeConfirm, { store })
+  t.after(() => view.unmount())
+  await settle()
+  const text = textContent(view.root)
+  assert.ok(text.includes(clause.reference) && text.includes(clause.text), '畫面顯示伺服器的條文')
+  assert.ok(all(view.root, n => n.type === 'blockquote' && textContent(n).includes(clause.text)).length === 1)
+  assert.equal(all(view.root, n => n.type === 'input' && n.props.type === 'checkbox' && n.props.disabled)[0], undefined)
+
+  const bare = storeWith({ getTraining: { job: null, preflight: null, settings: {} } })
+  bare.chooseSource('edge')
+  await bare.loadEdgeClause()
+  const missing = mount(EdgeConfirm, { store: bare })
+  t.after(() => missing.unmount())
+  await settle()
+  assert.ok(!textContent(missing.root).includes('Microsoft Services Agreement'), '前端沒有自己的條文可顯示')
+  assert.ok(all(missing.root, n => n.type === 'input' && n.props.type === 'checkbox' && n.props.disabled).length === 1, '沒有條文不能勾選')
+  assert.equal(all(missing.root, n => n.type === 'blockquote').length, 0)
+  assert.equal(button(missing.root, '確認並繼續').props['aria-disabled'], 'true')
+  assert.match(textContent(byId(missing.root, 'vt-why-edge')), /伺服器還沒提供/)
 })

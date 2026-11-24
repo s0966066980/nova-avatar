@@ -49,13 +49,29 @@ export function createTrainingApi(fetchImpl = (...args) => globalThis.fetch(...a
   const get = url => request('GET', url)
   const post = (url, json) => request('POST', url, { json })
 
+  // The one route that answers audio instead of {code, msg, data}: a preset sentence
+  // spoken by a finished voice model. Resolves to the WAV as a Blob (never a download).
+  async function previewVoice(voiceId, sentence) {
+    const response = await fetchImpl(`${TRAINING}/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_id: voiceId, sentence })
+    })
+    if (!response.ok) {
+      const body = await readBody(response)
+      throw new TrainingApiError(body?.msg || `HTTP ${response.status}`, { status: response.status })
+    }
+    return response.blob()
+  }
+
   return {
     get,
     post,
     listCorpora: () => get(CORPORA),
     getCorpus: slug => get(corpusPath(slug)),
     createCorpus: body => post(CORPORA, body),
-    // Edge only: records the confirmation and the clause text that was shown.
+    // Edge only: records the confirmation and the clause text that was shown
+    // (exactly the text the server delivered as settings.edge_clause).
     recordAcknowledgement: (slug, shownText) => post(`${corpusPath(slug)}/acknowledgement`, { shown_text: shownText }),
     uploadLine(slug, file, filename = file.name) {
       const form = new FormData()
@@ -82,6 +98,7 @@ export function createTrainingApi(fetchImpl = (...args) => globalThis.fetch(...a
     },
     startTraining: body => post(`${TRAINING}/start`, body),
     cancelTraining: () => post(`${TRAINING}/cancel`),
-    getTrainingLog: offset => get(`${TRAINING}/log?offset=${Math.max(0, Number(offset) || 0)}`)
+    getTrainingLog: offset => get(`${TRAINING}/log?offset=${Math.max(0, Number(offset) || 0)}`),
+    previewVoice
   }
 }

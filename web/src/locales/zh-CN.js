@@ -329,7 +329,8 @@ export default {
         ruleSource: '语料经过任何处理，来源都不会改变，标示不能降级。',
         check: '我已阅读上列条文与限制，了解以测试用老师训练的声线模型只能作为 Development only 使用，且不提供导出。',
         useUpload: '不使用，改选上传录音', next: '确认并继续',
-        reason: { check: '请先勾选上方的确认。', session: '登录已失效，请先重新登录。' }
+        reason: { check: '请先勾选上方的确认。', session: '登录已失效，请先重新登录。', clause: '服务器还没提供条文，请稍后刷新再试。' },
+        clauseMissing: '无法从服务器取得条文，所以不能确认。请刷新页面；若仍然如此，请检查服务器是否正常。'
       },
       upload: {
         declareLegend: '这些录音的来源',
@@ -464,7 +465,7 @@ export default {
         devNote: '只能作开发测试。',
         previewTitle: '试听', previewHint: '这里只提供预设句子的试听，不能输入自定义句子；声线模型只留在这台机器，没有下载。',
         sentences: { zh: '中文', digits: '含数字的中文', en: '英文' },
-        previewUnavailable: '服务器目前只能念固定的中文预设句，这一句还不能试听。',
+        previewUnavailable: '这个声线模型还没有可以试听的内容。',
         playerLabel: '试听播放器',
         toProfile: '到数字人配置档选用',
         profileHint: '在数字人配置档的语音引擎选 Matcha，声线模型下拉菜单会列出这个声线模型，名称后面接使用限制标示。'

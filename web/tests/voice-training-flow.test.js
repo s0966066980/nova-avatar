@@ -41,10 +41,12 @@ test('來源與上傳的下一步條件都給出原因代碼', () => {
   assert.deepEqual(uploadGate({ declared: 'own', consent: true, accepted: 1, uploading: true }), ['uploading'])
 })
 
-test('Edge 確認：沒勾選或登入失效都不能繼續', () => {
-  assert.deepEqual(edgeConfirmGate({ checked: false, sessionExpired: false }), ['check'])
-  assert.deepEqual(edgeConfirmGate({ checked: true, sessionExpired: true }), ['session'])
-  assert.deepEqual(edgeConfirmGate({ checked: true, sessionExpired: false }), [])
+test('Edge 確認：沒勾選、登入失效或伺服器沒給條文都不能繼續', () => {
+  assert.deepEqual(edgeConfirmGate({ checked: false, sessionExpired: false, clauseReady: true }), ['check'])
+  assert.deepEqual(edgeConfirmGate({ checked: true, sessionExpired: true, clauseReady: true }), ['session'])
+  assert.deepEqual(edgeConfirmGate({ checked: true, sessionExpired: false, clauseReady: true }), [])
+  assert.deepEqual(edgeConfirmGate({ checked: true, sessionExpired: false, clauseReady: false }), ['clause'], '沒有伺服器條文就不能確認')
+  assert.deepEqual(edgeConfirmGate({ checked: true, sessionExpired: false }), ['clause'], '沒說明就視為沒有條文')
 })
 
 test('名稱：必填、最多 40 字（以字元計）', () => {

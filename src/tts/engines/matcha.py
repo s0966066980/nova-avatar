@@ -196,6 +196,44 @@ def normalize_matcha_text(text: str, *, lexicon_words: set[str] | None = None, c
     return re.sub(r"\s+", " ", cleaned).strip()
 
 
+def generate_speech(
+    voice: _LoadedVoice,
+    text: str,
+    *,
+    converter=None,
+    keep_going: Callable[[], bool] | None = None,
+    default_rate: int = 16000,
+) -> tuple[np.ndarray, int]:
+    """Speak ``text`` with a loaded voice model: float samples at the model's own rate.
+
+    Synthesis holds the voice model's lock, so the live engine and any other caller
+    of the same loaded model take turns. ``keep_going`` is polled while generating;
+    returning False stops it early (the samples so far are returned). Blocking CPU
+    work: async callers use ``asyncio.to_thread``. Text that normalises to nothing
+    gives no samples.
+    """
+    normalized = normalize_matcha_text(text, lexicon_words=voice.lexicon_words, converter=converter)
+    if not normalized:
+        return np.empty(0, dtype=np.float32), default_rate
+    with voice.lock:
+        generated = voice.tts.generate(
+            normalized,
+            sid=0,
+            speed=1.0,
+            callback=lambda _samples, _progress: 1 if keep_going is None or keep_going() else 0,
+        )
+    samples = np.asarray(generated.samples, dtype=np.float32).reshape(-1)
+    return samples, int(getattr(generated, "sample_rate", default_rate) or default_rate)
+
+
+def limit_peak(samples: np.ndarray) -> np.ndarray:
+    """``samples`` scaled down, if needed, to ``PEAK`` so the int16 conversion keeps headroom."""
+    peak = float(np.max(np.abs(samples))) if samples.size else 0.0
+    if peak > PEAK:
+        return (samples * (PEAK / peak)).astype(np.float32, copy=False)
+    return samples
+
+
 @dataclass
 class _HeldFragment:
     """A synthesised fragment waiting for its turn to be emitted."""
@@ -245,27 +283,19 @@ class MatchaTTS(BaseTTS):
         text: str,
         alive: Callable[[], bool] | None = None,
     ) -> np.ndarray:
-        normalized = normalize_matcha_text(text, lexicon_words=voice.lexicon_words, converter=self._converter)
-        if not normalized:
-            return np.empty(0, dtype=np.float32)
-        with voice.lock:
-            generated = voice.tts.generate(
-                normalized,
-                sid=0,
-                speed=1.0,
-                # Stop generating once the turn is interrupted.
-                callback=lambda _samples, _progress: 1 if self.state == State.RUNNING and (alive is None or alive()) else 0,
-            )
-        samples = np.asarray(generated.samples, dtype=np.float32).reshape(-1)
-        rate = int(getattr(generated, "sample_rate", self.sample_rate) or self.sample_rate)
+        samples, rate = generate_speech(
+            voice,
+            text,
+            converter=self._converter,
+            # Stop generating once the turn is interrupted.
+            keep_going=lambda: self.state == State.RUNNING and (alive is None or alive()),
+            default_rate=self.sample_rate,
+        )
         if samples.size and rate != self.sample_rate:
             import resampy
 
             samples = resampy.resample(samples, rate, self.sample_rate).astype(np.float32, copy=False)
-        peak = float(np.max(np.abs(samples))) if samples.size else 0.0
-        if peak > PEAK:
-            samples = (samples * (PEAK / peak)).astype(np.float32, copy=False)
-        return samples
+        return limit_peak(samples)
 
     def txt_to_audio(self, msg: tuple[str, dict]) -> None:
         """Synthesize and emit one fragment now (no prefetch); raises when it fails."""

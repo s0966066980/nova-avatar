@@ -11,11 +11,12 @@
       <div><div class="vt-b-title">{{ tx('edgeConfirm.readTitle') }}</div>{{ tx('edgeConfirm.readBody') }}</div>
     </div>
 
-    <figure class="vt-msa">
-      <div class="vt-msa-src">{{ MSA_CLAUSE.reference }}</div>
-      <blockquote lang="en">&ldquo;{{ MSA_CLAUSE.text }}&rdquo;</blockquote>
+    <figure v-if="clause" class="vt-msa">
+      <div class="vt-msa-src">{{ clause.reference }}</div>
+      <blockquote lang="en">&ldquo;{{ clause.text }}&rdquo;</blockquote>
       <figcaption class="vt-hint">{{ tx('edgeConfirm.summary') }}</figcaption>
     </figure>
+    <p v-else class="vt-banner danger" role="status"><i :class="icon('x-circle')" aria-hidden="true"></i><span>{{ tx('edgeConfirm.clauseMissing') }}</span></p>
 
     <div class="vt-stack">
       <h3 class="vt-section-title"><i :class="icon('lock')" aria-hidden="true"></i>{{ tx('edgeConfirm.limitsTitle') }}</h3>
@@ -28,7 +29,7 @@
     </div>
 
     <label class="vt-check" for="vt-msa-ok">
-      <input id="vt-msa-ok" v-model="state.edge.checked" type="checkbox" :disabled="expired">
+      <input id="vt-msa-ok" v-model="state.edge.checked" type="checkbox" :disabled="expired || !clause">
       <span>{{ tx('edgeConfirm.check') }}</span>
     </label>
 
@@ -52,7 +53,7 @@
 <script setup>
 import { computed } from 'vue'
 import VtActionButton from './VtActionButton.vue'
-import { MSA_CLAUSE, USAGE_DEV } from '../../voiceTraining/constants.js'
+import { USAGE_DEV } from '../../voiceTraining/constants.js'
 import { edgeConfirmGate } from '../../voiceTraining/flow.js'
 import { icon } from '../../voiceTraining/icons.js'
 import { useTrainingText } from '../../voiceTraining/useText.js'
@@ -61,7 +62,9 @@ const props = defineProps({ store: { type: Object, required: true }, sessionExpi
 const { tx } = useTrainingText()
 const state = props.store.state
 const expired = computed(() => props.sessionExpired)
-const reasons = computed(() => edgeConfirmGate({ checked: state.edge.checked, sessionExpired: expired.value }))
+// The clause text is the server's (settings.edge_clause); the screen keeps no copy of its own.
+const clause = computed(() => state.edgeClause)
+const reasons = computed(() => edgeConfirmGate({ checked: state.edge.checked, sessionExpired: expired.value, clauseReady: Boolean(clause.value) }))
 
 function useUpload() {
   props.store.chooseSource('upload')

@@ -63,7 +63,7 @@ test('畫面以變數組出的鍵，每個可能的值都有字串', () => {
     ...['pending', 'unresolved', 'none_confirmed'].map(k => `review.reason.${k}`),
     ...['unresolved', 'empty', 'checking'].map(k => `edgeReview.reason.${k}`),
     ...['pick_source'].map(k => `source.reason.${k}`),
-    ...['check', 'session'].map(k => `edgeConfirm.reason.${k}`),
+    ...['check', 'session', 'clause'].map(k => `edgeConfirm.reason.${k}`),
     ...['declare', 'consent', 'files', 'uploading'].map(k => `upload.reason.${k}`),
     ...['pick_txt', 'running', 'none'].map(k => `text.reason.${k}`),
     ...DECLARATIONS.flatMap(d => ['title', 'desc', 'consent'].map(k => `upload.decl.${d.key}.${k}`)),

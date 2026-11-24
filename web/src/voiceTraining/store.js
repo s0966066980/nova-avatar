@@ -7,7 +7,7 @@
 import { computed, reactive } from 'vue'
 import { TrainingApiError, createTrainingApi } from './api.js'
 import {
-  DECLARATIONS, DEFAULT_WHISPER_MODEL, EDGE_VOICES, EDGE_PRESETS, MSA_CLAUSE, PREVIEW_SENTENCES, SOURCE_EDGE
+  DECLARATIONS, DEFAULT_WHISPER_MODEL, EDGE_VOICES, EDGE_PRESETS, PREVIEW_SENTENCES, SOURCE_EDGE
 } from './constants.js'
 import { classifyUploadFile, declarationFor, edgeConfirmGate, nameProblem, newSlug, uploadGate } from './flow.js'
 import { announcementFor, emptyLog, isActive, mergeLog, transcriptionView } from './jobView.js'
@@ -17,12 +17,10 @@ import {
 } from './reviewTable.js'
 import { previewEdgeText } from './textPreviewClient.js'
 
-// The server's profile preview speaks one fixed sentence (the first preset).
-// The other two presets stay disabled until it accepts a sentence of its own.
-const SERVER_SPEAKS_ONLY = new Set(['zh'])
-
 const initialState = () => ({
   screen: 'home', path: null, slug: '', name: '', error: '', announcement: null, focusToken: 0,
+  // The Microsoft clause as the server delivered it ({reference, effective, text}); null until it has.
+  edgeClause: null,
   corpora: [], loadingHome: false, job: null, preflight: null, settings: null, checking: false,
   edge: { voice: EDGE_VOICES[0].id, preset: EDGE_PRESETS[0].key, textSrc: 'builtin', checked: false, acknowledged: false, sentences: [], preview: null, previewing: false, showSample: false },
   up: { declared: '', consent: false, files: [], locked: false, uploading: false },
@@ -52,8 +50,11 @@ export function createVoiceTrainingStore({
     state.screen = screen
     state.error = ''
     state.focusToken += 1
+    // The clause is the server's: fetch it whenever the confirmation is shown.
+    if (screen === 'edge-confirm') loadEdgeClause()
   }
   function reset() {
+    releasePreview()
     Object.assign(state, initialState(), { corpora: state.corpora, job: state.job })
   }
   function newCorpus() { reset(); go('source') }
@@ -106,16 +107,35 @@ export function createVoiceTrainingStore({
     state.slug = created?.slug || slug
   }
 
-  async function confirmEdge() {
-    if (edgeConfirmGate({ checked: state.edge.checked, sessionExpired: sessionExpired() }).length) return
+  // The clause text only ever comes from the server (settings.edge_clause).
+  const clauseOf = value => (value && typeof value.text === 'string' && value.text && typeof value.reference === 'string' ? value : null)
+  async function loadEdgeClause() {
     await guard(async () => {
+      const data = await api.getTraining()
+      state.edgeClause = clauseOf(data?.settings?.edge_clause)
+    })
+  }
+
+  async function confirmEdge() {
+    const clause = state.edgeClause
+    if (edgeConfirmGate({ checked: state.edge.checked, sessionExpired: sessionExpired(), clauseReady: Boolean(clause) }).length) return
+    try {
       await ensureCorpus({ source: SOURCE_EDGE })
       if (!state.edge.acknowledged) {
-        await api.recordAcknowledgement(state.slug, MSA_CLAUSE.text)
+        // Send back exactly the text the server delivered and the screen showed.
+        await api.recordAcknowledgement(state.slug, clause.text)
         state.edge.acknowledged = true
       }
       go('text')
-    })
+    } catch (error) {
+      state.error = message(error)
+      // The server's clause is not the one shown (it was reworded): show the current one and ask again.
+      if (error instanceof TrainingApiError && error.status === 400) {
+        state.edge.checked = false
+        await loadEdgeClause()
+        state.error = message(error)
+      }
+    }
   }
 
   async function refreshEdgePreview() {
@@ -321,14 +341,17 @@ export function createVoiceTrainingStore({
   }
 
   // ---------------------------------------------------------------- done: preset preview
-  const previewAvailable = key => SERVER_SPEAKS_ONLY.has(key) && PREVIEW_SENTENCES.some(item => item.key === key)
+  // The server speaks the three preset sentences (by code) in the finished voice model's voice.
+  const previewAvailable = key => Boolean(state.job?.voice_id) && PREVIEW_SENTENCES.some(item => item.key === key)
+  const releasePreview = () => { if (state.preview.audio) URL.revokeObjectURL(state.preview.audio) }
   async function previewVoice(key) {
     const voiceId = state.job?.voice_id
     if (!voiceId || !previewAvailable(key)) return
+    releasePreview()
     state.preview = { key, audio: '', loading: true, error: '' }
     try {
-      const data = await api.post('/api/speech/preview', { tts: { type: 'matcha', ref_file: voiceId, tts_server: '', model: '' } })
-      state.preview = { key, audio: data?.audio || '', loading: false, error: '' }
+      const wav = await api.previewVoice(voiceId, key)
+      state.preview = { key, audio: URL.createObjectURL(wav), loading: false, error: '' }
     } catch (error) {
       state.preview = { key, audio: '', loading: false, error: message(error) }
     }
@@ -337,12 +360,13 @@ export function createVoiceTrainingStore({
   // Derived values are plain getters, so a component reads ``store.gate`` whether or not Vue unwraps refs for it.
   return {
     state, go, reset, newCorpus, chooseSource, refreshHome, loadCorpus, openCorpus,
-    confirmEdge, loadEdgeTextFile, editEdgeSentence, removeEdgeSentence, clearEdgeText, refreshEdgePreview,
+    loadEdgeClause, confirmEdge, loadEdgeTextFile, editEdgeSentence, removeEdgeSentence, clearEdgeText, refreshEdgePreview,
     selectDeclaration, addUploadFiles,
     importTranscripts, startAutoTranscription, pollTranscription, cancelAutoTranscription,
     confirmRow, excludeRow, restoreRow, startEdit, cancelEdit, saveEdit, confirmAllPending, togglePlay, audioUrl,
     loadPreflight, startTraining, pollJob, askCancel, keepTraining, confirmCancelJob,
     previewAvailable, previewVoice,
+    get edgeClause() { return state.edgeClause },
     get edgeReview() { return edgeReview.value },
     get acceptedCount() { return acceptedCount.value },
     get uploadReasons() { return uploadReasons.value },

@@ -142,3 +142,35 @@ test('start 因數字無法念出而 409 時，unresolved 保留 index（第 N �
     return true
   })
 })
+
+test('預設句試聽：只送 voice_id 與句子代號，回傳 audio/wav 的 Blob', async () => {
+  const wav = new Blob(['RIFF'], { type: 'audio/wav' })
+  const calls = []
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init })
+    return { ok: true, status: 200, blob: async () => wav, json: async () => { throw new Error('not json') } }
+  }
+  const api = createTrainingApi(fetchImpl)
+  assert.equal(await api.previewVoice('trained-1', 'digits'), wav)
+  assert.equal(calls[0].url, '/api/tts/training/preview')
+  assert.equal(calls[0].init.method, 'POST')
+  assert.deepEqual(JSON.parse(calls[0].init.body), { voice_id: 'trained-1', sentence: 'digits' })
+})
+
+test('預設句試聽失敗：把伺服器的原因變成 TrainingApiError，不回傳 Blob', async () => {
+  const { fetchImpl } = fakeFetch({
+    'POST /api/tts/training/preview': { status: 404, body: { code: -1, msg: '聲線模型「x」不在清單中' } }
+  })
+  const api = createTrainingApi(fetchImpl)
+  await assert.rejects(api.previewVoice('x', 'zh'), err => {
+    assert.ok(err instanceof TrainingApiError)
+    assert.equal(err.status, 404)
+    assert.equal(err.message, '聲線模型「x」不在清單中')
+    return true
+  })
+})
+
+test('介面沒有任何下載或匯出聲線模型的呼叫', () => {
+  const api = createTrainingApi(async () => { throw new Error('no request expected') })
+  assert.deepEqual(Object.keys(api).filter(name => /download|export/i.test(name)), [])
+})

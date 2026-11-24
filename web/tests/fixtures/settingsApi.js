@@ -145,7 +145,10 @@ const responses = {
     { slug: 'upload-20261124-101500-a1b2', source: 'self-recorded', counts: { pending: 3, confirmed: 35, excluded: 0, total: 38 }, usage_label: 'Research / Non-commercial' },
     { slug: 'edge-20261120-093000-c3d4', source: 'edge-test-teacher', counts: { pending: 0, confirmed: 220, excluded: 0, total: 220 }, usage_label: 'Development only' }
   ] } },
-  '/api/tts/training': { code: 0, data: { job: null, settings: { min_free_vram_gb: 8 }, preflight: { can_start: false, checks: [
+  '/api/tts/training': { code: 0, data: { job: null, settings: { min_free_vram_gb: 8, edge_clause: {
+    reference: 'Microsoft Services Agreement §14(s)(iv)', effective: '2026-09-30',
+    text: 'You may not use the AI services, or data from the AI services, to create, train, or improve (directly or indirectly) any AI technology'
+  } }, preflight: { can_start: false, checks: [
     { id: 'admin', label: '管理者登入', status: 'pass', reason: '以管理者身分操作', detail: {} },
     { id: 'stage_connections', label: '舞台連線', status: 'fail', reason: '有 1 個舞台正在連線，請先關閉再重新檢查', detail: { count: 1 } },
     { id: 'free_vram', label: '剩餘顯存', status: 'fail', reason: '剩餘 6.1 GB，低於門檻 8 GB', detail: { free_gb: 6.1, threshold_gb: 8 } },

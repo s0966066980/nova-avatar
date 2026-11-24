@@ -21,6 +21,7 @@ from aiohttp import web
 
 from src.server.access import ROUTE_ACCESS, Access, access_guard, install_access, route_key
 from src.tts.training.corpus import CorpusStore
+from src.tts.training.edge_acknowledgement import MSA_CLAUSE, read_acknowledgement
 from src.tts.training.gpu_guard import DeviceChoice
 from src.tts.training.gpu_probe import VramReading
 from src.tts.training.ingest import MAX_UPLOAD_BYTES
@@ -179,13 +180,39 @@ async def test_development_recordings_are_development_only(client):
     assert data["usage_label"] == "Development only"
 
 
+@console
+async def test_the_edge_test_teacher_corpus_needs_no_consent_and_is_development_only(client, env):
+    response = await post(client, BASE, json={"slug": "edge-one", "source": "edge-test-teacher"})
+    data = (await response.json())["data"]
+
+    assert response.status == 200
+    assert data["slug"] == "edge-one" and data["source"] == "edge-test-teacher"
+    assert data["usage_label"] == "Development only"
+    assert env[0].get("edge-one").source == "edge-test-teacher"
+
+
+@console
+async def test_an_edge_corpus_still_refuses_uploaded_recordings(client):
+    await post(client, BASE, json={"slug": "edge-one", "source": "edge-test-teacher"})
+
+    response = await post(client, f"{BASE}/edge-one/lines", data=audio_form(tone(2.0)))
+
+    assert response.status == 409
+
+
+@console
+async def test_a_duplicate_slug_is_refused_for_an_edge_corpus_too(client):
+    assert (await post(client, BASE, json={"slug": "edge-one", "source": "edge-test-teacher"})).status == 200
+
+    assert (await post(client, BASE, json={"slug": "edge-one", "source": "edge-test-teacher"})).status == 409
+
+
 @pytest.mark.parametrize(
     "body",
     [
         {"slug": "mine", "source": "self-recorded", "consent": False},
         {"slug": "mine", "source": "self-recorded"},
         {"slug": "mine", "source": "written-authorization", "consent": "yes"},
-        {"slug": "mine", "source": "edge-test-teacher", "consent": True},
         {"slug": "mine", "source": "bogus", "consent": True},
         {"slug": "mine", "consent": True},
         {"slug": "../evil", "source": "self-recorded", "consent": True},
@@ -693,3 +720,67 @@ async def test_handlers_do_the_heavy_work_off_the_event_loop(client, monkeypatch
     await upload(client)
 
     assert seen and main not in seen
+
+
+# ------------------------------------------------------------------ Edge clause acknowledgement
+
+
+async def create_edge(client, slug: str = "edge-one"):
+    response = await post(client, BASE, json={"slug": slug, "source": "edge-test-teacher"})
+    assert response.status == 200, await response.text()
+
+
+@console
+async def test_acknowledging_the_clause_records_it_and_returns_when_and_where_from(client, env):
+    await create_edge(client)
+
+    response = await post(client, f"{BASE}/edge-one/acknowledgement", json={"shown_text": MSA_CLAUSE.text})
+    data = (await response.json())["data"]
+
+    assert response.status == 200
+    assert data["clause_reference"] == MSA_CLAUSE.reference
+    assert data["clause_effective"] == MSA_CLAUSE.effective
+    record = read_acknowledgement(env[0], "edge-one")
+    assert record is not None and data["acknowledged_at"] == record.acknowledged_at
+    assert record.clause_text == MSA_CLAUSE.text
+
+
+@console
+async def test_acknowledging_twice_keeps_the_first_time(client):
+    await create_edge(client)
+    path = f"{BASE}/edge-one/acknowledgement"
+
+    first = (await (await post(client, path, json={"shown_text": MSA_CLAUSE.text})).json())["data"]
+    second = (await (await post(client, path, json={"shown_text": MSA_CLAUSE.text})).json())["data"]
+
+    assert second["acknowledged_at"] == first["acknowledged_at"]
+
+
+@pytest.mark.parametrize("shown", ["You may not use the AI services", MSA_CLAUSE.text + " ", "", None, 7, ["x"]])
+@console
+async def test_a_text_that_is_not_the_servers_clause_records_nothing(client, env, shown):
+    await create_edge(client)
+
+    response = await post(client, f"{BASE}/edge-one/acknowledgement", json={"shown_text": shown})
+
+    assert response.status == 400
+    assert (await response.json())["code"] == -1
+    assert read_acknowledgement(env[0], "edge-one") is None
+
+
+@console
+async def test_a_missing_shown_text_records_nothing(client, env):
+    await create_edge(client)
+
+    assert (await post(client, f"{BASE}/edge-one/acknowledgement", json={})).status == 400
+    assert read_acknowledgement(env[0], "edge-one") is None
+
+
+@console
+async def test_only_an_edge_corpus_can_be_acknowledged(client, env):
+    await create(client, "mine", "self-recorded")
+
+    response = await post(client, f"{BASE}/mine/acknowledgement", json={"shown_text": MSA_CLAUSE.text})
+
+    assert response.status == 409
+    assert (await post(client, f"{BASE}/nobody/acknowledgement", json={"shown_text": MSA_CLAUSE.text})).status == 404

@@ -3,7 +3,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { TrainingApiError } from '../src/voiceTraining/api.js'
-import { MSA_CLAUSE } from '../src/voiceTraining/constants.js'
 import { createVoiceTrainingStore } from '../src/voiceTraining/store.js'
 
 // A recording fake of createTrainingApi(): ``answers`` overrides any method.
@@ -28,34 +27,86 @@ const summary = (slug, source) => ({ slug, source, counts: { pending: 0, confirm
 const stage = id => ({ id, label: id, status: 'running', detail: '', progress: 0 })
 const job = (status, extra = {}) => ({ id: 'j1', status, stage: 'training', stages: [stage('training')], progress: 10, name: '展廳', usage: 'Development only', ...extra })
 
-test('Edge 確認：沒勾選不能繼續；勾選後先建立語料再把條文原文記錄到伺服器', async () => {
-  const { api, calls, names } = fakeApi({ createCorpus: slug => summary(slug.slug, 'edge-test-teacher'), recordAcknowledgement: { acknowledged_at: 't' } })
+// A clause that differs from every constant in the frontend: what the UI sends back must be this server text.
+const SERVER_CLAUSE = { reference: '伺服器條文出處 §1', effective: '2030-01-01', text: 'Server clause text that the frontend has never seen.' }
+const trainingWith = clause => ({ job: null, preflight: null, settings: clause ? { edge_clause: clause } : {} })
+
+test('Edge 確認：條文來自伺服器；沒勾選不能繼續；勾選後先建立語料再把收到的條文原文記錄到伺服器', async () => {
+  const { api, calls, names } = fakeApi({
+    getTraining: trainingWith(SERVER_CLAUSE),
+    createCorpus: slug => summary(slug.slug, 'edge-test-teacher'),
+    recordAcknowledgement: { acknowledged_at: 't' }
+  })
   const store = createVoiceTrainingStore({ api })
   store.chooseSource('edge')
   store.go('edge-confirm')
+  await store.loadEdgeClause()
+  assert.deepEqual(store.edgeClause, SERVER_CLAUSE)
   await store.confirmEdge()
-  assert.deepEqual(names(), [], '沒勾選時不呼叫伺服器')
+  assert.deepEqual(names().filter(name => name !== 'getTraining'), [], '沒勾選時不建立語料也不記錄')
   assert.equal(store.state.screen, 'edge-confirm')
   store.state.edge.checked = true
   await store.confirmEdge()
-  assert.deepEqual(names(), ['createCorpus', 'recordAcknowledgement'])
-  assert.equal(calls[0][1].source, 'edge-test-teacher')
-  assert.equal(calls[1][2], MSA_CLAUSE.text)
-  assert.equal(calls[1][1], calls[0][1].slug)
+  assert.deepEqual(names().filter(name => name !== 'getTraining'), ['createCorpus', 'recordAcknowledgement'])
+  const create = calls.find(call => call[0] === 'createCorpus')
+  const ack = calls.find(call => call[0] === 'recordAcknowledgement')
+  assert.equal(create[1].source, 'edge-test-teacher')
+  assert.equal(ack[2], SERVER_CLAUSE.text, '送回的就是伺服器給的條文，一字不改')
+  assert.equal(ack[1], create[1].slug)
   assert.equal(store.state.screen, 'text')
+  const before = names().length
   await store.confirmEdge()
-  assert.equal(names().length, 2, '同一份語料不重複記錄')
+  assert.equal(names().length, before, '同一份語料不重複記錄')
 })
 
-test('Edge 確認被伺服器拒絕時留在原畫面並顯示原因', async () => {
-  const { api } = fakeApi({ createCorpus: c => summary(c.slug, 'edge-test-teacher'), recordAcknowledgement: new TrainingApiError('顯示的條文與目前不一致', { status: 400 }) })
+test('進入 Edge 確認畫面就向伺服器取條文；伺服器沒給條文就不能確認', async () => {
+  const { api, names } = fakeApi({ getTraining: trainingWith(null), createCorpus: c => summary(c.slug, 'edge-test-teacher') })
   const store = createVoiceTrainingStore({ api })
   store.chooseSource('edge')
   store.go('edge-confirm')
+  await store.loadEdgeClause()
+  assert.ok(names().includes('getTraining'))
+  assert.equal(store.edgeClause, null)
   store.state.edge.checked = true
+  await store.confirmEdge()
+  assert.equal(names().includes('createCorpus'), false, '沒有伺服器條文不能建立語料')
+  assert.equal(names().includes('recordAcknowledgement'), false)
+  assert.equal(store.state.screen, 'edge-confirm')
+})
+
+test('前端沒有自己的英文條文：constants 不再匯出 MSA_CLAUSE', async () => {
+  const constants = await import('../src/voiceTraining/constants.js')
+  assert.equal('MSA_CLAUSE' in constants, false)
+})
+
+test('取條文失敗時顯示原因，並且不能確認', async () => {
+  const { api } = fakeApi({ getTraining: new TrainingApiError('伺服器忙線', { status: 500 }) })
+  const store = createVoiceTrainingStore({ api })
+  store.chooseSource('edge')
+  await store.loadEdgeClause()
+  assert.equal(store.edgeClause, null)
+  assert.equal(store.state.error, '伺服器忙線')
+})
+
+test('Edge 確認被伺服器拒絕時留在原畫面並顯示原因；條文不一致時重新取得條文並取消勾選', async () => {
+  const reworded = { ...SERVER_CLAUSE, text: 'A reworded clause.' }
+  let served = SERVER_CLAUSE
+  const { api } = fakeApi({
+    getTraining: () => trainingWith(served),
+    createCorpus: c => summary(c.slug, 'edge-test-teacher'),
+    recordAcknowledgement: new TrainingApiError('顯示的條文與目前不一致', { status: 400 })
+  })
+  const store = createVoiceTrainingStore({ api })
+  store.chooseSource('edge')
+  store.go('edge-confirm')
+  await store.loadEdgeClause()
+  store.state.edge.checked = true
+  served = reworded
   await store.confirmEdge()
   assert.equal(store.state.screen, 'edge-confirm')
   assert.equal(store.state.error, '顯示的條文與目前不一致')
+  assert.deepEqual(store.edgeClause, reworded, '重新顯示伺服器現在的條文')
+  assert.equal(store.state.edge.checked, false, '要重新閱讀並勾選')
 })
 
 test('上傳：未宣告或未勾選聲明不能送出；換宣告會清除聲明；送出後語料已建立就鎖定宣告', async () => {
@@ -299,17 +350,36 @@ test('首頁：列出語料與進行中的工作；繼續上傳語料回到校�
   assert.equal(store.state.path, 'edge')
 })
 
-test('完成畫面的預設試聽：伺服器目前只念固定句，其餘句子停用並說明', async () => {
-  const { api, calls } = fakeApi({ post: { audio: 'data:audio/wav;base64,AAAA' } })
+test('完成畫面的預設試聽：三句都由伺服器合成，播放的是它回傳的 wav', async () => {
+  const wav = new Blob(['RIFF'], { type: 'audio/wav' })
+  const { api, calls } = fakeApi({ previewVoice: wav })
+  const store = createVoiceTrainingStore({ api })
+  assert.equal(store.previewAvailable('zh'), false, '還沒有聲線模型')
+  store.state.job = job('done', { voice_id: 'trained-1' })
+  for (const key of ['zh', 'digits', 'en']) assert.equal(store.previewAvailable(key), true, key)
+  assert.equal(store.previewAvailable('custom'), false)
+  await store.previewVoice('custom')
+  assert.equal(calls.length, 0, '不接受預設以外的句子')
+  await store.previewVoice('digits')
+  assert.deepEqual(calls[0].slice(1), ['trained-1', 'digits'])
+  assert.equal(store.state.preview.key, 'digits')
+  assert.match(store.state.preview.audio, /^blob:/)
+  assert.equal(store.state.preview.loading, false)
+  const first = store.state.preview.audio
+  await store.previewVoice('en')
+  assert.deepEqual(calls[1].slice(1), ['trained-1', 'en'])
+  assert.notEqual(store.state.preview.audio, first, '換句子換成新的音檔')
+  URL.revokeObjectURL(store.state.preview.audio)
+})
+
+test('完成畫面的預設試聽失敗：顯示伺服器的原因，沒有音檔', async () => {
+  const { api } = fakeApi({ previewVoice: new TrainingApiError('聲線模型「trained-1」不在 models/tts 清單中', { status: 404 }) })
   const store = createVoiceTrainingStore({ api })
   store.state.job = job('done', { voice_id: 'trained-1' })
-  assert.equal(store.previewAvailable('zh'), true)
-  assert.equal(store.previewAvailable('en'), false)
-  await store.previewVoice('en')
-  assert.equal(calls.length, 0)
   await store.previewVoice('zh')
-  assert.deepEqual(calls[0].slice(1), ['/api/speech/preview', { tts: { type: 'matcha', ref_file: 'trained-1', tts_server: '', model: '' } }])
-  assert.equal(store.state.preview.audio, 'data:audio/wav;base64,AAAA')
+  assert.equal(store.state.preview.audio, '')
+  assert.equal(store.state.preview.loading, false)
+  assert.match(store.state.preview.error, /不在 models\/tts 清單中/)
 })
 
 test('start 因未解決的數字被拒：回到校對表重新預覽並顯示「第 N 句」原因', async () => {

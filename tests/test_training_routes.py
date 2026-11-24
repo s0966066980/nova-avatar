@@ -7,11 +7,14 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
 
+from src.config.schema import Config
 from src.server.access import ROUTE_ACCESS, Access
 from src.server.routes import tts_training
 from src.server.server import create_app
@@ -21,15 +24,18 @@ from tests.test_training_jobs import ENOUGH_VRAM_MIB, edge_synthesis, rig
 from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
 from src.tts.training.gpu_probe import VramReading
+from src.tts.voice_preview import PREVIEW_SENTENCES, PreviewError
 
 BASE = "/api/tts/training"
 PREVIEW = BASE + "/text-preview"
+VOICE_PREVIEW = BASE + "/preview"
 ROUTES = [
     ("GET", BASE),
     ("POST", BASE + "/start"),
     ("POST", BASE + "/cancel"),
     ("GET", BASE + "/log"),
     ("POST", PREVIEW),
+    ("POST", VOICE_PREVIEW),
 ]
 
 
@@ -43,10 +49,12 @@ def async_test(function):
     return wrapper
 
 
-def app_with(manager: TrainingJobManager):
+def app_with(manager: TrainingJobManager, previewer=None):
     def factory(admin_env_path: Path):
         app = create_app(admin_env_path=admin_env_path, frontend_dir=built_frontend())
         app[tts_training.MANAGER_KEY] = manager
+        if previewer is not None:
+            app[tts_training.PREVIEWER_KEY] = previewer
         return app
 
     return factory
@@ -82,7 +90,15 @@ async def test_status_lists_the_checks_with_reasons_and_no_job_yet(tmp_path):
     checks = {c["id"]: c for c in data["preflight"]["checks"]}
     assert checks["stage_connections"]["status"] == "fail" and checks["stage_connections"]["detail"] == {"count": 1}
     assert checks["free_vram"]["detail"] == {"free_gb": 6.0, "threshold_gb": 8.0}
-    assert data["settings"] == {"min_free_vram_gb": 8.0, "whisper_model": "small"}
+    assert data["settings"] == {
+        "min_free_vram_gb": 8.0,
+        "whisper_model": "small",
+        "edge_clause": {
+            "reference": MSA_CLAUSE.reference,
+            "effective": MSA_CLAUSE.effective,
+            "text": MSA_CLAUSE.text,
+        },
+    }
 
 
 @async_test
@@ -305,3 +321,172 @@ def test_the_default_manager_reads_the_live_configuration(tmp_path, monkeypatch)
     monkeypatch.setattr(state, "config", dict_to_config({"matcha": {"training_min_free_vram_gb": 12}}))
     assert manager.settings().min_free_vram_gb == 12
     assert isinstance(manager.params, TrainingParams)
+
+
+# ------------------------------------------------------------------ preset voice preview (ticket 14)
+
+WAV = b"RIFF\x24\x00\x00\x00WAVEfmt fake audio"
+
+
+class FakePreviewer:
+    """Stands in for the synthesizer: records its calls, answers or raises what the test sets."""
+
+    def __init__(self, result: bytes | Exception = WAV):
+        self.result = result
+        self.calls: list[tuple[object, object]] = []
+
+    def __call__(self, voice_id, sentence, keep_going):
+        self.calls.append((voice_id, sentence))
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result
+
+
+@async_test
+async def test_a_preset_sentence_is_answered_with_a_wav_that_is_not_a_download(tmp_path):
+    previewer = FakePreviewer()
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, previewer)) as client:
+        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "trained-1", "sentence": "digits"})
+        body = await response.read()
+    assert response.status == 200 and body == WAV
+    assert response.headers["Content-Type"] == "audio/wav"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert "Content-Disposition" not in response.headers
+    assert previewer.calls == [("trained-1", "digits")]
+
+
+@pytest.mark.parametrize("code", list(PREVIEW_SENTENCES))
+@async_test
+async def test_every_server_defined_code_reaches_the_synthesizer(tmp_path, code):
+    previewer = FakePreviewer()
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, previewer)) as client:
+        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "v", "sentence": code})
+        assert response.status == 200
+    assert previewer.calls == [("v", code)]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {}, {"voice_id": "v"}, {"sentence": "zh"}, {"voice_id": 5, "sentence": "zh"}, {"voice_id": "", "sentence": "zh"},
+        {"voice_id": "v", "sentence": 3}, {"voice_id": "v", "sentence": "hello"}, {"voice_id": "v", "sentence": "ZH"},
+        {"voice_id": "v", "sentence": "zh", "text": "any words at all"}, {"voice_id": "v", "sentence": "zh", "model": "x"},
+        [], "zh", None,
+    ],
+)
+@async_test
+async def test_malformed_preview_requests_are_400_and_never_reach_the_synthesizer(tmp_path, payload):
+    previewer = FakePreviewer()
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, previewer)) as client:
+        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json=payload)
+        assert response.status == 400 and (await response.json())["code"] == -1
+    assert previewer.calls == []
+
+
+@async_test
+async def test_a_bad_json_body_to_preview_is_400(tmp_path):
+    previewer = FakePreviewer()
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, previewer)) as client:
+        response = await client.post(VOICE_PREVIEW, data=b"{no", headers={**same_origin(client), "Content-Type": "application/json"})
+    assert response.status == 400 and previewer.calls == []
+
+
+@pytest.mark.parametrize("status", [404, 500])
+@async_test
+async def test_a_refused_preview_keeps_the_reason_and_status_as_json(tmp_path, status):
+    previewer = FakePreviewer(PreviewError("聲線模型「v」不在 models/tts 清單中", status=status))
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, previewer)) as client:
+        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "v", "sentence": "zh"})
+        body = await response.json()
+    assert response.status == status and body == {"code": -1, "msg": "聲線模型「v」不在 models/tts 清單中"}
+    assert response.headers["Content-Type"].startswith("application/json")
+
+
+@async_test
+async def test_an_unexpected_synthesizer_failure_is_a_generic_500(tmp_path):
+    previewer = FakePreviewer(RuntimeError("secret path /home/x"))
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, previewer)) as client:
+        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "v", "sentence": "zh"})
+        body = await response.json()
+    assert response.status == 500 and body["code"] == -1 and "secret" not in body["msg"]
+
+
+@async_test
+async def test_a_slow_synthesis_does_not_block_the_event_loop(tmp_path):
+    entered, release = threading.Event(), threading.Event()
+
+    def slow(voice_id, sentence, keep_going):
+        entered.set()
+        assert release.wait(10)
+        return WAV
+
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, slow)) as client:
+        pending = asyncio.ensure_future(client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "v", "sentence": "zh"}))
+        assert await asyncio.to_thread(entered.wait, 5)
+        # The loop still serves other requests while the worker thread synthesises.
+        other = await asyncio.wait_for(client.get(BASE), 2)
+        assert other.status == 200
+        assert not pending.done()
+        release.set()
+        assert (await pending).status == 200
+
+
+@async_test
+async def test_a_synthesis_past_the_time_limit_is_504_and_told_to_stop(tmp_path, monkeypatch):
+    monkeypatch.setattr(tts_training, "PREVIEW_TIMEOUT_SECONDS", 0.2)
+    entered, release = threading.Event(), threading.Event()
+    seen: list[bool] = []
+
+    def stuck(voice_id, sentence, keep_going):
+        entered.set()
+        release.wait(10)
+        seen.append(keep_going())
+        return WAV
+
+    async with access_client(app_factory=app_with(rig(tmp_path).manager, stuck)) as client:
+        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "v", "sentence": "zh"})
+        body = await response.json()
+        release.set()
+        deadline = time.monotonic() + 5
+        while not seen and time.monotonic() < deadline:
+            await asyncio.sleep(0.01)
+    assert response.status == 504 and body["code"] == -1
+    assert seen == [False], "the worker must be told to stop generating"
+
+
+@async_test
+async def test_the_default_previewer_speaks_through_the_shared_loader_with_the_configured_threads(tmp_path, monkeypatch):
+    from src.server.state import state
+    from tests.test_matcha_tts import FakeSherpa, make_voice_model, tone
+
+    root = tmp_path / "models" / "tts"
+    root.mkdir(parents=True)
+    monkeypatch.setattr("src.tts.voice_models.VOICE_MODELS_ROOT", root)
+    make_voice_model(root, "preview-voice")
+    sherpa = FakeSherpa(tone())
+    monkeypatch.setitem(sys.modules, "sherpa_onnx", sherpa)
+    config = Config()
+    config.matcha.num_threads = 2
+    monkeypatch.setattr(state, "config", config)
+
+    async with access_client(app_factory=app_with(rig(tmp_path).manager)) as client:
+        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "preview-voice", "sentence": "en"})
+        body = await response.read()
+        missing = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "nope", "sentence": "en"})
+        missing_body = await missing.json()
+    assert response.status == 200 and body[:4] == b"RIFF" and body[8:12] == b"WAVE"
+    [tts] = sherpa.instances
+    assert tts.config.model.num_threads == 2 and tts.config.model.provider == "cpu"
+    assert missing.status == 404 and missing_body["code"] == -1
+
+
+@async_test
+async def test_the_preview_needs_the_admin_session_and_the_same_origin(tmp_path):
+    previewer = FakePreviewer()
+    payload = {"voice_id": "v", "sentence": "zh"}
+    async with access_client(admin=False, app_factory=app_with(rig(tmp_path / "a").manager, previewer)) as anonymous:
+        assert (await anonymous.post(VOICE_PREVIEW, headers=same_origin(anonymous), json=payload)).status == 401
+    async with access_client(app_factory=app_with(rig(tmp_path / "b").manager, previewer)) as client:
+        assert (await client.post(VOICE_PREVIEW, headers={"Origin": "http://evil.example"}, json=payload)).status == 403
+    assert previewer.calls == []

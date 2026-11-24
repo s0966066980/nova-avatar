@@ -48,6 +48,7 @@ AREA_BY_FILE = {
     "test_repeated_syllable_benchmark.py": "speech",
     "test_tts_engine_cleanup.py": "speech",
     "test_voice_models.py": "speech",
+    "test_voice_preview.py": "speech",
     "test_training_numerals.py": "speech",
     "test_training_usage.py": "speech",
     "test_training_corpus.py": "speech",

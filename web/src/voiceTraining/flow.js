@@ -55,8 +55,10 @@ export function uploadGate({ declared, consent, accepted, uploading = false }) {
   return reasons
 }
 
-export function edgeConfirmGate({ checked, sessionExpired }) {
+// ``clauseReady``: the server has delivered the clause text; without it there is nothing to confirm.
+export function edgeConfirmGate({ checked, sessionExpired, clauseReady = false }) {
   if (sessionExpired) return ['session']
+  if (!clauseReady) return ['clause']
   return checked ? [] : ['check']
 }
 

@@ -8,11 +8,9 @@ export const USAGE_DEV = 'Development only'
 export const USAGE_RESEARCH = 'Research / Non-commercial'
 export const USAGE_LABELS = [USAGE_DEV, USAGE_RESEARCH]
 
-// Exactly the text src/tts/training/edge_acknowledgement.py records as shown.
-export const MSA_CLAUSE = {
-  reference: 'Microsoft Services Agreement §14(s)(iv)',
-  text: 'You may not use the AI services, or data from the AI services, to create, train, or improve (directly or indirectly) any AI technology'
-}
+// The Microsoft clause the Edge teacher is confirmed against is not kept here:
+// the server delivers it as settings.edge_clause of GET /api/tts/training and
+// the console shows and sends back exactly that text.
 
 export const SOURCE_EDGE = 'edge-test-teacher'
 export const SOURCE_SELF = 'self-recorded'
@@ -51,7 +49,9 @@ export const MAX_UPLOAD_MB = 20
 export const AUDIO_EXTENSIONS = ['.wav', '.mp3', '.flac', '.ogg', '.m4a', '.webm']
 
 // The three preset preview sentences of the done screen (no custom sentence in
-// version 1). The first is the sentence the server's profile preview speaks.
+// version 1). ``key`` is the code POST /api/tts/training/preview accepts; the
+// text is what the server speaks for that code (src/tts/voice_preview.py, kept
+// equal by tests/test_voice_preview.py).
 export const PREVIEW_SENTENCES = [
   { key: 'zh', text: '您好，歡迎光臨，很高興為您服務。' },
   { key: 'digits', text: '今天是2026年11月24日，票價是150元。' },

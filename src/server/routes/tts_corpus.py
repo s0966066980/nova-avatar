@@ -46,6 +46,7 @@ from src.tts.training.gpu_guard import (
 )
 from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.ingest import MAX_UPLOAD_BYTES, create_uploaded_corpus, ingest_audio
+from src.tts.training.edge_acknowledgement import record_acknowledgement
 from src.tts.training.numerals import normalize_digits
 from src.tts.training.transcription import (
     DEFAULT_MODEL,
@@ -54,6 +55,7 @@ from src.tts.training.transcription import (
     cuda_available,
     default_factory,
 )
+from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from src.tts.training.transcripts import (
     MAX_CSV_BYTES,
     TranscriptEntry,
@@ -78,6 +80,7 @@ ROUTES = (
     ("GET", LINE + "/audio"),
     ("POST", CORPUS + "/transcripts"),
     ("POST", CORPUS + "/confirm"),
+    ("POST", CORPUS + "/acknowledgement"),
     ("POST", CORPUS + "/transcription"),
     ("GET", CORPUS + "/transcription"),
     ("DELETE", CORPUS + "/transcription"),
@@ -124,6 +127,7 @@ def register(app: web.Application, store: CorpusStore | None = None, jobs: Trans
         ("GET", LINE + "/audio"): line_audio,
         ("POST", CORPUS + "/transcripts"): import_transcripts,
         ("POST", CORPUS + "/confirm"): confirm_lines,
+        ("POST", CORPUS + "/acknowledgement"): acknowledge_clause,
         ("POST", CORPUS + "/transcription"): start_transcription,
         ("GET", CORPUS + "/transcription"): transcription_status,
         ("DELETE", CORPUS + "/transcription"): cancel_transcription,
@@ -293,13 +297,20 @@ async def list_corpora(request: web.Request, services: Services) -> web.StreamRe
 
 @endpoint
 async def create_corpus(request: web.Request, services: Services) -> web.StreamResponse:
-    """Create a corpus for uploaded recordings with a source declaration."""
+    """Create a corpus: for uploaded recordings with a source declaration, or for the Edge test teacher.
+
+    An Edge corpus holds no recordings of its own and needs no consent statement; the
+    Microsoft clause is confirmed separately (``acknowledge_clause``) before synthesis.
+    """
     body = await _json_body(request)
     slug = body.get("slug")
-    consent = body.get("consent") is True
-    corpus = await asyncio.to_thread(
-        lambda: create_uploaded_corpus(services.store, slug, body.get("source"), consent=consent)
-    )
+    if body.get("source") == SOURCE_EDGE_TEST_TEACHER:
+        corpus = await asyncio.to_thread(services.store.create, slug, source=SOURCE_EDGE_TEST_TEACHER)
+    else:
+        consent = body.get("consent") is True
+        corpus = await asyncio.to_thread(
+            lambda: create_uploaded_corpus(services.store, slug, body.get("source"), consent=consent)
+        )
     return _reply(_summary(corpus))
 
 
@@ -396,6 +407,31 @@ async def confirm_lines(request: web.Request, services: Services) -> web.StreamR
 
     result, corpus = await asyncio.to_thread(confirm)
     return _reply({"confirmed": result.confirmed, "without_text": result.without_text, "summary": _summary(corpus)})
+
+
+# ------------------------------------------------------------------ Edge clause
+
+
+@endpoint
+async def acknowledge_clause(request: web.Request, services: Services) -> web.StreamResponse:
+    """Record that the administrator confirmed the clause text the console showed.
+
+    ``shown_text`` must be exactly the server's ``MSA_CLAUSE.text`` (delivered as
+    ``settings.edge_clause`` of ``GET /api/tts/training``); any other text is refused.
+    """
+    slug = _slug(request)
+    body = await _json_body(request)
+    shown_text = body.get("shown_text")
+    if not isinstance(shown_text, str):
+        raise CorpusError("shown_text 必須是顯示給管理者的條文文字")
+    record = await asyncio.to_thread(record_acknowledgement, services.store, slug, shown_text)
+    return _reply(
+        {
+            "acknowledged_at": record.acknowledged_at,
+            "clause_reference": record.clause_reference,
+            "clause_effective": record.clause_effective,
+        }
+    )
 
 
 # ------------------------------------------------------------------ transcripts

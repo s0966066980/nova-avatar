@@ -337,7 +337,8 @@ export default {
         ruleSource: 'No processing of the corpus changes its source, and the label cannot be lowered.',
         check: 'I have read the clause and the limits above. I understand that a voice model trained with the test teacher may be used as Development only and cannot be exported.',
         useUpload: 'Do not use it, upload recordings instead', next: 'Confirm and continue',
-        reason: { check: 'Tick the confirmation above first.', session: 'The sign-in has expired. Sign in again first.' }
+        reason: { check: 'Tick the confirmation above first.', session: 'The sign-in has expired. Sign in again first.', clause: 'The server has not provided the clause yet. Reload and try again.' },
+        clauseMissing: 'The clause could not be fetched from the server, so it cannot be confirmed. Reload the page; if it keeps happening, check that the server is running.'
       },
       upload: {
         declareLegend: 'Where these recordings come from',
@@ -472,7 +473,7 @@ export default {
         devNote: 'For development testing only.',
         previewTitle: 'Listen', previewHint: 'Only preset sentences can be played here. There is no custom sentence, and the voice model stays on this machine with no download.',
         sentences: { zh: 'Chinese', digits: 'Chinese with digits', en: 'English' },
-        previewUnavailable: 'The server can currently speak only one fixed Chinese preset sentence, so this one cannot be played yet.',
+        previewUnavailable: 'This voice model has nothing to preview yet.',
         playerLabel: 'Preview player',
         toProfile: 'Choose it in a digital-human profile',
         profileHint: 'In a digital-human profile choose Matcha as the voice engine. The voice model list then shows this voice model, with its usage label after the name.'
