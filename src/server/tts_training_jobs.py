@@ -82,7 +82,7 @@ from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.manifest import build_manifest
 from src.tts.training.preparation import PreparationReport, check_quality, convert_uploads
 from src.tts.training.processes import DEFAULT_GRACE_SECONDS, Spawn, run_process, spawn_process
-from src.tts.training.sentences import PRESETS, estimate_seconds, parse_text_list, select_preset
+from src.tts.training.sentences import PRESETS, estimate_seconds, review_text_list, select_preset
 from src.tts.training.transcript_check import DEFAULT_MIN_SIMILARITY, Transcriber, verify_with_asr
 from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from src.tts.voice_models import VOICE_MODELS_ROOT, list_voice_models
@@ -149,11 +149,19 @@ ORPHAN_MARKER = "tts-distill"
 class TrainingError(Exception):
     """A request problem; ``status`` is the HTTP status a route should answer with."""
 
-    def __init__(self, message: str, status: int = 400, *, preflight: Preflight | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        status: int = 400,
+        *,
+        preflight: Preflight | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.status = status
         self.preflight = preflight
+        self.extra = extra or {}
 
 
 @dataclass(frozen=True)
@@ -621,12 +629,32 @@ class TrainingJobManager:
             if request.voice is not None and request.voice not in edge_teacher.EDGE_ZH_TW_VOICES:
                 raise CorpusError("不明的 Edge 聲音")
             if request.sentences is not None:
-                return parse_text_list(request.sentences)
+                return self._resolved_sentences(request.sentences)
             if request.preset is not None:
                 return select_preset(request.preset)
         except CorpusError as exc:
             raise TrainingError(exc.message, exc.status) from exc
         raise TrainingError("Edge 語料要選擇份量（" + "、".join(PRESETS) + "）或提供朗讀文字")
+
+    @staticmethod
+    def _resolved_sentences(raw: str) -> list[str]:
+        """An administrator's list, refused with 409 while any digit is left unexpanded.
+
+        The same review as ``POST /api/tts/training/text-preview``, so a list that shows
+        ``ok`` there is accepted here.
+        """
+        review = review_text_list(raw)
+        if review.ok:
+            return [item.text for item in review.sentences]
+        unresolved = [
+            {"index": item.index, "text": fragment.text, "reason": fragment.reason}
+            for item in review.sentences
+            for fragment in item.unresolved
+        ]
+        listing = "；".join(f"第 {entry['index']} 句「{entry['text']}」" for entry in unresolved)
+        raise TrainingError(
+            f"有數字無法確定怎麼念，請先改寫或移除再開始：{listing}", 409, extra={"unresolved": unresolved}
+        )
 
     # ------------------------------------------------------------ the worker
 

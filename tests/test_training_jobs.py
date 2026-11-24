@@ -507,6 +507,34 @@ def test_an_edge_job_needs_a_valid_preset_or_text_list_and_voice(tmp_path, extra
     assert r.manager.status() is None
 
 
+def test_a_text_list_with_unresolved_digits_is_refused_before_anything_is_synthesised(tmp_path):
+    calls = []
+
+    def recording(store, slug, sentences, **kwargs):
+        calls.append(list(sentences))
+        return edge_synthesis()(store, slug, sentences, **kwargs)
+
+    r = rig(tmp_path, source=SOURCE_EDGE_TEST_TEACHER, texts=[], synthesize=recording)
+    record_acknowledgement(r.store, "voice", MSA_CLAUSE.text)
+    with pytest.raises(TrainingError) as caught:
+        r.manager.start(request(sentences="第一句\n價錢是$50\n\n溫度 25°C\n"))
+    error = caught.value
+    assert error.status == 409
+    assert [(u["index"], u["text"], u["reason"]) for u in error.extra["unresolved"]] == [
+        (2, "$50", "currency"),
+        (3, "25°C", "degree"),
+    ]
+    assert "第 2 句" in error.message and "$50" in error.message and "第 3 句" in error.message
+    assert calls == [] and r.manager.status() is None and r.spawner.commands == []
+    assert r.store.get("voice").lines == ()
+
+
+def test_a_preset_is_never_refused_for_digits(tmp_path):
+    r = rig(tmp_path, source=SOURCE_EDGE_TEST_TEACHER, texts=[], synthesize=edge_synthesis())
+    record_acknowledgement(r.store, "voice", MSA_CLAUSE.text)
+    assert finish(r, preset="standard")["status"] == "done"
+
+
 def test_edge_synthesis_that_aborts_keeps_the_lines_and_fails_with_a_reason(tmp_path):
     def blocked(store, slug, sentences, **kwargs):
         line = store.add_line(slug, tone_wav(), ".wav", "已合成")

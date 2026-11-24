@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from src.tts.training.corpus import MAX_LINES, MAX_TEXT_CHARS, CorpusError
-from src.tts.training.numerals import normalize_digits
+from src.tts.training.numerals import Unresolved, normalize_digits
 from src.tts.training.sentence_data import CATEGORIES
 
 # Average speaking rates of an Edge zh-TW voice at its default speed.
@@ -44,6 +44,37 @@ _PUNCTUATION = re.compile(r"[，。？！、；：,.?!;:]")
 class Sentence:
     text: str
     category: str
+
+
+@dataclass(frozen=True)
+class ReviewedSentence:
+    """One sentence of a text list as the administrator reviews it before synthesis.
+
+    ``index`` counts from 1 in the cleaned list (blank and repeated lines dropped), the
+    same list a job would synthesise. ``unresolved`` spans index into ``text``.
+    """
+
+    index: int
+    text: str
+    spoken: str
+    unresolved: tuple[Unresolved, ...]
+
+
+@dataclass(frozen=True)
+class TextReview:
+    """A whole text list reviewed without synthesising anything."""
+
+    sentences: tuple[ReviewedSentence, ...]
+    estimated_seconds: float
+
+    @property
+    def total(self) -> int:
+        return len(self.sentences)
+
+    @property
+    def ok(self) -> bool:
+        """True when every digit would be read out, so a job may start."""
+        return not any(item.unresolved for item in self.sentences)
 
 
 @dataclass(frozen=True)
@@ -141,3 +172,18 @@ def parse_text_list(raw: str | bytes) -> list[str]:
     if len(sentences) > MAX_LINES:
         raise CorpusError(f"文字檔最多 {MAX_LINES} 句")
     return sentences
+
+
+def review_text_list(raw: str | bytes) -> TextReview:
+    """Parse an administrator's text list and expand its digits, touching nothing else.
+
+    The sentences and the limits are those of ``parse_text_list``; the expansion is that
+    of ``normalize_digits``, so the review shows what a job would synthesise.
+    """
+    reviewed: list[ReviewedSentence] = []
+    seconds = 0.0
+    for index, text in enumerate(parse_text_list(raw), start=1):
+        normalised = normalize_digits(text)
+        reviewed.append(ReviewedSentence(index, text, normalised.text, normalised.unresolved))
+        seconds += estimate_seconds(text)
+    return TextReview(tuple(reviewed), seconds)
