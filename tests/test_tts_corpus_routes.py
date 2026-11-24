@@ -21,9 +21,11 @@ from aiohttp import web
 
 from src.server.access import ROUTE_ACCESS, Access, access_guard, install_access, route_key
 from src.tts.training.corpus import CorpusStore
+from src.tts.training.gpu_guard import DeviceChoice
+from src.tts.training.gpu_probe import VramReading
 from src.tts.training.ingest import MAX_UPLOAD_BYTES
 from src.tts.training.transcription import TranscriptionJobs
-from src.server.routes.tts_corpus import ROUTES, register
+from src.server.routes.tts_corpus import ROUTES, live_device_choice, register
 from tests.access_helpers import access_client, same_origin
 
 BASE = "/api/tts/corpora"
@@ -50,7 +52,7 @@ def env(tmp_path):
     """A store, its transcription jobs and the fake transcriber behind them."""
     store = CorpusStore(tmp_path / "training")
     fake = FakeTranscriber()
-    jobs = TranscriptionJobs(store, lambda model: fake)
+    jobs = TranscriptionJobs(store, lambda model, device: fake, lambda: DeviceChoice("cuda"))
     return store, jobs, fake
 
 
@@ -570,6 +572,55 @@ async def test_transcription_runs_in_the_background_and_reports_progress(client,
     assert [line["text"] for line in lines] == ["測試文字", "測試文字"]
     assert all(line["review"] == "pending" for line in lines)
     assert fake.closed
+
+
+@console
+async def test_the_start_and_status_responses_name_the_device_and_why_it_is_the_cpu(client, env):
+    store, jobs, _ = env
+    jobs.choose_device = lambda: DeviceChoice("cpu", "有舞台連線")
+    await create(client)
+    await upload(client, name="a.wav")
+
+    started = (await (await post(client, f"{BASE}/mine/transcription", json={})).json())["data"]
+    assert (started["device"], started["fallback_reason"]) == ("cpu", "有舞台連線")
+    assert await _wait_idle(jobs)
+
+    status = (await (await client.get(f"{BASE}/mine/transcription")).json())["data"]
+    assert (status["state"], status["device"], status["fallback_reason"]) == ("done", "cpu", "有舞台連線")
+
+
+@console
+async def test_an_allowed_gpu_is_reported_as_cuda_with_a_null_reason(client, env):
+    store, jobs, _ = env
+    await create(client)
+    await upload(client, name="a.wav")
+
+    started = (await (await post(client, f"{BASE}/mine/transcription", json={})).json())["data"]
+    assert (started["device"], started["fallback_reason"]) == ("cuda", None)
+    assert await _wait_idle(jobs)
+
+
+@console
+async def test_an_idle_status_reports_no_device(client):
+    await create(client)
+    status = (await (await client.get(f"{BASE}/mine/transcription")).json())["data"]
+    assert (status["state"], status["device"], status["fallback_reason"]) == ("idle", None, None)
+
+
+def test_the_live_choice_uses_the_training_threshold_from_the_configuration(monkeypatch):
+    from src.config.loader import dict_to_config
+    from src.server.state import state
+
+    free_10_gb = lambda: VramReading(10 * 1024)  # noqa: E731
+    monkeypatch.setattr(state, "config", dict_to_config({"matcha": {"training_min_free_vram_gb": 8}}))
+    assert live_device_choice(sessions=lambda: 0, vram_probe=free_10_gb, cuda_available=lambda: True) == DeviceChoice("cuda")
+    monkeypatch.setattr(state, "config", dict_to_config({"matcha": {"training_min_free_vram_gb": 12}}))
+    assert live_device_choice(sessions=lambda: 0, vram_probe=free_10_gb, cuda_available=lambda: True) == DeviceChoice(
+        "cpu", "剩餘顯存不足"
+    )
+    assert live_device_choice(sessions=lambda: 1, vram_probe=free_10_gb, cuda_available=lambda: True) == DeviceChoice(
+        "cpu", "有舞台連線"
+    )
 
 
 async def _wait_idle(jobs) -> bool:
