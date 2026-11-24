@@ -199,14 +199,11 @@ also retain their respective upstream license and distribution terms.
 
 ## ER-NeRF, TalkingGaussian, and UltraLight
 
-- Role: optional avatar engines and related rendering components
-- License: verify each source distribution, bundled submodule, dataset, and model
-- Commercial status: do not assume the Nova Avatar Apache-2.0 license grants
-  commercial rights to these components
-
-Some TalkingGaussian submodules in this repository carry explicit
-non-commercial research/evaluation terms in their own license files. Those
-terms remain controlling for those files.
+These avatar engines were removed from this repository on 2026-11-24 and are
+no longer bundled. Earlier revisions in the Git history still contain them
+with their embedded notices; some TalkingGaussian submodules in those revisions
+carry explicit non-commercial research/evaluation terms, which remain
+controlling for those files.
 
 ## Optional TTS backends
 

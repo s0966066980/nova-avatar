@@ -8,10 +8,10 @@ import re
 import yaml
 from dataclasses import fields
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from .schema import (
     Config, AppConfig, ModelConfig, TTSConfig, MatchaConfig, ASRConfig, VADConfig, LLMConfig,
-    AudioConfig, VideoConfig, CustomVideoConfig, ERNeRfConfig, TalkingGaussianConfig,
+    AudioConfig, VideoConfig, CustomVideoConfig,
     MuseTalkQualityConfig, Wav2LipQualityConfig, ReplyStreamingConfig, StageConfig,
     ResponseRouterConfig, BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
 )
@@ -78,25 +78,6 @@ def dict_to_config(config_dict: Dict) -> Config:
     # 處理 model 配置
     model_dict = config_dict.get('model', {})
     
-    # 如果頂層有 ernerf 配置，合併到 model.ernerf
-    if 'ernerf' in config_dict:
-        if 'ernerf' not in model_dict:
-            model_dict['ernerf'] = {}
-        # 頂層 ernerf 優先順序更高
-        model_dict['ernerf'] = _merge_dicts(model_dict.get('ernerf', {}), config_dict['ernerf'])
-    
-    # 如果頂層有 talkinggaussian 配置，合併到 model.talkinggaussian
-    if 'talkinggaussian' in config_dict:
-        if 'talkinggaussian' not in model_dict:
-            model_dict['talkinggaussian'] = {}
-        # 頂層 talkinggaussian 優先順序更高
-        model_dict['talkinggaussian'] = _merge_dicts(model_dict.get('talkinggaussian', {}), config_dict['talkinggaussian'])
-    
-    # 建立 ERNeRfConfig
-    ernerf_config = ERNeRfConfig(**model_dict.get('ernerf', {}))
-    
-    # 建立 TalkingGaussianConfig
-    talkinggaussian_config = TalkingGaussianConfig(**model_dict.get('talkinggaussian', {}))
     musetalk_config = MuseTalkQualityConfig(**model_dict.get('musetalk', {}))
     wav2lip_config = Wav2LipQualityConfig(**model_dict.get('wav2lip', {}))
 
@@ -104,12 +85,11 @@ def dict_to_config(config_dict: Dict) -> Config:
     model_dict_for_init = {
         k: v
         for k, v in model_dict.items()
+        # ernerf / talkinggaussian: settings of avatar engines removed in 2026.
         if k not in ['ernerf', 'talkinggaussian', 'musetalk', 'wav2lip']
     }
     model_config = ModelConfig(
         **model_dict_for_init,
-        ernerf=ernerf_config,
-        talkinggaussian=talkinggaussian_config,
         musetalk=musetalk_config,
         wav2lip=wav2lip_config,
     )
@@ -292,11 +272,5 @@ def load_config(
     from src.tts.voice_library import migrate_tts_config
 
     migrate_tts_config(config.tts, where="設定檔")
-    
-    # 處理 -O 快捷選項
-    if config.model.ernerf.O:
-        config.model.ernerf.fp16 = True
-        config.model.ernerf.cuda_ray = True
-        config.model.ernerf.exp_eye = True
     
     return config

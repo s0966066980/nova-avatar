@@ -36,12 +36,14 @@ the root Apache-2.0 grant.
 | TTS | Matcha-TTS voice models (`matcha` engine, sherpa-onnx on the CPU) | Optional; Edge TTS stays the default. A voice model under `models/tts/<id>/` speaks zh-TW and en-US with one voice; voice models are copied by hand, never downloaded ([voice-models.md](voice-models.md)). `zh-tw-hsiaochen-edge`, measured 2026-11-23 on 4 CPU threads without MuseTalk loaded: warm first audio P50 0.050 s, P95 0.067 s; Chinese CER 13.2%, English WER 5.6% | sherpa-onnx is Apache-2.0. No voice model is cleared for commercial use: `zh-tw-hsiaochen-edge` is **Development only** (distilled from Edge output, MSA §14(s)(iv)); the base model and voice models fine-tuned from it are **Research / Non-commercial** (undocumented training data). See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 | Avatar | MuseTalk | Supported, recommended review-profile path | Code is MIT; models and dependencies retain separate terms. |
 | Avatar | Wav2Lip | **Research / Non-commercial** | Do not include its integration or upstream weights in a commercial Nova Avatar distribution. |
-| Avatar | ER-NeRF, TalkingGaussian, UltraLight | Optional, license review required | Do not infer commercial rights from the root license. |
 | Scene | Server-side green-screen compositor (`src/scene/`) | Supported for MuseTalk green-screen avatars | Background images, videos, GIFs, and source footage need their own rights review. |
 | Retrieval | RAGFlow `v0.27.2` with BGE-M3 via a dedicated Ollama process | Optional, disabled by default | Separate Docker Compose project; review RAGFlow, BGE-M3, and document rights. See [ragflow.md](ragflow.md). |
 
 Qwen3-TTS was evaluated and removed on 2026-10-30 (voice cloning produced
 runaway audio); it is neither supported nor bundled.
+
+The ER-NeRF, TalkingGaussian and UltraLight avatar engines and the LFM 2.5 model
+path were removed on 2026-11-24; they were outside the current version's scope.
 
 Measured first-audio latency for this stack (Edge TTS, 2026-10-30): general
 voice turns P50 2.00 s, P95 2.22 s, from the end of speech to the first audible

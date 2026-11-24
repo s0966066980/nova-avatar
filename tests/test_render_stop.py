@@ -105,27 +105,7 @@ def _silent_batch(batch_size):
     return features, audio_frames
 
 
-def test_ultralight_inference_stops_when_result_queue_is_full():
-    from src.avatars.ultralight import avatar as module
-
-    quit_event = threading.Event()
-    features, audio_frames = _silent_batch(2)
-    results = queue.Queue(1)
-    results.put("nobody consumes this")
-    worker = threading.Thread(
-        target=module.inference,
-        args=(quit_event, 2, [np.zeros((168, 168, 3), np.uint8)], features, audio_frames, results, None),
-        daemon=True,
-    )
-    worker.start()
-    time.sleep(0.2)
-    quit_event.set()
-    worker.join(1)
-    assert not worker.is_alive()
-
-
 @pytest.mark.parametrize("module_name,cls_name", [
-    ("src.avatars.ultralight.avatar", "UltralightAvatar"),
     ("src.avatars.musetalk.avatar", "MuseTalkAvatar"),
 ])
 def test_render_stops_workers_when_its_loop_fails(monkeypatch, module_name, cls_name):
@@ -138,7 +118,7 @@ def test_render_stops_workers_when_its_loop_fails(monkeypatch, module_name, cls_
     def inference(infer_quit, *_args):
         infer_quit.wait()
         # Joining inference before telling the frame processor to stop was
-        # the Wav2Lip/UltraLight deadlock.
+        # the Wav2Lip deadlock.
         seen["process_quit_set"] = process_quit[0].wait(1) if process_quit else False
 
     def process_frames(quit_event, *_args):

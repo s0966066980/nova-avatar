@@ -10,13 +10,11 @@ import threading
 from copy import deepcopy
 from dataclasses import asdict
 from io import BytesIO
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src.avatars.catalog import (
     ENGINE_META,
     avatars_root,
-    apply_engine_paths,
     is_safe_avatar_id,
     list_avatar_characters,
     list_engines,
@@ -1049,7 +1047,6 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
 
     previous = f"{config.model.type}/{config.model.avatar_id}"
     pending = deepcopy(config)
-    apply_engine_paths(pending, engine, avatar_id)
     pending.model.type = engine
     pending.model.avatar_id = avatar_id
     type_changed = config.model.type != engine or state.model is None
@@ -1066,7 +1063,6 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
 
         scene_service.select(getattr(pending.stage, "background_id", ""))
         scene_changed = True
-        apply_engine_paths(config, engine, avatar_id)
         config.model.type = engine
         config.model.avatar_id = avatar_id
         persist_runtime_overrides(config)

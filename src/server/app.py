@@ -208,7 +208,7 @@ def main():
     state.prewarm_status = {
         "enabled": enabled,
         "avatar": (state.model_ready if enabled and state.config.model.type
-                   in {"musetalk", "wav2lip", "ultralight"} else None),
+                   in {"musetalk", "wav2lip"} else None),
         "edge_tts": edge_ready if edge_tts_prewarm is not None else None,
         "local_llm": llm_ready,
         "speech_input": speech_ready,

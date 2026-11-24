@@ -34,113 +34,6 @@ class AppConfig:
 
 
 @dataclass
-class ERNeRfConfig:
-    """ERNeRF 專用配置"""
-    # 資料與路徑
-    pose: str = "data/avatars/ernerf_obama/data_kf.json"
-    au: str = "data/avatars/ernerf_obama/au.csv"
-
-    workspace: str = "data/avatars/ernerf_obama/"
-    ckpt: str = "data/avatars/ernerf_obama/ngp_kf.pth"
-    torso_imgs: str = ""
-
-    # 取樣與訓練相關
-    data_range: List[int] = field(default_factory=lambda: [0, -1])
-    seed: int = 0
-    num_rays: int = 4096 * 16
-    cuda_ray: bool = False
-    max_steps: int = 16
-    num_steps: int = 16
-    upsample_steps: int = 0
-    update_extra_interval: int = 16
-    max_ray_batch: int = 4096
-
-    # loss 相關
-    warmup_step: int = 10000
-    amb_aud_loss: int = 1
-    amb_eye_loss: int = 1
-    unc_loss: int = 1
-    lambda_amb: float = 1e-4
-
-    # 網路 / 渲染 backbone 選項
-    fp16: bool = False
-    bg_img: str = "white" #  white |  black
-    fbg: bool = False
-    exp_eye: bool = False
-    fix_eye: float = -1.0
-    smooth_eye: bool = False
-    torso_shrink: float = 0.8
-
-    # 資料集 / 空間相關
-    color_space: str = "srgb"
-    preload: int = 0
-    bound: float = 1.0
-    scale: float = 4.0
-    offset: List[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
-    dt_gamma: float = 1.0 / 256.0
-    min_near: float = 0.05
-    density_thresh: float = 10.0
-    density_thresh_torso: float = 0.01
-    patch_size: int = 1
-
-    # 嘴唇 / 軀幹相關
-    init_lips: bool = False
-    finetune_lips: bool = False
-    smooth_lips: bool = False
-    torso: bool = False
-    head_ckpt: str = ""
-
-    # GUI 與相機
-    gui: bool = False
-    radius: float = 3.35
-    fovy: float = 21.24
-    max_spp: int = 1
-
-    # 其它雜項（音訊注意力等）
-    att: int = 2
-    aud: str = ""
-    emb: bool = False
-
-    ind_dim: int = 4
-    ind_num: int = 10000
-    ind_dim_torso: int = 8
-    amb_dim: int = 2
-    part: bool = False
-    part2: bool = False
-    train_camera: bool = False
-    smooth_path: bool = False
-    smooth_path_window: int = 7
-
-    # ASR 相關
-    asr: bool = False
-    asr_wav: str = ""
-    asr_play: bool = False
-    asr_model: str = "cpierse/wav2vec2-large-xlsr-53-esperanto"
-    asr_save_feats: bool = False
-
-    # 全身模式相關
-    fullbody: bool = False
-    fullbody_img: str = "data/fullbody/img"
-    fullbody_width: int = 580
-    fullbody_height: int = 1080
-    fullbody_offset_x: int = 0
-    fullbody_offset_y: int = 0
-
-    # -O 快捷選項：等價於 fp16 + cuda_ray + exp_eye
-    O: bool = False
-
-
-@dataclass
-class TalkingGaussianConfig:
-    """TalkingGaussian 專用配置"""
-    # 模型路徑
-    source_path: str = "data/avatars/talkinggaussian_obama/Obama/source"
-    model_path: str = "data/avatars/talkinggaussian_obama/Obama/model"
-    bg_img: str = "white"
-    sh_degree: int = 3
-
-
-@dataclass
 class MuseTalkQualityConfig:
     """MuseTalk 角色製作時寫入素材的臉框與融合參數。"""
     bbox_shift: int = 0
@@ -186,7 +79,7 @@ class Wav2LipQualityConfig:
 @dataclass
 class ModelConfig:
     """模型配置"""
-    type: str = "musetalk"  # wav2lip | musetalk | ultralight | ernerf | talkinggaussian
+    type: str = "musetalk"  # musetalk | wav2lip
     avatar_id: str = "avator_1"
     batch_size: int = 16
     model_path: str = "./models"
@@ -195,8 +88,6 @@ class ModelConfig:
     paste_interpolation: str = "lanczos"  # lanczos | cubic | linear
 
     # 模型專屬配置
-    ernerf: ERNeRfConfig = field(default_factory=ERNeRfConfig)
-    talkinggaussian: TalkingGaussianConfig = field(default_factory=TalkingGaussianConfig)
     musetalk: MuseTalkQualityConfig = field(default_factory=MuseTalkQualityConfig)
     wav2lip: Wav2LipQualityConfig = field(default_factory=Wav2LipQualityConfig)
 
@@ -463,12 +354,3 @@ class Config:
     sessionid: int = 0
     customopt: List = field(default_factory=list)
     
-    @property
-    def ernerf(self) -> ERNeRfConfig:
-        """返回 model.ernerf"""
-        return self.model.ernerf
-
-    @property
-    def talkinggaussian(self) -> TalkingGaussianConfig:
-        """返回 model.talkinggaussian"""
-        return self.model.talkinggaussian

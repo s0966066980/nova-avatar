@@ -279,7 +279,7 @@ def test_oversized_upload_is_rejected_with_413_and_leaves_no_files(import_server
 
 
 def test_invalid_engine_is_rejected_before_anything_is_written(import_server):
-    status, body = post_import(import_form({"type": "ernerf"}))
+    status, body = post_import(import_form({"type": "talkinggaussian"}))
     assert status == 400, body
     assert leftover_uploads(import_server.root) == []
 

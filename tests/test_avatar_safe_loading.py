@@ -26,7 +26,7 @@ from src.avatars.asset_io import (
 from src.avatars.catalog import detect_avatar_type
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCANNED_ENGINES = ("musetalk", "ultralight", "wav2lip")
+SCANNED_ENGINES = ("musetalk", "wav2lip")
 TORCH_LOADERS = {"load_url", "load_state_dict_from_url"}
 
 

@@ -17,7 +17,7 @@ class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
         state.server_ready = True
         state.model_ready = True
         state.config = SimpleNamespace(
-            model=SimpleNamespace(type="ernerf", avatar_id="demo"),
+            model=SimpleNamespace(type="musetalk", avatar_id="demo"),
             vad=SimpleNamespace(enabled=True, type="silero"),
         )
         app = web.Application()
@@ -36,7 +36,7 @@ class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
                     "code": 0,
                     "ready": True,
                     "model_ready": True,
-                    "avatar": {"type": "ernerf", "avatar_id": "demo"},
+                    "avatar": {"type": "musetalk", "avatar_id": "demo"},
                     "vad": {"enabled": True, "type": "silero"},
                 },
             )

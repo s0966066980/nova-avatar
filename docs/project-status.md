@@ -17,7 +17,7 @@
 | 知識庫檢索 | 可選的本機 RAGFlow 檢索：依數位人選擇知識庫、控制台測試檢索、BGE-M3 嵌入（llama.cpp，CPU）；見 [`ragflow.md`](ragflow.md) |
 | 看板回答 | SIMPLE／BOARD 協定、口語摘要與看板項目分流、顯示確認、已顯示項目上下文與輪次隔離 |
 | 語音與字幕 | 多 TTS adapter（Edge TTS 為執行預設但僅供開發；BreezyVoice 本機台灣華語已整合）、可靠語意切片（每輪第一個片段可在 8 字以上的子句處提早釋放）、播放提交、字幕顯示窗口；字幕在播放結束或輪次提交後才淡出 |
-| 數字人 | MuseTalk（Supported / Commercial）、Wav2Lip（Research / Non-commercial）、Ultralight、ER-NeRF、TalkingGaussian；MuseTalk 段落連續、待機相位匹配與 4–6 影格回答收尾 settling |
+| 數字人 | MuseTalk（Supported / Commercial）、Wav2Lip（Research / Non-commercial）；ER-NeRF、TalkingGaussian、UltraLight 已於 2026-11-24 移除；MuseTalk 段落連續、待機相位匹配與 4–6 影格回答收尾 settling |
 | 演播場景 | MuseTalk 綠幕數位人於後端色鍵合成至共用背景（圖片、GIF、循環影片），講話中可切換背景；角色與背景可封存／復原 |
 | 角色組合 | 一位主數位人加最多五位啟用中的專門數位人（ADR 0023）；每輪在所有生效成員中路由，任一位可直接交給任一位；成員各自保存交接設定與修訂；預設轉場加個別方向覆寫；控制台交接試算 |
 | 設定與生命週期 | LLM、Avatar、VAD、STT、TTS、Prompt、Rule、回覆模式、知識庫與舞台設定；owned llama-server 正常關閉清理 |

@@ -24,18 +24,6 @@ ENGINE_META: Dict[str, Dict[str, str]] = {
         "label": "Wav2Lip (Research / Non-commercial)",
         "description": "上游公開版僅限研究、學術與個人用途，不可商用",
     },
-    "ultralight": {
-        "label": "UltraLight",
-        "description": "端側友好的輕量數字人",
-    },
-    "ernerf": {
-        "label": "ERNeRF",
-        "description": "NeRF 渲染，畫質更高、更吃視訊記憶體",
-    },
-    "talkinggaussian": {
-        "label": "TalkingGaussian",
-        "description": "3D Gaussian 渲染，真實感更強",
-    },
 }
 
 ENGINE_ORDER = list(ENGINE_META.keys())
@@ -62,33 +50,14 @@ def detect_avatar_type(avatar_dir: Path) -> Optional[str]:
 
     if (avatar_dir / "latents.pt").exists() and (avatar_dir / "mask").is_dir():
         return "musetalk"
-    if (avatar_dir / "ultralight.pth").exists():
-        return "ultralight"
-    if (avatar_dir / "ngp_kf.pth").exists() or (avatar_dir / "data_kf.json").exists():
-        return "ernerf"
-    if _looks_like_talkinggaussian(avatar_dir):
-        return "talkinggaussian"
     if (avatar_dir / "face_imgs").is_dir() and coords_present(avatar_dir, "coords"):
         return "wav2lip"
 
     name = avatar_dir.name.lower()
     for engine in ENGINE_ORDER:
-        if name.startswith(engine) or name.startswith(engine.replace("talkinggaussian", "tg")):
+        if name.startswith(engine):
             return engine
     return None
-
-
-def _looks_like_talkinggaussian(avatar_dir: Path) -> bool:
-    if (avatar_dir / "source").is_dir() and (
-        (avatar_dir / "model").is_dir() or (avatar_dir / "output").is_dir()
-    ):
-        return True
-    if (avatar_dir / "point_cloud").is_dir():
-        return True
-    for child in avatar_dir.iterdir() if avatar_dir.exists() else []:
-        if child.is_dir() and (child / "source").is_dir():
-            return True
-    return False
 
 
 def find_preview_image(avatar_dir: Path) -> Optional[Path]:
@@ -292,48 +261,7 @@ def _engine_weights_ready(engine: str) -> tuple[bool, str]:
         if resolve_wav2lip_weights() is not None:
             return True, ""
         return False, "缺少 Wav2Lip 權重 (models/wav2lip.pth 或 models/wav2lip256.pth)"
-    if engine == "ultralight":
-        # 權重隨角色目錄提供
-        return True, ""
-    if engine == "ernerf":
-        return True, ""
-    if engine == "talkinggaussian":
-        return True, ""
     return False, "未知引擎"
-
-
-def apply_engine_paths(config: Any, engine: str, avatar_id: str) -> None:
-    """為需要路徑的引擎寫入對應角色目錄。"""
-    avatar_dir = avatars_root() / avatar_id
-    if engine == "ernerf":
-        ernerf = config.model.ernerf
-        ernerf.pose = str(avatar_dir / "data_kf.json")
-        ernerf.au = str(avatar_dir / "au.csv")
-        ernerf.workspace = str(avatar_dir) + "/"
-        ckpt = avatar_dir / "ngp_kf.pth"
-        if ckpt.exists():
-            ernerf.ckpt = str(ckpt)
-    elif engine == "talkinggaussian":
-        tg = config.model.talkinggaussian
-        source, model_path = _talkinggaussian_paths(avatar_dir)
-        if source:
-            tg.source_path = source
-        if model_path:
-            tg.model_path = model_path
-
-
-def _talkinggaussian_paths(avatar_dir: Path) -> tuple[Optional[str], Optional[str]]:
-    candidates = [
-        (avatar_dir / "source", avatar_dir / "model"),
-        (avatar_dir / "Obama" / "source", avatar_dir / "Obama" / "model"),
-    ]
-    for child in avatar_dir.iterdir() if avatar_dir.is_dir() else []:
-        if child.is_dir() and (child / "source").is_dir():
-            candidates.append((child / "source", child / "model"))
-    for source, model_path in candidates:
-        if source.is_dir():
-            return str(source), str(model_path) if model_path.exists() else str(model_path)
-    return None, None
 
 
 def resolve_preview_path(avatar_id: str) -> Optional[Path]:

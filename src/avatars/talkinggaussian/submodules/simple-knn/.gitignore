@@ -1,7 +1,0 @@
-build/
-simple_knn.egg-info/
-dist/
-
-__pycache__
-
-*.so

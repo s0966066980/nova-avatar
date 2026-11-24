@@ -44,8 +44,6 @@ show_usage() {
     echo -e "${YELLOW}支援的 Avatar:${NC}"
     echo -e "${YELLOW}  musetalk         # 2D Avatar（預設，MIT code）${NC}"
     echo -e "${YELLOW}  wav2lip          # 2D Avatar（僅限研究／學術／個人用途，不可商用）${NC}"
-    echo -e "${YELLOW}  ernerf           # 3D Avatar（神經輻射場）${NC}"
-    echo -e "${YELLOW}  talkinggaussian  # 3D Avatar（高斯潑濺）${NC}"
     echo ""
     echo -e "${YELLOW}示例:${NC}"
     echo -e "${YELLOW}  $0                # 安裝 musetalk 環境${NC}"
@@ -56,7 +54,7 @@ show_usage() {
 # 檢查 Avatar 引數
 check_avatar() {
     case "$DEFAULT_AVATAR" in
-        wav2lip|musetalk|ernerf|talkinggaussian)
+        wav2lip|musetalk)
             echo -e "${GREEN}✓${NC} 選擇數字人: $DEFAULT_AVATAR"
             ;;
         *)
@@ -261,15 +259,6 @@ install_avatar() {
         # 執行後處理指令碼
         echo -e "${YELLOW}📦 執行 MuseTalk 後處理指令碼...${NC}"
         bash scripts/post_musetalk_install.sh
-        
-    # 特殊處理：TalkingGaussian 需要額外的子模組
-    elif [ "$DEFAULT_AVATAR" = "talkinggaussian" ]; then
-        setup_cuda_home
-        uv pip install -e "$AVATAR_PATH"
-        echo -e "${YELLOW}📦 安裝 TalkingGaussian 子模組...${NC}"
-        uv pip install -e src/avatars/talkinggaussian/submodules/diff-gaussian-rasterization/ --no-build-isolation
-        uv pip install -e src/avatars/talkinggaussian/submodules/simple-knn/ --no-build-isolation
-        uv pip install -e src/avatars/talkinggaussian/gridencoder/ --no-build-isolation
         
     # 其他 Avatar：標準安裝
     else

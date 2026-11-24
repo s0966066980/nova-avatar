@@ -33,15 +33,6 @@ def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseA
     elif model_type == 'musetalk':
         from .musetalk.avatar import MuseTalkAvatar
         return MuseTalkAvatar(session_config, model, avatar)
-    elif model_type == 'ultralight':
-        from .ultralight.avatar import UltralightAvatar
-        return UltralightAvatar(session_config, model, avatar)
-    elif model_type == 'ernerf':
-        from .ernerf.avatar import ERNeRFAvatar
-        return ERNeRFAvatar(session_config, model, avatar)
-    elif model_type == 'talkinggaussian':
-        from .talkinggaussian.avatar import TalkingGaussianAvatar
-        return TalkingGaussianAvatar(session_config, model, avatar)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -83,23 +74,6 @@ def prepare_avatar_model(config: Any):
         if getattr(getattr(config, "app", None), "prewarm", True):
             warm_up(config.model.batch_size, model, 256)
         return model, avatar
-    elif model_type == 'ultralight':
-        from .ultralight.avatar import load_model, load_avatar, warm_up
-        model = load_model(config)
-        avatar = load_avatar(config.model.avatar_id)
-        if getattr(getattr(config, "app", None), "prewarm", True):
-            warm_up(config.model.batch_size, avatar, 160)
-        return model, avatar
-    elif model_type == 'ernerf':
-        from .ernerf.avatar import load_model, load_avatar
-        model = load_model(config)
-        avatar = load_avatar(config)
-        return model, avatar
-    elif model_type == 'talkinggaussian':
-        from .talkinggaussian.avatar import load_model, load_avatar
-        model = load_model(config)
-        avatar = load_avatar(config)
-        return model, avatar
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -115,13 +89,4 @@ def load_avatar_data(config: Any):
     if model_type == "wav2lip":
         from .wav2lip.avatar import load_avatar
         return load_avatar(avatar_id)
-    if model_type == "ultralight":
-        from .ultralight.avatar import load_avatar
-        return load_avatar(avatar_id)
-    if model_type == "ernerf":
-        from .ernerf.avatar import load_avatar
-        return load_avatar(config)
-    if model_type == "talkinggaussian":
-        from .talkinggaussian.avatar import load_avatar
-        return load_avatar(config)
     raise ValueError(f"Unknown model type: {model_type}")

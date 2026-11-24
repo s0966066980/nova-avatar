@@ -111,7 +111,7 @@ class AvatarCatalogTests(unittest.TestCase):
             self.assertTrue(engines["musetalk"]["can_import"])
             self.assertFalse(engines["wav2lip"]["available"])
             self.assertTrue(engines["wav2lip"]["can_import"])
-            self.assertFalse(engines["ernerf"]["can_import"])
+            self.assertEqual(set(engines), {"musetalk", "wav2lip"})
             self.assertTrue(ok, reason)
             self.assertFalse(missing_ok)
             self.assertIn("找不到角色", missing_reason)
