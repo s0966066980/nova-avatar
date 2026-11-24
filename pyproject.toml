@@ -69,6 +69,7 @@ Repository = "https://github.com/s0966066980/nova-avatar"
 dev = [
     "pyright==1.1.414",
     "pytest>=8",
+    "pytest-cov>=6",
     "ruff==0.17.1",
 ]
 # Import probes used by the offline integration check; the full MuseTalk
