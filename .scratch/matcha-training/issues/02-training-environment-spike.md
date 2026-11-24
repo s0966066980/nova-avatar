@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 訓練環境實驗
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)第 8 點。
 
