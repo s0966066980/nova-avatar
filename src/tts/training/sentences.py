@@ -129,11 +129,19 @@ def select_by_duration(target_seconds: float) -> list[str]:
 
 
 def select_preset(key: str) -> list[str]:
-    """The sentences of a preset in ``PRESETS``."""
+    """The sentences of a preset in ``PRESETS``.
+
+    The built-in library needs no proofreading (spec decision 13), so the guarantee that
+    every digit in it is read out is checked here on every selection, not only by a test.
+    """
     preset = PRESETS.get(key) if isinstance(key, str) else None
     if preset is None:
         raise CorpusError("不明的份量預設")
-    return select_by_duration(preset.target_seconds)
+    chosen = select_by_duration(preset.target_seconds)
+    unresolved = [text for text in chosen if not normalize_digits(text).resolved]
+    if unresolved:
+        raise CorpusError(f"內建句庫有無法展開數字的句子（「{unresolved[0]}」等 {len(unresolved)} 句），請回報給維護者", 500)
+    return chosen
 
 
 def parse_text_list(raw: str | bytes) -> list[str]:
@@ -172,6 +180,16 @@ def parse_text_list(raw: str | bytes) -> list[str]:
     if len(sentences) > MAX_LINES:
         raise CorpusError(f"文字檔最多 {MAX_LINES} 句")
     return sentences
+
+
+def refusal_for_unresolved(review: TextReview) -> CorpusError | None:
+    """A 409 naming every sentence and fragment whose digits cannot be read out, ``None`` if there is none."""
+    listing = "；".join(
+        f"第 {item.index} 句「{fragment.text}」" for item in review.sentences for fragment in item.unresolved
+    )
+    if not listing:
+        return None
+    return CorpusError(f"有數字無法確定怎麼念，請先改寫或移除再開始：{listing}", 409)
 
 
 def review_text_list(raw: str | bytes) -> TextReview:

@@ -291,8 +291,8 @@ def _slug(request: web.Request) -> str:
 @endpoint
 async def list_corpora(request: web.Request, services: Services) -> web.StreamResponse:
     """Every corpus with its source, usage label, counts and trainability."""
-    corpora = await asyncio.to_thread(services.store.list)
-    return _reply({"corpora": [_summary(corpus) for corpus in corpora]})
+    summaries = await asyncio.to_thread(lambda: [_summary(corpus) for corpus in services.store.list()])
+    return _reply({"corpora": summaries})
 
 
 @endpoint
@@ -317,8 +317,8 @@ async def create_corpus(request: web.Request, services: Services) -> web.StreamR
 @endpoint
 async def get_corpus(request: web.Request, services: Services) -> web.StreamResponse:
     """The review table: every line with its state and digit-expanded text."""
-    corpus = await asyncio.to_thread(services.store.get, _slug(request))
-    return _reply(_detail(corpus))
+    detail = await asyncio.to_thread(lambda: _detail(services.store.get(_slug(request))))
+    return _reply(detail)
 
 
 # ------------------------------------------------------------------ lines
@@ -349,7 +349,8 @@ async def upload_line(request: web.Request, services: Services) -> web.StreamRes
     if audio is None:
         raise CorpusError("請選擇要上傳的音檔")
     result = await asyncio.to_thread(ingest_audio, services.store, slug, audio, filename, text)
-    return _reply({"line": _line_payload(slug, result.line), "duration": round(result.duration, 2)})
+    payload = await asyncio.to_thread(_line_payload, slug, result.line)
+    return _reply({"line": payload, "duration": round(result.duration, 2)})
 
 
 @endpoint
@@ -365,23 +366,34 @@ async def edit_line(request: web.Request, services: Services) -> web.StreamRespo
     if review == REVIEW_CONFIRMED and isinstance(body.get("text"), str) and not body["text"].strip():
         raise CorpusError("沒有逐字稿的句子不能確認")
 
-    def change() -> tuple[Line, Corpus]:
+    def change() -> dict:
         store = services.store
         if "text" in body:
             store.set_text(slug, line_id, body["text"])
         if "review" in body:
             store.set_review(slug, line_id, review)
         corpus = store.get(slug)
-        return next(item for item in corpus.lines if item.id == line_id), corpus
+        line = next(item for item in corpus.lines if item.id == line_id)
+        return {"line": _line_payload(slug, line), "summary": _summary(corpus)}
 
-    line, corpus = await asyncio.to_thread(change)
-    return _reply({"line": _line_payload(slug, line), "summary": _summary(corpus)})
+    return _reply(await asyncio.to_thread(change))
 
 
 @endpoint
 async def line_audio(request: web.Request, services: Services) -> web.StreamResponse:
-    """The stored audio of a line, for listening while reviewing."""
-    path: Path = await asyncio.to_thread(services.store.audio_path, _slug(request), request.match_info["line_id"])
+    """The stored audio of a line, for listening while reviewing; never for an Edge corpus.
+
+    Edge read-aloud output is not played back or taken out of the machine (spec decision
+    13, ADR 0026); only the administrator's own uploads are served.
+    """
+
+    def locate() -> Path:
+        slug = _slug(request)
+        if services.store.get(slug).source == SOURCE_EDGE_TEST_TEACHER:
+            raise CorpusError("Edge 測試用老師合成的音檔不提供試聽或下載（ADR 0026）", status=403)
+        return services.store.audio_path(slug, request.match_info["line_id"])
+
+    path = await asyncio.to_thread(locate)
     return web.FileResponse(
         path,
         headers={
@@ -401,12 +413,12 @@ async def confirm_lines(request: web.Request, services: Services) -> web.StreamR
     if set(body) - {"line_ids"} or (line_ids is not None and not isinstance(line_ids, list)):
         raise CorpusError("line_ids 必須是句子 ID 清單")
 
-    def confirm():
+    def confirm() -> dict:
         result = services.store.confirm_pending(slug, line_ids)
-        return result, services.store.get(slug)
+        summary = _summary(services.store.get(slug))
+        return {"confirmed": result.confirmed, "without_text": result.without_text, "summary": summary}
 
-    result, corpus = await asyncio.to_thread(confirm)
-    return _reply({"confirmed": result.confirmed, "without_text": result.without_text, "summary": _summary(corpus)})
+    return _reply(await asyncio.to_thread(confirm))
 
 
 # ------------------------------------------------------------------ Edge clause
@@ -417,10 +429,14 @@ async def acknowledge_clause(request: web.Request, services: Services) -> web.St
     """Record that the administrator confirmed the clause text the console showed.
 
     ``shown_text`` must be exactly the server's ``MSA_CLAUSE.text`` (delivered as
-    ``settings.edge_clause`` of ``GET /api/tts/training``); any other text is refused.
+    ``settings.edge_clause`` of ``GET /api/tts/training``) and ``confirmed`` must be
+    ``true``, which the console sends only after the required box is ticked; the text
+    alone is not a confirmation.
     """
     slug = _slug(request)
     body = await _json_body(request)
+    if body.get("confirmed") is not True:
+        raise CorpusError("請先勾選確認，才能記錄條文確認")
     shown_text = body.get("shown_text")
     if not isinstance(shown_text, str):
         raise CorpusError("shown_text 必須是顯示給管理者的條文文字")
@@ -437,14 +453,32 @@ async def acknowledge_clause(request: web.Request, services: Services) -> web.St
 # ------------------------------------------------------------------ transcripts
 
 
+def _parse_transcript_files(files: list[tuple[str, bytes]]) -> list[TranscriptEntry]:
+    """Parse the uploaded files; every problem of every file is reported together (blocking)."""
+    entries: list[TranscriptEntry] = []
+    problems: list[str] = []
+    for name, data in files:
+        try:
+            if name.lower() == "metadata.csv":
+                entries.extend(parse_metadata_csv(data))
+            elif name.lower().endswith(".txt"):
+                entries.append(parse_txt(name, data))
+            else:
+                raise TranscriptError([f"「{name.replace(chr(92), '/').rsplit('/', 1)[-1][:80]}」不是支援的逐字稿檔，只接受 .txt 與 metadata.csv"])
+        except TranscriptError as exc:
+            problems.extend(exc.problems)
+    if problems:
+        raise TranscriptError(problems)
+    return entries
+
+
 @endpoint
 async def import_transcripts(request: web.Request, services: Services) -> web.StreamResponse:
     """Import same-name ``.txt`` files and/or one ``metadata.csv`` (multipart ``files``)."""
     slug = _slug(request)
     await asyncio.to_thread(services.store.get, slug)
     reader = await _multipart(request)
-    entries: list[TranscriptEntry] = []
-    problems: list[str] = []
+    files: list[tuple[str, bytes]] = []
     seen_csv = False
     count = 0
     while (part := await reader.next()) is not None:
@@ -453,22 +487,14 @@ async def import_transcripts(request: web.Request, services: Services) -> web.St
             raise CorpusError("上傳欄位不正確")
         name = part.filename
         data = await _read_part(part, MAX_CSV_BYTES + 1, "逐字稿檔太大")
-        try:
-            if name.lower() == "metadata.csv":
-                if seen_csv:
-                    raise CorpusError("只能上傳一個 metadata.csv")
-                seen_csv = True
-                entries.extend(parse_metadata_csv(data))
-            elif name.lower().endswith(".txt"):
-                entries.append(parse_txt(name, data))
-            else:
-                raise TranscriptError([f"「{name.replace(chr(92), '/').rsplit('/', 1)[-1][:80]}」不是支援的逐字稿檔，只接受 .txt 與 metadata.csv"])
-        except TranscriptError as exc:
-            problems.extend(exc.problems)
+        if name.lower() == "metadata.csv":
+            if seen_csv:
+                raise CorpusError("只能上傳一個 metadata.csv")
+            seen_csv = True
+        files.append((name, data))
     if not count:
         raise CorpusError("請選擇逐字稿檔（.txt 或 metadata.csv）")
-    if problems:
-        raise TranscriptError(problems)
+    entries = await asyncio.to_thread(_parse_transcript_files, files)
     result = await asyncio.to_thread(apply_transcripts, services.store, slug, entries)
     return _reply({"applied": result.applied, "without_transcript": result.without_transcript})
 

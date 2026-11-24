@@ -131,3 +131,45 @@ def test_a_failing_transcriber_is_not_swallowed(store):
 
     with pytest.raises(RuntimeError):
         verify_with_asr(store, "edge-test", transcribe)
+
+
+# ------------------------------------------------------------------ digits
+
+
+UPLOAD_DATE = "2026年11月24日"
+SPOKEN_DATE = "二零二六年十一月二十四日"
+
+
+@pytest.fixture
+def uploads(tmp_path: Path) -> CorpusStore:
+    store = CorpusStore(tmp_path / "uploads")
+    store.create("edge-test", source="self-recorded")
+    return store
+
+
+def test_a_proofread_digit_line_is_compared_with_the_digits_read_out(uploads):
+    """Whisper hears the date in Chinese numerals; the stored text has Arabic digits."""
+    line = add(uploads, UPLOAD_DATE)
+
+    report = verify_with_asr(uploads, "edge-test", transcriber({line: SPOKEN_DATE}))
+
+    assert report.excluded == ()
+    assert uploads.get("edge-test").lines[0].review == REVIEW_CONFIRMED
+
+
+def test_the_raw_text_still_counts_when_whisper_writes_digits(uploads):
+    line = add(uploads, UPLOAD_DATE)
+
+    report = verify_with_asr(uploads, "edge-test", transcriber({line: "2026年11月24日"}))
+
+    assert report.excluded == ()
+
+
+def test_a_digit_line_that_really_differs_is_still_excluded_and_reports_the_spoken_text(uploads):
+    line = add(uploads, UPLOAD_DATE)
+
+    report = verify_with_asr(uploads, "edge-test", transcriber({line: "我想吃一碗牛肉麵加蛋"}))
+
+    assert [item.line_id for item in report.excluded] == [line]
+    assert report.excluded[0].expected == SPOKEN_DATE
+    assert uploads.get("edge-test").lines[0].review == REVIEW_EXCLUDED

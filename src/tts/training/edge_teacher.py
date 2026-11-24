@@ -19,10 +19,9 @@ a worker thread) take the sentences (``sentences.select_preset`` or
 ``sentences.parse_text_list``), one at a time:
 
 1. digits are expanded through ``numerals.normalize_digits``; Edge is asked to
-   read the expanded text and the line stores it. A sentence with digits the
-   normaliser cannot decide is synthesised as written and stored ``pending``
-   with the original text, so the review table flags it instead of a guess
-   being trained;
+   read the expanded text and the line stores it. A list holding digits the
+   normaliser cannot decide is refused before any request (409), so Edge never reads
+   a guess and nothing unreviewed can be trained;
 2. ``EdgeConnectionPool.stream(text, voice)`` returns MP3, retried with doubling
    backoff on failure (``MAX_ATTEMPTS``, ``BASE_BACKOFF_SECONDS`` up to
    ``MAX_BACKOFF_SECONDS``, a longer ``Retry-After`` wins), and the run waits
@@ -60,7 +59,7 @@ from src.tts.training.audio_quality import SAMPLE_RATE, assess_audio, to_wav_byt
 from src.tts.training.corpus import REVIEW_CONFIRMED, CorpusError, CorpusStore
 from src.tts.training.edge_acknowledgement import require_acknowledgement
 from src.tts.training.numerals import normalize_digits
-from src.tts.training.sentences import parse_text_list
+from src.tts.training.sentences import refusal_for_unresolved, review_text_list
 from src.utils.logging import logger
 
 # The Edge zh-TW voices; English lines are read by the same voice. Kept equal to
@@ -185,13 +184,18 @@ async def synthesize_corpus(
     """Synthesise ``sentences`` into the Edge corpus ``slug``; see the module docs.
 
     Raises ``CorpusError`` (403) before any request when the corpus has no valid
-    MSA acknowledgement, and for an unknown voice or an unusable sentence list.
+    MSA acknowledgement, and for an unknown voice or an unusable sentence list; a list
+    with digits that cannot be read out (409) is refused as a whole, before the first request.
     A caller-supplied ``pool`` is left open; otherwise one is opened and closed here.
     """
     require_acknowledgement(store, slug)
     if voice not in EDGE_ZH_TW_VOICES:
         raise CorpusError("不明的 Edge 聲音")
-    sentences = parse_text_list("\n".join(sentences))
+    review = review_text_list("\n".join(sentences))
+    refusal = refusal_for_unresolved(review)
+    if refusal is not None:  # never ask Edge to read a guess; the job layer refuses first, this is the last gate
+        raise refusal
+    sentences = [item.text for item in review.sentences]
     existing = {line.text for line in store.get(slug).lines}
 
     owned = pool is None

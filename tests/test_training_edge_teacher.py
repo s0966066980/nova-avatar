@@ -226,17 +226,39 @@ def test_resolvable_digits_are_spoken_and_stored_as_chinese_characters(store, co
     assert line.review == REVIEW_CONFIRMED
 
 
-def test_unresolved_digits_are_not_guessed_and_go_to_review(store, corpus):
-    report, pool, _ = synthesize(store, ["這個要價 $50 元。", "你好。"])
+def test_a_list_with_unresolved_digits_is_refused_before_any_edge_request(store, corpus):
+    pool = FakePool()
 
-    line = store.get(SLUG).lines[0]
-    assert line.text == "這個要價 $50 元。"
-    assert line.review == REVIEW_PENDING
-    assert report.needs_review == 1
-    assert report.outcomes[0].status == edge_teacher.STATUS_NEEDS_REVIEW
-    assert report.outcomes[0].reason == "currency"
-    assert not store.get(SLUG).trainability().trainable
-    assert store.get(SLUG).review_table()[0].normalized.unresolved
+    with pytest.raises(CorpusError) as caught:
+        synthesize(store, ["你好。", "這個要價 $50 元。"], pool=pool)
+
+    assert caught.value.status == 409
+    assert "第 2 句" in caught.value.message and "$50" in caught.value.message
+    assert pool.calls == []  # not even the resolvable first sentence is requested
+    assert store.get(SLUG).lines == ()
+
+
+def test_every_unresolved_fragment_is_listed_in_the_refusal(store, corpus):
+    with pytest.raises(CorpusError) as caught:
+        synthesize(store, ["溫度 25°C。", "價錢 $5。"])
+
+    assert "25°C" in caught.value.message and "$5" in caught.value.message
+
+
+def test_a_preset_whose_sentence_cannot_be_expanded_is_refused_at_runtime(store, corpus, monkeypatch):
+    from src.tts.training import sentences as sentence_module
+
+    monkeypatch.setattr(sentence_module, "select_by_duration", lambda target: ["你好。", "要價 $50。"])
+    with pytest.raises(CorpusError, match="內建句庫"):
+        sentence_module.select_preset("quick-test")
+
+
+def test_the_real_presets_expand_every_digit():
+    from src.tts.training.numerals import normalize_digits
+    from src.tts.training.sentences import PRESETS, select_preset
+
+    for key in PRESETS:
+        assert all(normalize_digits(text).resolved for text in select_preset(key))
 
 
 # ------------------------------------------------------------------ quality check
@@ -347,14 +369,14 @@ def test_it_waits_between_sentences_but_not_after_the_last(store, corpus):
 
 def test_progress_is_reported_after_every_sentence(store, corpus):
     events = []
-    pool = FakePool({"太短。": [tone_bytes(0.2)]})
+    pool = FakePool({"太短。": [tone_bytes(0.2)], "斷線。": [ConnectionError("x")] * MAX_ATTEMPTS})
 
-    synthesize(store, ["你好。", "太短。", "這個 $5 呢。"], pool=pool, on_progress=events.append)
+    synthesize(store, ["你好。", "太短。", "斷線。"], pool=pool, on_progress=events.append, base_backoff=0.0)
 
     assert [(e.index, e.total, e.status) for e in events] == [
         (1, 3, edge_teacher.STATUS_STORED),
         (2, 3, edge_teacher.STATUS_REJECTED),
-        (3, 3, edge_teacher.STATUS_NEEDS_REVIEW),
+        (3, 3, edge_teacher.STATUS_FAILED),
     ]
     assert events[0].text == "你好。"
     assert events[0].line_id == "000001"

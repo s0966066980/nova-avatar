@@ -578,6 +578,30 @@ async def test_a_line_plays_back_as_audio_for_review(client):
     assert body[:4] == b"RIFF"
 
 
+@console
+async def test_edge_teacher_audio_is_neither_played_back_nor_taken_out(client, env):
+    """Spec decision 13 and ADR 0026: Edge output has no playback route; uploads keep theirs."""
+    store = env[0]
+    store.create("edge-one", source="edge-test-teacher")
+    line = store.add_line("edge-one", tone(), ".wav", text="你好")
+
+    response = await client.get(f"{BASE}/edge-one/lines/{line.id}/audio")
+    payload = await response.json()
+
+    assert response.status == 403
+    assert payload["code"] == -1
+    assert "Edge" in payload["msg"] and any("\u4e00" <= ch <= "\u9fff" for ch in payload["msg"])
+    assert b"RIFF" not in await response.read()
+
+
+@console
+async def test_an_unknown_corpus_or_line_is_still_404_for_the_audio_route(client):
+    await create(client)
+
+    assert (await client.get(f"{BASE}/nobody/lines/000001/audio")).status == 404
+    assert (await client.get(f"{BASE}/mine/lines/000009/audio")).status == 404
+
+
 # ------------------------------------------------------------------ automatic transcription
 
 
@@ -730,11 +754,37 @@ async def create_edge(client, slug: str = "edge-one"):
     assert response.status == 200, await response.text()
 
 
+def confirmed_body() -> dict:
+    return {"shown_text": MSA_CLAUSE.text, "confirmed": True}
+
+
+@pytest.mark.parametrize("confirmed", [False, None, "true", 1, "yes", [True]])
+@console
+async def test_the_exact_text_alone_is_not_a_confirmation(client, env, confirmed):
+    await create_edge(client)
+
+    response = await post(client, f"{BASE}/edge-one/acknowledgement", json={"shown_text": MSA_CLAUSE.text, "confirmed": confirmed})
+
+    assert response.status == 400
+    assert (await response.json())["code"] == -1
+    assert read_acknowledgement(env[0], "edge-one") is None
+
+
+@console
+async def test_a_body_without_the_confirmed_flag_records_nothing(client, env):
+    await create_edge(client)
+
+    response = await post(client, f"{BASE}/edge-one/acknowledgement", json={"shown_text": MSA_CLAUSE.text})
+
+    assert response.status == 400
+    assert read_acknowledgement(env[0], "edge-one") is None
+
+
 @console
 async def test_acknowledging_the_clause_records_it_and_returns_when_and_where_from(client, env):
     await create_edge(client)
 
-    response = await post(client, f"{BASE}/edge-one/acknowledgement", json={"shown_text": MSA_CLAUSE.text})
+    response = await post(client, f"{BASE}/edge-one/acknowledgement", json=confirmed_body())
     data = (await response.json())["data"]
 
     assert response.status == 200
@@ -750,8 +800,8 @@ async def test_acknowledging_twice_keeps_the_first_time(client):
     await create_edge(client)
     path = f"{BASE}/edge-one/acknowledgement"
 
-    first = (await (await post(client, path, json={"shown_text": MSA_CLAUSE.text})).json())["data"]
-    second = (await (await post(client, path, json={"shown_text": MSA_CLAUSE.text})).json())["data"]
+    first = (await (await post(client, path, json=confirmed_body())).json())["data"]
+    second = (await (await post(client, path, json=confirmed_body())).json())["data"]
 
     assert second["acknowledged_at"] == first["acknowledged_at"]
 
@@ -761,7 +811,7 @@ async def test_acknowledging_twice_keeps_the_first_time(client):
 async def test_a_text_that_is_not_the_servers_clause_records_nothing(client, env, shown):
     await create_edge(client)
 
-    response = await post(client, f"{BASE}/edge-one/acknowledgement", json={"shown_text": shown})
+    response = await post(client, f"{BASE}/edge-one/acknowledgement", json={"shown_text": shown, "confirmed": True})
 
     assert response.status == 400
     assert (await response.json())["code"] == -1
@@ -780,7 +830,67 @@ async def test_a_missing_shown_text_records_nothing(client, env):
 async def test_only_an_edge_corpus_can_be_acknowledged(client, env):
     await create(client, "mine", "self-recorded")
 
-    response = await post(client, f"{BASE}/mine/acknowledgement", json={"shown_text": MSA_CLAUSE.text})
+    response = await post(client, f"{BASE}/mine/acknowledgement", json=confirmed_body())
 
     assert response.status == 409
-    assert (await post(client, f"{BASE}/nobody/acknowledgement", json={"shown_text": MSA_CLAUSE.text})).status == 404
+    assert (await post(client, f"{BASE}/nobody/acknowledgement", json=confirmed_body())).status == 404
+
+
+@console
+async def test_review_payloads_are_built_off_the_event_loop(client, env, monkeypatch):
+    from src.server.routes import tts_corpus
+
+    main = threading.get_ident()
+    seen: dict[str, set[int]] = {}
+
+    def spy(name):
+        real = getattr(tts_corpus, name)
+
+        def wrapper(*args, **kwargs):
+            seen.setdefault(name, set()).add(threading.get_ident())
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(tts_corpus, name, wrapper)
+
+    for name in ("_summary", "_detail", "_line_payload"):
+        spy(name)
+    await create(client)
+    await upload(client, text="稿")
+    steps = {
+        "list": lambda: client.get(BASE),
+        "detail": lambda: client.get(f"{BASE}/mine"),
+        "edit": lambda: put(client, f"{BASE}/mine/lines/000001", json={"text": "新稿"}),
+        "confirm": lambda: post(client, f"{BASE}/mine/confirm", json={}),
+    }
+    for label, step in steps.items():
+        seen.clear()
+        assert (await step()).status == 200, label
+        assert seen, label
+        assert main not in set().union(*seen.values()), f"{label} built its payload on the event loop"
+
+
+@console
+async def test_transcript_files_are_parsed_off_the_event_loop(client, monkeypatch):
+    from src.server.routes import tts_corpus
+
+    main = threading.get_ident()
+    seen: list[int] = []
+    for name in ("parse_txt", "parse_metadata_csv"):
+        real = getattr(tts_corpus, name)
+
+        def wrapper(*args, _real=real, **kwargs):
+            seen.append(threading.get_ident())
+            return _real(*args, **kwargs)
+
+        monkeypatch.setattr(tts_corpus, name, wrapper)
+    await create(client)
+    await upload(client, name="take.wav")
+    await upload(client, name="other.wav")
+    form = aiohttp.FormData(quote_fields=False)
+    form.add_field("files", "我說了話".encode(), filename="take.txt", content_type="text/plain")
+    form.add_field("files", "filename|text\nother.wav|另一句\n".encode(), filename="metadata.csv", content_type="text/csv")
+
+    response = await post(client, f"{BASE}/mine/transcripts", data=form)
+
+    assert response.status == 200, await response.text()
+    assert len(seen) == 2 and main not in seen

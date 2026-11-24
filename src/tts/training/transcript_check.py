@@ -15,6 +15,12 @@ different from its transcript. Nothing here loads a model or touches the GPU.
 Similarity is the ``difflib`` ratio of the letters and digits of both texts after
 converting to Simplified Chinese and lower case, so punctuation and the choice
 of Chinese script do not count; the threshold is the inherited 0.65.
+
+A line is compared with the text training actually uses, its digits read out as
+Chinese numerals (``numerals.normalize_digits``), and also with the stored text as
+written; the better score counts, because Whisper may write either form. Without the
+expanded form a correctly proofread "2026年" would score near zero against a
+recording of "二零二六年" and be excluded.
 """
 
 from __future__ import annotations
@@ -27,6 +33,7 @@ from functools import cache
 from pathlib import Path
 
 from src.tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusStore
+from src.tts.training.numerals import normalize_digits
 from src.utils.logging import logger
 
 DEFAULT_MIN_SIMILARITY = 0.65
@@ -92,11 +99,12 @@ def verify_with_asr(
             cancelled = True
             break
         heard = transcribe(store.audio_path(slug, line.id))
-        score = similarity_ratio(line.text, heard)
+        spoken = normalize_digits(line.text).text
+        score = max(similarity_ratio(spoken, heard), similarity_ratio(line.text, heard))
         checked += 1
         if score < min_similarity:
             store.set_review(slug, line.id, REVIEW_EXCLUDED)
-            mismatches.append(Mismatch(line.id, line.text, heard, score))
+            mismatches.append(Mismatch(line.id, spoken, heard, score))
             logger.info("Excluded line %s of corpus %s: heard text differs (%.2f)", line.id, slug, score)
         if on_progress is not None:
             on_progress(checked, len(lines))

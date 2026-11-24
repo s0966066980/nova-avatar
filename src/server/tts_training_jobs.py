@@ -64,6 +64,7 @@ from src.tts.training.corpus import (
     REASON_PENDING_LINES,
     REASON_SOURCE_MISSING,
     REASON_UNRESOLVED_DIGITS,
+    REVIEW_CONFIRMED,
     CorpusError,
     CorpusStore,
 )
@@ -496,7 +497,7 @@ class TrainingJobManager:
             checks.append(Check(CHECK_CORPUS, "逐字稿確認", PASS, "合成後會再檢查一次", detail))
         else:
             checks.append(Check(CHECK_CORPUS, "逐字稿確認", PASS, f"已確認 {counts.confirmed} 句", detail))
-        confirmed = [line for line in corpus.lines if line.review == "confirmed"]
+        confirmed = [line for line in corpus.lines if line.review == REVIEW_CONFIRMED]
         if confirmed:
             seconds = sum(estimate_seconds(line.text) for line in confirmed)
             detail = {"estimated_seconds": round(seconds), "threshold_seconds": SMALL_CORPUS_SECONDS}
