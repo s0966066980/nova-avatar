@@ -86,7 +86,6 @@ AREA_BY_FILE = {
     "test_mouth_quality.py": "avatar",
     "test_musetalk_preprocessing.py": "avatar",
     "test_musetalk_acceleration.py": "avatar",
-    "test_optional_runtime_extras.py": "runtime",
     "test_matcha_train_setup.py": "runtime",
     "test_pinned_resources.py": "runtime",
     "test_playback_commit.py": "conversation",

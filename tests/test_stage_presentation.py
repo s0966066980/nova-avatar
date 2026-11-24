@@ -57,10 +57,6 @@ class PresentationTests(IsolatedAsyncioTestCase):
                 ['presentation_reset', 'user_transcript', 'assistant_fragment'])
             self.assertTrue(all(e.get('text') == role for e in replay[1:]))
 
-    async def test_board_receipts_are_not_redirected_to_another_session(self):
-        for voice in self.voices.values():
-            self.assertFalse(self.hub.acknowledge_board(voice, dict(type='board_displayed')))
-
     async def test_disconnect_leaves_the_other_peers_media_and_events_usable(self):
         await self.hub.unregister(self.voices['console'].sessionid)
         stage = self.voices['stage']

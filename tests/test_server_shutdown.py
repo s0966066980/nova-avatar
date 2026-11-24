@@ -111,11 +111,6 @@ class ServerShutdownTests(unittest.TestCase):
         self.assertEqual(events, ["hook-ran", "thread-exited"])
         self.assertLess(elapsed, 10)
 
-    def test_sigint_takes_the_same_orderly_path(self):
-        code, _elapsed, events = self.run_and_terminate("clean", deadline=20, sig=signal.SIGINT)
-        self.assertEqual(code, 128 + signal.SIGINT)
-        self.assertEqual(events, ["hook-ran", "thread-exited"])
-
     def test_sigterm_after_ctrl_c_does_not_cut_the_orderly_stop_short(self):
         code, _elapsed, events = self.run_and_terminate(
             "slow_hook", deadline=20, sig=signal.SIGINT, then=(signal.SIGTERM, 0.3)

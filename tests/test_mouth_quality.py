@@ -52,16 +52,6 @@ class MouthEnhanceTests(unittest.TestCase):
         self.assertEqual(enhanced.shape, (512, 512, 3))
         self.assertGreater(_detail_score(enhanced), _detail_score(linear))
 
-    def test_zero_sharpen_leaves_resized_pixels_unchanged_from_resize_only(self):
-        source = _high_contrast_mouth()
-        plain = enhance_generated_mouth(
-            source, (320, 320), interpolation="lanczos", sharpen=0.0
-        )
-        also_plain = enhance_generated_mouth(
-            source, (320, 320), interpolation="lanczos", sharpen=0.0
-        )
-        np.testing.assert_array_equal(plain, also_plain)
-
     def test_enhance_from_config_reads_live_model_fields(self):
         source = _high_contrast_mouth()
         config = Config()

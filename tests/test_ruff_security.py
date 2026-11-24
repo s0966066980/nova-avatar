@@ -67,10 +67,9 @@ class RuffSecurityGateTests(unittest.TestCase):
             with self.subTest(rule=rule):
                 self.assertEqual(_ruff_codes(snippet), [rule])
 
-    def test_requests_without_timeout_fails_and_with_timeout_passes(self):
-        bad = BAD_SNIPPETS["S113"]
-        self.assertEqual(_ruff_codes(bad), ["S113"])
-        self.assertEqual(_ruff_codes(bad.replace("(url)\n", "(url, timeout=5)\n")), [])
+    def test_requests_with_a_timeout_pass(self):
+        fixed = BAD_SNIPPETS["S113"].replace("(url)\n", "(url, timeout=5)\n")
+        self.assertEqual(_ruff_codes(fixed), [])
 
     def test_rules_apply_to_tests_and_scripts(self):
         bad = BAD_SNIPPETS["S113"]

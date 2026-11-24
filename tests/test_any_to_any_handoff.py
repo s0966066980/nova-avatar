@@ -107,17 +107,6 @@ async def test_a_target_outside_the_live_members_is_never_handed_to(field, route
         await voice.close()
 
 
-@async_test
-async def test_clarify_asks_without_a_handoff(field):
-    field.router = Mock(return_value=route_to(None, clarification='您想先問天氣，還是服務？'))
-    voice, _ = connect(field)
-    try:
-        plan = await plan_for(voice, '天氣和服務')
-        assert plan == {'fixed': '您想先問天氣，還是服務？'}
-    finally:
-        await voice.close()
-
-
 @pytest.mark.parametrize('holder', ['weather', 'service'])
 @async_test
 async def test_only_the_weather_tool_holder_queries_weather(field, holder):

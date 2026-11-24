@@ -17,31 +17,24 @@ from src.asr.engines.whisper import WhisperASR
 
 
 class WhisperASRLoadingTests(unittest.TestCase):
-    def test_loads_faster_whisper_with_cpu_int8(self):
-        engine = WhisperASR.__new__(WhisperASR)
-        engine.model_size = "base"
-        engine.device = "cpu"
-        engine.compute_type = "int8"
-        engine.model = None
-        engine.model_type = None
-
+    def _load(self, device: str, cuda_available: bool) -> tuple[WhisperASR, Mock]:
+        config = SimpleNamespace(asr=SimpleNamespace(device=device))
+        with patch("torch.cuda.is_available", return_value=cuda_available):
+            engine = WhisperASR(config, model_size="base")
         faster_whisper = types.ModuleType("faster_whisper")
-        model = object()
-        faster_whisper.WhisperModel = Mock(return_value=model)
-
-        with patch.dict(
-            sys.modules,
-            {"faster_whisper": faster_whisper},
-        ):
+        faster_whisper.WhisperModel = Mock(return_value=object())
+        with patch.dict(sys.modules, {"faster_whisper": faster_whisper}):
             engine._load_model()
+        return engine, faster_whisper.WhisperModel
 
-        self.assertIs(engine.model, model)
+    def test_auto_device_loads_float16_on_cuda(self):
+        engine, constructor = self._load("auto", cuda_available=True)
+        constructor.assert_called_once_with("base", device="cuda", compute_type="float16")
         self.assertEqual(engine.model_type, "faster-whisper")
-        faster_whisper.WhisperModel.assert_called_once_with(
-            "base",
-            device="cpu",
-            compute_type="int8",
-        )
+
+    def test_auto_device_falls_back_to_int8_on_cpu(self):
+        _, constructor = self._load("auto", cuda_available=False)
+        constructor.assert_called_once_with("base", device="cpu", compute_type="int8")
 
 
 def _wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:

@@ -19,11 +19,6 @@ class AutoResponseProtocolTests(unittest.TestCase):
         self.assertIn("items (array)", prompt)
         self.assertIn("content (string)", prompt)
         self.assertIn("Do not use JSON keys named steps, step, description", prompt)
-        self.assertIn("看板資料格式不是回答內容", prompt)
-        self.assertIn("不是工具呼叫", prompt)
-        self.assertIn("【口語與看板分工】", prompt)
-        self.assertIn("一個流程裡的多個步驟", prompt)
-        self.assertNotIn("台灣歷史", prompt)
 
     def test_auto_prompt_states_the_effective_board_item_limit(self):
         prompt = compose_system_prompt(

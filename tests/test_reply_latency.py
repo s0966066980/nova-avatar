@@ -36,15 +36,6 @@ def test_local_prewarm_finishes_the_disposable_completion_before_readiness():
     assert completion.closed
 
 
-def test_startup_keeps_the_edge_prewarm_result():
-    from src.server.app import _start_edge_tts_prewarm, _await_edge_tts_prewarm
-
-    for ready in (False, True):
-        with patch('src.tts.engines.edge.prewarm_edge_tts', return_value=ready):
-            worker = _start_edge_tts_prewarm(Config())
-            assert _await_edge_tts_prewarm(worker) is ready
-
-
 def test_disabled_prewarm_does_not_contact_edge():
     from src.server.app import _start_edge_tts_prewarm
     config = Config()

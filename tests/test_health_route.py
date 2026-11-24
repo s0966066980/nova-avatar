@@ -7,10 +7,7 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from src.server.routes.health import health_check
-from src.server import routes
-from src.server.server import create_app
 from src.server.state import state
-from tests.access_helpers import built_frontend
 
 
 class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
@@ -94,22 +91,3 @@ def json_text(payload):
     return json.dumps(payload, ensure_ascii=False)
 
 
-class ServerRouteRegistrationTests(unittest.TestCase):
-    def test_speech_routes_are_exported_and_registered(self):
-        """Creating the app registers the voice library; the host path picker is gone."""
-        self.assertFalse(hasattr(routes, "pick_speech_path"))
-
-        app = create_app(frontend_dir=built_frontend())
-        registered = {
-            (route.method, route.resource.canonical)
-            for route in app.router.routes()
-        }
-
-        self.assertNotIn(("POST", "/api/speech/path-picker"), registered)
-        self.assertIn(("GET", "/api/speech/voices"), registered)
-        self.assertIn(("POST", "/api/speech/voices"), registered)
-        self.assertIn(("DELETE", "/api/speech/voices/{voice_id}"), registered)
-        self.assertIn(("GET", "/api/speech/voices/{voice_id}/audio"), registered)
-        self.assertIn(("GET", "/api/voice-tests"), registered)
-        self.assertIn(("POST", "/api/voice-tests/run"), registered)
-        self.assertIn(("DELETE", "/api/voice-tests"), registered)

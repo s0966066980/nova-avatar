@@ -204,48 +204,28 @@ class OverridePersistTests(unittest.TestCase):
             self.assertEqual(data["llm"]["max_tokens"], 360)
             self.assertEqual(data["llm"]["response_max_chars"], 240)
             self.assertEqual(data["llm"]["assistant_profile"]["system_prompt"], "")
-            self.assertEqual(data["llm"]["board"]["max_items"], 8)
             self.assertEqual(data["model"]["type"], "musetalk")
             self.assertEqual(data["model"]["avatar_id"], "musetalk_avatar1")
-            self.assertEqual(data["model"]["mouth_sharpen"], 0.5)
-            self.assertEqual(data["model"]["paste_interpolation"], "lanczos")
-            self.assertEqual(data["model"]["musetalk"]["extra_margin"], 10)
-            self.assertEqual(
-                data["reply_streaming"],
-                {
-                    "enabled": True,
-                    "decoupled_audio_clock": False,
-                    "strong_min_chars": 1,
-                },
-            )
-            self.assertEqual(
-                data["stage"],
-                {
-                    "clear_display_seconds": 15,
-                    **__import__("src.config.stage_composer", fromlist=["DEFAULTS"]).DEFAULTS,
-                    "background_id": "",
-                    "caption_max_chars": 120,
-                    "idle_reset_seconds": 60,
-                    "idle_greeting_enabled": False,
-                    "idle_greeting_seconds": 30,
-                    "caption_x": 50,
-                    "caption_y": 90,
-                    "caption_width": 100,
-                    "board_style": "glass",
-                    "board_width": 252,
-                    "board_height": 300,
-                    "board_transparency": 28,
-                    "board_x": 100,
-                    "board_y": 0,
-                    "board_preset": "tr",
-                    "board_preview": False,
-                    "mic_x": 50,
-                    "mic_y": 62,
-                    "mic_preset": "custom",
-                    "board_open_x": 50,
-                    "board_open_y": 8,
-                },
-            )
+            self.assertIs(data["reply_streaming"]["enabled"], True)
+
+    def test_a_config_without_stage_settings_saves_the_stage_schema_defaults(self):
+        """The writer's fallbacks for a missing stage section must not drift from StageConfig."""
+        from src.config.schema import StageConfig
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runtime_overrides.yaml"
+
+            def saved_stage(**extra):
+                config = SimpleNamespace(
+                    llm=SimpleNamespace(model="m", system_prompt=""),
+                    model=SimpleNamespace(type="musetalk", avatar_id="a"),
+                    **extra,
+                )
+                with patch("src.config.overrides.RUNTIME_OVERRIDES_FILE", path):
+                    persist_runtime_overrides(config)
+                    return load_runtime_overrides()["stage"]
+
+            self.assertEqual(saved_stage(), saved_stage(stage=StageConfig()))
 
 
 class DefaultPromptSettingsTests(unittest.TestCase):

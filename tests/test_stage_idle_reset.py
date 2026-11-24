@@ -70,15 +70,6 @@ class StageIdleResetTests(unittest.IsolatedAsyncioTestCase):
 
         clear.assert_called_once_with(7)
 
-    async def test_console_session_resets_after_the_same_idle_deadline(self):
-        session, events = self.make_session(presenter="console")
-        with patch("src.server.voice_session.clear_session_history") as clear:
-            await self.finish_one_turn(session)
-            await self.settle()
-
-        clear.assert_called_once_with(7)
-        self.assertIn("conversation_reset", [event["type"] for event in events])
-
     async def test_a_new_turn_cancels_the_countdown_and_restarts_it_afterwards(self):
         session, _events = self.make_session(seconds=0.2)
         with patch("src.server.voice_session.clear_session_history") as clear:

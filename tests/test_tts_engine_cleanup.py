@@ -1,7 +1,7 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Only BreezyVoice and Edge TTS remain; saved removed engines fall back to Edge TTS."""
+"""Only BreezyVoice, Matcha and Edge TTS remain; saved removed engines fall back to Edge TTS."""
 
 from __future__ import annotations
 
@@ -25,7 +25,8 @@ from src.server.runtime_settings import (
 from src.tts import voice_library
 from src.tts.factory import create_tts_engine
 
-REMOVED = ("cosyvoice", "fun-cosyvoice3", "fishtts", "gpt-sovits", "indextts2", "xtts")
+# Every retired name takes the same "not a current engine" branch; two stand in for all of them.
+REMOVED = ("cosyvoice", "gpt-sovits")
 LEGACY_FIELDS = {"mode": "zero_shot", "language": "zh", "speaker": "Vivian", "instruct": "", "device": "auto"}
 
 

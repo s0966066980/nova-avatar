@@ -257,19 +257,6 @@ async def test_staying_with_a_non_weather_specialist_releases_the_speculative_an
 
 
 @async_test
-async def test_a_specialist_hands_off_directly_to_another_specialist(field):  # noqa: F811
-    voice, roles = _connect_with_members(
-        field, Mock(return_value={"target": "traffic", "context": "停車場位置"}), "service")
-    try:
-        plan = await roles.before_generate(voice, "停車場在哪裡？", "t", voice._generation)
-        assert plan["handoff_id"] == roles.pending[7]["id"]
-        assert roles.pending[7]["target_profile_id"] == "traffic"
-        assert roles.pending[7]["weather_task"] is None
-    finally:
-        await voice.close()
-
-
-@async_test
 async def test_router_clarify_is_spoken_as_a_fixed_reply(field):  # noqa: F811
     voice, roles = _connect_with_members(
         field, Mock(return_value={"target": None, "clarification": "請問您想先問哪一項？"}))

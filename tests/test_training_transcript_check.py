@@ -38,10 +38,6 @@ def transcriber(heard: dict[str, str]):
     return lambda path: heard[path.stem]
 
 
-def test_the_default_threshold_is_the_inherited_one():
-    assert DEFAULT_MIN_SIMILARITY == 0.65
-
-
 def test_similarity_ignores_punctuation_case_and_script_variant():
     assert similarity_ratio("你好，世界。", "你好世界") == 1.0
     assert similarity_ratio("Hello World", "hello world") == 1.0

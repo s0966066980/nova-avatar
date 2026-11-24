@@ -20,7 +20,6 @@ from src.llm.llamacpp import (
     cuda_library_dirs,
     find_llama_server,
     gguf_block_count,
-    resolve_gguf,
     stop_llama_on_port,
     shutdown_llama_server,
     suggest_gpu_layers,

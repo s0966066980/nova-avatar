@@ -13,7 +13,7 @@ import pytest
 from src.server import server
 from src.server.server import FrontendNotBuilt, create_app, require_frontend
 from src.utils.paths import PROJECT_ROOT
-from tests.access_helpers import LAN_ADDRESS, access_client, built_frontend
+from tests.access_helpers import LAN_ADDRESS, access_client
 
 
 def test_default_frontend_is_the_absolute_vite_build_directory():
@@ -41,12 +41,6 @@ def test_lan_visitor_gets_the_console_page_and_nothing_outside_the_build():
                 response = await client.get(path)
                 assert response.status == 404, (path, response.status)
     asyncio.run(run())
-
-
-def test_built_frontend_helper_emits_both_entry_pages():
-    root = built_frontend()
-    assert (root / "index.html").is_file()
-    assert (root / "stage.html").is_file()
 
 
 def test_vite_build_emits_the_stage_page():

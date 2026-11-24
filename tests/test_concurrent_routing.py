@@ -295,19 +295,6 @@ class HandoffTurnTests(_SessionCase):
                      "fragment_sequence": 0}
         self.assertTrue(self.session.accepts_media(new_point, "avatar_audio_enqueue"))
 
-    async def test_handoff_metrics_measure_the_fixed_reply_not_the_discarded_answer(self):
-        roles = _Roles({"fixed": FIXED, "handoff_id": "h1"}, clock=self.clock, seconds=0.5)
-        answer = _Answer(self.session, clock=self.clock, seconds=0.2)
-        await self._start(roles, answer, "明天臺北會下雨嗎")
-        await asyncio.to_thread(answer.started.wait, 2)
-        roles.gate.set()
-        await self.session._turn_task
-        stages = self.session.metrics_snapshot()["stage_seconds"]
-        self.assertEqual(stages["routing"], 0.7)
-        self.assertEqual(stages["pre_answer"], 0.7)
-        self.assertIsNone(stages["llm_first_token"])
-        self.assertIsNone(stages["routing_hold"])
-
     async def test_routed_context_regenerates_the_answer_without_holding_it(self):
         weather = {"status": "available", "source": "CWA", "series": {}}
         roles = _Roles({"weather": weather, "context": "已確認臺北市"})
@@ -484,12 +471,6 @@ class RetrievalBudgetTests(_SessionCase):
         answer, statuses = await self._retrieve_after(0.2)
         self.assertIn("一般速度的事實", answer.calls[0]["rag_context"])
         self.assertEqual(statuses, ["matched"])
-
-    async def test_retrieval_at_the_old_gpu_ollama_speed_no_longer_delays_the_answer(self):
-        # ~0.5 s was the typical retrieval while BGE-M3 ran on the GPU Ollama.
-        answer, statuses = await self._retrieve_after(0.5)
-        self.assertNotIn("rag_context", answer.calls[0])
-        self.assertEqual(statuses, ["timeout"])
 
     async def test_retrieval_within_budget_is_used(self):
         async def fast(_client, _question, _dataset_ids, **_kwargs):

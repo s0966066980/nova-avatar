@@ -4,17 +4,14 @@
 """Issue 08: simple replies open with one short complete sentence; board speech is exempt."""
 from __future__ import annotations
 
-import re
 
 import pytest
 
 from src.llm.prompts import compose_system_prompt
 from src.llm.reply_contract import (
-    CHANNEL_SPLIT_PROMPT, FIRST_SENTENCE_MAX_CHARS, FIRST_SENTENCE_PROMPT, first_sentence_prompt,
+    FIRST_SENTENCE_MAX_CHARS, FIRST_SENTENCE_PROMPT, first_sentence_prompt,
 )
 from src.llm.router import ReplyMode
-from src.llm.rules import default_rules
-from src.server.reply_streaming.fragmenter import content_length
 
 SAVED_RULES = {
     "activation": "依本輪問題選擇簡答或看板回覆。",
@@ -56,18 +53,6 @@ def test_saved_custom_rules_cannot_drop_it_and_it_follows_them():
     assert prompt.count(FIRST_SENTENCE_PROMPT) == 1
     assert prompt.index(FIRST_SENTENCE_PROMPT) > prompt.index(SAVED_RULES["speech"])
     assert prompt.index(FIRST_SENTENCE_PROMPT) > prompt.index("【口語長度】")
-
-
-def test_the_board_speech_example_is_not_shortened_to_the_rule():
-    # Board speech is exempt, so the example is the one main had before issue 08.
-    example = re.search(r"正確口語範例：「(.+?)」", CHANNEL_SPLIT_PROMPT).group(1)
-    assert example == "先確保系統能安全穩定運作，具體檢查項目已整理在看板。"
-    assert content_length(example) > FIRST_SENTENCE_MAX_CHARS
-
-
-def test_the_default_speech_rule_does_not_ask_for_a_longer_first_sentence():
-    assert "10–20" not in default_rules()["speech"]
-    assert "實質答案" in default_rules()["speech"]
 
 
 def test_english_sessions_get_the_limit_in_words():

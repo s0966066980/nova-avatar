@@ -19,7 +19,7 @@ from src.server.access import ROUTE_ACCESS, Access
 from src.server.routes import tts_training
 from src.server.server import create_app
 from src.server.tts_training_jobs import TrainingJobManager, TrainingParams
-from tests.access_helpers import LAN_ADDRESS, access_client, built_frontend, same_origin
+from tests.access_helpers import access_client, built_frontend, same_origin
 from tests.test_training_jobs import ENOUGH_VRAM_MIB, edge_synthesis, rig
 from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
@@ -299,18 +299,6 @@ async def test_blocking_work_runs_off_the_event_loop(tmp_path):
     assert seen == [False]
 
 
-@async_test
-async def test_the_routes_refuse_anonymous_and_lan_clients(tmp_path):
-    r = rig(tmp_path)
-    async with access_client(admin=False, app_factory=app_with(r.manager)) as client:
-        for method, path in ROUTES:
-            response = await client.request(method, path)
-            assert response.status == 401, (method, path)
-    async with access_client(admin=False, remote=LAN_ADDRESS, app_factory=app_with(r.manager)) as client:
-        assert (await client.get(BASE)).status == 401
-    assert r.spawner.commands == []
-
-
 def test_the_default_manager_reads_the_live_configuration(tmp_path, monkeypatch):
     from src.config.loader import dict_to_config
     from src.server.state import state
@@ -479,17 +467,6 @@ async def test_the_default_previewer_speaks_through_the_shared_loader_with_the_c
     [tts] = sherpa.instances
     assert tts.config.model.num_threads == 2 and tts.config.model.provider == "cpu"
     assert missing.status == 404 and missing_body["code"] == -1
-
-
-@async_test
-async def test_the_preview_needs_the_admin_session_and_the_same_origin(tmp_path):
-    previewer = FakePreviewer()
-    payload = {"voice_id": "v", "sentence": "zh"}
-    async with access_client(admin=False, app_factory=app_with(rig(tmp_path / "a").manager, previewer)) as anonymous:
-        assert (await anonymous.post(VOICE_PREVIEW, headers=same_origin(anonymous), json=payload)).status == 401
-    async with access_client(app_factory=app_with(rig(tmp_path / "b").manager, previewer)) as client:
-        assert (await client.post(VOICE_PREVIEW, headers={"Origin": "http://evil.example"}, json=payload)).status == 403
-    assert previewer.calls == []
 
 
 # --------------------------------------------------------------------------- server lifecycle

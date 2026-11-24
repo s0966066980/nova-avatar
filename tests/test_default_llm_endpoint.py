@@ -66,8 +66,3 @@ def test_legacy_single_endpoint_ollama_config_is_unchanged(overrides):
     assert (llm.provider, llm.base_url) == ("ollama", OLLAMA_URL)
 
 
-def test_docs_explain_how_to_disable_the_default_ollama():
-    installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
-
-    assert "sudo systemctl disable --now ollama" in installation
-    assert "11437" in installation

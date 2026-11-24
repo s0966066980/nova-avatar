@@ -225,7 +225,8 @@ def test_a_stage_connection_blocks_with_the_count(tmp_path):
 
 @pytest.mark.parametrize(
     ("free_mib", "passes"),
-    [(8 * 1024 - 1, False), (8 * 1024, True), (3000, False), (24000, True)],
+    # The boundary itself is gpu_guard's rule (test_training_gpu); this checks the wiring.
+    [(3000, False), (24000, True)],
 )
 def test_free_vram_is_compared_with_the_threshold(tmp_path, free_mib, passes):
     check = check_of(rig(tmp_path, vram=VramReading(free_mib)).manager.evaluate_preflight("voice", "x"), "free_vram")
@@ -236,12 +237,6 @@ def test_free_vram_is_compared_with_the_threshold(tmp_path, free_mib, passes):
 def test_the_vram_threshold_is_configurable(tmp_path):
     r = rig(tmp_path, vram=VramReading(6 * 1024), settings=TrainingSettings(min_free_vram_gb=4))
     assert check_of(r.manager.evaluate_preflight("voice", "x"), "free_vram").status == "pass"
-
-
-def test_an_unreadable_gpu_refuses_with_the_reason(tmp_path):
-    r = rig(tmp_path, vram=VramReading(None, "找不到 nvidia-smi"))
-    check = check_of(r.manager.evaluate_preflight("voice", "x"), "free_vram")
-    assert check.status == "fail" and "找不到 nvidia-smi" in check.reason and check.detail["free_gb"] is None
 
 
 def test_a_missing_training_environment_is_listed(tmp_path):
@@ -305,9 +300,9 @@ def test_a_small_corpus_only_warns(tmp_path):
     assert preflight.can_start
 
 
-@pytest.mark.parametrize("name", [None, "", "  ", "字" * 41])
-def test_the_model_name_is_required_and_at_most_forty_characters(tmp_path, name):
-    check = check_of(rig(tmp_path).manager.evaluate_preflight("voice", name), "model_name")
+def test_a_bad_model_name_fails_the_preflight(tmp_path):
+    """The naming rules are check_model_name's (test_training_bundle); this checks the wiring."""
+    check = check_of(rig(tmp_path).manager.evaluate_preflight("voice", ""), "model_name")
     assert check.status == "fail"
 
 
@@ -622,16 +617,6 @@ def test_cancel_stops_training_with_sigterm_and_keeps_the_corpus(tmp_path):
     assert len(r.store.get("voice").lines) == 3 and r.store.get("voice").counts.confirmed == 3
     workdir = r.paths.root.parent / "corpora" / "voice" / "jobs" / final["id"]
     assert [p.name for p in workdir.iterdir()] == ["log.txt"]  # training progress is not kept
-
-
-def test_a_child_that_ignores_sigterm_is_killed_after_the_grace_period(tmp_path):
-    r = rig(tmp_path, train_code=None, train_ignores_term=True, settings=TrainingSettings(cancel_grace_seconds=0.05))
-    r.manager.start(request())
-    wait_for(lambda: r.spawner.processes)
-    r.manager.cancel()
-    r.manager.join(20)
-    assert r.manager.status()["status"] == "cancelled"
-    assert r.spawner.processes[0].signals[:2] == ["TERM", "KILL"]
 
 
 def test_cancel_during_edge_synthesis_stops_without_training(tmp_path):

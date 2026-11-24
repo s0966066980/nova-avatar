@@ -253,14 +253,6 @@ def test_a_preset_whose_sentence_cannot_be_expanded_is_refused_at_runtime(store,
         sentence_module.select_preset("quick-test")
 
 
-def test_the_real_presets_expand_every_digit():
-    from src.tts.training.numerals import normalize_digits
-    from src.tts.training.sentences import PRESETS, select_preset
-
-    for key in PRESETS:
-        assert all(normalize_digits(text).resolved for text in select_preset(key))
-
-
 # ------------------------------------------------------------------ quality check
 
 

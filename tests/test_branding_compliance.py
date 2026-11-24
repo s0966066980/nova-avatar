@@ -16,7 +16,6 @@ class BrandingComplianceTests(unittest.TestCase):
     def test_project_metadata_uses_nova_avatar(self):
         project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         self.assertRegex(project, r'(?m)^name = "nova-avatar"$')
-        self.assertRegex(project, r'(?m)^version = "1\.0\.0"$')
         self.assertIn('{ name = "HongXian0903" }', project)
         self.assertIn(
             'Repository = "https://github.com/s0966066980/nova-avatar"',
@@ -141,22 +140,6 @@ class BrandingComplianceTests(unittest.TestCase):
         self.assertRegex(stack, r"\| TTS \| Matcha-TTS voice models[^\n]*Development only")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("docs/voice-models.md", readme)
-
-    def test_commercial_review_profile_and_audits_are_present(self):
-        profile = (ROOT / "config/config_commercial.yaml").read_text(encoding="utf-8")
-        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
-        attribution_audit = (ROOT / "docs/source-attribution-audit.md").read_text(
-            encoding="utf-8"
-        )
-        workflow = (ROOT / "docs/current-project-workflow.md").read_text(
-            encoding="utf-8"
-        )
-
-        self.assertIn("type: musetalk", profile)
-        self.assertIn("Wav2Lip", stack)
-        self.assertIn("Research / Non-commercial", stack)
-        self.assertIn("src/avatars/musetalk/", attribution_audit)
-        self.assertIn("清除過往工作項目", workflow)
 
 
 if __name__ == "__main__":

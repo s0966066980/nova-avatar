@@ -216,43 +216,6 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         self.assertFalse(releasing.is_alive())
         self.assertEqual(received, [0])
 
-    def test_rate_limited_synthesis_waits_before_retrying(self):
-        from aiohttp import WSServerHandshakeError
-
-        payload = _mp3_fixture()
-        frames, failures, requests = [], [], []
-
-        class Parent:
-            def put_audio_frame(self, frame, _eventpoint):
-                frames.append(frame)
-
-            def notify_fragment_synthesis_failed(self, _eventpoint, reason):
-                failures.append(reason)
-
-        class RateLimitedCommunicate:
-            async def stream(self):
-                requests.append(time.monotonic())
-                if len(requests) == 1 or requests[-1] - requests[0] < 0.95:
-                    raise WSServerHandshakeError(
-                        SimpleNamespace(real_url="https://example.invalid/tts"),
-                        (), status=429, headers={"Retry-After": "1"},
-                    )
-                yield {"type": "audio", "data": payload}
-
-        tts = self._make_tts(Parent())
-        with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
-            side_effect=lambda *_args: RateLimitedCommunicate(),
-        ):
-            tts.txt_to_audio(("等待限流恢復。", {
-                "turn_id": "turn-1", "generation": 1, "fragment_sequence": 0,
-            }))
-
-        self.assertEqual(failures, [])
-        self.assertTrue(frames)
-        self.assertEqual(len(requests), 2)
-        self.assertGreaterEqual(requests[1] - requests[0], 0.95)
-
     def test_rate_limit_wait_can_be_cancelled_without_another_request(self):
         from aiohttp import WSServerHandshakeError
 

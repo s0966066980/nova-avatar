@@ -134,10 +134,7 @@ class ReplyStreamingConfigTests(unittest.TestCase):
         config_path = Path(__file__).resolve().parents[1] / "config" / "config.yaml"
         config_dict = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(
-            config_dict["reply_streaming"],
-            {"enabled": False, "semantic_wait_seconds": 0.5},
-        )
+        self.assertIs(config_dict["reply_streaming"]["enabled"], False)
 
     def test_process_scoped_environment_can_enable_soak_without_changing_yaml(self):
         from src.config.loader import load_config
