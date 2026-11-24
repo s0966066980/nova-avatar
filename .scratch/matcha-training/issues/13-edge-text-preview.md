@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # Edge 文字清單：合成前校對
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)第 7、13 點與介面原型。工單 06 的 `POST /api/tts/training/start` 直接收 `sentences`，數字展開後有未解決項的句子會等到合成後才進入「待確認」，管理者白白花了 Edge 請求才發現。決定 13 要求：Edge 的上傳文字檔要在**合成前**校對（內建句庫免校對）。
 
