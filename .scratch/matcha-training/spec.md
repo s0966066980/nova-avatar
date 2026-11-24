@@ -80,3 +80,11 @@ Status: 已確認（2026-11-24），疊音／跳音診斷已完成，待介面�
 - [11 疊字評量腳本](issues/11-repeated-syllable-benchmark.md)
 - [12 自動逐字稿與舞台共用 GPU 的保護](issues/12-transcription-gpu-guard.md)
 - [13 Edge 文字清單：合成前校對](issues/13-edge-text-preview.md)
+- [14 Edge 路徑的路由缺口與三句預設試聽](issues/14-edge-path-routes-and-preview.md)
+
+## Follow-ups（工單 08 之後，不在第一版）
+
+- 校對表尚缺：來源備註欄、編輯時的即時數字展開預覽、還原已修改的句子、內建句庫範例、每句長度提醒。
+- 伺服器回傳的原因文字只有繁體中文，在 zh-CN、en-US 介面仍顯示中文。
+- 校對表的「第 N 句」是清理後清單的位置，不是上傳檔案的原始行號。
+- 沒有刪除語料與聲線模型的路由。
