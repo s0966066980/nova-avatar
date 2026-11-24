@@ -18,6 +18,7 @@ const Panel = await loadComponent(new URL('../src/components/SettingsPanel.vue',
   './RoleComposition.vue': { default: { setup: (_, { expose }) => { expose({ dirtyCount: 2 }); return () => h('div', '角色組合與交接編輯器') } } },
   './IdleGreetingSettings.vue': { default: { setup: () => () => h('div', '閒置招呼獨立設定頁') } },
   './VoiceModelCatalog.vue': { default: { setup: () => () => h('div', '聲線模型清單') } },
+  './voice-training/VoiceTrainingWorkbench.vue': { default: { setup: () => () => h('div', '聲線訓練工作台') } },
   '../composables/useI18n': { useI18n: () => ({ t: key => key, setLocale() {} }) },
   '../composables/useRuntimeSettings': { useRuntimeSettings: () => ({ ...useRuntimeSettings(),
     loadRuntimeSettings: async () => {}, loadOllamaModels: async () => {},
@@ -40,7 +41,7 @@ test('設定導覽直接提供閒置招呼；訪客互動是數位人設定的�
   assert.ok(button(view.root, '閒置招呼'), '側欄應有可直接找到的閒置招呼入口')
   const rail = all(view.root, node => node.props.class === 'rail-nav-list')[0]
   assert.deepEqual(all(rail, node => node.type === 'button').map(node => node.props.id), [
-    'railTab-conversation', 'railTab-roles', 'railTab-greeting', 'railTab-avatar', 'railTab-stage', 'railTab-experience'])
+    'railTab-conversation', 'railTab-roles', 'railTab-greeting', 'railTab-avatar', 'railTab-voiceTraining', 'railTab-stage', 'railTab-experience'])
   assert.ok(!button(rail, '訪客互動'), '訪客互動與語音辨識不在左側選單')
   const layout = all(view.root, node => node.props.id === 'settings-panel-stage')[0]
   assert.doesNotMatch(textContent(layout), /閒置招呼|招呼間隔|訪客對話重置/)
@@ -49,6 +50,12 @@ test('設定導覽直接提供閒置招呼；訪客互動是數位人設定的�
   assert.match(textContent(interaction), /訪客對話重置/)
   assert.match(textContent(interaction), /收音/)
   assert.match(textContent(interaction), /聲線模型清單/, '設定頁列出聲線模型與使用限制標示')
+  // 聲線訓練 is its own category and opens its workbench only when first visited; it has no page-save footer.
+  assert.doesNotMatch(textContent(all(view.root, node => node.props.id === 'catPanel-voiceTraining')[0]), /聲線訓練工作台/, '尚未造訪時不載入工作台')
+  await all(rail, node => node.props.id === 'railTab-voiceTraining')[0].props.onClick()
+  await settle()
+  assert.match(textContent(all(view.root, node => node.props.id === 'catPanel-voiceTraining')[0]), /聲線訓練工作台/)
+  assert.equal(all(view.root, node => node.type === 'footer')[0].style.display, 'none')
   await button(view.root, '閒置招呼').props.onClick()
   await settle()
   assert.equal(button(view.root, '閒置招呼').props['aria-selected'], true)

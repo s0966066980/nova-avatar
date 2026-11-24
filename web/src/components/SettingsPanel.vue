@@ -294,6 +294,11 @@
           <IdleGreetingSettings v-if="greetingVisited" ref="greetingRef" :active="activeSettingsTab === 'greeting'" />
         </div>
 
+        <!-- 聲線訓練：Edge 測試用老師或自己的錄音，訓練可選用的聲線模型 -->
+        <div v-show="activeSettingsTab === 'voiceTraining'" class="settings-category-panel unified-role-panel" id="catPanel-voiceTraining" role="tabpanel" aria-labelledby="railTab-voiceTraining">
+          <VoiceTrainingWorkbench v-if="trainingVisited" :active="activeSettingsTab === 'voiceTraining'" @open-profiles="openProfilesForVoice" />
+        </div>
+
         <!-- ── 分類 2：數位人與畫質 (滿板寬敞角色展示) ── -->
         <div
           v-show="activeSettingsTab === 'avatar'"
@@ -1019,7 +1024,7 @@
       </div>
 
       <!-- 滿板固定底部動作條 -->
-      <footer v-show="!['roles', 'greeting', 'conversation'].includes(activePage)" class="settings-fixed-footer">
+      <footer v-show="!['roles', 'greeting', 'conversation', 'voiceTraining'].includes(activePage)" class="settings-fixed-footer">
         <button v-if="activeSettingsTab === 'experience'" type="button" class="btn-restore-gray" @click="confirmKind = 'reset'">
           <i class="bi bi-arrow-counterclockwise"></i> 還原系統偏好預設
         </button>
@@ -1073,6 +1078,7 @@ import { avatarScenePreviewUrl } from '../scenePreview.js'
 import AvatarProfiles from './AvatarProfiles.vue'
 import RoleComposition from './RoleComposition.vue'
 import IdleGreetingSettings from './IdleGreetingSettings.vue'
+import VoiceTrainingWorkbench from './voice-training/VoiceTrainingWorkbench.vue'
 import VoiceModelCatalog from './VoiceModelCatalog.vue'
 import {
   boardReopenPresentation,
@@ -1138,6 +1144,7 @@ const compositionDirtyCount = computed(() => compositionRef.value?.dirtyCount ||
 const profilesRef = ref(null)
 const greetingRef = ref(null)
 const greetingVisited = ref(props.initialTab === 'greeting')
+const trainingVisited = ref(props.initialTab === 'voiceTraining')
 const roleInitialSection = ref(props.initialTab === 'rag' ? 'rag' : props.initialTab === 'ai' ? 'model' : 'identity')
 const settingsContentRef = ref(null)
 const confirmKind = ref('')
@@ -1266,6 +1273,7 @@ const settingsTabs = computed(() => [
   { id: 'roles', icon: 'bi bi-people-fill', label: '數位人、AI 與知識設定' },
   { id: 'greeting', icon: 'bi bi-chat-heart', label: '閒置招呼' },
   { id: 'avatar', icon: 'bi bi-person-video3', label: '數位人與畫質', badge: selectedEngine.value === 'musetalk' ? 'MuseTalk' : 'Wav2Lip · Research' },
+  { id: 'voiceTraining', icon: 'bi bi-soundwave', label: t('settings.voiceTraining.tab') },
   { id: 'stage', icon: 'bi bi-badge-cc-fill', label: '舞台與看板排版', badge: currentBoardStyleLabel.value },
   { id: 'experience', icon: 'bi bi-palette-fill', label: '系統偏好與自訂' }
 ])
@@ -1457,8 +1465,15 @@ const editRoleProfile = (profileId, section) => {
   profilesRef.value?.openProfile(profileId, section)
 }
 
+// A trained voice model is chosen in a digital-human profile: open the profile list.
+const openProfilesForVoice = () => {
+  selectSettingsTab('roles')
+  selectRoleSegment('profiles')
+}
+
 const selectSettingsTab = (tabId) => {
   if (tabId === 'greeting') greetingVisited.value = true
+  if (tabId === 'voiceTraining') trainingVisited.value = true
   if (tabId === 'interaction') {
     selectRoleSegment('interaction')
     tabId = 'roles'
@@ -1858,7 +1873,8 @@ defineExpose({
   .unified-role-panel { display: flex; flex-direction: column; }
   .unified-role-panel > .conversation-panel { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
   .unified-role-panel > .role-settings,
-  .unified-role-panel > .idle-greeting-settings { flex: 1 1 0; min-height: 0; }
+  .unified-role-panel > .idle-greeting-settings,
+  .unified-role-panel > .vt-root { flex: 1 1 0; min-height: 0; }
   .role-workspace > .role-page-head { flex: none; }
   .role-workspace > .role-seg-panel:not(.settings-category-panel) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
   .role-seg-panel > .role-settings,

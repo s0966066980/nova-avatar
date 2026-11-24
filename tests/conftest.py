@@ -45,8 +45,33 @@ AREA_BY_FILE = {
     "test_funasr.py": "speech",
     "test_asr_comparison.py": "speech",
     "test_tts_bakeoff.py": "speech",
+    "test_repeated_syllable_benchmark.py": "speech",
     "test_tts_engine_cleanup.py": "speech",
     "test_voice_models.py": "speech",
+    "test_voice_preview.py": "speech",
+    "test_training_numerals.py": "speech",
+    "test_training_usage.py": "speech",
+    "test_training_corpus.py": "speech",
+    "test_training_audio_decode.py": "speech",
+    "test_training_transcripts.py": "speech",
+    "test_training_ingest.py": "speech",
+    "test_training_transcription.py": "speech",
+    "test_tts_corpus_routes.py": "speech",
+    "test_training_sentences.py": "speech",
+    "test_training_audio_quality.py": "speech",
+    "test_training_edge_teacher.py": "speech",
+    "test_training_edge_acknowledgement.py": "speech",
+    "test_training_transcript_check.py": "speech",
+    "test_matcha_training_scripts.py": "speech",
+    "test_training_gpu_probe.py": "speech",
+    "test_training_gpu_guard.py": "speech",
+    "test_training_asr.py": "speech",
+    "test_training_processes.py": "speech",
+    "test_training_preparation.py": "speech",
+    "test_training_manifest.py": "speech",
+    "test_training_bundle.py": "speech",
+    "test_training_jobs.py": "speech",
+    "test_training_routes.py": "speech",
     "test_matcha_tts.py": "speech",
     "test_default_voice.py": "speech",
     "test_health_route.py": "runtime",
@@ -67,6 +92,7 @@ AREA_BY_FILE = {
     "test_musetalk_preprocessing.py": "avatar",
     "test_musetalk_acceleration.py": "avatar",
     "test_optional_runtime_extras.py": "runtime",
+    "test_matcha_train_setup.py": "runtime",
     "test_pinned_resources.py": "runtime",
     "test_playback_commit.py": "conversation",
     "test_profile_voice_preview.py": "speech",
@@ -170,3 +196,13 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         session.config.get_terminal_writer().line(
             f"\nTests wrote to the repository's data/ (use tmp_path): {', '.join(added)}", red=True)
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
+@pytest.fixture(autouse=True)
+def _training_data_in_tmp(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> None:
+    """A server started by a test must never recover or stop the venue's real training jobs.
+
+    ``create_app`` builds the training manager on ``corpus.TRAINING_ROOT``, and the manager
+    recovers (and may signal) the jobs saved under it at startup.
+    """
+    monkeypatch.setattr("src.tts.training.corpus.TRAINING_ROOT", tmp_path_factory.mktemp("training-root"))

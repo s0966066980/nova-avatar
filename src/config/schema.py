@@ -220,6 +220,8 @@ class TTSConfig:
 class MatchaConfig:
     """Matcha-TTS 的伺服器設定，所有數位人設定檔共用（不屬於任何設定檔）"""
     num_threads: int = 4  # sherpa-onnx 在 CPU 上合成的執行緒數
+    training_min_free_vram_gb: float = 8.0  # 聲線訓練：剩餘顯存低於此值（GB）時拒絕開始
+    training_whisper_model: str = "small"  # 訓練前逐字稿比對用的 faster-whisper 大小（在 CPU 執行）
 
 
 @dataclass

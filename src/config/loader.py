@@ -19,6 +19,7 @@ from .schema import (
 
 # sherpa-onnx CPU threads for Matcha-TTS; more than the cores only adds contention.
 MAX_MATCHA_THREADS = 64
+MAX_TRAINING_VRAM_GB = 1024
 
 
 def _merge_dicts(base: Dict, override: Dict) -> Dict:
@@ -123,6 +124,15 @@ def dict_to_config(config_dict: Dict) -> Config:
     threads = matcha_config.num_threads
     if type(threads) is not int or not 1 <= threads <= MAX_MATCHA_THREADS:
         raise ValueError(f"matcha.num_threads 必須是 1–{MAX_MATCHA_THREADS} 的整數：{threads!r}")
+    from src.tts.training.asr import WHISPER_MODELS
+
+    vram = matcha_config.training_min_free_vram_gb
+    if type(vram) not in (int, float) or not 0 < vram <= MAX_TRAINING_VRAM_GB:
+        raise ValueError(f"matcha.training_min_free_vram_gb 必須是 0–{MAX_TRAINING_VRAM_GB} GB 的數字：{vram!r}")
+    if matcha_config.training_whisper_model not in WHISPER_MODELS:
+        raise ValueError(
+            f"matcha.training_whisper_model 必須是 {', '.join(WHISPER_MODELS)} 之一：{matcha_config.training_whisper_model!r}"
+        )
     asr_config = ASRConfig(**config_dict.get('asr', {}))
     vad_config = VADConfig(**config_dict.get('vad', {}))
     llm_dict = dict(config_dict.get('llm', {}) or {})

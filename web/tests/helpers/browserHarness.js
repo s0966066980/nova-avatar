@@ -51,7 +51,8 @@ export async function stubBackend(page) {
 }
 
 // Each state opens one settings tab, optionally a segment (tab) and sub-view
-// (buttons, then CSS selectors to click), and names its blocks.
+// (buttons, then CSS selectors to click), and names its blocks. States run in
+// order in one page, so the voiceTraining states walk the workbench screen by screen.
 const compose = '.rc-list-card, .rc-editor, .rc-aside'
 export const settingsStates = [
   { id: 'conversation', select: ['#catPanel-conversation select', '11'], blocks: '.conversation-panel' },
@@ -64,6 +65,10 @@ export const settingsStates = [
   { id: 'roles', view: 'interaction', tab: '訪客互動與語音辨識', blocks: '.setting-card' },
   { id: 'greeting', blocks: '.greeting-side, .greeting-main' },
   { id: 'avatar', blocks: '.setting-card' },
+  { id: 'voiceTraining', blocks: '.vt-card' },
+  { id: 'voiceTraining', view: 'source', click: ['.vt-card-head .vt-btn.primary', 'label.vt-opt >> nth=0'], blocks: '.vt-card' },
+  { id: 'voiceTraining', view: 'edge-confirm', click: ['.vt-foot .vt-right .vt-btn.primary'], blocks: '.vt-card' },
+  { id: 'voiceTraining', view: 'preflight', click: ['#vt-msa-ok', '.vt-foot .vt-right .vt-btn.primary', '.vt-foot .vt-right .vt-btn.primary'], blocks: '.vt-card' },
   { id: 'stage', blocks: '.setting-card, .stage-live-preview-card' },
   { id: 'experience', blocks: '.setting-card' }
 ]

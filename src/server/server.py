@@ -124,7 +124,10 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
             await initialize_roles(state)
     app.on_startup.append(prepare_roles)
     register_profile_routes(app)
-    
+    routes.register_tts_corpus_routes(app)
+    from src.server.routes.tts_training import register as register_tts_training
+    register_tts_training(app)
+
     # 路由集中註冊，避免分散難維護
     app.router.add_post("/offer", routes.offer)
     app.router.add_post("/human", routes.human)

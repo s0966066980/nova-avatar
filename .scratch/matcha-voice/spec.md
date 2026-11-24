@@ -99,3 +99,4 @@ base 模型的目錄沒有使用限制標示檔，所以第一階段**不會被�
 - Edge TTS 改用 `src/tts/pcm_emitter.py` 輸出 PCM，與 Matcha 共用同一套切幀。
 - `tts.ref_file` 改名：它在各引擎代表「用哪個聲音」（Edge 聲線名稱、BreezyVoice 音訊庫 ID、Matcha 聲線模型 ID），名稱已不貼切；改名需要設定檔與覆寫檔遷移。
 - 現版基準 `tests/current-version-baseline.json`（尚在 main 工作目錄、未提交）的 `supported_options.tts` 需加入 `matcha`。
+- 已知品質問題（2026-11-24 診斷）：`zh-tw-hsiaochen-edge` 的聲學權重會重複音節（疊字），原版評比中文 400 句有 42 句；Matcha 片段之間沒有預取而有 221–280 ms 空白。處理見 [Matcha 訓練工作台](../matcha-training/spec.md)工單 01 與 11。第 3 階段的介面品質說明可考慮補上疊字率。

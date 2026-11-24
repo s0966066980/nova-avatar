@@ -447,7 +447,10 @@ async def test_console_answer_does_not_cancel_stage_greeting(field):
 
 
 @async_test
-async def test_greeting_only_profile_apply_keeps_playing_media_and_avoids_rebinding(field):
+async def test_greeting_only_profile_apply_keeps_playing_media_and_avoids_rebinding(field, monkeypatch):
+    # Weights and avatar material live in gitignored directories, so a clean checkout has none.
+    monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+    monkeypatch.setattr('src.avatars.catalog.avatar_uses_green_screen', lambda *_: True)
     roles = field
     roles.profiles_applied = True
     roles.state.config.stage.idle_greeting_enabled = True
