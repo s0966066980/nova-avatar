@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 自動逐字稿與舞台共用 GPU 的保護
-Status: ready-for-agent
+Status: resolved
 
 依[規格](../spec.md)第 9 點。工單 05 的自動逐字稿在有 CUDA 時預設把 faster-whisper 載入到 GPU（`src/tts/training/transcription.py`），而且是在主程式行程內；舞台正在運作時，這會與 MuseTalk 與 LLM 搶用同一張 GPU，顯存吃緊時可能讓舞台出現 OOM。
 
