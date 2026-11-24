@@ -71,8 +71,10 @@ export function createTrainingApi(fetchImpl = (...args) => globalThis.fetch(...a
     getCorpus: slug => get(corpusPath(slug)),
     createCorpus: body => post(CORPORA, body),
     // Edge only: records the confirmation and the clause text that was shown
-    // (exactly the text the server delivered as settings.edge_clause).
-    recordAcknowledgement: (slug, shownText) => post(`${corpusPath(slug)}/acknowledgement`, { shown_text: shownText }),
+    // (exactly the text the server delivered as settings.edge_clause). The server also
+    // requires `confirmed: true`, which the caller passes only once the box is ticked.
+    recordAcknowledgement: (slug, shownText, confirmed) =>
+      post(`${corpusPath(slug)}/acknowledgement`, { shown_text: shownText, confirmed: confirmed === true }),
     uploadLine(slug, file, filename = file.name) {
       const form = new FormData()
       form.append('audio', file, filename)

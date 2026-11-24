@@ -57,7 +57,7 @@ test('畫面以變數組出的鍵，每個可能的值都有字串', () => {
     ...stepList('edge').concat(stepList('upload')).map(s => `steps.${s.labelKey}`),
     ...['source', 'edge-confirm', 'upload', 'textEdge', 'textUpload', 'review', 'reviewEdge', 'preflight', 'job', 'done']
       .flatMap(k => [`screens.${k}.title`, `screens.${k}.desc`]),
-    ...['admin', 'stage_connections', 'free_vram', 'environment', 'other_job', 'edge_acknowledgement', 'corpus', 'corpus_size', 'model_name'].map(k => `checks.${k}`),
+    ...['admin', 'stage_connections', 'free_vram', 'environment', 'other_job', 'transcription', 'edge_acknowledgement', 'corpus', 'corpus_size', 'model_name'].map(k => `checks.${k}`),
     ...['pending', 'confirmed', 'excluded', 'unresolved'].map(k => `review.state.${k}`),
     ...['all', 'pending', 'attention', 'excluded'].map(k => `review.filter.${k}`),
     ...['pending', 'unresolved', 'none_confirmed'].map(k => `review.reason.${k}`),

@@ -51,7 +51,7 @@
           </li>
         </ul>
         <p v-if="state.preview.error" class="vt-err" role="alert"><i :class="icon('x-circle')" aria-hidden="true"></i>{{ state.preview.error }}</p>
-        <audio v-if="state.preview.audio" :src="state.preview.audio" controls autoplay :aria-label="tx('done.playerLabel')"></audio>
+        <audio v-if="state.preview.audio" :src="state.preview.audio" controls controlsList="nodownload" autoplay :aria-label="tx('done.playerLabel')"></audio>
       </div>
     </template>
 

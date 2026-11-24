@@ -438,7 +438,7 @@ export default {
         reasonUnchecked: '还没有检查结果，请按「重新检查」。'
       },
       checks: {
-        admin: '管理员登录', stage_connections: '舞台连接', free_vram: '剩余显存', environment: '训练环境', other_job: '其他训练工作',
+        admin: '管理员登录', stage_connections: '舞台连接', free_vram: '剩余显存', environment: '训练环境', other_job: '其他训练工作', transcription: '自动逐字稿',
         edge_acknowledgement: 'Edge 条文确认', corpus: '逐字稿确认', corpus_size: '语料份量', model_name: '声线模型名称'
       },
       job: {

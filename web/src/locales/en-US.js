@@ -446,7 +446,7 @@ export default {
         reasonUnchecked: 'There is no check result yet. Press "Check again".'
       },
       checks: {
-        admin: 'Administrator sign-in', stage_connections: 'Stage connection', free_vram: 'Free VRAM', environment: 'Training environment', other_job: 'Other training jobs',
+        admin: 'Administrator sign-in', stage_connections: 'Stage connection', free_vram: 'Free VRAM', environment: 'Training environment', other_job: 'Other training jobs', transcription: 'Automatic transcription',
         edge_acknowledgement: 'Edge clause acknowledged', corpus: 'Transcript review', corpus_size: 'Corpus size', model_name: 'Voice model name'
       },
       job: {

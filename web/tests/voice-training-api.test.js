@@ -35,11 +35,18 @@ test('建立語料與記錄 Edge 條文確認都走伺服器，條文原文隨�
   })
   const api = createTrainingApi(fetchImpl)
   await api.createCorpus({ slug: 'edge-1', source: 'edge-test-teacher' })
-  const ack = await api.recordAcknowledgement('edge-1', 'clause text')
+  const ack = await api.recordAcknowledgement('edge-1', 'clause text', true)
   assert.equal(ack.acknowledged_at, '2026-11-24T00:00:00+00:00')
   assert.deepEqual(JSON.parse(calls[0].init.body), { slug: 'edge-1', source: 'edge-test-teacher' })
-  assert.deepEqual(JSON.parse(calls[1].init.body), { shown_text: 'clause text' })
+  assert.deepEqual(JSON.parse(calls[1].init.body), { shown_text: 'clause text', confirmed: true })
   assert.equal(calls[1].init.headers['Content-Type'], 'application/json')
+})
+
+test('條文確認只有明確傳入 true 才送 confirmed: true，其他一律送 false', async () => {
+  const { fetchImpl, calls } = fakeFetch({ 'POST /api/tts/corpora/edge-1/acknowledgement': ok({}) })
+  const api = createTrainingApi(fetchImpl)
+  for (const value of [undefined, false, 'true', 1, null]) await api.recordAcknowledgement('edge-1', 'clause text', value)
+  assert.deepEqual(calls.map(call => JSON.parse(call.init.body).confirmed), [false, false, false, false, false])
 })
 
 test('錯誤回應變成 TrainingApiError，保留狀態碼、problems 與訓練前檢查', async () => {

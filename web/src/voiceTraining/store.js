@@ -123,7 +123,7 @@ export function createVoiceTrainingStore({
       await ensureCorpus({ source: SOURCE_EDGE })
       if (!state.edge.acknowledged) {
         // Send back exactly the text the server delivered and the screen showed.
-        await api.recordAcknowledgement(state.slug, clause.text)
+        await api.recordAcknowledgement(state.slug, clause.text, state.edge.checked === true)
         state.edge.acknowledged = true
       }
       go('text')

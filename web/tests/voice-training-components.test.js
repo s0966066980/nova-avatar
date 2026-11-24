@@ -279,6 +279,8 @@ test('完成畫面：三個試聽按鈕各自向伺服器要那一句，播放�
   assert.deepEqual(requested, [['trained-1', 'zh'], ['trained-1', 'digits'], ['trained-1', 'en']])
   const audio = all(view.root, n => n.type === 'audio')[0]
   assert.match(audio.props.src, /^blob:/)
+  assert.equal(audio.props.controlsList, 'nodownload', '試聽播放器不提供下載')
+  assert.ok(audio.props.autoplay !== undefined && audio.props.autoplay !== false, '仍然自動播放')
   assert.equal(all(view.root, n => /目前只能念固定/.test(textContent(n))).length, 0, '不再說只有一句可聽')
   URL.revokeObjectURL(audio.props.src)
 })

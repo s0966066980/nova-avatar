@@ -446,7 +446,7 @@ export default {
         reasonUnchecked: '還沒有檢查結果，請按「重新檢查」。'
       },
       checks: {
-        admin: '管理者登入', stage_connections: '舞台連線', free_vram: '剩餘顯存', environment: '訓練環境', other_job: '其他訓練工作',
+        admin: '管理者登入', stage_connections: '舞台連線', free_vram: '剩餘顯存', environment: '訓練環境', other_job: '其他訓練工作', transcription: '自動逐字稿',
         edge_acknowledgement: 'Edge 條文確認', corpus: '逐字稿確認', corpus_size: '語料份量', model_name: '聲線模型名稱'
       },
       job: {

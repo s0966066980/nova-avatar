@@ -52,6 +52,7 @@ test('Edge 確認：條文來自伺服器；沒勾選不能繼續；勾選後先
   const ack = calls.find(call => call[0] === 'recordAcknowledgement')
   assert.equal(create[1].source, 'edge-test-teacher')
   assert.equal(ack[2], SERVER_CLAUSE.text, '送回的就是伺服器給的條文，一字不改')
+  assert.equal(ack[3], true, '勾選之後才送 confirmed: true')
   assert.equal(ack[1], create[1].slug)
   assert.equal(store.state.screen, 'text')
   const before = names().length
