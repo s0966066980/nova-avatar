@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 上傳錄音與逐字稿
-Status: ready-for-agent
+Status: resolved
 Blocked by: 03
 
 依[規格](../spec.md)第 5、6、7 點。
