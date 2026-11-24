@@ -46,14 +46,15 @@ Edge 的出廠設定不等於商用或離線場域的正式聲音選擇；各模
 ## 實機發行驗收
 
 仍適用的真實環境檢查使用 `live` 標記，由主要回歸明確 deselect，不是執行後
-以 skip 當成通過。目前有真 `llama-server -h` 環境檢查與兩個已配置模型的看板
-契約；執行 live 時缺少 binary 應失敗，模型路徑從設定取得。
+以 skip 當成通過。目前有真 `llama-server -h` 環境檢查、兩個已配置模型的看板
+契約，以及綠幕合成在本機 CPU 上的每幀時間預算；執行 live 時缺少 binary 應失敗，
+模型路徑從設定取得。
 
 ```bash
 NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -v -ra -m live
 ```
 
-它們屬於當前版本，沒有因清理而刪除；但這三項仍不足以取代實際選定模型的
+它們屬於當前版本，沒有因清理而刪除；但這四項仍不足以取代實際選定模型的
 CUDA 推理、WebRTC、插話／角色交接、感知首音延遲與視聽驗收。這些發布門檻
 要另外保存實機證據，不能由本機主要基準的綠燈代替。
 
@@ -99,3 +100,29 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 
 歷史測試結果原樣保留，包含舊模型 skip；它們是當時證據，不是本版允許清單。
 先前把 Qwen3.8 列為選用的提案已由本次範圍清理決定取代。
+
+## 第二輪清理決策（2026-11-24）
+
+主要回歸從 2348 個案例減為 2232 個，另有 4 個 `live` 案例；耗時從約 3 分鐘降為約 2 分鐘，
+0 failure、0 skip。刪除前後各量一次 `src/`、`scripts/` 的行覆蓋率，失去覆蓋的行逐一
+列在 [清理紀錄](../.scratch/test-suite-cleanup/coverage-diff.md)。
+
+| 類別 | 處理與原因 | 留下的保護 |
+| --- | --- | --- |
+| 已完成的研究工具（TTS bake-off、ASR 比較、LLM 品質評估、重複音節 benchmark） | 連同腳本與 72 個案例刪除；沒有正式呼叫者，結論已記錄在各自的 `.scratch` issue 並套用 | git 歷史保留腳本；`measure_first_audio.py`、`benchmark-prewarm.py` 有文件引用，保留 |
+| 各路由檔逐一檢查 401 的迴圈 | 刪除；`test_route_access.py` 已在真實 app 上掃過每條管理路由的 401 與跨來源 403 | 各檔仍斷言自己的路由宣告為 `ADMIN` |
+| 訓練規則在單元、manager、HTTP 三層重複測試 | 單元測試負責完整規則；上層只留接線與錯誤對應的狀態碼 | `test_training_*` 單元測試不變 |
+| 恆真與自我驗證的案例 | 刪除固定 `return False` 的看板回條、同一呼叫比兩次的銳化測試；Whisper 載入測試改成驗證真正的 `auto → cuda/float16`、`cpu/int8` 選擇 | 原本完全沒有測到的 CUDA 裝置選擇現在有測試 |
+| 重複案例 | 刪除 clarify、固定回覆計時、console 閒置重置、Edge 429 重試、Edge 預熱、SIGINT 等已由別處涵蓋的案例 | 保留執行較快或層級較正確的那一份 |
+| 只重述常數或 CI 步驟 | 刪除門檻 `== 0.65`、`uv lock --check`、commercial profile 等重複斷言 | CI、`check-integration.py` 與本機基準入口仍會執行 |
+| 固定數值與措辭 | 舞台預設值改成「寫出的預設值必須等於 `StageConfig`」；YAML、TOML、prompt 片語只斷言行為相關的部分；版本號交給基準 JSON | 預設值漂移仍會失敗，而且不必隨 UI 調整逐一更新數字 |
+| 檔案切分 | 依被測模組合併（天氣、訓練 GPU、Edge TTS、WebRTC 容量、斷路器、RAGFlow 同步）；共用替身移到 `*_fakes.py`，測試檔不再互相 import | 案例數不變 |
+| 固定等待與 skip | 啟動腳本的假後端在就緒檢查後就結束（66 秒降為約 25 秒）；檢索預算測試的餘裕加倍；依硬體而定的合成時間預算改列 `live`；缺少 ffmpeg、ruff、uv 改為失敗而不是 skip | 啟動腳本測試在全核心滿載下仍通過 |
+
+保留不動的包括：安全、資料安全、授權標示、設定遷移、供應鏈固定版本相關測試，綁定歷史 bug
+修正的回歸測試，以及天氣關鍵字、數字讀法、corpus 路徑攻擊、SSRF 等參數表；這些參數表的
+每一列都對應不同的規則、邊界或攻擊方式。
+
+清理時發現、沒有呼叫者或不在本版範圍的正式程式碼，記錄在
+[待決 issue](../.scratch/test-suite-cleanup/issues/01-dead-code-left-by-test-cleanup.md)；
+程式碼刪除前，它們現有的測試保留。

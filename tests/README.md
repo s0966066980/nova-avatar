@@ -34,7 +34,8 @@ primary local baseline. The GitHub GPU runner is a separate pending setup.
 | `speech` | ASR, VAD, TTS engines, and Edge TTS worker lifecycle |
 
 `slow` is a manually maintained execution hint, not a complete duration budget.
-`live` identifies configured-model or installed llama-server environment checks.
+`live` identifies checks that depend on this host: configured models, the installed
+llama-server, and wall-clock budgets on its CPU.
 These execution markers supplement, rather than replace, the product-area marker.
 
 ## Commands
@@ -65,6 +66,18 @@ baseline does not claim to execute them.
 Keep a separate module when it owns a distinct current product contract or has a
 special execution boundary. Merge small modules only when the assertions and
 ownership stay clear. File paths otherwise stay stable for linked design records.
+
+Each rule has one owning test. A layer above the owner (job manager, HTTP route)
+keeps only what it adds: the wiring and the status or message a failure maps to.
+Route access is owned by `test_route_access.py`, which sweeps every route on the
+real app; other modules assert only that their routes are declared `ADMIN`.
+
+Shared fakes and fixtures live in the `*_fakes.py` and `access_helpers.py` helper
+modules. A test module never imports another test module, so merging or deleting
+one cannot break the rest.
+
+Research and benchmark tools whose result is recorded in a `.scratch` issue are
+deleted together with their tests once the decision has been applied.
 
 An obsolete product contract need not be retained as an optional skip. For a
 still-supported generic behavior, replace retired-model dependencies with a
