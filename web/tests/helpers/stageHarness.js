@@ -17,9 +17,12 @@ import {
 } from '../../src/stageKiosk.js'
 import {
   fetchJsonWithTimeout,
+  isVoiceTrainingPause,
   STAGE_CONNECT_TIMEOUT_MS,
   STAGE_OFFER_TIMEOUT_MS,
-  STAGE_POLL_TIMEOUT_MS
+  STAGE_POLL_TIMEOUT_MS,
+  VOICE_TRAINING_TEXT,
+  VOICE_TRAINING_TITLE
 } from '../../src/stageConnection.js'
 
 const html = readFileSync(new URL('../../stage.html', import.meta.url), 'utf8')
@@ -122,6 +125,9 @@ export function stageHarness({
     STAGE_CONNECT_TIMEOUT_MS,
     STAGE_OFFER_TIMEOUT_MS,
     STAGE_POLL_TIMEOUT_MS,
+    isVoiceTrainingPause,
+    VOICE_TRAINING_TITLE,
+    VOICE_TRAINING_TEXT,
     fetchJsonWithTimeout: (url, options, timeoutMs) => fetchJsonWithTimeout(url, options, timeoutMs, {
       fetchImpl: context.fetch, setTimer: context.setTimeout, clearTimer: context.clearTimeout,
     }),

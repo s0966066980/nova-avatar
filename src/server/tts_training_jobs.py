@@ -562,6 +562,16 @@ class TrainingJobManager:
 
     # ------------------------------------------------------------ status
 
+    def job_active(self) -> bool:
+        """Whether a job holds the GPU: from ``start`` until its worker has settled it.
+
+        Done, failed (an exited child included) and cancelled are settled; ``cancelling``
+        is not, because the child may still be on the GPU.
+        """
+        with self._lock:
+            job = self._job
+        return job is not None and job.active
+
     def status(self) -> dict[str, Any] | None:
         """The running job, else the latest finished one, else ``None``."""
         with self._lock:
@@ -620,8 +630,14 @@ class TrainingJobManager:
             STAGE_EXPORT,
         ]
         with self._lock:
-            # Another start, or a transcription, may have begun since the pre-flight looked.
-            fresh = {check.id: check for check in (self._other_job_check(), self._transcription_check())}
+            # Another start, a transcription or a stage may have begun since the pre-flight
+            # looked. Once the job is registered, POST /offer refuses new stages.
+            fresh = {
+                check.id: check
+                for check in (
+                    stage_connection_check(self._sessions()), self._other_job_check(), self._transcription_check()
+                )
+            }
             if any(check.status == FAIL for check in fresh.values()):
                 raise self._refusal(Preflight(tuple(fresh.get(check.id, check) for check in preflight.checks)))
             job = Job(

@@ -438,6 +438,7 @@ export default {
         gaugeLabel: '{free} GB of VRAM free, threshold {threshold} GB', gaugeThreshold: 'Threshold {n} GB',
         recheck: 'Check again', checkingShort: 'Checking…', start: 'Start training',
         startHint: 'You can cancel at any time after it starts.',
+        stageBlocked: 'While training runs, the stage cannot connect; it reconnects automatically when training ends.',
         reasonUnchecked: 'There is no check result yet. Press "Check again".'
       },
       checks: {
@@ -458,7 +459,8 @@ export default {
         logGap: 'Older log lines were dropped from memory. The full log is kept in the training job folder on the server.',
         leaveHint: 'Leaving this screen does not stop training; the running training job shows on the start screen. The log is kept and can be viewed later.',
         cancelAsk: 'Cancel this training job?', cancelConsequence: 'Training progress is not kept and the GPU memory is released immediately. The corpus is kept, and you can start again later.',
-        cancelConfirm: 'Confirm cancel training', keepGoing: 'Keep training', cancelJob: 'Cancel training', cancelHint: 'The GPU is released immediately after cancelling.'
+        cancelConfirm: 'Confirm cancel training', keepGoing: 'Keep training', cancelJob: 'Cancel training', cancelHint: 'The GPU is released immediately after cancelling.',
+        stageBlocked: 'While training runs, the stage cannot connect; it reconnects automatically when training ends.'
       },
       done: {
         created: 'Voice model "{name}" was created', createdBody: 'It is in the voice model list and can be chosen in a digital-human profile.',

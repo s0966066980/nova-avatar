@@ -1038,3 +1038,15 @@ def test_settings_come_from_the_matcha_section_of_the_configuration():
 def test_invalid_training_settings_are_refused_at_load(section, message):
     with pytest.raises(ValueError, match=message):
         dict_to_config({"matcha": section})
+
+
+def test_a_stage_that_connects_while_the_preflight_runs_still_blocks_the_start(tmp_path):
+    # The slow pre-flight saw no stage; one connected before the job was registered.
+    r = rig(tmp_path)
+    counts = iter([0, 1])
+    r.manager._sessions = lambda: next(counts)
+    with pytest.raises(TrainingError) as caught:
+        r.manager.start(request())
+    assert caught.value.status == 409
+    assert check_of(caught.value.preflight, "stage_connections").status == "fail"
+    assert r.manager.status() is None and r.spawner.commands == []
