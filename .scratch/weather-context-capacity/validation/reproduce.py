@@ -21,7 +21,7 @@ from src.llm.engines.openai import OpenAILLM
 from src.llm.response_protocol import BoardItem, SessionBoardContext
 from src.llm.llamacpp import ensure_server, server_status, shutdown_llama_server
 from src.profiles.store import ProfileStore, profile_config
-from src.profiles.weather import CwaWeather, TAIPEI, WeatherQuery, weather_prompt
+from src.llm.tools.weather import CwaWeather, TAIPEI, WeatherQuery, weather_prompt
 
 
 async def facts():

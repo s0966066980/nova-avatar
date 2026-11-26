@@ -87,10 +87,9 @@ from src.tts.training.gpu_guard import (
     PASS,
     WARN,
     Check,
-    count_stage_connections,
     free_vram_check,
-    stage_connection_check,
 )
+from src.server.stage_guard import count_stage_connections, stage_connection_check
 from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.manifest import build_manifest
 from src.tts.training.preparation import PreparationReport, check_quality, convert_uploads

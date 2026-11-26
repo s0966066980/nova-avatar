@@ -15,9 +15,10 @@ import pytest
 
 from src.config.loader import dict_to_config
 from src.config.schema import Config, GreetingConfig
-from src.greetings.content import (GreetingError, greeting_messages, prepare_greeting,
+from src.greetings.content import (GreetingError, prepare_greeting,
                                   validate_content, validate_interval, visible_length)
 from src.llm import service
+from src.llm.greeting import greeting_messages
 from src.profiles.store import ProfileStore, profile_config, validate_library
 from src.server.voice_session import VoiceTurnSession
 from tests.session_fakes import FakeAvatar, FakeSegmenter
@@ -75,7 +76,7 @@ class ContentTests(unittest.IsolatedAsyncioTestCase):
         result = await prepare_greeting(config, generate=generate)
         self.assertEqual(result['text'], '歡迎來參觀！')
         self.assertEqual(generate.await_count, 2)
-        messages = greeting_messages(config, asdict(config.greeting))
+        messages = greeting_messages(config, config.greeting.prompt, 4, 8)
         self.assertEqual([m['role'] for m in messages], ['system', 'user'])
         self.assertIn('你是展館導覽員', messages[0]['content'])
         self.assertIn('只回答展館資訊', messages[0]['content'])

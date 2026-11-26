@@ -114,6 +114,7 @@ async def asr(request):
                     avatar_stream, {},
                     settings=getattr(state.config, "reply_streaming", None),
                 ),
+                published_config=state.config,
             )
             logger.info(f'[ASR] LLM 回覆: {llm_text}')
             

@@ -116,7 +116,7 @@ Edge TTS（issue 18），其餘引擎已移除。試聽評分、方向決定與 
 
 **英文交接路由**：修正前的量測交接 30 輪只有 18 輪實際交接，失敗的全是英文句
 （E2B 在長對話中漏填縣市、把臺南寫成「臺南」）。依規格加入天氣關鍵字初篩
-（`src/profiles/weather_keywords.py`，issue 17）後，最終驗證 30／30。
+（`src/llm/tools/weather_keywords.py`，issue 17）後，最終驗證 30／30。
 
 ### 9 月串流 soak（歷史）
 

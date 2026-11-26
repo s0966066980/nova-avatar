@@ -1236,7 +1236,7 @@ class VoiceTurnSession:
         if role_plan:
             context = str(role_plan.get("context") or "")
             if role_plan.get("weather") is not None:
-                from src.profiles.weather import weather_prompt
+                from src.llm.tools import weather_prompt
                 context += "\n" + weather_prompt(role_plan["weather"])
             if context:
                 kwargs["rag_context"] = kwargs.get("rag_context", "") + "\n" + context
@@ -1293,8 +1293,10 @@ class VoiceTurnSession:
         report_stage = self._threadsafe_stage_reporter(loop, turn_id, generation)
 
         def _call_llm():
+            from src.server.state import state
+
             with observe_stages(report_stage):
-                return llm_response(text, self.avatar, **kwargs)
+                return llm_response(text, self.avatar, published_config=state.config, **kwargs)
 
         future = loop.run_in_executor(None, _call_llm)
         if held is not None:

@@ -107,15 +107,18 @@ def llm_response(
     defer_history_commit: bool = False,
     reply_mode: Optional[ReplyMode | str] = None,
     rag_context: str = "",
+    published_config=None,
 ) -> str:
-    """呼叫 LLM；口語增量交給核心的 ``speech`` 切成可播回覆片段"""
-    try:
-        from src.server.state import state as server_state
+    """呼叫 LLM；口語增量交給核心的 ``speech`` 切成可播回覆片段
 
-        config = getattr(avatar_stream, 'config', None) or server_state.config
+    ``published_config`` is the configuration the console last published; the core
+    passes it in so this layer never reads the core's global state.
+    """
+    try:
+        config = getattr(avatar_stream, 'config', None) or published_config
         # Avatars own their locale/voice, while role and restrictions remain
         # console-owned. A copied avatar config must not freeze old behavior.
-        published = config if getattr(config, "conversation_snapshot", False) else server_state.config or config
+        published = config if getattr(config, "conversation_snapshot", False) else published_config or config
         profile = getattr(avatar_stream, '_assistant_profile_snapshot', None)
         if profile is None:
             profile = getattr(getattr(config if getattr(config, 'profile_id', '') else published, 'llm', None), 'assistant_profile', None)

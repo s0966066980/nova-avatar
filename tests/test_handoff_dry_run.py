@@ -10,7 +10,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.profiles.routing import CLARIFY, route_question, route_schema
+from src.llm.handoff import CLARIFY, route_schema
+from src.profiles.routing import route_question
 from src.profiles.store import ProfileError
 from tests.role_fakes import _config, _prompt, _schema, composition
 from tests.composition_fakes import _request, composition_routes, store  # noqa: F401

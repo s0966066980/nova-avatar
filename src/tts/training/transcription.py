@@ -19,8 +19,8 @@ lines, so they still go through the review table.
 local cache (never downloading), detects the language itself and converts the
 text to Traditional Chinese (Taiwan wording) with OpenCC ``s2twp``.
 
-The device is decided once, when a job starts, by the GPU guard (``choose_device``,
-``gpu_guard.choose_transcription_device``): a connected stage or too little free VRAM
+The device is decided once, when a job starts, by the GPU guard (``choose_device``: the
+core's stage check, then ``gpu_guard.choose_transcription_device``): a connected stage or too little free VRAM
 means the CPU (int8) with a reason, never a refusal and never a silent switch. The
 status carries ``device`` and ``fallback_reason``; a running job does not migrate when
 the stage connects later. If the GPU still cannot run the model, for example because

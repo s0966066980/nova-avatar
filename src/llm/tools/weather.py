@@ -1,7 +1,10 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Bounded CWA observations/forecasts. Missing weather is never a numeric zero."""
+"""The LLM layer's weather tool: bounded CWA observations/forecasts.
+
+Missing weather is never a numeric zero.
+"""
 from __future__ import annotations
 
 import asyncio
@@ -11,11 +14,12 @@ from datetime import date, datetime, time as daytime, timedelta
 import json
 import math
 import os
-from pathlib import Path
 import time
 from zoneinfo import ZoneInfo
 
 import aiohttp
+
+from src.utils.paths import CONFIG_DIR
 
 TAIPEI = ZoneInfo("Asia/Taipei")
 # CWA F-D0047 county products: three-day index, one-week index = +2.
@@ -34,7 +38,7 @@ def cwa_key():
     value = os.getenv("NOVA_CWA_API_KEY", "") or os.getenv("CWA_API_KEY", "")
     if value:
         return value.strip()
-    path = Path(__file__).resolve().parents[2] / "config/cwa.env"
+    path = CONFIG_DIR / "cwa.env"
     if path.is_symlink():
         return ""
     try:

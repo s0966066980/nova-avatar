@@ -499,6 +499,28 @@ def test_prohibited_model_requests_do_not_call_the_model_or_expose_boards(monkey
     assert not boards
 
 
+def test_the_console_published_role_is_handed_to_the_llm_layer_by_the_core(monkeypatch):
+    # The LLM layer never reads the core's global state: the role comes from the
+    # published configuration the caller passes in, even with no global config at all.
+    monkeypatch.setattr(state, 'config', None)
+    published = Config()
+    published.llm.assistant_profile.system_prompt = 'Published museum role.'
+    avatar_config = Config()
+    avatar_config.llm.assistant_profile.system_prompt = 'Stale copied role.'
+    avatar = SimpleNamespace(config=avatar_config, sessionid=7)
+    llm = SimpleNamespace(generate_response=Mock(return_value='ok'))
+    monkeypatch.setattr(service, '_session_llm_instances', {7: llm})
+    monkeypatch.setattr(service, '_ensure_llamacpp_if_needed', lambda _config: None)
+    service.llm_response('Hello', avatar, published_config=published)
+    assert llm.config.llm.assistant_profile.system_prompt == 'Published museum role.'
+    assert 'Published museum role.' in llm.system_prompt
+    # Without an avatar configuration the published one is used, never mutated in place.
+    service.llm_response('Hello', SimpleNamespace(config=None, sessionid=7),
+                         published_config=published)
+    assert llm.config.llm.assistant_profile.system_prompt == 'Published museum role.'
+    assert llm.config is not published
+
+
 def test_role_and_rules_remain_frozen_across_turns_of_the_same_conversation(env, monkeypatch):
     from dataclasses import asdict
     from src.llm.rules import default_rules

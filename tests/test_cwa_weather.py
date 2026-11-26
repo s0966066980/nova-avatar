@@ -7,6 +7,7 @@ import json
 from collections import Counter
 from copy import deepcopy
 from datetime import datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -15,13 +16,15 @@ import pytest
 from src.config.schema import Config
 from src.llm.engines.openai import OpenAILLM
 from src.llm.response_protocol import BoardItem, SessionBoardContext
-from src.profiles.weather import (
+from src.llm.tools import weather as weather_tool
+from src.llm.tools.weather import (
     SOURCE,
     SOURCE_URL,
     TAIPEI,
     CwaWeather,
     WeatherQuery,
     WeatherUnavailable,
+    cwa_key,
     normalize_forecast,
     normalize_observation,
     weather_prompt,
@@ -123,8 +126,20 @@ def test_cache_does_not_cross_locations_and_expires():
     asyncio.run(scenario())
 
 
+def test_the_key_comes_from_the_environment_or_the_git_excluded_config_file(monkeypatch, tmp_path):
+    for name in ("NOVA_CWA_API_KEY", "CWA_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    # scripts/configure-cwa.py writes the repository's config/cwa.env.
+    assert weather_tool.CONFIG_DIR.resolve() == Path(__file__).resolve().parents[1] / "config"
+    monkeypatch.setattr(weather_tool, "CONFIG_DIR", tmp_path)
+    (tmp_path / "cwa.env").write_text('NOVA_CWA_API_KEY="CWA-FILE"\n', "utf-8")
+    assert cwa_key() == "CWA-FILE"
+    monkeypatch.setenv("NOVA_CWA_API_KEY", " CWA-ENV ")
+    assert cwa_key() == "CWA-ENV"
+
+
 def test_missing_key_and_out_of_range_fail_before_network(monkeypatch):
-    monkeypatch.setattr("src.profiles.weather.cwa_key", lambda: "")
+    monkeypatch.setattr("src.llm.tools.weather.cwa_key", lambda: "")
     monkeypatch.delenv("NOVA_CWA_API_KEY", raising=False)
     monkeypatch.delenv("CWA_API_KEY", raising=False)
     async def scenario():
