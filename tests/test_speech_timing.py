@@ -553,7 +553,7 @@ class MuseTalkBufferPolicyTests(unittest.TestCase):
                 release.wait(timeout=1)
 
         config = SimpleNamespace(audio=SimpleNamespace(fps=50))
-        tts = BlockingTTS(config, parent=None)
+        tts = BlockingTTS(config, sink=None)
         tts.put_msg_txt("測試語音")
         worker = Thread(target=tts.process_tts, args=(quit_event,), daemon=True)
         worker.start()

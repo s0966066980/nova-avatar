@@ -3,10 +3,12 @@
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
 """全域性狀態管理"""
-from typing import Any, Dict, Set
-from src.avatars.base import BaseAvatar
+from typing import TYPE_CHECKING, Any, Dict, Set
 from aiortc import RTCPeerConnection
 from src.server.voice_test_history import VoiceTestHistory
+
+if TYPE_CHECKING:
+    from src.server.speaking_avatar import SpeakingAvatar
 
 
 class ServerState:
@@ -14,7 +16,7 @@ class ServerState:
     
     def __init__(self):
         # 會話管理
-        self.avatar_streams: Dict[int, BaseAvatar] = {}  # sessionid -> BaseAvatar
+        self.avatar_streams: Dict[int, "SpeakingAvatar"] = {}  # sessionid -> renderer + TTS
         self.voice_sessions: Dict[int, Any] = {}
         self.voice_test_history = VoiceTestHistory()
         self.session_roles: Dict[int, str] = {}
@@ -41,7 +43,7 @@ class ServerState:
     def add_session(
         self,
         sessionid: int,
-        avatar_stream: BaseAvatar = None,
+        avatar_stream: "SpeakingAvatar" = None,
         role: str = "console",
     ):
         """新增會話"""
@@ -63,7 +65,7 @@ class ServerState:
             if self.session_roles.get(sessionid, "console") == role
         )
     
-    def get_session(self, sessionid: int) -> BaseAvatar:
+    def get_session(self, sessionid: int) -> "SpeakingAvatar":
         """獲取會話"""
         return self.avatar_streams.get(sessionid)
     

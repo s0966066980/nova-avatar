@@ -137,10 +137,7 @@ forbidden_modules = [
     "src.vad",
 ]
 ignore_imports = [
-    "src.tts.engines.edge -> src.server.reply_streaming.channel",  # ticket 03
-    "src.tts.engines.edge -> src.server.reply_streaming.retry",  # ticket 03
     "src.asr.prewarm -> src.vad.factory",  # ticket 06
-    "src.avatars.base -> src.vad.audio",  # ticket 06
 ]
 
 # The cross-layer contracts check direct imports only: a path through the core
@@ -191,9 +188,6 @@ forbidden_modules = [
     "src.avatars",
     "src.scene",
 ]
-ignore_imports = [
-    "src.tts.base -> src.avatars.base",  # ticket 06
-]
 
 [[tool.importlinter.contracts]]
 id = "avatar-not-other-layers"
@@ -207,10 +201,6 @@ forbidden_modules = [
     "src.ragflow",
     "src.web_search",
     "src.tts",
-]
-ignore_imports = [
-    "src.avatars.base -> src.tts.base",  # ticket 03
-    "src.avatars.base -> src.tts.factory",  # ticket 03
 ]
 
 [[tool.importlinter.contracts]]

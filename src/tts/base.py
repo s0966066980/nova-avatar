@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from src.utils.logging import logger
 
 if TYPE_CHECKING:
-    from src.avatars.base import BaseAvatar
+    from src.tts.audio_sink import AudioSink
 
 
 _EMOJI_RE = re.compile(
@@ -63,9 +63,11 @@ class BaseTTS:
     具體引擎只需要實現 txt_to_audio。
     """
 
-    def __init__(self, config, parent: "BaseAvatar"):
+    def __init__(self, config, sink: "AudioSink"):
         self.config = config
-        self.parent = parent
+        # The core's audio sink: PCM frames and fragment events go there, never
+        # to the avatar renderer directly (ADR 0027).
+        self.sink = sink
 
         # 20ms 一幀
         self.fps = config.audio.fps
@@ -98,7 +100,7 @@ class BaseTTS:
     def _wait_for_fragment_playback_end(self, eventpoint: dict) -> None:
         if not eventpoint.get("turn_id"):
             return
-        ended = getattr(self.parent, "fragment_playback_ended", None)
+        ended = getattr(self.sink, "fragment_playback_ended", None)
         if not callable(ended):
             return
         while self.state == State.RUNNING and not ended(eventpoint):
@@ -112,7 +114,7 @@ class BaseTTS:
         """Report a terminal, pre-audio synthesis failure to the owning turn."""
         if not eventpoint.get("turn_id"):
             return
-        notify = getattr(self.parent, "notify_fragment_synthesis_failed", None)
+        notify = getattr(self.sink, "notify_fragment_synthesis_failed", None)
         if callable(notify):
             notify(dict(eventpoint), str(reason))
 
@@ -143,6 +145,6 @@ class BaseTTS:
         """
         子類必須實現：
             msg: (text, textevent)
-        內部負責把音訊分幀後，通過 parent.put_audio_frame(...) 推給上層。
+        內部負責把音訊分幀後，通過 sink.put_audio_frame(...) 交給核心。
         """
         raise NotImplementedError

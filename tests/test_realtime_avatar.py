@@ -212,7 +212,7 @@ def test_speech_onset_replaces_only_unscoped_idle_lookahead():
         def feature2chunks(self, **kwargs): return [kwargs['start']] * kwargs['batch_size']
     config = SimpleNamespace(model=SimpleNamespace(batch_size=8),
                              audio=SimpleNamespace(fps=50, l=10, r=10, av_offset_ms=0))
-    parent = SimpleNamespace(tts=SimpleNamespace(has_pending_work=lambda: True))
+    parent = SimpleNamespace(has_pending_audio=lambda: True)
     handler = MuseAudioStreamHandler(config, parent, Features())
     handler.warm_up()
     handler.run_step()
@@ -248,7 +248,7 @@ def _muse_handler(pending=lambda: True):
         def feature2chunks(self, **kwargs): return [0] * kwargs['batch_size']
     config = SimpleNamespace(model=SimpleNamespace(batch_size=8),
                              audio=SimpleNamespace(fps=50, l=10, r=10, av_offset_ms=0))
-    parent = SimpleNamespace(tts=SimpleNamespace(has_pending_work=pending))
+    parent = SimpleNamespace(has_pending_audio=pending)
     handler = MuseAudioStreamHandler(config, parent, Features())
     handler.warm_up(); handler.run_step(); handler.feat_queue.get_nowait()
     return handler
@@ -324,7 +324,7 @@ def test_render_does_not_hold_first_speech_batch_for_a_full_batch(monkeypatch, f
     avatar.batch_size = 8
     avatar.max_tts_audio_wait_seconds = .35
     avatar.init_customindex = lambda: None
-    avatar.tts = SimpleNamespace(render=lambda _: None, has_pending_work=lambda: True)
+    avatar.configure_pending_audio(lambda: True)
     def run_step():
         runs.append(True)
         quit_event.set()
@@ -349,7 +349,7 @@ def test_completed_short_utterance_does_not_wait_for_full_lookahead():
         def feature2chunks(self, **kwargs): return [0] * kwargs['batch_size']
     config = SimpleNamespace(model=SimpleNamespace(batch_size=8),
                              audio=SimpleNamespace(fps=50, l=10, r=10, av_offset_ms=0))
-    parent = SimpleNamespace(tts=SimpleNamespace(has_pending_work=lambda: True))
+    parent = SimpleNamespace(has_pending_audio=lambda: True)
     handler = MuseAudioStreamHandler(config, parent, Features())
     handler.warm_up(); handler.run_step(); handler.feat_queue.get_nowait()
     for sequence in range(6):
@@ -382,7 +382,7 @@ def test_render_throttles_only_idle_when_video_queue_is_full(monkeypatch, queued
     avatar.batch_size = 8
     avatar.max_tts_audio_wait_seconds = .2
     avatar.init_customindex = lambda: None
-    avatar.tts = SimpleNamespace(render=lambda _: None, has_pending_work=lambda: False)
+    avatar.configure_pending_audio(lambda: False)
     avatar.audio_stream = SimpleNamespace(
         queue=SimpleNamespace(qsize=lambda: queued_audio, empty=lambda: queued_audio == 0),
         startup_batch_emitted=True, startup_batch_size=4,

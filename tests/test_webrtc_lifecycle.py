@@ -57,6 +57,8 @@ def rtc(monkeypatch):
         discard_stale_media=Mock()))
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', voice)
     monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: object())
+    # These tests fake the renderer; the core's TTS pairing has its own tests.
+    monkeypatch.setattr(webrtc, 'SpeakingAvatar', lambda renderer: renderer)
     def request(role='console', sdp='good'):
         result = AsyncMock()
         result.json.return_value = dict(client_role=role, sdp=sdp, type='offer')

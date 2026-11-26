@@ -22,6 +22,7 @@ from src.avatars import base as avatar_base
 from src.avatars.base import BaseAvatar
 from src.config.schema import Config
 from src.server.routes import audio as audio_routes
+from src.server.speaking_avatar import SpeakingAvatar
 from src.server.state import state
 from src.vad import audio as vad_audio
 from tests.access_helpers import access_client
@@ -104,6 +105,14 @@ def bare_avatar(tmp_path: Path | None = None) -> BaseAvatar:
     avatar.frames = []
     avatar.put_audio_frame = lambda chunk, _info=None: avatar.frames.append(chunk)
     return avatar
+
+
+def session_avatar(renderer: BaseAvatar) -> SpeakingAvatar:
+    """The core's session avatar around a renderer, with an idle TTS stub."""
+    return SpeakingAvatar(
+        renderer,
+        tts_factory=lambda _config, _sink: SimpleNamespace(has_pending_work=lambda: False),
+    )
 
 
 # --- /asr ------------------------------------------------------------------
@@ -291,7 +300,7 @@ def test_humanaudio_checks_the_session_before_decoding(server, monkeypatch):
 
 def test_humanaudio_rejects_long_audio_from_its_header(server, monkeypatch):
     avatar = bare_avatar()
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
     monkeypatch.setattr(sf, "read", forbid)
     monkeypatch.setattr(sf.SoundFile, "read", forbid)
     clip = audio_bytes(600, sample_rate=8000, fmt="FLAC")
@@ -306,7 +315,7 @@ def test_humanaudio_rejects_long_audio_from_its_header(server, monkeypatch):
 
 def test_humanaudio_decodes_resamples_and_queues_audio(server):
     avatar = bare_avatar()
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
 
     async def run():
         async with access_client() as client:
@@ -324,7 +333,7 @@ def test_humanaudio_decodes_once_with_libsndfile_and_never_follows_playlists(ser
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(av, "open", forbid)
     avatar = bare_avatar()
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
 
     async def run():
         async with access_client() as client:
@@ -418,7 +427,7 @@ def test_record_route_waits_for_ffmpeg_off_the_loop(tmp_path, monkeypatch, serve
     blocker = Blocker()
     avatar, temporary = recording_avatar(tmp_path, monkeypatch, wait=blocker)
     fake_merge(monkeypatch)
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
 
     async def run():
         async with access_client() as client:

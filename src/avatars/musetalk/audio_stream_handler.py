@@ -151,8 +151,7 @@ class MuseAudioStreamHandler(BaseAudioStreamHandler):
         if not starts_speech:
             return True
         if queued < right + effective_batch_size * 2:
-            tts = getattr(self.parent, "tts", None)
-            pending = getattr(tts, "has_pending_work", None)
+            pending = getattr(self.parent, "has_pending_audio", None)
             # A streaming first packet may be smaller than the lookahead.
             # Keep it untouched until a full runway is ready. Short completed
             # utterances and later speech batches must still drain promptly,

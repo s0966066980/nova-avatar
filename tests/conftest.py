@@ -93,6 +93,7 @@ AREA_BY_FILE = {
     "test_reply_streaming.py": "conversation",
     "test_first_fragment_exception.py": "conversation",
     "test_reply_speech_seam.py": "conversation",
+    "test_speaking_avatar.py": "speech",
     "test_reply_latency.py": "conversation",
     "test_first_audio_latency.py": "conversation",
     "test_concurrent_routing.py": "conversation",

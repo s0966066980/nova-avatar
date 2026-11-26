@@ -19,6 +19,12 @@ from src.server.state import state
 from src.server.utils import randN
 from src.server.voice_session import VoiceTurnSession
 from src.server.presentation import SessionPresentation
+from src.server.speaking_avatar import SpeakingAvatar
+
+
+def build_speaking_avatar(config, model, avatar_data, sessionid):
+    """Build the session's renderer, then the TTS that feeds it (ADR 0027)."""
+    return SpeakingAvatar(create_avatar(config, model, avatar_data, sessionid))
 
 
 async def offer(request):
@@ -102,7 +108,7 @@ async def offer(request):
         # Shield the worker so a cancelled HTTP request can settle its resources
         # before releasing the role reservation.
         build = asyncio.create_task(asyncio.to_thread(
-            create_avatar, roles.config_for_session() if roles else state.config,
+            build_speaking_avatar, roles.config_for_session() if roles else state.config,
             state.model, roles.data_for_session() if roles else state.avatar, sessionid,
         ))
         try:

@@ -24,10 +24,10 @@ import numpy as np
 
 from src.tts.base import BaseTTS, State
 from src.tts.edge_connection import EdgeConnectionPool, configure_edge_endpoint
-from src.server.reply_streaming.channel import PlayableFragment
-from src.server.reply_streaming.retry import RetryBudget
-from src.utils.logging import logger
 from src.tts import edge_endpoint
+from src.tts.retry import RetryBudget
+from src.utils.logging import logger
+from src.utils.playable_fragment import PlayableFragment
 
 
 # A warm Edge connection normally returns audio in under 1.5 seconds, but a
@@ -144,8 +144,8 @@ atexit.register(shutdown_edge_tts)
 
 
 class _DirectFrameSink:
-    def __init__(self, parent) -> None:
-        self.parent = parent
+    def __init__(self, sink) -> None:
+        self.sink = sink
         self.first_pcm = threading.Event()
 
     def bind(self) -> None:
@@ -155,7 +155,7 @@ class _DirectFrameSink:
         # Availability can start speculative synthesis; it is not a playback
         # commit. The bounded playback queue may block below, independently.
         self.first_pcm.set()
-        self.parent.put_audio_frame(samples, eventpoint)
+        self.sink.put_audio_frame(samples, eventpoint)
 
     async def wait_for_space(self) -> None:
         return None
@@ -170,8 +170,8 @@ class _DirectFrameSink:
 class _GatedFrameSink:
     """Buffer a synthesized fragment until every preceding fragment is emitted."""
 
-    def __init__(self, parent) -> None:
-        self.parent = parent
+    def __init__(self, sink) -> None:
+        self.sink = sink
         self.first_pcm = threading.Event()
         self._buffer: deque[tuple[np.ndarray, dict]] = deque()
         self._lock = threading.Lock()
@@ -213,7 +213,7 @@ class _GatedFrameSink:
                     (np.asarray(samples, dtype=np.float32).copy(), dict(eventpoint))
                 )
         if live:
-            self.parent.put_audio_frame(samples, eventpoint)
+            self.sink.put_audio_frame(samples, eventpoint)
             self.first_pcm.set()
 
     async def wait_for_space(self) -> None:
@@ -234,7 +234,7 @@ class _GatedFrameSink:
                     self._released = True
                     break
                 samples, eventpoint = self._buffer.popleft()
-            self.parent.put_audio_frame(samples, eventpoint)
+            self.sink.put_audio_frame(samples, eventpoint)
             self.first_pcm.set()
         self._wake()
 
@@ -265,7 +265,7 @@ async def _prewarm_edge_tts(
     if decode_pcm:
         owner = SimpleNamespace(
             sample_rate=16000, chunk=320, state=State.RUNNING,
-            parent=SimpleNamespace(put_audio_frame=lambda *_: True),
+            sink=SimpleNamespace(put_audio_frame=lambda *_: True),
         )
         emitter = _EdgePCMEmitter(owner, "", {})
     text = "語音連線準備完成。" if voicename.startswith('zh-') else "Speech connection is ready."
@@ -522,7 +522,7 @@ class _EdgePCMEmitter:
         self.owner = owner
         self.text = text
         self.textevent = textevent
-        self.frame_sink = frame_sink or _DirectFrameSink(owner.parent)
+        self.frame_sink = frame_sink or _DirectFrameSink(owner.sink)
         self.decoder = av.CodecContext.create("mp3", "r")
         self.resampler = av.AudioResampler(
             format="s16",
@@ -569,7 +569,7 @@ class _EdgePCMEmitter:
             if not turn_aware:
                 eventpoint.update({"text": self.text, **self.textevent})
         first_fragment = self.textevent.get("fragment_sequence", 0) == 0
-        mark_stage = getattr(self.owner.parent, "mark_stage_end", None)
+        mark_stage = getattr(self.owner.sink, "mark_stage_end", None)
         if (
             self.emitted_chunks == 0
             and first_fragment
@@ -641,8 +641,8 @@ class _EdgePCMEmitter:
 
 
 class EdgeTTS(BaseTTS):
-    def __init__(self, config, parent):
-        super().__init__(config, parent)
+    def __init__(self, config, sink):
+        super().__init__(config, sink)
         self.retry_after_pcm_count = 0
         self.retry_after_playback_commit_count = 0
         self.last_onset_preroll_ms = 0.0
@@ -723,7 +723,7 @@ class EdgeTTS(BaseTTS):
 
     def _launch_stream(self, msg: tuple[str, dict], *, gated: bool) -> dict:
         text, textevent = msg
-        sink = _GatedFrameSink(self.parent) if gated else _DirectFrameSink(self.parent)
+        sink = _GatedFrameSink(self.sink) if gated else _DirectFrameSink(self.sink)
         started_at = time.perf_counter()
         future = self._ensure_worker().submit(
             self._stream_with_retry(
@@ -758,7 +758,7 @@ class EdgeTTS(BaseTTS):
         eventpoint = job["msg"][1]
         if not eventpoint.get("turn_id"):
             return True
-        ended = getattr(self.parent, "fragment_playback_ended", None)
+        ended = getattr(self.sink, "fragment_playback_ended", None)
         return bool(ended(eventpoint)) if callable(ended) else True
 
     def _cancel_job(self, job: Optional[dict]) -> None:
@@ -924,7 +924,7 @@ class EdgeTTS(BaseTTS):
     def _fragment_committed_predicate(
         self, textevent: dict
     ) -> Optional[Callable[[], bool]]:
-        checker = getattr(self.parent, "fragment_playback_committed", None)
+        checker = getattr(self.sink, "fragment_playback_committed", None)
         if not callable(checker):
             return None
         return lambda: bool(checker(textevent))
@@ -932,7 +932,7 @@ class EdgeTTS(BaseTTS):
     def _discard_uncommitted_predicate(
         self, textevent: dict
     ) -> Optional[Callable[[], bool]]:
-        discard = getattr(self.parent, "discard_uncommitted_fragment", None)
+        discard = getattr(self.sink, "discard_uncommitted_fragment", None)
         if not callable(discard):
             return None
         return lambda: bool(discard(textevent))
@@ -943,7 +943,7 @@ class EdgeTTS(BaseTTS):
             samples / float(self.sample_rate) * 1000.0,
             3,
         )
-        observe = getattr(self.parent, "observe_tts_onset_preroll_ms", None)
+        observe = getattr(self.sink, "observe_tts_onset_preroll_ms", None)
         if callable(observe) and self.last_onset_preroll_ms:
             observe(self.last_onset_preroll_ms)
 
@@ -1004,7 +1004,7 @@ class EdgeTTS(BaseTTS):
             "playback_commit" if committed else "uncommitted_pcm",
             type(exc).__name__,
         )
-        observe = getattr(self.parent, "observe_tts_retry", None)
+        observe = getattr(self.sink, "observe_tts_retry", None)
         if callable(observe):
             observe(after_commit=committed)
 
@@ -1027,7 +1027,7 @@ class EdgeTTS(BaseTTS):
         first_encoded_logged = False
         retry_timeout_seconds = EDGE_RETRY_STREAM_TIMEOUT_SECONDS
         if frame_sink is None:
-            frame_sink = _DirectFrameSink(self.parent)
+            frame_sink = _DirectFrameSink(self.sink)
         frame_sink.bind()
         for attempt in range(1, EDGE_MAX_ATTEMPTS + 1):
             first_byte_timeout = (
@@ -1080,7 +1080,7 @@ class EdgeTTS(BaseTTS):
                         received_audio = True
                         if not first_encoded_logged:
                             first_encoded_logged = True
-                            mark_stage = getattr(self.parent, "mark_stage_end", None)
+                            mark_stage = getattr(self.sink, "mark_stage_end", None)
                             if callable(mark_stage) and textevent.get("turn_id"):
                                 mark_stage("tts_first_encoded")
                         # PCM enqueue applies playback backpressure. Running

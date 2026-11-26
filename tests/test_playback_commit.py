@@ -462,7 +462,7 @@ class PlaybackMetadataTests(unittest.IsolatedAsyncioTestCase):
         from src.tts.engines.edge import _EdgePCMEmitter
 
         captured = []
-        parent = SimpleNamespace(
+        sink = SimpleNamespace(
             put_audio_frame=lambda samples, eventpoint: captured.append(
                 (samples, eventpoint)
             )
@@ -471,7 +471,7 @@ class PlaybackMetadataTests(unittest.IsolatedAsyncioTestCase):
             state=State.RUNNING,
             sample_rate=16000,
             chunk=320,
-            parent=parent,
+            sink=sink,
         )
         emitter = _EdgePCMEmitter(
             owner,

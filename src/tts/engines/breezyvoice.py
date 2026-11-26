@@ -88,7 +88,7 @@ class BreezyVoiceTTS(BaseTTS):
             if first:
                 logger.info("%s first audio:%.4fs", self.LOG_NAME, time.perf_counter() - started_at)
                 first = False
-                mark_stage = getattr(self.parent, "mark_stage_end", None)
+                mark_stage = getattr(self.sink, "mark_stage_end", None)
                 if callable(mark_stage):
                     mark_stage("tts_first_encoded")
                     mark_stage("tts_first_pcm")
@@ -145,4 +145,4 @@ class BreezyVoiceTTS(BaseTTS):
             eventpoint.update({"status": "start", "text": text})
         elif final:
             eventpoint.update({"status": "end", "text": text})
-        self.parent.put_audio_frame(samples, eventpoint)
+        self.sink.put_audio_frame(samples, eventpoint)

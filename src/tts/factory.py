@@ -9,6 +9,7 @@
 
 from typing import Type
 
+from .audio_sink import AudioSink
 from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS, MatchaTTS
 
 # Keep in step with src.tts.voice_library.TTS_ENGINES.
@@ -19,7 +20,7 @@ _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
 }
 
 
-def create_tts_engine(tts_type: str, config, parent) -> BaseTTS:
+def create_tts_engine(tts_type: str, config, sink: AudioSink) -> BaseTTS:
     """
     根據型別建立 TTS 引擎
     """
@@ -27,4 +28,4 @@ def create_tts_engine(tts_type: str, config, parent) -> BaseTTS:
     engine_cls = _ENGINE_MAP.get(tts_type)
     if engine_cls is None:
         raise ValueError(f"未知的 TTS 型別: {tts_type!r}")
-    return engine_cls(config, parent)
+    return engine_cls(config, sink)

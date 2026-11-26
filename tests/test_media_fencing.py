@@ -40,8 +40,8 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
             def flush_talk(self):
                 self.flush_count += 1
 
+        # TTS is flushed by the core before the renderer (test_speaking_avatar).
         avatar = BaseAvatar.__new__(BaseAvatar)
-        avatar.tts = Flushable()
         avatar.audio_stream = Flushable()
         avatar.res_frame_queue = queue.Queue()
         avatar.res_frame_queue.put(object())
@@ -55,7 +55,6 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
 
         self.assertTrue(avatar.res_frame_queue.empty())
         self.assertEqual(avatar._media_sequences, {})
-        self.assertEqual(avatar.tts.flush_count, 1)
         self.assertEqual(avatar.audio_stream.flush_count, 1)
 
     def test_avatar_assigns_one_monotonic_media_sequence_across_fragments(self):

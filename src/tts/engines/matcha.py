@@ -256,8 +256,8 @@ class MatchaTTS(BaseTTS):
 
     LOG_NAME = "matcha"
 
-    def __init__(self, config, parent):
-        super().__init__(config, parent)
+    def __init__(self, config, sink):
+        super().__init__(config, sink)
         self.voice_model_id = str(getattr(config.tts, "ref_file", "") or "").strip()
         self._voice: _LoadedVoice | None = None
         self._problem = ""
@@ -425,12 +425,12 @@ class MatchaTTS(BaseTTS):
     def _playback_ended(self, eventpoint: dict) -> bool:
         if not eventpoint.get("turn_id"):
             return True
-        ended = getattr(self.parent, "fragment_playback_ended", None)
+        ended = getattr(self.sink, "fragment_playback_ended", None)
         return bool(ended(eventpoint)) if callable(ended) else True
 
     def _turn_accepted(self, textevent: dict) -> bool:
         """Whether the fragment's turn is still the live one (ADR 0007 fence)."""
-        accepts = getattr(self.parent, "accepts_media", None)
+        accepts = getattr(self.sink, "accepts_media", None)
         if not callable(accepts) or not textevent.get("turn_id"):
             return True
         return bool(accepts(textevent, "tts_held_fragment"))
