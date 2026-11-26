@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 from src.avatars.base import BaseAvatar
 from src.llm.engines import OpenAILLM
 from src.llm.base import load_system_prompt
+from src.llm.reply_events import SpeechSink
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
 from src.utils.logging import logger
@@ -100,14 +101,14 @@ def llm_response(
     base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
     model: str = "qwen-plus",
     *,
-    stream_to_avatar: bool = True,
+    speech: Optional[SpeechSink] = None,
     datainfo: Optional[dict] = None,
     chunk_guard: Optional[Callable[[int], bool]] = None,
     defer_history_commit: bool = False,
     reply_mode: Optional[ReplyMode | str] = None,
     rag_context: str = "",
 ) -> str:
-    """呼叫 LLM 並將響應流式推送到 avatar"""
+    """呼叫 LLM；口語增量交給核心的 ``speech`` 切成可播回覆片段"""
     try:
         from src.server.state import state as server_state
 
@@ -169,8 +170,7 @@ def llm_response(
             rag_context += "\n最近一次實際播出的招呼（只供理解訪客追問）：\n" + greeting
         return llm.generate_response(
             message,
-            avatar_stream,
-            stream_to_avatar=stream_to_avatar,
+            speech=speech,
             datainfo=generation_datainfo,
             chunk_guard=chunk_guard,
             defer_history_commit=defer_history_commit,

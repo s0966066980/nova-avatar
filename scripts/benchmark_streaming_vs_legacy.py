@@ -146,7 +146,7 @@ async def run_benchmark_turn(
 
     def mock_llm_response(text, avatar_stream, **kwargs):
         nonlocal first_audio_time
-        is_streaming = kwargs.get("stream_to_avatar", False)
+        is_streaming = kwargs.get("speech") is not None
         datainfo = kwargs.get("datainfo") or {}
 
         if not is_streaming:

@@ -100,8 +100,8 @@ class RagFlowPromptTests(unittest.TestCase):
 
         llm = FakeLLM(Config())
         context = retrieval_prompt([{"document_name": "手冊", "content": "只限本輪的資料"}])
-        llm.generate_response("問題", stream_to_avatar=False, rag_context=context)
-        spoken = llm.generate_response("另一個問題", stream_to_avatar=False)
+        llm.generate_response("問題", rag_context=context)
+        spoken = llm.generate_response("另一個問題")
         self.assertIn("只限本輪的資料", llm.prompts[0])
         self.assertNotIn("只限本輪的資料", llm.prompts[1])
         self.assertNotIn("只限本輪的資料", " ".join(llm.committed))

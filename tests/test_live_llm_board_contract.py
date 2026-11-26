@@ -48,7 +48,6 @@ class LiveLLMBoardContractTests(unittest.TestCase):
 
         spoken = llm.generate_response(
             "請用看板列出三個部署前必須確認的步驟，每項附一句具體說明。",
-            stream_to_avatar=False,
             datainfo={
                 "turn_id": "live-board-contract",
                 "generation": 0,
@@ -81,7 +80,6 @@ class LiveLLMBoardContractTests(unittest.TestCase):
 
         llm.generate_response(
             "請分析台灣的歷史。",
-            stream_to_avatar=False,
             datainfo={
                 "turn_id": "live-history-board-contract",
                 "generation": 0,

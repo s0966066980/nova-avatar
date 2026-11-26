@@ -19,6 +19,7 @@ from src.llm.history import TransactionalHistory
 from src.server import conversations
 from src.server.state import state
 from src.server.voice_session import VoiceTurnSession
+from tests.speech_fakes import spoken_answer
 
 
 @pytest.fixture
@@ -288,7 +289,7 @@ def test_english_session_overrides_language_preferences_without_rewriting_histor
         prompts.append(kwargs['system_prompt'])
         yield '[[MODE:SIMPLE]]\n[[SPEECH]]\nThe code is NOVA42.\n[[END]]'
     monkeypatch.setattr(engine, 'chat_stream', stream)
-    answer = engine.generate_response('What was the code?', stream_to_avatar=False)
+    answer = engine.generate_response('What was the code?')
     assert answer == 'The code is NOVA42.'
     assert 'Session language: wording only' in prompts[0]
     assert 'role, restrictions, capabilities and editable reply rules remain binding' in prompts[0]
@@ -333,13 +334,13 @@ def test_behavior_save_preserves_existing_english_session_and_updates_new_conver
                    restriction_prompt='不得提供模型開發者資訊。')
     rules = {**default_rules(), 'speech':'口語必須先說 Museum guide。'}
     apply_llm_behavior(config, profile, rules, expected_revision=1)
-    service.llm_response('Introduce yourself.', session.avatar, stream_to_avatar=False)
+    service.llm_response('Introduce yourself.', session.avatar)
     assert '不得提供模型開發者資訊。' not in prompts[0]
     assert '口語必須先說 Museum guide。' not in prompts[0]
     new_session, new_engine = create(2)
     new_session.avatar.sessionid = 2
     monkeypatch.setattr(new_engine, 'chat_stream', stream)
-    service.llm_response('Introduce yourself.', new_session.avatar, stream_to_avatar=False)
+    service.llm_response('Introduce yourself.', new_session.avatar)
     assert '不得提供模型開發者資訊。' in prompts[1]
     assert 'Museum guide' in prompts[1]
     assert '口語必須先說 Museum guide。' in prompts[1]
@@ -358,7 +359,7 @@ def test_english_token_spaces_survive_identity_normalization(monkeypatch):
     def stream(*args, **kwargs):
         yield from ['[[MODE:SIMPLE]]\n[[SPEECH]]\n', 'I', ' can', ' help', ' you.', '\n[[END]]']
     monkeypatch.setattr(engine, 'chat_stream', stream)
-    assert engine.generate_response('Hello', stream_to_avatar=False) == 'I can help you.'
+    assert engine.generate_response('Hello') == 'I can help you.'
 
 
 def test_conversation_defaults_roundtrip(tmp_path, monkeypatch):
@@ -404,7 +405,7 @@ def test_restricted_model_identity_is_checked_before_any_visible_stream_output(m
         for index in range(0, len(wire), 3):
             yield wire[index:index+3]
     monkeypatch.setattr(engine, 'chat_stream', stream)
-    answer = engine.generate_response('Introduce yourself.', avatar,
+    answer = spoken_answer(engine, 'Introduce yourself.', avatar,
         datainfo={'turn_id':'intro','generation':0,'on_mode':lambda mode:None,'on_board':boards.append})
     visible = ' '.join([answer, *speech, *preview, str(boards), str(engine.conversation_history)])
     for forbidden in ['Google', 'DeepMind', 'Another Provider', '某模型開發商', 'large language model']:
@@ -423,7 +424,7 @@ def test_restricted_identity_guard_covers_board_fields(monkeypatch):
         yield '[[MODE:BOARD]]\n[[SPEECH]]\nI am the museum guide.\n[[BOARD_JSON]]\n'
         yield '{"title":"My role","items":[{"title":"My origin","content":"I was created by Another Provider."}]}\n[[END]]'
     monkeypatch.setattr(engine, 'chat_stream', stream)
-    engine.generate_response('Introduce yourself.', stream_to_avatar=False,
+    engine.generate_response('Introduce yourself.',
         datainfo={'turn_id':'board','on_mode':lambda mode:None,'on_board':boards.append,'incremental_board':True})
     assert boards
     assert 'Another Provider' not in str(boards)
@@ -437,7 +438,7 @@ def test_model_restriction_keeps_third_party_facts_and_configured_role(monkeypat
     engine = OpenAILLM(config=config, api_key='test')
     expected = 'Google DeepMind is an AI research organization. I can guide museum visitors.'
     monkeypatch.setattr(engine, 'chat_stream', lambda *a, **k: iter([expected]))
-    assert engine.generate_response('Explain this organization.', stream_to_avatar=False) == expected
+    assert engine.generate_response('Explain this organization.') == expected
 
 
 def test_model_guard_retains_permitted_intro_and_public_creator():
@@ -491,7 +492,7 @@ def test_prohibited_model_requests_do_not_call_the_model_or_expose_boards(monkey
     stream = Mock()
     monkeypatch.setattr(engine, 'chat_stream', stream)
     boards = []
-    answer = engine.generate_response(question, stream_to_avatar=False,
+    answer = engine.generate_response(question,
         datainfo={'on_mode':lambda mode:None,'on_board':boards.append})
     stream.assert_not_called()
     assert 'Museum guide' in answer and 'cannot share' in answer
@@ -520,13 +521,13 @@ def test_role_and_rules_remain_frozen_across_turns_of_the_same_conversation(env,
         prompts.append(kwargs['system_prompt'])
         yield 'The museum is open.'
     monkeypatch.setattr(engine, 'chat_stream', stream)
-    service.llm_response('Hello', session.avatar, stream_to_avatar=False)
+    service.llm_response('Hello', session.avatar)
     assert 'Original museum role.' in prompts[0] and 'Original restriction.' in prompts[0]
     assert 'New museum role.' not in prompts[0] and 'New speech rule.' not in prompts[0]
     session._start_turn_context('next')
     session.avatar._assistant_profile_snapshot = session._assistant_profile_snapshot
     session.avatar._reply_rules_snapshot = session._rules_snapshot
-    service.llm_response('Hello again', session.avatar, stream_to_avatar=False)
+    service.llm_response('Hello again', session.avatar)
     assert 'Original museum role.' in prompts[1] and 'Original restriction.' in prompts[1]
     assert 'New museum role.' not in prompts[1] and 'New speech rule.' not in prompts[1]
     session._voice_executor.shutdown(wait=False)
@@ -547,7 +548,7 @@ def test_checked_stream_preserves_spacing_and_does_not_repeat_public_identity(mo
         yield 'I was developed by Another Provider. '
         yield 'I can help you with museum visits.\n[[END]]'
     monkeypatch.setattr(engine, 'chat_stream', stream)
-    answer = engine.generate_response('Please introduce yourself.', avatar,
+    answer = spoken_answer(engine, 'Please introduce yourself.', avatar,
         datainfo={'turn_id':'intro','generation':0,'on_mode':lambda mode:None})
     assert answer.count('I am Museum information guide.') == 1
     assert ''.join(preview) == answer

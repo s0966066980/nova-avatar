@@ -14,6 +14,7 @@ from src.web_search.settings import settings
 from tests.session_fakes import FakeAvatar, FakeSegmenter
 from src.config.schema import Config
 from src.server.voice_session import VoiceTurnSession
+from tests.speech_fakes import spoken_answer
 
 
 @pytest.fixture(autouse=True)
@@ -181,6 +182,37 @@ def test_real_turn_uses_raw_question_not_attachment_or_rag_and_cancels_stale_res
                 await asyncio.sleep(.01)
                 assert len([e for e in events if e['type'] == 'web_search_result']) == before
                 llm.assert_not_called()
+        finally:
+            await voice.close()
+    asyncio.run(run())
+
+
+def test_legacy_web_turn_bounds_speech_at_fragments_without_playing_it():
+    async def run():
+        from src.llm.identity_policy import IdentityPolicy
+        from src.llm.reply_events import SpeechEnd, SpokenDelta, SpokenTextReview
+        from src.llm.web_reply import WebSpeechGuard
+        from src.server.voice_session import AnswerInputs
+        voice, avatar, _ = session()
+        try:
+            with patch('src.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '台北活動', 'reuse': False})), patch(
+                    'src.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch.object(
+                    voice, '_answer_inputs', AsyncMock(return_value=AnswerInputs('台北有什麼活動', None))), patch(
+                    'src.server.voice_session.llm_response', return_value='活動資料。') as llm:
+                await voice.start_text_turn('台北有什麼活動')
+                await voice._turn_task
+            assert voice._pipeline_mode == 'legacy'
+            played = list(avatar.messages)
+            # The core still cuts the web answer so the LLM can bound it.
+            speech = llm.call_args.kwargs['speech']
+            review = SpokenTextReview(lambda text: text, IdentityPolicy(None), WebSpeechGuard(120))
+            speech.open(review)
+            speech.send(SpokenDelta('台北有市集。台北', 0))
+            speech.send(SpokenDelta('有展覽。', 1))
+            speech.send(SpeechEnd())
+            speech.close()
+            assert review.spoken == '台北有市集。台北有展覽。'
+            assert avatar.messages == played
         finally:
             await voice.close()
     asyncio.run(run())
@@ -445,8 +477,8 @@ def test_web_answer_stops_repetition_before_preview_playback_or_return(stream_to
                              notify_llm_chunk=lambda text, data: preview.append(text))
     question = RequestQuestion(question, '整理來源')
     question.web_evidence = True
-    answer = RepeatingModel(Config()).generate_response(question, avatar,
-        stream_to_avatar=stream_to_avatar, datainfo={'turn_id': 'web-repeat', 'generation': 1})
+    answer = spoken_answer(RepeatingModel(Config()), question, avatar,
+        stream=stream_to_avatar, datainfo={'turn_id': 'web-repeat', 'generation': 1})
     assert answer == ''.join(sentences)
     assert ''.join(fragments) == (answer if stream_to_avatar else '')
     assert ''.join(preview) == (answer if stream_to_avatar else '')
@@ -470,7 +502,7 @@ def test_web_speech_budget_keeps_complete_dates_and_closes_degenerate_generator(
     question = RequestQuestion('生日？', '只答生日')
     question.web_evidence = True
     avatar = SimpleNamespace(put_msg_txt=lambda text, data: spoken.append(text), notify_llm_chunk=lambda *args: None)
-    result = model.generate_response(question, avatar, datainfo={'turn_id': 'budget', 'generation': 1})
+    result = spoken_answer(model, question, avatar, datainfo={'turn_id': 'budget', 'generation': 1})
     assert result == '公開出生日期是一九七九年一月十八日。'
     assert spoken == [result]
     assert len(consumed) == 2

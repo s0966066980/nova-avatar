@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import numpy as np
 
-from src.llm.base import TextStreamProcessor
+from src.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
 from src.tts.base import BaseTTS
 
 

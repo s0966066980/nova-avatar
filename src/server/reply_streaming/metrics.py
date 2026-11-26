@@ -7,13 +7,10 @@ from __future__ import annotations
 import time
 import math
 from collections import Counter
-from contextlib import contextmanager
-from contextvars import ContextVar
-from typing import Callable, Iterator, Optional
+from typing import Callable, Optional
 
 
 Clock = Callable[[], float]
-StageObserver = Callable[[str, float], None]
 
 # Stage durations are measured where the work runs; durations, not clocks,
 # cross threads. ``pre_answer`` runs from the transcript to the main answer
@@ -84,34 +81,6 @@ ANSWER_STAGES = (
     "webrtc_audio_commit",
     "webrtc_audible_onset",
 )
-
-
-_stage_observer: ContextVar[Optional[StageObserver]] = ContextVar(
-    "turn_stage_observer", default=None,
-)
-
-
-@contextmanager
-def observe_stages(observer: StageObserver) -> Iterator[None]:
-    """Route ``timed_stage`` durations in this context to ``observer``."""
-    token = _stage_observer.set(observer)
-    try:
-        yield
-    finally:
-        _stage_observer.reset(token)
-
-
-@contextmanager
-def timed_stage(stage: str, *, clock: Clock = time.monotonic) -> Iterator[None]:
-    """Time a block for the current turn, if one is observing this context."""
-    TurnMetrics._validate_stage(stage)
-    observer = _stage_observer.get()
-    started = clock()
-    try:
-        yield
-    finally:
-        if observer is not None:
-            observer(stage, max(0.0, clock() - started))
 
 
 def _duration(start: Optional[float], end: Optional[float]) -> Optional[float]:

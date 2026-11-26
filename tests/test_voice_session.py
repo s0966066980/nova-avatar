@@ -127,18 +127,18 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         )
         session, avatar, events = self.make_session(segment)
 
-        # 逐句串流後，推送 TTS 的責任在 llm_response 內部，輪次只負責把
-        # turn_id 交下去。用 side_effect 模擬它逐句回推。
+        # 串流時核心把 ReplySpeech 交給 llm_response，由它切出可播回覆片段
+        # 送進 avatar。用 side_effect 直接模擬片段送達。
         def fake_llm(
             text,
             avatar_stream,
             *,
-            stream_to_avatar=True,
+            speech=None,
             datainfo=None,
             chunk_guard=None,
             defer_history_commit=False,
         ):
-            self.assertTrue(stream_to_avatar)
+            self.assertIsNotNone(speech)
             self.assertTrue(chunk_guard(0))
             self.assertEqual(datainfo["generation"], session._generation)
             fragment_info = dict(datainfo or {})
@@ -451,7 +451,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             _text,
             avatar_stream,
             *,
-            stream_to_avatar=True,
+            speech=None,
             datainfo=None,
             chunk_guard=None,
             defer_history_commit=False,
@@ -488,7 +488,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             _text,
             avatar_stream,
             *,
-            stream_to_avatar=True,
+            speech=None,
             datainfo=None,
             chunk_guard=None,
             defer_history_commit=False,
@@ -538,7 +538,7 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
             await session._turn_task
 
         self.assertEqual(started["reply_mode"], "legacy")
-        self.assertFalse(calls[0][1].get("stream_to_avatar", True))
+        self.assertNotIn("speech", calls[0][1])  # nothing is played while generating
         self.assertEqual(calls[0][1]["datainfo"]["turn_id"], started["turn_id"])
         self.assertTrue(callable(calls[0][1]["datainfo"]["on_board"]))
         self.assertEqual(calls[0][1].get("chunk_guard"), None)
@@ -669,13 +669,13 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
             text,
             avatar_stream,
             *,
-            stream_to_avatar=True,
+            speech=None,
             datainfo=None,
             chunk_guard=None,
             defer_history_commit=False,
         ):
             self.assertEqual(text, "請串流")
-            self.assertTrue(stream_to_avatar)
+            self.assertIsNotNone(speech)
             self.assertIsNotNone(datainfo)
             self.assertIsNotNone(chunk_guard)
             self.assertTrue(defer_history_commit)
@@ -710,7 +710,7 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
             first_tts_at = []
 
             def fake_llm(text, avatar_stream, **kwargs):
-                if kwargs.get("stream_to_avatar"):
+                if kwargs.get("speech") is not None:
                     avatar_stream.put_msg_txt(first, kwargs.get("datainfo") or {})
                     first_tts_at.append(time.perf_counter())
                     time.sleep(gap)

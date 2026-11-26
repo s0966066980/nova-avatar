@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import numpy as np
 
 from src.server.voice_session import OUTPUT_STALL_FRAMES, VoiceTurnSession
+from tests.speech_fakes import spoken_answer
 
 
 class FakeAvatar:
@@ -521,7 +522,8 @@ class PrivacyLoggingTests(unittest.TestCase):
 
         avatar = SimpleNamespace(put_msg_txt=Mock())
         with patch("src.llm.base.logger") as llm_logger:
-            FakeLLM(Config()).generate_response(
+            spoken_answer(
+                FakeLLM(Config()),
                 "private transcript",
                 avatar,
                 datainfo={"turn_id": "turn-1", "generation": 0},

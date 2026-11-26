@@ -137,8 +137,6 @@ forbidden_modules = [
     "src.vad",
 ]
 ignore_imports = [
-    "src.llm.base -> src.server.reply_streaming.fragmenter",  # ticket 02
-    "src.llm.engines.openai -> src.server.reply_streaming.metrics",  # ticket 02
     "src.tts.engines.edge -> src.server.reply_streaming.channel",  # ticket 03
     "src.tts.engines.edge -> src.server.reply_streaming.retry",  # ticket 03
     "src.avatars.builder -> src.server.state",  # ticket 04
@@ -178,7 +176,6 @@ forbidden_modules = [
     "src.scene",
 ]
 ignore_imports = [
-    "src.llm.base -> src.avatars.base",  # ticket 06
     "src.llm.service -> src.avatars.base",  # ticket 06
     "src.ragflow.settings -> src.avatars.catalog",  # ticket 06
 ]

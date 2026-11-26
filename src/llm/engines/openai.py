@@ -25,7 +25,7 @@ from src.llm.reply_contract import auto_reply_grammar
 from src.llm.context_usage import (
     ContextCapacityError, cached_capacity, measure_request, with_input_tokens,
 )
-from src.server.reply_streaming.metrics import timed_stage
+from src.utils.stage_timing import timed_stage
 
 
 class OpenAILLM(BaseLLM):

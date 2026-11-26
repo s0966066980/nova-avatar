@@ -11,6 +11,7 @@ from src.llm.base import BaseLLM, response_token_budget
 from src.llm.router import ReplyMode
 from src.llm.engines.openai import OpenAILLM
 from src.llm.prewarm import prewarm_local_llm
+from tests.speech_fakes import spoken_answer
 
 
 def test_local_prewarm_finishes_the_disposable_completion_before_readiness():
@@ -268,7 +269,8 @@ def test_complete_speech_channel_is_playable_before_board_generation_finishes():
             yield '{"title":"運動","items":[{"title":"健康","content":"保持規律"}]}[[END]]'
 
     llm = BoardLLM(config, parent=avatar)
-    llm.generate_response(
+    spoken_answer(
+        llm,
         "運動有什麼好處", avatar, reply_mode=ReplyMode.AUTO,
         datainfo={"turn_id": "test-turn", "generation": 1},
     )

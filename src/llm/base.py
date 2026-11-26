@@ -9,11 +9,12 @@ from __future__ import annotations
 import math
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, Generator, Optional
+from typing import Callable, Generator, Optional
 from uuid import uuid4
 
 from src.llm.prompts import compose_system_prompt
 from src.llm.identity_policy import IdentityPolicy
+from src.llm.reply_events import SpeechEnd, SpeechSink, SpokenDelta, SpokenTextReview
 from src.llm.response_protocol import (
     BoardItem,
     BoardPayload,
@@ -23,26 +24,17 @@ from src.llm.response_protocol import (
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
 from src.llm.text_normalizer import (
-    join_spoken_fragments,
     normalize_assistant_identity,
     normalize_output_text,
     strip_unsolicited_self_introduction,
 )
-from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
 from src.utils.logging import logger
-
-if TYPE_CHECKING:
-    from src.avatars.base import BaseAvatar
 
 
 DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.'
 DEFAULT_RESPONSE_MAX_CHARS = 120
 MIN_RESPONSE_MAX_CHARS = 20
 MAX_RESPONSE_MAX_CHARS = 2000
-# 只在完整句尾切給 TTS。逗號與冒號屬於句內停頓，拆開合成會重置韻律，
-# 也會讓 Avatar 在相鄰 TTS 請求之間提前填入靜音幀。
-SENTENCE_DELIMITERS = ".!?;。！？；"
-MIN_SENTENCE_LENGTH = 24
 
 
 def validate_response_max_chars(value) -> int:
@@ -95,43 +87,10 @@ def load_system_prompt(config=None) -> str:
     return DEFAULT_SYSTEM_PROMPT
 
 
-class TextStreamProcessor:
-    """文本流處理器，負責分句和緩衝"""
-    
-    def __init__(self, delimiters: str = SENTENCE_DELIMITERS, min_length: int = MIN_SENTENCE_LENGTH):
-        self.delimiters = delimiters
-        self.min_length = min_length
-        self.buffer = ""
-    
-    def process_chunk(self, text: str, callback) -> None:
-        if not text:
-            return
-        
-        # 以標點為分隔符，儘量保持語義完整再發給 TTS
-        last_pos = 0
-        for i, char in enumerate(text):
-            if char in self.delimiters:
-                sentence = self.buffer + text[last_pos:i + 1]
-                last_pos = i + 1
-                
-                if len(sentence) >= self.min_length:
-                    callback(sentence)
-                    self.buffer = ""
-                else:
-                    self.buffer = sentence
-        
-        self.buffer += text[last_pos:]
-    
-    def flush(self, callback) -> None:
-        if self.buffer:
-            callback(self.buffer)
-            self.buffer = ""
-
-
 class BaseLLM(ABC):
     """所有 LLM 引擎的基類"""
     
-    def __init__(self, config, parent: Optional["BaseAvatar"] = None):
+    def __init__(self, config, parent=None):
         self.config = config
         self.parent = parent
         self.system_prompt = self._load_system_prompt()
@@ -197,16 +156,20 @@ class BaseLLM(ABC):
     def generate_response(
         self,
         message: str,
-        avatar_stream: Optional["BaseAvatar"] = None,
         *,
-        stream_to_avatar: bool = True,
+        speech: Optional[SpeechSink] = None,
         datainfo: Optional[dict] = None,
         chunk_guard: Optional[Callable[[int], bool]] = None,
         defer_history_commit: bool = False,
         reply_mode: Optional[ReplyMode | str] = None,
         rag_context: str = "",
     ) -> str:
-        """生成完整響應並推送到 avatar"""
+        """Generate one answer; spoken deltas go to the core's ``speech`` sink.
+
+        The core cuts the deltas into playable fragments and plays them; the
+        return value is the spoken answer it played, or the whole spoken
+        answer when no sink is given.
+        """
         start_time = time.perf_counter()
         pref_str = (
             reply_mode.value.lower()
@@ -275,53 +238,6 @@ class BaseLLM(ABC):
             "標題、項目均使用繁體中文；保持回覆協定標記不變，必要的引文保留原文。"
         )
 
-        semantic_stream = bool(
-            stream_to_avatar
-            and datainfo
-            and datainfo.get("turn_id")
-            and datainfo.get("generation") is not None
-        )
-        weak_min = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "weak_min_chars",
-                24,
-            )
-            or 24
-        )
-        soft_limit = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "soft_limit_chars",
-                72,
-            )
-            or 72
-        )
-        hard_limit = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "hard_limit_chars",
-                120,
-            )
-            or 120
-        )
-        strong_min = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "strong_min_chars",
-                1,
-            )
-            or 1
-        )
-        semantic_wait_seconds = float(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "semantic_wait_seconds",
-                0.5,
-            )
-            or 0.5
-        )
-        text_processor = TextStreamProcessor()
         full_response = ""
         fenced = False
         history_transaction = None
@@ -332,8 +248,6 @@ class BaseLLM(ABC):
         if callable(begin_history):
             history_transaction = begin_history(message, turn_id=turn_id)
         
-        target_avatar = (avatar_stream or self.parent) if stream_to_avatar else None
-        fragment_sequence = 0
         on_mode = (datainfo or {}).get("on_mode")
         on_board = (datainfo or {}).get("on_board")
         incremental_board = bool((datainfo or {}).get("incremental_board"))
@@ -367,74 +281,11 @@ class BaseLLM(ABC):
         )
         if norm_mode != ReplyMode.AUTO and callable(on_mode):
             on_mode(norm_mode)
-        spoken_response = ""
         web_guard = None
         if getattr(message, 'web_evidence', False):
             from src.llm.web_reply import WebSpeechGuard
             web_guard = WebSpeechGuard(resp_chars or DEFAULT_RESPONSE_MAX_CHARS)
-        def send_to_avatar(text: str) -> None:
-            nonlocal fragment_sequence, spoken_response
-            if not text:
-                return
-            text = identity_policy.sanitize(normalize_visible_text(text), identity_already_visible=bool(
-                identity_policy.name and identity_policy.name.casefold() in spoken_response.casefold()
-            ))
-            if not text:
-                return
-            if web_guard is not None and not web_guard.accept(text):
-                return
-            previous_length = len(spoken_response)
-            spoken_response = join_spoken_fragments((spoken_response, text))
-            if target_avatar:
-                if identity_policy.enabled or web_guard is not None:
-                    notify_chunk = getattr(target_avatar, 'notify_llm_chunk', None)
-                    if callable(notify_chunk):
-                        notify_chunk(spoken_response[previous_length:], {
-                            **dict(datainfo or {}), 'llm_sequence': fragment_sequence,
-                        })
-                fragment_info = dict(datainfo or {})
-                fragment_info.pop("on_board", None)
-                fragment_info.pop("on_mode", None)
-                fragment_info.pop("rules_snapshot", None)
-                fragment_info.pop("incremental_board", None)
-                if (
-                    fragment_info.get("turn_id")
-                    and fragment_info.get("generation") is not None
-                ):
-                    fragment_info["fragment_sequence"] = fragment_sequence
-                    logger.info(
-                        "Queueing turn-aware LLM fragment sequence=%d",
-                        fragment_sequence,
-                    )
-                else:
-                    logger.info("Queueing legacy LLM fragment")
-                target_avatar.put_msg_txt(text, fragment_info)
-                fragment_sequence += 1
-
         sequence = -1
-
-        def turn_live() -> bool:
-            """The turn's live state: the timer may fire while the model is silent,
-            so a fence must be seen without waiting for the next chunk."""
-            return not fenced and (chunk_guard is None or chunk_guard(max(sequence, 0)))
-
-        # The semantic wait releases a long clause by timer even while the
-        # model is silent; feeding, flushing and timed releases share one lock.
-        semantic_fragments = (
-            SemanticWaitTimer(
-                SemanticFragmenter(
-                    weak_min_chars=weak_min,
-                    soft_limit_chars=soft_limit,
-                    hard_limit_chars=hard_limit,
-                    strong_min_chars=strong_min,
-                    semantic_wait_seconds=semantic_wait_seconds,
-                ),
-                send_to_avatar,
-                active=turn_live,
-            )
-            if (semantic_stream and target_avatar) or web_guard is not None
-            else None
-        )
 
         output_locale = str(getattr(profile, "output_locale", "zh-TW") or "zh-TW")
         enforce_locale = bool(getattr(profile, "enforce_output_locale", True))
@@ -450,6 +301,16 @@ class BaseLLM(ABC):
             return strip_unsolicited_self_introduction(
                 normalized, user_message=message, assistant_name=assistant_name
             )
+
+        review = SpokenTextReview(normalize_visible_text, identity_policy, web_guard)
+        unplayed_speech = ""
+
+        def emit_spoken(text: str, llm_sequence: int) -> None:
+            nonlocal unplayed_speech
+            if speech is not None:
+                speech.send(SpokenDelta(text=text, llm_sequence=llm_sequence))
+            else:
+                unplayed_speech += text
 
         def normalize_board(payload: BoardPayload) -> BoardPayload:
             items = []
@@ -486,6 +347,8 @@ class BaseLLM(ABC):
                 ))
         
         try:
+            if speech is not None:
+                speech.open(review)
             # 記錄首包延遲，方便定位 LLM 響應瓶頸
             first_chunk = True
             if identity_policy.refuse_request:
@@ -515,35 +378,11 @@ class BaseLLM(ABC):
                 deltas = parser.feed(chunk)
 
                 for spoken in deltas:
-                    spoken = normalize_visible_text(spoken)
-                    if spoken and target_avatar:
-                        mark_stage = getattr(target_avatar, "mark_stage_end", None)
-                        if callable(mark_stage):
-                            mark_stage("llm_first_speech")
-                    if target_avatar and semantic_stream:
-                        notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
-                        if callable(notify_chunk) and not identity_policy.enabled and web_guard is None:
-                            notify_chunk(
-                                spoken,
-                                {
-                                    **dict(datainfo or {}),
-                                    "llm_sequence": sequence,
-                                },
-                            )
-                    if semantic_fragments is not None:
-                        semantic_fragments.feed(spoken)
-                    elif target_avatar:
-                        text_processor.process_chunk(spoken, send_to_avatar)
-                    else:
-                        spoken_response += spoken
-                if (
-                    semantic_fragments is not None
-                    and parser.speech_complete
-                ):
-                    # The end of SPEECH is a semantic boundary even if the
-                    # model omitted sentence punctuation. Board generation
-                    # must not hold an already complete spoken summary.
-                    semantic_fragments.flush()
+                    emit_spoken(normalize_visible_text(spoken), sequence)
+                if speech is not None and parser.speech_complete:
+                    # Board generation must not hold an already complete
+                    # spoken summary: the core treats this as a boundary.
+                    speech.send(SpeechEnd())
                 if web_guard is not None and web_guard.stopped:
                     close = getattr(chunks, 'close', None)
                     if callable(close):
@@ -554,39 +393,16 @@ class BaseLLM(ABC):
                 flush_deltas, board_payload = parser.flush()
 
                 for delta in flush_deltas:
-                    if not delta:
-                        continue
-                    delta = normalize_visible_text(delta)
-                    if delta and target_avatar:
-                        mark_stage = getattr(target_avatar, "mark_stage_end", None)
-                        if callable(mark_stage):
-                            mark_stage("llm_first_speech")
-                    if target_avatar and semantic_stream:
-                        notify_chunk = getattr(target_avatar, "notify_llm_chunk", None)
-                        if callable(notify_chunk) and not identity_policy.enabled and web_guard is None:
-                            notify_chunk(
-                                delta,
-                                {
-                                    **dict(datainfo or {}),
-                                    "llm_sequence": max(sequence, 0),
-                                },
-                            )
-                    if semantic_fragments is not None:
-                        semantic_fragments.feed(delta)
-                    elif target_avatar:
-                        text_processor.process_chunk(delta, send_to_avatar)
-                    else:
-                        spoken_response += delta
-
-                if semantic_fragments is not None:
-                    semantic_fragments.flush()
-                elif target_avatar:
-                    text_processor.flush(send_to_avatar)
+                    if delta:
+                        emit_spoken(normalize_visible_text(delta), max(sequence, 0))
+                if speech is not None:
+                    speech.send(SpeechEnd())
                 emit_board(board_payload)
-            
+
             total_time = time.perf_counter()
             logger.info(f"Total LLM response time: {total_time - start_time:.3f}s")
 
+            spoken_response = review.spoken if speech is not None else unplayed_speech
             clean_spoken = identity_policy.sanitize(normalize_visible_text(
                 spoken_response.strip() or parser.speech_text.strip()
             ))
@@ -623,5 +439,5 @@ class BaseLLM(ABC):
             logger.error("LLM response generation failed: %s", type(e).__name__)
             raise
         finally:
-            if semantic_fragments is not None:
-                semantic_fragments.close()
+            if speech is not None:
+                speech.close()

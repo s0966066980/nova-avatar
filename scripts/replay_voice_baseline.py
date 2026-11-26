@@ -80,11 +80,11 @@ def _fake_llm(
     _text,
     avatar,
     *,
-    stream_to_avatar=True,
+    speech=None,
     datainfo=None,
     chunk_guard=None,
 ) -> str:
-    if stream_to_avatar and (chunk_guard is None or chunk_guard(0)):
+    if speech is not None and (chunk_guard is None or chunk_guard(0)):
         avatar.put_msg_txt("fixture", data=datainfo)
     return "fixture"
 

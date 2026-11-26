@@ -11,6 +11,7 @@ from src.llm.response_protocol import (
     ThinkFilter,
 )
 from src.llm.router import ReplyMode
+from tests.speech_fakes import spoken_answer
 
 
 class ThinkFilterTests(unittest.TestCase):
@@ -219,7 +220,6 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
 
         result = RawJsonLLM(Config()).generate_response(
             "請給我建議",
-            stream_to_avatar=False,
             reply_mode=ReplyMode.SIMPLE,
         )
 
@@ -256,7 +256,8 @@ class EndToEndProtocolStreamingTests(unittest.TestCase):
         board_events = []
 
         llm = MockStreamingLLM(Config())
-        result = llm.generate_response(
+        result = spoken_answer(
+            llm,
             "請規劃架構",
             avatar,
             reply_mode=ReplyMode.BOARD,

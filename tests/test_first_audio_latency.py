@@ -31,9 +31,8 @@ from src.server.reply_streaming.metrics import (
     ANSWER_STAGES,
     STAGE_NAMES,
     TurnMetrics,
-    observe_stages,
-    timed_stage,
 )
+from src.utils.stage_timing import observe_stages, timed_stage
 from src.server.voice_session import VoiceTurnSession
 
 
@@ -102,10 +101,10 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
                     raise RuntimeError("preflight failed")
         self.assertEqual(reported, ["model_info"])
 
-    def test_timed_stage_rejects_unknown_names(self):
+    def test_the_core_rejects_a_stage_name_outside_its_vocabulary(self):
+        # Layers time their own work; the core owns the stage names.
         with self.assertRaises(ValueError):
-            with timed_stage("transcript"):
-                pass
+            TurnMetrics("turn").record_stage_duration("transcript", 0.1)
 
     def test_llamacpp_model_info_preflight_is_timed(self):
         from src.llm.engines.openai import OpenAILLM

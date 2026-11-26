@@ -314,14 +314,14 @@ def test_today_then_week_fits_without_discarding_history_or_displayed_board(monk
     llm._client.chat.completions.create.side_effect = lambda **_: [SimpleNamespace(choices=[
         SimpleNamespace(delta=SimpleNamespace(content='[[MODE:SIMPLE]]\n[[SPEECH]]\n臺北市今天多雲，請留意降雨並攜帶雨具。\n[[END]]'))])]
     info = {'on_mode': lambda *_: None}
-    llm.generate_response('今天台北天氣如何？', stream_to_avatar=False,
+    llm.generate_response('今天台北天氣如何？',
         datainfo=info, rag_context=weather_prompt(forecast_facts(1)))
     board = SessionBoardContext(turn_id='today', title='臺北市今天天氣', summary=None,
         items=[BoardItem(title='上午', content='多雲，22–28°C；降雨機率未提供。'),
                BoardItem(title='下午', content='短暫陣雨，請留意天氣變化。')])
     llm.set_last_board(board)
     history = deepcopy(llm.conversation_history)
-    llm.generate_response('未來一週天氣如何？', stream_to_avatar=False,
+    llm.generate_response('未來一週天氣如何？',
         datainfo=info, rag_context=weather_prompt(forecast_facts()))
     assert llm.context_usage['over_capacity'] is False
     assert llm.context_usage['input_tokens'] + llm.context_usage['reserved_output_tokens'] <= 8192

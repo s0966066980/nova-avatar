@@ -66,7 +66,7 @@ class TextNormalizerTests(unittest.TestCase):
         boards = []
         llm = FakeLLM(config)
         spoken = llm.generate_response(
-            "測試", stream_to_avatar=False, reply_mode=ReplyMode.BOARD,
+            "測試", reply_mode=ReplyMode.BOARD,
             datainfo={"on_board": boards.append},
         )
         self.assertEqual(spoken, "這個軟體支援視訊。")
