@@ -13,7 +13,7 @@ import pytest
 
 from src.profiles.routing import candidates, route_question, weather_member
 from src.profiles.store import ProfileError
-from src.profiles.weather import TAIPEI
+from src.llm.tools.weather import TAIPEI
 from tests.role_fakes import async_test, connect, field  # noqa: F401
 from tests.role_fakes import SERVICE, TRAFFIC, _config, _member, _prompt, _schema, composition  # noqa: F401
 

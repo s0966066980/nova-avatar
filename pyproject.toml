@@ -239,6 +239,28 @@ forbidden_modules = [
     "src.vad",
 ]
 
+# Handoff decisions, the weather tool and AI greetings belong to the LLM layer
+# (ADR 0027). The core calls src.llm.handoff, src.llm.tools and
+# src.llm.greeting, never the llama.cpp protocol or the tools' own modules.
+[[tool.importlinter.contracts]]
+id = "core-uses-llm-entry-points"
+name = "The core reaches handoff, weather and greetings only through LLM entry points"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "src.server",
+    "src.profiles",
+    "src.config",
+    "src.greetings",
+    "src.vad",
+    "src.utils",
+]
+forbidden_modules = [
+    "src.llm.llamacpp_protocol",
+    "src.llm.tools.weather",
+    "src.llm.tools.weather_keywords",
+]
+
 [tool.ruff]
 required-version = "==0.17.1"
 target-version = "py310"

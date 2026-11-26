@@ -16,8 +16,8 @@ import pytest
 from src.config.schema import Config
 from src.profiles.routing import route_question
 from src.profiles.store import ProfileStore
-from src.profiles.weather import COUNTIES, TAIPEI
-from src.profiles.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
+from src.llm.tools.weather import COUNTIES, TAIPEI
+from src.llm.tools.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
 
 FRIDAY = date(2026, 10, 30)
 

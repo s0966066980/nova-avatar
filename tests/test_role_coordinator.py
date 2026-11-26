@@ -35,7 +35,7 @@ def test_routing_does_not_guess_a_county_for_an_ambiguous_district(field, text, 
 
 def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field):
     from concurrent.futures import ThreadPoolExecutor
-    from src.profiles.routing import RoutingClients
+    from src.llm.handoff import RoutingClients
     result = dict(target='main')
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     built = []
