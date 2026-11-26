@@ -67,6 +67,7 @@ Repository = "https://github.com/s0966066980/nova-avatar"
 
 [dependency-groups]
 dev = [
+    "import-linter==2.15",
     "pyright==1.1.414",
     "pytest>=8",
     "pytest-cov>=6",
@@ -104,6 +105,138 @@ markers = [
     "speech: ASR, VAD, TTS, and speech worker behavior",
     "slow: deterministic tests that normally take at least one second",
     "live: opt-in tests that use an explicitly configured external model",
+]
+
+# Processing-layer boundaries (ADR 0027). Layers: STT = src.asr; LLM =
+# src.llm, src.ragflow, src.web_search; TTS = src.tts; avatar rendering =
+# src.avatars, src.scene. Core = src.server, src.profiles, src.config,
+# src.greetings, src.vad, src.utils. Every layer may import src.utils.
+# Each ignore_imports entry names the ticket that removes it
+# (CODING_STANDARDS.md rule 6); an entry that no longer matches fails the run.
+[tool.importlinter]
+root_packages = ["src"]
+
+[[tool.importlinter.contracts]]
+id = "layers-not-core"
+name = "Processing layers do not import the core"
+type = "forbidden"
+source_modules = [
+    "src.asr",
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.tts",
+    "src.avatars",
+    "src.scene",
+]
+forbidden_modules = [
+    "src.server",
+    "src.profiles",
+    "src.config",
+    "src.greetings",
+    "src.vad",
+]
+ignore_imports = [
+    "src.llm.base -> src.server.reply_streaming.fragmenter",  # ticket 02
+    "src.llm.engines.openai -> src.server.reply_streaming.metrics",  # ticket 02
+    "src.tts.engines.edge -> src.server.reply_streaming.channel",  # ticket 03
+    "src.tts.engines.edge -> src.server.reply_streaming.retry",  # ticket 03
+    "src.avatars.builder -> src.server.state",  # ticket 04
+    "src.llm.service -> src.server.state",  # ticket 04
+    "src.tts.training.gpu_guard -> src.server.state",  # ticket 04
+    "src.asr.prewarm -> src.vad.factory",  # ticket 06
+    "src.avatars.base -> src.vad.audio",  # ticket 06
+]
+
+# The cross-layer contracts check direct imports only: a path through the core
+# is already caught above, and src.utils is kept free of layer imports below.
+[[tool.importlinter.contracts]]
+id = "stt-not-other-layers"
+name = "STT layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["src.asr"]
+forbidden_modules = [
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.tts",
+    "src.avatars",
+    "src.scene",
+]
+
+[[tool.importlinter.contracts]]
+id = "llm-not-other-layers"
+name = "LLM layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["src.llm", "src.ragflow", "src.web_search"]
+forbidden_modules = [
+    "src.asr",
+    "src.tts",
+    "src.avatars",
+    "src.scene",
+]
+ignore_imports = [
+    "src.llm.base -> src.avatars.base",  # ticket 06
+    "src.llm.service -> src.avatars.base",  # ticket 06
+    "src.ragflow.settings -> src.avatars.catalog",  # ticket 06
+]
+
+[[tool.importlinter.contracts]]
+id = "tts-not-other-layers"
+name = "TTS layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["src.tts"]
+forbidden_modules = [
+    "src.asr",
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.avatars",
+    "src.scene",
+]
+ignore_imports = [
+    "src.tts.base -> src.avatars.base",  # ticket 06
+]
+
+[[tool.importlinter.contracts]]
+id = "avatar-not-other-layers"
+name = "Avatar rendering layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["src.avatars", "src.scene"]
+forbidden_modules = [
+    "src.asr",
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.tts",
+]
+ignore_imports = [
+    "src.avatars.base -> src.tts.base",  # ticket 03
+    "src.avatars.base -> src.tts.factory",  # ticket 03
+]
+
+[[tool.importlinter.contracts]]
+id = "utils-is-shared-leaf"
+name = "src.utils imports neither processing layers nor the rest of the core"
+type = "forbidden"
+source_modules = ["src.utils"]
+forbidden_modules = [
+    "src.asr",
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.tts",
+    "src.avatars",
+    "src.scene",
+    "src.server",
+    "src.profiles",
+    "src.config",
+    "src.greetings",
+    "src.vad",
 ]
 
 [tool.ruff]

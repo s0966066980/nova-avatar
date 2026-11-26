@@ -26,3 +26,8 @@ SPDX-License-Identifier: Apache-2.0
 5. **名稱含 `sanitize` 的函式真的跳脫 HTML。** 它的輸出可安全插入 DOM；只做
    其他清理（例如移除語音標記）的函式改用描述實際行為的名稱。原因：
    呼叫端會因名稱而把輸出當作安全 HTML，形成 XSS。
+6. **import-linter 的例外必須附工單編號。** `pyproject.toml` 中
+   `[tool.importlinter]` 的每一條 `ignore_imports` 都在同一行以
+   `# ticket NN` 標明負責清除它的工單；沒有工單的越界 import 不得加進例外，
+   而是修正 import 本身。原因：沒有負責工單的例外不會有人清，處理層邊界
+   （ADR 0027）會被例外清單慢慢掏空。
