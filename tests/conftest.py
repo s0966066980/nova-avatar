@@ -56,6 +56,7 @@ AREA_BY_FILE = {
     "test_training_edge_acknowledgement.py": "speech",
     "test_training_transcript_check.py": "speech",
     "test_matcha_training_scripts.py": "speech",
+    "test_stage_guard.py": "speech",
     "test_training_gpu.py": "speech",
     "test_training_asr.py": "speech",
     "test_training_processes.py": "speech",
