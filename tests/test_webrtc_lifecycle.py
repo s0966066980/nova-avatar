@@ -3,6 +3,7 @@
 """Exercise reservation, negotiation and cleanup through the real offer route."""
 import asyncio
 import json
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -57,9 +58,10 @@ def rtc(monkeypatch):
         discard_stale_media=Mock()))
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', voice)
     monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: object())
-    def request(role='console', sdp='good'):
+    def request(role='console', sdp='good', app=None):
         result = AsyncMock()
         result.json.return_value = dict(client_role=role, sdp=sdp, type='offer')
+        result.app = {} if app is None else app
         return result
     return SimpleNamespace(request=request, peers=peers, voices=voices)
 
@@ -321,6 +323,7 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
         from src.server.state import state
 
         request = AsyncMock()
+        request.app = {}
         request.json.return_value = {
             "client_role": "console",
             "sdp": "offer",
@@ -348,6 +351,7 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         request = AsyncMock()
+        request.app = {}
         request.json.return_value = {
             "client_role": "console",
             "sdp": "offer",
@@ -368,3 +372,82 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.assertRaises(ReachedOfferParsing):
                 await offer(request)
+
+
+# --------------------------------------------------------------------------- voice training (spec decision 14)
+
+
+def training_app(manager):
+    from src.server.routes.tts_training import MANAGER_KEY
+    return {MANAGER_KEY: manager}
+
+
+def training_rig(tmp_path, **kwargs):
+    """A training job whose child keeps running until it is released or signalled."""
+    from tests.training_fakes import rig
+    from src.server.tts_training_jobs import StartRequest
+
+    r = rig(tmp_path, **kwargs)
+    r.manager.start(StartRequest(corpus='voice', name='我的聲音'))
+    deadline = time.monotonic() + 10
+    while not r.spawner.processes:
+        assert time.monotonic() < deadline, 'the training child never started'
+        time.sleep(0.01)
+    return r
+
+
+def test_a_stage_offer_is_refused_while_voice_training_runs(rtc, tmp_path, monkeypatch):
+    built = []
+    monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: built.append(a) or object())
+    r = training_rig(tmp_path, train_code=None)
+    try:
+        response = asyncio.run(webrtc.offer(rtc.request('stage', app=training_app(r.manager))))
+        assert response.status == 409
+        body = json.loads(response.body)
+        assert body['reason'] == 'voice_training_active'
+        assert body['msg'] == '聲線訓練進行中，數位人暫停服務'
+        assert not state.session_roles and not state.avatar_streams and built == []
+        assert rtc.peers == [] and rtc.voices == []
+    finally:
+        r.manager.cancel()
+        r.manager.join(20)
+
+
+def test_a_console_offer_still_connects_while_voice_training_runs(rtc, tmp_path):
+    r = training_rig(tmp_path, train_code=None)
+    try:
+        response = asyncio.run(webrtc.offer(rtc.request('console', app=training_app(r.manager))))
+        assert response.status == 200
+        assert list(state.session_roles.values()) == ['console']
+    finally:
+        r.manager.cancel()
+        r.manager.join(20)
+
+
+def end_by_finishing(r):
+    r.release.set()
+
+
+def end_by_cancelling(r):
+    r.manager.cancel()
+
+
+@pytest.mark.parametrize('kwargs, end, status', [
+    (dict(train_code=0), end_by_finishing, 'done'),
+    (dict(train_code=1), end_by_finishing, 'failed'),  # the training child exits abnormally
+    (dict(train_code=0, verify_error=RuntimeError('broken bundle')), end_by_finishing, 'failed'),  # the worker raises
+    (dict(train_code=None), end_by_cancelling, 'cancelled'),
+])
+def test_a_stage_connects_again_once_the_training_job_has_ended(rtc, tmp_path, kwargs, end, status):
+    import threading
+    release = threading.Event()
+    r = training_rig(tmp_path, train_release=release, **kwargs)
+    r.release = release
+    app = training_app(r.manager)
+    assert asyncio.run(webrtc.offer(rtc.request('stage', app=app))).status == 409
+    end(r)
+    r.manager.join(20)
+    assert r.manager.status()['status'] == status
+    response = asyncio.run(webrtc.offer(rtc.request('stage', app=app)))
+    assert response.status == 200
+    assert list(state.session_roles.values()) == ['stage']

@@ -53,6 +53,7 @@
       </div>
       <p v-if="state.log.gap" class="vt-hint">{{ tx('job.logGap') }}</p>
       <p class="vt-hint">{{ tx('job.leaveHint') }}</p>
+      <p v-if="active" class="vt-hint">{{ tx('job.stageBlocked') }}</p>
     </div>
 
     <div v-if="state.confirmCancel" class="vt-confirm-cancel" role="group" aria-labelledby="vt-cc-t" aria-describedby="vt-cc-d" @keydown.esc="store.keepTraining()">

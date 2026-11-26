@@ -354,3 +354,26 @@ test('Edge 確認畫面：顯示並使用伺服器給的條文，沒有條文時
   assert.equal(button(missing.root, '確認並繼續').props['aria-disabled'], 'true')
   assert.match(textContent(byId(missing.root, 'vt-why-edge')), /伺服器還沒提供/)
 })
+
+test('開始前與進行中都說明訓練期間舞台無法連線；結束後不再顯示', async t => {
+  const blocked = /訓練進行中，舞台無法連線/
+  const ready = storeWith({ getTraining: { job: null, settings: {}, preflight: { can_start: true, checks: [pass('admin')] } } })
+  ready.chooseSource('edge')
+  ready.state.slug = 'e'
+  ready.state.name = '展廳導覽員'
+  const preflight = mount(Preflight, { store: ready })
+  t.after(() => preflight.unmount())
+  await settle()
+  assert.match(textContent(preflight.root), blocked)
+
+  const store = storeWith({})
+  store.state.job = { id: 'j', status: 'running', stage: 'training', progress: 10, name: 'n', stages: [] }
+  store.state.log = { jobId: 'j', lines: [], next: 0, gap: false }
+  const job = mount(Job, { store })
+  t.after(() => job.unmount())
+  await settle()
+  assert.match(textContent(job.root), blocked)
+  store.state.job = { ...store.state.job, status: 'done', progress: 100 }
+  await settle()
+  assert.doesNotMatch(textContent(job.root), blocked)
+})

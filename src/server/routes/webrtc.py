@@ -19,11 +19,20 @@ from src.server.state import state
 from src.server.utils import randN
 from src.server.voice_session import VoiceTurnSession
 from src.server.presentation import SessionPresentation
+from src.server.routes.tts_training import MANAGER_KEY as TRAINING_JOBS
+from src.server.stage_guard import stage_offer_refusal
 
 
 async def offer(request):
     """Negotiate media while preparing speech only for an incoming audio track."""
     params = await request.json()
+    client_role = str(params.get("client_role", "console")).strip().lower()
+    if client_role not in {"console", "stage"}:
+        client_role = "console"
+    # No new stage while a voice-training job holds the GPU (spec decision 14).
+    refusal = stage_offer_refusal(client_role, request.app.get(TRAINING_JOBS))
+    if refusal is not None:
+        return refusal
     # The body can arrive while a resource update starts. Check availability
     # after reading it, without yielding again before reserving this session.
     if not getattr(state, "model_ready", False) or state.model is None or state.avatar is None:
@@ -35,9 +44,6 @@ async def offer(request):
     roles = getattr(state, "roles", None)
     if roles is not None and (roles.phase == "transition" or roles._apply_waiting):
         return web.json_response({"code": -1, "msg": "角色正在切換，請稍後連線"}, status=409)
-    client_role = str(params.get("client_role", "console")).strip().lower()
-    if client_role not in {"console", "stage"}:
-        client_role = "console"
     max_sessions = max(1, int(getattr(state.config.app, "max_session", 1)))
     if roles is not None and roles.enabled:
         max_sessions = 1

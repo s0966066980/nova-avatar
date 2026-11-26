@@ -438,6 +438,7 @@ export default {
         gaugeLabel: '剩餘顯存 {free} GB，門檻 {threshold} GB', gaugeThreshold: '門檻 {n} GB',
         recheck: '重新檢查', checkingShort: '檢查中…', start: '開始訓練',
         startHint: '開始後可以隨時取消。',
+        stageBlocked: '訓練進行中，舞台無法連線；訓練結束後舞台會自動恢復。',
         reasonUnchecked: '還沒有檢查結果，請按「重新檢查」。'
       },
       checks: {
@@ -458,7 +459,8 @@ export default {
         logGap: '較早的日誌已從記憶體移除，完整日誌保存在伺服器的訓練工作資料夾。',
         leaveHint: '離開這個畫面不會中止訓練；回到首頁會看到進行中的訓練工作。日誌會保留，之後仍可查看。',
         cancelAsk: '取消這件訓練工作？', cancelConsequence: '訓練進度不會保留，GPU 顯存會立即釋放。語料會保留，之後可以重新開始。',
-        cancelConfirm: '確認取消訓練', keepGoing: '繼續訓練', cancelJob: '取消訓練', cancelHint: '取消後 GPU 會立即釋放。'
+        cancelConfirm: '確認取消訓練', keepGoing: '繼續訓練', cancelJob: '取消訓練', cancelHint: '取消後 GPU 會立即釋放。',
+        stageBlocked: '訓練進行中，舞台無法連線；訓練結束後舞台會自動恢復。'
       },
       done: {
         created: '聲線模型「{name}」已建立', createdBody: '已加入聲線模型清單，可以在數位人設定檔選用。',
