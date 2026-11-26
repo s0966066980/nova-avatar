@@ -34,13 +34,12 @@ class OpenAILLM(BaseLLM):
     def __init__(
         self, 
         config=None, 
-        parent=None,
         api_key: str = None,
         base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
         model: str = "qwen-plus",
         max_history: int = 10  # 最大儲存的對話輪次
     ):
-        super().__init__(config, parent)
+        super().__init__(config)
         
         if not api_key:
             raise ValueError("api_key is required")

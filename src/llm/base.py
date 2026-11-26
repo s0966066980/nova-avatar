@@ -90,9 +90,8 @@ def load_system_prompt(config=None) -> str:
 class BaseLLM(ABC):
     """所有 LLM 引擎的基類"""
     
-    def __init__(self, config, parent=None):
+    def __init__(self, config):
         self.config = config
-        self.parent = parent
         self.system_prompt = self._load_system_prompt()
         self._last_board: Optional[SessionBoardContext] = None
         self._pending_boards: dict[str, SessionBoardContext] = {}

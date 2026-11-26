@@ -158,7 +158,7 @@ def test_cancelled_offer_waits_for_worker_then_releases_reservation(rtc, monkeyp
     asyncio.run(run())
 
 
-def test_disconnect_releases_all_role_llm_parents(rtc, monkeypatch):
+def test_disconnect_releases_all_role_llm_sessions(rtc, monkeypatch):
     import json
 
     from src.llm import service
@@ -167,8 +167,8 @@ def test_disconnect_releases_all_role_llm_parents(rtc, monkeypatch):
     async def run():
         response = await webrtc.offer(rtc.request())
         sid = json.loads(response.text)['sessionid']
-        service._session_llm_instances[(sid, 'main')] = SimpleNamespace(parent=object())
-        service._session_llm_instances[(sid, 'weather')] = SimpleNamespace(parent=object())
+        service._session_llm_instances[(sid, 'main')] = SimpleNamespace()
+        service._session_llm_instances[(sid, 'weather')] = SimpleNamespace()
         service.select_session_profile(sid, 'weather')
         rtc.peers[0].connectionState = 'failed'
         await rtc.peers[0].handlers['connectionstatechange']()

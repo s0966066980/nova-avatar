@@ -8,7 +8,7 @@ import json
 
 from aiohttp import web
 
-from src.avatars.catalog import is_safe_avatar_id
+from src.utils.avatar_ids import is_safe_avatar_id
 from src.ragflow.client import MANAGEMENT_URL, RagFlowClient, RagFlowError
 from src.ragflow.settings import avatar_settings, save_avatar_settings
 from src.ragflow.selection import ragflow_id, validate_selection

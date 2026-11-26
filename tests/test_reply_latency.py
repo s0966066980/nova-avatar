@@ -268,7 +268,7 @@ def test_complete_speech_channel_is_playable_before_board_generation_finishes():
             assert spoken == ["規律運動有助維持健康"], "Complete speech waited for board JSON"
             yield '{"title":"運動","items":[{"title":"健康","content":"保持規律"}]}[[END]]'
 
-    llm = BoardLLM(config, parent=avatar)
+    llm = BoardLLM(config)
     spoken_answer(
         llm,
         "運動有什麼好處", avatar, reply_mode=ReplyMode.AUTO,

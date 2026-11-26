@@ -10,9 +10,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from src.utils.avatar_ids import is_safe_avatar_id
 from src.utils.paths import get_data_dir, get_models_dir
-
-AVATAR_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.-]*$"
 
 ENGINE_META: Dict[str, Dict[str, str]] = {
     "musetalk": {
@@ -30,12 +29,6 @@ CURRENT_GREEN_SCREEN_AVATAR_ID = "musetalk_avatar"
 
 def avatars_root() -> Path:
     return get_data_dir() / "avatars"
-
-
-def is_safe_avatar_id(avatar_id: str) -> bool:
-    import re
-
-    return bool(avatar_id) and bool(re.fullmatch(AVATAR_ID_PATTERN, avatar_id))
 
 
 def detect_avatar_type(avatar_dir: Path) -> Optional[str]:

@@ -8,15 +8,28 @@ from __future__ import annotations
 
 import os
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import Any, Callable, Optional, Protocol
 
-from src.avatars.base import BaseAvatar
 from src.llm.engines import OpenAILLM
 from src.llm.base import load_system_prompt
 from src.llm.reply_events import SpeechSink
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
 from src.utils.logging import logger
+
+
+
+class ReplySession(Protocol):
+    """What this layer reads from the core's per-session object for one reply.
+
+    The core may also attach optional per-turn snapshots (``_reply_rules_snapshot``,
+    ``_assistant_profile_snapshot``, ``_reply_mode_callback``, ``_incremental_board``);
+    they are read with ``getattr`` and default to the published configuration.
+    """
+
+    sessionid: int
+    config: Any
+
 
 _session_llm_instances = {}
 _active_profiles = {}
@@ -48,14 +61,14 @@ def _session_key(sessionid, profile_id=None):
     return (sessionid, profile_id) if profile_id else sessionid
 
 
-def _session_instance(avatar_stream, config, api_key=None, base_url=None, model=None):
-    sessionid = getattr(avatar_stream, "sessionid", 0)
+def _session_instance(session, config, api_key=None, base_url=None, model=None):
+    sessionid = getattr(session, "sessionid", 0)
     profile_id = getattr(config, "profile_id", "")
     select_session_profile(sessionid, profile_id)
     key = _session_key(sessionid)
     if key not in _session_llm_instances:
         _session_llm_instances[key] = OpenAILLM(
-            config=config, parent=avatar_stream,
+            config=config,
             api_key=config.llm.api_key or api_key or "nova-avatar-local",
             base_url=config.llm.base_url or base_url,
             model=config.llm.model or model, max_history=10,
@@ -63,15 +76,15 @@ def _session_instance(avatar_stream, config, api_key=None, base_url=None, model=
     return _session_llm_instances[key]
 
 
-def prepare_spoken_history(message: str, avatar_stream, turn_id: str) -> None:
+def prepare_spoken_history(message: str, session, turn_id: str) -> None:
     """A fixed handoff announcement commits through the same playback transaction."""
-    llm = _session_instance(avatar_stream, avatar_stream.config)
+    llm = _session_instance(session, session.config)
     llm.begin_history_turn(message, turn_id=turn_id)
 
 
-def discard_pending_history(avatar_stream, turn_id: str) -> bool:
+def discard_pending_history(session, turn_id: str) -> bool:
     """Drop the pending history of an answer that was generated but never played."""
-    llm = _session_llm_instances.get(_session_key(getattr(avatar_stream, "sessionid", 0)))
+    llm = _session_llm_instances.get(_session_key(getattr(session, "sessionid", 0)))
     discard = getattr(llm, "discard_pending_history_turn", None)
     return bool(discard(turn_id)) if callable(discard) else False
 
@@ -86,9 +99,9 @@ def discard_profile_history(sessionid, profile_id):
     _clear_greetings(sessionid, profile_id)
 
 
-def prepare_tool_board(avatar_stream, turn_id, board):
+def prepare_tool_board(session, turn_id, board):
     from src.llm.response_protocol import BoardItem, SessionBoardContext
-    llm = _session_instance(avatar_stream, avatar_stream.config)
+    llm = _session_instance(session, session.config)
     llm.queue_board_for_display(SessionBoardContext(
         turn_id=turn_id, title=board["title"], summary=None,
         items=[BoardItem(title=p["title"], content=p["body"]) for p in board["items"]]))
@@ -96,7 +109,7 @@ def prepare_tool_board(avatar_stream, turn_id, board):
 
 def llm_response(
     message: str,
-    avatar_stream: BaseAvatar,
+    session: ReplySession,
     api_key: str = os.getenv("DASHSCOPE_API_KEY"),
     base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
     model: str = "qwen-plus",
@@ -115,11 +128,11 @@ def llm_response(
     passes it in so this layer never reads the core's global state.
     """
     try:
-        config = getattr(avatar_stream, 'config', None) or published_config
+        config = getattr(session, 'config', None) or published_config
         # Avatars own their locale/voice, while role and restrictions remain
         # console-owned. A copied avatar config must not freeze old behavior.
         published = config if getattr(config, "conversation_snapshot", False) else published_config or config
-        profile = getattr(avatar_stream, '_assistant_profile_snapshot', None)
+        profile = getattr(session, '_assistant_profile_snapshot', None)
         if profile is None:
             profile = getattr(getattr(config if getattr(config, 'profile_id', '') else published, 'llm', None), 'assistant_profile', None)
         if profile is not None and config is not None:
@@ -136,7 +149,7 @@ def llm_response(
             # The key belongs to the same allowlisted endpoint as base_url;
             # never fall back to another provider's key for a keyless endpoint.
             api_key = config.llm.api_key or "nova-avatar-local"
-        sessionid = getattr(avatar_stream, 'sessionid', 0)
+        sessionid = getattr(session, 'sessionid', 0)
         
         # 為每個 session 維護獨立的 LLM 例項(保留對話歷史)
         key = _session_key(sessionid, getattr(config, "profile_id", ""))
@@ -144,7 +157,6 @@ def llm_response(
             logger.info(f"Creating new LLM instance for session {sessionid}")
             _session_llm_instances[key] = OpenAILLM(
                 config=config,
-                parent=avatar_stream,
                 api_key=api_key,
                 base_url=base_url,
                 model=model,
@@ -161,12 +173,12 @@ def llm_response(
             llm.api_key = api_key
 
         generation_datainfo = dict(datainfo or {})
-        rules_snapshot = getattr(avatar_stream, "_reply_rules_snapshot", None)
+        rules_snapshot = getattr(session, "_reply_rules_snapshot", None)
         generation_datainfo["rules_snapshot"] = rules_snapshot or snapshot_from_config(config if getattr(config, 'profile_id', '') else published)
-        mode_callback = getattr(avatar_stream, "_reply_mode_callback", None)
+        mode_callback = getattr(session, "_reply_mode_callback", None)
         if callable(mode_callback):
             generation_datainfo["on_mode"] = mode_callback
-        if getattr(avatar_stream, "_incremental_board", False):
+        if getattr(session, "_incremental_board", False):
             generation_datainfo["incremental_board"] = True
         greeting = _latest_greetings.get(key, "")
         if greeting:

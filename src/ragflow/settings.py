@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from src.avatars.catalog import is_safe_avatar_id
+from src.utils.avatar_ids import is_safe_avatar_id
 from src.utils.logging import logger
 from src.utils.paths import get_config_dir
 

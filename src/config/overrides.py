@@ -30,11 +30,8 @@ def load_runtime_overrides() -> Dict[str, Any]:
 
 
 def persist_runtime_overrides(config) -> None:
-    # Loading a YAML configuration is also used by offline release checks. Keep
-    # OpenCV-dependent avatar quality code on the write path, where it is
-    # actually needed, rather than making every configuration read import it.
-    from src.avatars.mouth_quality import quality_from_model
-    from src.llm.rules import rules_from_config
+    from src.avatars import config_section as avatar_section
+    from src.llm import config_section as llm_section
     from src.config.schema import ConversationConfig
     conversation = getattr(config, 'conversation', ConversationConfig())
 
@@ -67,12 +64,12 @@ def persist_runtime_overrides(config) -> None:
                     getattr(getattr(config.llm, "board", None), "max_items", 8)
                 ),
             },
-            "reply_rules": rules_from_config(config),
+            **llm_section.export_config(config),
         },
         "model": {
             "type": config.model.type,
             "avatar_id": config.model.avatar_id,
-            **quality_from_model(config.model),
+            **avatar_section.export_config(config.model),
         },
         "video": {
             "max_height": int(getattr(getattr(config, "video", None), "max_height", 0)),

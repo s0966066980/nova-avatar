@@ -111,8 +111,9 @@ markers = [
 # src.llm, src.ragflow, src.web_search; TTS = src.tts; avatar rendering =
 # src.avatars, src.scene. Core = src.server, src.profiles, src.config,
 # src.greetings, src.vad, src.utils. Every layer may import src.utils.
-# Each ignore_imports entry names the ticket that removes it
-# (CODING_STANDARDS.md rule 6); an entry that no longer matches fails the run.
+# No contract has ignore_imports. A new entry must name the ticket that
+# removes it (CODING_STANDARDS.md rule 6); an entry that no longer matches
+# fails the run.
 [tool.importlinter]
 root_packages = ["src"]
 
@@ -135,9 +136,6 @@ forbidden_modules = [
     "src.config",
     "src.greetings",
     "src.vad",
-]
-ignore_imports = [
-    "src.asr.prewarm -> src.vad.factory",  # ticket 06
 ]
 
 # The cross-layer contracts check direct imports only: a path through the core
@@ -168,10 +166,6 @@ forbidden_modules = [
     "src.tts",
     "src.avatars",
     "src.scene",
-]
-ignore_imports = [
-    "src.llm.service -> src.avatars.base",  # ticket 06
-    "src.ragflow.settings -> src.avatars.catalog",  # ticket 06
 ]
 
 [[tool.importlinter.contracts]]

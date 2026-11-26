@@ -15,16 +15,11 @@ from .schema import (
     MuseTalkQualityConfig, ReplyStreamingConfig, StageConfig,
     BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
 )
+from src.asr import config_section as asr_section
+from src.avatars import config_section as avatar_section
+from src.llm import config_section as llm_section
+from src.tts import config_section as tts_section
 from src.utils.logging import logger
-
-
-# sherpa-onnx CPU threads for Matcha-TTS; more than the cores only adds contention.
-MAX_MATCHA_THREADS = 64
-MAX_TRAINING_VRAM_GB = 1024
-# STT engines removed from the product; saved settings naming one load as
-# faster-whisper with the model size that config/config.yaml ships.
-REMOVED_ASR_ENGINES = frozenset({"funasr"})
-REMOVED_ASR_FALLBACK_MODEL = "small"
 
 
 def _merge_dicts(base: Dict, override: Dict) -> Dict:
@@ -80,59 +75,18 @@ def dict_to_config(config_dict: Dict) -> Config:
     """
     app_config = AppConfig(**config_dict.get('app', {}))
     
-    # 處理 model 配置
-    model_dict = config_dict.get('model', {})
-    
-    musetalk_config = MuseTalkQualityConfig(**model_dict.get('musetalk', {}))
+    # Each processing layer migrates and validates its own sections; the core
+    # only builds the dataclasses.
+    model_dict = avatar_section.migrate_config(config_dict.get('model', {}) or {})
+    musetalk_config = MuseTalkQualityConfig(**model_dict.pop('musetalk', {}))
+    model_config = ModelConfig(**model_dict, musetalk=musetalk_config)
 
-    # 建立 ModelConfig
-    model_dict_for_init = {
-        k: v
-        for k, v in model_dict.items()
-        # ernerf / talkinggaussian / wav2lip: sections of avatar engines removed in
-        # 2026; saved settings may still carry them.
-        if k not in ['ernerf', 'talkinggaussian', 'wav2lip', 'musetalk']
-    }
-    model_config = ModelConfig(
-        **model_dict_for_init,
-        musetalk=musetalk_config,
-    )
-    
-    from src.tts.voice_library import REMOVED_TTS_FIELDS
-
-    # Settings of removed TTS engines may remain in saved files; ignore them.
-    tts_dict = {key: value for key, value in (config_dict.get('tts', {}) or {}).items()
-                if key not in REMOVED_TTS_FIELDS}
-    tts_config = TTSConfig(**tts_dict)
+    tts_config = TTSConfig(**tts_section.migrate_config(config_dict.get('tts', {}) or {}))
     matcha_config = MatchaConfig(**(config_dict.get('matcha', {}) or {}))
-    threads = matcha_config.num_threads
-    if type(threads) is not int or not 1 <= threads <= MAX_MATCHA_THREADS:
-        raise ValueError(f"matcha.num_threads 必須是 1–{MAX_MATCHA_THREADS} 的整數：{threads!r}")
-    from src.tts.training.asr import WHISPER_MODELS
-
-    vram = matcha_config.training_min_free_vram_gb
-    if type(vram) not in (int, float) or not 0 < vram <= MAX_TRAINING_VRAM_GB:
-        raise ValueError(f"matcha.training_min_free_vram_gb 必須是 0–{MAX_TRAINING_VRAM_GB} GB 的數字：{vram!r}")
-    if matcha_config.training_whisper_model not in WHISPER_MODELS:
-        raise ValueError(
-            f"matcha.training_whisper_model 必須是 {', '.join(WHISPER_MODELS)} 之一：{matcha_config.training_whisper_model!r}"
-        )
-    asr_dict = dict(config_dict.get('asr', {}) or {})
-    # The Fun-ASR-Nano engine and its output_script field were removed on
-    # 2026-11-26; saved settings may still name them.
-    asr_dict.pop('output_script', None)
-    if str(asr_dict.get('type', '')).strip().lower() in REMOVED_ASR_ENGINES:
-        logger.warning(
-            f"STT 引擎「{asr_dict['type']}」已移除，改用 faster-whisper "
-            f"{REMOVED_ASR_FALLBACK_MODEL}；請到控制台的語音辨識重新套用"
-        )
-        asr_dict['type'] = 'whisper'
-        asr_dict['model_size'] = REMOVED_ASR_FALLBACK_MODEL
-    asr_config = ASRConfig(**asr_dict)
+    tts_section.validate_config(matcha_config)
+    asr_config = ASRConfig(**asr_section.migrate_config(config_dict.get('asr', {}) or {}))
     vad_config = VADConfig(**config_dict.get('vad', {}))
-    llm_dict = dict(config_dict.get('llm', {}) or {})
-    # The keyword reply router was removed (ADR-0012); older files may still name it.
-    llm_dict.pop('response_router', None)
+    llm_dict = llm_section.migrate_config(config_dict.get('llm', {}) or {})
     board_val = llm_dict.get('board')
     if isinstance(board_val, dict):
         allowed_board = {item.name for item in fields(BoardConfig)}
@@ -151,15 +105,8 @@ def dict_to_config(config_dict: Dict) -> Config:
         llm_dict['assistant_profile'] = AssistantProfileConfig(
             **{k: v for k, v in profile_val.items() if k in allowed_profile}
         )
-    elif str(llm_dict.get('system_prompt', '') or '').strip():
-        # One-way Phase-1 migration for existing runtime_overrides.yaml files.
-        # The next console save persists this value under assistant_profile.
-        llm_dict['assistant_profile'] = AssistantProfileConfig(
-            system_prompt=str(llm_dict['system_prompt']).strip()
-        )
     llm_config = LLMConfig(**llm_dict)
-    from src.llm.endpoints import freeze_endpoints
-    freeze_endpoints(llm_config)
+    llm_section.validate_config(llm_config)
     audio_config = AudioConfig(**config_dict.get('audio', {}))
     video_config = VideoConfig(**config_dict.get('video', {}))
     custom_video_config = CustomVideoConfig(**config_dict.get('custom_video', {}))
@@ -280,8 +227,6 @@ def load_config(
 
     # Saved TTS sources obey the same rules as settings requests: reference
     # audio paths move into the voice library or are cleared.
-    from src.tts.voice_library import migrate_tts_config
-
-    migrate_tts_config(config.tts, where="設定檔")
+    tts_section.migrate_voice_sources(config.tts, where="設定檔")
     
     return config

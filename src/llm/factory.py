@@ -19,7 +19,7 @@ _ENGINE_MAP: dict[str, Type[BaseLLM]] = {
 }
 
 
-def create_llm_engine(llm_type: str = "openai", config=None, parent=None) -> BaseLLM:
+def create_llm_engine(llm_type: str = "openai", config=None) -> BaseLLM:
     """根據型別建立 LLM 引擎"""
     engine_cls = _ENGINE_MAP.get(llm_type.lower())
     if engine_cls is None:
@@ -27,4 +27,4 @@ def create_llm_engine(llm_type: str = "openai", config=None, parent=None) -> Bas
             f"未知的 LLM 型別: {llm_type!r}\n"
             f"支援的型別: {', '.join(_ENGINE_MAP.keys())}"
         )
-    return engine_cls(config, parent)
+    return engine_cls(config)
