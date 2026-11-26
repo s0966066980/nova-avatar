@@ -106,11 +106,9 @@ const responses = {
   '/api/llm/models': { code: 0, data: { endpoints: [{ name: 'local', label: 'llama.cpp', provider: 'llamacpp', base_url: 'http://127.0.0.1:8080/v1', models: ['local-model'] }] } },
   '/api/speech': { code: 0, data: {
     stt: {
-      type: 'whisper', model_size: 'small', language: 'zh', output_script: 'traditional-tw', device: 'auto',
+      type: 'whisper', model_size: 'small', language: 'zh', device: 'auto',
       engines: [
-        { id: 'whisper', label: 'Whisper（中英文）', description: longText('本機 Whisper 辨識。', 2), available: true, models: ['tiny', 'base', 'small', 'medium', 'large-v3'],
-          output_scripts: [{ id: 'traditional-tw', label: '繁體中文（臺灣）' }, { id: 'original', label: '原始輸出' }] },
-        { id: 'funasr', label: 'Fun-ASR-Nano', available: false, models: ['Fun-ASR-Nano-2512'] }
+        { id: 'whisper', label: 'Whisper（中英文）', description: longText('本機 Whisper 辨識。', 2), available: true, models: ['tiny', 'base', 'small', 'medium', 'large-v3'] }
       ],
       models_by_engine: { whisper: ['tiny', 'base', 'small', 'medium', 'large-v3'] }
     },

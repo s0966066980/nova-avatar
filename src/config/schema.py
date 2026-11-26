@@ -109,10 +109,9 @@ class MatchaConfig:
 class ASRConfig:
     """ASR 語音識別配置"""
     mode: str = "server"  # 互動麥克風固定由 WebRTC 傳到伺服器
-    type: str = "whisper"  # whisper (faster-whisper) | funasr
+    type: str = "whisper"  # faster-whisper, the only STT engine
     model_size: str = "base"  # engine-specific model name or Hugging Face/local path
     language: str = "zh"  # /asr 上傳辨識：zh | en | auto（只在中英文間偵測）；語音輪次一律自動偵測
-    output_script: str = "traditional-tw"  # FunASR: traditional-tw | simplified
     device: str = "auto"  # auto | cpu | cuda
     min_speech_ms: int = 450  # 短促咳嗽、敲擊等不送入 ASR／LLM
     min_audio_rms: float = 0.003  # int16 正規化後的最低音量

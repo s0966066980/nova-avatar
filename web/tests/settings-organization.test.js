@@ -191,9 +191,8 @@ test('語音辨識併入訪客互動頁，依後端引擎資料呈現，且不�
   const settings = useRuntimeSettings()
   const old = { stt: { ...settings.speech.stt }, draft: { ...settings.sttDraft } }
   Object.assign(settings.speech.stt, { type: 'whisper', model_size: 'small', engines: [
-    { id: 'whisper', label: 'faster-whisper', available: true, models: ['small', 'turbo'], output_scripts: [], local_model_ready: false },
-    { id: 'nano', label: '新的中英辨識', available: true, models: ['nano-v1'],
-      output_scripts: [{ id: 'traditional-tw', label: '臺灣正體輸出' }], local_model_ready: true }
+    { id: 'whisper', label: 'faster-whisper', available: true, models: ['small', 'turbo'] },
+    { id: 'nano', label: '新的中英辨識', available: true, models: ['nano-v1'] }
   ] })
   Object.assign(settings.sttDraft, { type: 'whisper', model_size: 'small' })
   const view = mount(Panel, { initialTab: 'interaction' })
@@ -212,13 +211,10 @@ test('語音辨識併入訪客互動頁，依後端引擎資料呈現，且不�
   assert.deepEqual(engines.options.map(textContent).map(s => s.trim()), ['faster-whisper', '新的中英辨識'])
   const models = () => all(panel(), node => node.props.id === 'stt-model-size')[0].options.map(textContent)
   assert.deepEqual(models(), ['small', 'turbo'])
-  assert.equal(all(panel(), node => node.props.id === 'stt-output-script').length, 0, '引擎沒有輸出字元集選項時不顯示')
 
   settings.sttDraft.type = 'nano'
   await settle()
   assert.deepEqual(models(), ['nano-v1'])
-  const scripts = all(panel(), node => node.props.id === 'stt-output-script')[0]
-  assert.deepEqual(scripts.options.map(textContent), ['臺灣正體輸出'])
 
   saves.length = 0
   await button(view.root, '儲存並套用本頁設定').props.onClick()

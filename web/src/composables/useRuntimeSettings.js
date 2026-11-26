@@ -131,14 +131,11 @@ const speech = reactive({
     type: 'whisper',
     model_size: 'base',
     language: 'zh',
-    output_script: 'traditional-tw',
     device: 'auto',
-    local_model_ready: false,
     engines: [],
     model_sizes: ['tiny', 'base', 'small', 'medium', 'large-v3'],
     models_by_engine: {
-      whisper: ['tiny', 'base', 'small', 'medium', 'large-v3'],
-      funasr: ['Fun-ASR-Nano-2512']
+      whisper: ['tiny', 'base', 'small', 'medium', 'large-v3']
     },
     languages: ['zh', 'en', 'auto'],
     devices: ['auto', 'cpu', 'cuda']
@@ -161,7 +158,6 @@ const sttDraft = reactive({
   type: 'whisper',
   model_size: 'base',
   language: 'zh',
-  output_script: 'traditional-tw',
   device: 'auto'
 })
 const applyingStt = ref(false)
@@ -385,13 +381,11 @@ const sttDirty = computed(() => (
   sttDraft.type !== speech.stt.type ||
   sttDraft.model_size !== speech.stt.model_size ||
   sttDraft.language !== speech.stt.language ||
-  sttDraft.output_script !== speech.stt.output_script ||
   sttDraft.device !== speech.stt.device
 ))
 
 const STT_ENGINE_FALLBACK = [
-  { id: 'whisper', label: 'Whisper' },
-  { id: 'funasr', label: 'FunASR' }
+  { id: 'whisper', label: 'Whisper' }
 ]
 
 const sttEngineOptions = computed(() => {
@@ -403,15 +397,13 @@ const sttEngineOptions = computed(() => {
     : [{ id: sttDraft.type, label: sttDraft.type }, ...available]
 })
 
-// The form follows each engine's server entry (models, output scripts, local
-// model), so adding or replacing an engine needs no console change.
+// The form follows each engine's server entry (its models), so adding or
+// replacing an engine needs no console change.
 const selectedSttEngine = computed(() => sttEngineOptions.value.find((engine) => engine.id === sttDraft.type) || null)
 
 const sttModelOptions = computed(() => (
   selectedSttEngine.value?.models || speech.stt.models_by_engine?.[sttDraft.type] || []
 ))
-
-const sttOutputScriptOptions = computed(() => selectedSttEngine.value?.output_scripts || [])
 
 // Reference audio comes from the server-side voice library, never typed paths.
 const ttsVoiceOptions = computed(() => (Array.isArray(speech.tts.voices) ? speech.tts.voices : []))
@@ -536,7 +528,6 @@ function applySpeechSnapshot(data) {
       type: data.stt.type,
       model_size: data.stt.model_size,
       language: data.stt.language,
-      output_script: data.stt.output_script || 'traditional-tw',
       device: data.stt.device
     })
   }
@@ -1523,7 +1514,6 @@ export function useRuntimeSettings() {
     sttEngineOptions,
     selectedSttEngine,
     sttModelOptions,
-    sttOutputScriptOptions,
     ttsVoiceOptions,
     voiceLibraryBusy,
     refreshTtsVoices,

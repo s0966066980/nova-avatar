@@ -203,7 +203,7 @@
               </div>
             </section>
 
-            <!-- 語音辨識：引擎、模型與輸出字元集都依伺服器的引擎清單呈現 -->
+            <!-- 語音辨識：引擎與模型都依伺服器的引擎清單呈現 -->
             <section class="setting-card">
               <div class="card-title-row">
                 <div>
@@ -250,17 +250,6 @@
                 </div>
               </div>
 
-              <div class="setting-form-row" v-if="sttOutputScriptOptions.length">
-                <div class="field-label-group">
-                  <label for="stt-output-script" class="field-main-label">輸出文字字元集</label>
-                </div>
-                <div class="field-control-area">
-                  <select id="stt-output-script" class="std-select" v-model="sttDraft.output_script">
-                    <option v-for="script in sttOutputScriptOptions" :key="script.id" :value="script.id">{{ script.label }}</option>
-                  </select>
-                </div>
-              </div>
-
               <!-- 預熱進度條 -->
               <div
                 v-if="applyingStt"
@@ -276,11 +265,7 @@
                 >
                   <div class="progress-fill progress-fill-indeterminate"></div>
                 </div>
-                <p class="stt-prewarm-hint">
-                  {{ selectedSttEngine?.local_model_ready
-                    ? t('settings.speech.localPrewarmProgressHint')
-                    : t('settings.speech.prewarmProgressHint') }}
-                </p>
+                <p class="stt-prewarm-hint">{{ t('settings.speech.prewarmProgressHint') }}</p>
               </div>
             </section>
 
@@ -1248,7 +1233,6 @@ const {
   sttEngineOptions,
   selectedSttEngine,
   sttModelOptions,
-  sttOutputScriptOptions,
   applyingStt,
   applySttSettings
 } = useRuntimeSettings()

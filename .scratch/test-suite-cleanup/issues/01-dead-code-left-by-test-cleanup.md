@@ -43,3 +43,13 @@ Status: resolved
 `runtime_overrides.yaml` 裡舊的 `model.wav2lip` 區段會被忽略。MuseTalk 的 import、設定載入與場域
 素材讀取已驗證不受影響。授權紀錄（`THIRD_PARTY_NOTICES.md`、`third_party/licenses/`、`NOTICE`）保留。
 
+### 2026-11-26 追加：FunASR（Fun-ASR-Nano-2512）也移除
+
+維護者確認 FunASR 未被使用（`config.yaml` 與 `runtime_overrides.yaml` 都是 `asr.type: whisper`），
+不再需要。已刪除 `src/asr/engines/funasr.py`、`src/asr/fun_asr_nano_service.py`、
+`scripts/{fun_asr_nano_server,fun_asr_nano_weights}.py`、`scripts/setup-fun-asr-nano.sh`、
+`integrations/fun-asr-nano/`、`tests/test_funasr.py`，以及 factory、`runtime_settings`、`server` 關閉流程、
+啟動腳本與控制台（引擎選項、輸出字元集欄位、本機模型預熱提示）中的分支；`asr.output_script` 是 FunASR
+專用欄位，一併移除。`runtime_overrides.yaml` 裡舊的 `asr.type: funasr` 載入時改用 faster-whisper `small`
+並記錄警告，舊的 `output_script` 會被忽略。`models/funasr/` 權重與 `~/.venvs/fun-asr-nano` 未刪除，
+由維護者決定。授權紀錄保留在 `THIRD_PARTY_NOTICES.md`（標示已移除）與 `NOTICE`（上游原文）。

@@ -27,8 +27,7 @@ the root Apache-2.0 grant.
 
 | Layer | Engine | Project status | Distribution boundary |
 | --- | --- | --- | --- |
-| STT | faster-whisper | Supported, default: `small`; voice turns auto-detect between Chinese and English only, beam 1, in-memory audio | Review the selected Whisper model artifacts. |
-| STT | Fun-ASR-Nano-2512 (`funasr` engine) | Optional; Chinese, English and mixed speech, output converted with OpenCC `s2twp`. Runs as an owned loopback service in its own venv (`scripts/setup-fun-asr-nano.sh`; its Qwen3 decoder needs transformers ≥ 4.51, MuseTalk keeps the main venv below 4.47), started only while FunASR is selected | Weights Apache-2.0 (pinned in `scripts/fun_asr_nano_weights.py`), FunASR code MIT. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
+| STT | faster-whisper | Supported, the only STT engine, default: `small`; voice turns auto-detect between Chinese and English only, beam 1, in-memory audio | Review the selected Whisper model artifacts. |
 | LLM | llama.cpp | Supported, default: Gemma 4 E2B (`gemma-4-E2B_q4_0-it`, with its mmproj for attachments), all layers on the GPU; Qwen3.5-9B optional | Gemma 4 is Apache-2.0 (see [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)); review any other selected model. |
 | LLM | Ollama | Optional local OpenAI-compatible endpoint; not needed by default | Review the selected model and endpoint terms. |
 | TTS | Edge TTS | **Development only** | Still the checked-in runtime default for development. Non-public Microsoft endpoint with no formal commercial license; needs Internet access. Do not use it in a commercial deployment. |
@@ -45,6 +44,10 @@ The ER-NeRF, TalkingGaussian and UltraLight avatar engines and the LFM 2.5 model
 path were removed on 2026-11-24; they were outside the current version's scope.
 Wav2Lip (Research / Non-commercial) was removed the same day at the maintainer's
 request; earlier revisions that contain it keep that restriction.
+
+The Fun-ASR-Nano-2512 STT engine (`funasr`) was removed on 2026-11-26: it was
+unused and the maintainer no longer needs it. A saved `asr.type: funasr` loads
+as faster-whisper `small`, and the old `asr.output_script` field is ignored.
 
 Measured first-audio latency for this stack (Edge TTS, 2026-10-30): general
 voice turns P50 2.00 s, P95 2.22 s, from the end of speech to the first audible

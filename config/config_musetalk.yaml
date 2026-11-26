@@ -39,7 +39,7 @@ tts:
 
 asr:
   mode: server  # 互動麥克風固定經 WebRTC 送到服務端
-  type: whisper  # whisper | funasr
+  type: whisper  # faster-whisper（唯一的 STT 引擎）
   model_size: base  # tiny | base | small | medium | large-v3
   language: zh  # zh | en | auto
   device: auto  # auto | cpu | cuda

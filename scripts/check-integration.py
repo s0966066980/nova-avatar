@@ -85,17 +85,6 @@ def check_project_contract() -> None:
 
 def check_selected_runtime_dependencies(cfg) -> None:
     """Ensure the engines selected by the effective config have their modules."""
-    if cfg.asr.type == "funasr":
-        # Fun-ASR-Nano runs in its own venv, not as a main-venv module.
-        from src.asr.fun_asr_nano_service import unavailable_reason
-
-        try:
-            reason = unavailable_reason(cfg.asr.model_size)
-        except ValueError as exc:
-            reason = str(exc)
-        if reason:
-            _fail(f"目前設定所選的 Fun-ASR-Nano 無法使用：{reason}")
-        print(f"{OK} Fun-ASR-Nano 服務 venv 與權重就緒")
     required = set(RUNTIME_MODULES.get(cfg.model.type, ()))
     missing = sorted(name for name in required if importlib.util.find_spec(name) is None)
     if missing:

@@ -47,7 +47,6 @@ asr:
   type: whisper
   model_size: base
   language: zh
-  output_script: traditional-tw
   device: auto
 
 vad:

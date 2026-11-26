@@ -231,8 +231,6 @@ export default {
       engine: '引擎',
       model: '模型',
       language: '識別語言',
-      outputScript: '輸出文字',
-      outputScriptDesc: 'FunASR 識別後的中文顯示方式。',
       traditionalTw: '台灣繁體',
       simplified: '原始簡體',
       outputLanguage: '輸出語言',
@@ -244,7 +242,6 @@ export default {
       prewarming: '正在驗證並預熱...',
       prewarmProgressLabel: 'STT 模型預熱進度',
       prewarmProgressHint: '正在下載或載入模型；首次預熱按網絡和設備速度可能需要數分鐘。',
-      localPrewarmProgressHint: '正在加載本地識別模型，不會從網絡下載。',
       applying: '正在驗證...',
       sttApplied: 'STT 已應用，請重新連線'
     },

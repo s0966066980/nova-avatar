@@ -542,16 +542,11 @@ class SpeechSettingsTests(unittest.TestCase):
         voices = speech_snapshot(Config())["tts"]["edge_english_voices"]
         self.assertEqual(voices, VOICES["en-US"])
 
-    def test_stt_engines_describe_their_models_and_output_scripts(self):
+    def test_stt_engines_describe_their_models(self):
         # The console renders the speech-recognition form from these entries.
         engines = {item["id"]: item for item in speech_snapshot(Config())["stt"]["engines"]}
+        self.assertEqual(set(engines), {"whisper"})
         self.assertEqual(engines["whisper"]["models"], ["tiny", "base", "small", "medium", "large-v3", "turbo"])
-        self.assertEqual(engines["whisper"]["output_scripts"], [])
-        self.assertFalse(engines["whisper"]["local_model_ready"])
-        scripts = engines["funasr"]["output_scripts"]
-        self.assertEqual([item["id"] for item in scripts], ["traditional-tw", "simplified"])
-        self.assertTrue(all(item["label"] for item in scripts))
-        self.assertIsInstance(engines["funasr"]["local_model_ready"], bool)
 
     def test_tts_snapshot_has_no_global_voice(self):
         # The default voice is the main role profile's, edited there.
@@ -633,17 +628,36 @@ class SpeechSettingsTests(unittest.TestCase):
                     "type": "whisper",
                     "model_size": "small",
                     "language": "auto",
-                    "output_script": "traditional-tw",
                     "device": "cuda",
                 },
                 session_count=0,
             )
         candidate.ensure_ready.assert_called_once()
         self.assertEqual(result["model_size"], "small")
-        self.assertEqual(result["output_script"], "traditional-tw")
-        self.assertEqual(config.asr.output_script, "traditional-tw")
         self.assertEqual(config.asr.device, "cuda")
         persist.assert_called_once()
+
+    def test_removed_funasr_engine_is_rejected(self):
+        with self.assertRaises(SettingsError):
+            apply_stt_settings(
+                Config(),
+                {"type": "funasr", "model_size": "Fun-ASR-Nano-2512"},
+                session_count=0,
+            )
+
+    def test_saved_funasr_settings_load_as_faster_whisper(self):
+        from src.config.loader import dict_to_config
+
+        config = dict_to_config({"asr": {
+            "type": "funasr",
+            "model_size": "Fun-ASR-Nano-2512",
+            "language": "auto",
+            "output_script": "simplified",
+        }})
+        self.assertEqual(config.asr.type, "whisper")
+        self.assertEqual(config.asr.model_size, "small")
+        self.assertEqual(config.asr.language, "auto")
+        self.assertFalse(hasattr(config.asr, "output_script"))
 
     def test_removed_qwen_speech_engines_are_rejected(self):
         with self.assertRaises(SettingsError):

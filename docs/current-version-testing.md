@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
 | --- | --- |
 | 驗證環境 | Python 3.11、lock frozen、PyTorch 2.5.0+cu124、CUDA 12.4 與實際 NVIDIA GPU；Node 22 |
 | 出廠預設 | MuseTalk、Whisper small、Silero、Edge TTS、llama.cpp／Gemma 4 E2B |
-| 現行可選能力 | Qwen3.5-9B、Fun-ASR-Nano、BreezyVoice、Matcha 聲線模型、Ollama／已配置的 OpenAI-compatible 端點 |
+| 現行可選能力 | Qwen3.5-9B、BreezyVoice、Matcha 聲線模型、Ollama／已配置的 OpenAI-compatible 端點 |
 | 對話能力 | 目前的回覆規則、看板、串流、輪次隔離、角色交接、控制台與舞台隔離 |
 | 安全與維護 | 路由權限、來源與限制標示、資產回收、舊設定拒絕／安全遷移、依賴契約 |
 
@@ -129,3 +129,6 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 TalkingGaussian 數位人引擎。之後使用者決定不再使用 Wav2Lip，也一併移除（程式碼、權重、控制台選項、
 設定檔與測試）；「非商用」限制紀錄保留在 `THIRD_PARTY_NOTICES.md` 與 `third_party/licenses/`。
 主要回歸因此再變為 2221 個案例（移除測試的同時新增了舊設定仍可載入的保護）。
+2026-11-26 維護者確認 FunASR（Fun-ASR-Nano-2512）未被使用，也一併移除（引擎、服務腳本、安裝
+腳本、控制台選項與 `tests/test_funasr.py`）；舊設定仍選 `funasr` 時改用 faster-whisper `small` 的保護
+有測試涵蓋。移除後 `pytest` 收集 2190 個案例，其中 2 個 live 合約需設定環境變數才執行。

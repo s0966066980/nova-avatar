@@ -4,7 +4,7 @@
 // Rows for the settings center's "系統狀態" list. Each row carries an icon,
 // a name and a sentence, so the state never depends on colour alone.
 // Tones: ok, warn, danger, busy (in progress) and idle (nothing running).
-const STT_LABELS = { whisper: 'Whisper', funasr: 'FunASR' }
+const STT_LABELS = { whisper: 'Whisper' }
 
 function consoleRow(connectionStatus, sessionId) {
   const name = '控制台連線'

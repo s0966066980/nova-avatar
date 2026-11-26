@@ -12,7 +12,7 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 ## 目前版本提供什麼
 
 - **對話鏈路**：服務端 Silero VAD、免按對話、按住說話與插話；faster-whisper small
-  辨識（預設，中英文自動偵測），Fun-ASR-Nano-2512 可選（中英文）；llama.cpp 回答（預設
+  辨識（中英文自動偵測）；llama.cpp 回答（預設
   Gemma 4 E2B，Qwen3.5-9B 可選），也可接 Ollama 或其他 OpenAI 相容服務；語音預設
   Edge TTS（**僅供開發**），本機台灣華語 BreezyVoice、CPU 上的 Matcha 聲線模型為可選引擎。主要數位人引擎是
   MuseTalk，其他引擎的支援與授權見文末。
@@ -141,7 +141,9 @@ Edge TTS，並在日誌與數位人設定檔「聲音」說明，請重新選擇
 **預設聲音**：尚未套用數位人設定檔時，數位人使用主數位人設定檔的聲音；控制台沒有
 另外的全域語音合成設定。`config.yaml` 的 `tts` 只在第一次建立數位人設定檔時成為
 主數位人的初始聲音（設定檔無法讀取時暫用）。`runtime_overrides.yaml` 舊有的 `tts`
-區塊不再讀取，下次控制台儲存設定時移除。語音辨識在「訪客互動與語音辨識」設定。
+區塊不再讀取，下次控制台儲存設定時移除。語音辨識在「訪客互動與語音辨識」設定，
+引擎只有 faster-whisper；Fun-ASR-Nano（`funasr`）已於 2026-11-26 移除，舊設定仍選它時
+啟動改用 faster-whisper `small` 並記錄警告，`asr.output_script` 欄位會被忽略。
 
 **參考音訊**：BreezyVoice 的參考音訊在數位人設定檔「聲音」的音訊庫上傳
 （60 秒、20 MB 內，轉存為 WAV，須附逐字稿），可試聽與刪除；設定檔只能從有逐字稿的
@@ -160,16 +162,6 @@ BreezyVoice 的設定檔時會自動啟動 BreezyVoice 服務。模型目錄只�
 一併填寫與錄音逐字相同的逐字稿，並須是自錄或有書面授權的聲音；BreezyVoice 不串流，
 每個回覆片段整段合成。與 MuseTalk、LLM 共用 RTX 4090 時第一個片段約需 2.5 s
 （P50），額外顯存峰值約 5.9 GB，因此尚未取代 Edge TTS 成為預設。
-
-**Fun-ASR-Nano-2512（語音辨識，選用）**：控制台的 FunASR 選項。模型的 Qwen3 解碼器需要
-transformers ≥ 4.51，與 MuseTalk 所需版本衝突，因此在自己的 venv 以本機服務執行
-（`scripts/fun_asr_nano_server.py`，只綁 `127.0.0.1:50010`），只在選用 FunASR 時由後端啟動，
-改選 Whisper 或後端結束時停止。執行 `bash scripts/setup-fun-asr-nano.sh` 依
-`integrations/fun-asr-nano/requirements.txt` 建立 `~/.venvs/fun-asr-nano`（其他位置設定
-`FUN_ASR_NANO_PYTHON`），再執行 `uv run --no-sync python scripts/fun_asr_nano_weights.py`
-下載權重到 `models/funasr/Fun-ASR-Nano-2512`（固定版本並核對 SHA-256）。模型類別來自固定版本的
-`funasr` 套件，不執行遠端程式碼；輸出經 OpenCC `s2twp` 轉臺灣繁體。服務日誌在
-`logs/fun-asr-nano-server.log`。
 
 **Matcha 聲線模型（選用）**：以 sherpa-onnx 在 CPU 執行，不佔用 GPU，出廠預設仍是
 Edge TTS。數位人設定檔把引擎選為 Matcha 後，再選一個已安裝的聲線模型，中英文都由它

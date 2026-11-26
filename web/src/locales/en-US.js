@@ -239,8 +239,6 @@ export default {
       engine: 'Engine',
       model: 'Model',
       language: 'Recognition language',
-      outputScript: 'Output script',
-      outputScriptDesc: 'Chinese script used after FunASR recognition.',
       traditionalTw: 'Taiwan Traditional',
       simplified: 'Original Simplified',
       outputLanguage: 'Output language',
@@ -252,7 +250,6 @@ export default {
       prewarming: 'Validating and prewarming...',
       prewarmProgressLabel: 'STT model prewarm progress',
       prewarmProgressHint: 'Downloading or loading the model. The first prewarm may take several minutes depending on your network and device.',
-      localPrewarmProgressHint: 'Loading the local recognition model. No network download is required.',
       applying: 'Validating...',
       sttApplied: 'STT applied; reconnect when ready'
     },

@@ -33,7 +33,6 @@ class IntegrationCheckTests(unittest.TestCase):
         self.assertIn("SHA-256", integration_check.REQUIRED_FILES["docs/voice-models.md"])
 
     def test_runtime_module_contract_covers_selected_optional_engines(self):
-        self.assertNotIn("funasr", integration_check.RUNTIME_MODULES)
         self.assertEqual(integration_check.RUNTIME_MODULES["musetalk"], ("einops", "ffmpeg"))
 
 

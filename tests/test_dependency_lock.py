@@ -69,11 +69,6 @@ class DependencyLayoutTests(unittest.TestCase):
             r'(?m)^nova-avatar-musetalk\s*=\s*\{\s*path\s*=\s*"src/avatars/musetalk",\s*editable\s*=\s*true\s*\}',
         )
 
-    def test_fun_asr_nano_stays_out_of_the_main_environment(self):
-        """Fun-ASR-Nano runs in its own venv (integrations/fun-asr-nano)."""
-        project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertNotIn("funasr", project)
-
     def test_pkg_resources_is_available_for_openmmlab(self):
         """mmengine/mmpose still import pkg_resources while building MuseTalk roles."""
         try:

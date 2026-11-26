@@ -176,7 +176,6 @@ def persist_runtime_overrides(config) -> None:
             "type": asr.type,
             "model_size": asr.model_size,
             "language": asr.language,
-            "output_script": getattr(asr, "output_script", "traditional-tw"),
             "device": asr.device,
         }
     # No tts block: the default voice is the main role profile's (see loader).

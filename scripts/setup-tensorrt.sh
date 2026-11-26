@@ -16,7 +16,7 @@ command -v uv >/dev/null || { echo 'Install uv first.' >&2; exit 1; }
 command -v nvidia-smi >/dev/null || { echo 'NVIDIA driver is required.' >&2; exit 1; }
 [[ "$(uname -sm)" == 'Linux x86_64' ]] || { echo 'This installer supports Linux x86_64.' >&2; exit 1; }
 [[ -x .venv/bin/python ]] || { echo 'Run bash scripts/setup-env.sh musetalk first.' >&2; exit 1; }
-# Preserve manually built mmcv and other installed providers (e.g. FunASR).
+# Preserve manually built mmcv and other installed providers.
 uv sync --inexact --extra vad --extra musetalk --extra tensorrt
 uv run --no-sync python -c 'import torch, tensorrt as trt; assert torch.cuda.is_available(); assert trt.Builder(trt.Logger()); print("GPU:", torch.cuda.get_device_name(), "TensorRT:", trt.__version__)'
 uv run --no-sync python scripts/build-musetalk-tensorrt.py --enable "$@"

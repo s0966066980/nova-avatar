@@ -15,11 +15,16 @@ from .schema import (
     MuseTalkQualityConfig, ReplyStreamingConfig, StageConfig,
     BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
 )
+from src.utils.logging import logger
 
 
 # sherpa-onnx CPU threads for Matcha-TTS; more than the cores only adds contention.
 MAX_MATCHA_THREADS = 64
 MAX_TRAINING_VRAM_GB = 1024
+# STT engines removed from the product; saved settings naming one load as
+# faster-whisper with the model size that config/config.yaml ships.
+REMOVED_ASR_ENGINES = frozenset({"funasr"})
+REMOVED_ASR_FALLBACK_MODEL = "small"
 
 
 def _merge_dicts(base: Dict, override: Dict) -> Dict:
@@ -112,7 +117,18 @@ def dict_to_config(config_dict: Dict) -> Config:
         raise ValueError(
             f"matcha.training_whisper_model 必須是 {', '.join(WHISPER_MODELS)} 之一：{matcha_config.training_whisper_model!r}"
         )
-    asr_config = ASRConfig(**config_dict.get('asr', {}))
+    asr_dict = dict(config_dict.get('asr', {}) or {})
+    # The Fun-ASR-Nano engine and its output_script field were removed on
+    # 2026-11-26; saved settings may still name them.
+    asr_dict.pop('output_script', None)
+    if str(asr_dict.get('type', '')).strip().lower() in REMOVED_ASR_ENGINES:
+        logger.warning(
+            f"STT 引擎「{asr_dict['type']}」已移除，改用 faster-whisper "
+            f"{REMOVED_ASR_FALLBACK_MODEL}；請到控制台的語音辨識重新套用"
+        )
+        asr_dict['type'] = 'whisper'
+        asr_dict['model_size'] = REMOVED_ASR_FALLBACK_MODEL
+    asr_config = ASRConfig(**asr_dict)
     vad_config = VADConfig(**config_dict.get('vad', {}))
     llm_dict = dict(config_dict.get('llm', {}) or {})
     # The keyword reply router was removed (ADR-0012); older files may still name it.

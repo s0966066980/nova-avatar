@@ -5,7 +5,7 @@
 """ASR 語音識別模組"""
 
 from .base import BaseASR
-from .engines import WhisperASR, FunASR
+from .engines import WhisperASR
 from .factory import create_asr_engine, get_asr_engine, release_asr_engine
 
 __all__ = [
@@ -13,7 +13,6 @@ __all__ = [
     "BaseASR",
     # engines
     "WhisperASR",
-    "FunASR",
     # factory
     "create_asr_engine",
     "get_asr_engine",

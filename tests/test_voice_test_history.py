@@ -222,7 +222,7 @@ class VoiceTestRouteTests(unittest.IsolatedAsyncioTestCase):
         state.config = SimpleNamespace(
             model=SimpleNamespace(type="musetalk", avatar_id="avatar1"),
             llm=SimpleNamespace(provider="llamacpp", model="nova.gguf"),
-            asr=SimpleNamespace(type="funasr"),
+            asr=SimpleNamespace(type="whisper"),
             tts=SimpleNamespace(type="edgetts"),
         )
         state.voice_test_history = VoiceTestHistory(

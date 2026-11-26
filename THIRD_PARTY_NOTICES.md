@@ -69,23 +69,28 @@ for those revisions and for any copy that still carries them.
 - Copyright: Copyright (c) 2022 OpenAI
 - Source: <https://github.com/openai/whisper>
 
-## Fun-ASR-Nano-2512 and FunASR (optional STT)
+## Fun-ASR-Nano-2512 and FunASR (removed STT)
 
-- Role: optional Chinese/English speech recognition (`funasr` engine), served
-  by the owned loopback process `scripts/fun_asr_nano_server.py` in its own
-  venv (`integrations/fun-asr-nano/requirements.txt`); not bundled here.
+- Role: formerly an optional Chinese/English speech recognition engine
+  (`funasr`); **removed on 2026-11-26** and no longer integrated. faster-whisper
+  is the only STT engine.
+- Earlier revisions in the Git history ran it as an owned loopback process
+  (`scripts/fun_asr_nano_server.py`) in its own venv
+  (`integrations/fun-asr-nano/requirements.txt`); it was never bundled here.
 - Fun-ASR-Nano-2512 weights: Apache-2.0, Tongyi Lab / FunAudioLLM,
   `FunAudioLLM/Fun-ASR-Nano-2512` revision
   `272c57b82523ada6fd87095e955f8e29100979ab`. Its decoder is Qwen3-0.6B
-  (Apache-2.0, Alibaba Qwen team); the repository ships only that decoder's
-  config and tokenizer, the weights are inside `model.pt`.
-  [`scripts/fun_asr_nano_weights.py`](scripts/fun_asr_nano_weights.py) fetches
-  the files at that revision and checks SHA-256. No model code is downloaded.
+  (Apache-2.0, Alibaba Qwen team). Those revisions fetched the weights with
+  `scripts/fun_asr_nano_weights.py` and checked SHA-256.
 - FunASR code: MIT, Copyright (c) 2025 FunASR, <https://github.com/modelscope/FunASR>;
-  the service venv installs `funasr==1.4.15`, whose bundled `FunASRNano` class
-  loads the weights with `trust_remote_code=False`.
-- OpenCC (`s2twp` Taiwan Traditional conversion): Apache-2.0,
-  <https://github.com/BYVoid/OpenCC>.
+  those revisions installed `funasr==1.4.15` in the service venv.
+
+## OpenCC
+
+- Role: Taiwan Traditional conversion (`s2twp`) of replies and voice-training
+  transcripts, and Simplified conversion for Matcha-TTS tokenisation
+- License: Apache-2.0
+- Source: <https://github.com/BYVoid/OpenCC>
 
 ## BreezyVoice and g2pW (optional TTS)
 

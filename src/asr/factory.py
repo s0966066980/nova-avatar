@@ -12,12 +12,11 @@ from threading import RLock
 from typing import Type, Optional
 
 from src.asr.base import BaseASR
-from src.asr.engines import FunASR, WhisperASR
+from src.asr.engines import WhisperASR
 
 
 _ENGINE_MAP: dict[str, Type[BaseASR]] = {
     "whisper": WhisperASR,
-    "funasr": FunASR,
 }
 
 
@@ -33,14 +32,7 @@ def create_asr_engine(
             f"未知的 ASR 型別: {asr_type!r}\n"
             f"支援的型別: {list(_ENGINE_MAP.keys())}"
         )
-    
-    # 根據不同引擎傳遞引數
-    if asr_type == "whisper":
-        return engine_cls(config=config, model_size=model_size)
-    elif asr_type == "funasr":
-        return engine_cls(config=config, model_name=model_size, **kwargs)
-    else:
-        return engine_cls(config=config, **kwargs)
+    return engine_cls(config=config, model_size=model_size)
 
 _asr_instance: Optional[BaseASR] = None
 _asr_instance_key = None

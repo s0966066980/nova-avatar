@@ -47,7 +47,7 @@ def validate(values: dict, current: dict) -> dict:
 
 
 def check_language_support(config, locale: str) -> None:
-    # Both recognizers (faster-whisper, Fun-ASR-Nano) accept Chinese and English.
+    # faster-whisper accepts Chinese and English.
     from src.tts.voice_library import ENGLISH_TTS_ENGINES
 
     if locale == 'en-US' and getattr(config.tts, 'type', '') not in ENGLISH_TTS_ENGINES:
