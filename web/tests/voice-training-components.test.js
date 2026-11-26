@@ -36,6 +36,50 @@ function storeWith(answers = {}) {
 const pass = id => ({ id, label: id, status: 'pass', reason: '通過', detail: {} })
 const line = (id, extra = {}) => ({ id, original_name: `clip_${id}.wav`, text: '你好', normalized_text: '你好', unresolved: [], review: 'pending', ...extra })
 
+test('Edge 訓練來源試聽所選聲線，切換後不播放舊的試聽結果', async t => {
+  const calls = []
+  const Source = await loadComponent(url('VtSource'), {
+    ...stubs,
+    '../../composables/useRuntimeSettings.js': {
+      useRuntimeSettings: () => ({
+        previewProfileVoice: tts => new Promise(resolve => calls.push({ tts, resolve }))
+      })
+    }
+  })
+  const store = storeWith()
+  store.chooseSource('edge')
+  const view = mount(Source, { store })
+  t.after(() => view.unmount())
+  await settle()
+
+  const choose = voice => byId(view.root, 'vt-edge-voice').props['onUpdate:modelValue'](voice)
+  const preview = () => button(view.root, '試聽所選聲線')
+  const audio = () => all(view.root, node => node.type === 'audio')[0]
+  choose('zh-TW-HsiaoYuNeural')
+  await settle()
+  preview().props.onClick()
+  await settle()
+  assert.equal(preview().props.disabled, true)
+
+  choose('zh-TW-YunJheNeural')
+  await settle()
+  preview().props.onClick()
+  assert.deepEqual(calls.map(call => call.tts), [
+    { type: 'edgetts', ref_file: 'zh-TW-HsiaoYuNeural' },
+    { type: 'edgetts', ref_file: 'zh-TW-YunJheNeural' }
+  ])
+  calls[0].resolve('data:audio/wav;base64,AAAA')
+  await settle()
+  assert.equal(audio(), undefined)
+  const current = 'data:audio/wav;base64,BBBB'
+  calls[1].resolve(current)
+  await settle()
+  assert.equal(audio().props.src, current)
+  assert.equal(store.state.edge.acknowledged, false)
+  assert.equal(store.state.edge.voice, 'zh-TW-YunJheNeural')
+  assert.ok(!store.state.slug)
+})
+
 test('VtActionButton：停用時仍可聚焦，aria-disabled 與 aria-describedby 指向原因，點擊不觸發', async t => {
   let activated = 0
   const view = mount(ActionButton, { label: '開始訓練', enabled: false, reasons: ['有 1 個舞台正在連線', '剩餘 6.1 GB'], reasonId: 'why-1', onActivate: () => { activated++ } })

@@ -44,6 +44,11 @@ VOICE_MODEL_ENGINES = frozenset({"matcha"})
 # Engines that speak en-US as well as zh-TW.
 ENGLISH_TTS_ENGINES = frozenset({"edgetts", "matcha"})
 DEFAULT_EDGE_VOICE = "zh-TW-HsiaoChenNeural"
+EDGE_TTS_EN_US_VOICES = (
+    {"id": "en-US-JennyNeural", "label": "Jenny（美式女聲）"},
+    {"id": "en-US-AriaNeural", "label": "Aria（美式女聲）"},
+    {"id": "en-US-GuyNeural", "label": "Guy（美式男聲）"},
+)
 # Settings of TTS engines removed in 2026; dropped from saved settings on load.
 REMOVED_TTS_FIELDS = ("mode", "language", "speaker", "instruct", "device")
 

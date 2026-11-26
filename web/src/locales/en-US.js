@@ -315,6 +315,7 @@ export default {
         locked: 'This training corpus already exists and its source cannot change. To use another source, go back to the start and create a new training corpus.',
         edgeSettings: 'Test teacher settings',
         voice: 'Edge voice (zh-TW)', voiceDefault: '(default)', voiceHint: 'English sentences are read by the same voice.',
+        previewVoice: 'Preview selected voice', previewing: 'Generating preview audio…', previewFailed: 'Could not preview this voice',
         preset: 'Corpus size',
         presets: { 'quick-test': 'Quick test', standard: 'Standard' },
         presetDesc: 'About {minutes} minutes, about {lines} sentences',

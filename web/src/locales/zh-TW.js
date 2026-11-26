@@ -315,6 +315,7 @@ export default {
         locked: '這份訓練語料已經建立，來源不能更改；要換來源請回首頁新增訓練語料。',
         edgeSettings: '測試用老師設定',
         voice: 'Edge 聲音（zh-TW）', voiceDefault: '（預設）', voiceHint: '英文句由同一個聲音念。',
+        previewVoice: '試聽所選聲線', previewing: '正在合成試聽音訊…', previewFailed: '無法試聽此聲線',
         preset: '語料份量',
         presets: { 'quick-test': '快速測試', standard: '標準' },
         presetDesc: '約 {minutes} 分鐘，約 {lines} 句',

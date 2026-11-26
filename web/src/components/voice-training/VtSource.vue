@@ -27,6 +27,14 @@
             <option v-for="voice in EDGE_VOICES" :key="voice.id" :value="voice.id">{{ voice.name }}{{ voice.isDefault ? ' ' + tx('source.voiceDefault') : '' }}</option>
           </select>
           <p class="vt-hint">{{ tx('source.voiceHint') }}</p>
+          <div class="vt-row">
+            <button type="button" class="vt-btn small" :disabled="previewing || !state.edge.voice" @click="previewVoice">
+              <i :class="icon('play')" aria-hidden="true"></i>{{ tx('source.previewVoice') }}
+            </button>
+            <span v-if="previewing" class="vt-hint" role="status">{{ tx('source.previewing') }}</span>
+          </div>
+          <p v-if="previewError" class="vt-err" role="alert">{{ previewError }}</p>
+          <audio v-if="previewAudio" :src="previewAudio" controls autoplay :aria-label="tx('source.previewVoice')"></audio>
         </div>
         <fieldset class="vt-group">
           <legend class="vt-label">{{ tx('source.preset') }}</legend>
@@ -57,23 +65,56 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import VtActionButton from './VtActionButton.vue'
 import VtUsageBadge from './VtUsageBadge.vue'
+import { useRuntimeSettings } from '../../composables/useRuntimeSettings.js'
 import { EDGE_PRESETS, EDGE_VOICES, USAGE_DEV } from '../../voiceTraining/constants.js'
 import { sourceGate } from '../../voiceTraining/flow.js'
 import { icon } from '../../voiceTraining/icons.js'
 import { useTrainingText } from '../../voiceTraining/useText.js'
 
-const props = defineProps({ store: { type: Object, required: true } })
+const props = defineProps({ store: { type: Object, required: true }, active: { type: Boolean, default: true } })
 const { tx, tf } = useTrainingText()
+const { previewProfileVoice } = useRuntimeSettings()
 const state = props.store.state
 const reasons = computed(() => sourceGate(state.path))
 // A corpus that already exists keeps its source.
 const locked = computed(() => Boolean(state.slug))
+
+const previewing = ref(false)
+const previewAudio = ref('')
+const previewError = ref('')
+let previewRequest = 0
+
+watch([() => state.edge.voice, () => state.path, () => props.active], () => {
+  previewRequest++
+  previewing.value = false
+  previewAudio.value = ''
+  previewError.value = ''
+})
+
+async function previewVoice() {
+  const request = ++previewRequest
+  previewing.value = true
+  previewAudio.value = ''
+  previewError.value = ''
+  try {
+    const audio = await previewProfileVoice({ type: 'edgetts', ref_file: state.edge.voice })
+    if (request === previewRequest) previewAudio.value = audio
+  } catch (error) {
+    if (request === previewRequest) previewError.value = error.message || tx('source.previewFailed')
+  } finally {
+    if (request === previewRequest) previewing.value = false
+  }
+}
 
 function next() {
   if (state.path === 'edge') props.store.go(state.edge.acknowledged ? 'text' : 'edge-confirm')
   else props.store.go('upload')
 }
 </script>
+
+<style scoped>
+audio { width: 100%; }
+</style>

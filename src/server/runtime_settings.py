@@ -1358,7 +1358,7 @@ def _stt_catalog() -> list:
 
 def speech_snapshot(config) -> Dict[str, Any]:
     from src.tts.cosyvoice_runtime import local_models
-    from src.tts.voice_library import list_voices, removed_engine_notice
+    from src.tts.voice_library import EDGE_TTS_EN_US_VOICES, list_voices, removed_engine_notice
     from src.tts.voice_models import list_voice_models
 
     asr = config.asr
@@ -1387,6 +1387,7 @@ def speech_snapshot(config) -> Dict[str, Any]:
             "voices": list_voices(),
             "models": local_models(),
             "edge_voices": [dict(voice) for voice in EDGE_TTS_ZH_TW_VOICES],
+            "edge_english_voices": [dict(voice) for voice in EDGE_TTS_EN_US_VOICES],
             # Matcha voice models with their usage labels; profiles name one by ID.
             "voice_models": [
                 {"id": model.id, "name": model.name, "usage": model.usage,

@@ -14,6 +14,7 @@ from src.config.schema import ConversationConfig
 from src.config.overrides import persist_runtime_overrides
 from src.llm.service import session_memory
 from src.server.state import state
+from src.tts.voice_library import EDGE_TTS_EN_US_VOICES
 
 
 VOICES = {
@@ -22,11 +23,7 @@ VOICES = {
         {'id': 'zh-TW-HsiaoYuNeural', 'label': '曉雨（女聲）'},
         {'id': 'zh-TW-YunJheNeural', 'label': '雲哲（男聲）'},
     ],
-    'en-US': [
-        {'id': 'en-US-JennyNeural', 'label': 'Jenny（美式女聲）'},
-        {'id': 'en-US-AriaNeural', 'label': 'Aria（美式女聲）'},
-        {'id': 'en-US-GuyNeural', 'label': 'Guy（美式男聲）'},
-    ],
+    'en-US': [dict(voice) for voice in EDGE_TTS_EN_US_VOICES],
 }
 
 

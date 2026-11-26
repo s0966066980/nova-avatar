@@ -1060,14 +1060,13 @@
 import ConversationComposer from './ConversationComposer.vue'
 import ConversationPanel from './ConversationPanel.vue'
 import { composerGeometry } from '../conversationAttachments.js'
-import { computed, nextTick, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { avatarScenePreviewUrl } from '../scenePreview.js'
 import AvatarProfiles from './AvatarProfiles.vue'
 import RoleComposition from './RoleComposition.vue'
 import IdleGreetingSettings from './IdleGreetingSettings.vue'
-import VoiceTrainingWorkbench from './voice-training/VoiceTrainingWorkbench.vue'
 import VoiceModelCatalog from './VoiceModelCatalog.vue'
 import {
   boardReopenPresentation,
@@ -1080,6 +1079,8 @@ import {
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
 import { normalizeThemePreference } from '../consoleTheme.js'
 import { systemStatusRows } from '../systemStatus.js'
+
+const VoiceTrainingWorkbench = defineAsyncComponent(() => import('./voice-training/VoiceTrainingWorkbench.vue'))
 
 const { t, setLocale } = useI18n()
 const props = defineProps({

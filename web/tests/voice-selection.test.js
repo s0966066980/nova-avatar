@@ -238,10 +238,21 @@ test('設定檔編輯器試聽：以目前未儲存的 BreezyVoice 設定合成�
 
 test('設定檔編輯器試聽：Edge 聲線不查 BreezyVoice，失敗時顯示伺服器原因', async t => {
   const { calls, stub, pending } = previewStub([])
+  stub.speech.tts.edge_voices = [
+    { id: 'zh-TW-HsiaoChenNeural', name: 'HsiaoChen' },
+    { id: 'zh-TW-YunJheNeural', name: 'YunJhe' }
+  ]
   const Editor = await loadEditor(stub)
-  const profile = editorProfile({ type: 'edgetts', ref_file: 'zh-TW-YunJheNeural' })
+  const profile = editorProfile({ type: 'edgetts', ref_file: 'zh-CN-XiaoxiaoNeural' })
   const view = mount(Editor, { modelValue: profile, initialSection: 'voice' })
   t.after(() => view.unmount())
+  await settle()
+  const label = all(view.root, n => n.type === 'label' && textContent(n).startsWith('聲線（台灣華語）'))[0]
+  const select = all(label, n => n.type === 'select')[0]
+  assert.deepEqual(all(select, n => n.type === 'option').map(n => n.props.value),
+    ['', 'zh-TW-HsiaoChenNeural', 'zh-TW-YunJheNeural', 'zh-CN-XiaoxiaoNeural'])
+  assert.equal(profile.tts.ref_file, 'zh-CN-XiaoxiaoNeural')
+  select.props.onChange({ target: { value: 'zh-TW-YunJheNeural' } })
   await settle()
   button(view.root, '試聽此設定檔的聲音').props.onClick()
   await settle()
@@ -256,6 +267,33 @@ test('設定檔編輯器試聽：Edge 聲線不查 BreezyVoice，失敗時顯示
 })
 
 const researchModel = { id: 'my-voice', name: '自訓聲線', usage: 'Research / Non-commercial', languages: ['zh-TW', 'en-US'], source: 'fine-tuned' }
+
+test('設定檔編輯器：英文聲音從 Edge 清單選擇，保留既有的清單外聲線', async t => {
+  const { stub } = runtimeStub([])
+  stub.speech.tts.edge_english_voices = [
+    { id: 'en-US-JennyNeural', label: 'Jenny（美式女聲）' },
+    { id: 'en-US-AriaNeural', label: 'Aria（美式女聲）' },
+    { id: 'en-US-GuyNeural', label: 'Guy（美式男聲）' }
+  ]
+  const Editor = await loadEditor(stub)
+  const profile = editorProfile({
+    type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural', voice_en_us: 'en-GB-SoniaNeural'
+  })
+  const view = mount(Editor, { modelValue: profile, initialSection: 'voice' })
+  t.after(() => view.unmount())
+  await settle()
+  const label = all(view.root, node => node.type === 'label' && textContent(node).startsWith('英文聲音'))[0]
+  const select = all(label, node => node.type === 'select')[0]
+  const options = () => all(select, node => node.type === 'option').map(node => node.props.value)
+  assert.deepEqual(options(), ['', 'en-US-JennyNeural', 'en-US-AriaNeural', 'en-US-GuyNeural', 'en-GB-SoniaNeural'])
+  assert.equal(profile.tts.voice_en_us, 'en-GB-SoniaNeural')
+
+  select.props['onUpdate:modelValue']('en-US-AriaNeural')
+  await settle()
+  assert.equal(profile.tts.voice_en_us, 'en-US-AriaNeural')
+  assert.equal(profile.tts.ref_file, 'zh-TW-HsiaoChenNeural')
+  assert.deepEqual(options(), ['', 'en-US-JennyNeural', 'en-US-AriaNeural', 'en-US-GuyNeural'])
+})
 
 test('設定檔編輯器：切到 Matcha 不帶入 Edge 聲線，只列出已安裝的聲線模型並標示使用限制與實測品質', async t => {
   const { calls, stub } = runtimeStub([devVoice, ownVoice], [hsiaochen, researchModel])

@@ -536,6 +536,12 @@ class SpeechSettingsTests(unittest.TestCase):
             {"female", "male"},
         )
 
+    def test_snapshot_exposes_the_conversation_english_voice_catalog(self):
+        from src.server.conversations import VOICES
+
+        voices = speech_snapshot(Config())["tts"]["edge_english_voices"]
+        self.assertEqual(voices, VOICES["en-US"])
+
     def test_stt_engines_describe_their_models_and_output_scripts(self):
         # The console renders the speech-recognition form from these entries.
         engines = {item["id"]: item for item in speech_snapshot(Config())["stt"]["engines"]}

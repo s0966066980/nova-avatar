@@ -18,19 +18,25 @@ export async function loadComponent(url, stubs = {}, { inlineTemplate = true } =
     source = source.replace('export default', 'const component =') + '\n' +
       template.code.replace('export function render', 'function render') + '\ncomponent.render = render; return component;'
   }
+  const importModule = async specifier => {
+    if (stubs[specifier]) return { ...stubs[specifier], [Symbol.toStringTag]: 'Module' }
+    return import(specifier.startsWith('.') ? new URL(specifier, url).href : specifier)
+  }
   const imports = []
   const declarations = []
   for (const match of source.matchAll(/import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]/g)) {
     const [statement, binding, specifier] = match
-    const mod = stubs[specifier] || await import(specifier.startsWith('.') ? new URL(specifier, url).href : specifier)
+    const mod = await importModule(specifier)
     const index = imports.push(mod) - 1
     if (binding.startsWith('{')) {
       declarations.push(`const ${binding.replace(/\bas\b/g, ':')} = imports[${index}];`)
     } else declarations.push(`const ${binding} = imports[${index}].default;`)
     source = source.replace(statement, '')
   }
+  source = source.replace(/\bimport\s*\(\s*(['"])([^'"]+)\1\s*\)/g,
+    (_, _quote, specifier) => `importModule(${JSON.stringify(specifier)})`)
   source = source.replace('export default', 'return')
-  return new Function('imports', declarations.join('\n') + '\n' + source)(imports)
+  return new Function('imports', 'importModule', declarations.join('\n') + '\n' + source)(imports, importModule)
 }
 
 // v-model compares the root node with these DOM classes; Node has neither.

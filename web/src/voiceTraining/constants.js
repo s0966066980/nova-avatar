@@ -25,11 +25,7 @@ export const DECLARATIONS = [
   { key: 'dev', source: SOURCE_DEV, needsConsent: false, usage: USAGE_DEV }
 ]
 
-export const EDGE_VOICES = [
-  { id: 'zh-TW-HsiaoChenNeural', name: 'HsiaoChen', isDefault: true },
-  { id: 'zh-TW-HsiaoYuNeural', name: 'HsiaoYu', isDefault: false },
-  { id: 'zh-TW-YunJheNeural', name: 'YunJhe', isDefault: false }
-]
+export { EDGE_VOICES } from '../voiceSelection.js'
 
 // Server presets (src/tts/training/sentences.py): about 220 and 833 sentences.
 export const EDGE_PRESETS = [

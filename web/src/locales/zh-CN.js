@@ -307,6 +307,7 @@ export default {
         locked: '这份训练语料已经建立，来源不能更改；要换来源请回首页新增训练语料。',
         edgeSettings: '测试用老师设置',
         voice: 'Edge 声音（zh-TW）', voiceDefault: '（默认）', voiceHint: '英文句由同一个声音念。',
+        previewVoice: '试听所选声线', previewing: '正在合成试听音频…', previewFailed: '无法试听此声线',
         preset: '语料份量',
         presets: { 'quick-test': '快速测试', standard: '标准' },
         presetDesc: '约 {minutes} 分钟，约 {lines} 句',

@@ -6,6 +6,11 @@
 // names a voice model listed by the server.
 
 export const DEFAULT_EDGE_VOICE = 'zh-TW-HsiaoChenNeural'
+export const EDGE_VOICES = [
+  { id: DEFAULT_EDGE_VOICE, name: 'HsiaoChen', isDefault: true },
+  { id: 'zh-TW-HsiaoYuNeural', name: 'HsiaoYu', isDefault: false },
+  { id: 'zh-TW-YunJheNeural', name: 'YunJhe', isDefault: false }
+]
 // Recordings imported for development; the speaker has not consented to cloning.
 export const DEVELOPMENT_VOICE_NOTICE = '開發用，未取得說話者授權'
 

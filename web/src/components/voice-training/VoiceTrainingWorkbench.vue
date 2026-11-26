@@ -24,7 +24,7 @@
         </ol>
       </nav>
 
-      <VtSource v-if="state.screen === 'source'" :store="store" />
+      <VtSource v-if="state.screen === 'source'" :store="store" :active="active" />
       <VtEdgeConfirm v-else-if="state.screen === 'edge-confirm'" :store="store" :session-expired="sessionExpired" />
       <VtUpload v-else-if="state.screen === 'upload'" :store="store" />
       <VtText v-else-if="state.screen === 'text'" :store="store" />
