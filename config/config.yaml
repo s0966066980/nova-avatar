@@ -93,14 +93,14 @@ llm:
   # provider / base_url / api_key 產生單一端點（名稱即 provider）。
   # 遠端範例：remote: {provider: openai, base_url: https://llm.example/v1, api_key: ${REMOTE_LLM_KEY}}
   endpoints:
-    llamacpp: {provider: llamacpp, base_url: http://127.0.0.1:8080/v1}
+    llamacpp: {provider: llamacpp, base_url: http://127.0.0.1:18080/v1}
     ollama: {provider: ollama, base_url: http://localhost:11434/v1, api_key: ollama}
   # 預設端點由 base_url 對應上方清單決定（此處＝llamacpp）。刻意不寫 llm.endpoint：
   # 舊版 runtime_overrides.yaml 只存 provider／base_url，仍依其網址選回原端點。
   # 要改用 Ollama：控制台或數位人設定檔選 ollama 端點，並在 Ollama 拉好模型（例如 qwen3.5:4b）。
   provider: llamacpp  # llamacpp | ollama | openai
   api_key: ollama  # Ollama / llama-server 都不驗證；llamacpp 端點實際用清單中的設定
-  base_url: http://127.0.0.1:8080/v1
+  base_url: http://127.0.0.1:18080/v1
   model: gemma-4-E2B_q4_0-it
   # llama.cpp 端點的模型是 llamacpp_dir 內的 GGUF 名稱，由數位人設定檔的 llm.model 選擇：
   #   gemma-4-E2B_q4_0-it    預設。Gemma 4 E2B（Apache-2.0），同目錄的 gemma-4-E2B-it-mmproj.gguf
@@ -109,7 +109,7 @@ llm:
   #   兩者都關閉思考模式（--reasoning off，請求也帶 enable_thinking: false）。
   llamacpp_dir: /home/oliver/llama
   llamacpp_host: 127.0.0.1
-  llamacpp_port: 8080
+  llamacpp_port: 18080
   llamacpp_ctx: 8192          # 容納看板協定與最近10輪，避免超長 prompt 被拒絕
   llamacpp_threads: 0         # 0=自動用滿 CPU；有 CUDA 時主要靠 GPU
   llamacpp_allow_partial_offload: false  # 顯存放不下全部層數時：false=啟動失敗並說明；true=接受較慢的部分卸載

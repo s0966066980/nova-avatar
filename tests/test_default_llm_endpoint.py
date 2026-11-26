@@ -28,8 +28,8 @@ def test_shipped_config_selects_the_managed_llama_server(overrides):
     llm = load_config("config/config.yaml").llm
 
     assert (llm.endpoint, llm.provider) == ("llamacpp", "llamacpp")
-    assert llm.base_url == "http://127.0.0.1:8080/v1"
-    assert (llm.llamacpp_host, llm.llamacpp_port) == ("127.0.0.1", 8080)
+    assert llm.base_url == "http://127.0.0.1:18080/v1"
+    assert (llm.llamacpp_host, llm.llamacpp_port) == ("127.0.0.1", 18080)
     assert llm.model == DEFAULT_GGUF
     assert "11434" not in llm.base_url
 
