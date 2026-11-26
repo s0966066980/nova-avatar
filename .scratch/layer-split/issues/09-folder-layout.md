@@ -6,7 +6,7 @@ Blocked by: 07, 08
 依規格決定 5、17、「依賴管理的補充」與 ADR 0028。
 
 - `src/` 依規格決定 3 的表格搬到 `core/`、`avatar/`、`services/stt/`、`services/llm/`、`services/tts/`。
-  - Python 套件名稱要加上前綴，例如 `nova_core`、`nova_render`、`nova_stt`、`nova_llm`、`nova_tts`、`nova_contracts`，避免和 PyPI 上的 `llm`、`tts` 等套件撞名。實作前先和維護者確認最後的名稱。
+  - Python 套件名稱（維護者 2026-11-26 確認，Q25）：`contracts/` → `nova_contracts`、`core/` → `nova_core`、`avatar/` → `nova_render`、`services/stt/` → `nova_stt`、`services/llm/` → `nova_llm`、`services/tts/` → `nova_tts`。加前綴是為了避免和 PyPI 上的 `llm`、`tts` 等套件撞名；`nova_avatar` 保留給整個專案。
   - `src/avatars/musetalk` 原本就有自己的 `pyproject.toml`，連同它一起搬到 `avatar/`。
 - 每一層有自己的 `pyproject.toml`、`tests/` 和 `README.md`。README 說明這一層的職責、對外介面、引擎清單與測試方式。
   - 根專案以 path 依賴引用各層，共用根目錄的 `uv.lock`。
