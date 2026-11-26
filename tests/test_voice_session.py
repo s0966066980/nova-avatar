@@ -13,7 +13,8 @@ from src.server.voice_session import (
     VoiceTurnSession,
     speech_input_rejection_reason,
 )
-from tests.session_fakes import FakeASR, FakeAvatar, FakeSegmenter  # noqa: F401
+from nova_contracts.stt import Transcription, TranscriptionOptions
+from tests.session_fakes import FakeStt, FakeAvatar, FakeSegmenter  # noqa: F401
 
 
 class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
@@ -27,19 +28,19 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             speech_input_rejection_reason(
-                audio, 16000, 200, {"text": "上一輪內容"}, settings
+                audio, 16000, 200, Transcription(text="上一輪內容"), settings
             ),
             "speech_too_short",
         )
         self.assertEqual(
             speech_input_rejection_reason(
-                audio, 16000, 700, {"text": "上一輪內容", "confidence": 0.1}, settings
+                audio, 16000, 700, Transcription(text="上一輪內容", confidence=0.1), settings
             ),
             "transcript_low_confidence",
         )
         self.assertIsNone(
             speech_input_rejection_reason(
-                audio, 16000, 700, {"text": "有效問題", "confidence": 0.9}, settings
+                audio, 16000, 700, Transcription(text="有效問題", confidence=0.9), settings
             )
         )
 
@@ -55,8 +56,8 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             min_audio_rms=0.003,
             min_confidence=0.35,
         )
-        session._asr = SimpleNamespace(
-            transcribe=Mock(return_value={"text": "上一輪內容", "confidence": 0.1})
+        session._stt = SimpleNamespace(
+            transcribe=Mock(return_value=Transcription(text="上一輪內容", confidence=0.1))
         )
 
         with patch("src.server.voice_session.llm_response", return_value="") as llm:
@@ -71,8 +72,8 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(events[-1]["state"], "listening")
 
             session._segmenter.segment = segment
-            session._asr.transcribe = Mock(
-                return_value={"text": "下一輪有效問題", "confidence": 0.9}
+            session._stt.transcribe = Mock(
+                return_value=Transcription(text="下一輪有效問題", confidence=0.9)
             )
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             await session._turn_task
@@ -94,12 +95,12 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             min_audio_rms=0.003,
             min_confidence=0.35,
         )
-        session._asr = SimpleNamespace(transcribe=Mock())
+        session._stt = SimpleNamespace(transcribe=Mock())
 
         await session.feed_pcm(np.ones(512, dtype=np.int16))
         await session._turn_task
 
-        session._asr.transcribe.assert_not_called()
+        session._stt.transcribe.assert_not_called()
         self.assertIsNone(session._turn_task)
         self.assertIsNone(session._turn_id)
         self.assertTrue(session._gate_open)
@@ -115,7 +116,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         avatar = FakeAvatar()
         session = VoiceTurnSession(7, config, avatar, clock=clock)
         session._segmenter = FakeSegmenter(segment)
-        session._asr = FakeASR()
+        session._stt = FakeStt()
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         return session, avatar, events
@@ -186,9 +187,8 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(locale=locale):
                 session, _, _ = self.make_session(segment)
                 session._conversation["locale"] = locale
-                session._asr = SimpleNamespace(
-                    supports_language_options=True,
-                    transcribe=Mock(return_value={"text": "hello", "language": "en"}),
+                session._stt = SimpleNamespace(
+                    transcribe=Mock(return_value=Transcription(text="hello", language="en")),
                 )
                 with patch("src.server.voice_session.llm_response", return_value="ok"):
                     await session.feed_pcm(np.ones(512, dtype=np.int16))
@@ -197,7 +197,8 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
                 # Visitors switch language mid-conversation; fixing the
                 # recognizer to the conversation locale garbles the other (Q24).
                 self.assertEqual(
-                    session._asr.transcribe.call_args.kwargs, {"language": "auto"})
+                    session._stt.transcribe.call_args.args[1],
+                    TranscriptionOptions(language="auto"))
                 await session.close()
 
     async def test_legacy_turn_exposes_first_audio_metric(self):
@@ -525,7 +526,7 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         session._segmenter = FakeSegmenter()
-        session._asr = FakeASR()
+        session._stt = FakeStt()
         return session, avatar, events
 
     async def test_legacy_text_turn_emits_one_complete_response(self):
@@ -871,7 +872,7 @@ class SessionThreadSafetyTests(unittest.IsolatedAsyncioTestCase):
         avatar = FakeAvatar()
         session = VoiceTurnSession(7, config, avatar)
         session._segmenter = FakeSegmenter()
-        session._asr = FakeASR()
+        session._stt = FakeStt()
         events = []
 
         def loop_bound_sink(raw):

@@ -26,7 +26,7 @@ import numpy as np
 import soundfile as sf
 from av.audio.resampler import AudioResampler
 
-from src.asr.factory import get_asr_engine
+from nova_contracts.stt import SttPrepareRequest, SttService, Transcription, TranscriptionOptions
 from src.greetings.controller import IdleGreetingController
 from src.greetings.content import GreetingError
 from src.tts.base import sanitize_speech_text
@@ -75,7 +75,7 @@ def speech_input_rejection_reason(
     audio: np.ndarray,
     sample_rate: int,
     speech_ms: int,
-    transcription: Optional[dict],
+    transcription: Optional[Transcription],
     settings,
 ) -> Optional[str]:
     """Return a privacy-safe reason when speech input must not reach the LLM."""
@@ -90,13 +90,12 @@ def speech_input_rejection_reason(
         if rms < min_audio_rms:
             return "audio_too_quiet"
 
-    if not transcription:
+    if transcription is None:
         return None
-    text = str(transcription.get("text", "")).strip()
-    if not text:
+    if not transcription.text.strip():
         return "empty_transcript"
 
-    confidence = transcription.get("confidence", transcription.get("avg_confidence"))
+    confidence = transcription.confidence
     min_confidence = float(getattr(settings, "min_confidence", 0.0) or 0.0)
     if confidence is not None and min_confidence:
         try:
@@ -170,6 +169,7 @@ class VoiceTurnSession:
         clock: Callable[[], float] = time.monotonic,
         presenter: str = "console",
         test_result_sink: Optional[TestResultSink] = None,
+        stt: Optional[SttService] = None,
     ) -> None:
         self.sessionid = sessionid
         self.config = deepcopy(config)
@@ -209,7 +209,9 @@ class VoiceTurnSession:
         self._prepare_error = ""
         self._preparing = False
         self._segmenter = None
-        self._asr = None
+        # The process's STT service; ``_stt`` is set once it is prepared.
+        self._stt_service = stt
+        self._stt: Optional[SttService] = None
         self._track_task: Optional[asyncio.Task] = None
         self._turn_task: Optional[asyncio.Task] = None
         self._tail_task: Optional[asyncio.Task] = None
@@ -338,16 +340,11 @@ class VoiceTurnSession:
         self.config.vad.type = "silero"
         self._segmenter = create_segmenter(self.config.vad, self.config)
         self._segmenter.vad.ensure_ready()
-        self._asr = get_asr_engine(
-            self.config.asr.type,
-            model_size=self.config.asr.model_size,
-            config=self.config,
-        )
-        # Per-call language options keep the shared recognizer immutable.
-        if getattr(getattr(self.config, "app", None), "prewarm", True):
-            self._asr.prewarm()
-        else:
-            self._asr.ensure_ready()
+        if self._stt_service is None:
+            raise RuntimeError("no STT service was given to this voice session")
+        self._stt_service.prepare(SttPrepareRequest(
+            warm=bool(getattr(getattr(self.config, "app", None), "prewarm", True))))
+        self._stt = self._stt_service
 
     def attach_event_sink(self, sink: EventSink) -> None:
         self._event_sink = sink
@@ -430,7 +427,7 @@ class VoiceTurnSession:
                 self._emit("state", state="paused")
                 self._finalize_task = self._spawn(self._finalize_capture())
                 return
-            if enabled and self._asr is None and not self._preparing:
+            if enabled and self._stt is None and not self._preparing:
                 self._preparing = True
                 self._spawn(self.prepare())
             if enabled and self._output_active:
@@ -834,13 +831,10 @@ class VoiceTurnSession:
             wav = BytesIO()
             sf.write(wav, audio, sample_rate, format="WAV", subtype="PCM_16")
             self.mark_stage_start("asr")
-            if getattr(self._asr, 'supports_language_options', False) is True:
-                # Detect Chinese or English per turn rather than follow the
-                # conversation locale: visitors switch language mid-conversation (Q24).
-                result = await loop.run_in_executor(None, partial(
-                    self._asr.transcribe, wav.getvalue(), language="auto"))
-            else:
-                result = await loop.run_in_executor(None, self._asr.transcribe, wav.getvalue())
+            # Detect Chinese or English per turn rather than follow the
+            # conversation locale: visitors switch language mid-conversation (Q24).
+            result = await loop.run_in_executor(
+                None, self._stt.transcribe, wav.getvalue(), TranscriptionOptions(language="auto"))
             self.mark_stage_end("asr")
             if not self._is_current(turn_id, generation):
                 return
@@ -851,7 +845,7 @@ class VoiceTurnSession:
                 logger.info("Dropped speech turn after ASR reason=%s", rejection)
                 self._release_rejected_speech_turn(turn_id, generation)
                 return
-            text = str(result.get("text", "")).strip()
+            text = result.text.strip()
             self._emit("user_transcript", text=text, turn_id=turn_id)
             await self._generate_turn(
                 text,

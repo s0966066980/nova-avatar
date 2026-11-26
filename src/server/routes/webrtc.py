@@ -129,6 +129,7 @@ async def offer(request):
             ) else state.config,
             avatar_stream, presenter=client_role,
             test_result_sink=state.voice_test_history.complete,
+            stt=state.stt,
         )
         from src.server.conversations import validate, check_language_support
         if 'locale' in params:

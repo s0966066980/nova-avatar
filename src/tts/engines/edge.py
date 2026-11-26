@@ -27,7 +27,7 @@ from src.tts.edge_connection import EdgeConnectionPool, configure_edge_endpoint
 from src.tts import edge_endpoint
 from src.tts.retry import RetryBudget
 from src.utils.logging import logger
-from src.utils.playable_fragment import PlayableFragment
+from nova_contracts.tts import PlayableFragment
 
 
 # A warm Edge connection normally returns audio in under 1.5 seconds, but a

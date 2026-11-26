@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 from src.server.voice_session import VoiceTurnSession
-from tests.session_fakes import FakeASR, FakeAvatar, FakeSegmenter
+from tests.session_fakes import FakeStt, FakeAvatar, FakeSegmenter
 
 DELAY = 0.08
 REPLY = "還沒開始播放的回覆"
@@ -29,7 +29,7 @@ class StageIdleResetTests(unittest.IsolatedAsyncioTestCase):
         )
         session = VoiceTurnSession(7, config, FakeAvatar(), presenter=presenter)
         session._segmenter = FakeSegmenter(segment)
-        session._asr = FakeASR()
+        session._stt = FakeStt()
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         self.addAsyncCleanup(session.close)
@@ -96,7 +96,7 @@ class StageIdleResetTests(unittest.IsolatedAsyncioTestCase):
         session.config.asr = SimpleNamespace(
             min_speech_ms=450, min_audio_rms=0.003, min_confidence=0.35
         )
-        session._asr = SimpleNamespace(transcribe=Mock())
+        session._stt = SimpleNamespace(transcribe=Mock())
         with patch("src.server.voice_session.clear_session_history") as clear:
             await self.finish_one_turn(session)
             await asyncio.sleep(0.1)

@@ -199,11 +199,11 @@ def test_field_question_preserves_exact_source_and_excludes_unrelated_codes(stor
 def test_cancel_before_acceptance_rejects_late_request_without_interrupting_old_turn():
     import asyncio
     from src.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar, FakeASR, FakeSegmenter
+    from tests.session_fakes import FakeAvatar, FakeStt, FakeSegmenter
 
     async def exercise():
         session = VoiceTurnSession(7, Config(), FakeAvatar())
-        session._segmenter, session._asr = FakeSegmenter(), FakeASR()
+        session._segmenter, session._stt = FakeSegmenter(), FakeStt()
         session.attach_event_sink(lambda raw: None)
         try:
             with patch('src.server.voice_session.llm_response', return_value='An existing answer'):
@@ -224,11 +224,11 @@ def test_cancel_before_acceptance_rejects_late_request_without_interrupting_old_
 def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
     import asyncio
     from src.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar, FakeASR, FakeSegmenter
+    from tests.session_fakes import FakeAvatar, FakeStt, FakeSegmenter
 
     async def exercise():
         session = VoiceTurnSession(7, Config(), FakeAvatar())
-        session._segmenter, session._asr = FakeSegmenter(), FakeASR()
+        session._segmenter, session._stt = FakeSegmenter(), FakeStt()
         session.attach_event_sink(lambda raw: None)
         item = session.attachments.add_batch([('one.png', image_bytes())], session.attachments.generation)[0]
         validating, resume = asyncio.Event(), asyncio.Event()
@@ -261,11 +261,11 @@ def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
 def test_pending_text_cancellation_and_replacement_do_not_overlap_interrupts():
     import asyncio
     from src.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar, FakeASR, FakeSegmenter
+    from tests.session_fakes import FakeAvatar, FakeStt, FakeSegmenter
 
     async def exercise():
         session = VoiceTurnSession(7, Config(), FakeAvatar())
-        session._segmenter, session._asr = FakeSegmenter(), FakeASR()
+        session._segmenter, session._stt = FakeSegmenter(), FakeStt()
         session.attach_event_sink(lambda raw: None)
         interrupting, release = asyncio.Event(), asyncio.Event()
         real_interrupt = session._interrupt_locked

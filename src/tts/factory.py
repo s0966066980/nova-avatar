@@ -9,7 +9,7 @@
 
 from typing import Type
 
-from .audio_sink import AudioSink
+from nova_contracts.tts import AudioSink
 from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS, MatchaTTS
 
 # Keep in step with src.tts.voice_library.TTS_ENGINES.

@@ -71,6 +71,7 @@ AREA_BY_FILE = {
     "test_default_voice.py": "speech",
     "test_health_route.py": "runtime",
     "test_config_entry_points.py": "runtime",
+    "test_layer_entry_points.py": "governance",
     "test_integration_check.py": "governance",
     "test_kiosk_launcher.py": "runtime",
     "test_live_llm_board_contract.py": "conversation",
@@ -120,6 +121,8 @@ AREA_BY_FILE = {
     "test_webrtc_lifecycle.py": "conversation",
     "test_voice_test_history.py": "conversation",
     "test_whisper_asr.py": "speech",
+    "test_stt_contract.py": "speech",
+    "test_contracts.py": "governance",
 }
 
 LIVE_FILES = frozenset({"test_live_llm_board_contract.py"})

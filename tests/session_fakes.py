@@ -9,6 +9,8 @@ from io import BytesIO
 
 from PIL import Image
 
+from nova_contracts.stt import Transcription
+
 
 class FakeAvatar:
     def __init__(self):
@@ -60,9 +62,11 @@ class FakeSegmenter:
         self.is_speaking = False
 
 
-class FakeASR:
-    def transcribe(self, _audio):
-        return {"text": "你好", "language": "zh"}
+class FakeStt:
+    """An SttService that always hears 你好."""
+
+    def transcribe(self, _audio, _options):
+        return Transcription(text="你好", language="zh")
 
 
 def picture():

@@ -46,14 +46,8 @@ class BaseASR(ABC):
     - get_info: 獲取引擎資訊
     """
     
-    def __init__(self, config=None):
-        """
-        初始化 ASR 引擎
-        
-        Args:
-            config: 配置物件（可選）
-        """
-        self.config = config
+    def __init__(self):
+        """初始化 ASR 引擎"""
         self.language = "zh"  # 預設中文
         self._initialized = False
         self._ready_lock = RLock()

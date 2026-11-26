@@ -7,7 +7,9 @@ import unittest
 
 from src.config.schema import Config
 from src.llm.base import BaseLLM
-from src.llm.reply_events import ReviewedFragment, SpeechEnd, SpokenDelta
+from pydantic import TypeAdapter
+
+from nova_contracts.llm import ReviewedFragment, SpeechEnd, SpeechEvent, SpokenDelta
 from src.server.reply_streaming.speech import ReplySpeech
 
 
@@ -37,6 +39,17 @@ class ChunkedLLM(BaseLLM):
     def chat_stream(self, message, system_prompt=None):
         del message, system_prompt
         yield from self._chunks
+
+
+class SpeechEventContractTests(unittest.TestCase):
+    def test_speech_events_round_trip_as_tagged_json_for_server_sent_events(self):
+        events = TypeAdapter(list[SpeechEvent])
+        wire = '[{"type":"spoken_delta","text":"你好","llm_sequence":0},{"type":"speech_end"}]'
+
+        decoded = events.validate_json(wire)
+
+        self.assertEqual(decoded, [SpokenDelta(text="你好", llm_sequence=0), SpeechEnd()])
+        self.assertEqual(events.dump_json(decoded).decode(), wire)
 
 
 class LLMEmitsSpokenDeltasTests(unittest.TestCase):
@@ -117,8 +130,8 @@ class CoreCutsPlayableFragmentsTests(unittest.TestCase):
         avatar = FragmentAvatar()
         speech = ReplySpeech(avatar, {"turn_id": "turn-1", "generation": 1})
         speech.open(RejectingReview())
-        speech.send(SpokenDelta("這是秘密。公開的", 0))
-        speech.send(SpokenDelta("內容。", 1))
+        speech.send(SpokenDelta(text="這是秘密。公開的", llm_sequence=0))
+        speech.send(SpokenDelta(text="內容。", llm_sequence=1))
         speech.send(SpeechEnd())
         speech.close()
 

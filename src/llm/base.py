@@ -14,7 +14,8 @@ from uuid import uuid4
 
 from src.llm.prompts import compose_system_prompt
 from src.llm.identity_policy import IdentityPolicy
-from src.llm.reply_events import SpeechEnd, SpeechSink, SpokenDelta, SpokenTextReview
+from nova_contracts.llm import SpeechEnd, SpeechSink, SpokenDelta
+from src.llm.reply_events import SpokenTextReview
 from src.llm.response_protocol import (
     BoardItem,
     BoardPayload,

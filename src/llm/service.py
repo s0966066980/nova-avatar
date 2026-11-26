@@ -12,7 +12,7 @@ from typing import Any, Callable, Optional, Protocol
 
 from src.llm.engines import OpenAILLM
 from src.llm.base import load_system_prompt
-from src.llm.reply_events import SpeechSink
+from nova_contracts.llm import SpeechSink
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
 from src.utils.logging import logger

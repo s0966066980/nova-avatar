@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from src.utils.logging import logger
 
 if TYPE_CHECKING:
-    from src.tts.audio_sink import AudioSink
+    from nova_contracts.tts import AudioSink
 
 
 _EMOJI_RE = re.compile(

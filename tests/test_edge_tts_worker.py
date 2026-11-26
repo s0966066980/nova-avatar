@@ -247,7 +247,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
     def test_rate_limit_does_not_exceed_the_shared_retry_budget(self):
         from aiohttp import WSServerHandshakeError
 
-        from src.utils.playable_fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from src.tts.retry import RetryBudget
         from src.server.reply_streaming.turn import TurnContext
 
@@ -1188,7 +1188,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         self.assertEqual(tts.retry_after_playback_commit_count, 0)
 
     def test_timeout_after_playback_commit_does_not_retry(self):
-        from src.utils.playable_fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from src.server.reply_streaming.turn import TurnContext
 
         calls = []
@@ -1231,7 +1231,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         self.assertEqual(tts.retry_after_playback_commit_count, 1)
 
     def test_turn_aware_frames_are_fenced_and_keep_20ms_media_sequences(self):
-        from src.utils.playable_fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from src.server.reply_streaming.turn import TurnContext
 
         class Parent:
@@ -1281,7 +1281,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         )
 
     def test_fragment_retry_uses_the_shared_one_second_budget(self):
-        from src.utils.playable_fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from src.tts.retry import RetryBudget
         from src.server.reply_streaming.turn import TurnContext
         from src.tts.engines.edge import EDGE_INITIAL_STREAM_TIMEOUT_SECONDS

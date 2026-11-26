@@ -575,7 +575,7 @@ class SpeechSettingsTests(unittest.TestCase):
 
     def test_speech_engine_change_requires_disconnect(self):
         with self.assertRaises(SettingsError) as ctx:
-            apply_stt_settings(Config(), {"type": "whisper"}, session_count=1)
+            apply_stt_settings(Config(), {"type": "whisper"}, session_count=1, stt=Mock())
         self.assertEqual(ctx.exception.status, 409)
         self.assertTrue(ctx.exception.extra["need_disconnect"])
 
@@ -614,12 +614,12 @@ class SpeechSettingsTests(unittest.TestCase):
                 )
         self.assertIn("台灣華語聲線", ctx.exception.message)
 
-    def test_stt_prewarms_before_commit(self):
+    def test_stt_service_loads_the_engine_before_commit(self):
+        from nova_contracts.stt import SttEngineSettings
+
         config = Config()
-        candidate = Mock()
+        stt = Mock()
         with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
-            "src.server.runtime_settings.create_asr_engine", return_value=candidate
-        ), patch("src.server.runtime_settings.activate_asr_engine"), patch(
             "src.server.runtime_settings.persist_runtime_overrides"
         ) as persist:
             result = apply_stt_settings(
@@ -631,11 +631,31 @@ class SpeechSettingsTests(unittest.TestCase):
                     "device": "cuda",
                 },
                 session_count=0,
+                stt=stt,
             )
-        candidate.ensure_ready.assert_called_once()
+        stt.apply_engine.assert_called_once_with(
+            SttEngineSettings(engine="whisper", model_size="small", device="cuda"))
         self.assertEqual(result["model_size"], "small")
-        self.assertEqual(config.asr.device, "cuda")
+        self.assertEqual((config.asr.device, config.asr.language), ("cuda", "auto"))
         persist.assert_called_once()
+
+    def test_stt_engine_the_service_cannot_load_is_not_committed(self):
+        from nova_contracts.common import ServiceError
+
+        config = Config()
+        stt = Mock()
+        stt.apply_engine.side_effect = ServiceError("CUDA out of memory")
+        with patch("src.server.runtime_settings._engine_available", return_value=True), patch(
+            "src.server.runtime_settings.persist_runtime_overrides"
+        ) as persist, self.assertRaises(SettingsError) as ctx:
+            apply_stt_settings(
+                config, {"type": "whisper", "model_size": "turbo", "device": "cuda"},
+                session_count=0, stt=stt,
+            )
+        self.assertEqual(ctx.exception.status, 500)
+        self.assertIn("CUDA out of memory", ctx.exception.message)
+        self.assertNotEqual(config.asr.model_size, "turbo")
+        persist.assert_not_called()
 
     def test_removed_funasr_engine_is_rejected(self):
         with self.assertRaises(SettingsError):
@@ -643,6 +663,7 @@ class SpeechSettingsTests(unittest.TestCase):
                 Config(),
                 {"type": "funasr", "model_size": "Fun-ASR-Nano-2512"},
                 session_count=0,
+                stt=Mock(),
             )
 
     def test_saved_funasr_settings_load_as_faster_whisper(self):
@@ -665,6 +686,7 @@ class SpeechSettingsTests(unittest.TestCase):
                 Config(),
                 {"type": "qwen3-asr", "model_size": "Qwen/Qwen3-ASR-0.6B"},
                 session_count=0,
+                stt=Mock(),
             )
         with self.assertRaises(SettingsError):
             apply_tts_settings(

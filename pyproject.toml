@@ -13,6 +13,8 @@ maintainers = [
 ]
 
 dependencies = [
+    # Cross-layer contracts (ADR 0028); a path dependency sharing this uv.lock.
+    "nova-contracts",
     "regex>=2024.11.6",
     "aiohttp",
     "aiortc",
@@ -83,6 +85,7 @@ ci = [
 ]
 
 [tool.uv.sources]
+nova-contracts = { path = "contracts", editable = true }
 nova-avatar-musetalk = { path = "src/avatars/musetalk", editable = true }
 torch = [
     { index = "pytorch-cu124" },
@@ -111,11 +114,19 @@ markers = [
 # src.llm, src.ragflow, src.web_search; TTS = src.tts; avatar rendering =
 # src.avatars, src.scene. Core = src.server, src.profiles, src.config,
 # src.greetings, src.vad, src.utils. Every layer may import src.utils.
+# nova_contracts (contracts/) is shared by all and imports none of them.
 # No contract has ignore_imports. A new entry must name the ticket that
 # removes it (CODING_STANDARDS.md rule 6); an entry that no longer matches
 # fails the run.
 [tool.importlinter]
-root_packages = ["src"]
+root_packages = ["src", "nova_contracts"]
+
+[[tool.importlinter.contracts]]
+id = "contracts-are-a-leaf"
+name = "nova_contracts imports no Nova Avatar code"
+type = "forbidden"
+source_modules = ["nova_contracts"]
+forbidden_modules = ["src"]
 
 [[tool.importlinter.contracts]]
 id = "layers-not-core"
@@ -239,10 +250,35 @@ forbidden_modules = [
     "src.llm.tools.weather_keywords",
 ]
 
+# Converted layers (ticket 07): the core reaches the layer only through
+# src.<layer>.adapter (its in-process service) and src.<layer>.config_section.
+# One block per layer, id "<layer>-internals-private"; protected_modules lists
+# every other module of the layer (tests/test_layer_entry_points.py fails when
+# one is missing) and allowed_importers lists the layer's packages.
+
+[[tool.importlinter.contracts]]
+id = "stt-internals-private"
+name = "Only the STT layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "src.asr.base",
+    "src.asr.engines",
+    "src.asr.factory",
+]
+allowed_importers = ["src.asr"]
+
+# llm-internals-private: ticket 07 step 2 (LLM) replaces this line with its block.
+
+
+# tts-internals-private: ticket 07 step 2 (TTS) replaces this line with its block.
+
+
+# avatar-internals-private: ticket 07 step 2 (avatar rendering) replaces this line with its block.
+
 [tool.ruff]
 required-version = "==0.17.1"
 target-version = "py310"
-include = ["src/**/*.py", "scripts/**/*.py", "tests/**/*.py"]
+include = ["src/**/*.py", "scripts/**/*.py", "tests/**/*.py", "contracts/**/*.py"]
 force-exclude = true
 extend-exclude = [
     "src/avatars/musetalk/utils",

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
-from src.llm.reply_events import SpeechEnd, SpeechEvent, SpokenTextReview
+from nova_contracts.llm import FragmentReview, SpeechEnd, SpeechEvent
 from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
 from src.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
 from src.utils.logging import logger
@@ -43,14 +43,14 @@ class ReplySpeech:
         )
         self._settings = settings
         self._chunk_guard = chunk_guard
-        self._review: Optional[SpokenTextReview] = None
+        self._review: Optional[FragmentReview] = None
         self._semantic: Optional[SemanticWaitTimer] = None
         self._sentences: Optional[TextStreamProcessor] = None
         self._llm_sequence = -1
         self._fragment_sequence = 0
         self._closed = False
 
-    def open(self, review: SpokenTextReview) -> None:
+    def open(self, review: FragmentReview) -> None:
         self._review = review
         if self._turn_aware or review.bounded:
             # The semantic wait releases a long clause by timer even while the

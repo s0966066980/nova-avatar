@@ -362,7 +362,8 @@ async def set_stt_settings(request):
         result = await loop.run_in_executor(
             None,
             lambda: apply_stt_settings(
-                state.config, params, session_count=_active_session_count()
+                state.config, params, session_count=_active_session_count(),
+                stt=state.stt,
             ),
         )
         return _json({"code": 0, "msg": "ok", "data": result})

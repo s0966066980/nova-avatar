@@ -148,6 +148,12 @@ def main():
     # 載入配置
     state.config_path = args.config
     state.config = load_config(config_file=args.config)
+    from nova_contracts.stt import SttEngineSettings
+    from src.asr.adapter import create_stt_service
+
+    asr = state.config.asr
+    state.stt = create_stt_service(SttEngineSettings(
+        engine=asr.type, model_size=asr.model_size, device=asr.device))
     # Prewarm and start the main role's voice, not the configuration file's.
     from src.profiles.coordinator import adopt_saved_main_voice, profiles_path
 
@@ -203,7 +209,7 @@ def main():
         if state.config.llm.provider == "llamacpp":
             llm_ready = prewarm_local_llm(state.config)
         if state.config.vad.enabled:
-            speech_ready = prewarm_speech_input(state.config)
+            speech_ready = prewarm_speech_input(state.config, state.stt)
     edge_ready = _await_edge_tts_prewarm(edge_tts_prewarm)
     state.prewarm_status = {
         "enabled": enabled,

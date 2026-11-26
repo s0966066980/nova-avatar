@@ -7,7 +7,7 @@ import json
 from aiohttp import web
 import asyncio
 
-from src.asr import get_asr_engine
+from nova_contracts.stt import TranscriptionOptions
 from src.llm.service import llm_response
 from src.server.reply_streaming.speech import ReplySpeech
 from src.utils.logging import logger
@@ -82,19 +82,15 @@ async def asr(request):
                 return _json({"code": -1, "msg": "未檢測到語音內容", "vad": vad_result.engine})
             filebytes = vad_result.audio_bytes
 
-            # Same arguments as the voice session, so both share one loaded recognizer.
-            asr_engine = await asyncio.to_thread(
-                get_asr_engine,
-                asr_config.type if asr_config else "whisper",
-                model_size=asr_config.model_size if asr_config else "base",
-                config=state.config,
-            )
-            # Per-call language keeps the shared recognizer unchanged.
-            language = asr_config.language if asr_config else "zh"
+            if state.stt is None:
+                return _json({"code": -1, "msg": "語音辨識服務尚未就緒"}, status=503)
+            # The voice sessions' STT service, so both share one loaded recognizer;
+            # the per-request language keeps that recognizer unchanged.
+            options = TranscriptionOptions(language=asr_config.language if asr_config else "zh")
 
             logger.info(f'[ASR] 開始識別音訊，sessionid={sessionid}')
-            result = await asyncio.to_thread(asr_engine.transcribe, filebytes, language=language)
-            text = result.get("text", "").strip()
+            result = await asyncio.to_thread(state.stt.transcribe, filebytes, options)
+            text = result.text.strip()
 
             if not text:
                 return _json({"code": -1, "msg": "未識別到語音內容"})

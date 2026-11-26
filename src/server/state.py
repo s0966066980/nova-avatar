@@ -3,11 +3,12 @@
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
 """全域性狀態管理"""
-from typing import TYPE_CHECKING, Any, Dict, Set
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 from aiortc import RTCPeerConnection
 from src.server.voice_test_history import VoiceTestHistory
 
 if TYPE_CHECKING:
+    from nova_contracts.stt import SttService
     from src.server.speaking_avatar import SpeakingAvatar
 
 
@@ -31,6 +32,8 @@ class ServerState:
         self.model = None
         self.avatar = None
         self.roles = None
+        # The STT layer's service, shared by every voice session and /asr.
+        self.stt: Optional["SttService"] = None
         
         # 服務狀態
         self.server_ready = False

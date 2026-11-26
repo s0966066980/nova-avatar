@@ -63,6 +63,8 @@ def test_health_exposes_incomplete_prewarm_without_disabling_runtime_recovery():
 
 
 def test_listening_preparation_warms_stt_inference_once_without_a_turn():
+    from nova_contracts.stt import SttEngineSettings
+    from src.asr.adapter import InProcessSttService
     from src.asr.base import BaseASR
     from src.server.voice_session import VoiceTurnSession
     from tests.session_fakes import FakeAvatar
@@ -78,13 +80,12 @@ def test_listening_preparation_warms_stt_inference_once_without_a_turn():
             return {'text': '', 'language': 'zh'}
 
     config = Config()
-    engine = Recognizer(config)
+    stt = InProcessSttService(
+        SttEngineSettings(engine='whisper', model_size='base', device='cpu'),
+        create_engine=lambda _settings: Recognizer())
     avatar = FakeAvatar()
-    session = VoiceTurnSession(7, config, avatar)
-    with (
-        patch('src.server.voice_session.create_segmenter', return_value=MagicMock()),
-        patch('src.server.voice_session.get_asr_engine', return_value=engine),
-    ):
+    session = VoiceTurnSession(7, config, avatar, stt=stt)
+    with patch('src.server.voice_session.create_segmenter', return_value=MagicMock()):
         session._prepare_sync()
         session._prepare_sync()
     assert len(inferences) == 1, 'STT was loaded but first-utterance inference remained cold'
@@ -108,7 +109,7 @@ def test_failed_stt_warmup_can_retry_and_removes_temporary_audio():
                 raise RuntimeError('transient')
             return {'text': ''}
 
-    engine = Recognizer(Config())
+    engine = Recognizer()
     with pytest.raises(RuntimeError):
         engine.prewarm()
     assert not engine._prewarmed

@@ -49,7 +49,8 @@ from src.llm.endpoints import (
 )
 from src.llm.service import switch_llm_endpoint
 from src.llm.rules import default_rules, rules_from_config, snapshot_from_config, validate_rules
-from src.asr.factory import activate_asr_engine, create_asr_engine
+from nova_contracts.common import ServiceError
+from nova_contracts.stt import SttEngineSettings, SttService
 from src.utils.logging import logger
 
 _SWITCH_LOCK = threading.Lock()
@@ -1377,10 +1378,10 @@ def _require_no_sessions(session_count: int) -> None:
         )
 
 
-def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) -> Dict[str, Any]:
-    """Validate and prewarm a keyless STT engine before committing it."""
-    from copy import deepcopy
-
+def apply_stt_settings(
+    config, params: Dict[str, Any], *, session_count: int, stt: SttService,
+) -> Dict[str, Any]:
+    """Validate a keyless STT engine and have the STT service load it before committing it."""
     _require_no_sessions(session_count)
     engine = str(params.get("type", config.asr.type)).strip().lower()
     model_size = str(params.get("model_size", config.asr.model_size)).strip()
@@ -1401,17 +1402,9 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
     if device not in STT_DEVICES:
         raise SettingsError(f"不支援的運算裝置: {device}")
 
-    pending = deepcopy(config)
-    pending.asr.mode = "server"
-    pending.asr.type = engine
-    pending.asr.model_size = model_size
-    pending.asr.language = language
-    pending.asr.device = device
-    candidate = create_asr_engine(engine, config=pending, model_size=model_size)
-    candidate.set_language(language)
     try:
-        candidate.ensure_ready()
-    except Exception as exc:
+        stt.apply_engine(SttEngineSettings(engine=engine, model_size=model_size, device=device))
+    except ServiceError as exc:
         raise SettingsError(f"STT 預熱失敗: {exc}", status=500) from exc
 
     config.asr.mode = "server"
@@ -1419,13 +1412,6 @@ def apply_stt_settings(config, params: Dict[str, Any], *, session_count: int) ->
     config.asr.model_size = model_size
     config.asr.language = language
     config.asr.device = device
-    candidate.config = config
-    activate_asr_engine(
-        candidate,
-        asr_type=engine,
-        model_size=model_size,
-        config=config,
-    )
     persist_runtime_overrides(config)
     return speech_snapshot(config)["stt"]
 

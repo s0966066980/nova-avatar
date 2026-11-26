@@ -177,7 +177,7 @@ class SpeakingAvatar:
         if self._on_llm_chunk is not None:
             self._on_llm_chunk(text, dict(eventpoint or {}))
 
-    # Audio sink: what the TTS layer may call (src.tts.audio_sink.AudioSink).
+    # Audio sink: what the TTS layer may call (nova_contracts.tts.AudioSink).
 
     def put_audio_frame(self, samples, eventpoint: dict) -> bool:
         return self.renderer.put_audio_frame(samples, eventpoint)

@@ -1923,6 +1923,7 @@ dependencies = [
     { name = "faster-whisper" },
     { name = "librosa" },
     { name = "logger" },
+    { name = "nova-contracts" },
     { name = "numpy" },
     { name = "omegaconf" },
     { name = "onnxruntime" },
@@ -1989,6 +1990,7 @@ requires-dist = [
     { name = "librosa" },
     { name = "logger" },
     { name = "nova-avatar-musetalk", marker = "extra == 'musetalk'", editable = "src/avatars/musetalk" },
+    { name = "nova-contracts", editable = "contracts" },
     { name = "numpy", specifier = "<2" },
     { name = "omegaconf" },
     { name = "onnx", marker = "extra == 'tensorrt'", specifier = "==1.17.0" },
@@ -2082,6 +2084,17 @@ requires-dist = [
     { name = "tensorflow", specifier = "==2.16.1" },
     { name = "transformers", specifier = ">=4.44.1,<4.47" },
 ]
+
+[[package]]
+name = "nova-contracts"
+version = "0.1.0"
+source = { editable = "contracts" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.7,<3" }]
 
 [[package]]
 name = "numba"

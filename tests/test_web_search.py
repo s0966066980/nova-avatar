@@ -190,7 +190,8 @@ def test_real_turn_uses_raw_question_not_attachment_or_rag_and_cancels_stale_res
 def test_legacy_web_turn_bounds_speech_at_fragments_without_playing_it():
     async def run():
         from src.llm.identity_policy import IdentityPolicy
-        from src.llm.reply_events import SpeechEnd, SpokenDelta, SpokenTextReview
+        from nova_contracts.llm import SpeechEnd, SpokenDelta
+        from src.llm.reply_events import SpokenTextReview
         from src.llm.web_reply import WebSpeechGuard
         from src.server.voice_session import AnswerInputs
         voice, avatar, _ = session()
@@ -207,8 +208,8 @@ def test_legacy_web_turn_bounds_speech_at_fragments_without_playing_it():
             speech = llm.call_args.kwargs['speech']
             review = SpokenTextReview(lambda text: text, IdentityPolicy(None), WebSpeechGuard(120))
             speech.open(review)
-            speech.send(SpokenDelta('台北有市集。台北', 0))
-            speech.send(SpokenDelta('有展覽。', 1))
+            speech.send(SpokenDelta(text='台北有市集。台北', llm_sequence=0))
+            speech.send(SpokenDelta(text='有展覽。', llm_sequence=1))
             speech.send(SpeechEnd())
             speech.close()
             assert review.spoken == '台北有市集。台北有展覽。'

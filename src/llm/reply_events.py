@@ -1,54 +1,18 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""What the LLM layer hands the core while it generates an answer (ADR 0027).
+"""The LLM layer's review of the playable fragments the core cuts (ADR 0027).
 
-The LLM emits spoken-text deltas in model order; it does not cut playable
-fragments. The core cuts complete semantic boundaries, applies the semantic
-wait and owns back pressure, then asks the LLM to review each fragment before
-it is played. Ticket 07 moves these types to ``contracts/``.
+The speech events and the ``FragmentReview`` Protocol this implements are in
+``nova_contracts.llm``.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from threading import RLock
-from typing import Callable, Optional, Protocol, Union
+from typing import Callable, Optional
 
+from nova_contracts.llm import ReviewedFragment
 from src.llm.text_normalizer import join_spoken_fragments
-
-
-@dataclass(frozen=True)
-class SpokenDelta:
-    """A spoken-text increment from one model chunk; not a playable fragment."""
-
-    text: str
-    llm_sequence: int
-
-
-@dataclass(frozen=True)
-class SpeechEnd:
-    """The spoken section is complete: a boundary even without punctuation."""
-
-
-SpeechEvent = Union[SpokenDelta, SpeechEnd]
-
-
-@dataclass(frozen=True)
-class ReviewedFragment:
-    """A playable fragment the LLM accepted, with its live-transcript increment."""
-
-    text: str
-    preview: str
-
-
-class SpeechSink(Protocol):
-    """The core's consumer of one answer's speech."""
-
-    def open(self, review: "SpokenTextReview") -> None: ...
-
-    def send(self, event: SpeechEvent) -> None: ...
-
-    def close(self) -> None: ...
 
 
 class SpokenTextReview:

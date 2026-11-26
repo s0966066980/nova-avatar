@@ -8,12 +8,12 @@ primes its own recognizer.
 """
 import numpy as np
 
-from src.asr.prewarm import prewarm_recognizer
+from nova_contracts.stt import SttPrepareRequest, SttService
 from src.utils.logging import logger
 from src.vad.factory import create_vad_from_config
 
 
-def prewarm_speech_input(config) -> bool:
+def prewarm_speech_input(config, stt: SttService) -> bool:
     if not config.vad.enabled:
         return True
     vad = None
@@ -21,7 +21,7 @@ def prewarm_speech_input(config) -> bool:
         vad = create_vad_from_config(config.vad, config)
         vad.ensure_ready()
         vad.speech_prob(np.zeros(vad.frame_samples, dtype=np.int16))
-        prewarm_recognizer(config)
+        stt.prepare(SttPrepareRequest(warm=True))
         return True
     except Exception as exc:
         logger.warning('Speech input prewarm failed type=%s; session preparation may retry',
