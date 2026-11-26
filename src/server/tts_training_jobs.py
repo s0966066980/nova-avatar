@@ -1047,6 +1047,18 @@ class TrainingJobManager:
         env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV")}
         env["PYTHONNOUSERSITE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
+        # cuDNN attention loads NVRTC by soname, outside PyTorch's wheel search paths.
+        venv = self.paths.training_python.parent.parent
+        nvrtc_dirs = [
+            str(library.parent)
+            for library in sorted(venv.glob("lib/python*/site-packages/nvidia/cuda_nvrtc/lib/libnvrtc.so.12"))
+            if library.is_file()
+        ]
+        if nvrtc_dirs:
+            inherited = env.get("LD_LIBRARY_PATH")
+            if inherited:
+                nvrtc_dirs.append(inherited)
+            env["LD_LIBRARY_PATH"] = os.pathsep.join(nvrtc_dirs)
         return env
 
     def _default_transcriber(self, model: str) -> AbstractContextManager[Transcriber]:

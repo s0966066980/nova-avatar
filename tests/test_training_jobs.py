@@ -232,10 +232,16 @@ def test_training_text_is_the_digit_expanded_confirmed_lines_only(tmp_path):
     assert not any(ch.isdigit() for row in rows for ch in row["text"])
 
 
-def test_children_run_from_the_training_venv_with_the_gpu_visible(tmp_path, monkeypatch):
+@pytest.mark.parametrize("with_nvrtc", [True, False])
+def test_children_run_from_the_training_venv_with_the_gpu_visible(tmp_path, monkeypatch, with_nvrtc):
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0")
     monkeypatch.setenv("PYTHONPATH", "/main/venv/lib")
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/system/cuda/lib")
     r = rig(tmp_path)
+    nvrtc = r.paths.training_python.parent.parent / "lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib"
+    if with_nvrtc:
+        nvrtc.mkdir(parents=True)
+        (nvrtc / "libnvrtc.so.12").touch()
     finish(r)
     train, export = r.spawner.commands
     assert train[0] == str(r.paths.training_python) and export[0] == str(r.paths.training_python)
@@ -245,6 +251,8 @@ def test_children_run_from_the_training_venv_with_the_gpu_visible(tmp_path, monk
     assert r.spawner.envs[0]["CUDA_VISIBLE_DEVICES"] == "0"  # inherited, not blanked
     assert "PYTHONPATH" not in r.spawner.envs[0]  # the main venv's packages must not leak in
     assert r.spawner.envs[0]["PYTHONNOUSERSITE"] == "1"
+    library_path = f"{nvrtc}:/system/cuda/lib" if with_nvrtc else "/system/cuda/lib"
+    assert [env["LD_LIBRARY_PATH"] for env in r.spawner.envs] == [library_path, library_path]
     assert all(cwd == r.paths.root for cwd in r.spawner.cwds)
 
 
