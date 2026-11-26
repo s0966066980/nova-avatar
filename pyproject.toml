@@ -141,9 +141,6 @@ ignore_imports = [
     "src.llm.engines.openai -> src.server.reply_streaming.metrics",  # ticket 02
     "src.tts.engines.edge -> src.server.reply_streaming.channel",  # ticket 03
     "src.tts.engines.edge -> src.server.reply_streaming.retry",  # ticket 03
-    "src.avatars.builder -> src.server.state",  # ticket 04
-    "src.llm.service -> src.server.state",  # ticket 04
-    "src.tts.training.gpu_guard -> src.server.state",  # ticket 04
     "src.asr.prewarm -> src.vad.factory",  # ticket 06
     "src.avatars.base -> src.vad.audio",  # ticket 06
 ]

@@ -96,6 +96,22 @@ class SilentReplyTests(unittest.IsolatedAsyncioTestCase):
         await session.close()
 
 
+class PublishedConfigTests(unittest.IsolatedAsyncioTestCase):
+    async def test_the_core_hands_the_published_config_to_the_llm_layer(self):
+        # The LLM layer does not read the core's global state; the core passes the
+        # configuration the console last published with every answer request.
+        from src.server.state import state
+
+        session, _avatar, _events = make_session(streaming=False)
+        published = SimpleNamespace(name="published")
+        with patch.object(state, "config", published), \
+                patch("src.server.voice_session.llm_response", return_value="") as llm:
+            await session.start_text_turn("你好", interrupt=False)
+            await session._turn_task
+        self.assertIs(llm.call_args.kwargs["published_config"], published)
+        await session.close()
+
+
 class StreamingCircuitTests(unittest.IsolatedAsyncioTestCase):
     def make_breaker(self):
         now = [0.0]

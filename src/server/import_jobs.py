@@ -21,6 +21,7 @@ from src.avatars.builder import (
 )
 from src.avatars.catalog import IMPORTABLE_ENGINES, avatars_root, is_safe_avatar_id
 from src.server.runtime_settings import SettingsError
+from src.server.state import state
 from src.utils.logging import logger
 
 VIDEO_EXTS = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"}
@@ -153,6 +154,14 @@ def _prune_finished_jobs() -> None:
         del _JOBS[job_id]
 
 
+def running_musetalk_vae() -> Any:
+    """The VAE of the MuseTalk model the stage is running, or ``None`` to load one."""
+    config, model = state.config, state.model
+    if config is None or model is None or getattr(config.model, "type", None) != "musetalk":
+        return None
+    return model[0]
+
+
 def _run_job(
     job: ImportJob,
     video_path: Path,
@@ -178,6 +187,7 @@ def _run_job(
             quality=quality,
             green_screen=green_screen,
             replace_guard=replace_guard,
+            loaded_vae=running_musetalk_vae,
         )
         job.status = "done"
         job.progress = 100

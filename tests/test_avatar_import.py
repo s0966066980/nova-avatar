@@ -47,7 +47,7 @@ def fake_video(root: Path) -> Path:
     return video
 
 
-def fake_musetalk_build(work_dir, avatar_id, source_name, report, options):
+def fake_musetalk_build(work_dir, avatar_id, source_name, report, options, **_kwargs):
     (work_dir / "mask").mkdir(parents=True, exist_ok=True)
     (work_dir / "latents.pt").write_bytes(b"new-latents")
 
@@ -77,7 +77,7 @@ def test_failed_overwrite_keeps_old_avatar_and_removes_only_staging(data_dir):
     old = make_musetalk_avatar(data_dir, "musetalk_host")
     seen = {}
 
-    def failing_build(work_dir, avatar_id, source_name, report, options):
+    def failing_build(work_dir, avatar_id, source_name, report, options, **_kwargs):
         seen["work_dir"] = work_dir
         # While the build runs, /offer and the catalog still see only the old avatar.
         seen["catalog"] = [item["id"] for item in list_avatar_characters()]
@@ -115,7 +115,7 @@ def test_successful_overwrite_moves_old_avatar_to_recycle_bin(data_dir):
 def test_new_avatar_appears_only_after_a_successful_build(data_dir):
     seen = {}
 
-    def build(work_dir, avatar_id, source_name, report, options):
+    def build(work_dir, avatar_id, source_name, report, options, **_kwargs):
         seen["visible"] = (data_dir / "avatars" / "musetalk_new").exists()
         fake_musetalk_build(work_dir, avatar_id, source_name, report, options)
 
@@ -155,6 +155,41 @@ def test_unexpected_job_error_does_not_leak_absolute_paths(tmp_path, data_dir):
     assert str(tmp_path) not in job.error
     assert str(tmp_path) not in job.message
     assert not video.exists()
+
+
+def test_the_builder_reuses_the_vae_the_core_hands_it_without_loading_models():
+    from src.avatars import builder
+
+    loaded = object()
+    with patch.dict("sys.modules", {"src.avatars.musetalk.utils.utils": None}):
+        # Loading the models would fail here; the handed-in VAE must be used instead.
+        assert builder._musetalk_vae(lambda: loaded) is loaded
+
+
+def test_the_running_musetalk_vae_comes_from_the_core_state(monkeypatch):
+    vae = object()
+    config = Config()
+    config.model.type = "musetalk"
+    monkeypatch.setattr(state, "config", config)
+    monkeypatch.setattr(state, "model", (vae, "unet", "pe"))
+    assert import_jobs.running_musetalk_vae() is vae
+    monkeypatch.setattr(state, "model", None)
+    assert import_jobs.running_musetalk_vae() is None
+    config.model.type = "wav2lip"
+    monkeypatch.setattr(state, "model", (vae,))
+    assert import_jobs.running_musetalk_vae() is None
+    monkeypatch.setattr(state, "config", None)
+    assert import_jobs.running_musetalk_vae() is None
+
+
+def test_an_import_job_hands_the_running_vae_to_the_builder(tmp_path, data_dir):
+    video = tmp_path / "clip.mp4"
+    video.write_bytes(b"clip")
+    with patch("src.server.import_jobs.build_character", return_value={}) as build:
+        wait_for(import_jobs.start_import_job(
+            engine="musetalk", video_path=video, original_name="clip.mp4", avatar_id="musetalk_vae",
+        ))
+    assert build.call_args.kwargs["loaded_vae"] is import_jobs.running_musetalk_vae
 
 
 def test_finished_jobs_are_pruned(tmp_path, monkeypatch, data_dir):

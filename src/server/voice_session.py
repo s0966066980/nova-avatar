@@ -1279,8 +1279,10 @@ class VoiceTurnSession:
         report_stage = self._threadsafe_stage_reporter(loop, turn_id, generation)
 
         def _call_llm():
+            from src.server.state import state
+
             with observe_stages(report_stage):
-                return llm_response(text, self.avatar, **kwargs)
+                return llm_response(text, self.avatar, published_config=state.config, **kwargs)
 
         future = loop.run_in_executor(None, _call_llm)
         if held is not None:

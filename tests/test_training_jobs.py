@@ -198,6 +198,26 @@ def test_a_refused_start_creates_no_job_and_starts_no_process(tmp_path):
     assert r.spawner.commands == [] and r.manager.status() is None
 
 
+@pytest.mark.parametrize(
+    ("overrides", "failing", "said"),
+    [
+        # The core's stage check refuses on its own, with plenty of free VRAM.
+        ({"sessions": 1}, "stage_connections", "舞台"),
+        # The TTS layer's free-VRAM check refuses on its own, with no stage connected.
+        ({"vram": VramReading(1024)}, "free_vram", "顯存"),
+    ],
+)
+def test_each_gpu_guard_half_refuses_the_start_by_itself(tmp_path, overrides, failing, said):
+    r = rig(tmp_path, **overrides)
+    with pytest.raises(TrainingError) as caught:
+        r.manager.start(request())
+    error = caught.value
+    assert error.status == 409
+    assert {c.id for c in error.preflight.checks if c.status == "fail"} == {failing}
+    assert said in error.message
+    assert r.spawner.commands == [] and r.manager.status() is None
+
+
 # --------------------------------------------------------------------------- the pipeline
 
 

@@ -37,13 +37,10 @@ from src.tts.training.corpus import (
     Line,
     ReviewRow,
 )
+from src.server.stage_guard import count_stage_connections, transcription_device
 from src.server.state import state
 from src.server.tts_training_jobs import settings_from_config
-from src.tts.training.gpu_guard import (
-    DeviceChoice,
-    choose_transcription_device,
-    count_stage_connections,
-)
+from src.tts.training.gpu_guard import DeviceChoice, choose_transcription_device
 from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.ingest import MAX_UPLOAD_BYTES, create_uploaded_corpus, ingest_audio
 from src.tts.training.edge_acknowledgement import record_acknowledgement
@@ -277,10 +274,13 @@ def live_device_choice(
     """The GPU guard's decision for a new transcription job, on the live configuration.
 
     Uses the same stage count and free-VRAM threshold (``matcha.training_min_free_vram_gb``)
-    as the training start. Blocking (``nvidia-smi``): ``TranscriptionJobs.start`` runs it in a worker thread.
+    as the training start: the core rules out a connected stage, then the TTS layer judges
+    free VRAM. Blocking (``nvidia-smi``): ``TranscriptionJobs.start`` runs it in a worker thread.
     """
     threshold = settings_from_config(state.config).min_free_vram_gb
-    return choose_transcription_device(sessions, vram_probe, threshold, cuda_available)
+    return transcription_device(
+        sessions, lambda: choose_transcription_device(vram_probe, threshold, cuda_available)
+    )
 
 
 def _slug(request: web.Request) -> str:
