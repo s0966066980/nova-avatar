@@ -1,0 +1,29 @@
+[project]
+name = "nova-avatar-render"
+version = "0.1.0"
+description = "Nova Avatar avatar rendering layer: MuseTalk lip-sync, avatar catalog and import, scenes"
+readme = "README.md"
+requires-python = ">=3.10, <3.12"
+license = { text = "Apache-2.0" }
+maintainers = [{ name = "HongXian0903" }]
+# Third-party versions here mirror the root lock; the root project references
+# this package by path and shares one uv.lock (docs/adr/0028).
+dependencies = [
+    "av",
+    "numpy<2",
+    "opencv-python-headless<4.12",
+    "Pillow>=10,<13",
+    "resampy",
+    "soundfile==0.12.1",
+    "torch==2.5.0",
+    "torchvision",
+    "tqdm",
+    "nova-avatar-contracts",
+]
+
+[build-system]
+requires = ["setuptools==69.5.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nova_render*"]

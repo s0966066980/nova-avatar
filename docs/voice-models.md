@@ -66,7 +66,7 @@ UTF-8 編碼的 JSON 物件，四個欄位都必填，而且不能是空值：
 }
 ```
 
-格式由 `src/tts/voice_models.py` 驗證。目錄裡舊的 `NOTICE-NON-COMMERCIAL.txt`
+格式由 `services/tts/nova_tts/voice_models.py` 驗證。目錄裡舊的 `NOTICE-NON-COMMERCIAL.txt`
 寫的是 Research / Non-commercial，比實際限制寬鬆；`source` 雖然指向它，使用限制一律以
 `voice.json` 的 `Development only` 為準。
 

@@ -1,0 +1,26 @@
+[project]
+name = "nova-avatar-llm"
+version = "0.1.0"
+description = "Nova Avatar LLM layer: replies, handoff decisions, weather, RAGFlow retrieval, web search, greetings"
+readme = "README.md"
+requires-python = ">=3.10, <3.12"
+license = { text = "Apache-2.0" }
+maintainers = [{ name = "HongXian0903" }]
+# Third-party versions here mirror the root lock; the root project references
+# this package by path and shares one uv.lock (docs/adr/0028).
+dependencies = [
+    "aiohttp",
+    "ddgs==9.14.4",
+    "openai",
+    "opencc>=1.1.9",
+    "PyYAML",
+    "requests",
+    "nova-avatar-contracts",
+]
+
+[build-system]
+requires = ["setuptools==69.5.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nova_llm*"]

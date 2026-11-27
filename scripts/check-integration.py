@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config.loader import load_config
+from nova_core.config.loader import load_config
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -130,7 +130,7 @@ def check_llm_smoke(cfg) -> str:
 
 def check_edgetts_smoke(cfg, text: str, output: Path | None) -> None:
     import edge_tts
-    from src.tts import edge_endpoint
+    from nova_tts import edge_endpoint
 
     async def run() -> bytes:
         voices = {voice["ShortName"] for voice in await edge_tts.list_voices()}

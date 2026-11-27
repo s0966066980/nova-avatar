@@ -89,7 +89,7 @@ bash scripts/create_ssl_certs.sh
 可在控制台匯入正面閉嘴影片，或執行：
 
 ```bash
-uv run python src/avatars/musetalk/genavatar_musetalk.py \
+uv run python avatar/nova_render/musetalk/genavatar_musetalk.py \
   --avatar_id musetalk_avatar1 --file /path/to/silent_video.mp4
 ```
 
@@ -202,7 +202,7 @@ HTTPS，區網連入請保持開啟。
 
 ### 存取規則
 
-路由分類集中在 `src/server/access.py`，每條路由都必須屬於一類：
+路由分類集中在 `core/nova_core/server/access.py`，每條路由都必須屬於一類：
 
 - **管理**：控制台的所有 API 需管理者登入，本機也不例外；跨來源的變更請求一律拒絕。
 - **舞台**：舞台設定、`/offer` 與舞台工作階段的 API 只接受場域主機本機
@@ -407,6 +407,24 @@ git diff --cached
 已通過中英文真實搜尋、網頁讀取與本機模型回答驗證；Brave 仍可能限流。
 細節見[修復驗證紀錄](.scratch/web-search/repair-validation.md)。
 
+## 程式碼結構
+
+程式依處理層劃分（[ADR 0027](docs/adr/0027-split-code-by-processing-layer.md)、[ADR 0028](docs/adr/0028-monorepo-with-contracts-package.md)）。每個資料夾有自己的 `pyproject.toml`、`README.md` 與 `tests/`，共用根目錄的 `uv.lock`。
+
+| 資料夾 | Python 套件 | 職責 |
+|---|---|---|
+| `contracts/` | `nova_contracts` | 各層之間契約的唯一來源：Pydantic 模型、串流事件、Protocol、OpenAPI |
+| `core/` | `nova_core` | 核心：HTTP 伺服器、輪次與對話、設定、VAD、角色庫、招呼排程 |
+| `avatar/` | `nova_render` | 數位人渲染（MuseTalk）、角色目錄與製作、場景 |
+| `services/stt/` | `nova_stt` | 語音辨識（faster-whisper） |
+| `services/llm/` | `nova_llm` | 回覆、交接判斷、天氣、招呼生成、RAGFlow 檢索、網頁搜尋 |
+| `services/tts/` | `nova_tts` | 語音合成、音訊庫、聲線模型與聲線訓練 |
+| `web/` | — | 控制台與舞台前端 |
+
+處理層不得 import 核心（`nova_core.utils` 除外），也不得 import 其他層；`uv run --no-sync lint-imports` 在 CI 中檢查。跨層介面改動 `contracts/` 後，執行 `uv run --no-sync python scripts/generate-openapi.py` 重新產生 OpenAPI。
+
+測試跟著所屬的層放：`uv run --no-sync pytest services/tts` 只跑 TTS 層。碰到核心或跨層的測試在 `core/tests/`；稽核、啟動腳本等整個 repo 層級的檢查留在 `tests/`，共用的假物件也在那裡。需要 GPU 或真實權重的測試以 `gpu` marker 標記，預設排除，在場域主機用 `-m gpu` 執行。
+
 ## 設定與檢查
 
 `config/config.yaml` 設定服務埠、SSL、允許的主機名稱、Avatar、VAD、STT、LLM 端點、
@@ -432,9 +450,9 @@ npm run build
 ```
 
 - ruff 含安全與 async 規則（例如 `requests` 必須設 timeout、async handler 內不得
-  阻塞）；pyright 檢查 `src/server` 的未綁定變數。
+  阻塞）；pyright 檢查 `core/nova_core/server` 的未綁定變數。
 - ESLint 禁止新增 `v-html`，並涵蓋 `stage.html`。
-- `tests/test_route_access.py` 要求每條路由都在 `src/server/access.py` 分類。
+- `core/tests/test_route_access.py` 要求每條路由都在 `core/nova_core/server/access.py` 分類。
 - 測試不得寫入專案的 `data/`。
 
 `check-integration.py` 預設執行離線檢查；備妥設定檔指定的 LLM 與 Edge TTS 後，可用

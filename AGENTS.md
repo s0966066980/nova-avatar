@@ -35,6 +35,15 @@ The default five-role triage vocabulary is used unchanged. See `docs/agents/tria
 
 This repository uses a single-context domain-doc layout. See `docs/agents/domain.md`.
 
+## Code layout
+
+Code is split by processing layer: `contracts/`, `core/`, `avatar/`,
+`services/{stt,llm,tts}/` (Python packages `nova_contracts`, `nova_core`,
+`nova_render`, `nova_stt`, `nova_llm`, `nova_tts`). A layer must not import the
+core (except `nova_core.utils`) or another layer; `lint-imports` enforces it
+and exceptions need a layer-split issue number (CODING_STANDARDS.md rule 6).
+Tests live with their layer; see `README.md`.
+
 ## Rebranding and source attribution
 
 - Use `Nova Avatar` for user-visible branding, `nova-avatar` for package and

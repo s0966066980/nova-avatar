@@ -188,7 +188,7 @@ bash scripts/ragflow.sh switch-embedding
 3. 確認「測試檢索」命中後，可停用 llama.cpp 嵌入服務：
    `systemctl --user disable --now nova-ragflow-llamacpp-embedding.service`。
    之後 `up` 仍會啟動它（只用 CPU，閒置時不耗資源）；要長期還原，`up` 後再停用一次。
-4. 把 `src/server/voice_session.py` 的 `RETRIEVAL_BUDGET_SECONDS` 改回 0.7，
+4. 把 `core/nova_core/server/voice_session.py` 的 `RETRIEVAL_BUDGET_SECONDS` 改回 0.7，
    否則約 0.5 s 的 GPU Ollama 檢索幾乎每輪逾時。
 
 ## PC 與主機 Ollama 模型統一（選用）

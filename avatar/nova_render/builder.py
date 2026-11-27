@@ -1,0 +1,321 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+"""從閉嘴正面影片生成數字人角色素材。"""
+from __future__ import annotations
+
+import json
+import re
+import shutil
+import uuid
+from pathlib import Path
+from typing import Any, Callable, Optional
+
+import cv2
+
+from nova_render.asset_io import save_coords
+from nova_render.catalog import (
+    IMPORTABLE_ENGINES,
+    archive_avatar,
+    avatars_root,
+    is_safe_avatar_id,
+    list_avatar_characters,
+)
+from nova_render.mouth_quality import QualityError, normalize_quality
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_data_dir
+
+ProgressCb = Optional[Callable[[int, str], None]]
+
+VIDEO_EXTS = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"}
+MAX_FRAMES = 300
+COORD_PLACEHOLDER = (0.0, 0.0, 0.0, 0.0)
+
+
+class BuildError(Exception):
+    pass
+
+
+def slugify_name(name: str) -> str:
+    stem = Path(name).stem.lower()
+    stem = re.sub(r"[^a-z0-9]+", "_", stem)
+    stem = stem.strip("_")[:32]
+    return stem
+
+
+def suggest_avatar_id(engine: str, source_name: str, existing: Optional[set] = None) -> str:
+    existing = existing if existing is not None else {
+        item["id"] for item in list_avatar_characters()
+    }
+    slug = slugify_name(source_name)
+    base = f"{engine}_{slug}" if slug else f"{engine}_avatar"
+    if not is_safe_avatar_id(base):
+        base = f"{engine}_avatar"
+    if base not in existing:
+        return base
+    index = 2
+    while f"{base}_{index}" in existing:
+        index += 1
+    return f"{base}_{index}"
+
+
+def uploads_dir() -> Path:
+    path = get_data_dir() / "imports"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def extract_frames(video_path: Path, dest_dir: Path, max_frames: int = MAX_FRAMES) -> int:
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise BuildError("無法開啟影片檔案，請換成 mp4 / mov / webm")
+    count = 0
+    try:
+        while count < max_frames:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            # Keep creation assets clean. The live output adds project branding
+            # after any green-screen background composition.
+            cv2.imwrite(str(dest_dir / f"{count:08d}.png"), frame)
+            count += 1
+    finally:
+        cap.release()
+    if count == 0:
+        raise BuildError("影片裡沒有可讀的畫面")
+    return count
+
+
+ReplaceGuard = Optional[Callable[[str], Optional[str]]]
+# Lends the running stage's VAE (or None) so an import does not load a second copy.
+VaeProvider = Optional[Callable[[], Any]]
+
+
+def build_character(
+    engine: str,
+    video_path: Path,
+    avatar_id: str,
+    *,
+    overwrite: bool = False,
+    progress: ProgressCb = None,
+    quality: Optional[dict] = None,
+    green_screen: bool = False,
+    replace_guard: ReplaceGuard = None,
+    vae_provider: VaeProvider = None,
+) -> dict:
+    """Build an avatar in a private staging directory, then install it.
+
+    ``replace_guard(avatar_id)`` returns a reason why an existing avatar must
+    not be replaced (for example, it is live or referenced by a profile). It is
+    checked before the build starts and again right before the swap. A replaced
+    avatar goes to the recycle bin; a failed build leaves the old one untouched.
+
+    ``vae_provider()`` lets the caller lend the VAE a running stage already
+    holds, so a second copy is not loaded onto the GPU; it returns ``None`` when
+    there is none to lend.
+    """
+    engine = (engine or "").strip().lower()
+    avatar_id = (avatar_id or "").strip()
+    if engine not in IMPORTABLE_ENGINES:
+        raise BuildError("這個引擎不能從影片生成角色，目前只支援 MuseTalk")
+    if not is_safe_avatar_id(avatar_id):
+        raise BuildError("角色名稱只能使用字母、數字、下劃線和短橫線")
+    if not video_path.is_file():
+        raise BuildError("找不到上傳的影片")
+
+    root = avatars_root()
+    dest = root / avatar_id
+    _check_replaceable(dest, avatar_id, overwrite, replace_guard)
+
+    def report(percent: int, message: str) -> None:
+        if progress:
+            progress(percent, message)
+        logger.info(f"[import {avatar_id}] {percent}% {message}")
+
+    # Dot-prefixed directories are invisible to the catalog, so neither /offer
+    # nor the console can load a half-built avatar.
+    root.mkdir(parents=True, exist_ok=True)
+    work_dir = root / f".building-{uuid.uuid4().hex}"
+    work_dir.mkdir()
+
+    try:
+        # Keep the exact uploaded source with the generated avatar. Import jobs
+        # remove their temporary upload after this build finishes.
+        source_name = f"source{video_path.suffix.lower()}"
+        shutil.copy2(video_path, work_dir / source_name)
+        report(5, "正在抽取影片幀")
+        full_imgs = work_dir / "full_imgs"
+        frame_count = extract_frames(video_path, full_imgs)
+        report(20, f"已抽取 {frame_count} 幀，開始做人臉處理")
+        try:
+            options = normalize_quality(quality)
+        except QualityError as exc:
+            raise BuildError(str(exc)) from exc
+        options["green_screen"] = bool(green_screen)
+
+        _build_musetalk(work_dir, avatar_id, source_name, report, options, vae_provider)
+
+        _install_character(work_dir, dest, avatar_id, overwrite, replace_guard)
+        report(100, "角色製作完成")
+        return {
+            "type": engine,
+            "avatar_id": avatar_id,
+            "frames": frame_count,
+        }
+    finally:
+        if work_dir.exists():
+            shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def _check_replaceable(
+    dest: Path, avatar_id: str, overwrite: bool, replace_guard: ReplaceGuard
+) -> None:
+    if not (dest.exists() or dest.is_symlink()):
+        return
+    if not overwrite:
+        raise BuildError(f"角色 {avatar_id} 已存在，請換一個名稱")
+    reason = replace_guard(avatar_id) if replace_guard else None
+    if reason:
+        raise BuildError(reason)
+
+
+def _install_character(
+    work_dir: Path, dest: Path, avatar_id: str, overwrite: bool, replace_guard: ReplaceGuard
+) -> None:
+    _check_replaceable(dest, avatar_id, overwrite, replace_guard)
+    archived: Optional[Path] = None
+    if dest.exists() or dest.is_symlink():
+        try:
+            archived = archive_avatar(avatar_id)
+        except ValueError as exc:
+            raise BuildError(f"無法覆寫 {avatar_id}：現有目錄不是可辨識的數字人") from exc
+    try:
+        work_dir.rename(dest)
+    except OSError as exc:
+        if archived is not None and not dest.exists():
+            shutil.move(str(archived), str(dest))
+        raise BuildError(f"無法安裝角色 {avatar_id}") from exc
+
+
+def _sorted_images(folder: Path) -> list[Path]:
+    images = sorted(
+        [p for p in folder.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg"}],
+        key=lambda p: int(p.stem) if p.stem.isdigit() else p.stem,
+    )
+    if not images:
+        raise BuildError("沒有抽到可用的圖片幀")
+    return images
+
+
+def _build_musetalk(
+    work_dir: Path,
+    avatar_id: str,
+    video_path: str,
+    report: Callable[[int, str], None],
+    options: dict,
+    vae_provider: VaeProvider = None,
+) -> None:
+    import torch
+
+    from nova_render.musetalk.utils.blending import get_image_prepare_material
+    from nova_render.musetalk.utils.face_parsing import FaceParsing
+    from nova_render.musetalk.utils.preprocessing import get_landmark_and_bbox
+
+    full_imgs = work_dir / "full_imgs"
+    mask_dir = work_dir / "mask"
+    mask_dir.mkdir(parents=True, exist_ok=True)
+    img_paths = [str(p) for p in _sorted_images(full_imgs)]
+    musetalk = options["musetalk"]
+
+    info = {
+        "avatar_id": avatar_id,
+        "video_path": f"data/avatars/{avatar_id}/{video_path}",
+        "source_path": f"data/avatars/{avatar_id}/{video_path}",
+        "engine": "musetalk",
+        "source_project": "Nova Avatar",
+        "source_type": "user_upload",
+        "green_screen": bool(options.get("green_screen", False)),
+        **musetalk,
+        "mouth_sharpen": options["mouth_sharpen"],
+        "paste_interpolation": options["paste_interpolation"],
+    }
+    (work_dir / "avator_info.json").write_text(
+        json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    report(30, "正在檢測人臉與關鍵點")
+    coord_list, frame_list = get_landmark_and_bbox(img_paths, musetalk["bbox_shift"])
+    vae = _musetalk_vae(vae_provider)
+    extra_margin = musetalk["extra_margin"]
+    latents = []
+    kept_coords = []
+    kept_frames = []
+    for bbox, frame in zip(coord_list, frame_list):
+        if tuple(bbox) == COORD_PLACEHOLDER:
+            continue
+        x1, y1, x2, y2 = [int(v) for v in bbox]
+        y2 = min(y2 + extra_margin, frame.shape[0])
+        crop = frame[y1:y2, x1:x2]
+        if crop.size == 0:
+            continue
+        resized = cv2.resize(crop, (256, 256), interpolation=cv2.INTER_LANCZOS4)
+        latents.append(vae.get_latents_for_unet(resized))
+        kept_coords.append([x1, y1, x2, y2])
+        kept_frames.append(frame)
+
+    if not latents:
+        raise BuildError("沒有檢測到人臉。請使用正面、閉嘴、臉部清晰的短影片")
+
+    report(65, "正在生成口型遮罩")
+    # Only frames with matching face coordinates and latents belong in the
+    # playable cycle. Removed frames remain recoverable from source_path.
+    for image_path in _sorted_images(full_imgs):
+        image_path.unlink()
+    fp = FaceParsing(
+        left_cheek_width=musetalk["left_cheek_width"],
+        right_cheek_width=musetalk["right_cheek_width"],
+    )
+    mask_coords = []
+    for index, frame in enumerate(kept_frames):
+        cv2.imwrite(str(full_imgs / f"{index:08d}.png"), frame)
+        x1, y1, x2, y2 = kept_coords[index]
+        mask, crop_box = get_image_prepare_material(
+            frame,
+            [x1, y1, x2, y2],
+            fp=fp,
+            mode=musetalk["parsing_mode"],
+            upper_boundary_ratio=musetalk["upper_boundary_ratio"],
+            expand=musetalk["expand"],
+            mask_blur_ratio=musetalk["mask_blur_ratio"],
+        )
+        cv2.imwrite(str(mask_dir / f"{index:08d}.png"), mask)
+        mask_coords.append(crop_box)
+        if index == 0 or (index + 1) % 30 == 0:
+            report(65 + int(25 * (index + 1) / len(kept_frames)), f"遮罩 {index + 1}/{len(kept_frames)}")
+
+    leftover = list(full_imgs.glob("*.png"))
+    keep = {f"{i:08d}.png" for i in range(len(kept_frames))}
+    for path in leftover:
+        if path.name not in keep:
+            path.unlink(missing_ok=True)
+
+    save_coords(work_dir / "coords.json", kept_coords)
+    save_coords(work_dir / "mask_coords.json", mask_coords)
+    torch.save(latents, work_dir / "latents.pt")
+    del fp
+
+
+def _musetalk_vae(vae_provider: VaeProvider = None):
+    lent = vae_provider() if vae_provider is not None else None
+    if lent is not None:
+        return lent
+
+    import torch
+
+    from nova_render.musetalk.utils.utils import load_all_model
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    vae, _unet, _pe = load_all_model(device=device)
+    vae.vae = vae.vae.half().to(device)
+    return vae

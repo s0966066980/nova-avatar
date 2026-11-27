@@ -1,0 +1,40 @@
+[project]
+name = "nova-avatar-core"
+version = "0.1.0"
+description = "Nova Avatar core: HTTP server, turns, conversations, configuration, VAD, role profiles and greetings"
+readme = "README.md"
+requires-python = ">=3.10, <3.12"
+license = { text = "Apache-2.0" }
+maintainers = [{ name = "HongXian0903" }]
+# Third-party versions here mirror the root lock; the root project references
+# this package by path and shares one uv.lock (docs/adr/0028).
+dependencies = [
+    "aiohttp",
+    "aiortc",
+    "av",
+    "logger",
+    "numpy<2",
+    "onnxruntime>=1.16,<1.24",
+    "openai",
+    "opencv-python-headless<4.12",
+    "Pillow>=10,<13",
+    "pypdfium2==5.14.0",
+    "PyYAML",
+    "regex>=2024.11.6",
+    "scipy",
+    "soundfile==0.12.1",
+    "typing-extensions",
+    "websockets==12.0",
+    "nova-avatar-contracts",
+    "nova-avatar-stt",
+    "nova-avatar-llm",
+    "nova-avatar-tts",
+    "nova-avatar-render",
+]
+
+[build-system]
+requires = ["setuptools==69.5.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nova_core*"]

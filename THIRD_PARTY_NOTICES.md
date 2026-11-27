@@ -57,7 +57,7 @@ verify those terms before redistribution.
 - Source: <https://github.com/Rudrabha/Wav2Lip>
 - Local restriction notice: [`third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt`](third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt)
 
-Earlier revisions in the Git history contain the `src/avatars/wav2lip/`
+Earlier revisions in the Git history contain the `avatar/nova_render/wav2lip/`
 integration; it and the upstream open-source weights must not be included in or
 used for a commercial Nova Avatar distribution. The restriction notice is kept
 for those revisions and for any copy that still carries them.

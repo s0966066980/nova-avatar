@@ -1,0 +1,906 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+"""Streaming response protocol parser, thinking suppression, and board validation.
+
+Provides streaming separation of conversational speech and visual board JSON,
+with robust stateful suppression of <think>...</think> tags across chunk boundaries.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Generator, Optional
+
+from nova_llm.router import ReplyMode
+
+logger = logging.getLogger(__name__)
+
+TAG_SPEECH = "[[SPEECH]]"
+TAG_BOARD = "[[BOARD_JSON]]"
+TAG_END = "[[END]]"
+TAG_MODE_SIMPLE = "[[MODE:SIMPLE]]"
+TAG_MODE_BOARD = "[[MODE:BOARD]]"
+TAG_MODE_SIMPLE_ZH = "模式：簡答"
+TAG_MODE_BOARD_ZH = "模式：看板"
+TAG_SPEECH_ZH = "口語："
+TAG_BOARD_ZH = "資料："
+
+
+def _bracket_tag(pattern: str) -> str:
+    """Match paired delimiters without accepting half a streamed double tag."""
+    return r"(?<!\[)(?:\[\[" + pattern + r"\]\]|\[" + pattern + r"\])"
+
+
+SPEECH_TAG_PATTERN = (
+    _bracket_tag(r"\s*SPEECH(?::\s*)?\s*")
+    + r"|(?<!\[)\[{1,2}\s*SPEECH\s*:\s*"
+    + r"|(?:^|[\r\n]+)\s*SPEECH\s*:\s*|(?:^|[\r\n]+)\s*口語\s*[:：]\s*"
+)
+BOARD_TAG_RE = re.compile(
+    _bracket_tag(r"\s*BOARD(?:_JSON)?(?::\s*)?")
+    + r"|(?:^|[\r\n]+)\s*(?:資料|看板(?:資料)?)\s*[:：]",
+    re.IGNORECASE,
+)
+FORMAT_RECOVERY_MESSAGE = "抱歉，剛剛的回覆格式異常，請再說一次。"
+THINK_OPEN = "<think>"
+THINK_CLOSE = "</think>"
+THINK_TAG_PAIRS = (
+    ("<think>", "</think>"),
+    ("<thought>", "</thought>"),
+    ("<|thought|>", "</|thought|>"),
+    ("<thinking>", "</thinking>"),
+    ("<|tool_call_start|>[think(", "<|tool_call_end|>"),
+    ("<|tool_call_start|>", "<|tool_call_end|>"),
+    ("[think(", ")]"),
+)
+
+
+@dataclass
+class BoardItem:
+    """A single item inside an answer board."""
+
+    title: str
+    content: str
+    subtitle: Optional[str] = None
+    badge: Optional[str] = None
+
+    @property
+    def body(self) -> str:
+        """Backward-compatibility alias for body/content."""
+        return self.content
+
+
+@dataclass
+class BoardPayload:
+    """Structured data for an answer board."""
+
+    title: str
+    summary: Optional[str] = None
+    items: list[BoardItem] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "summary": self.summary,
+            "items": [
+                {
+                    "title": item.title,
+                    "content": item.content,
+                    "body": item.content,
+                    **({"subtitle": item.subtitle} if item.subtitle else {}),
+                    **({"badge": item.badge} if item.badge else {}),
+                }
+                for item in self.items
+            ],
+        }
+
+
+@dataclass
+class SessionBoardContext:
+    """Recent board state retained per session for follow-up queries."""
+
+    turn_id: str
+    title: str
+    summary: Optional[str]
+    items: list[BoardItem]
+    created_at: float = field(default_factory=time.time)
+
+
+def clean_speech_text(text: str, is_board_mode: bool = False) -> str:
+    """Clean spoken text by stripping tool-call syntax, protocol tags, and board markers."""
+    if not text:
+        return ""
+    # Strip tool-call tags and reasoning
+    text = re.sub(r"<\|tool_call_start\|>.*?<\|tool_call_end\|>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<\|tool_call_start\|>.*", "", text)
+    text = re.sub(r"<\|tool_call_end\|>", "", text)
+    text = re.sub(r"\[(?:BOARD|think|thought)\(.*?\)?\]", "", text, flags=re.DOTALL)
+
+    # Strip mode markers (both single and double brackets)
+    text = re.sub(r"\[{1,2}\s*MODE\s*:\s*(?:SIMPLE|BOARD)\s*\]{1,2}", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"模式\s*[:：]\s*(?:簡答|看板)", "", text)
+
+    # Track if text started with an open-bracket speech tag like [speech: ...
+    had_bracket_speech = bool(re.search(r"\[{1,2}\s*(?:SPEECH|speech)\s*:\s*", text, flags=re.IGNORECASE))
+
+    # Strip speech markers
+    text = re.sub(r"\[{1,2}\s*/?\s*(?:SPEECH|speech)(?::\s*)?\]{1,2}", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[{1,2}\s*(?:SPEECH|speech)\s*:\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"(?i)(?:^|[\r\n]+)\s*SPEECH\s*:\s*", "\n", text)
+    text = re.sub(r"(?:^|[\r\n]+)\s*口語\s*[:：]\s*", "\n", text)
+
+    # Strip board markers
+    text = re.sub(r"\[{1,2}\s*/?\s*BOARD(?:_JSON)?(?::\s*)?\]{1,2}", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[{1,2}\s*BOARD(?:_JSON)?\s*:\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"(?i)(?:^|[\r\n]+)\s*BOARD(?:_JSON)?\s*:\s*", "\n", text)
+    text = re.sub(r"看板(?:資料)?\s*[:：]", "", text)
+    text = re.sub(r"資料\s*[:：]", "", text)
+
+    # Strip end markers
+    text = re.sub(r"\[{1,2}\s*/?\s*END\s*\]{1,2}", "", text, flags=re.IGNORECASE)
+
+    # If had [speech: ... and text ends with ], strip the matching ]
+    if had_bracket_speech:
+        r_text = text.rstrip()
+        while r_text.endswith("]") and r_text.count("]") > r_text.count("["):
+            r_text = r_text[:-1].rstrip()
+        text = r_text
+
+    if is_board_mode:
+        # Strip markdown bullets from speech so speech remains a concise overview
+        list_match = re.search(r'[\r\n]+\s*(?:[-*]|\d+\.)\s+', text)
+        if list_match:
+            text = text[:list_match.start()]
+
+    return text
+
+
+class ThinkFilter:
+    """Stateful stream filter that suppresses thinking/reasoning blocks.
+
+    Handles opening and closing tags that may be split arbitrarily across chunks
+    (e.g. '<th' + 'ink>', '</thi' + 'nk>').
+    """
+
+    def __init__(self) -> None:
+        self._in_think = False
+        self._active_close = ""
+        self._buffer = ""
+        self.hidden_content_suppressed = False
+
+    def feed(self, chunk: str) -> list[str]:
+        if not chunk:
+            return []
+
+        self._buffer += chunk
+        out: list[str] = []
+
+        while self._buffer:
+            if not self._in_think:
+                # Find earliest matching open tag
+                found = []
+                for open_tag, close_tag in THINK_TAG_PAIRS:
+                    pos = self._buffer.find(open_tag)
+                    if pos != -1:
+                        found.append((pos, open_tag, close_tag))
+                if found:
+                    pos, open_tag, close_tag = min(found, key=lambda x: x[0])
+                    pre = self._buffer[:pos]
+                    if pre:
+                        out.append(pre)
+                    self._buffer = self._buffer[pos + len(open_tag) :]
+                    self._in_think = True
+                    self._active_close = close_tag
+                    self.hidden_content_suppressed = True
+                    continue
+
+                # Buffer might end with a partial prefix of an open tag
+                max_overlap = 0
+                for open_tag, _ in THINK_TAG_PAIRS:
+                    overlap = self._prefix_overlap(self._buffer, open_tag)
+                    if overlap > max_overlap:
+                        max_overlap = overlap
+
+                if max_overlap > 0:
+                    emit_len = len(self._buffer) - max_overlap
+                    if emit_len > 0:
+                        out.append(self._buffer[:emit_len])
+                        self._buffer = self._buffer[emit_len:]
+                    break
+                else:
+                    out.append(self._buffer)
+                    self._buffer = ""
+                    break
+            else:
+                # Inside thinking block: discard text until active close tag is found
+                pos = self._buffer.find(self._active_close)
+                if pos != -1:
+                    self._buffer = self._buffer[pos + len(self._active_close) :]
+                    self._in_think = False
+                    self._active_close = ""
+                    continue
+
+                # Buffer might end with a partial prefix of active close tag
+                hold_len = self._prefix_overlap(self._buffer, self._active_close)
+                if hold_len > 0:
+                    self._buffer = self._buffer[-hold_len:]
+                else:
+                    self._buffer = ""
+                break
+
+        return [s for s in out if s]
+
+    def flush(self) -> list[str]:
+        """Flush any held characters at the end of the stream."""
+        out: list[str] = []
+        if not self._in_think and self._buffer:
+            out.append(self._buffer)
+        self._buffer = ""
+        self._in_think = False
+        self._active_close = ""
+        return [s for s in out if s]
+
+    @staticmethod
+    def _prefix_overlap(text: str, target: str) -> int:
+        """Returns the length of the longest suffix of `text` that is a prefix of `target`."""
+        max_k = min(len(text), len(target) - 1)
+        for k in range(max_k, 0, -1):
+            if target.startswith(text[-k:]):
+                return k
+        return 0
+
+
+class ParserState(str, Enum):
+    WAIT_SPEECH = "wait_speech"
+    IN_SPEECH = "in_speech"
+    WAIT_BOARD = "wait_board"
+    IN_BOARD = "in_board"
+    DONE = "done"
+
+
+class ResponseProtocolParser:
+    """Streaming state machine for parsing speech and board channels.
+
+    Guarantees:
+    1. Speech does not wait for board JSON; the optional summary guard checks
+       each complete sentence before emitting it.
+    2. Thinking tags are suppressed across chunk boundaries.
+    3. Protocol tags ([[SPEECH]], [[BOARD_JSON]], [[END]]) never leak into speech.
+    4. Board JSON is buffered separately; complete item objects may be emitted
+       incrementally while the final payload is still being assembled.
+    5. Malformed board JSON logs a warning without crashing or discarding speech.
+    """
+
+    def __init__(
+        self,
+        mode: ReplyMode = ReplyMode.SIMPLE,
+        *,
+        max_items: int = 8,
+        on_speech: Optional[Callable[[str], None]] = None,
+        on_board: Optional[Callable[[BoardPayload], None]] = None,
+        on_mode: Optional[Callable[[ReplyMode], None]] = None,
+        on_board_item: Optional[Callable[[int, BoardItem], None]] = None,
+        guard_board_speech: bool = False,
+        output_locale: str = "zh-TW",
+    ) -> None:
+        self.mode = mode
+        self.max_items = max_items
+        self.on_speech = on_speech
+        self.on_board = on_board
+        self.on_mode = on_mode
+        self.on_board_item = on_board_item
+        self._guard_board_speech = guard_board_speech
+        self._output_locale = output_locale
+        self._board_speech_pending = ""
+        self._board_summary_recovered = False
+
+        self._think_filter = ThinkFilter()
+        self._state = ParserState.WAIT_SPEECH if mode in (ReplyMode.BOARD, ReplyMode.AUTO) else ParserState.IN_SPEECH
+        self._buffer = ""
+        self._board_buffer = ""
+        self._speech_accumulator = ""
+        self._board_payload: Optional[BoardPayload] = None
+        self._protocol_wrapped = mode == ReplyMode.BOARD
+        self._chinese_protocol = False
+        self._partial_item_indices: set[int] = set()
+        self._collected_items: list[BoardItem] = []
+        self._raw_payload_buffer = ""
+        self._structured_payload_suppressed = False
+
+    @property
+    def speech_text(self) -> str:
+        return self._speech_accumulator
+
+    @property
+    def speech_complete(self) -> bool:
+        """A complete channel boundary is safe to play without waiting for JSON."""
+        return self._state in (ParserState.IN_BOARD, ParserState.DONE)
+
+    @property
+    def board_payload(self) -> Optional[BoardPayload]:
+        return self._board_payload
+
+    @property
+    def speech_complete(self) -> bool:
+        """A complete channel boundary can be played before board JSON ends."""
+        return self._state in (ParserState.IN_BOARD, ParserState.DONE)
+
+    @property
+    def structured_payload_suppressed(self) -> bool:
+        """Whether unmarked structured output was kept out of visible channels."""
+        return self._structured_payload_suppressed or self._think_filter.hidden_content_suppressed
+
+    def _append_speech(self, text: str, *, is_board_mode: bool) -> list[str]:
+        if is_board_mode and self._guard_board_speech:
+            if self._board_summary_recovered:
+                return []
+            self._board_speech_pending += text
+            outputs = []
+            while end := re.search(r"[。！？.!?]", self._board_speech_pending):
+                sentence = self._board_speech_pending[:end.end()]
+                self._board_speech_pending = self._board_speech_pending[end.end():]
+                outputs.extend(self._flush_board_summary(sentence))
+                if self._board_summary_recovered:
+                    self._board_speech_pending = ""
+                    break
+            return outputs
+        return self._append_visible_speech(text, is_board_mode=is_board_mode)
+
+    def _flush_board_summary(self, text: Optional[str] = None) -> list[str]:
+        from nova_llm.reply_contract import guard_board_summary
+        if text is None:
+            text, self._board_speech_pending = self._board_speech_pending, ""
+        candidate = text.strip()
+        if not candidate or self._board_summary_recovered:
+            return []
+        guarded = guard_board_summary(candidate, locale=self._output_locale)
+        self._board_summary_recovered = guarded != candidate
+        return self._append_visible_speech(
+            guarded if self._board_summary_recovered else text, is_board_mode=True,
+        )
+
+    def _append_visible_speech(self, text: str, *, is_board_mode: bool) -> list[str]:
+        """Emit visible speech while withholding raw JSON across stream chunks."""
+        text = clean_speech_text(text, is_board_mode=is_board_mode)
+        if not text or self._structured_payload_suppressed:
+            return []
+        combined = self._raw_payload_buffer + text
+        self._raw_payload_buffer = ""
+        raw_start = re.search(
+            r"(?:^|(?<=[\s。！？!?]))(?:```(?:json)?\s*)?(?:\{|\[(?!\[))",
+            combined,
+            flags=re.IGNORECASE,
+        )
+        if raw_start:
+            visible = combined[: raw_start.start()].rstrip()
+            self._raw_payload_buffer = combined[raw_start.start() :]
+            self._structured_payload_suppressed = True
+            logger.warning("Suppressed unmarked structured payload from visible reply")
+        else:
+            visible = combined
+        if not visible:
+            return []
+        self._speech_accumulator += visible
+        if self.on_speech:
+            self.on_speech(visible)
+        return [visible]
+
+    def _recovery_if_needed(self) -> list[str]:
+        # Empty/reasoning-only completions are a failed spoken reply too.
+        # Give the user feedback without treating recovery as a real answer.
+        if not self._speech_accumulator and self._structured_payload_suppressed:
+            recovery = ("Sorry, the reply could not be formatted. Please try again."
+                        if self._output_locale == 'en-US' else FORMAT_RECOVERY_MESSAGE)
+            self._speech_accumulator = recovery
+            if self.on_speech:
+                self.on_speech(recovery)
+            return [recovery]
+        return []
+
+    def feed(self, chunk: str) -> list[str]:
+        """Feed a raw LLM chunk. Returns a list of speech chunks to output."""
+        clean_chunks = self._think_filter.feed(chunk)
+        if not clean_chunks:
+            return []
+
+        speech_outputs: list[str] = []
+        for clean_text in clean_chunks:
+            if self.mode == ReplyMode.AUTO:
+                outputs = self._process_auto_chunk(clean_text)
+                speech_outputs.extend(outputs)
+            elif self.mode == ReplyMode.SIMPLE:
+                if self._protocol_wrapped:
+                    speech_outputs.extend(self._process_simple_wrapped_chunk(clean_text))
+                else:
+                    speech_outputs.extend(self._append_speech(clean_text, is_board_mode=False))
+            else:
+                outputs = self._process_board_mode_chunk(clean_text)
+                speech_outputs.extend(outputs)
+
+        return speech_outputs
+
+    def _notify_mode(self) -> None:
+        if callable(self.on_mode) and self.mode in (ReplyMode.SIMPLE, ReplyMode.BOARD):
+            self.on_mode(self.mode)
+
+    def _process_auto_chunk(self, chunk: str) -> list[str]:
+        """Resolve one mode marker before delegating to the fixed parser."""
+        self._buffer += chunk
+        candidates = (
+            (TAG_MODE_SIMPLE, ReplyMode.SIMPLE),
+            (TAG_MODE_BOARD, ReplyMode.BOARD),
+            ("[MODE:SIMPLE]", ReplyMode.SIMPLE),
+            ("[MODE:BOARD]", ReplyMode.BOARD),
+            ("[mode:simple]", ReplyMode.SIMPLE),
+            ("[mode:board]", ReplyMode.BOARD),
+            (TAG_MODE_SIMPLE_ZH, ReplyMode.SIMPLE),
+            (TAG_MODE_BOARD_ZH, ReplyMode.BOARD),
+            ("模式:看板", ReplyMode.BOARD),
+            ("模式:簡答", ReplyMode.SIMPLE),
+            (TAG_BOARD, ReplyMode.BOARD),
+        )
+        found = []
+        for tag, mode in candidates:
+            pos = self._buffer.find(tag)
+            if pos < 0:
+                continue
+            if tag.startswith("[") and not tag.startswith("[[") and pos > 0 and self._buffer[pos - 1] == "[":
+                continue
+            found.append((pos, tag, mode))
+        if found:
+            _, tag, mode = min(found, key=lambda item: item[0])
+            self.mode = mode
+            self._state = ParserState.WAIT_SPEECH
+            self._protocol_wrapped = True
+            self._chinese_protocol = tag in (TAG_MODE_SIMPLE_ZH, TAG_MODE_BOARD_ZH, "模式:看板", "模式:簡答")
+            self._notify_mode()
+            self._buffer = self._buffer[self._buffer.find(tag) + len(tag):].lstrip("\r\n ")
+            if not self._buffer:
+                return []
+            if mode == ReplyMode.SIMPLE:
+                text = self._buffer
+                self._buffer = ""
+                return self._process_simple_wrapped_chunk(text)
+            if tag == TAG_BOARD:
+                self._state = ParserState.IN_BOARD
+            text = self._buffer
+            self._buffer = ""
+            return self._process_board_mode_chunk(text)
+
+        # AUTO output is a machine-readable envelope. Keep an unmarked answer
+        # buffered until flush so a late BOARD marker or JSON object can never
+        # be committed to speech as plain text.
+        return []
+
+    def _board_tag_prefix_overlap(self, text: str) -> int:
+        return max(
+            ThinkFilter._prefix_overlap(text, TAG_BOARD),
+            ThinkFilter._prefix_overlap(text, "[BOARD_JSON]"),
+            ThinkFilter._prefix_overlap(text, "[BOARD]"),
+            ThinkFilter._prefix_overlap(text, TAG_BOARD_ZH),
+            ThinkFilter._prefix_overlap(text, "資料:"),
+            ThinkFilter._prefix_overlap(text, "看板:"),
+        )
+
+    def _promote_simple_to_board(self, board_at: int) -> list[str]:
+        """Recover BOARD when the model marked SIMPLE but still emitted board JSON."""
+        speech_part = self._buffer[:board_at]
+        rest = self._buffer[board_at:]
+        speech_outputs: list[str] = []
+        if speech_part.strip():
+            speech_outputs.extend(self._append_speech(speech_part, is_board_mode=True))
+        self.mode = ReplyMode.BOARD
+        self._protocol_wrapped = True
+        self._state = ParserState.IN_SPEECH
+        self._structured_payload_suppressed = False
+        self._raw_payload_buffer = ""
+        self._notify_mode()
+        self._buffer = rest
+        speech_outputs.extend(self._process_board_mode_chunk(""))
+        return speech_outputs
+
+    def _process_simple_wrapped_chunk(self, chunk: str) -> list[str]:
+        """Parse the fixed speech/end framing for an AUTO SIMPLE answer."""
+        self._buffer += chunk
+        if self._state == ParserState.WAIT_SPEECH:
+            speech_m = re.search(
+                SPEECH_TAG_PATTERN,
+                self._buffer,
+                flags=re.IGNORECASE,
+            )
+            if speech_m:
+                self._buffer = self._buffer[speech_m.end():].lstrip("\r\n ")
+                self._state = ParserState.IN_SPEECH
+            else:
+                # llama.cpp commonly emits the newline after MODE as its own
+                # SSE chunk. It is envelope whitespace, not spoken content.
+                if not self._buffer.strip():
+                    return []
+                speech_overlap = max(
+                    ThinkFilter._prefix_overlap(self._buffer, TAG_SPEECH),
+                    ThinkFilter._prefix_overlap(self._buffer, "[SPEECH]"),
+                    ThinkFilter._prefix_overlap(self._buffer, "[speech]"),
+                    ThinkFilter._prefix_overlap(self._buffer, "[speech:"),
+                    ThinkFilter._prefix_overlap(self._buffer, TAG_SPEECH_ZH),
+                    ThinkFilter._prefix_overlap(self._buffer, "口語:"),
+                )
+                if speech_overlap > 0:
+                    self._buffer = self._buffer[-speech_overlap:]
+                    return []
+                self._state = ParserState.IN_SPEECH
+        board_m = BOARD_TAG_RE.search(self._buffer)
+        if board_m:
+            return self._promote_simple_to_board(board_m.start())
+        board_overlap = self._board_tag_prefix_overlap(self._buffer)
+        if self._state == ParserState.DONE:
+            self._buffer = ""
+            return []
+        end_m = re.search(
+            _bracket_tag(r"\s*/?\s*END\s*") + "|" + _bracket_tag(r"\s*/\s*SPEECH\s*"),
+            self._buffer,
+            flags=re.IGNORECASE,
+        )
+        if end_m:
+            text = self._buffer[:end_m.start()]
+            self._buffer = self._buffer[end_m.end():]
+            self._state = ParserState.DONE
+        else:
+            overlap = max(
+                ThinkFilter._prefix_overlap(self._buffer, TAG_END),
+                ThinkFilter._prefix_overlap(self._buffer, "[END]"),
+                board_overlap,
+            )
+            if overlap:
+                text = self._buffer[:-overlap]
+                self._buffer = self._buffer[-overlap:]
+            else:
+                text, self._buffer = self._buffer, ""
+        if not text:
+            return []
+        return self._append_speech(text, is_board_mode=False)
+
+    def _process_board_mode_chunk(self, chunk: str) -> list[str]:
+        self._buffer += chunk
+        speech_outputs: list[str] = []
+        speech_tag = TAG_SPEECH_ZH if self._chinese_protocol else TAG_SPEECH
+        board_tag = TAG_BOARD_ZH if self._chinese_protocol else TAG_BOARD
+
+        while self._buffer:
+            if self._state == ParserState.WAIT_SPEECH:
+                pos = self._buffer.find(speech_tag)
+                if pos != -1:
+                    pre = self._buffer[:pos]
+                    if pre.strip():
+                        speech_outputs.extend(self._append_speech(pre, is_board_mode=True))
+                    self._buffer = self._buffer[pos + len(speech_tag):].lstrip("\r\n ")
+                    self._state = ParserState.IN_SPEECH
+                    continue
+
+                tag_m = re.search(
+                    SPEECH_TAG_PATTERN,
+                    self._buffer,
+                    flags=re.IGNORECASE,
+                )
+                if tag_m:
+                    pre = self._buffer[:tag_m.start()]
+                    if pre.strip():
+                        speech_outputs.extend(self._append_speech(pre, is_board_mode=True))
+                    self._buffer = self._buffer[tag_m.end():].lstrip("\r\n ")
+                    self._state = ParserState.IN_SPEECH
+                    continue
+
+                # Check if buffer could be a prefix of speech tag
+                overlap = max(
+                    ThinkFilter._prefix_overlap(self._buffer, speech_tag),
+                    ThinkFilter._prefix_overlap(self._buffer, TAG_SPEECH),
+                    ThinkFilter._prefix_overlap(self._buffer, "[SPEECH]"),
+                    ThinkFilter._prefix_overlap(self._buffer, "[speech]"),
+                    ThinkFilter._prefix_overlap(self._buffer, "[speech:"),
+                    ThinkFilter._prefix_overlap(self._buffer, TAG_SPEECH_ZH),
+                    ThinkFilter._prefix_overlap(self._buffer, "口語:"),
+                )
+                if overlap > 0:
+                    pre = self._buffer[:-overlap]
+                    if pre.strip():
+                        self._state = ParserState.IN_SPEECH
+                        speech_outputs.extend(self._append_speech(pre, is_board_mode=True))
+                        self._buffer = self._buffer[-overlap:]
+                    break
+                else:
+                    if self._buffer.strip():
+                        self._state = ParserState.IN_SPEECH
+                        text = self._buffer
+                        self._buffer = ""
+                        speech_outputs.extend(self._append_speech(text, is_board_mode=True))
+                    else:
+                        break
+
+            elif self._state == ParserState.IN_SPEECH:
+                pos = self._buffer.find(board_tag)
+                board_match_len = len(board_tag)
+                if pos == -1:
+                    # A double-bracket tag is incomplete until both closing
+                    # brackets arrive. Do not match its inner single tag.
+                    alt_pattern = re.compile(
+                        r"(?<!\[)(?:\[\[\s*BOARD(?:_JSON)?(?::\s*)?\]\]"
+                        r"|\[\s*BOARD(?:_JSON)?(?::\s*)?\])",
+                        re.IGNORECASE,
+                    )
+                    m = alt_pattern.search(self._buffer)
+                    if m:
+                        pos = m.start()
+                        board_match_len = len(m.group(0))
+
+                if pos != -1:
+                    speech_part = self._buffer[:pos]
+                    speech_outputs.extend(self._append_speech(speech_part, is_board_mode=True))
+                    speech_outputs.extend(self._flush_board_summary())
+                    self._buffer = self._buffer[pos + board_match_len:].lstrip("\r\n ")
+                    self._state = ParserState.IN_BOARD
+                    continue
+
+                # Check if buffer ends with a prefix of board tag
+                overlap = max(
+                    ThinkFilter._prefix_overlap(self._buffer, board_tag),
+                    ThinkFilter._prefix_overlap(self._buffer, TAG_BOARD),
+                    ThinkFilter._prefix_overlap(self._buffer, "[BOARD_JSON]"),
+                    ThinkFilter._prefix_overlap(self._buffer, "[BOARD]"),
+                    ThinkFilter._prefix_overlap(self._buffer, TAG_BOARD_ZH),
+                    ThinkFilter._prefix_overlap(self._buffer, "看板:"),
+                    ThinkFilter._prefix_overlap(self._buffer, "```json"),
+                    ThinkFilter._prefix_overlap(self._buffer, "<|tool_call_start|>"),
+                )
+                if overlap > 0:
+                    emit_len = len(self._buffer) - overlap
+                    if emit_len > 0:
+                        part = self._buffer[:emit_len]
+                        speech_outputs.extend(self._append_speech(part, is_board_mode=True))
+                        self._buffer = self._buffer[emit_len:]
+                    break
+                else:
+                    part = self._buffer
+                    self._buffer = ""
+                    speech_outputs.extend(self._append_speech(part, is_board_mode=True))
+                    break
+
+            elif self._state == ParserState.IN_BOARD:
+                pos = self._buffer.find(TAG_END)
+                end_len = len(TAG_END)
+                if pos == -1:
+                    alt_end = re.search(
+                        r"(?:\[{1,2}\s*/?\s*END\s*\]{1,2}|<\|tool_call_end\|>|\]\)|```\s*$)",
+                        self._buffer,
+                        flags=re.IGNORECASE,
+                    )
+                    if alt_end:
+                        pos = alt_end.start()
+                        end_len = len(alt_end.group(0))
+
+                if pos != -1:
+                    board_part = self._buffer[:pos]
+                    self._board_buffer += board_part
+                    self._emit_partial_items()
+                    self._buffer = self._buffer[pos + end_len:].lstrip("\r\n ")
+                    self._state = ParserState.DONE
+                    self._parse_and_emit_board()
+                    continue
+
+                overlap = max(
+                    ThinkFilter._prefix_overlap(self._buffer, TAG_END),
+                    ThinkFilter._prefix_overlap(self._buffer, "[END]"),
+                    ThinkFilter._prefix_overlap(self._buffer, "<|tool_call_end|>"),
+                    ThinkFilter._prefix_overlap(self._buffer, "])"),
+                )
+                if overlap > 0:
+                    emit_len = len(self._buffer) - overlap
+                    if emit_len > 0:
+                        self._board_buffer += self._buffer[:emit_len]
+                        self._emit_partial_items()
+                        self._buffer = self._buffer[emit_len:]
+                    break
+                else:
+                    self._board_buffer += self._buffer
+                    self._emit_partial_items()
+                    self._buffer = ""
+                    break
+
+            elif self._state == ParserState.DONE:
+                self._buffer = ""
+                break
+
+        return speech_outputs
+
+    def flush(self) -> tuple[list[str], Optional[BoardPayload]]:
+        """Flush any held buffers and finalize board JSON parsing."""
+        clean_chunks = self._think_filter.flush()
+        speech_outputs: list[str] = []
+
+        if self.mode == ReplyMode.AUTO:
+            self._buffer += "".join(clean_chunks)
+            self.mode = ReplyMode.SIMPLE
+            self._state = ParserState.IN_SPEECH
+            self._notify_mode()
+            if self._buffer:
+                text, self._buffer = self._buffer, ""
+                speech_outputs.extend(self._append_speech(text, is_board_mode=False))
+            speech_outputs.extend(self._recovery_if_needed())
+            return speech_outputs, self._board_payload
+
+        for clean_text in clean_chunks:
+            if self.mode == ReplyMode.SIMPLE:
+                if self._protocol_wrapped:
+                    speech_outputs.extend(self._process_simple_wrapped_chunk(clean_text))
+                    continue
+                speech_outputs.extend(self._append_speech(clean_text, is_board_mode=False))
+            else:
+                outputs = self._process_board_mode_chunk(clean_text)
+                speech_outputs.extend(outputs)
+
+        if self.mode == ReplyMode.BOARD:
+            if self._state == ParserState.IN_SPEECH and self._buffer:
+                leftover, self._buffer = self._buffer, ""
+                speech_outputs.extend(self._append_speech(leftover, is_board_mode=True))
+            elif self._state == ParserState.IN_BOARD:
+                if self._buffer:
+                    self._board_buffer += self._buffer
+                    self._buffer = ""
+                self._emit_partial_items()
+                self._state = ParserState.DONE
+                self._parse_and_emit_board()
+            speech_outputs.extend(self._flush_board_summary())
+
+        speech_outputs.extend(self._recovery_if_needed())
+        return speech_outputs, self._board_payload
+
+    def _parse_and_emit_board(self) -> None:
+        raw = self._board_buffer.strip()
+        if not raw:
+            return
+
+        # Check for tool-call envelope e.g. BOARD(...)
+        tool_call_m = re.search(r"BOARD\s*\((?:.*?)BOARD_JSON\s*=\s*(['\"])(.*?)\1", raw, flags=re.DOTALL)
+        if tool_call_m:
+            raw = tool_call_m.group(2).encode("utf-8").decode("unicode_escape", errors="replace")
+        else:
+            tool_json_m = re.search(r"BOARD\s*\((?:.*?)JSON\s*=\s*(['\"])(.*?)\1", raw, flags=re.DOTALL)
+            if tool_json_m:
+                raw = tool_json_m.group(2).encode("utf-8").decode("unicode_escape", errors="replace")
+
+        # Strip markdown fences if present
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+        raw = re.sub(r"\s*```$", "", raw)
+        raw = raw.strip()
+
+        parsed = None
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            logger.warning("board_parse_success=false initial_error=%s attempting repair", exc)
+            repaired = raw
+            repaired = re.sub(r"\]\s*\]\s*\}", "]}", repaired)
+            repaired = re.sub(r",\s*([\]\}])", r"\1", repaired)
+            try:
+                parsed = json.loads(repaired)
+            except Exception:
+                pass
+
+        if isinstance(parsed, dict):
+            title = str(parsed.get("title") or "看板回覆").strip()
+            summary = parsed.get("summary")
+            if summary is not None:
+                summary = str(summary).strip() or None
+
+            raw_items = parsed.get("items") or []
+            if not isinstance(raw_items, list):
+                raw_items = []
+
+            items: list[BoardItem] = []
+            for entry in raw_items:
+                item = self._coerce_board_item(entry)
+                if item is not None:
+                    items.append(item)
+
+            if len(items) > self.max_items:
+                items = items[: self.max_items]
+
+            if items:
+                payload = BoardPayload(title=title, summary=summary, items=items)
+                self._board_payload = payload
+                logger.info("board_parse_success=true board_items=%d title=%r", len(items), title)
+                if self.on_board:
+                    self.on_board(payload)
+                return
+
+        # Fallback 1: use items collected during streaming
+        if self._collected_items:
+            title_m = re.search(r'"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', raw)
+            title = title_m.group(1).strip() if title_m else "看板回覆"
+            items = self._collected_items[: self.max_items]
+            payload = BoardPayload(title=title, summary=None, items=items)
+            self._board_payload = payload
+            logger.info("board_parse_success=true fallback=collected_items count=%d", len(items))
+            if self.on_board:
+                self.on_board(payload)
+            return
+
+        # Fallback 2: extract markdown bullet points
+        markdown_items = self._extract_markdown_board_items(raw)
+        if markdown_items:
+            items = markdown_items[: self.max_items]
+            payload = BoardPayload(title="看板回覆", summary=None, items=items)
+            self._board_payload = payload
+            logger.info("board_parse_success=true fallback=markdown_items count=%d", len(items))
+            if self.on_board:
+                self.on_board(payload)
+            return
+
+        logger.warning("board_parse_success=false reason=could_not_parse_items raw_length=%d", len(raw))
+
+    def _emit_partial_items(self) -> None:
+        """Emit only fully decoded items while the enclosing JSON is streaming."""
+        match = re.search(r'"items"\s*:\s*\[', self._board_buffer)
+        if not match:
+            return
+        cursor = match.end()
+        decoder = json.JSONDecoder()
+        display_index = 0
+        while cursor < len(self._board_buffer):
+            while cursor < len(self._board_buffer) and self._board_buffer[cursor] in " \r\n\t,":
+                cursor += 1
+            if cursor >= len(self._board_buffer) or self._board_buffer[cursor] == "]":
+                break
+            if display_index >= self.max_items:
+                break
+            try:
+                value, end = decoder.raw_decode(self._board_buffer, cursor)
+            except json.JSONDecodeError:
+                break
+            cursor = end
+            item = self._coerce_board_item(value)
+            if item is not None:
+                if display_index not in self._partial_item_indices:
+                    self._partial_item_indices.add(display_index)
+                    self._collected_items.append(item)
+                    if callable(self.on_board_item):
+                        try:
+                            self.on_board_item(display_index, item)
+                        except Exception:
+                            logger.exception("board item callback failed index=%s", display_index)
+                display_index += 1
+
+    @staticmethod
+    def _extract_markdown_board_items(text: str) -> list[BoardItem]:
+        items: list[BoardItem] = []
+        pattern = re.compile(
+            r"^(?:[-*]|\d+\.)\s*(?:\*\*(.*?)\*\*|(.*?))(?:\s*[:：]\s*|\s*——\s*|\s+)(.*)$",
+            re.MULTILINE,
+        )
+        for m in pattern.finditer(text):
+            title = (m.group(1) or m.group(2) or "").strip()
+            content = (m.group(3) or "").strip()
+            if title and content:
+                items.append(BoardItem(title=title, content=content))
+        return items
+
+    @staticmethod
+    def _coerce_board_item(value: Any) -> Optional[BoardItem]:
+        if isinstance(value, str) and value.strip():
+            return BoardItem(title=value.strip(), content="")
+        if not isinstance(value, dict):
+            return None
+        title = str(value.get("title") or "").strip()
+        content = str(value.get("content") or value.get("body") or value.get("description") or "").strip()
+        if not title and not content:
+            return None
+        return BoardItem(
+            title=title or content,
+            content=content,
+            subtitle=str(value.get("subtitle")).strip() if value.get("subtitle") else None,
+            badge=str(value.get("badge")).strip() if value.get("badge") else None,
+        )

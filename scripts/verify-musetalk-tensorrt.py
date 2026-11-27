@@ -36,10 +36,10 @@ def main():
     import numpy as np
     import torch
     import tensorrt as trt
-    from src.config.loader import load_config
-    from src.avatars.factory import prepare_avatar_model
-    from src.avatars.musetalk.inference_optimization import TensorRTUNet
-    from src.avatars.musetalk.vae_acceleration import TensorRTVAEDecoder
+    from nova_core.config.loader import load_config
+    from nova_render.factory import prepare_avatar_model
+    from nova_render.musetalk.inference_optimization import TensorRTUNet
+    from nova_render.musetalk.vae_acceleration import TensorRTVAEDecoder
 
     config = load_config(str(args.config))
     if config.model.type != "musetalk":

@@ -36,9 +36,11 @@ jobs:
         run: uv lock --check
       - name: Install development and offline-check dependencies
         # uv's pip backend selects CPU wheels only for PyTorch packages.
+        # --no-sources ignores the path sources, so every workspace package is
+        # named here; the root project then finds them already installed.
         run: |
           uv venv --python 3.11
-          uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e ./contracts -e '.[vad]'
+          uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e ./contracts -e ./core -e ./avatar -e ./services/stt -e ./services/llm -e ./services/tts -e '.[vad]'
       - name: Lint Python
         run: uv run --no-sync ruff check .
       - name: Type-check server control flow

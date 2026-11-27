@@ -107,7 +107,7 @@ echo -e "${GREEN}✓${NC} 配置檔案: $CONFIG_FILE"
 
 # 建置與帶起 RAGFlow 前先確認 8010：只停止本專案殘留的後端（與其孤兒
 # CosyVoice）；其他程式占用時報錯退出，不誤殺。
-nova_clear_port 8010 '*src/server/app.py*' || exit 1
+nova_clear_port 8010 '*core/nova_core/server/app.py*' || exit 1
 nova_stop_model_servers || true
 
 cd "$FRONTEND_DIR"
@@ -177,7 +177,7 @@ cd "$PROJECT_ROOT"
         set +a
     fi
     # 非互動腳本的背景子程序不是群組領頭，setsid 不會 fork：PID 即 PGID。
-    exec setsid uv run python src/server/app.py --config "$CONFIG_FILE"
+    exec setsid uv run python core/nova_core/server/app.py --config "$CONFIG_FILE"
 ) >>"$BACKEND_LOG" 2>&1 &
 BACKEND_PID=$!
 BACKEND_PGID=$BACKEND_PID

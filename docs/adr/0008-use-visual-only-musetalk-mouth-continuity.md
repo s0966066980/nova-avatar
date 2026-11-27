@@ -43,4 +43,4 @@ MuseTalk 從最後說話影格回到移動中的原始待機影格時，不得�
 - settling 預設 5 影格，並限制在 4–6 影格；micro crossfade 預設 2 影格，全畫面差異超過 `micro_crossfade_fullframe_max_diff` 時改為只在 MuseTalk 遮罩內混合，避免身體與背景鬼影。說話開始的 opening 預設 2 影格。
 - 相位描述子淡化嘴部權重；speech 端描述子使用與目前輸出影格相同的 ROI 索引。
 - 嘴型連續控制器由轉場控制器統一呼叫，不得對同一影格重複合成；generation 變更、插話與 `flush_talk()` 必須立即重置狀態，也不得修改輸入影格。
-- 原任務規格已移除；參數定義見 `src/config/schema.py` 的 MuseTalk 設定，行為以 `tests/test_avatar_transition.py` 為準。
+- 原任務規格已移除；參數定義見 `core/nova_core/config/schema.py` 的 MuseTalk 設定，行為以 `avatar/tests/test_avatar_transition.py` 為準。

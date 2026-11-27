@@ -25,8 +25,8 @@ from pathlib import Path
 from aiohttp import CookieJar, web
 from aiohttp.test_utils import TestClient, TestServer
 
-from src.server.access import GUARD_DENIALS
-from src.server.admin_password import write_admin_env
+from nova_core.server.access import GUARD_DENIALS
+from nova_core.server.admin_password import write_admin_env
 
 TEST_ADMIN_PASSWORD = "correct horse battery staple"
 LOOPBACK_ADDRESS = "127.0.0.1"
@@ -60,7 +60,7 @@ def built_frontend() -> Path:
 
 
 def default_app_factory(admin_env_path: Path) -> web.Application:
-    from src.server.server import create_app
+    from nova_core.server.server import create_app
 
     return create_app(admin_env_path=admin_env_path, frontend_dir=built_frontend())
 

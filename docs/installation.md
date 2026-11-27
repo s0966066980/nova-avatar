@@ -62,7 +62,7 @@ SHA-256 驗證，不符即失敗（鏡像也無法替換權重）。`--check` �
 準備正面閉嘴影片，在控制台匯入角色，或使用命令列：
 
 ```bash
-uv run python src/avatars/musetalk/genavatar_musetalk.py \
+uv run python avatar/nova_render/musetalk/genavatar_musetalk.py \
   --avatar_id musetalk_avatar1 --file /path/to/silent_video.mp4
 ```
 

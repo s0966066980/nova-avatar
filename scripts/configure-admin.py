@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.server.admin_password import (  # noqa: E402
+from nova_core.server.admin_password import (  # noqa: E402
     ADMIN_ENV_PATH,
     MAX_PASSWORD_LENGTH,
     MIN_PASSWORD_LENGTH,

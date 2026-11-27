@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
    event loop 會凍結所有連線，包括舞台的收音與影音。
 4. **覆寫或刪除使用者資產前先查使用中狀態，並移入回收桶。** 頭像、背景、
    參考音訊等資產若正被設定檔或進行中的對話使用則拒絕；可刪除者移到
-   `.deleted` 回收桶（參考 `src/scene/service.py` 的背景刪除），而非直接抹除。
+   `.deleted` 回收桶（參考 `avatar/nova_render/scene/service.py` 的背景刪除），而非直接抹除。
    原因：誤刪會讓舞台在場域中斷且無法復原。
 5. **名稱含 `sanitize` 的函式真的跳脫 HTML。** 它的輸出可安全插入 DOM；只做
    其他清理（例如移除語音標記）的函式改用描述實際行為的名稱。原因：

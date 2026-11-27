@@ -14,17 +14,17 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.server.tts_training_jobs import (
+from nova_core.server.tts_training_jobs import (
     TrainingJobManager,
     TrainingParams,
     TrainingPaths,
     TrainingSettings,
 )
-from src.tts.training import edge_teacher
-from src.tts.training.corpus import REVIEW_CONFIRMED, CorpusStore
-from src.tts.training.gpu_probe import VramReading
-from src.tts.training.usage import SOURCE_SELF_RECORDED
-from src.tts.voice_models import REQUIRED_FILES
+from nova_tts.training import edge_teacher
+from nova_tts.training.corpus import REVIEW_CONFIRMED, CorpusStore
+from nova_tts.training.gpu_probe import VramReading
+from nova_tts.training.usage import SOURCE_SELF_RECORDED
+from nova_tts.voice_models import REQUIRED_FILES
 
 
 class FakeProcess:
@@ -225,7 +225,7 @@ def rig(
     state: dict = {"transcriber_models": [], "verified": [], "orphans": [], "synth_calls": [], "transcribing": False}
 
     def handler(command, env, cwd):
-        if list(command[1:3]) == ["-m", "src.tts.training.whisper_worker"]:
+        if list(command[1:3]) == ["-m", "nova_tts.training.whisper_worker"]:
             assert whisper_process is not None
             return whisper_process
         script = Path(command[1]).name

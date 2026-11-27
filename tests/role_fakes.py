@@ -17,13 +17,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.config.schema import Config
-from src.llm import service
-from src.profiles.composition import new_member
-from src.profiles.coordinator import RoleCoordinator
-from src.profiles.media import RolePresentation
-from src.profiles.store import ProfileStore, profile_config
-from src.server.voice_session import VoiceTurnSession
+from nova_core.config.schema import Config
+from nova_llm import service
+from nova_core.profiles.composition import new_member
+from nova_core.profiles.coordinator import RoleCoordinator
+from nova_core.profiles.media import RolePresentation
+from nova_core.profiles.store import ProfileStore, profile_config
+from nova_core.server.voice_session import VoiceTurnSession
 
 
 class Avatar:
@@ -63,7 +63,7 @@ def route_to(target, **fields):
 def field(tmp_path, monkeypatch):
     monkeypatch.setattr(service, '_session_llm_instances', {})
     monkeypatch.setattr(service, '_active_profiles', {})
-    monkeypatch.setattr('src.profiles.store.avatar_settings', lambda _: {'enabled': False, 'dataset_ids': []})
+    monkeypatch.setattr('nova_core.profiles.store.avatar_settings', lambda _: {'enabled': False, 'dataset_ids': []})
     config = Config()
     config.model.type = 'musetalk'
     config.model.avatar_id = 'musetalk_angela'

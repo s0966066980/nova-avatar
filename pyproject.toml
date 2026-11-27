@@ -13,18 +13,19 @@ maintainers = [
 ]
 
 dependencies = [
-    "regex>=2024.11.6",
     "aiohttp",
     "aiortc",
     "av",
-    "edge-tts",
-    "ddgs==9.14.4",
-    "faster-whisper>=1.1",
+    # The core and every processing layer; they share this one uv.lock.
+    "nova-avatar-core",
+    "nova-avatar-render",
+    "nova-avatar-stt",
+    "nova-avatar-llm",
+    "nova-avatar-tts",
     "nova-avatar-contracts",
     "onnxruntime>=1.16,<1.24",
     "librosa",
     "omegaconf",
-    "opencc>=1.1.9",
     "openai",
     "numpy<2",
     "opencv-python-headless<4.12",
@@ -32,8 +33,6 @@ dependencies = [
     "pydantic",
     "PyYAML",
     "scipy",
-    # CPU runtime for Matcha voice models (聲線模型); see src/tts/voice_models.py.
-    "sherpa-onnx==2.0.1",
     "soundfile==0.12.1",
     "torch==2.5.0",
     "torchvision",
@@ -46,7 +45,6 @@ dependencies = [
     # mmengine/mmpose still import pkg_resources; setuptools>=82 removed it.
     "setuptools==69.5.1",
     "transformers==4.46.0",
-    "pypdfium2==5.14.0",
 ]
 
 # 服務端 VAD 依賴（按需安裝：uv pip install -e ".[vad]"）
@@ -85,7 +83,12 @@ ci = [
 
 [tool.uv.sources]
 nova-avatar-contracts = { path = "contracts", editable = true }
-nova-avatar-musetalk = { path = "src/avatars/musetalk", editable = true }
+nova-avatar-core = { path = "core", editable = true }
+nova-avatar-render = { path = "avatar", editable = true }
+nova-avatar-stt = { path = "services/stt", editable = true }
+nova-avatar-llm = { path = "services/llm", editable = true }
+nova-avatar-tts = { path = "services/tts", editable = true }
+nova-avatar-musetalk = { path = "avatar/nova_render/musetalk", editable = true }
 torch = [
     { index = "pytorch-cu124" },
 ]
@@ -110,15 +113,19 @@ markers = [
     "gpu: tests that need a GPU or real model weights; excluded by default, run on the venue host with -m gpu",
 ]
 addopts = "-m \"not gpu\""
+testpaths = ["tests", "core", "avatar", "services", "contracts"]
 
 [tool.ruff]
 required-version = "==0.17.1"
 target-version = "py310"
-include = ["src/**/*.py", "scripts/**/*.py", "tests/**/*.py", "contracts/**/*.py"]
+include = [
+    "core/**/*.py", "avatar/**/*.py", "services/**/*.py", "contracts/**/*.py",
+    "scripts/**/*.py", "tests/**/*.py",
+]
 force-exclude = true
 extend-exclude = [
-    "src/avatars/musetalk/utils",
-    "src/avatars/musetalk/whisper",
+    "avatar/nova_render/musetalk/utils",
+    "avatar/nova_render/musetalk/whisper",
 ]
 
 [tool.ruff.lint]
@@ -151,14 +158,14 @@ select = [
 # Control-flow guard for the server package: basic mode minus the rules that
 # still report existing type-annotation debt there. Every rule left enabled
 # passes with zero findings, so a new hit is a real regression.
-include = ["src/server", "contracts"]
+include = ["core/nova_core/server", "contracts"]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
 reportPossiblyUnboundVariable = "error"
 # Import resolution depends on which optional extras are installed.
 reportMissingImports = "none"
 reportMissingModuleSource = "none"
-# Existing debt in src/server; enable once cleaned up.
+# Existing debt in core/nova_core/server; enable once cleaned up.
 reportArgumentType = "none"
 reportAttributeAccessIssue = "none"
 reportCallIssue = "none"
@@ -175,32 +182,32 @@ explicit = true
 requires = ["setuptools==69.5.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
-# Processing-layer boundaries (ADR 0027). Every exception in `ignore_imports`
-# must name the layer-split issue that removes it (CODING_STANDARDS.md rule 6).
+# The root project is the workspace: it ships no Python package of its own.
+[tool.setuptools]
+packages = []
+
+# Processing-layer boundaries (ADR 0027). A layer may import `nova_contracts`
+# and `nova_core.utils` (the shared helpers) but not the rest of the core, and
+# never another layer. Do not add ignore_imports: fix the dependency direction.
 [tool.importlinter]
-root_package = "src"
+root_packages = ["nova_core", "nova_render", "nova_stt", "nova_llm", "nova_tts"]
 include_external_packages = false
 
 [[tool.importlinter.contracts]]
 name = "Processing layers do not import the core"
 type = "forbidden"
 source_modules = [
-    "src.asr",
-    "src.llm",
-    "src.ragflow",
-    "src.web_search",
-    "src.tts",
-    "src.avatars",
-    "src.scene",
+    "nova_stt",
+    "nova_llm",
+    "nova_tts",
+    "nova_render",
 ]
 forbidden_modules = [
-    "src.server",
-    "src.profiles",
-    "src.config",
-    "src.greetings",
-    "src.vad",
-]
-ignore_imports = [
+    "nova_core.server",
+    "nova_core.profiles",
+    "nova_core.config",
+    "nova_core.greetings",
+    "nova_core.vad",
 ]
 
 [[tool.importlinter.contracts]]
@@ -208,17 +215,12 @@ name = "stt layer does not import other layers"
 type = "forbidden"
 allow_indirect_imports = true
 source_modules = [
-    "src.asr",
+    "nova_stt",
 ]
 forbidden_modules = [
-    "src.llm",
-    "src.ragflow",
-    "src.web_search",
-    "src.tts",
-    "src.avatars",
-    "src.scene",
-]
-ignore_imports = [
+    "nova_llm",
+    "nova_tts",
+    "nova_render",
 ]
 
 [[tool.importlinter.contracts]]
@@ -226,17 +228,12 @@ name = "llm layer does not import other layers"
 type = "forbidden"
 allow_indirect_imports = true
 source_modules = [
-    "src.llm",
-    "src.ragflow",
-    "src.web_search",
+    "nova_llm",
 ]
 forbidden_modules = [
-    "src.asr",
-    "src.tts",
-    "src.avatars",
-    "src.scene",
-]
-ignore_imports = [
+    "nova_stt",
+    "nova_tts",
+    "nova_render",
 ]
 
 [[tool.importlinter.contracts]]
@@ -244,17 +241,12 @@ name = "tts layer does not import other layers"
 type = "forbidden"
 allow_indirect_imports = true
 source_modules = [
-    "src.tts",
+    "nova_tts",
 ]
 forbidden_modules = [
-    "src.asr",
-    "src.llm",
-    "src.ragflow",
-    "src.web_search",
-    "src.avatars",
-    "src.scene",
-]
-ignore_imports = [
+    "nova_stt",
+    "nova_llm",
+    "nova_render",
 ]
 
 [[tool.importlinter.contracts]]
@@ -262,15 +254,10 @@ name = "avatar rendering layer does not import other layers"
 type = "forbidden"
 allow_indirect_imports = true
 source_modules = [
-    "src.avatars",
-    "src.scene",
+    "nova_render",
 ]
 forbidden_modules = [
-    "src.asr",
-    "src.llm",
-    "src.ragflow",
-    "src.web_search",
-    "src.tts",
-]
-ignore_imports = [
+    "nova_stt",
+    "nova_llm",
+    "nova_tts",
 ]

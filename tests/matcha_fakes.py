@@ -12,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.config.schema import Config
+from nova_core.config.schema import Config
 
 LABEL = {
     "name": "曉臻（測試）",

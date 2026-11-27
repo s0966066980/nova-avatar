@@ -235,7 +235,7 @@ install_avatar() {
     cd "$PROJECT_ROOT"
     
     # 檢查 Avatar 目錄是否存在
-    AVATAR_PATH="src/avatars/$DEFAULT_AVATAR/"
+    AVATAR_PATH="avatar/nova_render/$DEFAULT_AVATAR/"
     if [ ! -d "$AVATAR_PATH" ]; then
         echo -e "${RED}❌ 錯誤: Avatar 目錄不存在: $AVATAR_PATH${NC}"
         exit 1

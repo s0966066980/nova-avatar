@@ -28,8 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts.run_voice_soak import SoakPeer, synthesize_fixture
-from src.config.loader import load_config
-from src.tts import edge_endpoint
+from nova_core.config.loader import load_config
+from nova_tts import edge_endpoint
 
 
 class BenchmarkPeer(SoakPeer):
@@ -78,7 +78,7 @@ async def trial(http, args, base_url, pcm, enabled):
         # brief blocking open and fork stall nothing; waits use to_thread below.
         with open(Path(temporary) / "backend.log", "wb") as log:  # noqa: ASYNC230 -- loop is idle
             process = subprocess.Popen(  # noqa: ASYNC220 -- loop is idle at launch
-                [sys.executable, "-m", "src.server.app", "--config", args.config],
+                [sys.executable, "-m", "nova_core.server.app", "--config", args.config],
                 cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
             )
             peer = None

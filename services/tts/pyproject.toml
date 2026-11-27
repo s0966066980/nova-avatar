@@ -1,0 +1,31 @@
+[project]
+name = "nova-avatar-tts"
+version = "0.1.0"
+description = "Nova Avatar text-to-speech layer: Edge, BreezyVoice and Matcha engines, voice library and voice training"
+readme = "README.md"
+requires-python = ">=3.10, <3.12"
+license = { text = "Apache-2.0" }
+maintainers = [{ name = "HongXian0903" }]
+# Third-party versions here mirror the root lock; the root project references
+# this package by path and shares one uv.lock (docs/adr/0028).
+dependencies = [
+    "aiohttp",
+    "av",
+    "edge-tts",
+    "faster-whisper>=1.1",
+    "numpy<2",
+    "onnxruntime>=1.16,<1.24",
+    "opencc>=1.1.9",
+    "requests",
+    "resampy",
+    "sherpa-onnx==2.0.1",
+    "soundfile==0.12.1",
+    "nova-avatar-contracts",
+]
+
+[build-system]
+requires = ["setuptools==69.5.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nova_tts*"]

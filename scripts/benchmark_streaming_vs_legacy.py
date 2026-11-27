@@ -26,8 +26,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.server.voice_session import VoiceTurnSession
-from src.server.reply_streaming.fragmenter import SemanticFragmenter
+from nova_core.server.voice_session import VoiceTurnSession
+from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter
 
 
 class BenchmarkAvatar:
@@ -182,7 +182,7 @@ async def run_benchmark_turn(
 
         return full_text
 
-    with patch("src.server.voice_session.llm_response", side_effect=mock_llm_response):
+    with patch("nova_core.server.voice_session.llm_response", side_effect=mock_llm_response):
         started = await session.start_text_turn(case["prompt"], interrupt=False)
         turn_task = session._turn_task
         await turn_task

@@ -27,9 +27,9 @@ def main():
         parser.error("iterations must be at least 3")
     import cv2
     import numpy as np
-    from src.scene.service import chroma_composite
+    from nova_render.scene.service import chroma_composite
     source = subprocess.run(
-        ["git", "show", f"{args.baseline_ref}:src/scene/service.py"],
+        ["git", "show", f"{args.baseline_ref}:avatar/nova_render/scene/service.py"],
         cwd=ROOT, check=True, capture_output=True, text=True,
     ).stdout
     namespace = {"__name__": "_nova_compositor_baseline"}

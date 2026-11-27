@@ -17,10 +17,10 @@ applicable.
 
 | Source root | Classification | Required treatment | Current action |
 | --- | --- | --- | --- |
-| `src/server/`, `src/config/`, `src/llm/`, `src/tts/`, `src/vad/`, `src/asr/`, `web/`, `scripts/` | Inherited and substantially modified Nova Avatar application code | Retain applicable Linly-Talker-Stream / LiveTalking attribution and an explicit modification notice. | Audit headers individually before changing them; do not bulk replace. |
-| `src/avatars/musetalk/` | MuseTalk-derived integration plus Nova Avatar orchestration | Retain Tencent Music Entertainment Group copyright and MIT attribution for derived code. Models and dependencies need their own review. | Local MuseTalk license copy is retained. Individual-file origin review remains open. |
+| `core/nova_core/server/`, `core/nova_core/config/`, `services/llm/nova_llm/`, `services/tts/nova_tts/`, `core/nova_core/vad/`, `services/stt/nova_stt/`, `web/`, `scripts/` | Inherited and substantially modified Nova Avatar application code | Retain applicable Linly-Talker-Stream / LiveTalking attribution and an explicit modification notice. | Audit headers individually before changing them; do not bulk replace. |
+| `avatar/nova_render/musetalk/` | MuseTalk-derived integration plus Nova Avatar orchestration | Retain Tencent Music Entertainment Group copyright and MIT attribution for derived code. Models and dependencies need their own review. | Local MuseTalk license copy is retained. Individual-file origin review remains open. |
 | `third_party/licenses/` | Third-party license notices | Keep without rebranding. | MuseTalk MIT notice and the Wav2Lip non-commercial restriction record (for the removed integration) are present. |
-| `src/scene/`, `src/ragflow/`, `integrations/ragflow/` | Nova Avatar-authored integration code | Nova Avatar Apache-2.0 SPDX header; RAGFlow itself is an external service, not bundled source. | Files carry the Nova Avatar header. |
+| `avatar/nova_render/scene/`, `services/llm/nova_llm/ragflow/`, `integrations/ragflow/` | Nova Avatar-authored integration code | Nova Avatar Apache-2.0 SPDX header; RAGFlow itself is an external service, not bundled source. | Files carry the Nova Avatar header. |
 | `docs/`, `tests/` and new Nova Avatar-only files | Nova Avatar-authored unless a file identifies another source | Use the Nova Avatar Apache-2.0 SPDX header only after confirming no copied third-party source. | New audit, workflow, stack, and profile files use Nova Avatar attribution. |
 
 ## Evidence and boundaries

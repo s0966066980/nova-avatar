@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.tts import voice_library  # noqa: E402
+from nova_tts import voice_library  # noqa: E402
 
 DEFAULT_NAME = "BreezyVoice 測試音檔（僅開發用）"
 DEFAULT_TRANSCRIPT = "在密碼學中，加密是將明文資訊改變為難以讀取的密文內容，使之不可讀的方法。"

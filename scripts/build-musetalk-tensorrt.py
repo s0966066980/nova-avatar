@@ -83,8 +83,8 @@ def enable_engines(report, config_path):
     import shutil
     import tempfile
     import yaml
-    from src.config.loader import load_config
-    from src.config.overrides import RUNTIME_OVERRIDES_FILE
+    from nova_core.config.loader import load_config
+    from nova_core.config.overrides import RUNTIME_OVERRIDES_FILE
 
     config = load_config(str(config_path))
     batch = str(config.model.batch_size)
@@ -149,13 +149,13 @@ def main():
     args.output_dir = args.output_dir.resolve()
     args.config = args.config.resolve()
     os.chdir(ROOT)
-    from src.config.loader import load_config
+    from nova_core.config.loader import load_config
     configured_batch = load_config(str(args.config)).model.batch_size
     if args.enable and configured_batch > args.batch_size:
         parser.error(f"Configured batch {configured_batch} exceeds the engine maximum; pass --batch-size {configured_batch}")
-    from src.avatars.musetalk.avatar import load_model
-    from src.avatars.musetalk.inference_optimization import TensorRTUNet
-    from src.avatars.musetalk.vae_acceleration import TensorRTVAEDecoder
+    from nova_render.musetalk.avatar import load_model
+    from nova_render.musetalk.inference_optimization import TensorRTUNet
+    from nova_render.musetalk.vae_acceleration import TensorRTVAEDecoder
     vae, unet, *_ = load_model()
 
     class UNetExport(torch.nn.Module):

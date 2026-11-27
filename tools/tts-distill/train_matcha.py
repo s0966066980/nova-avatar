@@ -7,7 +7,7 @@
 """Fine-tune Matcha-TTS (the Apache-2.0-labelled base model) on a prepared corpus.
 
 Runs in the training venv (``.local/matcha-train/venv``), started by the training
-job (``src/server/tts_training_jobs.py``) as a separate process so that SIGTERM
+job (``core/nova_core/server/tts_training_jobs.py``) as a separate process so that SIGTERM
 releases the GPU at once. The job writes the manifest: one JSON object per line
 with ``wav`` (a 16 kHz mono WAV prepared by the job), ``phoneme_ids`` (token IDs
 of the digit-expanded transcript, tokenised by the job) and ``text``. This script

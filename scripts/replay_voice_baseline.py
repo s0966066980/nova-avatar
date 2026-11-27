@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.server.voice_session import VoiceTurnSession
+from nova_core.server.voice_session import VoiceTurnSession
 
 
 class FakeClock:
@@ -108,7 +108,7 @@ async def replay_turn(
     session._asr = FakeSTT()
     session.attach_event_sink(lambda _event: None)
 
-    with patch("src.server.voice_session.llm_response", side_effect=_fake_llm):
+    with patch("nova_core.server.voice_session.llm_response", side_effect=_fake_llm):
         await session.feed_pcm(np.ones(512, dtype=np.int16))
         await session._turn_task
 
@@ -126,7 +126,7 @@ async def replay_turn(
         guard_started.set()
         await release_guard.wait()
 
-    with patch("src.server.voice_session.asyncio.sleep", new=controlled_tail_guard):
+    with patch("nova_core.server.voice_session.asyncio.sleep", new=controlled_tail_guard):
         interrupt_task = asyncio.create_task(session.interrupt())
         await guard_started.wait()
         clock.advance(interrupt_stop_seconds)

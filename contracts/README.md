@@ -8,4 +8,4 @@
 - `version.py`：`CONTRACT_VERSION`。任何另一端會察覺的變更都要調整它；拆成行程後，服務在 `/health` 回報這個值，核心遇到不符的版本就拒絕使用。
 - `openapi/`：由模型產生並提交的 OpenAPI 文件。**不要手改**；修改模型後執行 `uv run --no-sync python scripts/generate-openapi.py`，CI 會用 `--check` 驗證兩者一致。
 
-各層以 in-process adapter（`src/<層>/adapter.py`）實作這些 Protocol；核心呼叫 adapter，將來要拆成行程時只需換成 HTTP 用戶端。
+各層以 in-process adapter（`<層>/nova_<層>/adapter.py`）實作這些 Protocol；核心呼叫 adapter，將來要拆成行程時只需換成 HTTP 用戶端。

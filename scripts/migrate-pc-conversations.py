@@ -55,7 +55,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--path', type=Path)
     args = parser.parse_args()
-    from src.config.overrides import RUNTIME_OVERRIDES_FILE
+    from nova_core.config.overrides import RUNTIME_OVERRIDES_FILE
     path = args.path or RUNTIME_OVERRIDES_FILE
     backup = migrate(path, backup_dir=ROOT / '.local/jetson-to-pc-port/backups')
     if backup:

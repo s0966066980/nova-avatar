@@ -66,7 +66,7 @@ class DependencyLayoutTests(unittest.TestCase):
         self.assertRegex(project, r'(?m)^musetalk\s*=\s*\[\s*"nova-avatar-musetalk",?\s*\]')
         self.assertRegex(
             project,
-            r'(?m)^nova-avatar-musetalk\s*=\s*\{\s*path\s*=\s*"src/avatars/musetalk",\s*editable\s*=\s*true\s*\}',
+            r'(?m)^nova-avatar-musetalk\s*=\s*\{\s*path\s*=\s*"avatar/nova_render/musetalk",\s*editable\s*=\s*true\s*\}',
         )
 
     def test_pkg_resources_is_available_for_openmmlab(self):
@@ -87,8 +87,13 @@ class LockCheckTests(unittest.TestCase):
         """Copy only the lock inputs: every project manifest and the lock."""
         for manifest in (
             "pyproject.toml",
-            "src/avatars/musetalk/pyproject.toml",
+            "avatar/nova_render/musetalk/pyproject.toml",
             "contracts/pyproject.toml",
+            "core/pyproject.toml",
+            "avatar/pyproject.toml",
+            "services/stt/pyproject.toml",
+            "services/llm/pyproject.toml",
+            "services/tts/pyproject.toml",
         ):
             target = tmp / manifest
             target.parent.mkdir(parents=True, exist_ok=True)
