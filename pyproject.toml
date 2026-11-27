@@ -315,6 +315,7 @@ protected_modules = [
     "src.avatars.builder",
     "src.avatars.catalog",
     "src.avatars.factory",
+    "src.avatars.fake",
     "src.avatars.mouth_quality",
     "src.avatars.musetalk",
     "src.avatars.video_output",

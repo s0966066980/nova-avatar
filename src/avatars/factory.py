@@ -6,6 +6,7 @@
 from typing import Any
 from copy import deepcopy
 from .base import BaseAvatar
+from .catalog import FAKE_ENGINE
 
 
 def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseAvatar:
@@ -30,6 +31,9 @@ def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseA
     if model_type == 'musetalk':
         from .musetalk.avatar import MuseTalkAvatar
         return MuseTalkAvatar(session_config, model, avatar)
+    elif model_type == FAKE_ENGINE:
+        from .fake import FakeAvatarRenderer
+        return FakeAvatarRenderer(session_config, model, avatar)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -58,6 +62,9 @@ def prepare_avatar_model(config: Any):
         if getattr(getattr(config, "app", None), "prewarm", True):
             warm_up(config.model.batch_size, model)
         return model, avatar
+    elif model_type == FAKE_ENGINE:
+        from .fake import load_avatar, load_model
+        return load_model(), load_avatar(config.model.avatar_id)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -69,5 +76,8 @@ def load_avatar_data(config: Any):
 
     if model_type == "musetalk":
         from .musetalk.avatar import load_avatar
+        return load_avatar(avatar_id)
+    if model_type == FAKE_ENGINE:
+        from .fake import load_avatar
         return load_avatar(avatar_id)
     raise ValueError(f"Unknown model type: {model_type}")

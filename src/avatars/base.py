@@ -138,6 +138,9 @@ def play_audio(quit_event,queue):
     stream.close()
 
 class BaseAvatar:
+    # How long the frame processor waits for a result before it checks for quit.
+    result_poll_seconds = 1.0
+
     def __init__(self, config):
         self.config = config
         from src.avatars.catalog import avatar_uses_green_screen
@@ -506,7 +509,7 @@ class BaseAvatar:
     def _process_frames_loop(self, quit_event, loop, audio_track, video_track):
         while not quit_event.is_set():
             try:
-                result = self.res_frame_queue.get(block=True, timeout=1)
+                result = self.res_frame_queue.get(block=True, timeout=self.result_poll_seconds)
                 res_frame,idx,audio_frames = result[:3]
                 asset_epoch = result[3] if len(result) > 3 else None
             except queue.Empty:
