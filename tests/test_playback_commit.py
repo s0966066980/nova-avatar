@@ -14,7 +14,13 @@ from tests.speech_fakes import spoken_answer
 
 
 class FakeAvatar:
+    """A session avatar that is its own idle renderer."""
+
+    direct_audio_enabled = False
+    asset_epoch = 0
+
     def __init__(self):
+        self.renderer = self
         self.on_fragment_queued = None
         self.on_fragment_failed = None
         self.flush_count = 0

@@ -17,7 +17,9 @@ import soundfile as sf
 
 from src.config.schema import Config
 from src.server.access import ROUTE_ACCESS, Access
+from nova_contracts.tts import TtsEngineSettings
 from src.server.state import state
+from src.tts.adapter import InProcessTtsService
 from src.tts import cosyvoice_runtime, voice_library
 from tests.access_helpers import access_client, same_origin
 
@@ -53,8 +55,8 @@ def server_config(monkeypatch):
 
 
 @pytest.fixture
-def synthesis(monkeypatch):
-    """The real TTS factory replaced by an engine that records what it was asked to say."""
+def synthesis(monkeypatch, server_config):
+    """The in-process TTS service with an engine that records what it was asked to say."""
     calls = []
 
     class Engine:
@@ -64,9 +66,9 @@ def synthesis(monkeypatch):
         def txt_to_audio(self, msg):
             calls.append({"engine": self.engine, "text": msg[0], "ref_file": self.config.tts.ref_file,
                           "tts_server": self.config.tts.tts_server, "model": self.config.tts.model})
-            self.sink.put_audio_frame(np.zeros(1600, dtype=np.float32))
+            self.sink.put_audio_frame(np.zeros(1600, dtype=np.float32), msg[1])
 
-    monkeypatch.setattr("src.tts.factory.create_tts_engine", Engine)
+    monkeypatch.setattr(state, "tts", InProcessTtsService(TtsEngineSettings(), create_engine=Engine))
     return calls
 
 

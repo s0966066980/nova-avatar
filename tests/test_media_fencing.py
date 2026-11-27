@@ -428,14 +428,14 @@ class DirectAudioFanoutTests(unittest.IsolatedAsyncioTestCase):
 
         configured = []
 
-        class Avatar:
+        class Renderer:
             @staticmethod
             def configure_audio_output(track, loop):
                 configured.append((track, loop))
 
         player = SimpleNamespace(audio=object())
         session = VoiceTurnSession.__new__(VoiceTurnSession)
-        session.avatar = Avatar()
+        session.avatar = SimpleNamespace(renderer=Renderer())
         session.config = SimpleNamespace(
             reply_streaming=SimpleNamespace(
                 enabled=True,
@@ -453,14 +453,14 @@ class DirectAudioFanoutTests(unittest.IsolatedAsyncioTestCase):
 
         configured = []
 
-        class Avatar:
+        class Renderer:
             @staticmethod
             def configure_audio_output(track, loop):
                 configured.append((track, loop))
 
         player = SimpleNamespace(audio=object())
         session = VoiceTurnSession.__new__(VoiceTurnSession)
-        session.avatar = Avatar()
+        session.avatar = SimpleNamespace(renderer=Renderer())
         session.config = SimpleNamespace(
             reply_streaming=SimpleNamespace(
                 enabled=True,

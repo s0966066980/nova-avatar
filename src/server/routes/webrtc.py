@@ -12,21 +12,20 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, RTCIceServer, RTCCo
 from aiortc.rtcrtpsender import RTCRtpSender
 import asyncio
 
+from nova_contracts.avatar import AvatarService
 from src.utils.webrtc import HumanPlayer
-from src.avatars.factory import create_avatar
 from src.utils.logging import logger
 from src.server.state import state
 from src.server.utils import randN
 from src.server.voice_session import VoiceTurnSession
 from src.server.presentation import SessionPresentation
-from src.server.routes.tts_training import MANAGER_KEY as TRAINING_JOBS
 from src.server.stage_guard import stage_offer_refusal
 from src.server.speaking_avatar import SpeakingAvatar
 
 
-def build_speaking_avatar(config, model, avatar_data, sessionid):
-    """Build the session's renderer, then the TTS that feeds it (ADR 0027)."""
-    return SpeakingAvatar(create_avatar(config, model, avatar_data, sessionid))
+def build_speaking_avatar(config, model, avatar_data, sessionid, *, avatars: AvatarService):
+    """Build the session's renderer, then the TTS channel that feeds it (ADR 0027)."""
+    return SpeakingAvatar(avatars.create_renderer(config, model, avatar_data, sessionid), speech=state.tts_runtime)
 
 
 async def offer(request):
@@ -36,7 +35,7 @@ async def offer(request):
     if client_role not in {"console", "stage"}:
         client_role = "console"
     # No new stage while a voice-training job holds the GPU (spec decision 14).
-    refusal = stage_offer_refusal(client_role, request.app.get(TRAINING_JOBS))
+    refusal = stage_offer_refusal(client_role, state.tts)
     if refusal is not None:
         return refusal
     # The body can arrive while a resource update starts. Check availability
@@ -80,9 +79,9 @@ async def offer(request):
                 await presentation.unregister(sessionid)
             operations = []
             # Stop an unfinished recording's ffmpeg and remove its temporary files.
-            discard_recording = getattr(state.avatar_streams.get(sessionid), "discard_recording", None)
-            if callable(discard_recording):
-                operations.append(discard_recording())
+            avatar_stream = state.avatar_streams.get(sessionid)
+            if avatar_stream is not None:
+                operations.append(avatar_stream.renderer.discard_recording())
             if voice_session is not None:
                 operations.append(voice_session.close())
             if pc is not None:
@@ -117,6 +116,7 @@ async def offer(request):
         build = asyncio.create_task(asyncio.to_thread(
             build_speaking_avatar, roles.config_for_session() if roles else state.config,
             state.model, roles.data_for_session() if roles else state.avatar, sessionid,
+            avatars=state.avatar_service,
         ))
         try:
             avatar_stream = await asyncio.shield(build)
@@ -132,6 +132,7 @@ async def offer(request):
             test_result_sink=state.voice_test_history.complete,
             stt=state.stt,
             llm=state.llm,
+            tts=state.tts,
         )
         from src.server.conversations import validate, check_language_support
         if 'locale' in params:

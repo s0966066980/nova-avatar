@@ -13,20 +13,6 @@ from dataclasses import asdict
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-from src.avatars.catalog import (
-    ENGINE_META,
-    avatars_root,
-    is_safe_avatar_id,
-    list_avatar_characters,
-    list_engines,
-    find_preview_image,
-)
-from src.avatars.video_output import output_dimensions
-from src.avatars.mouth_quality import (
-    QualityError,
-    apply_quality_to_model,
-    quality_from_model,
-)
 from src.config.overrides import persist_runtime_overrides
 from src.greetings.content import validate_interval, validate_content
 from src.llm.config_section import (
@@ -45,9 +31,21 @@ from src.llm.config_section import (
     validate_response_max_chars,
     validate_rules,
 )
+from nova_contracts.avatar import AvatarService
 from nova_contracts.common import ServiceError
 from nova_contracts.llm import LlmEngineSettings, LlmService, LocalModelsQuery, LocalServerQuery
 from nova_contracts.stt import SttEngineSettings, SttService
+from nova_contracts.tts import (
+    FragmentEnvelope,
+    PlayableFragment,
+    SynthesisRequest,
+    TtsError,
+    TtsService,
+    TtsVoice,
+    VoicePreparation,
+)
+from src.tts import config_section as tts_section
+from src.utils.avatar_ids import is_safe_avatar_id
 from src.utils.logging import logger
 
 _SWITCH_LOCK = threading.Lock()
@@ -170,9 +168,9 @@ def endpoint_choices(config) -> list[Dict[str, str]]:
     return [item.public() for item in configured_endpoints(config.llm).values()]
 
 
-def current_snapshot(config) -> Dict[str, Any]:
-    characters = list_avatar_characters()
-    engines = list_engines(characters)
+def current_snapshot(config, *, tts: TtsService, avatars: AvatarService) -> Dict[str, Any]:
+    characters = avatars.list_characters()
+    engines = avatars.list_engines(characters)
     llm = config.llm
     model_cfg = config.model
     return {
@@ -204,32 +202,25 @@ def current_snapshot(config) -> Dict[str, Any]:
             "type": model_cfg.type,
             "avatar_id": model_cfg.avatar_id,
         },
-        "avatar_quality": quality_from_model(model_cfg),
-        "video": video_output_snapshot(config),
+        "avatar_quality": avatars.quality_from_model(model_cfg),
+        "video": video_output_snapshot(config, avatars=avatars),
         "engines": engines,
         "characters": characters,
         "vad": vad_snapshot(config),
-        "speech": speech_snapshot(config),
+        "speech": speech_snapshot(config, tts=tts),
         "stage": stage_snapshot(config),
     }
 
 
-def video_output_snapshot(config) -> Dict[str, Any]:
+def video_output_snapshot(config, *, avatars: AvatarService) -> Dict[str, Any]:
     """Describe the next connection's output using the source image dimensions."""
     max_height = int(getattr(getattr(config, "video", None), "max_height", 0))
     source_width = source_height = output_width = output_height = None
-    avatar_id = getattr(config.model, "avatar_id", "")
-    if is_safe_avatar_id(avatar_id):
-        preview = find_preview_image(avatars_root() / avatar_id)
-        if preview is not None:
-            from PIL import Image
-
-            try:
-                with Image.open(preview) as image:
-                    source_width, source_height = image.size
-                output_width, output_height = output_dimensions(source_width, source_height, max_height)
-            except (OSError, ValueError):
-                pass
+    source = avatars.source_size(getattr(config.model, "avatar_id", ""))
+    if source is not None:
+        source_width, source_height = source.width, source.height
+        output = avatars.output_size(source.width, source.height, max_height)
+        output_width, output_height = output.width, output.height
     return {
         "max_height": max_height,
         "height_options": [450, 540, 720, 960, 1280, 1920, 0],
@@ -240,7 +231,7 @@ def video_output_snapshot(config) -> Dict[str, Any]:
     }
 
 
-def apply_video_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
+def apply_video_settings(config, params: Dict[str, Any], *, avatars: AvatarService) -> Dict[str, Any]:
     """Persist output size for new sessions; existing recorders keep their size."""
     if not isinstance(params, dict) or "max_height" not in params:
         raise SettingsError("請指定數字人輸出解析度 max_height")
@@ -254,7 +245,7 @@ def apply_video_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         config.video.max_height = previous
         raise
-    return video_output_snapshot(config)
+    return video_output_snapshot(config, avatars=avatars)
 
 
 def reply_rules_snapshot(config) -> Dict[str, Any]:
@@ -667,25 +658,23 @@ def apply_stage_settings(config, params: Dict[str, Any], *, greeting_content=Non
     return stage_snapshot(config)
 
 
-def apply_stage_background(config, background_id: str) -> Dict[str, Any]:
+def apply_stage_background(config, background_id: str, *, avatars: AvatarService) -> Dict[str, Any]:
     """Switch the shared scene without rebuilding an avatar or WebRTC session."""
-    from src.scene.service import SceneError, scene_service
-
     stage = getattr(config, "stage", None)
     if stage is None:
         raise SettingsError("當前配置不支援舞台背景", status=400)
     selected = str(background_id or "").strip()
     previous = str(getattr(stage, "background_id", "") or "")
     try:
-        result = scene_service.select(selected)
-    except SceneError as exc:
+        result = avatars.select_background(selected)
+    except ServiceError as exc:
         raise SettingsError(str(exc), status=400) from exc
     stage.background_id = selected
     try:
         persist_runtime_overrides(config)
     except Exception:
         stage.background_id = previous
-        scene_service.select(previous)
+        avatars.select_background(previous)
         raise
     return result
 
@@ -973,17 +962,19 @@ async def fetch_llm_catalog(config, *, llm: LlmService) -> Dict[str, Any]:
     }
 
 
-def apply_avatar(config, engine: str, avatar_id: str, *, session_count: int) -> Dict[str, Any]:
+def apply_avatar(
+    config, engine: str, avatar_id: str, *, session_count: int, avatars: AvatarService,
+) -> Dict[str, Any]:
     engine = (engine or "").strip().lower()
     avatar_id = (avatar_id or "").strip()
 
-    if engine not in ENGINE_META:
+    if not avatars.knows_engine(engine):
         raise SettingsError(f"不支援的數字人引擎: {engine}")
     if not is_safe_avatar_id(avatar_id):
         raise SettingsError("無效的角色 ID")
 
-    characters = list_avatar_characters()
-    engines = {item["id"]: item for item in list_engines(characters)}
+    characters = avatars.list_characters()
+    engines = {item["id"]: item for item in avatars.list_engines(characters)}
     engine_info = engines[engine]
     if not engine_info["available"]:
         raise SettingsError(engine_info["message"] or f"{engine} 當前不可用")
@@ -1016,25 +1007,24 @@ def apply_avatar(config, engine: str, avatar_id: str, *, session_count: int) -> 
         raise SettingsError("正在切換數字人，請稍候", status=409)
 
     try:
-        return _reload_avatar(config, engine, avatar_id)
+        return _reload_avatar(config, engine, avatar_id, avatars=avatars)
     finally:
         _SWITCH_LOCK.release()
 
 
-def apply_mouth_quality(config, params: Dict[str, Any]) -> Dict[str, Any]:
+def apply_mouth_quality(config, params: Dict[str, Any], *, avatars: AvatarService) -> Dict[str, Any]:
     """Validate and persist mouth paste-back / character-build quality settings."""
     try:
-        quality = apply_quality_to_model(config.model, params or {})
-    except QualityError as exc:
+        quality = avatars.apply_quality(config.model, params or {})
+    except ServiceError as exc:
         raise SettingsError(str(exc)) from exc
     persist_runtime_overrides(config)
     return quality
 
 
-def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
+def _reload_avatar(config, engine: str, avatar_id: str, *, avatars: AvatarService) -> Dict[str, Any]:
     from copy import deepcopy
 
-    from src.avatars.factory import load_avatar_data, prepare_avatar_model
     from src.server.state import state
 
     previous = f"{config.model.type}/{config.model.avatar_id}"
@@ -1043,17 +1033,16 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
     pending.model.avatar_id = avatar_id
     type_changed = config.model.type != engine or state.model is None
     old_settings = deepcopy(config.model)
-    from src.scene.service import scene_service
     scene_changed = False
 
     state.switching = True
     try:
         if type_changed:
-            new_model, new_avatar = prepare_avatar_model(pending)
+            new_model, new_avatar = avatars.prepare_model(pending)
         else:
-            new_model, new_avatar = state.model, load_avatar_data(pending)
+            new_model, new_avatar = state.model, avatars.load_assets(pending)
 
-        scene_service.select(getattr(pending.stage, "background_id", ""))
+        avatars.select_background(getattr(pending.stage, "background_id", ""))
         scene_changed = True
         config.model.type = engine
         config.model.avatar_id = avatar_id
@@ -1077,12 +1066,12 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
     except SettingsError:
         config.model = old_settings
         if scene_changed:
-            scene_service.select(getattr(config.stage, "background_id", ""))
+            avatars.select_background(getattr(config.stage, "background_id", ""))
         raise
     except Exception as exc:
         config.model = old_settings
         if scene_changed:
-            scene_service.select(getattr(config.stage, "background_id", ""))
+            avatars.select_background(getattr(config.stage, "background_id", ""))
         logger.exception("切換數字人失敗")
         raise SettingsError(f"切換數字人失敗: {exc}", status=500) from exc
     finally:
@@ -1319,44 +1308,41 @@ def _stt_catalog() -> list:
     return items
 
 
-def speech_snapshot(config) -> Dict[str, Any]:
-    from src.tts.cosyvoice_runtime import local_models
-    from src.tts.voice_library import EDGE_TTS_EN_US_VOICES, list_voices, removed_engine_notice
-    from src.tts.voice_models import list_voice_models
-
+def stt_snapshot(config) -> Dict[str, Any]:
     asr = config.asr
     return {
-        "stt": {
-            "type": asr.type,
-            "model_size": asr.model_size,
-            "language": asr.language,
-            "device": asr.device,
-            "mode": "server",
-            "engines": _stt_catalog(),
-            "model_sizes": list(STT_MODEL_SIZES),
-            "models_by_engine": {
-                key: list(values) for key, values in STT_MODELS_BY_ENGINE.items()
-            },
-            "languages": list(STT_LANGUAGES),
-            "devices": list(STT_DEVICES),
+        "type": asr.type,
+        "model_size": asr.model_size,
+        "language": asr.language,
+        "device": asr.device,
+        "mode": "server",
+        "engines": _stt_catalog(),
+        "model_sizes": list(STT_MODEL_SIZES),
+        "models_by_engine": {
+            key: list(values) for key, values in STT_MODELS_BY_ENGINE.items()
         },
+        "languages": list(STT_LANGUAGES),
+        "devices": list(STT_DEVICES),
+    }
+
+
+def speech_snapshot(config, *, tts: TtsService) -> Dict[str, Any]:
+    catalog = tts.catalog()
+    return {
+        "stt": stt_snapshot(config),
         # Only what a role profile's voice is chosen from: the default voice
         # is the main role's, so there is no global voice to report.
         "tts": {
             "engines": _catalog(TTS_ENGINE_META),
             # Reference audio and models are chosen from these server-side lists.
-            "voices": list_voices(),
-            "models": local_models(),
+            "voices": [voice.model_dump(mode="json") for voice in catalog.voices],
+            "models": [model.model_dump(mode="json") for model in catalog.models],
             "edge_voices": [dict(voice) for voice in EDGE_TTS_ZH_TW_VOICES],
-            "edge_english_voices": [dict(voice) for voice in EDGE_TTS_EN_US_VOICES],
+            "edge_english_voices": [dict(voice) for voice in tts_section.EDGE_ENGLISH_VOICES],
             # Matcha voice models with their usage labels; profiles name one by ID.
-            "voice_models": [
-                {"id": model.id, "name": model.name, "usage": model.usage,
-                 "languages": list(model.languages), "source": model.source}
-                for model in list_voice_models()
-            ],
+            "voice_models": [model.model_dump(mode="json") for model in catalog.voice_models],
             # Saved settings that named a removed engine and now use Edge TTS.
-            "notice": removed_engine_notice(),
+            "notice": tts_section.removed_engine_notice(),
         },
     }
 
@@ -1405,7 +1391,7 @@ def apply_stt_settings(
     config.asr.language = language
     config.asr.device = device
     persist_runtime_overrides(config)
-    return speech_snapshot(config)["stt"]
+    return stt_snapshot(config)
 
 
 def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
@@ -1416,14 +1402,6 @@ def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
     ``model`` a ``models/`` catalog ID and ``tts_server`` a loopback address.
     Runs before a request is applied or saved for later.
     """
-    from src.tts.cosyvoice_runtime import resolve_model_dir
-    from src.tts.voice_library import (
-        VoiceLibraryError,
-        check_model,
-        check_reference,
-        check_tts_server,
-    )
-
     if not isinstance(params, dict):
         raise SettingsError("設定格式不正確")
     engine = str(params.get("type", config.tts.type)).strip().lower()
@@ -1440,32 +1418,31 @@ def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
     if engine == "breezyvoice" and values["ref_file"] in EDGE_TTS_ZH_TW_VOICE_IDS:
         values["ref_file"] = ""
     try:
-        values["ref_file"] = check_reference(engine, values["ref_file"])
-        values["tts_server"] = check_tts_server(values["tts_server"])
-        values["model"] = check_model(values["model"])
-    except VoiceLibraryError as exc:
-        raise SettingsError(exc.message) from None
-    if engine == "breezyvoice" and values["model"]:
-        try:
-            resolve_model_dir(values["model"])
-        except FileNotFoundError as exc:
-            raise SettingsError(str(exc)) from None
+        values = tts_section.check_voice_values(engine, values["ref_file"], values["tts_server"], values["model"])
+    except ValueError as exc:
+        raise SettingsError(str(exc)) from None
     return {"type": engine, **values}
 
 
 def _require_matcha_voice_model(ref_file: str) -> None:
     """Before a Matcha apply or preview: a voice model is chosen and installed now."""
-    from src.tts.voice_library import VoiceLibraryError, check_voice_model_installed
-
     if not ref_file:
         raise SettingsError(MATCHA_VOICE_MODEL_REQUIRED)
     try:
-        check_voice_model_installed(ref_file)
-    except VoiceLibraryError as exc:
-        raise SettingsError(exc.message) from None
+        tts_section.check_voice_model_installed(ref_file)
+    except ValueError as exc:
+        raise SettingsError(str(exc)) from None
 
 
-def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) -> Dict[str, Any]:
+def _voice(config, *, engine: str, ref_file: str, tts_server: str, model: str) -> TtsVoice:
+    """``config``'s voice with the given engine and sources (the Edge options stay)."""
+    return tts_section.voice(config.tts).model_copy(update={
+        "engine": engine, "voice": ref_file, "server": tts_server, "model": model})
+
+
+def apply_tts_settings(
+    config, params: Dict[str, Any], *, session_count: int, tts: TtsService,
+) -> Dict[str, Any]:
     """Validate reference/connectivity and synthesize a short preview before commit."""
     _require_no_sessions(session_count)
     sources = validate_tts_sources(config, params)
@@ -1487,19 +1464,16 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         _require_matcha_voice_model(ref_file)
         tts_server, model = "", ""
     else:
-        from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
-        from src.tts.voice_library import voice_transcript
-
         # BreezyVoice only clones from a reference recording and its transcript.
         if not ref_file:
             raise SettingsError("BreezyVoice 需要從音訊庫選擇參考音訊（自錄或有書面授權的台灣華語錄音）")
-        if not voice_transcript(ref_file):
+        if not tts_section.voice_transcript(ref_file):
             raise SettingsError("BreezyVoice 需要附逐字稿的參考音訊，請在音訊庫重新上傳並填寫逐字稿")
-        host, port = parse_server_url(tts_server)
+        voice = _voice(config, engine=engine, ref_file=ref_file, tts_server=tts_server, model=model)
         try:
-            tts_server = ensure_server(model_dir=model, host=host, port=port)
-        except FileNotFoundError as exc:
-            raise SettingsError(str(exc)) from exc
+            tts_server = tts.prepare_voice(VoicePreparation(voice=voice)).server
+        except TtsError as exc:
+            raise SettingsError(exc.message, status=exc.status) from exc
 
     preview_audio = _preview_tts(
         config,
@@ -1507,6 +1481,7 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
         ref_file=ref_file,
         tts_server=tts_server,
         model=model,
+        tts=tts,
     )
 
     config.tts.type = engine
@@ -1515,10 +1490,8 @@ def apply_tts_settings(config, params: Dict[str, Any], *, session_count: int) ->
     config.tts.tts_server = tts_server
     config.tts.model = model
     persist_runtime_overrides(config)
-    from src.tts.voice_library import clear_removed_engine_notice
-
-    clear_removed_engine_notice()
-    result = speech_snapshot(config)["tts"]
+    tts_section.clear_removed_engine_notice()
+    result = speech_snapshot(config, tts=tts)["tts"]
     result["preview_audio"] = preview_audio
     return result
 
@@ -1530,65 +1503,50 @@ def _preview_tts(
     ref_file: str,
     tts_server: str,
     model: str,
+    tts: TtsService,
     text: str = "語音設定完成",
 ) -> str:
-    """Run the real engine against a bounded phrase and return a WAV data URI."""
-    pending = deepcopy(config)
-    pending.tts.type = engine
-    pending.tts.ref_file = ref_file
-    pending.tts.ref_text = None
-    pending.tts.tts_server = tts_server
-    pending.tts.model = model
-
-    class PreviewSink:
-        def __init__(self):
-            self.frames = []
-
-        def put_audio_frame(self, audio_chunk, datainfo=None):
-            if sum(len(item) for item in self.frames) < 16000 * 5:
-                self.frames.append(np.asarray(audio_chunk, dtype=np.float32))
-
+    """Have the TTS layer speak a bounded phrase in the voice; a WAV data URI."""
     import numpy as np
-    from src.tts.factory import create_tts_engine
-
-    sink = PreviewSink()
-    try:
-        candidate = create_tts_engine(engine, pending, sink)
-        candidate.txt_to_audio((text, {"preview": True}))
-    except Exception as exc:
-        raise SettingsError(f"TTS 連線或試聽失敗: {exc}", status=502) from exc
-    if not sink.frames:
-        raise SettingsError("TTS 試聽沒有產生音訊，請檢查服務與參考資料", status=502)
-    audio = np.concatenate(sink.frames)[: 16000 * 5]
-    wav = BytesIO()
     import soundfile as sf
 
-    sf.write(wav, audio, 16000, format="WAV", subtype="PCM_16")
+    request = SynthesisRequest(
+        fragment=PlayableFragment(envelope=FragmentEnvelope(turn_id="preview", generation=0, sequence=0),
+                                  text=text, estimated_seconds=0),
+        voice=_voice(config, engine=engine, ref_file=ref_file, tts_server=tts_server, model=model),
+        max_seconds=PREVIEW_SECONDS,
+    )
+    try:
+        pcm = b"".join(tts.synthesize(request))
+    except TtsError as exc:
+        raise SettingsError(f"TTS 連線或試聽失敗: {exc.message}", status=502) from exc
+    if not pcm:
+        raise SettingsError("TTS 試聽沒有產生音訊，請檢查服務與參考資料", status=502)
+    wav = BytesIO()
+    sf.write(wav, np.frombuffer(pcm, dtype="<i2"), 16000, format="WAV", subtype="PCM_16")
     return "data:audio/wav;base64," + base64.b64encode(wav.getvalue()).decode("ascii")
 
 
 # Short enough to fit the 5 s preview; what a visitor would hear first.
+PREVIEW_SECONDS = 5.0
 PROFILE_PREVIEW_TEXT = "您好，歡迎光臨，很高興為您服務。"
 
 
-def breezyvoice_server_ready(config, params: Dict[str, Any]) -> bool:
+def breezyvoice_server_ready(config, params: Dict[str, Any], *, tts: TtsService) -> bool:
     """Whether a profile's BreezyVoice server is already up, so a preview need not start it."""
-    from src.tts import cosyvoice_runtime
-
     sources = validate_tts_sources(config, {**params, "type": "breezyvoice"})
-    return cosyvoice_runtime.server_ready(sources["tts_server"], sources["model"])
+    voice = _voice(config, engine="breezyvoice", ref_file=sources["ref_file"],
+                   tts_server=sources["tts_server"], model=sources["model"])
+    return tts.server_status(voice).ready
 
 
-def preview_profile_voice(config, params: Dict[str, Any], *, session_count: int) -> str:
+def preview_profile_voice(config, params: Dict[str, Any], *, session_count: int, tts: TtsService) -> str:
     """Synthesize PROFILE_PREVIEW_TEXT with a profile's (unsaved) voice; a WAV data URI.
 
     Only the voice fields are read, as server-managed IDs. BreezyVoice starts
     its server when needed, but never while a conversation is connected and
     never in place of the server the applied default voice is using.
     """
-    from src.tts import cosyvoice_runtime
-    from src.tts.voice_library import voice_transcript
-
     sources = validate_tts_sources(config, params)
     engine, ref_file = sources["type"], sources["ref_file"]
     tts_server, model = sources["tts_server"], sources["model"]
@@ -1605,24 +1563,25 @@ def preview_profile_voice(config, params: Dict[str, Any], *, session_count: int)
     else:
         if not ref_file:
             raise SettingsError("請先選擇有逐字稿的參考音檔")
-        if not voice_transcript(ref_file):
+        if not tts_section.voice_transcript(ref_file):
             raise SettingsError("這段參考音檔沒有逐字稿，請改選或重新上傳並填寫逐字稿")
-        wanted = cosyvoice_runtime.server_identity(tts_server, model)
+        wanted = tts_section.server_identity(tts_server, model)
         default = config.tts
-        if default.type == "breezyvoice" and wanted != cosyvoice_runtime.server_identity(
+        if default.type == "breezyvoice" and wanted != tts_section.server_identity(
                 default.tts_server, default.model):
             raise SettingsError("試聽這個 BreezyVoice 模型或服務網址會停止預設聲音正在使用的伺服器；"
                                 "請先套用此設定檔，或改用相同的模型與服務網址試聽", status=409)
-        host, port = wanted[:2]
-        if cosyvoice_runtime.server_ready(tts_server, model):
-            tts_server = cosyvoice_runtime.server_url(host, port)
+        voice = _voice(config, engine=engine, ref_file=ref_file, tts_server=tts_server, model=model)
+        server = tts.server_status(voice)
+        if server.ready:
+            tts_server = server.url
         elif session_count:
             raise SettingsError("對話連線中，試聽不會啟動 BreezyVoice 伺服器；請在所有頁面斷線後再試聽",
                                 status=409, extra={"sessions": session_count, "need_disconnect": True})
         else:
             try:
-                tts_server = cosyvoice_runtime.ensure_server(model_dir=model, host=host, port=port)
-            except (FileNotFoundError, RuntimeError, TimeoutError) as exc:
-                raise SettingsError(f"BreezyVoice 啟動失敗：{exc}", status=503) from exc
+                tts_server = tts.prepare_voice(VoicePreparation(voice=voice)).server
+            except TtsError as exc:
+                raise SettingsError(f"BreezyVoice 啟動失敗：{exc.message}", status=503) from exc
     return _preview_tts(config, engine=engine, ref_file=ref_file, tts_server=tts_server,
-                        model=model, text=PROFILE_PREVIEW_TEXT)
+                        model=model, tts=tts, text=PROFILE_PREVIEW_TEXT)

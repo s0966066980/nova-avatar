@@ -15,31 +15,41 @@ import json
 import time
 import argparse
 from threading import Thread
+from typing import TYPE_CHECKING
 import torch.multiprocessing as mp
 
 from src.utils.logging import logger
 from src.config.loader import load_config
-from src.avatars.factory import prepare_avatar_model
 from src.server.state import state
 from src.server.server import FrontendNotBuilt, create_app, require_frontend, run_server
 
 
+if TYPE_CHECKING:
+    from nova_contracts.tts import TtsService
+
 EDGE_PREWARM_MAX_ATTEMPTS = 3
 EDGE_PREWARM_RETRY_SECONDS = 1.0
+# Each startup Edge warm-up attempt gives up after this long.
+EDGE_PREWARM_TIMEOUT_SECONDS = 15.0
 
 
-def _start_edge_tts_prewarm(config) -> Thread | None:
+def _start_edge_tts_prewarm(config, tts: "TtsService") -> Thread | None:
     """Overlap Edge's process-cold network setup with local model loading."""
     if (not getattr(getattr(config, "app", None), "prewarm", True)
             or str(getattr(config.tts, "type", "")).strip().lower() != "edgetts"):
         return None
-    from src.tts.engines.edge import prewarm_edge_tts
+    from nova_contracts.tts import TtsError, VoicePreparation
+    from src.tts.config_section import voice as tts_voice
 
-    voice = str(getattr(config.tts, "ref_file", "") or "").strip()
+    preparation = VoicePreparation(voice=tts_voice(config.tts), timeout_seconds=EDGE_PREWARM_TIMEOUT_SECONDS)
+
     def warm():
         for attempt in range(EDGE_PREWARM_MAX_ATTEMPTS):
-            worker.prewarm_ready = prewarm_edge_tts(voice, decode_pcm=True,
-                keep_connection=bool(getattr(config.tts, "edge_connection_reuse", False)))
+            try:
+                tts.prepare_voice(preparation)
+                worker.prewarm_ready = True
+            except TtsError:
+                worker.prewarm_ready = False
             if worker.prewarm_ready:
                 return
             if attempt + 1 < EDGE_PREWARM_MAX_ATTEMPTS:
@@ -58,9 +68,7 @@ def _start_edge_tts_prewarm(config) -> Thread | None:
 def _await_edge_tts_prewarm(worker: Thread | None) -> bool:
     if worker is None:
         return True
-    from src.tts.engines.edge import EDGE_WARMUP_TIMEOUT_SECONDS
-
-    worker.join(timeout=EDGE_WARMUP_TIMEOUT_SECONDS * EDGE_PREWARM_MAX_ATTEMPTS + EDGE_PREWARM_RETRY_SECONDS * 3 + 1.0)
+    worker.join(timeout=EDGE_PREWARM_TIMEOUT_SECONDS * EDGE_PREWARM_MAX_ATTEMPTS + EDGE_PREWARM_RETRY_SECONDS * 3 + 1.0)
     if worker.is_alive():
         logger.warning("Edge TTS prewarm did not finish before server startup")
         return False
@@ -85,15 +93,13 @@ def _start_local_llm() -> None:
 
 def _load_startup_avatar() -> None:
     """Preload the selected avatar only when its engine and assets are complete."""
-    from src.avatars.catalog import avatar_bootable
-
     engine = state.config.model.type
     avatar_id = state.config.model.avatar_id
-    bootable, reason = avatar_bootable(engine, avatar_id)
-    if bootable:
+    check = state.avatar_service.bootable(engine, avatar_id)
+    if check.bootable:
         logger.info(f"正在載入數字人: {engine} / {avatar_id}")
         try:
-            state.model, state.avatar = prepare_avatar_model(state.config)
+            state.model, state.avatar = state.avatar_service.prepare_model(state.config)
             state.model_ready = True
             logger.info("數字人載入完成")
         except Exception:
@@ -102,7 +108,7 @@ def _load_startup_avatar() -> None:
             state.avatar = None
             state.model_ready = False
     else:
-        logger.warning(f"啟動時不預載數字人：{reason}。請開啟設定選擇引擎與角色。")
+        logger.warning(f"啟動時不預載數字人：{check.reason}。請開啟設定選擇引擎與角色。")
         state.model_ready = False
 
 
@@ -145,19 +151,26 @@ def main():
     asr = state.config.asr
     state.stt = create_stt_service(SttEngineSettings(
         engine=asr.type, model_size=asr.model_size, device=asr.device))
+    from src.tts.adapter import create_tts_service
+    from src.tts.config_section import engine_settings as tts_engine_settings
+
+    # One adapter is both the TTS service and its in-process runtime.
+    state.tts = state.tts_runtime = create_tts_service(tts_engine_settings(state.config))
     # Prewarm and start the main role's voice, not the configuration file's.
     from src.profiles.coordinator import adopt_saved_main_voice, profiles_path
 
     adopt_saved_main_voice(state.config, profiles_path(state.config_path))
     logger.info(f"已載入配置: {state.config}")
-    from src.scene.service import SceneError, scene_service
+    from nova_contracts.common import ServiceError
+    from src.avatars.adapter import create_avatar_service
 
+    state.avatar_service = create_avatar_service()
     try:
-        scene_service.select(getattr(state.config.stage, "background_id", ""))
-    except SceneError as exc:
+        state.avatar_service.select_background(getattr(state.config.stage, "background_id", ""))
+    except ServiceError as exc:
         logger.warning("未能載入已選舞台背景：%s", exc)
         state.config.stage.background_id = ""
-    edge_tts_prewarm = _start_edge_tts_prewarm(state.config)
+    edge_tts_prewarm = _start_edge_tts_prewarm(state.config, state.tts)
 
     # The llama.cpp child belongs to this backend when the LLM service starts
     # it; the service registers termination cleanup before model loading so
@@ -176,15 +189,12 @@ def main():
 
     if str(getattr(state.config.tts, "type", "")).strip().lower() == "breezyvoice":
         try:
-            from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
+            from nova_contracts.tts import VoicePreparation
+            from src.tts.config_section import voice as tts_voice
 
-            host, port = parse_server_url(getattr(state.config.tts, "tts_server", "") or "")
             logger.info("正在啟動 BreezyVoice: %s", getattr(state.config.tts, "model", "") or "models/BreezyVoice")
-            state.config.tts.tts_server = ensure_server(
-                model_dir=getattr(state.config.tts, "model", "") or "",
-                host=host,
-                port=port,
-            )
+            state.config.tts.tts_server = state.tts.prepare_voice(
+                VoicePreparation(voice=tts_voice(state.config.tts))).server
             logger.info("BreezyVoice 已就緒: %s", state.config.tts.tts_server)
         except Exception:
             logger.exception("啟動 BreezyVoice 失敗，請到數位人設定檔檢查聲音並重新套用")

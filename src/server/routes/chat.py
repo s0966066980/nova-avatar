@@ -132,7 +132,7 @@ async def is_speaking(request):
     return web.Response(
         content_type="application/json",
         text=json.dumps(
-            {"code": 0, "data": state.avatar_streams[sessionid].is_speaking()}
+            {"code": 0, "data": state.avatar_streams[sessionid].renderer.is_speaking()}
         ),
     )
 

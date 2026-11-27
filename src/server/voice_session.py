@@ -27,9 +27,10 @@ import soundfile as sf
 from av.audio.resampler import AudioResampler
 
 from nova_contracts.stt import SttPrepareRequest, SttService, Transcription, TranscriptionOptions
+from nova_contracts.tts import TtsService, strip_visual_markup
 from src.greetings.controller import IdleGreetingController
 from src.greetings.content import GreetingError
-from src.tts.base import sanitize_speech_text
+from src.tts import config_section as tts_section
 from nova_contracts.llm import (
     BoardReceipt,
     ContextCapacityExceeded,
@@ -188,6 +189,7 @@ class VoiceTurnSession:
         test_result_sink: Optional[TestResultSink] = None,
         stt: Optional[SttService] = None,
         llm: Optional[LlmService] = None,
+        tts: Optional[TtsService] = None,
     ) -> None:
         self.sessionid = sessionid
         # The process's LLM service: answers, tools and this conversation's memory.
@@ -206,7 +208,7 @@ class VoiceTurnSession:
         self._turn_origin = "visitor"
         self._greeting_trial_preparation = None
         self._greeting_text = ""
-        self._greeting_tts_config = None
+        self._greeting_tts_voice = None
         self._greeting_started = False
         self._stage_ready = False
         self._greeting_returning = False
@@ -231,6 +233,8 @@ class VoiceTurnSession:
         self._segmenter = None
         # The process's STT service; ``_stt`` is set once it is prepared.
         self._stt_service = stt
+        # The process's TTS service, for warming a voice the conversation switches to.
+        self._tts_service = tts
         self._stt: Optional[SttService] = None
         self._track_task: Optional[asyncio.Task] = None
         self._turn_task: Optional[asyncio.Task] = None
@@ -343,7 +347,7 @@ class VoiceTurnSession:
             await loop.run_in_executor(None, self._prepare_sync)
             if self._conversation['locale'] == 'en-US':
                 from src.server.conversations import warm_voice
-                await warm_voice(self.config, self._conversation)
+                await warm_voice(self.config, self._conversation, self._tts_service)
         except Exception as exc:
             self._preparing = False
             self._prepare_error = str(exc)
@@ -390,15 +394,13 @@ class VoiceTurnSession:
 
     def attach_media_player(self, player) -> None:
         self._media_player = player
-        configure_audio_output = getattr(self.avatar, "configure_audio_output", None)
         reply_streaming = getattr(self.config, "reply_streaming", None)
         if (
-            callable(configure_audio_output)
-            and bool(getattr(reply_streaming, "enabled", False))
+            bool(getattr(reply_streaming, "enabled", False))
             and bool(getattr(reply_streaming, "decoupled_audio_clock", False))
         ):
             try:
-                configure_audio_output(player.audio, asyncio.get_running_loop())
+                self.avatar.renderer.configure_audio_output(player.audio, asyncio.get_running_loop())
             except RuntimeError:
                 logger.debug("audio output fan-out deferred: no running event loop")
 
@@ -526,7 +528,7 @@ class VoiceTurnSession:
                     await self.interrupt()
                     if self._closed:
                         raise RuntimeError('對話已結束')
-                    await warm_voice(self.config, candidate)
+                    await warm_voice(self.config, candidate, self._tts_service)
                     if self._closed:
                         raise RuntimeError('對話已結束')
                     # Old media is fenced before changing the per-avatar config.
@@ -1567,11 +1569,8 @@ class VoiceTurnSession:
                 if self._silent_output_frames >= OUTPUT_STALL_FRAMES:
                     self._fail_playback_turn()
             return
-        is_still_rendering = getattr(self.avatar, "is_speaking", None)
-        direct_audio_enabled = bool(
-            getattr(self.avatar, "direct_audio_enabled", False)
-        )
-        if not direct_audio_enabled and callable(is_still_rendering) and is_still_rendering():
+        renderer = self.avatar.renderer
+        if not renderer.direct_audio_enabled and renderer.is_speaking():
             self._silent_output_frames = 0
             return
         self._silent_output_frames += 1
@@ -1966,7 +1965,7 @@ class VoiceTurnSession:
         if stage == "avatar_audio_enqueue" and isinstance(eventpoint, dict):
             self._await_playback_release(eventpoint)
         if isinstance(eventpoint, dict) and "avatar_epoch" in eventpoint:
-            if self._closed or eventpoint["avatar_epoch"] != getattr(self.avatar, "_asset_epoch", 0):
+            if self._closed or eventpoint["avatar_epoch"] != self.avatar.renderer.asset_epoch:
                 return False
             if not eventpoint.get("turn_id"):
                 return True
@@ -2249,13 +2248,13 @@ class VoiceTurnSession:
 
     def start_greeting(self, text: str, *, playback_config=None) -> str:
         """Queue fenced TTS without manufacturing a visitor history turn."""
-        if not sanitize_speech_text(text):
+        if not strip_visual_markup(text):
             raise GreetingError("招呼文案沒有可朗讀文字，請補上招呼內容")
         if not self._is_conversation_idle():
             raise RuntimeError("目前有其他對話，請等待播放結束")
         if playback_config is not None and getattr(self.avatar, "tts", None) is not None:
-            self._greeting_tts_config = self.avatar.tts.config
-            self.avatar.tts.config = playback_config
+            self._greeting_tts_voice = self.avatar.tts.voice
+            self.avatar.tts.set_voice(tts_section.voice(playback_config.tts))
         self._greeting_text = text
         self._turn_id = uuid4().hex
         self._greeting_started = False
@@ -2276,9 +2275,9 @@ class VoiceTurnSession:
             self._greeting_trial_preparation = None
 
     def _restore_greeting_voice(self):
-        if self._greeting_tts_config is not None:
-            self.avatar.tts.config = self._greeting_tts_config
-            self._greeting_tts_config = None
+        if self._greeting_tts_voice is not None:
+            self.avatar.tts.set_voice(self._greeting_tts_voice)
+            self._greeting_tts_voice = None
 
     def cancel_greeting(self, *, stop_playing=False) -> None:
         if not self.is_greeting or self._greeting_started and not stop_playing:

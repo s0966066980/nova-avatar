@@ -166,9 +166,8 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
         llm.stop_local_server = Mock()
         with patch.object(server.state, "roles", None), patch.object(server.state, "pcs", set()), \
                 patch.object(server.state, "voice_sessions", {}), patch.object(server.state, "llm", llm), \
-                patch.object(server, "shutdown_cosyvoice_server"), \
-                patch.object(server.scene_service, "close"), \
-                patch("src.tts.engines.edge.shutdown_edge_tts"):
+                patch.object(server.state, "tts_runtime", None), \
+                patch.object(server.state, "avatar_service", Mock()):
             await server.on_shutdown(None)
         llm.stop_local_server.assert_called_once_with()
         await self.client.retrieve("問題", [DATASET_A])

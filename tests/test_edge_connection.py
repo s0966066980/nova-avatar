@@ -13,7 +13,9 @@ from unittest.mock import AsyncMock, patch
 from aiohttp import WSMsgType, web
 from edge_tts import communicate
 
+from nova_contracts.tts import TtsEngineSettings
 from src.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
+from src.tts.adapter import InProcessTtsService
 from src.tts.engines import edge
 from src.tts.edge_connection import EdgeConnectionPool
 from tests.edge_fakes import _mp3_fixture
@@ -100,10 +102,11 @@ class StartupConnectionTests(unittest.TestCase):
         self.config = SimpleNamespace(
             audio=SimpleNamespace(fps=50),
             tts=SimpleNamespace(
-                type="edgetts", ref_file="zh-TW-HsiaoChenNeural",
-                edge_connection_reuse=True,
+                type="edgetts", ref_file="zh-TW-HsiaoChenNeural", tts_server="", model="",
+                edge_persistent_worker=True, edge_prefetch=True, edge_connection_reuse=True,
             ),
         )
+        self.tts = InProcessTtsService(TtsEngineSettings())
 
     def synthesize(self):
         frames, failures = [], []
@@ -117,7 +120,7 @@ class StartupConnectionTests(unittest.TestCase):
         return tts, frames, failures
 
     def test_startup_audio_is_available_without_another_handshake(self):
-        worker = _start_edge_tts_prewarm(self.config)
+        worker = _start_edge_tts_prewarm(self.config, self.tts)
         self.assertTrue(_await_edge_tts_prewarm(worker))
         # Once startup succeeds, new connection setup becomes unavailable.
         # The first visitor must still receive decoded PCM on the warm socket.
@@ -127,7 +130,7 @@ class StartupConnectionTests(unittest.TestCase):
         self.assertEqual(failures, [])
 
     def test_a_session_closing_keeps_the_startup_socket_available_for_other_sessions(self):
-        self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self.config)))
+        self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self.config, self.tts)))
         self.server.deny_new_connections = True
         first, frames, failures = self.synthesize()
         self.assertTrue(frames)
@@ -141,11 +144,11 @@ class StartupConnectionTests(unittest.TestCase):
     def test_invalid_audio_never_marks_startup_ready(self):
         self.server.payload = b"invalid mp3"
         with patch("src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0):
-            self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self.config)))
+            self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self.config, self.tts)))
         self.assertEqual(self.server.requests, 3)
 
     def test_backend_shutdown_closes_the_shared_loop_and_sockets(self):
-        self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self.config)))
+        self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self.config, self.tts)))
         worker = edge._ensure_shared_worker()
         edge.shutdown_edge_tts()
         self.assertTrue(worker.loop.is_closed())

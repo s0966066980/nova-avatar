@@ -8,8 +8,10 @@ from aiortc import RTCPeerConnection
 from src.server.voice_test_history import VoiceTestHistory
 
 if TYPE_CHECKING:
+    from nova_contracts.avatar import AvatarService
     from nova_contracts.llm import LlmService
     from nova_contracts.stt import SttService
+    from nova_contracts.tts import TtsRuntime, TtsService
     from src.server.speaking_avatar import SpeakingAvatar
 
 
@@ -37,6 +39,12 @@ class ServerState:
         self.stt: Optional["SttService"] = None
         # The LLM layer's service: answers, handoffs, greetings, tools and memory.
         self.llm: Optional["LlmService"] = None
+        # The TTS layer's service and, in-process, its runtime (speech channels,
+        # startup and shutdown); app.py sets both to the same adapter.
+        self.tts: Optional["TtsService"] = None
+        self.tts_runtime: Optional["TtsRuntime"] = None
+        # The avatar rendering layer: models, avatar catalog, imports, scene.
+        self.avatar_service: Optional["AvatarService"] = None
         
         # 服務狀態
         self.server_ready = False

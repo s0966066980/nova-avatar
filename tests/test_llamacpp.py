@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -364,6 +364,7 @@ class StartupOrderTests(unittest.TestCase):
     """llama-server claims its VRAM before the avatar model loads."""
 
     def _run_startup(self, ensure_server):
+        from nova_contracts.avatar import AvatarBootCheck
         from src.config.schema import Config
         from src.server import app
         from src.server.state import state
@@ -387,9 +388,10 @@ class StartupOrderTests(unittest.TestCase):
         try:
             state.config = config
             state.llm = InProcessLlmService()
+            avatars = Mock(**{"bootable.return_value": AvatarBootCheck(bootable=True),
+                              "prepare_model.side_effect": prepare})
             with patch("src.llm.llamacpp.ensure_server", side_effect=ensure), \
-                    patch.object(app, "prepare_avatar_model", side_effect=prepare), \
-                    patch("src.avatars.catalog.avatar_bootable", return_value=(True, "")):
+                    patch.object(state, "avatar_service", avatars):
                 app._load_startup_models()
             return calls, state.model_ready
         finally:

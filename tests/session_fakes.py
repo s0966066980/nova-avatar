@@ -12,8 +12,19 @@ from PIL import Image
 from nova_contracts.stt import Transcription
 
 
+class FakeRenderer:
+    """A renderer that never draws: idle, no direct audio, assets never rebound."""
+
+    direct_audio_enabled = False
+    asset_epoch = 0
+
+    def is_speaking(self):
+        return False
+
+
 class FakeAvatar:
     def __init__(self):
+        self.renderer = FakeRenderer()
         self.messages = []
         self.flush_count = 0
         self.media_guard = None

@@ -21,7 +21,9 @@ One job at a time. A job is a worker thread that runs these stages in order:
 
 Whether a job may start is a list of named checks (``evaluate_preflight``) with a reason
 each, evaluated before starting and again by the status route, so the console can show
-them. Cancelling sends SIGTERM to the running child, then SIGKILL after a grace period,
+them. These are the TTS layer's checks only: whether a stage is connected is core state,
+so the core checks it before it asks this layer and puts that check in front of these
+(spec decision 14). Cancelling sends SIGTERM to the running child, then SIGKILL after a grace period,
 which releases the GPU; the corpus is kept, training progress is not. A job's log is kept
 in memory (bounded, read by offset) and in ``<corpus>/jobs/<job id>/log.txt``; its state
 is saved under ``<training root>/.jobs/`` so that a restart marks a job that was running as
@@ -89,7 +91,6 @@ from src.tts.training.gpu_guard import (
     Check,
     free_vram_check,
 )
-from src.server.stage_guard import count_stage_connections, stage_connection_check
 from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.manifest import build_manifest
 from src.tts.training.preparation import PreparationReport, check_quality, convert_uploads
@@ -135,7 +136,6 @@ JOB_RUNNING, JOB_CANCELLING, JOB_DONE, JOB_FAILED, JOB_CANCELLED = (
 )
 ACTIVE_STATUSES = (JOB_RUNNING, JOB_CANCELLING)
 
-CHECK_ADMIN = "admin"
 CHECK_ENVIRONMENT = "environment"
 CHECK_OTHER_JOB = "other_job"
 CHECK_TRANSCRIPTION = "transcription"
@@ -399,16 +399,6 @@ TranscriberFactory = Callable[[str], AbstractContextManager[Transcriber]]
 BundleVerifier = Callable[[Path, threading.Event], None]
 
 
-def settings_from_config(config: Any) -> TrainingSettings:
-    matcha = getattr(config, "matcha", None)
-    if matcha is None:
-        return TrainingSettings()
-    return TrainingSettings(
-        min_free_vram_gb=float(getattr(matcha, "training_min_free_vram_gb", DEFAULT_MIN_FREE_VRAM_GB)),
-        whisper_model=str(getattr(matcha, "training_whisper_model", DEFAULT_WHISPER_MODEL)),
-    )
-
-
 def _explain(reasons: Iterable[str], counts: Any) -> str:
     """The administrator-facing sentence for ``Corpus.trainability`` reason codes."""
     messages = {
@@ -424,7 +414,7 @@ class TrainingJobManager:
     """Pre-flight checks, the single running job, its log and persisted state.
 
     Every collaborator that touches the outside (``nvidia-smi``, children, Edge, the
-    session registry, the clock) is a keyword argument so tests run without any.
+    clock) is a keyword argument so tests run without any.
     """
 
     def __init__(
@@ -434,7 +424,6 @@ class TrainingJobManager:
         paths: TrainingPaths | None = None,
         settings: Callable[[], TrainingSettings] = TrainingSettings,
         params: TrainingParams | None = None,
-        sessions: Callable[[], int] = count_stage_connections,
         vram_probe: Callable[[], VramReading] = read_free_vram,
         spawn: Spawn = spawn_process,
         synthesize: Callable[..., edge_teacher.SynthesisReport] = edge_teacher.run_synthesis,
@@ -449,7 +438,6 @@ class TrainingJobManager:
         self.paths = TrainingPaths.default() if paths is None else paths
         self._settings = settings
         self.params = TrainingParams() if params is None else params
-        self._sessions = sessions
         self._vram_probe = vram_probe
         self._spawn = spawn
         self._synthesize = synthesize
@@ -474,8 +462,6 @@ class TrainingJobManager:
         """Every check with its reason; blocking (``nvidia-smi``, files), call it from a thread."""
         settings = self.settings()
         checks = [
-            Check(CHECK_ADMIN, "管理者登入", PASS, "以管理者身分操作"),
-            stage_connection_check(self._sessions()),
             free_vram_check(self._vram_probe(), settings.min_free_vram_gb),
             self._environment_check(),
             self._other_job_check(),
@@ -630,14 +616,10 @@ class TrainingJobManager:
             STAGE_EXPORT,
         ]
         with self._lock:
-            # Another start, a transcription or a stage may have begun since the pre-flight
-            # looked. Once the job is registered, POST /offer refuses new stages.
-            fresh = {
-                check.id: check
-                for check in (
-                    stage_connection_check(self._sessions()), self._other_job_check(), self._transcription_check()
-                )
-            }
+            # Another start or a transcription may have begun since the pre-flight looked.
+            # Once the job is registered, POST /offer refuses new stages; the core checks
+            # for a stage that connected meanwhile once this returns.
+            fresh = {check.id: check for check in (self._other_job_check(), self._transcription_check())}
             if any(check.status == FAIL for check in fresh.values()):
                 raise self._refusal(Preflight(tuple(fresh.get(check.id, check) for check in preflight.checks)))
             job = Job(

@@ -26,7 +26,8 @@ from typing import Any, Callable
 
 import numpy as np
 
-from src.tts.base import BaseTTS, State, sanitize_speech_text
+from nova_contracts.tts import strip_visual_markup
+from src.tts.base import BaseTTS, State
 from src.tts.pcm_emitter import TurnPCMEmitter
 from src.tts.voice_models import VoiceModel, list_voice_models
 from src.utils.logging import logger
@@ -181,7 +182,7 @@ def _expand_ascii_word(word: str, lexicon_words: set[str] | None) -> str:
 
 def normalize_matcha_text(text: str, *, lexicon_words: set[str] | None = None, converter=None) -> str:
     """Traditional Chinese and bilingual English text as the Matcha lexicon spells it."""
-    cleaned = sanitize_speech_text(text)
+    cleaned = strip_visual_markup(text)
     if not cleaned:
         return ""
     for src, dst in _SIMPLIFIED_LEXICON_REPLACEMENTS.items():

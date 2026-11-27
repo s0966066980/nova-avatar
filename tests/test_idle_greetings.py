@@ -24,6 +24,7 @@ from src.profiles.store import ProfileStore, profile_config, validate_library
 from src.server.voice_session import VoiceTurnSession
 from tests.llm_fakes import FakeLlm, ask
 from tests.session_fakes import FakeAvatar, FakeSegmenter
+from src.tts import config_section as tts_section
 
 
 @pytest.mark.parametrize('text,count', [('你好，世界！', 6), ('a e\u0301 👨‍👩‍👧‍👦 🇹🇼\n', 4), ('\t\n　', 0), ('👍🏽！', 2), ('a\u0085b', 2)])
@@ -373,7 +374,8 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         config = state.config
         avatar = FakeAvatar()
         avatar.config = config
-        avatar.tts = SimpleNamespace(config=config)
+        avatar.tts = SimpleNamespace(voice=None)
+        avatar.tts.set_voice = lambda tts_voice: setattr(avatar.tts, 'voice', tts_voice)
         voice = VoiceTurnSession(333, config, avatar, llm=FakeLlm())
         voice.attach_event_sink(lambda _: None)
         state.voice_sessions[333] = voice
@@ -386,10 +388,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         response = await routes.greeting_try(request)
         self.assertEqual(response.status, 202)
         self.assertEqual(avatar.messages[-1][0], '未儲存的招呼草稿')
-        self.assertEqual(avatar.tts.config.tts.ref_file, 'draft-voice')
+        self.assertEqual(avatar.tts.voice.voice, 'draft-voice')
         self.assertFalse(voice._conversation_dirty)
         voice.cancel_greeting(stop_playing=True)
-        self.assertIs(avatar.tts.config, voice.config)
+        self.assertEqual(avatar.tts.voice, tts_section.voice(voice.config.tts))
 
     async def test_pending_trial_cancel_never_publishes_late_text(self):
         routes, state, draft = self.setup_field()

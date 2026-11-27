@@ -23,6 +23,7 @@ import pytest
 from src.config.schema import Config
 from src.tts.factory import create_tts_engine
 from tests.matcha_fakes import FakeSherpa, LABEL, Parent, VOICE_ID, make_voice_model, matcha_config, tone  # noqa: F401
+from tests.tts_fakes import in_process_tts
 
 
 @pytest.fixture
@@ -241,7 +242,7 @@ def test_applying_a_missing_voice_model_names_it(voice_models, sherpa):
     sherpa()
     for voice_model, message in (("", "選擇聲線模型"), ("zh-tw-missing", "zh-tw-missing」不在 models/tts 清單中")):
         with pytest.raises(SettingsError, match=message):
-            apply_tts_settings(Config(), {"type": "matcha", "ref_file": voice_model}, session_count=0)
+            apply_tts_settings(Config(), {"type": "matcha", "ref_file": voice_model}, session_count=0, tts=in_process_tts())
 
 
 def test_console_lists_matcha_and_only_labelled_voice_models(voice_models):
@@ -250,7 +251,7 @@ def test_console_lists_matcha_and_only_labelled_voice_models(voice_models):
     make_voice_model(voice_models)
     (voice_models / "matcha-base").mkdir()
 
-    tts = speech_snapshot(Config())["tts"]
+    tts = speech_snapshot(Config(), tts=in_process_tts())["tts"]
 
     [matcha] = [engine for engine in tts["engines"] if engine["id"] == "matcha"]
     assert "Non-commercial" in matcha["label"]
@@ -265,9 +266,9 @@ def test_profile_preview_speaks_with_the_chosen_voice_model(voice_models, sherpa
     fake = sherpa()
     for voice_model, message in (("", "選擇聲線模型"), ("zh-tw-missing", "zh-tw-missing」不在 models/tts 清單中")):
         with pytest.raises(SettingsError, match=message):
-            preview_profile_voice(Config(), {"type": "matcha", "ref_file": voice_model}, session_count=0)
+            preview_profile_voice(Config(), {"type": "matcha", "ref_file": voice_model}, session_count=0, tts=in_process_tts())
 
-    audio = preview_profile_voice(Config(), {"type": "matcha", "ref_file": VOICE_ID}, session_count=1)
+    audio = preview_profile_voice(Config(), {"type": "matcha", "ref_file": VOICE_ID}, session_count=1, tts=in_process_tts())
 
     assert audio.startswith("data:audio/wav;base64,")
     assert fake.instances[0].texts

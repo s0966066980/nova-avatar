@@ -18,8 +18,6 @@ from aiohttp import web
 from src.utils.logging import logger
 from src.server.state import state
 from src.server import routes
-from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
-from src.scene.service import scene_service
 from src.profiles.coordinator import initialize_roles
 from src.server.routes.profiles import register_profile_routes
 from src.server.access import access_guard, install_access
@@ -86,11 +84,12 @@ async def on_shutdown(app):
     # Turns have ended; release the connections the LLM layer reused across them.
     if state.llm is not None:
         await state.llm.close_connections()
-    from src.tts.engines.edge import shutdown_edge_tts
-    await asyncio.to_thread(shutdown_edge_tts)
+    if state.tts_runtime is not None:
+        # Training jobs, transcription, Edge's shared sockets and BreezyVoice.
+        await asyncio.to_thread(state.tts_runtime.close)
     _stop_local_llm()
-    shutdown_cosyvoice_server()
-    scene_service.close()
+    if state.avatar_service is not None:
+        state.avatar_service.close()
 
 
 def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None = None):
@@ -114,6 +113,13 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
     app.router.add_post(r'/api/conversations/{sessionid:\d+}', conversations.update_conversation)
     app.router.add_post(r'/api/conversations/{sessionid:\d+}/clear', conversations.clear_conversation)
     app.on_shutdown.append(on_shutdown)
+
+    async def start_tts(app):
+        # Before any request: fail interrupted training jobs, stop their children.
+        if state.tts_runtime is not None:
+            await asyncio.to_thread(state.tts_runtime.start)
+    app.on_startup.append(start_tts)
+
     async def prepare_roles(app):
         if state.config is not None and state.config_path:
             from src.server.deferred_settings import apply_pending
@@ -270,7 +276,8 @@ def _force_exit(code: int) -> None:
     logger.error("強制結束程序 exit=%s", code)
     try:
         _stop_local_llm()
-        shutdown_cosyvoice_server()
+        if state.tts_runtime is not None:
+            state.tts_runtime.close(force=True)
     finally:
         os._exit(code)
 

@@ -1,7 +1,11 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Console routes for training corpora: upload, transcripts, transcription, review."""
+"""Console routes for training corpora: upload, transcripts, transcription, review.
+
+The routes reach the TTS layer through ``state.tts``; here that is the layer's real
+``InProcessVoiceTraining`` around a temporary store and a fake transcriber.
+"""
 
 from __future__ import annotations
 
@@ -19,14 +23,17 @@ import pytest
 import soundfile as sf
 from aiohttp import web
 
+from nova_contracts.tts import MAX_CORPUS_UPLOAD_BYTES as MAX_UPLOAD_BYTES
+from nova_contracts.tts import TtsEngineSettings
 from src.server.access import ROUTE_ACCESS, Access, access_guard, install_access, route_key
+from src.server.state import state
 from src.tts.training.corpus import CorpusStore
 from src.tts.training.edge_acknowledgement import MSA_CLAUSE, read_acknowledgement
 from src.tts.training.gpu_guard import DeviceChoice
 from src.tts.training.gpu_probe import VramReading
-from src.tts.training.ingest import MAX_UPLOAD_BYTES
+from src.tts.training.service import InProcessVoiceTraining
 from src.tts.training.transcription import TranscriptionJobs
-from src.server.routes.tts_corpus import ROUTES, live_device_choice, register
+from src.server.routes.tts_corpus import ROUTES, register
 from tests.access_helpers import access_client, same_origin
 
 BASE = "/api/tts/corpora"
@@ -49,11 +56,13 @@ class FakeTranscriber:
 
 
 @pytest.fixture
-def env(tmp_path):
-    """A store, its transcription jobs and the fake transcriber behind them."""
+def env(tmp_path, monkeypatch):
+    """A store, its transcription jobs and the fake transcriber behind them; no stage connected."""
     store = CorpusStore(tmp_path / "training")
     fake = FakeTranscriber()
     jobs = TranscriptionJobs(store, lambda model, device: fake, lambda: DeviceChoice("cuda"))
+    monkeypatch.setattr(state, "avatar_streams", {})
+    monkeypatch.setattr(state, "tts", None, raising=False)
     return store, jobs, fake
 
 
@@ -61,7 +70,8 @@ def factory_for(store, jobs):
     def make(admin_env: Path) -> web.Application:
         app = web.Application(middlewares=[access_guard])
         install_access(app, admin_env, ())
-        register(app, store=store, jobs=jobs)
+        register(app)
+        state.tts = InProcessVoiceTraining(settings=TtsEngineSettings, corpus_store=store, transcription=jobs)
         return app
 
     return make
@@ -132,9 +142,8 @@ def test_every_route_is_listed_as_admin_in_route_access():
 
 
 def test_the_registered_routes_are_exactly_the_declared_ones(env):
-    store, jobs, _ = env
     app = web.Application()
-    register(app, store=store, jobs=jobs)
+    register(app)
 
     registered = {route_key(route) for route in app.router.routes()}
 
@@ -610,20 +619,30 @@ async def test_the_start_and_status_responses_name_the_device_and_why_it_is_the_
     assert (status["state"], status["device"], status["fallback_reason"]) == ("done", "cpu", "有舞台連線")
 
 
-def test_the_live_choice_uses_the_training_threshold_from_the_configuration(monkeypatch):
-    from src.config.loader import dict_to_config
-    from src.server.state import state
+@console
+async def test_a_connected_stage_keeps_the_transcription_on_the_cpu(client, env):
+    store, jobs, _ = env
+    jobs.choose_device = lambda: DeviceChoice("cuda")  # the layer alone would pick the GPU
+    await create(client)
+    await upload(client, name="a.wav")
+    state.avatar_streams[1] = None
 
+    started = (await (await post(client, f"{BASE}/mine/transcription", json={})).json())["data"]
+
+    assert (started["device"], started["fallback_reason"]) == ("cpu", "有舞台連線")
+    assert await _wait_idle(jobs)
+
+
+def test_the_layers_device_choice_uses_the_training_threshold_from_its_settings(tmp_path):
     free_10_gb = lambda: VramReading(10 * 1024)  # noqa: E731
-    monkeypatch.setattr(state, "config", dict_to_config({"matcha": {"training_min_free_vram_gb": 8}}))
-    assert live_device_choice(sessions=lambda: 0, vram_probe=free_10_gb, cuda_available=lambda: True) == DeviceChoice("cuda")
-    monkeypatch.setattr(state, "config", dict_to_config({"matcha": {"training_min_free_vram_gb": 12}}))
-    assert live_device_choice(sessions=lambda: 0, vram_probe=free_10_gb, cuda_available=lambda: True) == DeviceChoice(
-        "cpu", "剩餘顯存不足"
+    current = {"value": TtsEngineSettings(training_min_free_vram_gb=8)}
+    training = InProcessVoiceTraining(
+        settings=lambda: current["value"], corpus_store=CorpusStore(tmp_path), vram_probe=free_10_gb,
+        cuda_available=lambda: True,
     )
-    assert live_device_choice(sessions=lambda: 1, vram_probe=free_10_gb, cuda_available=lambda: True) == DeviceChoice(
-        "cpu", "有舞台連線"
-    )
+    assert training._gpu_choice() == DeviceChoice("cuda")
+    current["value"] = TtsEngineSettings(training_min_free_vram_gb=12)
+    assert training._gpu_choice() == DeviceChoice("cpu", "剩餘顯存不足")
 
 
 async def _wait_idle(jobs) -> bool:
@@ -691,7 +710,7 @@ async def test_handlers_do_the_heavy_work_off_the_event_loop(client, monkeypatch
         seen.append(threading.get_ident())
         return real(*args, **kwargs)
 
-    monkeypatch.setattr("src.server.routes.tts_corpus.ingest_audio", spy)
+    monkeypatch.setattr("src.tts.training.service.ingest_audio", spy)
     await create(client)
     await upload(client)
 
@@ -779,21 +798,21 @@ async def test_only_an_edge_corpus_can_be_acknowledged(client, env):
 
 @console
 async def test_review_payloads_are_built_off_the_event_loop(client, env, monkeypatch):
-    from src.server.routes import tts_corpus
+    from src.tts.training import service
 
     main = threading.get_ident()
     seen: dict[str, set[int]] = {}
 
     def spy(name):
-        real = getattr(tts_corpus, name)
+        real = getattr(service, name)
 
         def wrapper(*args, **kwargs):
             seen.setdefault(name, set()).add(threading.get_ident())
             return real(*args, **kwargs)
 
-        monkeypatch.setattr(tts_corpus, name, wrapper)
+        monkeypatch.setattr(service, name, wrapper)
 
-    for name in ("_summary", "_detail", "_line_payload"):
+    for name in ("_summary_fields", "_line"):
         spy(name)
     await create(client)
     await upload(client, text="稿")
@@ -812,18 +831,18 @@ async def test_review_payloads_are_built_off_the_event_loop(client, env, monkeyp
 
 @console
 async def test_transcript_files_are_parsed_off_the_event_loop(client, monkeypatch):
-    from src.server.routes import tts_corpus
+    from src.tts.training import service
 
     main = threading.get_ident()
     seen: list[int] = []
     for name in ("parse_txt", "parse_metadata_csv"):
-        real = getattr(tts_corpus, name)
+        real = getattr(service, name)
 
         def wrapper(*args, _real=real, **kwargs):
             seen.append(threading.get_ident())
             return _real(*args, **kwargs)
 
-        monkeypatch.setattr(tts_corpus, name, wrapper)
+        monkeypatch.setattr(service, name, wrapper)
     await create(client)
     await upload(client, name="take.wav")
     await upload(client, name="other.wav")

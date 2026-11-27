@@ -55,6 +55,14 @@ def test_the_llm_layer_is_converted():
         "src.llm", "src.ragflow", "src.web_search"]
 
 
+def test_the_tts_layer_is_converted():
+    assert "tts-internals-private" in {contract["id"] for contract in _private_contracts()}
+
+
+def test_the_avatar_rendering_layer_is_converted():
+    assert "avatar-internals-private" in {contract["id"] for contract in _private_contracts()}
+
+
 @pytest.mark.parametrize("contract", _private_contracts(), ids=lambda contract: contract["id"])
 def test_every_module_of_a_converted_layer_is_private_or_an_entry_point(contract):
     assert contract["type"] == "protected"

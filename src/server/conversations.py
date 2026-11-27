@@ -10,11 +10,13 @@ from dataclasses import asdict
 
 from aiohttp import web
 
+from nova_contracts.tts import TtsError, TtsService, VoicePreparation
+
 from src.config.schema import ConversationConfig
 from src.config.overrides import persist_runtime_overrides
 from nova_contracts.llm import ContextCapacityQuery, MemoryQuery
 from src.server.state import state
-from src.tts.voice_library import EDGE_TTS_EN_US_VOICES
+from src.tts import config_section as tts_section
 
 
 VOICES = {
@@ -23,7 +25,7 @@ VOICES = {
         {'id': 'zh-TW-HsiaoYuNeural', 'label': '曉雨（女聲）'},
         {'id': 'zh-TW-YunJheNeural', 'label': '雲哲（男聲）'},
     ],
-    'en-US': [dict(voice) for voice in EDGE_TTS_EN_US_VOICES],
+    'en-US': [dict(voice) for voice in tts_section.EDGE_ENGLISH_VOICES],
 }
 
 
@@ -48,9 +50,7 @@ def validate(values: dict, current: dict) -> dict:
 
 def check_language_support(config, locale: str) -> None:
     # faster-whisper accepts Chinese and English.
-    from src.tts.voice_library import ENGLISH_TTS_ENGINES
-
-    if locale == 'en-US' and getattr(config.tts, 'type', '') not in ENGLISH_TTS_ENGINES:
+    if locale == 'en-US' and getattr(config.tts, 'type', '') not in tts_section.ENGLISH_ENGINES:
         raise ValueError('english_requires_edge_tts')
 
 
@@ -67,17 +67,20 @@ def configure_avatar(avatar, values: dict) -> None:
     if getattr(getattr(config, 'tts', None), 'type', '') == 'edgetts':
         config.tts.ref_file = values['voice_en_us' if values['locale'] == 'en-US' else 'voice_zh_tw']
     if getattr(avatar, 'tts', None) is not None:
-        avatar.tts.config = config
+        avatar.tts.set_voice(tts_section.voice(config.tts))
 
 
-async def warm_voice(config, values: dict) -> None:
-    if getattr(config.tts, 'type', '') == 'edgetts':
-        from src.tts.engines.edge import prewarm_edge_tts
-        voice = values['voice_en_us' if values['locale'] == 'en-US' else 'voice_zh_tw']
-        ready = await asyncio.to_thread(prewarm_edge_tts, voice, decode_pcm=True,
-                                        keep_connection=True, timeout_seconds=5)
-        if not ready:
-            raise RuntimeError('voice_unavailable')
+async def warm_voice(config, values: dict, tts: TtsService | None) -> None:
+    """Warm the Edge voice the conversation switches to; a session without a TTS service has none."""
+    if getattr(config.tts, 'type', '') == 'edgetts' and tts is not None:
+        voice = tts_section.voice(config.tts).model_copy(update={
+            'voice': values['voice_en_us' if values['locale'] == 'en-US' else 'voice_zh_tw'],
+            'edge_connection_reuse': True,
+        })
+        try:
+            await asyncio.to_thread(tts.prepare_voice, VoicePreparation(voice=voice, timeout_seconds=5))
+        except TtsError:
+            raise RuntimeError('voice_unavailable') from None
 
 
 def snapshot(session) -> dict:

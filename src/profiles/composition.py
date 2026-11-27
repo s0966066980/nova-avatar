@@ -11,7 +11,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 from src.profiles.validation import ProfileError, identifier, obj, revision, text
-from src.tts.cosyvoice_runtime import server_identity
+from src.tts.config_section import server_identity
 from src.utils.logging import logger
 
 MAX_ENABLED_MEMBERS = 5
