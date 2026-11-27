@@ -14,7 +14,7 @@ import pytest
 
 from nova_tts.training import processes
 from nova_tts.training.processes import PopenProcess, run_process
-from tests.training_fakes import FakeProcess
+from training_fakes import FakeProcess
 
 CLOCK = time.monotonic
 

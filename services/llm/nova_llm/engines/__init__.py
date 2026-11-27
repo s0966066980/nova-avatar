@@ -8,4 +8,8 @@ from nova_llm.base import BaseLLM
 from .fake import FakeLLM
 from .openai import OpenAILLM
 
-__all__ = ["BaseLLM", "FakeLLM", "OpenAILLM"]
+DEFAULT_ENGINE = "openai-compatible"
+# ``fake`` is selectable through ``llm.engine`` only; it is not an endpoint.
+ENGINES: dict[str, type[BaseLLM]] = {DEFAULT_ENGINE: OpenAILLM, "fake": FakeLLM}
+
+__all__ = ["BaseLLM", "DEFAULT_ENGINE", "ENGINES", "FakeLLM", "OpenAILLM"]

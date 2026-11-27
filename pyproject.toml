@@ -13,52 +13,39 @@ maintainers = [
 ]
 
 dependencies = [
-    "aiohttp",
-    "aiortc",
-    "av",
-    # The core and every processing layer; they share this one uv.lock.
-    "nova-avatar-core",
-    "nova-avatar-render",
-    "nova-avatar-stt",
-    "nova-avatar-llm",
-    "nova-avatar-tts",
-    "nova-avatar-contracts",
-    "onnxruntime>=1.16,<1.24",
-    "librosa",
-    "omegaconf",
-    "openai",
-    "numpy<2",
-    "opencv-python-headless<4.12",
-    "Pillow>=10,<13",
-    "pydantic",
-    "PyYAML",
-    "scipy",
-    "soundfile==0.12.1",
+    # The core, the processing layers and the contracts (ADR 0027, ADR 0028):
+    # path dependencies that share this uv.lock. Each declares its own
+    # third-party packages in its pyproject.toml.
+    "nova-contracts",
+    "nova-core",
+    "nova-stt",
+    "nova-llm",
+    "nova-tts",
+    "nova-render",
+    # Pinned for the whole environment; uv applies [tool.uv.sources] to
+    # requirements declared here only, so torch stays declared in this file.
     "torch==2.5.0",
     "torchvision",
     "torchaudio",
-    "tqdm",
+    "transformers==4.46.0",
     "typing-extensions",
     "websockets==12.0",
-    "resampy",
-    "logger",
     # mmengine/mmpose still import pkg_resources; setuptools>=82 removed it.
     "setuptools==69.5.1",
-    "transformers==4.46.0",
 ]
 
-# 服務端 VAD 依賴（按需安裝：uv pip install -e ".[vad]"）
+# Optional installs live in the layer that owns them; these names forward to
+# them so `uv sync --extra musetalk` and `.[vad]` keep working.
 [project.optional-dependencies]
+# Server-side VAD: uv pip install -e ".[vad]"
 vad = [
-    "silero-vad>=5.1",           # Silero VAD，pip 包自帶模型，可離線使用
+    "nova-core[vad]",
 ]
 musetalk = [
-    "nova-avatar-musetalk",
+    "nova-render[musetalk]",
 ]
 tensorrt = [
-    # Keep the builder/runtime identical; engines must be rebuilt on upgrades.
-    "tensorrt-cu12==10.16.1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "onnx==1.17.0",
+    "nova-render[tensorrt]",
 ]
 
 [project.urls]
@@ -66,7 +53,7 @@ Repository = "https://github.com/s0966066980/nova-avatar"
 
 [dependency-groups]
 dev = [
-    "import-linter>=2.3",
+    "import-linter==2.15",
     "pyright==1.1.414",
     "pytest>=8",
     "pytest-cov>=6",
@@ -82,12 +69,12 @@ ci = [
 ]
 
 [tool.uv.sources]
-nova-avatar-contracts = { path = "contracts", editable = true }
-nova-avatar-core = { path = "core", editable = true }
-nova-avatar-render = { path = "avatar", editable = true }
-nova-avatar-stt = { path = "services/stt", editable = true }
-nova-avatar-llm = { path = "services/llm", editable = true }
-nova-avatar-tts = { path = "services/tts", editable = true }
+nova-contracts = { path = "contracts", editable = true }
+nova-core = { path = "core", editable = true }
+nova-stt = { path = "services/stt", editable = true }
+nova-llm = { path = "services/llm", editable = true }
+nova-tts = { path = "services/tts", editable = true }
+nova-render = { path = "avatar", editable = true }
 nova-avatar-musetalk = { path = "avatar/nova_render/musetalk", editable = true }
 torch = [
     { index = "pytorch-cu124" },
@@ -110,17 +97,247 @@ markers = [
     "speech: ASR, VAD, TTS, and speech worker behavior",
     "slow: deterministic tests that normally take at least one second",
     "live: opt-in tests that use an explicitly configured external model",
-    "gpu: tests that need a GPU or real model weights; excluded by default, run on the venue host with -m gpu",
+    "gpu: tests that need a GPU, real model weights or a local model server; run with -m gpu",
 ]
-addopts = "-m \"not gpu\""
-testpaths = ["tests", "core", "avatar", "services", "contracts"]
+# A GPU-less machine without model weights runs the whole default suite; ``-m gpu``
+# on the command line replaces this selection.
+addopts = '-m "not gpu"'
+# Each folder owns its tests (spec decision 5); ``pytest <folder>`` runs one of them.
+testpaths = [
+    "core/tests",
+    "avatar/tests",
+    "services/stt/tests",
+    "services/llm/tests",
+    "services/tts/tests",
+    "tests",
+]
+# Package roots first, so a checkout runs without editable installs of the
+# layers; then every tests folder, whose helper modules (*_fakes.py,
+# access_helpers.py) are imported by module name; then the script folders whose
+# modules the tests import.
+pythonpath = [
+    "contracts",
+    "core",
+    "avatar",
+    "services/stt",
+    "services/llm",
+    "services/tts",
+    "core/tests",
+    "avatar/tests",
+    "services/stt/tests",
+    "services/llm/tests",
+    "services/tts/tests",
+    "services/llm/scripts",
+    "services/tts/scripts",
+]
+
+# Processing-layer boundaries (ADR 0027). Layers: STT = nova_stt
+# (services/stt); LLM = nova_llm, which holds the ragflow and web_search
+# sub-packages (services/llm); TTS = nova_tts (services/tts); avatar rendering =
+# nova_render, which holds the scene sub-package (avatar). Core = nova_core
+# (core): server, profiles, config, greetings, vad, utils. Every layer may
+# import nova_core.utils. nova_contracts (contracts/) is shared by all and
+# imports none of them.
+# No contract has ignore_imports. A new entry must name the ticket that
+# removes it (CODING_STANDARDS.md rule 6); an entry that no longer matches
+# fails the run.
+[tool.importlinter]
+root_packages = ["nova_core", "nova_stt", "nova_llm", "nova_tts", "nova_render", "nova_contracts"]
+
+[[tool.importlinter.contracts]]
+id = "contracts-are-a-leaf"
+name = "nova_contracts imports no Nova Avatar code"
+type = "forbidden"
+source_modules = ["nova_contracts"]
+forbidden_modules = ["nova_core", "nova_stt", "nova_llm", "nova_tts", "nova_render"]
+
+[[tool.importlinter.contracts]]
+id = "layers-not-core"
+name = "Processing layers do not import the core"
+type = "forbidden"
+source_modules = [
+    "nova_stt",
+    "nova_llm",
+    "nova_tts",
+    "nova_render",
+]
+forbidden_modules = [
+    "nova_core.server",
+    "nova_core.profiles",
+    "nova_core.config",
+    "nova_core.greetings",
+    "nova_core.vad",
+]
+
+# The cross-layer contracts check direct imports only: a path through the core
+# is already caught above, and nova_core.utils is kept free of layer imports below.
+[[tool.importlinter.contracts]]
+id = "stt-not-other-layers"
+name = "STT layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["nova_stt"]
+forbidden_modules = [
+    "nova_llm",
+    "nova_tts",
+    "nova_render",
+]
+
+[[tool.importlinter.contracts]]
+id = "llm-not-other-layers"
+name = "LLM layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["nova_llm"]
+forbidden_modules = [
+    "nova_stt",
+    "nova_tts",
+    "nova_render",
+]
+
+[[tool.importlinter.contracts]]
+id = "tts-not-other-layers"
+name = "TTS layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["nova_tts"]
+forbidden_modules = [
+    "nova_stt",
+    "nova_llm",
+    "nova_render",
+]
+
+[[tool.importlinter.contracts]]
+id = "avatar-not-other-layers"
+name = "Avatar rendering layer does not import other processing layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["nova_render"]
+forbidden_modules = [
+    "nova_stt",
+    "nova_llm",
+    "nova_tts",
+]
+
+[[tool.importlinter.contracts]]
+id = "utils-is-shared-leaf"
+name = "nova_core.utils imports neither processing layers nor the rest of the core"
+type = "forbidden"
+source_modules = ["nova_core.utils"]
+forbidden_modules = [
+    "nova_stt",
+    "nova_llm",
+    "nova_tts",
+    "nova_render",
+    "nova_core.server",
+    "nova_core.profiles",
+    "nova_core.config",
+    "nova_core.greetings",
+    "nova_core.vad",
+]
+
+# Converted layers (ticket 07): the core reaches the layer only through
+# nova_<layer>.adapter (its in-process service) and nova_<layer>.config_section.
+# One block per layer, id "<layer>-internals-private"; protected_modules lists
+# every other module of the layer (tests/test_layer_entry_points.py fails when
+# one is missing) and allowed_importers lists the layer's packages.
+
+[[tool.importlinter.contracts]]
+id = "stt-internals-private"
+name = "Only the STT layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "nova_stt.base",
+    "nova_stt.engines",
+    "nova_stt.factory",
+]
+allowed_importers = ["nova_stt"]
+
+[[tool.importlinter.contracts]]
+id = "llm-internals-private"
+name = "Only the LLM layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "nova_llm.base",
+    "nova_llm.context_usage",
+    "nova_llm.endpoints",
+    "nova_llm.engines",
+    "nova_llm.factory",
+    "nova_llm.greeting",
+    "nova_llm.handoff",
+    "nova_llm.history",
+    "nova_llm.identity_policy",
+    "nova_llm.llamacpp",
+    "nova_llm.llamacpp_protocol",
+    "nova_llm.prewarm",
+    "nova_llm.prompts",
+    "nova_llm.reply_contract",
+    "nova_llm.reply_events",
+    "nova_llm.request_context",
+    "nova_llm.response_protocol",
+    "nova_llm.router",
+    "nova_llm.rules",
+    "nova_llm.service",
+    "nova_llm.text_normalizer",
+    "nova_llm.tools",
+    "nova_llm.web_reply",
+    "nova_llm.ragflow",
+    "nova_llm.web_search",
+]
+allowed_importers = ["nova_llm"]
+
+
+[[tool.importlinter.contracts]]
+id = "tts-internals-private"
+name = "Only the TTS layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "nova_tts.base",
+    "nova_tts.cosyvoice_runtime",
+    "nova_tts.edge_connection",
+    "nova_tts.edge_endpoint",
+    "nova_tts.engines",
+    "nova_tts.factory",
+    "nova_tts.pcm_emitter",
+    "nova_tts.retry",
+    "nova_tts.training",
+    "nova_tts.voice_library",
+    "nova_tts.voice_models",
+    "nova_tts.voice_preview",
+]
+allowed_importers = ["nova_tts"]
+
+
+[[tool.importlinter.contracts]]
+id = "avatar-internals-private"
+name = "Only the avatar rendering layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "nova_render.asset_io",
+    "nova_render.audio_stream_handler",
+    "nova_render.base",
+    "nova_render.builder",
+    "nova_render.catalog",
+    "nova_render.factory",
+    "nova_render.fake",
+    "nova_render.mouth_quality",
+    "nova_render.musetalk",
+    "nova_render.video_output",
+    "nova_render.scene",
+]
+allowed_importers = ["nova_render"]
 
 [tool.ruff]
 required-version = "==0.17.1"
 target-version = "py310"
 include = [
-    "core/**/*.py", "avatar/**/*.py", "services/**/*.py", "contracts/**/*.py",
-    "scripts/**/*.py", "tests/**/*.py",
+    "core/**/*.py",
+    "avatar/**/*.py",
+    "services/**/*.py",
+    "contracts/**/*.py",
+    "scripts/**/*.py",
+    "tests/**/*.py",
+    "conftest.py",
 ]
 force-exclude = true
 extend-exclude = [
@@ -152,13 +369,16 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"**/tests/**" = ["S101"]
+"conftest.py" = ["S101"]
 
 [tool.pyright]
 # Control-flow guard for the server package: basic mode minus the rules that
 # still report existing type-annotation debt there. Every rule left enabled
 # passes with zero findings, so a new hit is a real regression.
-include = ["core/nova_core/server", "contracts"]
+include = ["core/nova_core/server"]
+# Resolve the in-repo packages without requiring editable installs.
+extraPaths = ["contracts", "core", "avatar", "services/stt", "services/llm", "services/tts"]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
 reportPossiblyUnboundVariable = "error"
@@ -178,86 +398,12 @@ name = "pytorch-cu124"
 url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
-[build-system]
-requires = ["setuptools==69.5.1", "wheel"]
-build-backend = "setuptools.build_meta"
-
-# The root project is the workspace: it ships no Python package of its own.
+# The root project is the application: it ships no Python package of its own
+# (the code lives in core/, avatar/, services/ and contracts/), and an explicit
+# empty list stops setuptools from auto-discovering those folders.
 [tool.setuptools]
 packages = []
 
-# Processing-layer boundaries (ADR 0027). A layer may import `nova_contracts`
-# and `nova_core.utils` (the shared helpers) but not the rest of the core, and
-# never another layer. Do not add ignore_imports: fix the dependency direction.
-[tool.importlinter]
-root_packages = ["nova_core", "nova_render", "nova_stt", "nova_llm", "nova_tts"]
-include_external_packages = false
-
-[[tool.importlinter.contracts]]
-name = "Processing layers do not import the core"
-type = "forbidden"
-source_modules = [
-    "nova_stt",
-    "nova_llm",
-    "nova_tts",
-    "nova_render",
-]
-forbidden_modules = [
-    "nova_core.server",
-    "nova_core.profiles",
-    "nova_core.config",
-    "nova_core.greetings",
-    "nova_core.vad",
-]
-
-[[tool.importlinter.contracts]]
-name = "stt layer does not import other layers"
-type = "forbidden"
-allow_indirect_imports = true
-source_modules = [
-    "nova_stt",
-]
-forbidden_modules = [
-    "nova_llm",
-    "nova_tts",
-    "nova_render",
-]
-
-[[tool.importlinter.contracts]]
-name = "llm layer does not import other layers"
-type = "forbidden"
-allow_indirect_imports = true
-source_modules = [
-    "nova_llm",
-]
-forbidden_modules = [
-    "nova_stt",
-    "nova_tts",
-    "nova_render",
-]
-
-[[tool.importlinter.contracts]]
-name = "tts layer does not import other layers"
-type = "forbidden"
-allow_indirect_imports = true
-source_modules = [
-    "nova_tts",
-]
-forbidden_modules = [
-    "nova_stt",
-    "nova_llm",
-    "nova_render",
-]
-
-[[tool.importlinter.contracts]]
-name = "avatar rendering layer does not import other layers"
-type = "forbidden"
-allow_indirect_imports = true
-source_modules = [
-    "nova_render",
-]
-forbidden_modules = [
-    "nova_stt",
-    "nova_llm",
-    "nova_tts",
-]
+[build-system]
+requires = ["setuptools==69.5.1", "wheel"]
+build-backend = "setuptools.build_meta"

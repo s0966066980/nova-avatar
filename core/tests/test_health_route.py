@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
+from nova_llm.adapter import InProcessLlmService
 from nova_core.server.routes.health import health_check
 from nova_core.server.state import state
 
@@ -53,8 +54,9 @@ class HealthLlmGpuWarningTests(unittest.TestCase):
         import json
         from unittest.mock import patch
 
-        previous = (state.server_ready, state.config)
+        previous = (state.server_ready, state.config, state.llm)
         state.server_ready = True
+        state.llm = InProcessLlmService()
         state.config = SimpleNamespace(
             model=SimpleNamespace(type="musetalk", avatar_id="demo"),
             vad=SimpleNamespace(enabled=False, type="silero"),
@@ -64,7 +66,7 @@ class HealthLlmGpuWarningTests(unittest.TestCase):
             with patch("nova_llm.llamacpp.gpu_offload_status", return_value=offload):
                 return json.loads(asyncio.run(health_check(None)).text)
         finally:
-            state.server_ready, state.config = previous
+            state.server_ready, state.config, state.llm = previous
 
     def test_partial_offload_is_flagged_without_detail(self):
         payload = self._payload("llamacpp", {

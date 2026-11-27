@@ -34,6 +34,8 @@ const english = {
   '正在準備數位人，完成後會自動重新連線。': 'Preparing the avatar. The stage will reconnect automatically.',
   '麥克風無法使用，目前為純觀看': 'Microphone unavailable. You can still watch the avatar.',
   '數字人尚未就緒': 'Avatar not ready', '連線失敗': 'Connection failed',
+  '聲線訓練進行中，數位人暫停服務': 'Voice training in progress. The avatar is paused.',
+  '訓練結束後會自動連線，請稍候。': 'The stage will reconnect automatically when training ends.',
   '連線已取消': 'Connection cancelled', '請重試或開啟控制台檢查設定。': 'Retry or open the console to check the settings.',
   '開始錄影': 'Start recording', '停止錄影': 'Stop recording', '正在匯出…': 'Exporting…',
   '下載錄影': 'Download recording', '正在下載…': 'Downloading…',

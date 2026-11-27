@@ -125,7 +125,7 @@ CPU 執行緒數是全域伺服器設定，預設 4。
 ### 事前準備
 
 ```bash
-bash scripts/setup-matcha-train.sh
+bash services/tts/scripts/setup-matcha-train.sh
 ```
 
 腳本建立 `.local/matcha-train/`（Python 3.10；預設 torch 2.5.0+cu124，沒有 GPU 時用 `MATCHA_TRAIN_TORCH=cpu`），並從 ModelScope 下載約 75 MB 的底模權重，核對 SHA-256 後放進 `.local/matcha-base/`。重複執行不會重裝，雜湊不符時會停下而不覆蓋。訓練還需要 `models/tts/matcha-icefall-zh-en/` 的詞典、tokens、聲碼器與規則 FST（見上方目錄結構）。

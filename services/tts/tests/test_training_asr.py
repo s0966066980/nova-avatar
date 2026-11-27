@@ -18,7 +18,7 @@ import pytest
 from nova_tts.training import whisper_worker
 from nova_tts.training import asr
 from nova_tts.training.asr import SubprocessTranscriber, TranscriberCancelled, TranscriberError
-from tests.training_fakes import FakeProcess, FakeSpawner
+from training_fakes import FakeProcess, FakeSpawner
 
 
 def worker(replies: dict[str, str] | None = None, *, crash_after: int | None = None, noise: bool = False):

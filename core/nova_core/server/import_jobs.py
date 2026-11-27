@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """後臺製作數字人角色的任務佇列。"""
+# Avatar-service typos must fail type-checking here.
+# pyright: reportAttributeAccessIssue=error
 from __future__ import annotations
 
 import shutil
@@ -12,32 +14,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from nova_render.builder import (
-    BuildError,
-    ReplaceGuard,
-    build_character,
-    suggest_avatar_id,
-    uploads_dir,
-)
-from nova_render.catalog import IMPORTABLE_ENGINES, avatars_root, is_safe_avatar_id
+from nova_contracts.avatar import ReplaceGuard
+from nova_contracts.common import ServiceError
 from nova_core.server.runtime_settings import SettingsError
+from nova_core.server.state import state
+from nova_core.utils.avatar_ids import is_safe_avatar_id
 from nova_core.utils.logging import logger
-
-
-def live_musetalk_vae():
-    """The VAE of the running MuseTalk stage, lent to an import so it loads no second copy."""
-    try:
-        from nova_core.server.state import state
-
-        if (
-            state.config is not None
-            and getattr(state.config.model, "type", None) == "musetalk"
-            and state.model is not None
-        ):
-            return state.model[0]
-    except Exception:
-        pass
-    return None
 
 VIDEO_EXTS = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"}
 
@@ -95,7 +77,8 @@ def validate_import_request(
 ) -> Tuple[str, str]:
     """Check an import before its upload is written; return (engine, avatar_id)."""
     engine = (engine or "").strip().lower()
-    if engine not in IMPORTABLE_ENGINES:
+    avatars = state.avatar_service
+    if not avatars.can_import(engine):
         raise SettingsError("目前只有 MuseTalk 能從影片製作角色")
     if session_count > 0:
         raise SettingsError(
@@ -108,18 +91,17 @@ def validate_import_request(
 
     chosen_id = (avatar_id or "").strip()
     if not chosen_id:
-        chosen_id = suggest_avatar_id(engine, original_name)
+        chosen_id = avatars.suggest_avatar_id(engine, original_name)
     if not is_safe_avatar_id(chosen_id):
         raise SettingsError("角色名稱只能使用字母、數字、下劃線和短橫線")
-    destination = avatars_root() / chosen_id
-    if not overwrite and (destination.exists() or destination.is_symlink()):
+    if not overwrite and avatars.avatar_exists(chosen_id):
         raise SettingsError(f"角色 {chosen_id} 已存在，請換一個名稱", status=409)
     return engine, chosen_id
 
 
 def discard_upload(upload_dir: Path) -> None:
     """Remove one request's upload directory under data/imports."""
-    if upload_dir.parent == uploads_dir():
+    if upload_dir.parent == state.avatar_service.uploads_dir():
         shutil.rmtree(upload_dir, ignore_errors=True)
 
 
@@ -133,7 +115,7 @@ def start_import_job(
     session_count: int = 0,
     quality: Optional[Dict[str, Any]] = None,
     green_screen: bool = False,
-    replace_guard: ReplaceGuard = None,
+    replace_guard: Optional[ReplaceGuard] = None,
 ) -> ImportJob:
     engine, chosen_id = validate_import_request(
         engine=engine,
@@ -169,23 +151,32 @@ def _prune_finished_jobs() -> None:
         del _JOBS[job_id]
 
 
+def running_avatar_model() -> Optional[Tuple[str, Any]]:
+    """The engine type and model the stage is running, for a build to borrow."""
+    config, model = state.config, state.model
+    if config is None or model is None:
+        return None
+    return getattr(config.model, "type", ""), model
+
+
 def _run_job(
     job: ImportJob,
     video_path: Path,
     overwrite: bool,
     quality: Optional[Dict[str, Any]] = None,
     green_screen: bool = False,
-    replace_guard: ReplaceGuard = None,
+    replace_guard: Optional[ReplaceGuard] = None,
 ) -> None:
     def progress(percent: int, message: str) -> None:
         job.progress = max(0, min(100, int(percent)))
         job.message = message
         job.status = "running"
 
+    avatars = state.avatar_service
     job.status = "running"
     job.message = "開始製作"
     try:
-        build_character(
+        avatars.build_avatar(
             job.engine,
             video_path,
             job.avatar_id,
@@ -194,12 +185,12 @@ def _run_job(
             quality=quality,
             green_screen=green_screen,
             replace_guard=replace_guard,
-            vae_provider=live_musetalk_vae,
+            running_model=running_avatar_model,
         )
         job.status = "done"
         job.progress = 100
         job.message = "角色製作完成"
-    except BuildError as exc:
+    except ServiceError as exc:
         job.status = "failed"
         job.error = str(exc)
         job.message = str(exc)
@@ -215,7 +206,7 @@ def _run_job(
             if video_path.exists():
                 video_path.unlink()
             parent = video_path.parent
-            if parent.is_dir() and parent.parent == uploads_dir() and not any(parent.iterdir()):
+            if parent.is_dir() and parent.parent == avatars.uploads_dir() and not any(parent.iterdir()):
                 parent.rmdir()
         except OSError:
             pass

@@ -1,34 +1,20 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Who answers a turn: the core's side of the handoff decision.
+"""The core's side of a handoff decision: the role composition becomes the LLM layer's request.
 
-The decision itself belongs to the LLM layer (``nova_llm.handoff``). This module
-prepares its input from the role composition (ADR 0023) and turns its answer
-into the core's own types: the main avatar and the live members become plain
-member dicts, a routing failure becomes a ``ProfileError``, and fixed replies
-follow the conversation language.
+The LLM layer decides (``LlmService.route_handoff``); the composition, the
+site's default location and the conversation's confirmed place stay with the
+core and are sent on every request (ADR 0027).
 """
 from __future__ import annotations
 
-from nova_contracts.llm import HandoffRequest
-from openai import OpenAI
-
-from nova_llm.adapter import LlmAdapter
-from nova_llm.handoff import CLARIFY, WEATHER_FIELDS, RoutingClients, RoutingError, route_schema
+from nova_contracts.common import ServiceError
+from nova_contracts.llm import ChatMessage, HandoffRequest, LlmService, RoleCandidate
+from nova_llm.config_section import llm_settings
 from nova_core.profiles.composition import live_members, main_profile_id
 from nova_core.profiles.language import fixed_text
 from nova_core.profiles.validation import ProfileError
-
-__all__ = [
-    "CLARIFY",
-    "WEATHER_FIELDS",
-    "RoutingClients",
-    "candidates",
-    "route_question",
-    "route_schema",
-    "weather_member",
-]
 
 
 def candidates(library: dict) -> list[str]:
@@ -41,45 +27,39 @@ def weather_member(library: dict) -> dict | None:
     return next((m for m in live_members(library) if m["tools"]["weather"]["enabled"]), None)
 
 
-def _members(library: dict) -> list[dict]:
-    """The main avatar and live members as the LLM layer's plain member dicts."""
+def role_candidates(library: dict) -> list[RoleCandidate]:
+    """The main avatar and live members, each with its description and handoff rules."""
     profiles = {p["id"]: p for p in library["profiles"]}
-    composition = library["composition"]
+    main = library["composition"]["main"]
     holder = weather_member(library)
-    members = []
-    for entry in [composition["main"], *live_members(library)]:
+    result = []
+    for entry in [main, *live_members(library)]:
         site = entry["tools"]["weather"] if entry is holder else None
-        members.append({
-            "id": entry["profile_id"],
-            "name": profiles[entry["profile_id"]]["name"],
-            "main": entry is composition["main"],
-            "description": entry["description"],
-            "rules": entry["rules"],
-            "weather": None if site is None else {"county": site["county"], "town": site["town"]},
-        })
-    return members
+        result.append(RoleCandidate(
+            id=entry["profile_id"], name=profiles[entry["profile_id"]]["name"], main=entry is main,
+            description=entry["description"], rules=entry["rules"],
+            weather_site=None if site is None else {"county": site["county"], "town": site["town"]}))
+    return result
 
 
-def route_question(config, library, current_id, text, history, confirmed, *,
-                   clients=None, client_factory=OpenAI, explain=False):
+def route_question(config, library, current_id, text, history, confirmed, *, llm: LlmService,
+                   explain=False):
     """Who answers ``text``: ``target`` is a candidate's profile id, or None to clarify.
 
-    ``history`` is the current role's recent conversation. The weather fields
-    are always present and filled only for the live weather-tool holder.
-    ``explain`` (the console's handoff dry run) also returns a short ``reason``.
+    ``history`` is the current role's recent conversation and ``confirmed``
+    the place this conversation last confirmed; neither outlives it.
     """
-    service = LlmAdapter(config, clients=clients, client_factory=client_factory)
-    try:
-        decision = service.route(HandoffRequest(
-            members=_members(library), current_id=current_id, text=text,
-            history=list(history), confirmed=dict(confirmed), explain=explain,
-        ))
-    except RoutingError as exc:
-        raise ProfileError(str(exc)) from exc
-    # Fields the decision does not carry stay absent, as before the contract.
-    result = decision.model_dump(exclude_defaults=False)
-    if not explain:
-        result.pop("reason", None)
     locale = getattr(getattr(config, "conversation", None), "locale", "zh-TW")
+    try:
+        decision = llm.route_handoff(HandoffRequest(
+            settings=llm_settings(config), locale=locale, question=text,
+            candidates=tuple(role_candidates(library)), current_role=current_id,
+            history=tuple(ChatMessage(role=m["role"], content=m["content"]) for m in history),
+            confirmed=dict(confirmed), explain=explain))
+    except ServiceError as exc:
+        raise ProfileError(str(exc)) from exc
+    result = decision.model_dump()
+    if result["reason"] is None:
+        del result["reason"]
     result["clarification"] = fixed_text(result["clarification"], locale)
     return result

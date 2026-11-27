@@ -434,8 +434,8 @@ def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,aud
 
 class MuseTalkAvatar(BaseAvatar):
     @torch.no_grad()
-    def __init__(self, config, model, avatar, speech_factory):
-        super().__init__(config, speech_factory)
+    def __init__(self, config, model, avatar):
+        super().__init__(config)
         #self.opt = opt # shared with the trainer's opt to support in-place modification of rendering parameters.
         # self.W = opt.W
         # self.H = opt.H
@@ -529,7 +529,6 @@ class MuseTalkAvatar(BaseAvatar):
             self._asset_epoch += 1
             config.sessionid = self.sessionid
             self.config = config
-            self.tts.config = config
             self._green_screen = avatar_uses_green_screen(config.model.avatar_id)
             self._install_assets(avatar, config)
             self.idx = 0
@@ -591,7 +590,6 @@ class MuseTalkAvatar(BaseAvatar):
 
         self.audio_stream.quit_event = quit_event
         self.init_customindex()
-        self.tts.render(quit_event)
         
         #self.render_event.set() #start infer process render
         infer_quit_event = Event()
@@ -626,7 +624,7 @@ class MuseTalkAvatar(BaseAvatar):
                     and not self.audio_stream.first_speech_batch_pending()
                     else self.audio_stream.startup_batch_size * 2
                 )
-                tts_pending = self.tts.has_pending_work()
+                tts_pending = self.has_pending_audio()
                 queued_audio_frames = self.audio_stream.queue.qsize()
                 now = time.perf_counter()
                 if not tts_pending or queued_audio_frames >= required_audio_frames:

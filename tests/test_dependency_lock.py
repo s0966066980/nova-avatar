@@ -17,6 +17,17 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "uv.lock"
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 UV = shutil.which("uv")
+# Every pyproject.toml uv reads to lock the root project and its path dependencies.
+MANIFESTS = (
+    "pyproject.toml",
+    "contracts/pyproject.toml",
+    "core/pyproject.toml",
+    "avatar/pyproject.toml",
+    "avatar/nova_render/musetalk/pyproject.toml",
+    "services/stt/pyproject.toml",
+    "services/llm/pyproject.toml",
+    "services/tts/pyproject.toml",
+)
 
 
 def _steps(job: str) -> list[dict]:
@@ -63,7 +74,10 @@ class DependencyLockTests(unittest.TestCase):
 class DependencyLayoutTests(unittest.TestCase):
     def test_musetalk_is_a_reproducible_root_extra(self):
         project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-        self.assertRegex(project, r'(?m)^musetalk\s*=\s*\[\s*"nova-avatar-musetalk",?\s*\]')
+        layer = (ROOT / "avatar/pyproject.toml").read_text(encoding="utf-8")
+        # The root extra forwards to the avatar layer, which owns the MuseTalk package.
+        self.assertRegex(project, r'(?m)^musetalk\s*=\s*\[\s*"nova-render\[musetalk\]",?\s*\]')
+        self.assertRegex(layer, r'(?m)^musetalk\s*=\s*\[\s*"nova-avatar-musetalk",?\s*\]')
         self.assertRegex(
             project,
             r'(?m)^nova-avatar-musetalk\s*=\s*\{\s*path\s*=\s*"avatar/nova_render/musetalk",\s*editable\s*=\s*true\s*\}',
@@ -84,17 +98,8 @@ class DependencyLayoutTests(unittest.TestCase):
 
 class LockCheckTests(unittest.TestCase):
     def _project_copy(self, tmp: Path) -> Path:
-        """Copy only the lock inputs: every project manifest and the lock."""
-        for manifest in (
-            "pyproject.toml",
-            "avatar/nova_render/musetalk/pyproject.toml",
-            "contracts/pyproject.toml",
-            "core/pyproject.toml",
-            "avatar/pyproject.toml",
-            "services/stt/pyproject.toml",
-            "services/llm/pyproject.toml",
-            "services/tts/pyproject.toml",
-        ):
+        """Copy only the lock inputs: the project manifests and the lock."""
+        for manifest in MANIFESTS:
             target = tmp / manifest
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / manifest, target)
@@ -106,7 +111,7 @@ class LockCheckTests(unittest.TestCase):
             project = self._project_copy(Path(tmp))
             control = _lock_check(project)
             self.assertEqual(control.returncode, 0, control.stderr)
-            pyproject = project / "pyproject.toml"
+            pyproject = project / "core/pyproject.toml"
             text = pyproject.read_text(encoding="utf-8")
             self.assertIn('    "PyYAML",\n', text)
             pyproject.write_text(text.replace('    "PyYAML",\n', "", 1), encoding="utf-8")

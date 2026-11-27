@@ -9,7 +9,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from nova_core.profiles.media import RolePresentation, TransitionMedia, WIDTH, HEIGHT
+from nova_core.profiles.media import TransitionMedia
+from nova_render.scene.role_presentation import HEIGHT, WIDTH, RolePresentation
 from nova_core.profiles.store import ProfileError
 from nova_render.scene.service import scene_service
 

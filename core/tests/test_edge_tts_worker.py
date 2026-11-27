@@ -13,8 +13,11 @@ from urllib.parse import parse_qs, urlsplit
 
 import numpy as np
 
+from nova_contracts.tts import TtsEngineSettings
+from nova_core.config.schema import TTSConfig
 from nova_core.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
-from tests.edge_fakes import (
+from nova_tts.adapter import InProcessTtsService
+from edge_fakes import (
     _handshake_error,
     _mp3_fixture,  # noqa: F401
 )
@@ -24,11 +27,12 @@ class EdgeTTSStartupTests(unittest.TestCase):
     @staticmethod
     def _config(engine: str = "edgetts"):
         return SimpleNamespace(
-            tts=SimpleNamespace(
-                type=engine,
-                ref_file="zh-TW-YunJheNeural",
-            )
+            tts=TTSConfig(type=engine, ref_file="zh-TW-YunJheNeural", edge_connection_reuse=False)
         )
+
+    @staticmethod
+    def _tts():
+        return InProcessTtsService(TtsEngineSettings())
 
     def test_edge_prewarm_finishes_before_readiness(self):
         called = Event()
@@ -37,16 +41,17 @@ class EdgeTTSStartupTests(unittest.TestCase):
             "nova_tts.engines.edge.prewarm_edge_tts",
             side_effect=lambda voice, **_kwargs: called.set() or True,
         ) as prewarm:
-            worker = _start_edge_tts_prewarm(self._config())
+            worker = _start_edge_tts_prewarm(self._config(), self._tts())
             self.assertTrue(_await_edge_tts_prewarm(worker))
 
         self.assertTrue(called.is_set())
-        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True, keep_connection=False)
+        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True, keep_connection=False,
+                                        timeout_seconds=15.0)
         self.assertFalse(worker.is_alive())
 
     def test_non_edge_engine_does_not_start_edge_prewarm(self):
         with patch("nova_tts.engines.edge.prewarm_edge_tts") as prewarm:
-            worker = _start_edge_tts_prewarm(self._config("breezyvoice"))
+            worker = _start_edge_tts_prewarm(self._config("breezyvoice"), self._tts())
             _await_edge_tts_prewarm(worker)
 
         self.assertIsNone(worker)
@@ -56,14 +61,14 @@ class EdgeTTSStartupTests(unittest.TestCase):
         with patch("nova_tts.engines.edge.prewarm_edge_tts", side_effect=[False, True]) as prewarm, patch(
             "nova_core.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
         ):
-            self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config())))
+            self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config(), self._tts())))
         self.assertEqual(prewarm.call_count, 2)
 
     def test_startup_prewarm_stops_after_three_failures(self):
         with patch("nova_tts.engines.edge.prewarm_edge_tts", return_value=False) as prewarm, patch(
             "nova_core.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
         ):
-            self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config())))
+            self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config(), self._tts())))
         self.assertEqual(prewarm.call_count, 3)
 
 
@@ -247,7 +252,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
     def test_rate_limit_does_not_exceed_the_shared_retry_budget(self):
         from aiohttp import WSServerHandshakeError
 
-        from nova_tts.fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from nova_tts.retry import RetryBudget
         from nova_core.server.reply_streaming.turn import TurnContext
 
@@ -1188,7 +1193,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         self.assertEqual(tts.retry_after_playback_commit_count, 0)
 
     def test_timeout_after_playback_commit_does_not_retry(self):
-        from nova_tts.fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from nova_core.server.reply_streaming.turn import TurnContext
 
         calls = []
@@ -1231,7 +1236,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         self.assertEqual(tts.retry_after_playback_commit_count, 1)
 
     def test_turn_aware_frames_are_fenced_and_keep_20ms_media_sequences(self):
-        from nova_tts.fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from nova_core.server.reply_streaming.turn import TurnContext
 
         class Parent:
@@ -1281,7 +1286,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         )
 
     def test_fragment_retry_uses_the_shared_one_second_budget(self):
-        from nova_tts.fragment import PlayableFragment
+        from nova_contracts.tts import PlayableFragment
         from nova_tts.retry import RetryBudget
         from nova_core.server.reply_streaming.turn import TurnContext
         from nova_tts.engines.edge import EDGE_INITIAL_STREAM_TIMEOUT_SECONDS

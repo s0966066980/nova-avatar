@@ -28,7 +28,7 @@ MODELS_ROOT = get_project_root() / "models"
 # Every listed file must exist: BreezyVoice ships the CosyVoice v1 YAML plus
 # its reading tables; a plain CosyVoice folder is not served.
 MODEL_MARKERS = ("cosyvoice.yaml", "word_utils.py")
-# Where scripts/breezyvoice_weights.py puts the weights, relative to models/.
+# Where services/tts/scripts/breezyvoice_weights.py puts the weights, relative to models/.
 DEFAULT_BREEZYVOICE_MODEL_ID = "BreezyVoice"
 PROMPT_SAMPLE_RATE = 24000
 PROMPT_MAX_SECONDS = 8.0
@@ -105,7 +105,7 @@ def resolve_model_dir(model: str = "") -> Path:
         return default
     raise FileNotFoundError(
         f"找不到 BreezyVoice 模型：{default}。"
-        "請執行 uv run --no-sync python scripts/breezyvoice_weights.py 下載權重"
+        "請執行 uv run --no-sync python services/tts/scripts/breezyvoice_weights.py 下載權重"
     )
 
 
@@ -361,7 +361,7 @@ def _ensure_server(*, model_dir: str, host: str, port: int, timeout_seconds: flo
     _stop_listener(port)
 
     python = resolve_python()
-    script = get_project_root() / "scripts" / "cosyvoice_fastapi_server.py"
+    script = get_project_root() / "services" / "tts" / "scripts" / "cosyvoice_fastapi_server.py"
     if not script.is_file():
         raise FileNotFoundError(f"找不到 CosyVoice 啟動腳本: {script}")
 

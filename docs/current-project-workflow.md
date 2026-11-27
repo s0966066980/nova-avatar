@@ -63,9 +63,13 @@ loading models. To reproduce the Python job in a separate environment:
 export UV_PROJECT_ENVIRONMENT=/tmp/nova-avatar-ci-venv
 uv venv --python 3.11 "$UV_PROJECT_ENVIRONMENT"
 uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" \
-  --no-sources --torch-backend cpu --group dev --group ci -e '.[vad]'
+  --no-sources --torch-backend cpu --group dev --group ci \
+  -e ./contracts -e './core[vad]' -e ./services/stt -e ./services/llm \
+  -e ./services/tts -e ./avatar -e .
 uv run --no-sync ruff check .
 uv run --no-sync pyright
+uv run --no-sync lint-imports
+uv run --no-sync python scripts/generate_openapi.py --check
 uv run --no-sync python scripts/check-integration.py
 uv run --no-sync pytest
 ```

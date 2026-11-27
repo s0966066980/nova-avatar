@@ -10,10 +10,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from nova_llm.web_search import service
-from nova_llm.web_search.settings import settings
-from tests.session_fakes import FakeAvatar, FakeSegmenter
+from nova_core.profiles.knowledge_scope import web_access as settings
+from nova_core.server import web_evidence
+from llm_fakes import FakeLlm
+from session_fakes import FakeAvatar, FakeSegmenter
 from nova_core.config.schema import Config
 from nova_core.server.voice_session import VoiceTurnSession
+from speech_fakes import spoken_answer
 
 
 @pytest.fixture(autouse=True)
@@ -117,16 +120,16 @@ def test_shared_deadline_retains_snippets_and_cancels_page_work():
 
 
 def test_cache_ttl_role_policy_and_reset_isolation():
-    c = service.EvidenceCache()
+    c = web_evidence.EvidenceCache()
     policy = settings({'enabled': True})
-    with patch.object(service.time, 'monotonic', return_value=10):
+    with patch.object(web_evidence.time, 'monotonic', return_value=10):
         c.put('role1', policy, {'query': '台北活動', 'sources': [hit()]})
-    with patch.object(service.time, 'monotonic', return_value=309):
+    with patch.object(web_evidence.time, 'monotonic', return_value=309):
         assert c.previous('role1', policy)
         assert c.previous('role2', policy) is None
-        assert service.EvidenceCache().previous('role1', policy) is None
+        assert web_evidence.EvidenceCache().previous('role1', policy) is None
         assert c.previous('role1', {**policy, 'allowed_domains': ['gov.tw']}) is None
-    with patch.object(service.time, 'monotonic', return_value=310):
+    with patch.object(web_evidence.time, 'monotonic', return_value=310):
         assert c.previous('role1', policy) is None
     c.clear()
     assert not c.entries
@@ -138,7 +141,7 @@ def session():
     config.conversation_snapshot = True
     config.profile_rag = {'enabled': False, 'dataset_ids': []}
     avatar, events = FakeAvatar(), []
-    voice = VoiceTurnSession(7, config, avatar)
+    voice = VoiceTurnSession(7, config, avatar, llm=FakeLlm('活動資料'))
     voice._segmenter = FakeSegmenter()
     voice.attach_event_sink(lambda raw: events.append(json.loads(raw)))
     voice.config.profile_web_search = settings({'enabled': True})
@@ -157,22 +160,22 @@ def test_real_turn_uses_raw_question_not_attachment_or_rag_and_cancels_stale_res
         try:
             planner = AsyncMock(return_value={'search': True, 'query': '台北活動', 'reuse': False})
             with patch('nova_llm.web_search.planner.plan', planner), patch('nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch.object(
-                    voice, '_answer_inputs', AsyncMock(return_value=AnswerInputs('PRIVATE ATTACHMENT', {'status': 'matched', 'sources': []}))), patch(
-                    'nova_core.server.voice_session.llm_response', return_value='活動資料') as llm:
+                    voice, '_answer_inputs', AsyncMock(return_value=AnswerInputs('PRIVATE ATTACHMENT', {'status': 'matched', 'sources': []}))):
                 await voice.start_text_turn('台北有什麼活動')
                 await voice._turn_task
                 assert planner.call_args.args[1] == '台北有什麼活動'
                 assert planner.call_args.args[2] == []
                 assert 'PRIVATE ATTACHMENT' not in str(planner.call_args)
-                assert '全文' in llm.call_args.args[0].request_instructions
-                assert '全文' not in llm.call_args.kwargs.get('rag_context', '')
+                request = voice._llm.request
+                assert request.web.result.sources[0].text == '全文'
+                assert not request.retrieval and '全文' not in request.role_context
                 assert all('text' not in s for e in events if e['type'] == 'web_search_result' for s in e['sources'])
             gate, started = asyncio.Event(), asyncio.Event()
             async def pending(*args):
                 started.set()
                 await gate.wait()
                 return deepcopy(RESULT)
-            with patch('nova_llm.web_search.planner.plan', planner), patch('nova_llm.web_search.service.search', pending), patch('nova_core.server.voice_session.llm_response') as llm:
+            with patch('nova_llm.web_search.planner.plan', planner), patch('nova_llm.web_search.service.search', pending):
                 await voice.start_text_turn('重新查台北最新活動', interrupt=True)
                 await started.wait()
                 before = len([e for e in events if e['type'] == 'web_search_result'])
@@ -180,7 +183,43 @@ def test_real_turn_uses_raw_question_not_attachment_or_rag_and_cancels_stale_res
                 gate.set()
                 await asyncio.sleep(.01)
                 assert len([e for e in events if e['type'] == 'web_search_result']) == before
-                llm.assert_not_called()
+                assert voice._llm.calls == 1  # only the first turn was answered
+        finally:
+            await voice.close()
+    asyncio.run(run())
+
+
+def test_legacy_web_turn_bounds_speech_at_fragments_without_playing_it():
+    async def run():
+        from nova_contracts.llm import (AssistantProfile, FragmentReviewContext, ModelChunk, ReplyDone,
+                                        ReplyStarted, SpeechEnd, SpokenDelta)
+        from nova_core.server.voice_session import AnswerInputs
+
+        def answer(request):
+            # The service tells the core to bound web speech at 12 spoken characters.
+            yield ReplyStarted(turn_id=request.turn_id, bounded=True, review=FragmentReviewContext(
+                profile=AssistantProfile(), web_max_chars=12))
+            yield ModelChunk(llm_sequence=0)
+            yield SpokenDelta(text='台北有市集。台北', llm_sequence=0)
+            yield ModelChunk(llm_sequence=1)
+            yield SpokenDelta(text='有展覽。', llm_sequence=1)
+            yield SpokenDelta(text='這句超出口語預算。', llm_sequence=1)
+            yield SpeechEnd()
+            yield ReplyDone(spoken='', visible='')
+
+        voice, avatar, events = session()
+        voice._llm.script = answer
+        try:
+            with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '台北活動', 'reuse': False})), patch(
+                    'nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch.object(
+                    voice, '_answer_inputs', AsyncMock(return_value=AnswerInputs('台北有什麼活動', None))):
+                await voice.start_text_turn('台北有什麼活動')
+                await voice._turn_task
+            assert voice._pipeline_mode == 'legacy'
+            # The core still cuts the web answer so the service can bound it: the
+            # over-budget fragment is dropped and only the whole answer is played.
+            assert [text for text, _ in avatar.messages] == ['臺北有市集。臺北有展覽。']
+            assert [e['text'] for e in events if e['type'] == 'assistant_response'] == ['臺北有市集。臺北有展覽。']
         finally:
             await voice.close()
     asyncio.run(run())
@@ -280,11 +319,10 @@ def test_search_failure_never_asks_answer_model_to_invent_current_information():
         voice, _, events = session()
         try:
             with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '台北最新活動', 'reuse': False})), patch(
-                    'nova_llm.web_search.service.search', AsyncMock(return_value={'status': 'unavailable', 'sources': [], 'query': '台北最新活動'})), patch(
-                    'nova_core.server.voice_session.llm_response') as llm:
+                    'nova_llm.web_search.service.search', AsyncMock(return_value={'status': 'unavailable', 'sources': [], 'query': '台北最新活動'})):
                 await voice.start_text_turn('台北最新活動')
                 await voice._turn_task
-                llm.assert_not_called()
+                assert voice._llm.calls == 0
                 assert any(e['type'] == 'assistant_response' and '尚未查證' in e['text'] for e in events)
         finally:
             await voice.close()
@@ -445,8 +483,8 @@ def test_web_answer_stops_repetition_before_preview_playback_or_return(stream_to
                              notify_llm_chunk=lambda text, data: preview.append(text))
     question = RequestQuestion(question, '整理來源')
     question.web_evidence = True
-    answer = RepeatingModel(Config()).generate_response(question, avatar,
-        stream_to_avatar=stream_to_avatar, datainfo={'turn_id': 'web-repeat', 'generation': 1})
+    answer = spoken_answer(RepeatingModel(Config()), question, avatar,
+        stream=stream_to_avatar, datainfo={'turn_id': 'web-repeat', 'generation': 1})
     assert answer == ''.join(sentences)
     assert ''.join(fragments) == (answer if stream_to_avatar else '')
     assert ''.join(preview) == (answer if stream_to_avatar else '')
@@ -470,7 +508,7 @@ def test_web_speech_budget_keeps_complete_dates_and_closes_degenerate_generator(
     question = RequestQuestion('生日？', '只答生日')
     question.web_evidence = True
     avatar = SimpleNamespace(put_msg_txt=lambda text, data: spoken.append(text), notify_llm_chunk=lambda *args: None)
-    result = model.generate_response(question, avatar, datainfo={'turn_id': 'budget', 'generation': 1})
+    result = spoken_answer(model, question, avatar, datainfo={'turn_id': 'budget', 'generation': 1})
     assert result == '公開出生日期是一九七九年一月十八日。'
     assert spoken == [result]
     assert len(consumed) == 2
@@ -503,11 +541,10 @@ def test_single_fact_uses_validated_quote_without_a_second_model_elaboration(que
         try:
             with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': question, 'reuse': False})), patch(
                     'nova_llm.web_search.service.search', AsyncMock(return_value=result)), patch(
-                    'nova_llm.web_search.synthesis.summarize', AsyncMock(return_value={'mode': 'extractive', 'items': [{'source_id': '1', 'quote': quote}]})), patch(
-                    'nova_core.server.voice_session.llm_response') as main_answer:
+                    'nova_llm.web_search.synthesis.summarize', AsyncMock(return_value={'mode': 'extractive', 'items': [{'source_id': '1', 'quote': quote}]})):
                 await voice.start_text_turn(question)
                 await voice._turn_task
-                main_answer.assert_not_called()
+                assert voice._llm.calls == 0
                 assert [e['text'] for e in events if e['type'] == 'assistant_response'] == [quote]
         finally:
             await voice.close()
@@ -520,11 +557,10 @@ def test_failed_organization_does_not_fall_back_to_reading_raw_search_pages():
         try:
             with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '公開資料', 'reuse': False})), patch(
                     'nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch(
-                    'nova_llm.web_search.synthesis.summarize', AsyncMock(side_effect=ValueError())), patch(
-                    'nova_core.server.voice_session.llm_response') as main_answer:
+                    'nova_llm.web_search.synthesis.summarize', AsyncMock(side_effect=ValueError())):
                 await voice.start_text_turn('公開資料')
                 await voice._turn_task
-                main_answer.assert_not_called()
+                assert voice._llm.calls == 0
                 assert any('未能整理' in e.get('text', '') for e in events)
         finally:
             await voice.close()
@@ -569,14 +605,14 @@ def test_interrupt_while_organizing_never_speaks_or_commits_stale_quotes():
         try:
             with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '公開資料', 'reuse': False})), patch(
                     'nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch(
-                    'nova_llm.web_search.synthesis.summarize', delayed), patch('nova_core.server.voice_session.llm_response') as main_answer:
+                    'nova_llm.web_search.synthesis.summarize', delayed):
                 await voice.start_text_turn('公開資料')
                 await asyncio.wait_for(started.wait(), 1)
                 assert any(e.get('state') == 'summarizing' for e in events)
                 await voice.interrupt()
                 release.set()
                 await asyncio.sleep(.01)
-                main_answer.assert_not_called()
+                assert voice._llm.calls == 0
                 assert not avatar.messages
                 assert not any(e['type'] in ('assistant_response', 'assistant_response_delta') for e in events)
         finally:

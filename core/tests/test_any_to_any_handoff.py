@@ -8,8 +8,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from nova_llm import service
-from tests.role_fakes import async_test, connect, field, route_to, wait_until  # noqa: F401
+from role_fakes import (answers, async_test, connect, field, route_to, session_history,  # noqa: F401
+                              wait_until)
 
 SERVICE_ANNOUNCEMENT = '接下來請客服小幫手為您說明。'
 SERVICE_ANNOUNCEMENT_EN = 'Our service assistant will help you next.'
@@ -65,26 +65,25 @@ async def test_any_member_hands_off_directly_with_the_target_announcement(
     voice._conversation['locale'] = locale
     roles = use_role(voice, source)
     roles.edge = lambda *_: dict(kind='effect', effect='fade', duration=.001)
-    llm = Mock(return_value='目的角色的回答')
-    monkeypatch.setattr('nova_core.server.voice_session.llm_response', llm)
+    llm = answers(field, '目的角色的回答')
     try:
         await voice.start_text_turn('換個主題的問題')
         await voice._turn_task
         assert roles.phase == 'announcement'
         assert voice.avatar.messages[-1][0] == expected[locale == 'en-US']
-        source_calls = llm.call_count
+        source_calls = llm.calls
         _, audio = voice.avatar.messages[-1]
         voice.on_output_audio_frame({**audio, 'fragment_end': True}, True)
         voice.on_output_audio(True)
         for _ in range(3):
             voice.on_output_audio(False)
-        await wait_until(lambda: roles.current_id == target and voice._turn_task is None and llm.call_count > source_calls)
+        await wait_until(lambda: roles.current_id == target and voice._turn_task is None and llm.calls > source_calls)
         assert voice.config.profile_id == target
-        assert llm.call_args.args[0] == '換個主題的問題'
-        assert '直接交接' in llm.call_args.kwargs['rag_context']
+        assert llm.requests[-1].question.text == '換個主題的問題'
+        assert '直接交接' in llm.requests[-1].role_context
         # Each role keeps its own conversation memory.
-        assert service.session_history(7, source)[-1]['content'] == expected[locale == 'en-US']
-        assert not any(m['content'] == expected[locale == 'en-US'] for m in service.session_history(7, target))
+        assert session_history(field, 7, source)[-1]['content'] == expected[locale == 'en-US']
+        assert not any(m['content'] == expected[locale == 'en-US'] for m in session_history(field, 7, target))
         started = [e for e in events if e['type'] == 'role_transition_started']
         assert [(e['source_profile_id'], e['target_profile_id']) for e in started] == [(source, target)]
         field.router.assert_called_once()

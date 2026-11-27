@@ -94,4 +94,3 @@ results/
 
 # Saved resource changes awaiting all peers to disconnect.
 config/pending_settings.json
-.import_linter_cache/

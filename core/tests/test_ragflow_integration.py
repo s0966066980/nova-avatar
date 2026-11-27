@@ -12,15 +12,15 @@ import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from aiohttp import web
 
-from scripts.ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
+from ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
 from nova_core.config.schema import Config
 from nova_llm.base import BaseLLM
 from nova_llm.ragflow import client as ragflow_client
-from nova_llm.ragflow import settings
+from nova_core.profiles import knowledge_scope as settings
 from nova_llm.ragflow.client import (
     RagFlowClient,
     RagFlowConnection,
@@ -31,6 +31,8 @@ from nova_llm.ragflow.client import (
 from nova_core.server.routes.ragflow import get_ragflow_settings
 from nova_core.server.state import state
 from nova_core.server.voice_session import VoiceTurnSession
+from llm_fakes import FakeLlm, answering, reply_events
+from session_fakes import FakeAvatar
 
 DATASET_A = "a" * 32
 DATASET_B = "b" * 32
@@ -100,8 +102,8 @@ class RagFlowPromptTests(unittest.TestCase):
 
         llm = FakeLLM(Config())
         context = retrieval_prompt([{"document_name": "手冊", "content": "只限本輪的資料"}])
-        llm.generate_response("問題", stream_to_avatar=False, rag_context=context)
-        spoken = llm.generate_response("另一個問題", stream_to_avatar=False)
+        llm.generate_response("問題", rag_context=context)
+        spoken = llm.generate_response("另一個問題")
         self.assertIn("只限本輪的資料", llm.prompts[0])
         self.assertNotIn("只限本輪的資料", llm.prompts[1])
         self.assertNotIn("只限本輪的資料", " ".join(llm.committed))
@@ -161,13 +163,14 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
     async def test_server_shutdown_releases_pooled_connections(self):
         import nova_core.server.server as server
         await self.client.retrieve("問題", [DATASET_A])
+        llm = FakeLlm()
+        llm.stop_local_server = Mock()
         with patch.object(server.state, "roles", None), patch.object(server.state, "pcs", set()), \
-                patch.object(server.state, "voice_sessions", {}), \
-                patch.object(server, "shutdown_llama_server"), \
-                patch.object(server, "shutdown_cosyvoice_server"), \
-                patch.object(server.scene_service, "close"), \
-                patch("nova_tts.engines.edge.shutdown_edge_tts"):
+                patch.object(server.state, "voice_sessions", {}), patch.object(server.state, "llm", llm), \
+                patch.object(server.state, "tts_runtime", None), \
+                patch.object(server.state, "avatar_service", Mock()):
             await server.on_shutdown(None)
+        llm.stop_local_server.assert_called_once_with()
         await self.client.retrieve("問題", [DATASET_A])
         self.assertNotEqual(self.client_ports[0], self.client_ports[1])
 
@@ -234,34 +237,20 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
                 await self.client.retrieve("問題", [DATASET_A])
 
 
-class _Avatar:
-    def __init__(self):
-        self.messages = []
-
-    def put_msg_txt(self, text, data=None):
-        self.messages.append((text, data))
-
-    def flush_talk(self):
-        pass
-
-    def configure_media_fence(self, **_kwargs):
-        pass
-
-
 class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.path_patch = patch.object(settings, "SETTINGS_FILE", Path(self.directory.name) / "ragflow.yaml")
         self.path_patch.start()
         settings.save_avatar_settings("alpha", enabled=True, dataset_ids=[DATASET_A])
-        self.avatar = _Avatar()
+        self.avatar = FakeAvatar()
         config = SimpleNamespace(
             model=SimpleNamespace(avatar_id="alpha"),
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
             vad=SimpleNamespace(),
             reply_streaming=SimpleNamespace(enabled=False),
         )
-        self.session = VoiceTurnSession(93, config, self.avatar)
+        self.session = VoiceTurnSession(93, config, self.avatar, llm=FakeLlm())
         self.session._segmenter = SimpleNamespace(reset=lambda: None, is_speaking=False)
         self.events = []
         self.session.attach_event_sink(lambda raw: self.events.append(json.loads(raw)))
@@ -272,12 +261,6 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
         self.directory.cleanup()
 
     async def _turn(self, result=None, failure=None):
-        calls = []
-
-        def fake_llm(_text, _avatar, **kwargs):
-            calls.append(kwargs)
-            return "一般回答"
-
         async def fake_retrieve(_client, question, dataset_ids):
             self.assertEqual(question, "問題")
             self.assertEqual(dataset_ids, [DATASET_A])
@@ -285,25 +268,23 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
                 raise failure
             return result
 
-        with patch("nova_core.server.voice_session.llm_response", side_effect=fake_llm), patch(
-            "nova_core.server.voice_session.RagFlowClient.retrieve", fake_retrieve
+        with answering(self.session, "一般回答") as llm, patch(
+            "nova_llm.adapter.RagFlowClient.retrieve", fake_retrieve
         ):
             await self.session.start_text_turn("問題", interrupt=False)
             await self.session._turn_task
-        return calls[0]
+        return llm.request
 
     async def test_matched_context_is_only_this_turns_prompt(self):
-        call = await self._turn({"status": "matched", "sources": [{
+        request = await self._turn({"status": "matched", "sources": [{
             "document_name": "手冊", "content": "可查的事實", "document_id": "d", "dataset_id": DATASET_A,
         }]})
-        self.assertIn("可查的事實", call["rag_context"])
-        self.assertNotIn("spoken_prefix", call)
+        self.assertEqual([chunk.content for chunk in request.retrieval], ["可查的事實"])
         self.assertEqual([e["status"] for e in self.events if e["type"] == "rag_retrieval"], ["matched"])
 
     async def test_no_hit_keeps_retrieval_status_out_of_the_answer(self):
-        call = await self._turn({"status": "empty", "sources": []})
-        self.assertNotIn("spoken_prefix", call)
-        self.assertNotIn("rag_context", call)
+        request = await self._turn({"status": "empty", "sources": []})
+        self.assertEqual(request.retrieval, ())
         self.assertEqual(self.avatar.messages[0][0], "一般回答")
         self.assertEqual(
             [e["text"] for e in self.events if e["type"] == "assistant_response"],
@@ -315,35 +296,32 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_failure_continues_existing_answer(self):
-        call = await self._turn(failure=RagFlowError("off"))
-        self.assertNotIn("rag_context", call)
-        self.assertNotIn("spoken_prefix", call)
+        request = await self._turn(failure=RagFlowError("off"))
+        self.assertEqual(request.retrieval, ())
         self.assertEqual([e["status"] for e in self.events if e["type"] == "rag_retrieval"], ["unavailable"])
 
     async def test_interruption_during_retrieval_drops_old_result(self):
         started = asyncio.Event()
-        llm_calls = []
 
         async def delayed_retrieve(_client, _question, _dataset_ids):
             started.set()
             await asyncio.sleep(3600)
             return {"status": "matched", "sources": []}
 
-        with patch("nova_core.server.voice_session.RagFlowClient.retrieve", delayed_retrieve), patch(
-            "nova_core.server.voice_session.llm_response", side_effect=lambda *_args, **_kwargs: llm_calls.append(1)
-        ):
+        with answering(self.session, "") as llm, patch("nova_llm.adapter.RagFlowClient.retrieve", delayed_retrieve):
             old = await self.session.start_text_turn("問題", interrupt=False)
             await asyncio.wait_for(started.wait(), timeout=2)
             await self.session.interrupt()
             await asyncio.sleep(0)
-        self.assertFalse(llm_calls)
+        self.assertEqual(llm.calls, 0)
         self.assertFalse([e for e in self.events if e["type"] == "rag_retrieval" and e["turn_id"] == old["turn_id"]])
 
 
 class RagFlowRouteTests(unittest.IsolatedAsyncioTestCase):
     async def test_settings_response_does_not_include_api_key(self):
         request = SimpleNamespace(query={"avatar_id": "alpha"})
-        with patch.dict("os.environ", {"NOVA_RAGFLOW_API_KEY": "top-secret"}):
+        with patch.dict("os.environ", {"NOVA_RAGFLOW_API_KEY": "top-secret"}), patch.object(
+                state, "llm", FakeLlm()):
             response = await get_ragflow_settings(request)
         payload = json.loads(response.text)
         self.assertTrue(payload["data"]["configured"])
@@ -358,7 +336,8 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
         profile = {'id': 'main', 'avatar_id': 'shared_visual', 'rag': saved_selection}
         roles = SimpleNamespace(store=SimpleNamespace(load=lambda: {'profiles': [profile]}))
         retrieve = AsyncMock(return_value={'status': 'empty', 'sources': []})
-        with patch.object(state, 'roles', roles), patch.object(RagFlowClient, 'retrieve', retrieve):
+        with patch.object(state, 'roles', roles), patch.object(state, 'llm', FakeLlm()), patch.object(
+                RagFlowClient, 'retrieve', retrieve):
             request = SimpleNamespace(json=AsyncMock(return_value={'profile_id': 'main', 'question': '問題'}))
             response = await test_ragflow_retrieval(request)
             self.assertEqual(response.status, 200)
@@ -377,7 +356,7 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
             'profile_id': 'main', 'question': '問題', 'selection': {
                 'enabled': False, 'dataset_ids': [DATASET_A],
                 'document_scope': 'selected', 'document_ids': []}}))
-        with patch.object(RagFlowClient, 'retrieve', retrieve):
+        with patch.object(state, 'llm', FakeLlm()), patch.object(RagFlowClient, 'retrieve', retrieve):
             response = await test_ragflow_retrieval(request)
         self.assertEqual(response.status, 400)
         retrieve.assert_not_awaited()
@@ -387,19 +366,15 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
         config.profile_id = 'main'
         config.profile_rag = {'enabled': True, 'dataset_ids': [DATASET_A],
                               'document_scope': 'selected', 'document_ids': ['c' * 32]}
-        session = VoiceTurnSession(99, config, _Avatar())
+        session = VoiceTurnSession(99, config, FakeAvatar(), llm=FakeLlm())
         retrieve = AsyncMock(return_value={'status': 'matched', 'sources': [{
             'document_name': '角色專屬文本', 'content': '僅此角色的事實'}]})
-        calls = []
         try:
-            with patch.object(RagFlowClient, 'retrieve', retrieve), patch(
-                'nova_core.server.voice_session.llm_response',
-                side_effect=lambda _text, _avatar, **kwargs: calls.append(kwargs) or '回答'
-            ):
+            with patch.object(RagFlowClient, 'retrieve', retrieve), answering(session, '回答') as llm:
                 await session.start_text_turn('文件問題')
                 await session._turn_task
             retrieve.assert_awaited_once_with('文件問題', [DATASET_A], document_ids=['c' * 32])
-            self.assertIn('僅此角色的事實', calls[0]['rag_context'])
+            self.assertEqual([chunk.content for chunk in llm.request.retrieval], ['僅此角色的事實'])
         finally:
             await session.close()
 
@@ -424,7 +399,7 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
 
 
 def script(name):
-    path = Path(__file__).resolve().parents[2] / 'scripts' / name
+    path = Path(__file__).resolve().parents[2] / 'services/llm/scripts' / name
     spec = importlib.util.spec_from_file_location('pc_port_' + path.stem, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

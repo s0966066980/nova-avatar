@@ -257,7 +257,7 @@ install_avatar() {
         
         # 執行後處理指令碼
         echo -e "${YELLOW}📦 執行 MuseTalk 後處理指令碼...${NC}"
-        bash scripts/post_musetalk_install.sh
+        bash avatar/scripts/post_musetalk_install.sh
         
     # 其他 Avatar：標準安裝
     else
@@ -352,7 +352,7 @@ show_next_steps() {
     echo -e "${GREEN}   export DASHSCOPE_API_KEY=\"your_api_key_here\"${NC}"
     echo ""
     echo -e "${YELLOW}2. 啟動服務:${NC}"
-    echo -e "${GREEN}   bash scripts/download_musetalk_weights.sh  # MuseTalk 權重${NC}"
+    echo -e "${GREEN}   bash avatar/scripts/download_musetalk_weights.sh  # MuseTalk 權重${NC}"
     echo -e "${GREEN}   bash scripts/create_ssl_certs.sh${NC}"
     echo -e "${GREEN}   bash scripts/start-all.sh config/config.yaml${NC}"
     echo ""

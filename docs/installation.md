@@ -46,8 +46,8 @@ bash scripts/setup-env.sh musetalk
 ## 權重、角色與 HTTPS
 
 ```bash
-bash scripts/download_musetalk_weights.sh
-bash scripts/download_musetalk_weights.sh --check
+bash avatar/scripts/download_musetalk_weights.sh
+bash avatar/scripts/download_musetalk_weights.sh --check
 bash scripts/create_ssl_certs.sh
 ```
 
@@ -87,8 +87,8 @@ SSL 腳本保留既有完整憑證。偵測到 mkcert 時優先以本機 CA 簽�
 [對應先決條件](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/installing-tensorrt/prerequisites.html)。
 
 ```bash
-bash scripts/setup-tensorrt.sh
-uv run python scripts/verify-musetalk-tensorrt.py
+bash avatar/scripts/setup-tensorrt.sh
+uv run python avatar/scripts/verify-musetalk-tensorrt.py
 ```
 
 安裝器依序執行以下工作：
@@ -121,13 +121,13 @@ uv run python scripts/verify-musetalk-tensorrt.py
 重驗不重建：
 
 ```bash
-bash scripts/setup-tensorrt.sh --verify-only
-uv run python scripts/verify-musetalk-tensorrt.py
+bash avatar/scripts/setup-tensorrt.sh --verify-only
+uv run python avatar/scripts/verify-musetalk-tensorrt.py
 ```
 
 預設最大 batch 為 8；若部署設定 `model.batch_size` 更大，需用
-`bash scripts/setup-tensorrt.sh --batch-size 16` 等指令重建。其他選項見
-`uv run python scripts/build-musetalk-tensorrt.py --help`。
+`bash avatar/scripts/setup-tensorrt.sh --batch-size 16` 等指令重建。其他選項見
+`uv run python avatar/scripts/build-musetalk-tensorrt.py --help`。
 
 正常使用既有 `start-all.sh`／`start-backend.sh` 啟動，重啟後即套用路徑。
 模型載入的 `Using optional TensorRT` 只表示引擎載入成功；仍應跑上述
@@ -206,6 +206,11 @@ npm ci
 npm test
 npm run build
 ```
+
+核心與各處理層（`core/`、`services/*`、`avatar/`）是根專案的 path 依賴，`uv sync`
+會以 editable 方式一併安裝，程式不再有 `src` 套件；從舊版升級後第一次啟動前先執行
+一次 `uv sync --inexact`（`uv run` 預設也會同步）。各層的 setup 與權重腳本在
+`services/<層>/scripts/`、`avatar/scripts/`，見各層的 README。
 
 未使用 TensorRT 時略過其 extra。語音辨識只有 faster-whisper，不需另建服務 venv。
 `uv sync` 預設會移除未選依賴，OpenMMLab 等手動安裝套件應使用

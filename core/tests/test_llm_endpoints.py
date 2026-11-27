@@ -15,7 +15,9 @@ import yaml
 from nova_core.config.schema import Config
 from nova_core.profiles.store import ProfileError, ProfileStore, profile_config, validate_profile
 from nova_core.server.state import state
-from tests.access_helpers import access_client, same_origin
+from access_helpers import access_client, same_origin
+from nova_contracts.llm import LocalModel, LocalModels
+from llm_fakes import FakeLlm
 
 SERVER_KEY = "server-only-test-credential"
 REMOTE_KEY = "remote-endpoint-credential"
@@ -177,6 +179,7 @@ def greeting_route(no_rag, tmp_path, monkeypatch):
     config = _config()
     library = ProfileStore(tmp_path / "profiles.yaml").initialize(config)
     monkeypatch.setattr(state, "config", config)
+    monkeypatch.setattr(state, "llm", FakeLlm(), raising=False)
     async def close():
         return None
 
@@ -249,8 +252,10 @@ def test_model_catalog_lists_endpoints_without_keys(monkeypatch):
         return {"reachable": True, "models": [{"name": "qwen"}], "error": ""}
 
     monkeypatch.setattr(runtime_settings, "fetch_ollama_models", fake_ollama)
-    monkeypatch.setattr(runtime_settings, "list_gguf_models", lambda *_: [{"name": "local.gguf"}])
-    catalog = asyncio.run(runtime_settings.fetch_llm_catalog(config))
+    llm = FakeLlm()
+    llm.list_local_models = lambda _query: LocalModels(
+        models=(LocalModel(name="local.gguf", path="/models/local.gguf", size=1),))
+    catalog = asyncio.run(runtime_settings.fetch_llm_catalog(config, llm=llm))
     assert asked == ["http://ollama.lan:9000/v1"]
     endpoints = catalog["endpoints"]
     assert {e["name"]: e["provider"] for e in endpoints} == {"local": "llamacpp", "lan": "ollama"}
@@ -265,14 +270,14 @@ def test_global_switch_accepts_only_configured_endpoints(monkeypatch):
                       "lan": {"provider": "ollama", "base_url": "http://ollama.lan:9000/v1",
                               "api_key": REMOTE_KEY}})
     monkeypatch.setattr(runtime_settings, "persist_runtime_overrides", lambda _: None)
-    switched = []
-    monkeypatch.setattr(runtime_settings, "switch_llm_endpoint", lambda **kw: switched.append(kw))
+    llm = FakeLlm()
     with pytest.raises(SettingsError):
-        apply_llm_model(config, "qwen", "attacker")
-    result = apply_llm_model(config, "qwen", "lan")
+        apply_llm_model(config, "qwen", "attacker", llm=llm)
+    result = apply_llm_model(config, "qwen", "lan", llm=llm)
     assert (result["provider"], result["base_url"], result["endpoint"]) == (
         "ollama", "http://ollama.lan:9000/v1", "lan")
-    assert (switched[-1]["base_url"], switched[-1]["api_key"]) == ("http://ollama.lan:9000/v1", REMOTE_KEY)
+    assert (llm.engine_settings[-1].base_url, llm.engine_settings[-1].api_key) == (
+        "http://ollama.lan:9000/v1", REMOTE_KEY)
 
 
 def test_loaded_config_freezes_endpoints_and_persists_only_the_selection(tmp_path, monkeypatch):
@@ -317,16 +322,14 @@ def test_switching_away_from_ollama_drops_ollama_only_request_fields(monkeypatch
                       "remote": {"provider": "openai", "base_url": "https://llm.example/v1",
                                  "api_key": REMOTE_KEY}})
     monkeypatch.setattr(runtime_settings, "persist_runtime_overrides", lambda _: None)
-    monkeypatch.setattr(runtime_settings, "ensure_server", lambda *a, **k: None)
-    switched = []
-    monkeypatch.setattr(runtime_settings, "switch_llm_endpoint", lambda **kw: switched.append(kw))
-    apply_llm_model(config, "qwen", "ollama")
-    assert {"options", "keep_alive", "reasoning_effort", "think"} <= set(switched[-1]["extra_body"])
+    llm = FakeLlm()
+    apply_llm_model(config, "qwen", "ollama", llm=llm)
+    assert {"options", "keep_alive", "reasoning_effort", "think"} <= set(llm.engine_settings[-1].extra_body)
 
-    apply_llm_model(config, "gpt", target)
-    body = switched[-1]["extra_body"]
+    apply_llm_model(config, "gpt", target, llm=llm)
+    body = llm.engine_settings[-1].extra_body
     assert not {"options", "keep_alive", "reasoning_effort", "think"} & set(body)
     assert config.llm.extra_body == body
 
-    apply_llm_model(config, "qwen", "ollama")
-    assert switched[-1]["extra_body"]["keep_alive"] == -1
+    apply_llm_model(config, "qwen", "ollama", llm=llm)
+    assert llm.engine_settings[-1].extra_body["keep_alive"] == -1

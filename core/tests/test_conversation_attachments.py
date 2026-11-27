@@ -199,14 +199,15 @@ def test_field_question_preserves_exact_source_and_excludes_unrelated_codes(stor
 def test_cancel_before_acceptance_rejects_late_request_without_interrupting_old_turn():
     import asyncio
     from nova_core.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar, FakeASR, FakeSegmenter
+    from llm_fakes import FakeLlm, answering
+    from session_fakes import FakeAvatar, fake_stt, FakeSegmenter
 
     async def exercise():
-        session = VoiceTurnSession(7, Config(), FakeAvatar())
-        session._segmenter, session._asr = FakeSegmenter(), FakeASR()
+        session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
+        session._segmenter, session._stt = FakeSegmenter(), fake_stt()
         session.attach_event_sink(lambda raw: None)
         try:
-            with patch('nova_core.server.voice_session.llm_response', return_value='An existing answer'):
+            with answering(session, 'An existing answer'):
                 await session.start_text_turn('old question', request_id='old')
                 await session._turn_task
             old_turn = session._turn_id
@@ -224,11 +225,12 @@ def test_cancel_before_acceptance_rejects_late_request_without_interrupting_old_
 def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
     import asyncio
     from nova_core.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar, FakeASR, FakeSegmenter
+    from llm_fakes import FakeLlm, answering
+    from session_fakes import FakeAvatar, fake_stt, FakeSegmenter
 
     async def exercise():
-        session = VoiceTurnSession(7, Config(), FakeAvatar())
-        session._segmenter, session._asr = FakeSegmenter(), FakeASR()
+        session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
+        session._segmenter, session._stt = FakeSegmenter(), fake_stt()
         session.attach_event_sink(lambda raw: None)
         item = session.attachments.add_batch([('one.png', image_bytes())], session.attachments.generation)[0]
         validating, resume = asyncio.Event(), asyncio.Event()
@@ -244,7 +246,7 @@ def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
                     attachments=[{'id': item['id']}], request_id='old'))
                 await validating.wait()
                 await session.cancel_text_request('old')
-                with patch('nova_core.server.voice_session.llm_response', return_value='New answer'):
+                with answering(session, 'New answer'):
                     current = await session.start_text_turn('New question', attachments=[], request_id='new')
                     await session._turn_task
                 resume.set()
@@ -261,11 +263,12 @@ def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
 def test_pending_text_cancellation_and_replacement_do_not_overlap_interrupts():
     import asyncio
     from nova_core.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar, FakeASR, FakeSegmenter
+    from llm_fakes import FakeLlm, answering
+    from session_fakes import FakeAvatar, fake_stt, FakeSegmenter
 
     async def exercise():
-        session = VoiceTurnSession(7, Config(), FakeAvatar())
-        session._segmenter, session._asr = FakeSegmenter(), FakeASR()
+        session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
+        session._segmenter, session._stt = FakeSegmenter(), fake_stt()
         session.attach_event_sink(lambda raw: None)
         interrupting, release = asyncio.Event(), asyncio.Event()
         real_interrupt = session._interrupt_locked
@@ -278,7 +281,7 @@ def test_pending_text_cancellation_and_replacement_do_not_overlap_interrupts():
             await real_interrupt()
 
         try:
-            with patch('nova_core.server.voice_session.llm_response', return_value='Answer'):
+            with answering(session, 'Answer'):
                 await session.start_text_turn('Old question', request_id='old')
                 await session._turn_task
                 with patch.object(session, '_interrupt_locked', side_effect=delayed_interrupt):

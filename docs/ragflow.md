@@ -24,12 +24,12 @@ llama.cpp `llama-server --embedding`（使用者層級服務
 密碼；不要在聊天中傳送密碼。Ubuntu 24.04 可執行：
 
 ```bash
-bash scripts/ragflow.sh install-docker
-bash scripts/ragflow.sh prepare
-bash scripts/ragflow.sh validate
-bash scripts/ragflow.sh pull-model
-bash scripts/ragflow.sh up
-bash scripts/ragflow.sh status
+bash services/llm/scripts/ragflow.sh install-docker
+bash services/llm/scripts/ragflow.sh prepare
+bash services/llm/scripts/ragflow.sh validate
+bash services/llm/scripts/ragflow.sh pull-model
+bash services/llm/scripts/ragflow.sh up
+bash services/llm/scripts/ragflow.sh status
 ```
 
 若安裝後 `docker info` 顯示群組權限錯誤，請重新登入本機 shell，再從 `validate`
@@ -43,7 +43,7 @@ blob 的 sha256 後複製為唯讀的 `models/ragflow/bge-m3-f16.gguf` 並再次
 Compose 專案與 llama.cpp 嵌入服務；`down` 停止兩者，但不刪除資料卷或模型。
 首次拉取映像、模型及建立索引可能需要較長時間和磁碟空間。
 
-首次設定完成後，可用 `bash scripts/ragflow.sh down` 停止手動啟動的服務；
+首次設定完成後，可用 `bash services/llm/scripts/ragflow.sh down` 停止手動啟動的服務；
 日常執行 `bash scripts/start-all.sh config/config.yaml` 時會自動重新啟動。
 也可直接執行 `bash ./scripts/start-all.sh` 使用預設設定。已安裝的 Docker
 尚未運行時，腳本會先啟動本機 Docker 服務，必要時在同一終端要求 `sudo`
@@ -82,7 +82,7 @@ loopback；其他容器只在 Compose 網路上。嵌入程序只綁定 Docker �
 1. 在這台主機開啟 `http://127.0.0.1:8088`，建立 RAGFlow 管理帳號，
    立即更改初始密碼。初始管理密碼保存在忽略版控的
    `.local/ragflow/upstream/docker/.env` 中 `ADMIN_DEFAULT_PASSWORD` 欄位。
-2. 執行 `bash scripts/ragflow.sh connect`：建立或沿用 Nova 的 API 金鑰（無法
+2. 執行 `bash services/llm/scripts/ragflow.sh connect`：建立或沿用 Nova 的 API 金鑰（無法
    自動建立時改用第 3–4 步手動建立後重跑），並在 RAGFlow
    登記 `OpenAI-API-Compatible` 供應者的 `nova-llamacpp` 執行個體（服務位址
    `http://host.docker.internal:11437/v1`、嵌入模型 `bge-m3`、上限 2,048 token），
@@ -121,7 +121,7 @@ loopback；其他容器只在 Compose 網路上。嵌入程序只綁定 Docker �
 - 檢索片段是參考資料，不是系統指令；文件內容不得覆寫 Prompt 或回覆規則。
 - 各數位人的知識庫選擇是**功能路由，不是存取控制**。Nova 現有控制台與
   API 若對不可信網路開放，必須另行加入認證／授權，才可存放私密文件。
-- `bash scripts/ragflow.sh down` 不會刪除文件和資料卷。不要用
+- `bash services/llm/scripts/ragflow.sh down` 不會刪除文件和資料卷。不要用
   `docker compose down -v`，除非已確認要永久刪除知識庫資料。
 
 ## 驗證清單
@@ -149,9 +149,9 @@ RAGFlow 與 BGE-M3 是第三方元件，相關來源與授權界限見
 `11435`）提供嵌入，每次查詢約 0.5 s，並常駐約 1.6 GB 顯存。已有知識庫的主機：
 
 ```bash
-bash scripts/ragflow.sh pull-model        # 驗證並複製 GGUF（不必重新下載）
-bash scripts/ragflow.sh up                # 啟動 llama.cpp 嵌入服務
-bash scripts/ragflow.sh switch-embedding
+bash services/llm/scripts/ragflow.sh pull-model        # 驗證並複製 GGUF（不必重新下載）
+bash services/llm/scripts/ragflow.sh up                # 啟動 llama.cpp 嵌入服務
+bash services/llm/scripts/ragflow.sh switch-embedding
 ```
 
 `switch-embedding` 依序：
@@ -197,9 +197,9 @@ bash scripts/ragflow.sh switch-embedding
 管理者明確執行以下命令才啟用共用服務：
 
 ```bash
-bash scripts/ragflow.sh unify-models
+bash services/llm/scripts/ragflow.sh unify-models
 # 之後立即同步新下載的模型
-bash scripts/ragflow.sh sync-models
+bash services/llm/scripts/ragflow.sh sync-models
 ```
 
 只統一聊天模型：RAGFlow 的 Ollama 聊天模型改經

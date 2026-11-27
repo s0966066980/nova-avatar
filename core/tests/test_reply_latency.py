@@ -11,6 +11,8 @@ from nova_llm.base import BaseLLM, response_token_budget
 from nova_llm.router import ReplyMode
 from nova_llm.engines.openai import OpenAILLM
 from nova_llm.prewarm import prewarm_local_llm
+from llm_fakes import FakeLlm
+from speech_fakes import spoken_answer
 
 
 def test_local_prewarm_finishes_the_disposable_completion_before_readiness():
@@ -41,7 +43,7 @@ def test_disabled_prewarm_does_not_contact_edge():
     config = Config()
     config.app.prewarm = False
     with patch('nova_tts.engines.edge.prewarm_edge_tts') as warm:
-        assert _start_edge_tts_prewarm(config) is None
+        assert _start_edge_tts_prewarm(config, object()) is None
     warm.assert_not_called()
 
 
@@ -62,9 +64,11 @@ def test_health_exposes_incomplete_prewarm_without_disabling_runtime_recovery():
 
 
 def test_listening_preparation_warms_stt_inference_once_without_a_turn():
+    from nova_contracts.stt import SttEngineSettings
+    from nova_stt.adapter import InProcessSttService
     from nova_stt.base import BaseASR
     from nova_core.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar
+    from session_fakes import FakeAvatar
 
     inferences = []
 
@@ -77,13 +81,12 @@ def test_listening_preparation_warms_stt_inference_once_without_a_turn():
             return {'text': '', 'language': 'zh'}
 
     config = Config()
-    engine = Recognizer(config)
+    stt = InProcessSttService(
+        SttEngineSettings(engine='whisper', model_size='base', device='cpu'),
+        create_engine=lambda _settings: Recognizer())
     avatar = FakeAvatar()
-    session = VoiceTurnSession(7, config, avatar)
-    with (
-        patch('nova_core.server.voice_session.create_segmenter', return_value=MagicMock()),
-        patch('nova_core.server.voice_session.get_asr_engine', return_value=engine),
-    ):
+    session = VoiceTurnSession(7, config, avatar, stt=stt, llm=FakeLlm())
+    with patch('nova_core.server.voice_session.create_segmenter', return_value=MagicMock()):
         session._prepare_sync()
         session._prepare_sync()
     assert len(inferences) == 1, 'STT was loaded but first-utterance inference remained cold'
@@ -107,7 +110,7 @@ def test_failed_stt_warmup_can_retry_and_removes_temporary_audio():
                 raise RuntimeError('transient')
             return {'text': ''}
 
-    engine = Recognizer(Config())
+    engine = Recognizer()
     with pytest.raises(RuntimeError):
         engine.prewarm()
     assert not engine._prewarmed
@@ -267,8 +270,9 @@ def test_complete_speech_channel_is_playable_before_board_generation_finishes():
             assert spoken == ["規律運動有助維持健康"], "Complete speech waited for board JSON"
             yield '{"title":"運動","items":[{"title":"健康","content":"保持規律"}]}[[END]]'
 
-    llm = BoardLLM(config, parent=avatar)
-    llm.generate_response(
+    llm = BoardLLM(config)
+    spoken_answer(
+        llm,
         "運動有什麼好處", avatar, reply_mode=ReplyMode.AUTO,
         datainfo={"turn_id": "test-turn", "generation": 1},
     )
@@ -323,7 +327,7 @@ def test_prewarm_deadline_closes_stream_and_client_even_if_content_arrives():
 
 def test_edge_prewarm_requires_decoded_pcm_when_requested():
     from nova_tts.engines.edge import prewarm_edge_tts
-    from tests.edge_fakes import _mp3_fixture
+    from edge_fakes import _mp3_fixture
 
     for payload, expected in [(_mp3_fixture(), True), (b"not audio", False)]:
         class Communicate:

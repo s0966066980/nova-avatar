@@ -65,8 +65,8 @@ cleanup() {
     # 後端被強制終止時 atexit 不會執行；確認 CosyVoice 也已停止。
     nova_stop_model_servers || true
     if [ "$RAGFLOW_OWNED" -eq 1 ]; then
-        if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" down; then
-            echo -e "${RED}⚠ RAGFlow 未能自動停止，請執行 bash scripts/ragflow.sh status${NC}"
+        if ! bash "$PROJECT_ROOT/services/llm/scripts/ragflow.sh" down; then
+            echo -e "${RED}⚠ RAGFlow 未能自動停止，請執行 bash services/llm/scripts/ragflow.sh status${NC}"
         fi
     fi
     echo -e "${GREEN}✓ 所有服務已停止${NC}"
@@ -134,22 +134,22 @@ if [ "${NOVA_START_RAGFLOW:-auto}" != 0 ] && \
     echo -e "${BLUE}🔎 啟動 RAGFlow...${NC}"
     # RAGFlow 失敗不阻擋數字人：記錄警告後照常啟動，只是暫無知識庫檢索。
     # Docker 啟動時可能自動恢復既有容器，必須在這之後判定服務所有權。
-    if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" ensure-docker; then
+    if ! bash "$PROJECT_ROOT/services/llm/scripts/ragflow.sh" ensure-docker; then
         echo -e "${YELLOW}⚠ Docker 未就緒，略過 RAGFlow；數字人照常啟動（無知識庫檢索）${NC}"
     else
-        if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" is-running >/dev/null 2>&1; then
+        if ! bash "$PROJECT_ROOT/services/llm/scripts/ragflow.sh" is-running >/dev/null 2>&1; then
             RAGFLOW_OWNED=1
         fi
-        if bash "$PROJECT_ROOT/scripts/ragflow.sh" up; then
+        if bash "$PROJECT_ROOT/services/llm/scripts/ragflow.sh" up; then
             RAGFLOW_STARTED=1
             echo -e "${GREEN}✓${NC} RAGFlow 管理頁: http://127.0.0.1:8088"
         else
-            echo -e "${YELLOW}⚠ RAGFlow 未能就緒；數字人照常啟動（無知識庫檢索），請執行 bash scripts/ragflow.sh status 檢查${NC}"
+            echo -e "${YELLOW}⚠ RAGFlow 未能就緒；數字人照常啟動（無知識庫檢索），請執行 bash services/llm/scripts/ragflow.sh status 檢查${NC}"
             if [ "$RAGFLOW_OWNED" -eq 1 ]; then
                 # 收掉這次帶起的部分服務，不讓半啟動的容器占用資源。
                 RAGFLOW_OWNED=0
-                if ! bash "$PROJECT_ROOT/scripts/ragflow.sh" down; then
-                    echo -e "${RED}⚠ RAGFlow 未能自動停止，請執行 bash scripts/ragflow.sh status${NC}"
+                if ! bash "$PROJECT_ROOT/services/llm/scripts/ragflow.sh" down; then
+                    echo -e "${RED}⚠ RAGFlow 未能自動停止，請執行 bash services/llm/scripts/ragflow.sh status${NC}"
                 fi
             fi
         fi

@@ -17,14 +17,19 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from nova_stt import factory as asr_factory
+from nova_contracts.stt import SttEngineSettings, SttPrepareRequest, Transcription
+from nova_stt.adapter import InProcessSttService
 from nova_render import base as avatar_base
+from nova_render.adapter import create_avatar_service
 from nova_render.base import BaseAvatar
-from nova_core.config.schema import Config
+from nova_core.config.schema import Config, TTSConfig
 from nova_core.server.routes import audio as audio_routes
+from nova_core.server.speaking_avatar import SpeakingAvatar
 from nova_core.server.state import state
 from nova_core.vad import audio as vad_audio
-from tests.access_helpers import access_client
+from access_helpers import access_client
+from llm_fakes import FakeLlm
+from tts_fakes import in_process_tts
 
 SESSION = 271828
 BLOCK_SECONDS = 2.0
@@ -87,7 +92,8 @@ def server(monkeypatch):
     config = Config()
     config.vad.enabled = False
     for name, value in dict(config=config, config_path=None, roles=None, avatar_streams={},
-                            voice_sessions={}, session_roles={}).items():
+                            voice_sessions={}, session_roles={}, stt=None, tts=in_process_tts(),
+                            avatar_service=create_avatar_service()).items():
         monkeypatch.setattr(state, name, value, raising=False)
     return config
 
@@ -106,6 +112,13 @@ def bare_avatar(tmp_path: Path | None = None) -> BaseAvatar:
     return avatar
 
 
+def session_avatar(renderer: BaseAvatar) -> SpeakingAvatar:
+    """The core's session avatar around a renderer, with an idle TTS stub."""
+    renderer.config.tts = TTSConfig()
+    idle = SimpleNamespace(has_pending_work=lambda: False)
+    return SpeakingAvatar(renderer, speech=SimpleNamespace(open_channel=lambda _voice, _sink: idle))
+
+
 # --- /asr ------------------------------------------------------------------
 
 
@@ -122,7 +135,7 @@ def test_asr_checks_the_session_before_decoding(server, monkeypatch):
 
 def test_asr_rejects_long_audio_from_its_header_without_decoding_it(server, monkeypatch):
     state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
-    monkeypatch.setattr(asr_factory, "create_asr_engine", forbid)
+    monkeypatch.setattr(state, "stt", SimpleNamespace(transcribe=forbid))
     monkeypatch.setattr(sf, "read", forbid)
     monkeypatch.setattr(sf.SoundFile, "read", forbid)
     # Ten minutes of silence compresses to a few KB of FLAC.
@@ -157,30 +170,31 @@ def test_asr_reuses_the_session_recognizer(server, monkeypatch):
     created = []
 
     class Recognizer:
-        def __init__(self):
-            self.languages = []
+        def __init__(self, settings):
+            self.settings = settings
 
-        def set_language(self, language):
-            self.languages.append(language)
+        def ensure_ready(self):
+            pass
+
+        def prewarm(self):
+            pass
 
         def transcribe(self, _audio, *, language=None):
             return {"text": f"hello ({language})"}
 
-    def create(**kwargs):
-        created.append(kwargs)
-        return Recognizer()
+    def create(settings):
+        created.append(settings)
+        return Recognizer(settings)
 
-    monkeypatch.setattr(asr_factory, "create_asr_engine", create)
-    monkeypatch.setattr(asr_factory, "_asr_instance", None)
-    monkeypatch.setattr(asr_factory, "_asr_instance_key", None)
-    monkeypatch.setattr(audio_routes, "llm_response", lambda text, *_a, **_kw: f"reply to {text}")
-    server.asr.device = "cuda"
+    monkeypatch.setattr(state, "llm", FakeLlm(lambda request: f"reply to {request.question.text}", speak=False))
     server.asr.language = "en"
     replies = []
     state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=replies.append)
+    state.stt = InProcessSttService(
+        SttEngineSettings(engine="whisper", model_size="base", device="cuda"),
+        create_engine=create)
     # A voice session (or prewarm) loads the shared recognizer like this.
-    session_engine = asr_factory.get_asr_engine(
-        server.asr.type, model_size=server.asr.model_size, config=server)
+    state.stt.prepare(SttPrepareRequest(warm=True))
 
     async def run():
         async with access_client() as client:
@@ -191,9 +205,6 @@ def test_asr_reuses_the_session_recognizer(server, monkeypatch):
                 assert body["text"] == "hello (en)"
     asyncio.run(run())
     assert len(created) == 1
-    assert asr_factory._asr_instance is session_engine
-    # The shared recognizer's language stays as the session configured it.
-    assert session_engine.languages == ["en"]
     assert replies == ["reply to hello (en)"] * 2
 
 
@@ -201,7 +212,7 @@ def test_asr_rejects_playlists_that_read_files_on_the_host(server, monkeypatch, 
     # FFmpeg's concat demuxer, probed from an upload, opens files named in it.
     (tmp_path / "secret.wav").write_bytes(audio_bytes(1))
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(audio_routes, "get_asr_engine", forbid)
+    monkeypatch.setattr(state, "stt", SimpleNamespace(transcribe=forbid))
     state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
     playlist = b"ffconcat version 1.0\nfile 'secret.wav'\n"
 
@@ -229,8 +240,8 @@ def test_asr_decodes_the_upload_once_and_hands_asr_only_decoded_audio(server, mo
     monkeypatch.setattr(vad_service, "detect_speech_segments",
                         lambda _vad, pcm, **_k: [SimpleNamespace(audio=pcm[:8000])])
     heard = []
-    recognizer = SimpleNamespace(transcribe=lambda audio, language=None: heard.append(audio) or {"text": ""})
-    monkeypatch.setattr(audio_routes, "get_asr_engine", lambda *_a, **_k: recognizer)
+    stt = SimpleNamespace(transcribe=lambda audio, _options: heard.append(audio) or Transcription(text=""))
+    monkeypatch.setattr(state, "stt", stt)
     state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
     flac = audio_bytes(1, fmt="FLAC")
 
@@ -245,8 +256,8 @@ def test_asr_decodes_the_upload_once_and_hands_asr_only_decoded_audio(server, mo
 
 def test_asr_without_vad_hands_asr_only_decoded_audio(server, monkeypatch):
     heard = []
-    recognizer = SimpleNamespace(transcribe=lambda audio, language=None: heard.append(audio) or {"text": ""})
-    monkeypatch.setattr(audio_routes, "get_asr_engine", lambda *_a, **_k: recognizer)
+    stt = SimpleNamespace(transcribe=lambda audio, _options: heard.append(audio) or Transcription(text=""))
+    monkeypatch.setattr(state, "stt", stt)
     state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
 
     async def run():
@@ -259,13 +270,14 @@ def test_asr_without_vad_hands_asr_only_decoded_audio(server, monkeypatch):
 
 @pytest.mark.parametrize("stage", ["decode", "load"])
 def test_asr_decodes_and_loads_the_recognizer_off_the_loop(server, monkeypatch, stage):
-    recognizer = SimpleNamespace(transcribe=lambda _audio, language=None: {"text": ""})
-    blocker = Blocker(recognizer if stage == "load" else np.zeros(16000, np.int16))
+    # Loading the recognizer happens inside the STT service's transcribe.
+    blocker = Blocker(Transcription(text="") if stage == "load" else np.zeros(16000, np.int16))
     if stage == "decode":
         monkeypatch.setattr(audio_routes, "decode_audio", blocker)
-        monkeypatch.setattr(audio_routes, "get_asr_engine", lambda *_a, **_k: recognizer)
+        monkeypatch.setattr(state, "stt", SimpleNamespace(
+            transcribe=lambda _audio, _options: Transcription(text="")))
     else:
-        monkeypatch.setattr(audio_routes, "get_asr_engine", blocker)
+        monkeypatch.setattr(state, "stt", SimpleNamespace(transcribe=blocker))
     state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=forbid)
 
     async def run():
@@ -291,7 +303,7 @@ def test_humanaudio_checks_the_session_before_decoding(server, monkeypatch):
 
 def test_humanaudio_rejects_long_audio_from_its_header(server, monkeypatch):
     avatar = bare_avatar()
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
     monkeypatch.setattr(sf, "read", forbid)
     monkeypatch.setattr(sf.SoundFile, "read", forbid)
     clip = audio_bytes(600, sample_rate=8000, fmt="FLAC")
@@ -306,7 +318,7 @@ def test_humanaudio_rejects_long_audio_from_its_header(server, monkeypatch):
 
 def test_humanaudio_decodes_resamples_and_queues_audio(server):
     avatar = bare_avatar()
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
 
     async def run():
         async with access_client() as client:
@@ -324,7 +336,7 @@ def test_humanaudio_decodes_once_with_libsndfile_and_never_follows_playlists(ser
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(av, "open", forbid)
     avatar = bare_avatar()
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
 
     async def run():
         async with access_client() as client:
@@ -418,7 +430,7 @@ def test_record_route_waits_for_ffmpeg_off_the_loop(tmp_path, monkeypatch, serve
     blocker = Blocker()
     avatar, temporary = recording_avatar(tmp_path, monkeypatch, wait=blocker)
     fake_merge(monkeypatch)
-    state.avatar_streams[SESSION] = avatar
+    state.avatar_streams[SESSION] = session_avatar(avatar)
 
     async def run():
         async with access_client() as client:
@@ -478,11 +490,10 @@ def test_speech_snapshot_scans_files_off_the_loop(server, monkeypatch, path):
 
 
 def test_deferred_speech_settings_snapshot_scans_files_off_the_loop(server, monkeypatch):
-    from nova_core.server import deferred_settings
-    from nova_tts import voice_library
+    from nova_core.server import deferred_settings, runtime_settings
 
     blocker = Blocker(result=[])
-    monkeypatch.setattr(voice_library, "list_voices", blocker)
+    monkeypatch.setattr(runtime_settings, "_stt_catalog", blocker)
     monkeypatch.setattr(deferred_settings, "_store", lambda: SimpleNamespace(
         values={}, error="", save=lambda _values: None))
     monkeypatch.setattr(deferred_settings, "snapshot", lambda: {"items": [], "error": ""})

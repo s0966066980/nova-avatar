@@ -57,7 +57,7 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 git clone https://github.com/s0966066980/nova-avatar.git
 cd nova-avatar
 bash scripts/setup-env.sh musetalk
-bash scripts/download_musetalk_weights.sh
+bash avatar/scripts/download_musetalk_weights.sh
 bash scripts/create_ssl_certs.sh
 ```
 
@@ -100,8 +100,8 @@ uv run python avatar/nova_render/musetalk/genavatar_musetalk.py \
 完成 MuseTalk 安裝與權重下載後，在目標 GPU 上執行：
 
 ```bash
-bash scripts/setup-tensorrt.sh
-uv run python scripts/verify-musetalk-tensorrt.py
+bash avatar/scripts/setup-tensorrt.sh
+uv run python avatar/scripts/verify-musetalk-tensorrt.py
 ```
 
 第一行安裝固定的 CUDA 12 TensorRT 10、建立 UNet／VAE FP16 引擎，比較 batch 1、
@@ -110,7 +110,7 @@ uv run python scripts/verify-musetalk-tensorrt.py
 
 本機 RTX 4090 的 batch 8 合併推論實測為 **96.19 → 38.49 ms，約 2.50 倍**，
 輸出 PSNR 57.72 dB；此數字只涵蓋 UNet＋完整 VAE＋CPU 像素交付，不代表整體
-對話或 WebRTC 加速倍率。重驗引擎可用 `bash scripts/setup-tensorrt.sh --verify-only`。
+對話或 WebRTC 加速倍率。重驗引擎可用 `bash avatar/scripts/setup-tensorrt.sh --verify-only`。
 細節見 [TensorRT 安裝與驗證](docs/installation.md#tensorrt-安裝與驗證) 和
 [x86 效能紀錄](docs/x86-performance.md)。
 
@@ -151,13 +151,13 @@ Edge TTS，並在日誌與數位人設定檔「聲音」說明，請重新選擇
 BreezyVoice 的設定檔時會自動啟動 BreezyVoice 服務。模型目錄只能從 `models/` 掃描
 結果選擇，TTS 服務只接受本機位址。舊設定中的路徑在載入時會遷移進音訊庫，無法遷移的
 會清空並記錄警告。開發用錄音以
-`python scripts/import-dev-voice.py <錄音> [--name … --transcript …]` 加入，
+`python services/tts/scripts/import-dev-voice.py <錄音> [--name … --transcript …]` 加入，
 控制台標示「開發用，未取得說話者授權」，不會自動選用；重複執行不會重複加入。
 
 **BreezyVoice（台灣華語）**：以 CosyVoice v1 程式碼執行，需 `~/CosyVoice` 與 conda 環境
 `cosyvoice`；在該環境安裝
 `python -m pip install --no-deps g2pw==0.1.1`，再執行
-`uv run --no-sync python scripts/breezyvoice_weights.py` 把權重與 g2pW 下載到
+`uv run --no-sync python services/tts/scripts/breezyvoice_weights.py` 把權重與 g2pW 下載到
 `models/BreezyVoice`（固定版本並核對 SHA-256）。參考錄音須在 8 秒內，上傳音訊庫時
 一併填寫與錄音逐字相同的逐字稿，並須是自錄或有書面授權的聲音；BreezyVoice 不串流，
 每個回覆片段整段合成。與 MuseTalk、LLM 共用 RTX 4090 時第一個片段約需 2.5 s
@@ -176,7 +176,7 @@ Edge TTS。數位人設定檔把引擎選為 Matcha 後，再選一個已安裝�
 
 **天氣工具**：使用中央氣象署 CWA，授權碼只從服務端的 `NOVA_CWA_API_KEY`（亦支援
 `CWA_API_KEY`）或已排除 Git 的 `config/cwa.env` 載入；可執行
-`uv run python scripts/configure-cwa.py` 隱藏輸入。
+`uv run python services/llm/scripts/configure-cwa.py` 隱藏輸入。
 
 ## 啟動與使用
 
@@ -228,7 +228,7 @@ HTTPS，區網連入請保持開啟。
 
 - 建置前端：`bash scripts/start-frontend.sh config/config.yaml`
 - 啟動後端：`bash scripts/start-backend.sh config/config.yaml`
-- RAGFlow：`bash scripts/ragflow.sh up`／`down`
+- RAGFlow：`bash services/llm/scripts/ragflow.sh up`／`down`
 - 前端開發：`bash scripts/start-frontend.sh --dev config/config.yaml`（或在 `web/`
   執行 `npm run dev`）。Vite 只綁 `127.0.0.1:3000` 並代理 API 到後端，不作正式入口。
 
@@ -335,11 +335,11 @@ RAGFlow 使用獨立的 Docker Compose 專案、資料卷，以及主機上的 C
 首次部署：
 
 ```bash
-bash scripts/ragflow.sh install-docker   # 已有 Docker/Compose 可略過
-bash scripts/ragflow.sh prepare
-bash scripts/ragflow.sh validate
-bash scripts/ragflow.sh pull-model
-bash scripts/ragflow.sh up
+bash services/llm/scripts/ragflow.sh install-docker   # 已有 Docker/Compose 可略過
+bash services/llm/scripts/ragflow.sh prepare
+bash services/llm/scripts/ragflow.sh validate
+bash services/llm/scripts/ragflow.sh pull-model
+bash services/llm/scripts/ragflow.sh up
 ```
 
 在部署主機開啟 `http://127.0.0.1:8088`，依序完成：
@@ -348,7 +348,7 @@ bash scripts/ragflow.sh up
    `.local/ragflow/upstream/docker/.env` 的 `ADMIN_DEFAULT_PASSWORD`。
 2. 在模型供應者設定新增 `OpenAI-API-Compatible` 執行個體：服務位址
    `http://host.docker.internal:11437/v1`，API 金鑰 `x`，嵌入模型 `bge-m3`
-   （或於第 5 步後執行 `bash scripts/ragflow.sh connect` 自動登記）。
+   （或於第 5 步後執行 `bash services/llm/scripts/ragflow.sh connect` 自動登記）。
 3. 建立知識庫，上傳文件並完成解析。文件上傳／解析只在 RAGFlow 介面管理。
 4. 建立 API 金鑰：點右上角頭像 → 設定 → **API** 頁，建立並複製金鑰。
 5. 把金鑰寫入本機後端環境檔，不要貼進控制台或瀏覽器：
@@ -407,23 +407,33 @@ git diff --cached
 已通過中英文真實搜尋、網頁讀取與本機模型回答驗證；Brave 仍可能限流。
 細節見[修復驗證紀錄](.scratch/web-search/repair-validation.md)。
 
-## 程式碼結構
+## 資料夾結構
 
-程式依處理層劃分（[ADR 0027](docs/adr/0027-split-code-by-processing-layer.md)、[ADR 0028](docs/adr/0028-monorepo-with-contracts-package.md)）。每個資料夾有自己的 `pyproject.toml`、`README.md` 與 `tests/`，共用根目錄的 `uv.lock`。
+程式依處理層分資料夾（[ADR 0027](docs/adr/0027-split-code-by-processing-layer.md)、
+[ADR 0028](docs/adr/0028-monorepo-with-contracts-package.md)）。每個資料夾有自己的
+`pyproject.toml`、`tests/` 和 `README.md`，說明職責、對外介面、引擎清單與測試方式。
 
-| 資料夾 | Python 套件 | 職責 |
-|---|---|---|
-| `contracts/` | `nova_contracts` | 各層之間契約的唯一來源：Pydantic 模型、串流事件、Protocol、OpenAPI |
-| `core/` | `nova_core` | 核心：HTTP 伺服器、輪次與對話、設定、VAD、角色庫、招呼排程 |
-| `avatar/` | `nova_render` | 數位人渲染（MuseTalk）、角色目錄與製作、場景 |
-| `services/stt/` | `nova_stt` | 語音辨識（faster-whisper） |
-| `services/llm/` | `nova_llm` | 回覆、交接判斷、天氣、招呼生成、RAGFlow 檢索、網頁搜尋 |
-| `services/tts/` | `nova_tts` | 語音合成、音訊庫、聲線模型與聲線訓練 |
-| `web/` | — | 控制台與舞台前端 |
+| 資料夾 | Python 套件 | 內容 |
+| --- | --- | --- |
+| [`contracts/`](contracts/README.md) | `nova_contracts` | 核心與各層之間唯一共用的型別（Pydantic 模型與 Protocol）、由它產生的 OpenAPI |
+| [`core/`](core/README.md) | `nova_core` | 伺服器與路由、輪次編排、VAD、角色、設定、閒置招呼，以及各層共用的 `utils` |
+| [`services/stt/`](services/stt/README.md) | `nova_stt` | 語音轉文字（faster-whisper） |
+| [`services/llm/`](services/llm/README.md) | `nova_llm` | 回答模型、交接判斷、天氣、AI 招呼，內含 `ragflow` 與 `web_search` |
+| [`services/tts/`](services/tts/README.md) | `nova_tts` | 語音合成引擎、音訊庫、聲線模型與聲線訓練 |
+| [`avatar/`](avatar/README.md) | `nova_render` | 數位人渲染（MuseTalk）與舞台場景，內含 `scene` |
+| `web/` | | 控制台與舞台前端 |
+| `scripts/` | | 跨層的啟動、設定與量測腳本 |
+| `tests/` | | 橫跨整個 repo、不屬於任何一層的測試：授權與品牌稽核、依賴鎖、啟動與權重腳本、ruff 安全規則、層邊界設定 |
 
-處理層不得 import 核心（`nova_core.utils` 除外），也不得 import 其他層；`uv run --no-sync lint-imports` 在 CI 中檢查。跨層介面改動 `contracts/` 後，執行 `uv run --no-sync python scripts/generate-openapi.py` 重新產生 OpenAPI。
-
-測試跟著所屬的層放：`uv run --no-sync pytest services/tts` 只跑 TTS 層。碰到核心或跨層的測試在 `core/tests/`；稽核、啟動腳本等整個 repo 層級的檢查留在 `tests/`，共用的假物件也在那裡。需要 GPU 或真實權重的測試以 `gpu` marker 標記，預設排除，在場域主機用 `-m gpu` 執行。
+- 各層的 setup 與權重腳本在該層的 `scripts/`（`services/tts/scripts/`、
+  `services/llm/scripts/`、`avatar/scripts/`）；`scripts/` 只放跨層的腳本。
+- 根目錄的 `pyproject.toml` 以 path 依賴引用上述六個套件，共用同一份 `uv.lock`；
+  `uv sync` 會一併安裝它們。處理層 import `nova_core.utils`，核心 import 各層的
+  `adapter`，所以各層不互相宣告依賴。
+- 邊界由 `lint-imports` 守住：處理層不得 import 核心、彼此不得 import，核心只能經由
+  各層的 `adapter` 與 `config_section`。
+- 測試：`uv run --no-sync pytest` 跑全部；`uv run --no-sync pytest services/tts`
+  只跑一層。需要核心設定或伺服器的測試放在 `core/tests/`，所以大部分跨層測試在那裡。
 
 ## 設定與檢查
 
@@ -440,6 +450,8 @@ uv sync --inexact --group dev --extra vad --extra musetalk
 uv lock --check
 uv run ruff check .
 uv run pyright
+uv run lint-imports
+uv run python scripts/generate_openapi.py --check
 uv run python scripts/check-integration.py
 uv run pytest
 cd web

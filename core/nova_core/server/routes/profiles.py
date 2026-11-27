@@ -123,7 +123,7 @@ def _dry_run(roles, current_id, text):
     try:
         # No history or confirmed place: a dry run starts a fresh conversation.
         route = route_question(config, library, current_id, text, [], {},
-                               clients=roles.routing_clients, explain=True)
+                               llm=state.llm, explain=True)
     except ProfileError:
         raise
     except Exception as exc:
@@ -233,7 +233,7 @@ async def greeting_preview(request, roles):
     body = await request.json()
     try:
         config = profile_config(state.config, validate_profile(body["profile"]))
-        result = await prepare_greeting(config)
+        result = await prepare_greeting(config, llm=state.llm)
     except GreetingError as exc:
         raise ProfileError(str(exc)) from exc
     return web.json_response({"code": 0, **result})
@@ -252,7 +252,7 @@ async def greeting_try(request, roles):
         raise ProfileError("請等待目前對話或試播結束", 409)
     # Keep this request cancellable and recheck ownership after AI preparation.
     generation = voice._generation
-    preparing = asyncio.create_task(prepare_greeting(config, previous=voice.greetings.previous))
+    preparing = asyncio.create_task(prepare_greeting(config, llm=state.llm, previous=voice.greetings.previous))
     voice._greeting_trial_preparation = preparing
     try:
         result = await preparing

@@ -23,10 +23,10 @@ TRAILING_PAUSE_SECONDS = 0.12
 
 
 class DirectFrameSink:
-    """Push emitted PCM chunks directly to the owning avatar queue."""
+    """Push emitted PCM chunks straight to the core's audio sink."""
 
-    def __init__(self, parent) -> None:
-        self.parent = parent
+    def __init__(self, sink) -> None:
+        self.sink = sink
         self.first_pcm = threading.Event()
 
     def bind(self) -> None:
@@ -34,7 +34,7 @@ class DirectFrameSink:
 
     def emit(self, samples: np.ndarray, eventpoint: dict) -> None:
         self.first_pcm.set()
-        self.parent.put_audio_frame(samples, eventpoint)
+        self.sink.put_audio_frame(samples, eventpoint)
 
     async def wait_for_space(self) -> None:
         return None
@@ -185,12 +185,13 @@ class TurnPCMEmitter:
         start_media_sequence: int = 0,
         chunk_guard: Optional[Callable[[int], bool]] = None,
         frame_sink=None,
+        trimmer: Optional[StreamingSilenceTrimmer] = None,
     ):
         self.owner = owner
         self.text = text
         self.textevent = textevent
-        self.frame_sink = frame_sink or DirectFrameSink(owner.parent)
-        self.trimmer = StreamingSilenceTrimmer(owner.sample_rate)
+        self.frame_sink = frame_sink or DirectFrameSink(owner.sink)
+        self.trimmer = trimmer or StreamingSilenceTrimmer(owner.sample_rate)
         self.samples = np.empty(0, dtype=np.float32)
         self.pending_chunk = None
         self.emitted_chunks = 0
@@ -230,7 +231,7 @@ class TurnPCMEmitter:
             if not turn_aware:
                 eventpoint.update({"text": self.text, **self.textevent})
         first_fragment = self.textevent.get("fragment_sequence", 0) == 0
-        mark_stage = getattr(self.owner.parent, "mark_stage_end", None)
+        mark_stage = getattr(self.owner.sink, "mark_stage_end", None)
         if (
             self.emitted_chunks == 0
             and first_fragment

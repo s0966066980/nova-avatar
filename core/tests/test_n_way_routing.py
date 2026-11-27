@@ -12,10 +12,11 @@ from unittest.mock import Mock
 import pytest
 
 from nova_core.profiles.routing import candidates, route_question, weather_member
+from llm_fakes import FakeLlm
 from nova_core.profiles.store import ProfileError
-from nova_llm.weather import TAIPEI
-from tests.role_fakes import async_test, connect, field  # noqa: F401
-from tests.role_fakes import SERVICE, TRAFFIC, _config, _member, _prompt, _schema, composition  # noqa: F401
+from nova_llm.tools.weather import TAIPEI
+from role_fakes import async_test, connect, field  # noqa: F401
+from role_fakes import SERVICE, TRAFFIC, _config, _member, _prompt, _schema, composition  # noqa: F401
 
 
 def _route(library, current, text, decision, *, history=(), confirmed=None, config=None):
@@ -31,7 +32,7 @@ def _route(library, current, text, decision, *, history=(), confirmed=None, conf
             pass
 
     routed = route_question(config or _config(), library, current, text, list(history),
-                            confirmed or {}, client_factory=Client)
+                            confirmed or {}, llm=FakeLlm(routing_client_factory=Client))
     return routed, create
 
 

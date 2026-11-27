@@ -15,12 +15,13 @@ import time
 from enum import Enum
 from queue import Queue
 from threading import Event, Thread
+from typing import TYPE_CHECKING
 
-from nova_tts.audio_sink import AudioSink
+from nova_contracts.tts import strip_visual_markup
 from nova_core.utils.logging import logger
-from nova_core.utils.speech_text import sanitize_speech_text
 
-__all__ = ["BaseTTS", "State", "sanitize_speech_text"]
+if TYPE_CHECKING:
+    from nova_contracts.tts import AudioSink
 
 
 class State(Enum):
@@ -37,11 +38,11 @@ class BaseTTS:
     具體引擎只需要實現 txt_to_audio。
     """
 
-    def __init__(self, config, parent: AudioSink):
+    def __init__(self, config, sink: "AudioSink"):
         self.config = config
-        # The audio sink: whoever receives this engine's PCM frames and
-        # fragment events. The core decides what it is.
-        self.parent = parent
+        # The core's audio sink: PCM frames and fragment events go there, never
+        # to the avatar renderer directly (ADR 0027).
+        self.sink = sink
 
         # 20ms 一幀
         self.fps = config.audio.fps
@@ -63,7 +64,7 @@ class BaseTTS:
         """外部入口：放入一條待合成的文本訊息。"""
         if datainfo is None:
             datainfo = {}
-        speech_text = sanitize_speech_text(msg)
+        speech_text = strip_visual_markup(msg)
         if speech_text:
             self.msgqueue.put((speech_text, datainfo))
 
@@ -74,7 +75,7 @@ class BaseTTS:
     def _wait_for_fragment_playback_end(self, eventpoint: dict) -> None:
         if not eventpoint.get("turn_id"):
             return
-        ended = getattr(self.parent, "fragment_playback_ended", None)
+        ended = getattr(self.sink, "fragment_playback_ended", None)
         if not callable(ended):
             return
         while self.state == State.RUNNING and not ended(eventpoint):
@@ -88,7 +89,7 @@ class BaseTTS:
         """Report a terminal, pre-audio synthesis failure to the owning turn."""
         if not eventpoint.get("turn_id"):
             return
-        notify = getattr(self.parent, "notify_fragment_synthesis_failed", None)
+        notify = getattr(self.sink, "notify_fragment_synthesis_failed", None)
         if callable(notify):
             notify(dict(eventpoint), str(reason))
 
@@ -119,6 +120,6 @@ class BaseTTS:
         """
         子類必須實現：
             msg: (text, textevent)
-        內部負責把音訊分幀後，通過 audio sink 的 put_audio_frame(...) 推給上層。
+        內部負責把音訊分幀後，通過 sink.put_audio_frame(...) 交給核心。
         """
         raise NotImplementedError

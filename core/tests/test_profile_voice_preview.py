@@ -17,9 +17,11 @@ import soundfile as sf
 
 from nova_core.config.schema import Config
 from nova_core.server.access import ROUTE_ACCESS, Access
+from nova_contracts.tts import TtsEngineSettings
 from nova_core.server.state import state
+from nova_tts.adapter import InProcessTtsService
 from nova_tts import cosyvoice_runtime, voice_library
-from tests.access_helpers import access_client, same_origin
+from access_helpers import access_client, same_origin
 
 PREVIEW = "/api/speech/preview"
 STATUS = "/api/speech/breezyvoice/status"
@@ -53,8 +55,8 @@ def server_config(monkeypatch):
 
 
 @pytest.fixture
-def synthesis(monkeypatch):
-    """The real TTS factory replaced by an engine that records what it was asked to say."""
+def synthesis(monkeypatch, server_config):
+    """The in-process TTS service with an engine that records what it was asked to say."""
     calls = []
 
     class Engine:
@@ -64,9 +66,9 @@ def synthesis(monkeypatch):
         def txt_to_audio(self, msg):
             calls.append({"engine": self.engine, "text": msg[0], "ref_file": self.config.tts.ref_file,
                           "tts_server": self.config.tts.tts_server, "model": self.config.tts.model})
-            self.sink.put_audio_frame(np.zeros(1600, dtype=np.float32))
+            self.sink.put_audio_frame(np.zeros(1600, dtype=np.float32), msg[1])
 
-    monkeypatch.setattr("nova_tts.factory.create_tts_engine", Engine)
+    monkeypatch.setattr(state, "tts", InProcessTtsService(TtsEngineSettings(), create_engine=Engine))
     return calls
 
 

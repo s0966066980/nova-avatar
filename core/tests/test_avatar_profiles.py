@@ -9,7 +9,9 @@ import pytest
 from nova_core.config.schema import Config
 from nova_core.profiles.composition import MAIN_ANNOUNCEMENTS, incompatibility, live_members
 from nova_core.profiles.store import ProfileError, ProfileStore, profile_config
-from nova_llm import service as llm_service
+from nova_contracts.llm import SessionProfile, SessionRef, SpokenTurn, TurnCommit
+from nova_core.server.reply_streaming.llm_reply import conversation_session
+from llm_fakes import FakeLlm
 from types import SimpleNamespace
 
 
@@ -163,27 +165,34 @@ def test_live_pair_shares_one_breezyvoice_model_and_server(profiles, field, valu
 
 def test_return_resumes_only_that_roles_played_history_and_reset_clears_both(profiles, monkeypatch):
     _, config, data = profiles
-    monkeypatch.setattr(llm_service, "_session_llm_instances", {})
-    monkeypatch.setattr(llm_service, "_active_profiles", {})
+    llm = FakeLlm()
     avatar = SimpleNamespace(sessionid=123, config=profile_config(config, data["profiles"][0]))
-    llm_service.prepare_spoken_history("原問題", avatar, "source-turn")
-    assert llm_service.session_history(123) == []
-    llm_service.commit_session_history(123, "source-turn",
-                                       assistant_text="已播交接說明", terminal_reason="completed")
+
+    def history(profile_id=None):
+        return [m.model_dump() for m in llm.session_history(
+            SessionRef(session_id=123, profile_id=profile_id)).messages]
+
+    def speak(turn_id, text, reason):
+        llm.begin_turn(SpokenTurn(session=conversation_session(avatar.config, avatar.config, 123),
+                                  question="原問題", turn_id=turn_id))
+        return turn_id, text, reason
+
+    turn_id, text, reason = speak("source-turn", "已播交接說明", "completed")
+    assert history() == []
+    llm.commit_turn(TurnCommit(session_id=123, turn_id=turn_id, assistant_text=text, terminal_reason=reason))
     avatar.config = profile_config(config, data["profiles"][1])
-    llm_service.prepare_spoken_history("原問題", avatar, "weather-turn")
-    llm_service.commit_session_history(123, "weather-turn",
-                                       assistant_text="已播天氣答案", terminal_reason="interrupt")
-    llm_service.select_session_profile(123, "main")
-    assert llm_service.session_history(123)[-1]["content"] == "已播交接說明"
-    assert llm_service.session_history(123, "weather")[-1]["content"] == "已播天氣答案"
-    llm_service.clear_session_history(123, "main")
-    assert llm_service.session_history(123, "main") == []
-    assert llm_service.session_history(123, "weather")
-    llm_service.clear_session_history(123)
-    assert llm_service.session_history(123, "weather") == []
-    llm_service.remove_session(123)
-    assert not llm_service._session_llm_instances
+    turn_id, text, reason = speak("weather-turn", "已播天氣答案", "interrupt")
+    llm.commit_turn(TurnCommit(session_id=123, turn_id=turn_id, assistant_text=text, terminal_reason=reason))
+    llm.select_profile(SessionProfile(session_id=123, profile_id="main"))
+    assert history()[-1]["content"] == "已播交接說明"
+    assert history("weather")[-1]["content"] == "已播天氣答案"
+    llm.clear_history(SessionRef(session_id=123, profile_id="main"))
+    assert history("main") == []
+    assert history("weather")
+    llm.clear_history(SessionRef(session_id=123))
+    assert history("weather") == []
+    llm.remove_session(SessionRef(session_id=123))
+    assert not llm.engines
 
 
 def test_document_scope_and_model_rules_are_per_profile_snapshots(profiles):

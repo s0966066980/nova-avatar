@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          # Full history so the changed files can be diffed against the previous
+          # push or the pull request's base.
           fetch-depth: 0
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
         with:
@@ -37,45 +39,47 @@ jobs:
         run: uv lock --check
       - name: Install development and offline-check dependencies
         # uv's pip backend selects CPU wheels only for PyTorch packages.
-        # --no-sources ignores the path sources, so every workspace package is
-        # named here; the root project then finds them already installed.
+        # --no-sources skips path sources, so the contracts, the core and the
+        # processing layers are named here.
         run: |
           uv venv --python 3.11
-          uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e ./contracts -e ./core -e ./avatar -e ./services/stt -e ./services/llm -e ./services/tts -e '.[vad]'
+          uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e ./contracts -e './core[vad]' -e ./services/stt -e ./services/llm -e ./services/tts -e ./avatar -e .
       - name: Lint Python
         run: uv run --no-sync ruff check .
       - name: Type-check server control flow
         run: uv run --no-sync pyright
       - name: Check processing-layer import boundaries
         run: uv run --no-sync lint-imports
-      - name: Check contracts OpenAPI matches the models
-        run: uv run --no-sync python scripts/generate-openapi.py --check
+      - name: Check committed OpenAPI documents match the contracts
+        run: uv run --no-sync python scripts/generate_openapi.py --check
       - name: Check branding, notices, and offline integration
         run: uv run --no-sync python scripts/check-integration.py
-      - name: Select the tests this change can affect
+      - name: Select the tests of the changed layers
+        # Lint, types, import boundaries, OpenAPI, the integration check and the
+        # lock always run. Only the layers' own tests are skipped, and only when
+        # the diff stays inside other layers; see scripts/ci_select_tests.py.
+        # Anything unknown, any failure to diff, and workflow_dispatch run all.
         id: select
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        # Lint, import boundaries, OpenAPI and the integration check above run
-        # every time; only the test suites are narrowed (scripts/select-tests.py).
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
         run: |
-          if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            paths=all
-          else
-            paths=$(git diff --name-only "$BASE_SHA" HEAD | python3 scripts/select-tests.py)
+          base=""
+          if [ "$EVENT" = "pull_request" ]; then
+            base="HEAD^1"
+          elif [ "$EVENT" = "push" ]; then
+            base="$BEFORE"
           fi
-          echo "Selected tests: $paths"
-          echo "paths=$paths" >> "$GITHUB_OUTPUT"
+          if [ -n "$base" ]; then
+            uv run --no-sync python scripts/ci_select_tests.py --base "$base" >> "$GITHUB_OUTPUT"
+          else
+            uv run --no-sync python scripts/ci_select_tests.py >> "$GITHUB_OUTPUT"
+          fi
       - name: Run Python tests
-        if: steps.select.outputs.paths != 'none'
         env:
-          PATHS: ${{ steps.select.outputs.paths }}
-        run: |
-          if [ "$PATHS" = all ]; then
-            uv run --no-sync pytest
-          else
-            uv run --no-sync pytest $PATHS
-          fi
+          PYTEST_ARGS: ${{ steps.select.outputs.pytest_args }}
+        # Empty PYTEST_ARGS is plain pytest, which collects pyproject's testpaths.
+        run: uv run --no-sync pytest $PYTEST_ARGS
 
   web:
     name: Frontend lint, tests, and build

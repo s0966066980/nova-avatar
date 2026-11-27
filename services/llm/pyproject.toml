@@ -1,26 +1,31 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+# LLM processing layer (ADR 0027): model engines, handoff routing, weather tool,
+# AI greetings, RAGFlow retrieval and web search. The root project installs it
+# as a path dependency and shares the root uv.lock (ADR 0028). The layer
+# imports nova_core.utils (the shared leaf) but does not declare nova-core: the
+# core already depends on the layers' adapters, so declaring it would be a cycle.
 [project]
-name = "nova-avatar-llm"
+name = "nova-llm"
 version = "0.1.0"
-description = "Nova Avatar LLM layer: replies, handoff decisions, weather, RAGFlow retrieval, web search, greetings"
+description = "LLM processing layer of Nova Avatar"
 readme = "README.md"
 requires-python = ">=3.10, <3.12"
 license = { text = "Apache-2.0" }
 maintainers = [{ name = "HongXian0903" }]
-# Third-party versions here mirror the root lock; the root project references
-# this package by path and shares one uv.lock (docs/adr/0028).
 dependencies = [
+    "nova-contracts",
     "aiohttp",
     "ddgs==9.14.4",
     "openai",
     "opencc>=1.1.9",
-    "PyYAML",
     "requests",
-    "nova-avatar-contracts",
 ]
+
+[tool.setuptools.packages.find]
+include = ["nova_llm*"]
 
 [build-system]
 requires = ["setuptools==69.5.1", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["nova_llm*"]

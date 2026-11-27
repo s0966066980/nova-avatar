@@ -1,30 +1,38 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Training job routes: admin only, structured pre-flight reasons, no download of any kind."""
+"""Training job routes: admin only, structured pre-flight reasons, no download of any kind.
+
+The routes reach the TTS layer through ``state.tts``; here that is the layer's real
+``InProcessVoiceTraining`` around a faked job manager, and a fake preview synthesizer.
+The stage-connection half of the gate is the core's: tests connect stages by filling
+``state.avatar_streams``.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import functools
-import sys
 import threading
 import time
 from pathlib import Path
 
 import pytest
 
-from nova_core.config.schema import Config
+from nova_contracts.tts import TrainingQuery, TtsEngineSettings, TtsError, VoiceModelPreview
 from nova_core.server.access import ROUTE_ACCESS, Access
 from nova_core.server.routes import tts_training
 from nova_core.server.server import create_app
-from nova_core.server.tts_training_jobs import TrainingJobManager, TrainingParams
-from tests.access_helpers import access_client, built_frontend, same_origin
-from tests.training_fakes import ENOUGH_VRAM_MIB, edge_synthesis, rig
+from nova_core.server.state import state
+from nova_tts.training.jobs import TrainingJobManager
+from nova_tts.training.service import InProcessVoiceTraining
+from access_helpers import access_client, built_frontend, same_origin
+from training_fakes import ENOUGH_VRAM_MIB, edge_synthesis, rig
 from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
 from nova_tts.training.gpu_probe import VramReading
-from nova_tts.voice_preview import PREVIEW_SENTENCES, PreviewError
+
+PREVIEW_SENTENCES = ("zh", "digits", "en")
 
 BASE = "/api/tts/training"
 PREVIEW = BASE + "/text-preview"
@@ -49,12 +57,32 @@ def async_test(function):
     return wrapper
 
 
+class TrainingService(InProcessVoiceTraining):
+    """The TTS layer's training operations around ``manager``; previews go to ``previewer``."""
+
+    def __init__(self, manager: TrainingJobManager, previewer=None) -> None:
+        super().__init__(settings=TtsEngineSettings, corpus_store=manager.store, training_jobs=manager)
+        self.previewer = previewer
+
+    def preview_voice_model(self, request: VoiceModelPreview) -> bytes:
+        return self.previewer(request.voice_id, request.sentence)
+
+
+@pytest.fixture(autouse=True)
+def no_stage(monkeypatch):
+    """No stage is connected unless a test connects some (``connect_stages``)."""
+    monkeypatch.setattr(state, "avatar_streams", {})
+    monkeypatch.setattr(state, "tts", None, raising=False)
+
+
+def connect_stages(count: int) -> None:
+    state.avatar_streams.update({index: None for index in range(1, count + 1)})
+
+
 def app_with(manager: TrainingJobManager, previewer=None):
     def factory(admin_env_path: Path):
         app = create_app(admin_env_path=admin_env_path, frontend_dir=built_frontend())
-        app[tts_training.MANAGER_KEY] = manager
-        if previewer is not None:
-            app[tts_training.PREVIEWER_KEY] = previewer
+        state.tts = TrainingService(manager, previewer)
         return app
 
     return factory
@@ -79,7 +107,8 @@ def test_no_route_downloads_or_exports_a_voice_model():
 
 @async_test
 async def test_status_lists_the_checks_with_reasons_and_no_job_yet(tmp_path):
-    r = rig(tmp_path, sessions=1, vram=VramReading(6 * 1024))
+    r = rig(tmp_path, vram=VramReading(6 * 1024))
+    connect_stages(1)
     async with access_client(app_factory=app_with(r.manager)) as client:
         response = await client.get(BASE, params={"corpus": "voice", "name": "我的聲音"})
         assert response.status == 200
@@ -112,14 +141,47 @@ async def test_status_without_a_corpus_still_reports_the_global_checks(tmp_path)
 
 @async_test
 async def test_a_refused_start_answers_409_with_the_structured_checks(tmp_path):
-    r = rig(tmp_path, sessions=2)
+    r = rig(tmp_path)
+    connect_stages(2)
     async with access_client(app_factory=app_with(r.manager)) as client:
         response = await client.post(BASE + "/start", headers=same_origin(client), json={"corpus": "voice", "name": "我的聲音"})
         body = await response.json()
     assert response.status == 409 and body["code"] == -1 and "舞台" in body["msg"]
     failed = [c["id"] for c in body["preflight"]["checks"] if c["status"] == "fail"]
     assert failed == ["stage_connections"]
+    assert [c["id"] for c in body["preflight"]["checks"]][:3] == ["admin", "stage_connections", "free_vram"]
     assert r.spawner.commands == []
+
+
+@async_test
+async def test_a_layer_refusal_gets_the_core_checks_in_front(tmp_path):
+    r = rig(tmp_path, vram=VramReading(1024))
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(BASE + "/start", headers=same_origin(client), json={"corpus": "voice", "name": "我的聲音"})
+        body = await response.json()
+    assert response.status == 409 and "顯存" in body["msg"]
+    checks = {c["id"]: c["status"] for c in body["preflight"]["checks"]}
+    assert (checks["admin"], checks["stage_connections"], checks["free_vram"]) == ("pass", "pass", "fail")
+    assert body["preflight"]["can_start"] is False
+
+
+@async_test
+async def test_a_stage_that_connects_while_the_layer_checks_cancels_the_new_job(tmp_path):
+    r = rig(tmp_path, train_code=None)
+    probe = r.manager._vram_probe
+
+    def connect_while_checking():
+        connect_stages(1)  # the slow pre-flight runs while a stage connects
+        return probe()
+
+    r.manager._vram_probe = connect_while_checking
+    async with access_client(app_factory=app_with(r.manager)) as client:
+        response = await client.post(BASE + "/start", headers=same_origin(client), json={"corpus": "voice", "name": "我的聲音"})
+        body = await response.json()
+        await wait_done(r.manager)
+    assert response.status == 409 and "舞台" in body["msg"]
+    assert [c["id"] for c in body["preflight"]["checks"] if c["status"] == "fail"] == ["stage_connections"]
+    assert r.manager.status()["status"] == "cancelled"
 
 
 @async_test
@@ -185,7 +247,8 @@ async def test_text_preview_marks_unresolved_fragments_and_is_not_ok(tmp_path):
 
 @async_test
 async def test_text_preview_is_pure_and_needs_no_corpus_gpu_or_job(tmp_path):
-    r = rig(tmp_path, sessions=3, vram=VramReading(0))
+    r = rig(tmp_path, vram=VramReading(0))
+    connect_stages(3)
     before = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
     async with access_client(app_factory=app_with(r.manager)) as client:
         response = await client.post(PREVIEW, headers=same_origin(client), json={"sentences": "第一句\n$5"})
@@ -299,16 +362,13 @@ async def test_blocking_work_runs_off_the_event_loop(tmp_path):
     assert seen == [False]
 
 
-def test_the_default_manager_reads_the_live_configuration(tmp_path, monkeypatch):
-    from nova_core.config.loader import dict_to_config
-    from nova_core.server.state import state
-
-    monkeypatch.setattr(state, "config", dict_to_config({"matcha": {"training_min_free_vram_gb": 5}}))
-    manager = tts_training.build_manager()
-    assert manager.settings().min_free_vram_gb == 5
-    monkeypatch.setattr(state, "config", dict_to_config({"matcha": {"training_min_free_vram_gb": 12}}))
-    assert manager.settings().min_free_vram_gb == 12
-    assert isinstance(manager.params, TrainingParams)
+def test_the_layer_reads_its_settings_live(tmp_path):
+    current = {"value": TtsEngineSettings(training_min_free_vram_gb=5)}
+    training = InProcessVoiceTraining(settings=lambda: current["value"], corpus_store=rig(tmp_path).store)
+    assert training.training_status(TrainingQuery()).settings.min_free_vram_gb == 5
+    current["value"] = TtsEngineSettings(training_min_free_vram_gb=12, training_whisper_model="medium")
+    settings = training.training_status(TrainingQuery()).settings
+    assert (settings.min_free_vram_gb, settings.whisper_model) == (12, "medium")
 
 
 # ------------------------------------------------------------------ preset voice preview (ticket 14)
@@ -323,7 +383,7 @@ class FakePreviewer:
         self.result = result
         self.calls: list[tuple[object, object]] = []
 
-    def __call__(self, voice_id, sentence, keep_going):
+    def __call__(self, voice_id, sentence):
         self.calls.append((voice_id, sentence))
         if isinstance(self.result, Exception):
             raise self.result
@@ -383,7 +443,7 @@ async def test_a_bad_json_body_to_preview_is_400(tmp_path):
 @pytest.mark.parametrize("status", [404, 500])
 @async_test
 async def test_a_refused_preview_keeps_the_reason_and_status_as_json(tmp_path, status):
-    previewer = FakePreviewer(PreviewError("聲線模型「v」不在 models/tts 清單中", status=status))
+    previewer = FakePreviewer(TtsError("聲線模型「v」不在 models/tts 清單中", status=status))
     async with access_client(app_factory=app_with(rig(tmp_path).manager, previewer)) as client:
         response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "v", "sentence": "zh"})
         body = await response.json()
@@ -404,7 +464,7 @@ async def test_an_unexpected_synthesizer_failure_is_a_generic_500(tmp_path):
 async def test_a_slow_synthesis_does_not_block_the_event_loop(tmp_path):
     entered, release = threading.Event(), threading.Event()
 
-    def slow(voice_id, sentence, keep_going):
+    def slow(voice_id, sentence):
         entered.set()
         assert release.wait(10)
         return WAV
@@ -421,78 +481,46 @@ async def test_a_slow_synthesis_does_not_block_the_event_loop(tmp_path):
 
 
 @async_test
-async def test_a_synthesis_past_the_time_limit_is_504_and_told_to_stop(tmp_path, monkeypatch):
+async def test_a_synthesis_past_the_time_limit_is_504(tmp_path, monkeypatch):
+    # The layer stops its own synthesis at its deadline; the route does not wait past its own.
     monkeypatch.setattr(tts_training, "PREVIEW_TIMEOUT_SECONDS", 0.2)
-    entered, release = threading.Event(), threading.Event()
-    seen: list[bool] = []
+    release = threading.Event()
 
-    def stuck(voice_id, sentence, keep_going):
-        entered.set()
+    def stuck(voice_id, sentence):
         release.wait(10)
-        seen.append(keep_going())
         return WAV
 
     async with access_client(app_factory=app_with(rig(tmp_path).manager, stuck)) as client:
         response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "v", "sentence": "zh"})
         body = await response.json()
         release.set()
-        deadline = time.monotonic() + 5
-        while not seen and time.monotonic() < deadline:
-            await asyncio.sleep(0.01)
-    assert response.status == 504 and body["code"] == -1
-    assert seen == [False], "the worker must be told to stop generating"
-
-
-@async_test
-async def test_the_default_previewer_speaks_through_the_shared_loader_with_the_configured_threads(tmp_path, monkeypatch):
-    from nova_core.server.state import state
-    from tests.matcha_fakes import FakeSherpa, make_voice_model, tone
-
-    root = tmp_path / "models" / "tts"
-    root.mkdir(parents=True)
-    monkeypatch.setattr("nova_tts.voice_models.VOICE_MODELS_ROOT", root)
-    make_voice_model(root, "preview-voice")
-    sherpa = FakeSherpa(tone())
-    monkeypatch.setitem(sys.modules, "sherpa_onnx", sherpa)
-    config = Config()
-    config.matcha.num_threads = 2
-    monkeypatch.setattr(state, "config", config)
-
-    async with access_client(app_factory=app_with(rig(tmp_path).manager)) as client:
-        response = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "preview-voice", "sentence": "en"})
-        body = await response.read()
-        missing = await client.post(VOICE_PREVIEW, headers=same_origin(client), json={"voice_id": "nope", "sentence": "en"})
-        missing_body = await missing.json()
-    assert response.status == 200 and body[:4] == b"RIFF" and body[8:12] == b"WAVE"
-    [tts] = sherpa.instances
-    assert tts.config.model.num_threads == 2 and tts.config.model.provider == "cpu"
-    assert missing.status == 404 and missing_body["code"] == -1
+    assert response.status == 504 and body == {"code": -1, "msg": "試聽合成逾時，請稍後再試"}
 
 
 # --------------------------------------------------------------------------- server lifecycle
 
 
-@async_test
-async def test_startup_recovers_interrupted_jobs_and_shutdown_stops_the_running_one(tmp_path):
+def test_startup_recovers_interrupted_jobs_and_shutdown_stops_the_running_one(tmp_path):
     r = rig(tmp_path)
-    calls: list[tuple[str, int]] = []
-    r.manager.recover = lambda: calls.append(("recover", threading.get_ident()))  # type: ignore[method-assign]
-    r.manager.shutdown = lambda *a, **k: calls.append(("shutdown", threading.get_ident()))  # type: ignore[method-assign]
-    main = threading.get_ident()
+    calls: list[str] = []
+    r.manager.recover = lambda: calls.append("recover")  # type: ignore[method-assign]
+    r.manager.shutdown = lambda *a, **k: calls.append("shutdown")  # type: ignore[method-assign]
+    training = TrainingService(r.manager)
 
-    async with access_client(app_factory=app_with(r.manager)):
-        assert [name for name, _ in calls] == ["recover"]
-    assert [name for name, _ in calls] == ["recover", "shutdown"]
-    assert main not in {ident for _, ident in calls}, "blocking lifecycle work ran on the event loop"
+    training._start_training()
+    assert calls == ["recover"]
+    training._stop_training()
+    assert calls == ["recover", "shutdown"]
 
 
-@async_test
-async def test_a_job_running_at_shutdown_is_cancelled_and_its_child_stopped(tmp_path):
+def test_a_job_running_at_shutdown_is_cancelled_and_its_child_stopped(tmp_path):
+    from nova_tts.training.jobs import StartRequest
+
     r = rig(tmp_path, train_code=None)
-    async with access_client(app_factory=app_with(r.manager)) as client:
-        started = await client.post(BASE + "/start", headers=same_origin(client), json={"corpus": "voice", "name": "我的聲音"})
-        assert started.status == 200
-        await asyncio.to_thread(wait_until, lambda: r.spawner.processes)
+    training = TrainingService(r.manager)
+    r.manager.start(StartRequest(corpus="voice", name="我的聲音"))
+    wait_until(lambda: r.spawner.processes)
+    training._stop_training()
     assert r.spawner.processes[0].signals == ["TERM"]
     assert r.manager.status()["status"] == "cancelled"
 
@@ -504,27 +532,17 @@ def wait_until(predicate, timeout: float = 10.0) -> None:
         time.sleep(0.01)
 
 
-def test_the_live_manager_refuses_a_start_while_the_corpus_transcription_runs(tmp_path):
+def test_the_layers_job_refuses_to_start_while_its_transcription_runs(tmp_path):
     from types import SimpleNamespace
 
-    from aiohttp import web
-
-    from nova_core.server.routes import tts_corpus
-
     running = {"value": False}
-    app = web.Application()
-    app[tts_corpus.SERVICES] = tts_corpus.Services(None, SimpleNamespace(running=lambda: running["value"]))  # type: ignore[arg-type]
-    tts_training.register(app)
-    manager = app[tts_training.MANAGER_KEY]
+    training = InProcessVoiceTraining(
+        settings=TtsEngineSettings,
+        corpus_store=rig(tmp_path).store,
+        transcription=SimpleNamespace(running=lambda: running["value"]),  # type: ignore[arg-type]
+    )
+    manager = training._training_jobs
 
     assert manager._transcription_check().status == "pass"
     running["value"] = True
     assert manager._transcription_check().status == "fail"
-
-
-def test_the_live_manager_without_corpus_routes_has_no_transcription_to_wait_for():
-    from aiohttp import web
-
-    app = web.Application()
-    tts_training.register(app)
-    assert app[tts_training.MANAGER_KEY]._transcription_check().status == "pass"

@@ -1,23 +1,28 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+# STT processing layer (ADR 0027). The root project installs it as a path
+# dependency and shares the root uv.lock (ADR 0028). The layer imports
+# nova_core.utils (the shared leaf) but does not declare nova-core: the core
+# already depends on the layers' adapters, so declaring it would be a cycle.
 [project]
-name = "nova-avatar-stt"
+name = "nova-stt"
 version = "0.1.0"
-description = "Nova Avatar speech-to-text layer (faster-whisper)"
+description = "Speech-to-text processing layer of Nova Avatar"
 readme = "README.md"
 requires-python = ">=3.10, <3.12"
 license = { text = "Apache-2.0" }
 maintainers = [{ name = "HongXian0903" }]
-# Third-party versions here mirror the root lock; the root project references
-# this package by path and shares one uv.lock (docs/adr/0028).
 dependencies = [
+    "nova-contracts",
     "faster-whisper>=1.1",
     "numpy<2",
     "soundfile==0.12.1",
-    "nova-avatar-contracts",
 ]
+
+[tool.setuptools.packages.find]
+include = ["nova_stt*"]
 
 [build-system]
 requires = ["setuptools==69.5.1", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["nova_stt*"]

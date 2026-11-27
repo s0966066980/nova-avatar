@@ -3,6 +3,7 @@
 """Exercise reservation, negotiation and cleanup through the real offer route."""
 import asyncio
 import json
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -17,12 +18,24 @@ from nova_core.server.voice_session import (
 )
 
 
+def fake_renderer(**fields):
+    """A renderer the faked SpeakingAvatar below returns as the session avatar itself."""
+    value = SimpleNamespace(discard_recording=AsyncMock(), **fields)
+    value.renderer = value
+    return value
+
+
+def use_renderers(monkeypatch, create_renderer):
+    monkeypatch.setattr(state, 'avatar_service', SimpleNamespace(create_renderer=create_renderer),
+                        raising=False)
+
+
 @pytest.fixture
 def rtc(monkeypatch):
     config = Config()
     for name, value in dict(config=config, model_ready=True, model=object(), avatar=object(),
                             switching=False, settings_applying=False, shutting_down=False, avatar_streams={},
-                            voice_sessions={}, session_roles={}, pcs=set(), presentation=None).items():
+                            voice_sessions={}, session_roles={}, pcs=set(), presentation=None, tts=None).items():
         monkeypatch.setattr(state, name, value, raising=False)
     peers, voices = [], []
     class Peer:
@@ -56,17 +69,20 @@ def rtc(monkeypatch):
         audio=SimpleNamespace(kind='audio'), video=SimpleNamespace(kind='video'),
         discard_stale_media=Mock()))
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', voice)
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: object())
-    def request(role='console', sdp='good'):
+    use_renderers(monkeypatch, lambda *a: fake_renderer())
+    # These tests fake the renderer; the core's TTS pairing has its own tests.
+    monkeypatch.setattr(webrtc, 'SpeakingAvatar', lambda renderer, speech: renderer)
+    def request(role='console', sdp='good', app=None):
         result = AsyncMock()
         result.json.return_value = dict(client_role=role, sdp=sdp, type='offer')
+        result.app = {} if app is None else app
         return result
     return SimpleNamespace(request=request, peers=peers, voices=voices)
 
 
 def test_failed_avatar_creation_releases_role_capacity(rtc, monkeypatch):
     def failed(*args): raise RuntimeError('avatar failed')
-    monkeypatch.setattr(webrtc, 'create_avatar', failed)
+    use_renderers(monkeypatch, failed)
     async def run():
         with pytest.raises(RuntimeError, match='avatar failed'):
             await webrtc.offer(rtc.request())
@@ -137,8 +153,8 @@ def test_cancelled_offer_waits_for_worker_then_releases_reservation(rtc, monkeyp
     def build(*args):
         entered.set()
         finish.wait(2)
-        return object()
-    monkeypatch.setattr(webrtc, 'create_avatar', build)
+        return fake_renderer()
+    use_renderers(monkeypatch, build)
     async def run():
         task = asyncio.create_task(webrtc.offer(rtc.request()))
         try:
@@ -154,22 +170,23 @@ def test_cancelled_offer_waits_for_worker_then_releases_reservation(rtc, monkeyp
     asyncio.run(run())
 
 
-def test_disconnect_releases_all_role_llm_parents(rtc, monkeypatch):
+def test_disconnect_releases_all_role_llm_sessions(rtc, monkeypatch):
     import json
 
-    from nova_llm import service
-    monkeypatch.setattr(service, '_session_llm_instances', {})
-    monkeypatch.setattr(service, '_active_profiles', {})
+    from nova_contracts.llm import SessionProfile
+    from llm_fakes import FakeLlm
+    service = FakeLlm()
+    monkeypatch.setattr(state, 'llm', service, raising=False)
     async def run():
         response = await webrtc.offer(rtc.request())
         sid = json.loads(response.text)['sessionid']
-        service._session_llm_instances[(sid, 'main')] = SimpleNamespace(parent=object())
-        service._session_llm_instances[(sid, 'weather')] = SimpleNamespace(parent=object())
-        service.select_session_profile(sid, 'weather')
+        service.engines[(sid, 'main')] = SimpleNamespace()
+        service.engines[(sid, 'weather')] = SimpleNamespace()
+        service.select_profile(SessionProfile(session_id=sid, profile_id='weather'))
         rtc.peers[0].connectionState = 'failed'
         await rtc.peers[0].handlers['connectionstatechange']()
-        assert not service._session_llm_instances
-        assert sid not in service._active_profiles
+        assert not service.engines
+        assert sid not in service._sessions._active_profiles
     asyncio.run(run())
 
 
@@ -184,7 +201,7 @@ def test_single_profile_config_drives_new_voice_sessions_without_handoff(rtc, mo
         config_for_session=lambda: effective, data_for_session=lambda: object(),
         register=Mock(), unregister=Mock(), apply_pending=AsyncMock())
     monkeypatch.setattr(state, 'roles', roles)
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda *args: SimpleNamespace(config=args[0]))
+    use_renderers(monkeypatch, lambda *args: fake_renderer(config=args[0]))
     original = webrtc.VoiceTurnSession
     captured = []
     def voice(sessionid, config, avatar, **kwargs):
@@ -212,7 +229,9 @@ def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, 
     roles.register = lambda voice: setattr(voice, '_role_coordinator', roles)
     monkeypatch.setattr(state, 'roles', roles)
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', VoiceTurnSession)
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda config, *args: SimpleNamespace(
+    from llm_fakes import FakeLlm
+    monkeypatch.setattr(state, 'llm', FakeLlm(), raising=False)
+    use_renderers(monkeypatch, lambda config, *args: fake_renderer(
         config=config, configure_media_fence=Mock(), flush_talk=Mock()))
 
     async def run():
@@ -238,11 +257,12 @@ def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, 
             viewer = next(v for v in state.voice_sessions.values() if v is not source)
             receipt = json.dumps(dict(type='board_displayed', presenter=viewer._presenter,
                 turn_id='current-turn', board_id='current-turn', item_index=0))
-            with patch('nova_core.server.voice_session.acknowledge_session_board_item', return_value=True) as acknowledge:
-                viewer.handle_control(receipt)
-                viewer.handle_control(receipt)
-                acknowledge.assert_called_once_with(viewer.sessionid, turn_id='current-turn',
-                    board_id='current-turn', item_index=0, presenter=viewer._presenter)
+            from nova_contracts.llm import BoardReceipt, Outcome
+            acknowledge = viewer._llm.acknowledge_board_item = Mock(return_value=Outcome(done=True))
+            viewer.handle_control(receipt)
+            viewer.handle_control(receipt)
+            acknowledge.assert_called_once_with(BoardReceipt(session_id=viewer.sessionid, turn_id='current-turn',
+                board_id='current-turn', item_index=0, presenter=viewer._presenter))
         finally:
             for peer in rtc.peers:
                 peer.connectionState = 'failed'
@@ -284,8 +304,8 @@ def test_offer_body_finishing_during_resource_update_does_not_create_peer(rtc, m
 
 
 def test_disconnect_discards_an_unfinished_recording(rtc, monkeypatch):
-    avatar = SimpleNamespace(discard_recording=AsyncMock())
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: avatar)
+    avatar = fake_renderer()
+    use_renderers(monkeypatch, lambda *a: avatar)
     async def run():
         await webrtc.offer(rtc.request())
         rtc.peers[0].connectionState = 'closed'
@@ -321,6 +341,7 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
         from nova_core.server.state import state
 
         request = AsyncMock()
+        request.app = {}
         request.json.return_value = {
             "client_role": "console",
             "sdp": "offer",
@@ -348,6 +369,7 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         request = AsyncMock()
+        request.app = {}
         request.json.return_value = {
             "client_role": "console",
             "sdp": "offer",
@@ -368,3 +390,86 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.assertRaises(ReachedOfferParsing):
                 await offer(request)
+
+
+# --------------------------------------------------------------------------- voice training (spec decision 14)
+
+
+def training_app(manager):
+    """The TTS service whose training job the offer route asks about; no aiohttp app state."""
+    from nova_contracts.tts import TtsEngineSettings
+    from nova_tts.training.service import InProcessVoiceTraining
+
+    state.tts = InProcessVoiceTraining(settings=TtsEngineSettings, training_jobs=manager)
+    return {}
+
+
+def training_rig(tmp_path, **kwargs):
+    """A training job whose child keeps running until it is released or signalled."""
+    from training_fakes import rig
+    from nova_tts.training.jobs import StartRequest
+
+    r = rig(tmp_path, **kwargs)
+    r.manager.start(StartRequest(corpus='voice', name='我的聲音'))
+    deadline = time.monotonic() + 10
+    while not r.spawner.processes:
+        assert time.monotonic() < deadline, 'the training child never started'
+        time.sleep(0.01)
+    return r
+
+
+def test_a_stage_offer_is_refused_while_voice_training_runs(rtc, tmp_path, monkeypatch):
+    built = []
+    use_renderers(monkeypatch, lambda *a: built.append(a) or fake_renderer())
+    r = training_rig(tmp_path, train_code=None)
+    try:
+        response = asyncio.run(webrtc.offer(rtc.request('stage', app=training_app(r.manager))))
+        assert response.status == 409
+        body = json.loads(response.body)
+        assert body['reason'] == 'voice_training_active'
+        assert body['msg'] == '聲線訓練進行中，數位人暫停服務'
+        assert not state.session_roles and not state.avatar_streams and built == []
+        assert rtc.peers == [] and rtc.voices == []
+    finally:
+        r.manager.cancel()
+        r.manager.join(20)
+
+
+def test_a_console_offer_still_connects_while_voice_training_runs(rtc, tmp_path):
+    r = training_rig(tmp_path, train_code=None)
+    try:
+        response = asyncio.run(webrtc.offer(rtc.request('console', app=training_app(r.manager))))
+        assert response.status == 200
+        assert list(state.session_roles.values()) == ['console']
+    finally:
+        r.manager.cancel()
+        r.manager.join(20)
+
+
+def end_by_finishing(r):
+    r.release.set()
+
+
+def end_by_cancelling(r):
+    r.manager.cancel()
+
+
+@pytest.mark.parametrize('kwargs, end, status', [
+    (dict(train_code=0), end_by_finishing, 'done'),
+    (dict(train_code=1), end_by_finishing, 'failed'),  # the training child exits abnormally
+    (dict(train_code=0, verify_error=RuntimeError('broken bundle')), end_by_finishing, 'failed'),  # the worker raises
+    (dict(train_code=None), end_by_cancelling, 'cancelled'),
+])
+def test_a_stage_connects_again_once_the_training_job_has_ended(rtc, tmp_path, kwargs, end, status):
+    import threading
+    release = threading.Event()
+    r = training_rig(tmp_path, train_release=release, **kwargs)
+    r.release = release
+    app = training_app(r.manager)
+    assert asyncio.run(webrtc.offer(rtc.request('stage', app=app))).status == 409
+    end(r)
+    r.manager.join(20)
+    assert r.manager.status()['status'] == status
+    response = asyncio.run(webrtc.offer(rtc.request('stage', app=app)))
+    assert response.status == 200
+    assert list(state.session_roles.values()) == ['stage']

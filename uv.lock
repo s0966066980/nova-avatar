@@ -1281,44 +1281,17 @@ wheels = [
 name = "import-linter"
 version = "2.15"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version < '3.11' and sys_platform == 'darwin'",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux'",
-    "(python_full_version < '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.11' and sys_platform != 'darwin' and sys_platform != 'linux')",
-    "python_full_version < '3.11' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
-]
 dependencies = [
-    { name = "click", marker = "python_full_version < '3.11'" },
+    { name = "click" },
     { name = "grimp", version = "3.18", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "rich", marker = "python_full_version < '3.11'" },
+    { name = "grimp", version = "3.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "rich" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3c/81/1bb414f8c8bcd024499e91f112d317c36a86bc264da1fd43f9797fc2b7b0/import_linter-2.15.tar.gz", hash = "sha256:1da912bea5e172a82a3ce617b5543f75cf64dc0d8f4d9b46c5578b68ccb81590", size = 1405973, upload-time = "2026-09-04T14:47:56.097Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/08/31/4571c20652a4002ed9e500046386f3731a77e23d95a608ae8a87f1fbb2da/import_linter-2.15-py3-none-any.whl", hash = "sha256:9aaf16a88ac1e99d5a464cd7f66b6a05f7060bfa761162e0ed441773a267ed3b", size = 640512, upload-time = "2026-09-04T14:47:54.878Z" },
-]
-
-[[package]]
-name = "import-linter"
-version = "2.17"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.11' and sys_platform == 'darwin'",
-    "python_full_version >= '3.11' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux'",
-    "python_full_version >= '3.11' and sys_platform == 'win32'",
-    "python_full_version >= '3.11' and sys_platform == 'emscripten'",
-    "(python_full_version >= '3.11' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version >= '3.11' and sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'linux' and sys_platform != 'win32')",
-    "python_full_version >= '3.11' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
-]
-dependencies = [
-    { name = "click", marker = "python_full_version >= '3.11'" },
-    { name = "grimp", version = "3.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "rich", marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/77/e1/2b459e6666297634e1f6461a51851eb50f64e571f4351cb4ad51fad312d5/import_linter-2.17.tar.gz", hash = "sha256:74a4640c96b71965624d296508c3274655d3e4c2593c27b8330dd0570ebd6886", size = 1423183, upload-time = "2026-11-18T11:33:10.54Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b6/45/baf897d969b4e19d9e063ffb13bc12346b1af6b36e1774841d16d84cf3cc/import_linter-2.17-py3-none-any.whl", hash = "sha256:0e23a0b646bd422c0aaafdf6bfbb129563a055c1968edb3109c8811a32d98802", size = 652153, upload-time = "2026-11-18T11:33:09.13Z" },
 ]
 
 [[package]]
@@ -1942,36 +1915,19 @@ name = "nova-avatar"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aiohttp" },
-    { name = "aiortc" },
-    { name = "av" },
-    { name = "librosa" },
-    { name = "logger" },
-    { name = "nova-avatar-contracts" },
-    { name = "nova-avatar-core" },
-    { name = "nova-avatar-llm" },
-    { name = "nova-avatar-render" },
-    { name = "nova-avatar-stt" },
-    { name = "nova-avatar-tts" },
-    { name = "numpy" },
-    { name = "omegaconf" },
-    { name = "onnxruntime" },
-    { name = "openai" },
-    { name = "opencv-python-headless" },
-    { name = "pillow" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "resampy" },
-    { name = "scipy" },
+    { name = "nova-contracts" },
+    { name = "nova-core" },
+    { name = "nova-llm" },
+    { name = "nova-render" },
+    { name = "nova-stt" },
+    { name = "nova-tts" },
     { name = "setuptools" },
-    { name = "soundfile" },
     { name = "torch", version = "2.5.0", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'" },
     { name = "torch", version = "2.5.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine != 'aarch64' or platform_python_implementation != 'CPython' or sys_platform != 'linux'" },
     { name = "torchaudio", version = "2.5.0", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'" },
     { name = "torchaudio", version = "2.5.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine != 'aarch64' or platform_python_implementation != 'CPython' or sys_platform != 'linux'" },
     { name = "torchvision", version = "0.20.0", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'" },
     { name = "torchvision", version = "0.20.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine != 'aarch64' or platform_python_implementation != 'CPython' or sys_platform != 'linux'" },
-    { name = "tqdm" },
     { name = "transformers" },
     { name = "typing-extensions" },
     { name = "websockets" },
@@ -1979,14 +1935,13 @@ dependencies = [
 
 [package.optional-dependencies]
 musetalk = [
-    { name = "nova-avatar-musetalk" },
+    { name = "nova-render", extra = ["musetalk"] },
 ]
 tensorrt = [
-    { name = "onnx" },
-    { name = "tensorrt-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "nova-render", extra = ["tensorrt"] },
 ]
 vad = [
-    { name = "silero-vad" },
+    { name = "nova-core", extra = ["vad"] },
 ]
 
 [package.dev-dependencies]
@@ -1997,8 +1952,7 @@ ci = [
     { name = "torchaudio", version = "2.5.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine != 'aarch64' or platform_python_implementation != 'CPython' or sys_platform != 'linux'" },
 ]
 dev = [
-    { name = "import-linter", version = "2.15", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "import-linter", version = "2.17", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "import-linter" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2007,37 +1961,19 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp" },
-    { name = "aiortc" },
-    { name = "av" },
-    { name = "librosa" },
-    { name = "logger" },
-    { name = "nova-avatar-contracts", editable = "contracts" },
-    { name = "nova-avatar-core", editable = "core" },
-    { name = "nova-avatar-llm", editable = "services/llm" },
-    { name = "nova-avatar-musetalk", marker = "extra == 'musetalk'", editable = "avatar/nova_render/musetalk" },
-    { name = "nova-avatar-render", editable = "avatar" },
-    { name = "nova-avatar-stt", editable = "services/stt" },
-    { name = "nova-avatar-tts", editable = "services/tts" },
-    { name = "numpy", specifier = "<2" },
-    { name = "omegaconf" },
-    { name = "onnx", marker = "extra == 'tensorrt'", specifier = "==1.17.0" },
-    { name = "onnxruntime", specifier = ">=1.16,<1.24" },
-    { name = "openai" },
-    { name = "opencv-python-headless", specifier = "<4.12" },
-    { name = "pillow", specifier = ">=10,<13" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "resampy" },
-    { name = "scipy" },
+    { name = "nova-contracts", editable = "contracts" },
+    { name = "nova-core", editable = "core" },
+    { name = "nova-core", extras = ["vad"], marker = "extra == 'vad'", editable = "core" },
+    { name = "nova-llm", editable = "services/llm" },
+    { name = "nova-render", editable = "avatar" },
+    { name = "nova-render", extras = ["musetalk"], marker = "extra == 'musetalk'", editable = "avatar" },
+    { name = "nova-render", extras = ["tensorrt"], marker = "extra == 'tensorrt'", editable = "avatar" },
+    { name = "nova-stt", editable = "services/stt" },
+    { name = "nova-tts", editable = "services/tts" },
     { name = "setuptools", specifier = "==69.5.1" },
-    { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
-    { name = "soundfile", specifier = "==0.12.1" },
-    { name = "tensorrt-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tensorrt'", specifier = "==10.16.1.11" },
     { name = "torch", specifier = "==2.5.0", index = "https://download.pytorch.org/whl/cu124" },
     { name = "torchaudio", index = "https://download.pytorch.org/whl/cu124" },
     { name = "torchvision", index = "https://download.pytorch.org/whl/cu124" },
-    { name = "tqdm" },
     { name = "transformers", specifier = "==4.46.0" },
     { name = "typing-extensions" },
     { name = "websockets", specifier = "==12.0" },
@@ -2051,100 +1987,11 @@ ci = [
     { name = "torchaudio", specifier = "==2.5.0", index = "https://download.pytorch.org/whl/cu124" },
 ]
 dev = [
-    { name = "import-linter", specifier = ">=2.3" },
+    { name = "import-linter", specifier = "==2.15" },
     { name = "pyright", specifier = "==1.1.414" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=6" },
     { name = "ruff", specifier = "==0.17.1" },
-]
-
-[[package]]
-name = "nova-avatar-contracts"
-version = "0.1.0"
-source = { editable = "contracts" }
-dependencies = [
-    { name = "pydantic" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2" }]
-
-[[package]]
-name = "nova-avatar-core"
-version = "0.1.0"
-source = { editable = "core" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "aiortc" },
-    { name = "av" },
-    { name = "logger" },
-    { name = "nova-avatar-contracts" },
-    { name = "nova-avatar-llm" },
-    { name = "nova-avatar-render" },
-    { name = "nova-avatar-stt" },
-    { name = "nova-avatar-tts" },
-    { name = "numpy" },
-    { name = "onnxruntime" },
-    { name = "openai" },
-    { name = "opencv-python-headless" },
-    { name = "pillow" },
-    { name = "pypdfium2" },
-    { name = "pyyaml" },
-    { name = "regex" },
-    { name = "scipy" },
-    { name = "soundfile" },
-    { name = "typing-extensions" },
-    { name = "websockets" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp" },
-    { name = "aiortc" },
-    { name = "av" },
-    { name = "logger" },
-    { name = "nova-avatar-contracts" },
-    { name = "nova-avatar-llm" },
-    { name = "nova-avatar-render" },
-    { name = "nova-avatar-stt" },
-    { name = "nova-avatar-tts" },
-    { name = "numpy", specifier = "<2" },
-    { name = "onnxruntime", specifier = ">=1.16,<1.24" },
-    { name = "openai" },
-    { name = "opencv-python-headless", specifier = "<4.12" },
-    { name = "pillow", specifier = ">=10,<13" },
-    { name = "pypdfium2", specifier = "==5.14.0" },
-    { name = "pyyaml" },
-    { name = "regex", specifier = ">=2024.11.6" },
-    { name = "scipy" },
-    { name = "soundfile", specifier = "==0.12.1" },
-    { name = "typing-extensions" },
-    { name = "websockets", specifier = "==12.0" },
-]
-
-[[package]]
-name = "nova-avatar-llm"
-version = "0.1.0"
-source = { editable = "services/llm" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "ddgs" },
-    { name = "nova-avatar-contracts" },
-    { name = "openai" },
-    { name = "opencc" },
-    { name = "pyyaml" },
-    { name = "requests" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp" },
-    { name = "ddgs", specifier = "==9.14.4" },
-    { name = "nova-avatar-contracts" },
-    { name = "openai" },
-    { name = "opencc", specifier = ">=1.1.9" },
-    { name = "pyyaml" },
-    { name = "requests" },
 ]
 
 [[package]]
@@ -2199,45 +2046,142 @@ requires-dist = [
 ]
 
 [[package]]
-name = "nova-avatar-render"
+name = "nova-contracts"
+version = "0.1.0"
+source = { editable = "contracts" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.7,<3" }]
+
+[[package]]
+name = "nova-core"
+version = "0.1.0"
+source = { editable = "core" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "aiortc" },
+    { name = "av" },
+    { name = "logger" },
+    { name = "nova-contracts" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "openai" },
+    { name = "opencv-python-headless" },
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "pypdfium2" },
+    { name = "pyyaml" },
+    { name = "regex" },
+    { name = "requests" },
+    { name = "resampy" },
+    { name = "scipy" },
+    { name = "soundfile" },
+]
+
+[package.optional-dependencies]
+vad = [
+    { name = "silero-vad" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp" },
+    { name = "aiortc" },
+    { name = "av" },
+    { name = "logger" },
+    { name = "nova-contracts" },
+    { name = "numpy", specifier = "<2" },
+    { name = "onnxruntime", specifier = ">=1.16,<1.24" },
+    { name = "openai" },
+    { name = "opencv-python-headless", specifier = "<4.12" },
+    { name = "pillow", specifier = ">=10,<13" },
+    { name = "pydantic" },
+    { name = "pypdfium2", specifier = "==5.14.0" },
+    { name = "pyyaml" },
+    { name = "regex", specifier = ">=2024.11.6" },
+    { name = "requests" },
+    { name = "resampy" },
+    { name = "scipy" },
+    { name = "silero-vad", marker = "extra == 'vad'", specifier = ">=5.1" },
+    { name = "soundfile", specifier = "==0.12.1" },
+]
+provides-extras = ["vad"]
+
+[[package]]
+name = "nova-llm"
+version = "0.1.0"
+source = { editable = "services/llm" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "ddgs" },
+    { name = "nova-contracts" },
+    { name = "openai" },
+    { name = "opencc" },
+    { name = "requests" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp" },
+    { name = "ddgs", specifier = "==9.14.4" },
+    { name = "nova-contracts" },
+    { name = "openai" },
+    { name = "opencc", specifier = ">=1.1.9" },
+    { name = "requests" },
+]
+
+[[package]]
+name = "nova-render"
 version = "0.1.0"
 source = { editable = "avatar" }
 dependencies = [
     { name = "av" },
-    { name = "nova-avatar-contracts" },
+    { name = "librosa" },
+    { name = "nova-contracts" },
     { name = "numpy" },
+    { name = "omegaconf" },
     { name = "opencv-python-headless" },
     { name = "pillow" },
-    { name = "resampy" },
     { name = "soundfile" },
-    { name = "torch", version = "2.5.0", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'" },
-    { name = "torch", version = "2.5.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine != 'aarch64' or platform_python_implementation != 'CPython' or sys_platform != 'linux'" },
-    { name = "torchvision", version = "0.20.0", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'" },
-    { name = "torchvision", version = "0.20.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "platform_machine != 'aarch64' or platform_python_implementation != 'CPython' or sys_platform != 'linux'" },
     { name = "tqdm" },
+]
+
+[package.optional-dependencies]
+musetalk = [
+    { name = "nova-avatar-musetalk" },
+]
+tensorrt = [
+    { name = "onnx" },
+    { name = "tensorrt-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "av" },
-    { name = "nova-avatar-contracts" },
+    { name = "librosa" },
+    { name = "nova-avatar-musetalk", marker = "extra == 'musetalk'", editable = "avatar/nova_render/musetalk" },
+    { name = "nova-contracts" },
     { name = "numpy", specifier = "<2" },
+    { name = "omegaconf" },
+    { name = "onnx", marker = "extra == 'tensorrt'", specifier = "==1.17.0" },
     { name = "opencv-python-headless", specifier = "<4.12" },
     { name = "pillow", specifier = ">=10,<13" },
-    { name = "resampy" },
     { name = "soundfile", specifier = "==0.12.1" },
-    { name = "torch", specifier = "==2.5.0" },
-    { name = "torchvision" },
+    { name = "tensorrt-cu12", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tensorrt'", specifier = "==10.16.1.11" },
     { name = "tqdm" },
 ]
+provides-extras = ["musetalk", "tensorrt"]
 
 [[package]]
-name = "nova-avatar-stt"
+name = "nova-stt"
 version = "0.1.0"
 source = { editable = "services/stt" }
 dependencies = [
     { name = "faster-whisper" },
-    { name = "nova-avatar-contracts" },
+    { name = "nova-contracts" },
     { name = "numpy" },
     { name = "soundfile" },
 ]
@@ -2245,13 +2189,13 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "faster-whisper", specifier = ">=1.1" },
-    { name = "nova-avatar-contracts" },
+    { name = "nova-contracts" },
     { name = "numpy", specifier = "<2" },
     { name = "soundfile", specifier = "==0.12.1" },
 ]
 
 [[package]]
-name = "nova-avatar-tts"
+name = "nova-tts"
 version = "0.1.0"
 source = { editable = "services/tts" }
 dependencies = [
@@ -2259,7 +2203,7 @@ dependencies = [
     { name = "av" },
     { name = "edge-tts" },
     { name = "faster-whisper" },
-    { name = "nova-avatar-contracts" },
+    { name = "nova-contracts" },
     { name = "numpy" },
     { name = "onnxruntime" },
     { name = "opencc" },
@@ -2275,7 +2219,7 @@ requires-dist = [
     { name = "av" },
     { name = "edge-tts" },
     { name = "faster-whisper", specifier = ">=1.1" },
-    { name = "nova-avatar-contracts" },
+    { name = "nova-contracts" },
     { name = "numpy", specifier = "<2" },
     { name = "onnxruntime", specifier = ">=1.16,<1.24" },
     { name = "opencc", specifier = ">=1.1.9" },

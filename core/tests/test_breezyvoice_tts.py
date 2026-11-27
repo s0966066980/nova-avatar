@@ -29,8 +29,9 @@ from nova_tts import voice_library
 from nova_tts.base import State
 from nova_tts.factory import create_tts_engine
 
-from scripts import breezyvoice_frontend as frontend
-from scripts import breezyvoice_weights
+import breezyvoice_frontend as frontend
+import breezyvoice_weights
+from tts_fakes import in_process_tts
 
 WORD_UTILS = '''from collections import Counter, defaultdict
 
@@ -330,7 +331,7 @@ def test_engine_resamples_breezyvoice_22050_hz_audio_per_fragment(voices, tmp_pa
 
 def test_breezyvoice_is_a_selectable_local_engine():
     assert TTS_ENGINE_META["breezyvoice"]["label"] == "BreezyVoice"
-    snapshot = speech_snapshot(Config())["tts"]
+    snapshot = speech_snapshot(Config(), tts=in_process_tts())["tts"]
     assert "breezyvoice" in {item["id"] for item in snapshot["engines"]}
 
 
@@ -339,9 +340,9 @@ def test_apply_requires_a_library_voice_with_transcript(voices, tmp_path):
     with patch("nova_core.server.runtime_settings._engine_available", return_value=True), \
             patch("nova_tts.cosyvoice_runtime.ensure_server") as ensure:
         with pytest.raises(SettingsError, match="音訊庫"):
-            apply_tts_settings(Config(), {"type": "breezyvoice"}, session_count=0)
+            apply_tts_settings(Config(), {"type": "breezyvoice"}, session_count=0, tts=in_process_tts())
         with pytest.raises(SettingsError, match="逐字稿"):
-            apply_tts_settings(Config(), {"type": "breezyvoice", "ref_file": voice}, session_count=0)
+            apply_tts_settings(Config(), {"type": "breezyvoice", "ref_file": voice}, session_count=0, tts=in_process_tts())
     ensure.assert_not_called()
 
 
@@ -352,7 +353,7 @@ def test_apply_starts_the_owned_server_for_breezyvoice(voices, tmp_path):
             patch("nova_tts.cosyvoice_runtime.ensure_server", return_value="http://127.0.0.1:50000") as ensure, \
             patch("nova_core.server.runtime_settings._preview_tts", return_value="data:audio/wav;base64,dA==") as preview, \
             patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
-        apply_tts_settings(config, {"type": "breezyvoice", "ref_file": voice}, session_count=0)
+        apply_tts_settings(config, {"type": "breezyvoice", "ref_file": voice}, session_count=0, tts=in_process_tts())
     ensure.assert_called_once_with(model_dir="", host="127.0.0.1", port=50000)
     assert preview.call_args.kwargs["ref_file"] == voice
     assert config.tts.type == "breezyvoice"

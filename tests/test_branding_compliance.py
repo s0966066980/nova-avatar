@@ -1,0 +1,146 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+import json
+import re
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+OLD_BRAND = "Linly-Talker-Stream"
+LEGACY_VISIBLE_BRAND = re.compile(r"\bLinly(?:[-_ ]Talker(?:[-_ ]Stream)?)?\b", re.IGNORECASE)
+
+
+class BrandingComplianceTests(unittest.TestCase):
+    def test_project_metadata_uses_nova_avatar(self):
+        project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertRegex(project, r'(?m)^name = "nova-avatar"$')
+        self.assertIn('{ name = "HongXian0903" }', project)
+        self.assertIn(
+            'Repository = "https://github.com/s0966066980/nova-avatar"',
+            project,
+        )
+
+        package = json.loads((ROOT / "web/package.json").read_text(encoding="utf-8"))
+        self.assertEqual(package["name"], "nova-avatar-web")
+        self.assertEqual(package["author"], "HongXian0903")
+        self.assertEqual(package["license"], "Apache-2.0")
+
+    def test_legal_attribution_and_restrictions_are_present(self):
+        license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+        notice = (ROOT / "NOTICE").read_text(encoding="utf-8")
+        third_party = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+
+        self.assertIn("Apache License", license_text)
+        for required in ("Kedreamix", OLD_BRAND, "LiveTalking", "Apache License"):
+            self.assertIn(required, notice)
+        self.assertIn("Copyright (c) 2024 Tencent Music Entertainment Group", third_party)
+        self.assertRegex(third_party, r"Wav2Lip[\s\S]+Research / Non-commercial")
+        self.assertRegex(third_party, r"Wav2Lip[\s\S]+not permitted")
+        self.assertTrue((ROOT / "third_party/licenses/MuseTalk-LICENSE.txt").is_file())
+
+    def test_user_visible_surfaces_do_not_show_old_brand(self):
+        files = (
+            "web/index.html",
+            "web/stage.html",
+            "web/answer-board.prototype.html",
+            "web/board-interactive-test.html",
+            "web/console-uiux-prototype.html",
+            "web/src/App.vue",
+            "web/src/components/InteractionPanel.vue",
+            "web/src/components/SettingsPanel.vue",
+            "web/src/locales/en-US.js",
+            "web/src/locales/zh-CN.js",
+            "web/src/locales/zh-TW.js",
+            "config/prompt_en.txt",
+        )
+        for relative in files:
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            text = re.sub(r"\A\s*<!--.*?-->\s*", "", text, count=1, flags=re.DOTALL)
+            text = re.sub(
+                r"\A(?:// (?:Derived from|Modified by)[^\n]*\n)+\s*",
+                "",
+                text,
+            )
+            text = "\n".join(
+                line for line in text.splitlines() if "legacyStorageKey" not in line
+            )
+            with self.subTest(file=relative):
+                self.assertNotRegex(text, LEGACY_VISIBLE_BRAND)
+
+        self.assertTrue((ROOT / "README.md").read_text(encoding="utf-8").startswith("# Nova Avatar\n"))
+        self.assertIn("<title>Nova Avatar</title>", (ROOT / "web/index.html").read_text(encoding="utf-8"))
+
+    def test_wav2lip_is_gone_but_its_restriction_record_is_kept(self):
+        """The engine was removed 2026-11-24; earlier revisions still carry the restriction."""
+        self.assertFalse((ROOT / "avatar/nova_render/wav2lip").exists())
+        notice = (ROOT / "third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt").read_text(encoding="utf-8")
+        self.assertIn("Non-commercial", notice)
+        from nova_render.catalog import ENGINE_META, IMPORTABLE_ENGINES
+
+        self.assertEqual(set(ENGINE_META), {"musetalk"})
+        self.assertEqual(IMPORTABLE_ENGINES, ("musetalk",))
+
+    def test_restricted_tts_engines_are_labeled_in_catalog_ui_and_notices(self):
+        from nova_core.server.runtime_settings import TTS_ENGINE_META, _catalog
+
+        expected = {
+            "edgetts": ("Edge TTS (Development only)", "開發用"),
+            "breezyvoice": ("BreezyVoice", "Apache-2.0"),
+        }
+        catalog = {item["id"]: item for item in _catalog(TTS_ENGINE_META)}
+        for engine, (label, restriction) in expected.items():
+            with self.subTest(engine=engine):
+                self.assertEqual(catalog[engine]["label"], label)
+                self.assertIn(restriction, catalog[engine]["description"])
+
+        # Voices are chosen only in the role profile editor, which shows the
+        # catalog label and the selected engine's restriction text above.
+        editor = (ROOT / "web/src/components/AvatarProfileEditor.vue").read_text(encoding="utf-8")
+        self.assertIn("{{ ttsEngineLabel(engine) }}", editor)
+        self.assertIn("{{ ttsEngineDescription }}", editor)
+
+        engine_files = {
+            "edge.py": "Development only",
+            "breezyvoice.py": "Apache-2.0",
+        }
+        for name, marker in engine_files.items():
+            with self.subTest(engine_file=name):
+                header = (ROOT / "services/tts/nova_tts/engines" / name).read_text(encoding="utf-8")[:600]
+                self.assertIn(marker, header)
+
+        third_party = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+        self.assertRegex(third_party, r"Edge TTS[\s\S]+Development only")
+        self.assertRegex(third_party, r"BreezyVoice[\s\S]+Apache-2\.0")
+        self.assertRegex(third_party, r"Gemma 4[\s\S]+Gemma Terms of Use do not apply")
+
+        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        self.assertRegex(stack, r"\| TTS \| Edge TTS \| \*\*Development only\*\*")
+
+    def test_matcha_voice_models_are_labeled_in_notices_and_docs(self):
+        third_party = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+        matcha = third_party[third_party.index("### Matcha voice models") :]
+        matcha = matcha[: matcha.index("\n## ")]
+
+        self.assertRegex(matcha, r"sherpa-onnx[^\n]*\n[\s\S]*?License: Apache-2\.0")
+        self.assertRegex(
+            matcha,
+            r"dengcunqin/matcha_tts_zh_en_20251010[\s\S]+?\*\*Research / Non-commercial\*\*",
+        )
+        self.assertRegex(matcha, r"vocos-16khz-univ\.onnx[\s\S]+?Charactr Inc\.")
+        self.assertRegex(
+            matcha,
+            r"zh-tw-hsiaochen-edge[\s\S]+?\*\*Development only\*\*[\s\S]+?§14\(s\)\(iv\)",
+        )
+        self.assertIn("No voice model is cleared for commercial use.", matcha)
+
+        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        self.assertRegex(stack, r"\| TTS \| Matcha-TTS voice models[^\n]*Research / Non-commercial")
+        self.assertRegex(stack, r"\| TTS \| Matcha-TTS voice models[^\n]*Development only")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("docs/voice-models.md", readme)
+
+
+if __name__ == "__main__":
+    unittest.main()

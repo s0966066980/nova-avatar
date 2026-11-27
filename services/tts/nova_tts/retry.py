@@ -1,7 +1,11 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""A single retry allowance shared by all stages of one reply turn."""
+"""A single retry allowance shared by every fragment of one reply turn.
+
+Edge recovery is internal to the TTS layer (ADR 0027): the engine keeps one
+budget per turn so prefetched fragments cannot multiply retries.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

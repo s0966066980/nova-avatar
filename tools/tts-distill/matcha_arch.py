@@ -6,7 +6,7 @@
 """Shared Matcha-TTS architecture and Vocos log-mel feature helpers.
 
 Runs in the training venv (``.local/matcha-train/venv``, see
-``scripts/setup-matcha-train.sh``), where the upstream ``matcha-tts`` package
+``services/tts/scripts/setup-matcha-train.sh``), where the upstream ``matcha-tts`` package
 (MIT, Shivam Mehta) is installed. The hyper-parameters are those of the base
 model ``dengcunqin/matcha_tts_zh_en_20251010`` (``pytorch_model_sherpa.bin``).
 Checkpoints are always loaded with ``weights_only=True`` and ``strict=True``.

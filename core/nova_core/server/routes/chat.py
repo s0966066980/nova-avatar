@@ -6,7 +6,7 @@
 import json
 from aiohttp import web
 
-from nova_llm.service import clear_session_history
+from nova_contracts.llm import SessionRef
 from nova_core.utils.logging import logger
 from nova_core.server.state import state
 
@@ -132,7 +132,7 @@ async def is_speaking(request):
     return web.Response(
         content_type="application/json",
         text=json.dumps(
-            {"code": 0, "data": state.avatar_streams[sessionid].is_speaking()}
+            {"code": 0, "data": state.avatar_streams[sessionid].renderer.is_speaking()}
         ),
     )
 
@@ -153,7 +153,8 @@ async def clear_history(request):
                 voice_session._capture_requested, voice_session._manual_pause = capture, paused
                 voice_session._refresh_gate()
         else:
-            clear_session_history(sessionid)
+            if state.llm is not None:
+                state.llm.clear_history(SessionRef(session_id=sessionid))
         
         return web.Response(
             content_type="application/json",

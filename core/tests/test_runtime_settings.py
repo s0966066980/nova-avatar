@@ -22,6 +22,7 @@ from nova_render.catalog import (
     list_avatar_characters,
     list_engines,
 )
+from nova_render.adapter import create_avatar_service
 from nova_core.config.overrides import load_runtime_overrides, persist_runtime_overrides
 from nova_llm.base import with_response_length_instruction
 from nova_core.server.runtime_settings import (
@@ -41,6 +42,8 @@ from nova_core.server.runtime_settings import (
     stage_snapshot,
 )
 from nova_core.config.schema import Config
+from llm_fakes import FakeLlm
+from tts_fakes import in_process_tts
 
 
 class AvatarCatalogTests(unittest.TestCase):
@@ -212,9 +215,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.reply_streaming.enabled = True
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("nova_core.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "nova_render.catalog.list_avatar_characters", return_value=[]
+        ), patch("nova_render.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["reply_mode"], "streaming")
 
@@ -223,9 +226,8 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.provider = "ollama"
         config.llm.base_url = "http://localhost:11434/v1"
 
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist, patch(
-            "nova_core.server.runtime_settings.switch_llm_endpoint"
-        ):
+        llm = FakeLlm()
+        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
@@ -233,6 +235,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
                 "請使用繁體中文回答。",
                 120,
                 "legacy",
+                llm=llm,
             )
 
         self.assertFalse(config.reply_streaming.enabled)
@@ -243,9 +246,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.llm.system_prompt = ""
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("nova_core.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "nova_render.catalog.list_avatar_characters", return_value=[]
+        ), patch("nova_render.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["system_prompt"], "You are a helpful assistant.")
 
@@ -255,28 +258,28 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.base_url = "http://localhost:11434/v1"
         prompt = "你是數位人助理，請使用繁體中文簡短回答。"
 
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist, patch(
-            "nova_core.server.runtime_settings.switch_llm_endpoint"
-        ) as switch:
-            result = apply_llm_model(config, "qwen3.5:4b", "ollama", prompt)
+        llm = FakeLlm()
+        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+            result = apply_llm_model(config, "qwen3.5:4b", "ollama", prompt, llm=llm)
 
         self.assertEqual(config.llm.assistant_profile.system_prompt, prompt)
         self.assertEqual(config.llm.system_prompt, "")
         self.assertEqual(result["system_prompt"], prompt)
         persist.assert_called_once_with(config)
-        self.assertEqual(switch.call_args.kwargs["system_prompt"], prompt)
+        self.assertEqual(llm.engine_settings[-1].system_prompt, prompt)
 
     def test_apply_llm_rejects_empty_prompt(self):
+        llm = FakeLlm()
         with self.assertRaises(SettingsError):
-            apply_llm_model(Config(), "qwen3.5:4b", "ollama", "   ")
+            apply_llm_model(Config(), "qwen3.5:4b", "ollama", "   ", llm=llm)
 
     def test_snapshot_exposes_response_length(self):
         config = Config()
         config.llm.response_max_chars = 240
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("nova_core.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "nova_render.catalog.list_avatar_characters", return_value=[]
+        ), patch("nova_render.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["response_max_chars"], 240)
 
@@ -284,9 +287,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.llm.board.max_items = 6
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("nova_core.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "nova_render.catalog.list_avatar_characters", return_value=[]
+        ), patch("nova_render.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["board_max_items"], 6)
 
@@ -294,9 +297,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.stage.caption_max_chars = 240
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("nova_core.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "nova_render.catalog.list_avatar_characters", return_value=[]
+        ), patch("nova_render.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
 
         self.assertEqual(snapshot["stage"]["caption_max_chars"], 240)
         self.assertEqual(snapshot["stage"]["board_style"], "glass")
@@ -394,25 +397,26 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.provider = "ollama"
         config.llm.base_url = "http://localhost:11434/v1"
 
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"), patch(
-            "nova_core.server.runtime_settings.switch_llm_endpoint"
-        ) as switch:
+        llm = FakeLlm()
+        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
                 "ollama",
                 "請使用繁體中文回答。",
                 240,
+                llm=llm,
             )
 
         self.assertEqual(config.llm.response_max_chars, 240)
         self.assertEqual(config.llm.max_tokens, 888)
         self.assertEqual(result["response_max_chars"], 240)
-        self.assertEqual(switch.call_args.kwargs["response_max_chars"], 240)
-        self.assertEqual(switch.call_args.kwargs["max_tokens"], 888)
+        self.assertEqual(llm.engine_settings[-1].response_max_chars, 240)
+        self.assertEqual(llm.engine_settings[-1].max_tokens, 888)
         self.assertEqual(config.llm.extra_body["options"]["num_predict"], 888)
 
     def test_apply_llm_rejects_invalid_response_length(self):
+        llm = FakeLlm()
         with self.assertRaises(SettingsError):
             apply_llm_model(
                 Config(),
@@ -420,6 +424,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
                 "ollama",
                 "請使用繁體中文回答。",
                 19,
+                llm=llm,
             )
 
     def test_apply_llm_updates_and_validates_board_item_limit(self):
@@ -427,20 +432,21 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.provider = "ollama"
         config.llm.base_url = "http://localhost:11434/v1"
 
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"), patch(
-            "nova_core.server.runtime_settings.switch_llm_endpoint"
-        ):
+        llm = FakeLlm()
+        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
                 "ollama",
                 "請使用繁體中文回答。",
                 board_max_items=6,
+                llm=llm,
             )
 
         self.assertEqual(config.llm.board.max_items, 6)
         self.assertEqual(result["board_max_items"], 6)
 
+        llm = FakeLlm()
         for value in (0, 13, 2.5, True, "invalid"):
             with self.subTest(value=value), self.assertRaises(SettingsError):
                 apply_llm_model(
@@ -449,6 +455,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
                     "ollama",
                     "請使用繁體中文回答。",
                     board_max_items=value,
+                    llm=llm,
                 )
 
     def test_length_instruction_preserves_prompt_and_requests_complete_sentence(self):
@@ -489,14 +496,14 @@ class ApplyAvatarGuardTests(unittest.TestCase):
             }
         ]
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters",
+            "nova_render.catalog.list_avatar_characters",
             return_value=characters,
         ), patch(
-            "nova_core.server.runtime_settings.list_engines",
+            "nova_render.catalog.list_engines",
             return_value=engines,
         ):
             with self.assertRaises(SettingsError) as ctx:
-                apply_avatar(Config(), "musetalk", "musetalk_avatar2", session_count=1)
+                apply_avatar(Config(), "musetalk", "musetalk_avatar2", session_count=1, avatars=create_avatar_service())
         self.assertEqual(ctx.exception.status, 409)
         self.assertTrue(ctx.exception.extra.get("need_disconnect"))
 
@@ -509,12 +516,12 @@ class ApplyAvatarGuardTests(unittest.TestCase):
             model = Model()
 
         with self.assertRaises(SettingsError):
-            apply_avatar(Config(), "not-a-real-engine", "x", session_count=0)
+            apply_avatar(Config(), "not-a-real-engine", "x", session_count=0, avatars=create_avatar_service())
 
 
 class SpeechSettingsTests(unittest.TestCase):
     def test_catalog_contains_only_keyless_tts(self):
-        ids = {item["id"] for item in speech_snapshot(Config())["tts"]["engines"]}
+        ids = {item["id"] for item in speech_snapshot(Config(), tts=in_process_tts())["tts"]["engines"]}
         self.assertEqual(
             ids,
             {"edgetts", "breezyvoice", "matcha"},
@@ -522,7 +529,7 @@ class SpeechSettingsTests(unittest.TestCase):
         self.assertTrue(ids.isdisjoint({"azuretts", "cosyvoice_api", "doubao", "tencent"}))
 
     def test_snapshot_lists_all_edge_tts_zh_tw_voices(self):
-        voices = speech_snapshot(Config())["tts"]["edge_voices"]
+        voices = speech_snapshot(Config(), tts=in_process_tts())["tts"]["edge_voices"]
         self.assertEqual(
             {voice["id"] for voice in voices},
             {
@@ -539,23 +546,23 @@ class SpeechSettingsTests(unittest.TestCase):
     def test_snapshot_exposes_the_conversation_english_voice_catalog(self):
         from nova_core.server.conversations import VOICES
 
-        voices = speech_snapshot(Config())["tts"]["edge_english_voices"]
+        voices = speech_snapshot(Config(), tts=in_process_tts())["tts"]["edge_english_voices"]
         self.assertEqual(voices, VOICES["en-US"])
 
     def test_stt_engines_describe_their_models(self):
         # The console renders the speech-recognition form from these entries.
-        engines = {item["id"]: item for item in speech_snapshot(Config())["stt"]["engines"]}
+        engines = {item["id"]: item for item in speech_snapshot(Config(), tts=in_process_tts())["stt"]["engines"]}
         self.assertEqual(set(engines), {"whisper"})
         self.assertEqual(engines["whisper"]["models"], ["tiny", "base", "small", "medium", "large-v3", "turbo"])
 
     def test_tts_snapshot_has_no_global_voice(self):
         # The default voice is the main role profile's, edited there.
-        tts = speech_snapshot(Config())["tts"]
+        tts = speech_snapshot(Config(), tts=in_process_tts())["tts"]
         self.assertFalse({"type", "ref_file", "ref_text", "tts_server", "model"} & set(tts))
 
     def test_tts_rejects_removed_provider(self):
         with self.assertRaises(SettingsError):
-            apply_tts_settings(Config(), {"type": "azuretts"}, session_count=0)
+            apply_tts_settings(Config(), {"type": "azuretts"}, session_count=0, tts=in_process_tts())
 
     def _library_voice(self) -> str:
         """A voice in a temporary voice library; returns its ID."""
@@ -575,7 +582,7 @@ class SpeechSettingsTests(unittest.TestCase):
 
     def test_speech_engine_change_requires_disconnect(self):
         with self.assertRaises(SettingsError) as ctx:
-            apply_stt_settings(Config(), {"type": "whisper"}, session_count=1)
+            apply_stt_settings(Config(), {"type": "whisper"}, session_count=1, stt=Mock())
         self.assertEqual(ctx.exception.status, 409)
         self.assertTrue(ctx.exception.extra["need_disconnect"])
 
@@ -585,7 +592,7 @@ class SpeechSettingsTests(unittest.TestCase):
                 apply_tts_settings(
                     Config(),
                     {"type": "breezyvoice", "ref_file": "0123456789abcdef"},
-                    session_count=0,
+                    session_count=0, tts=in_process_tts(),
                 )
         self.assertIn("不在音訊庫中", ctx.exception.message)
 
@@ -598,7 +605,7 @@ class SpeechSettingsTests(unittest.TestCase):
             result = apply_tts_settings(
                 config,
                 {"type": "edgetts", "ref_file": "zh-TW-HsiaoChenNeural"},
-                session_count=0,
+                session_count=0, tts=in_process_tts(),
             )
         self.assertEqual(config.tts.type, "edgetts")
         self.assertIn("preview_audio", result)
@@ -610,16 +617,16 @@ class SpeechSettingsTests(unittest.TestCase):
                 apply_tts_settings(
                     Config(),
                     {"type": "edgetts", "ref_file": "zh-CN-XiaoxiaoNeural"},
-                    session_count=0,
+                    session_count=0, tts=in_process_tts(),
                 )
         self.assertIn("台灣華語聲線", ctx.exception.message)
 
-    def test_stt_prewarms_before_commit(self):
+    def test_stt_service_loads_the_engine_before_commit(self):
+        from nova_contracts.stt import SttEngineSettings
+
         config = Config()
-        candidate = Mock()
+        stt = Mock()
         with patch("nova_core.server.runtime_settings._engine_available", return_value=True), patch(
-            "nova_core.server.runtime_settings.create_asr_engine", return_value=candidate
-        ), patch("nova_core.server.runtime_settings.activate_asr_engine"), patch(
             "nova_core.server.runtime_settings.persist_runtime_overrides"
         ) as persist:
             result = apply_stt_settings(
@@ -631,11 +638,31 @@ class SpeechSettingsTests(unittest.TestCase):
                     "device": "cuda",
                 },
                 session_count=0,
+                stt=stt,
             )
-        candidate.ensure_ready.assert_called_once()
+        stt.apply_engine.assert_called_once_with(
+            SttEngineSettings(engine="whisper", model_size="small", device="cuda"))
         self.assertEqual(result["model_size"], "small")
-        self.assertEqual(config.asr.device, "cuda")
+        self.assertEqual((config.asr.device, config.asr.language), ("cuda", "auto"))
         persist.assert_called_once()
+
+    def test_stt_engine_the_service_cannot_load_is_not_committed(self):
+        from nova_contracts.common import ServiceError
+
+        config = Config()
+        stt = Mock()
+        stt.apply_engine.side_effect = ServiceError("CUDA out of memory")
+        with patch("nova_core.server.runtime_settings._engine_available", return_value=True), patch(
+            "nova_core.server.runtime_settings.persist_runtime_overrides"
+        ) as persist, self.assertRaises(SettingsError) as ctx:
+            apply_stt_settings(
+                config, {"type": "whisper", "model_size": "turbo", "device": "cuda"},
+                session_count=0, stt=stt,
+            )
+        self.assertEqual(ctx.exception.status, 500)
+        self.assertIn("CUDA out of memory", ctx.exception.message)
+        self.assertNotEqual(config.asr.model_size, "turbo")
+        persist.assert_not_called()
 
     def test_removed_funasr_engine_is_rejected(self):
         with self.assertRaises(SettingsError):
@@ -643,6 +670,7 @@ class SpeechSettingsTests(unittest.TestCase):
                 Config(),
                 {"type": "funasr", "model_size": "Fun-ASR-Nano-2512"},
                 session_count=0,
+                stt=Mock(),
             )
 
     def test_saved_funasr_settings_load_as_faster_whisper(self):
@@ -665,14 +693,15 @@ class SpeechSettingsTests(unittest.TestCase):
                 Config(),
                 {"type": "qwen3-asr", "model_size": "Qwen/Qwen3-ASR-0.6B"},
                 session_count=0,
+                stt=Mock(),
             )
         with self.assertRaises(SettingsError):
             apply_tts_settings(
                 Config(),
                 {"type": "qwen3-tts", "model": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"},
-                session_count=0,
+                session_count=0, tts=in_process_tts(),
             )
-        snapshot = speech_snapshot(Config())
+        snapshot = speech_snapshot(Config(), tts=in_process_tts())
         self.assertNotIn("qwen3-asr", snapshot["stt"]["models_by_engine"])
         self.assertNotIn(
             "qwen3-tts",
@@ -734,10 +763,10 @@ class LlamaCppCatalogTests(unittest.TestCase):
             raise FileNotFoundError("missing weights")
 
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters",
+            "nova_render.catalog.list_avatar_characters",
             return_value=characters,
         ), patch(
-            "nova_core.server.runtime_settings.list_engines",
+            "nova_render.catalog.list_engines",
             return_value=engines,
         ), patch(
             "nova_render.factory.prepare_avatar_model",
@@ -747,7 +776,7 @@ class LlamaCppCatalogTests(unittest.TestCase):
             side_effect=boom,
         ):
             with self.assertRaises(SettingsError):
-                apply_avatar(config, "musetalk", "musetalk_avatar2", session_count=0)
+                apply_avatar(config, "musetalk", "musetalk_avatar2", session_count=0, avatars=create_avatar_service())
 
         self.assertEqual(config.model.type, "musetalk")
         self.assertEqual(config.model.avatar_id, "musetalk_avatar1")

@@ -17,14 +17,12 @@ import tempfile
 import time
 import cv2
 import glob
-import resampy
 from datetime import datetime
 from pathlib import Path
 
 import queue
 from queue import Queue
 from threading import Thread, Event, RLock
-from io import BytesIO
 import soundfile as sf
 
 import asyncio
@@ -35,16 +33,11 @@ from av import AudioFrame, VideoFrame
 import av
 from fractions import Fraction
 
-from nova_render.speech import SpeechFactory
-from nova_core.utils.speech_text import sanitize_speech_text
 from nova_core.utils.logging import logger
 from nova_render.video_output import limit_video_height
-from nova_core.utils.audio_limits import AudioTooLongError
 
 from tqdm import tqdm
 
-# Audio files sent to /humanaudio are decoded only up to this length.
-MAX_AUDIO_FILE_SECONDS = 300.0
 # Finished recordings; /download serves files from here.
 RECORDS_DIR = Path('data/records')
 RECORD_STOP_TIMEOUT_SECONDS = 30.0
@@ -145,7 +138,10 @@ def play_audio(quit_event,queue):
     stream.close()
 
 class BaseAvatar:
-    def __init__(self, config, speech_factory: SpeechFactory):
+    # How long the frame processor waits for a result before it checks for quit.
+    result_poll_seconds = 1.0
+
+    def __init__(self, config):
         self.config = config
         from nova_render.catalog import avatar_uses_green_screen
 
@@ -158,8 +154,9 @@ class BaseAvatar:
         self.chunk = self.sample_rate // config.audio.fps
         self.sessionid = self.config.sessionid
 
-        # 說話來源（由核心建立的 TTS 引擎）負責把文本轉成音訊並推送到音訊流
-        self.tts = speech_factory(config, self)
+        # The core owns TTS and feeds PCM through put_audio_frame (ADR 0027);
+        # it also answers whether more reply PCM is on the way.
+        self._pending_audio = None
         self.speaking = False
 
         # 錄製相關狀態
@@ -176,14 +173,7 @@ class BaseAvatar:
         self.custom_opt = {}
         self._media_guard = None
         self._on_stale_drop = None
-        self._on_fragment_queued = None
-        self._on_fragment_failed = None
-        self._fragment_playback_committed = None
-        self._fragment_playback_ended = None
-        self._on_tts_onset_preroll_ms = None
-        self._on_tts_retry = None
         self._on_stage_end = None
-        self._on_llm_chunk = None
         self._direct_audio_track = None
         self._direct_audio_loop = None
         self._direct_audio_quit = Event()
@@ -192,46 +182,32 @@ class BaseAvatar:
         # Optional visual-only seam installed by model-specific avatars.
         self._mouth_continuity = None
         self._avatar_transition = None
+        # The stage canvas of role composition; the core turns it on or off.
+        self._role_presentation = None
         self.__loadcustom()
 
-    def put_msg_txt(self,msg,datainfo:dict={}):
-        # 文本訊息交給 TTS 處理
-        msg = sanitize_speech_text(msg)
-        if not msg:
-            return
-        eventpoint = dict(datainfo or {})
-        if self._on_fragment_queued is not None and eventpoint.get("turn_id"):
-            self._on_fragment_queued(msg, eventpoint)
-        self.tts.put_msg_txt(msg,eventpoint)
-    
     def configure_media_fence(
         self,
         *,
         media_guard,
         on_stale_drop,
-        on_fragment_queued=None,
-        on_fragment_failed=None,
-        fragment_playback_committed=None,
-        fragment_playback_ended=None,
-        on_tts_onset_preroll_ms=None,
-        on_tts_retry=None,
         on_stage_end=None,
-        on_llm_chunk=None,
     ):
         """Attach the voice session's generation authority to media boundaries."""
         self._media_guard = media_guard
         self._on_stale_drop = on_stale_drop
-        self._on_fragment_queued = on_fragment_queued
-        self._on_fragment_failed = on_fragment_failed
-        self._fragment_playback_committed = fragment_playback_committed
-        self._fragment_playback_ended = fragment_playback_ended
-        self._on_tts_onset_preroll_ms = on_tts_onset_preroll_ms
-        self._on_tts_retry = on_tts_retry
         self._on_stage_end = on_stage_end
-        self._on_llm_chunk = on_llm_chunk
         if not hasattr(self, "_media_sequence_lock"):
             self._media_sequence_lock = RLock()
             self._media_sequences = {}
+
+    def configure_pending_audio(self, probe) -> None:
+        """Let the core report whether more reply PCM is on the way."""
+        self._pending_audio = probe
+
+    def has_pending_audio(self) -> bool:
+        probe = getattr(self, "_pending_audio", None)
+        return bool(probe()) if callable(probe) else False
 
     def configure_audio_output(self, audio_track, loop) -> None:
         """Attach an optional direct PCM fan-out for low-latency playback.
@@ -295,40 +271,9 @@ class BaseAvatar:
                 )
         return queued
 
-    def fragment_playback_committed(self, eventpoint: dict) -> bool:
-        checker = self._fragment_playback_committed
-        if not callable(checker):
-            return False
-        return bool(checker(eventpoint))
-
-    def fragment_playback_ended(self, eventpoint: dict) -> bool:
-        checker = self._fragment_playback_ended
-        return bool(checker(eventpoint)) if callable(checker) else True
-
-    def notify_fragment_synthesis_failed(
-        self,
-        eventpoint: dict,
-        reason: str,
-    ) -> None:
-        callback = self._on_fragment_failed
-        if callable(callback):
-            callback(dict(eventpoint), str(reason))
-
-    def observe_tts_onset_preroll_ms(self, milliseconds: float) -> None:
-        if self._on_tts_onset_preroll_ms is not None:
-            self._on_tts_onset_preroll_ms(milliseconds)
-
-    def observe_tts_retry(self, *, after_commit: bool) -> None:
-        if self._on_tts_retry is not None:
-            self._on_tts_retry(after_commit=after_commit)
-
     def mark_stage_end(self, stage: str) -> None:
-        if self._on_stage_end is not None:
+        if getattr(self, "_on_stage_end", None) is not None:
             self._on_stage_end(stage)
-
-    def notify_llm_chunk(self, text: str, eventpoint: dict | None = None) -> None:
-        if self._on_llm_chunk is not None:
-            self._on_llm_chunk(text, dict(eventpoint or {}))
 
     def accepts_media(self, eventpoint, stage: str) -> bool:
         if isinstance(eventpoint, dict) and "avatar_epoch" in eventpoint:
@@ -374,44 +319,8 @@ class BaseAvatar:
             return False
         return self._enqueue_direct_audio(audio_chunk, eventpoint)
 
-    def put_audio_file(self,filebyte,datainfo:dict={}):
-        # 檔案音訊按 chunk 切片後送入音訊流。Blocks while decoding and while
-        # waiting for queue space: call it from a worker thread.
-        input_stream = BytesIO(filebyte)
-        stream = self.__create_bytes_stream(input_stream)
-        streamlen = stream.shape[0]
-        idx=0
-        while streamlen >= self.chunk:  #and self.state==State.RUNNING
-            self.put_audio_frame(stream[idx:idx+self.chunk],datainfo)
-            streamlen -= self.chunk
-            idx += self.chunk
-    
-    def __create_bytes_stream(self,byte_stream):
-        with sf.SoundFile(byte_stream) as audio_file:
-            # Check the header's length before decoding; read at most the limit.
-            limit = int(MAX_AUDIO_FILE_SECONDS * audio_file.samplerate)
-            if audio_file.frames > limit:
-                raise AudioTooLongError(MAX_AUDIO_FILE_SECONDS)
-            sample_rate = audio_file.samplerate
-            stream = audio_file.read(frames=limit + 1) # [T*sample_rate,] float64
-        if stream.shape[0] > limit:
-            raise AudioTooLongError(MAX_AUDIO_FILE_SECONDS)
-        logger.info(f'[INFO]put audio stream {sample_rate}: {stream.shape}')
-        stream = stream.astype(np.float32)
-
-        if stream.ndim > 1:
-            logger.info(f'[WARN] audio has {stream.shape[1]} channels, only use the first.')
-            stream = stream[:, 0]
-    
-        if sample_rate != self.sample_rate and stream.shape[0]>0:
-            logger.info(f'[WARN] audio sample rate is {sample_rate}, resampling into {self.sample_rate}.')
-            stream = resampy.resample(x=stream, sr_orig=sample_rate, sr_new=self.sample_rate)
-
-        return stream
-
     def flush_talk(self):
-        # 清空 TTS 和音訊流佇列，快速打斷當前發聲
-        self.tts.flush_talk()
+        # 清空音訊流與已推理的影格，快速打斷當前發聲（TTS 由核心先清空）
         self.audio_stream.flush_talk()
         result_queue = getattr(self, "res_frame_queue", None)
         if result_queue is not None:
@@ -464,6 +373,55 @@ class BaseAvatar:
 
     def is_speaking(self)->bool:
         return self.speaking
+
+    def render(self, quit_event, loop=None, audio_track=None, video_track=None):
+        """Render into the tracks until ``quit_event`` is set; engines implement it."""
+        raise NotImplementedError
+
+    def bind_profile(self, config, avatar):
+        """Swap to another avatar's assets in place; engines implement it."""
+        raise NotImplementedError
+
+    @property
+    def asset_epoch(self) -> int:
+        return getattr(self, "_asset_epoch", 0)
+
+    # Role presentation: the core directs it, every video frame passes it.
+
+    def reset_role_presentation(self, enabled: bool) -> None:
+        from nova_render.scene.role_presentation import RolePresentation
+
+        self._role_presentation = RolePresentation() if enabled else None
+
+    def ensure_role_presentation(self) -> None:
+        if getattr(self, "_role_presentation", None) is None:
+            self.reset_role_presentation(True)
+
+    def begin_role_transition(self, transition_id, edge, *, clip, started_at) -> None:
+        self._role_presentation.begin(transition_id, edge, reader=clip, started_at=started_at)
+
+    def start_role_transition(self, started_at: float) -> None:
+        presentation = self._role_presentation
+        with presentation.lock:
+            presentation.transition["started"] = started_at
+
+    def close_role_transition(self) -> None:
+        presentation = getattr(self, "_role_presentation", None)
+        if presentation:
+            presentation.close()
+
+    def _present_frame(self, frame, eventpoint):
+        """Compose a rendered frame onto the stage: role canvas or green-screen scene."""
+        presentation = getattr(self, "_role_presentation", None)
+        if presentation is not None:
+            frame = presentation.compose(frame, green_screen=self._green_screen)
+            return frame, {**(eventpoint or {}), **presentation.marker}
+        frame = limit_video_height(
+            frame, getattr(getattr(self.config, "video", None), "max_height", 0))
+        if getattr(self, "_green_screen", False):
+            from nova_render.scene.service import scene_service
+            frame = scene_service.compose(frame, green_screen=True)
+        return frame, eventpoint
     
     def __loadcustom(self):
         # 讀取自定義音影片素材（用於特殊動作/表情）
@@ -551,7 +509,7 @@ class BaseAvatar:
     def _process_frames_loop(self, quit_event, loop, audio_track, video_track):
         while not quit_event.is_set():
             try:
-                result = self.res_frame_queue.get(block=True, timeout=1)
+                result = self.res_frame_queue.get(block=True, timeout=self.result_poll_seconds)
                 res_frame,idx,audio_frames = result[:3]
                 asset_epoch = result[3] if len(result) > 3 else None
             except queue.Empty:
@@ -658,16 +616,7 @@ class BaseAvatar:
                 combine_frame = self._compose_avatar_transition(
                     combine_frame, index=idx, is_speech=self.speaking,
                     frame_type=0 if self.speaking else audiotype, eventpoint=video_eventpoint)
-                presentation = getattr(self, "_role_presentation", None)
-                if presentation is not None:
-                    combine_frame = presentation.compose(combine_frame, green_screen=self._green_screen)
-                    video_eventpoint = {**(video_eventpoint or {}), **presentation.marker}
-                else:
-                    combine_frame = limit_video_height(
-                        combine_frame, getattr(getattr(self.config, "video", None), "max_height", 0))
-                    if getattr(self, "_green_screen", False):
-                        from nova_render.scene.service import scene_service
-                        combine_frame = scene_service.compose(combine_frame, green_screen=True)
+                combine_frame, video_eventpoint = self._present_frame(combine_frame, video_eventpoint)
             cv2.putText(combine_frame, "Nova Avatar", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
            
             image = combine_frame

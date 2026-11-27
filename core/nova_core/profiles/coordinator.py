@@ -6,21 +6,19 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
-from functools import partial
 from pathlib import Path
 import time
 from uuid import uuid4
 
-from nova_render.factory import load_avatar_data
-from nova_llm.service import select_session_profile, session_history
-from nova_core.profiles.media import RolePresentation, TransitionMedia, _VideoReader
-from nova_core.profiles.routing import RoutingClients, route_question, weather_member
+from nova_contracts.llm import SessionProfile, SessionRef, WeatherQuery
+from nova_llm.config_section import local_server_settings
+from nova_core.profiles.media import TransitionMedia
+from nova_core.profiles.routing import route_question, weather_member
 from nova_core.config.schema import TTSConfig
 from nova_core.greetings.content import validate_content
 from nova_core.profiles.composition import MAIN_ANNOUNCEMENTS, live_members, main_profile_id, referenced_media, transition
 from nova_core.profiles.store import ProfileError, ProfileStore, profile_config
-from nova_llm.weather import CwaWeather, WeatherQuery
-from nova_tts.cosyvoice_runtime import server_identity
+from nova_tts import config_section as tts_section
 from nova_core.utils.logging import logger
 
 # The plan of a turn the current main role answers itself. It is also the
@@ -65,7 +63,7 @@ class ConversationRoles:
         self.base_config = deepcopy(voice.config)
         self.library = deepcopy(getattr(voice.config, "role_library_snapshot", manager.library))
         self.assets = manager.assets
-        self.router, self.weather, self.media = manager.router, manager.weather, manager.media
+        self.router, self.media = manager.router, manager.media
         self.main_id = main_profile_id(self.library)
         self.roster = roster(self.library)
         self.current_id = self.main_id
@@ -92,7 +90,7 @@ class ConversationRoles:
                     active_profile_id=self.current_id, main_profile_id=self.main_id,
                     member_ids=list(self.roster)[1:],
                     active_revision=self.library["revision"], error=self.error,
-                    weather_configured=self.weather.configured,
+                    weather_configured=self.manager.weather_configured(),
                     profiles_applied=self.profiles_applied,
                     active_avatar_id=self.profiles[self.current_id]["avatar_id"]
                         if self.profiles_applied or self.enabled else "",
@@ -130,9 +128,8 @@ class ConversationRoles:
         if hasattr(voice, "bind_conversation"):
             voice.bind_conversation()
         voice._turn_context = None
-        select_session_profile(voice.sessionid, profile_id)
-        if getattr(voice.avatar, "_role_presentation", None) is None:
-            voice.avatar._role_presentation = RolePresentation()
+        self.manager.select_llm_profile(voice.sessionid, profile_id)
+        voice.avatar.renderer.ensure_role_presentation()
         if voice._media_player is not None:
             voice._media_player.discard_stale_media()
 
@@ -175,7 +172,7 @@ class ConversationRoles:
         try:
             route = await asyncio.to_thread(
                 self.router, voice.config, self.library, self.current_id, text,
-                session_history(sid), self.confirmed.get(sid, {}))
+                self.manager.llm_history(sid), self.confirmed.get(sid, {}))
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -209,9 +206,10 @@ class ConversationRoles:
                 return {"fixed": "請問您想查詢哪個縣市的天氣？"}
             town = route.get("town", "")
             self.confirmed[sid] = {"county": route["county"], "town": town}
-            weather_query = WeatherQuery(route["county"], town, route["kind"],
-                                         route["start_date"], route["end_date"], route.get("accepted_at", ""))
-            weather_task = asyncio.create_task(self.weather.query(weather_query))
+            weather_query = WeatherQuery(county=route["county"], town=town, kind=route["kind"],
+                                         start_date=route["start_date"], end_date=route["end_date"],
+                                         as_of=route.get("accepted_at", ""))
+            weather_task = asyncio.create_task(self.manager.query_weather(weather_query))
         if self.current_id == target_id:
             result = await weather_task if weather_task else None
             return {"weather": result, "context": route.get("context", "")}
@@ -226,7 +224,7 @@ class ConversationRoles:
                 info, path = self.media.get(edge["asset_id"])
                 for other in (self.voice,):
                     pending["readers"][other.sessionid] = await asyncio.to_thread(
-                        _VideoReader, path, info["frames"])
+                        self.manager.open_transition_clip, path, info["frames"])
         except asyncio.CancelledError:
             self.cancel(sid)
             raise
@@ -329,23 +327,23 @@ class ConversationRoles:
                     if reader is None and edge["kind"] == "video":
                         try:
                             info, path = self.media.get(edge["asset_id"])
-                            reader = await asyncio.to_thread(_VideoReader, path, info["frames"])
+                            reader = await asyncio.to_thread(
+                                self.manager.open_transition_clip, path, info["frames"])
                         except Exception:
                             reader = None
                     if reader:
                         readers[voice.sessionid] = reader
                     actual_edge = edge if edge["kind"] != "video" or reader else {
                         "kind": "effect", "effect": "fade", "duration": .6}
-                    presentation = voice.avatar._role_presentation
-                    presentation.begin(transition_id, actual_edge, reader=reader,
-                                       started_at=time.monotonic() + 3600)
-                    prepared.append((voice, presentation))
+                    renderer = voice.avatar.renderer
+                    renderer.begin_role_transition(transition_id, actual_edge, clip=reader,
+                                                   started_at=time.monotonic() + 3600)
+                    prepared.append((voice, renderer))
                 for voice, _ in prepared:
                     await self._bind_async(voice, target)
                 started = time.monotonic()
-                for _, presentation in prepared:
-                    with presentation.lock:
-                        presentation.transition["started"] = started
+                for _, renderer in prepared:
+                    renderer.start_role_transition(started)
                 duration = max((r.frames / 25 for r in readers.values()), default=edge.get("duration", .6))
                 for voice, _ in prepared:
                     voice._emit("role_transition_started", transition_id=transition_id,
@@ -365,9 +363,7 @@ class ConversationRoles:
                 raise
             finally:
                 for voice in (self.voice,):
-                    presentation = getattr(voice.avatar, "_role_presentation", None)
-                    if presentation:
-                        presentation.close()
+                    voice.avatar.renderer.close_role_transition()
                 self.phase = "ready"
                 self._transition_event = None
                 self.notify()
@@ -410,9 +406,7 @@ class ConversationRoles:
     async def close(self):
         for sid in list(self.pending):
             self.cancel(sid)
-        presentation = getattr(self.voice.avatar, "_role_presentation", None)
-        if presentation:
-            presentation.close()
+        self.voice.avatar.renderer.close_role_transition()
 
 
 def profiles_path(config_path) -> Path:
@@ -445,35 +439,61 @@ def adopt_saved_main_voice(config, path) -> bool:
     return True
 
 
-def _start_breezyvoice(tts) -> None:
-    from nova_tts.cosyvoice_runtime import ensure_server, parse_server_url
+def _start_breezyvoice(service, tts) -> None:
+    """Start the BreezyVoice server and model of a ``tts`` section through the TTS service."""
+    from nova_contracts.tts import TtsError, VoicePreparation
 
-    host, port = parse_server_url(tts.tts_server)
     try:
-        ensure_server(model_dir=tts.model, host=host, port=port)
-    except Exception as exc:
-        raise ProfileError(f"BreezyVoice 啟動失敗：{exc}", 503) from exc
+        service.prepare_voice(VoicePreparation(voice=tts_section.voice(tts)))
+    except TtsError as exc:
+        raise ProfileError(f"BreezyVoice 啟動失敗：{exc.message}", 503) from exc
 
 
 class RoleCoordinator:
     """Publish defaults without mutating any connected conversation."""
 
-    def __init__(self, state, store, library, *, loader=load_avatar_data,
-                 router=None, routing_clients=None, weather=None, media=None):
+    def __init__(self, state, store, library, *, loader=None, router=None, media=None):
         self.state, self.store = state, store
         self.library = deepcopy(library)
-        self.loader = loader
-        # Every turn routes through the same pooled clients; worker threads
-        # may route concurrently, and close() releases them on shutdown.
-        self.routing_clients = routing_clients or RoutingClients()
-        self.router = router or partial(route_question, clients=self.routing_clients)
-        self.weather = weather or CwaWeather()
+        self.loader = loader if loader is not None else self._load_assets
+        self.router = router or self._route
         self.media = media or TransitionMedia()
         self.assets, self.sessions = {}, {}
         self.profiles_applied = False
         self.phase, self.error = "disabled", ""
         self._apply_waiting = False
         self._pending_library = None
+
+    def _load_assets(self, config):
+        return self.state.avatar_service.load_assets(config)
+
+    def open_transition_clip(self, path, frames):
+        """Start decoding a role-transition clip for a renderer (blocking)."""
+        return self.state.avatar_service.open_transition_clip(path, frames)
+
+    @property
+    def llm(self):
+        """The LLM layer's service the core started with."""
+        return self.state.llm
+
+    def _route(self, config, library, current_id, text, history, confirmed):
+        return route_question(config, library, current_id, text, history, confirmed, llm=self.llm)
+
+    def weather_configured(self) -> bool:
+        return self.llm.weather_tool().configured
+
+    async def query_weather(self, query):
+        """CWA facts for a place the handoff decision accepted."""
+        return (await self.llm.query_weather(query)).facts
+
+    def select_llm_profile(self, sessionid, profile_id):
+        """Point the conversation's memory at a role without erasing any role's history."""
+        self.llm.select_profile(SessionProfile(session_id=sessionid, profile_id=profile_id))
+
+    def llm_history(self, sessionid):
+        """The current role's committed messages, as handoff routing reads them."""
+        return [message.model_dump() for message in
+                self.llm.session_history(SessionRef(session_id=sessionid)).messages]
 
     @property
     def enabled(self):
@@ -492,7 +512,7 @@ class RoleCoordinator:
                     active_profile_id=self.current_id, main_profile_id=self.current_id,
                     member_ids=[m["profile_id"] for m in live_members(self.library)],
                     active_revision=self.library["revision"], error=self.error,
-                    weather_configured=self.weather.configured,
+                    weather_configured=self.weather_configured(),
                     profiles_applied=self.profiles_applied,
                     active_avatar_id=self.profiles[self.current_id]["avatar_id"]
                         if self.profiles_applied else "",
@@ -513,7 +533,7 @@ class RoleCoordinator:
     def _resource_key(config):
         llm, tts = config.llm, config.tts
         # The BreezyVoice server and model are shared by every conversation too.
-        voice_server = server_identity(tts.tts_server, tts.model) if tts.type == "breezyvoice" else None
+        voice_server = tts_section.server_identity(tts.tts_server, tts.model) if tts.type == "breezyvoice" else None
         return (config.model.type, tts.type, voice_server, llm.provider, llm.model,
                 llm.base_url, llm.llamacpp_ctx, llm.llamacpp_host, llm.llamacpp_port)
 
@@ -545,28 +565,28 @@ class RoleCoordinator:
             if config.model.type != self.state.config.model.type:
                 from nova_core.server.runtime_settings import apply_avatar
                 await asyncio.to_thread(apply_avatar, self.state.config,
-                    main["engine"], main["avatar_id"], session_count=0)
+                    main["engine"], main["avatar_id"], session_count=0,
+                    avatars=self.state.avatar_service)
                 self.assets = {}
             if config.tts.type != self.state.config.tts.type:
                 from nova_core.server.runtime_settings import apply_tts_settings
                 await asyncio.to_thread(apply_tts_settings, self.state.config,
-                    main["tts"], session_count=0)
+                    main["tts"], session_count=0, tts=self.state.tts)
             elif config.tts.type == "breezyvoice" and not self.state.avatar_streams:
                 # Same engine: still start the profile's server and model, which
                 # may differ from (or have stopped since) the last apply. A
                 # connected conversation keeps the server it is using.
-                await asyncio.to_thread(_start_breezyvoice, config.tts)
+                await asyncio.to_thread(_start_breezyvoice, self.state.tts, config.tts)
             config = profile_config(self.state.config, main)
             # One copy per avatar, shared by every conversation and member;
             # avatars no longer in the composition go with the old cache.
             cache = {}
             for profile in selected:
                 aid = profile["avatar_id"]
-                from nova_render.catalog import avatar_bootable, avatar_uses_green_screen
-                valid, reason = avatar_bootable(profile["engine"], aid)
-                if not valid:
-                    raise ProfileError(reason, 409)
-                if members and not avatar_uses_green_screen(aid):
+                check = self.state.avatar_service.bootable(profile["engine"], aid)
+                if not check.bootable:
+                    raise ProfileError(check.reason, 409)
+                if members and not self.state.avatar_service.uses_green_screen(aid):
                     raise ProfileError("人物層轉場需要綠幕 MuseTalk 素材", 409)
                 if aid in cache:
                     continue
@@ -579,19 +599,13 @@ class RoleCoordinator:
             for asset_id in referenced_media(target):
                 self.media.get(asset_id)
             if config.llm.provider == "llamacpp" and not self.state.avatar_streams:
-                from nova_llm.llamacpp import ensure_server
                 # The endpoint already fixed host and port; requests use its URL.
-                await asyncio.to_thread(ensure_server, config.llm.model,
-                    extra_dir=config.llm.llamacpp_dir, host=config.llm.llamacpp_host,
-                    port=config.llm.llamacpp_port, ctx=config.llm.llamacpp_ctx,
-                    threads=config.llm.llamacpp_threads,
-                    allow_partial_offload=config.llm.llamacpp_allow_partial_offload)
+                await asyncio.to_thread(self.llm.start_local_server, local_server_settings(config.llm))
             self.assets, self.library = cache, target
             _adopt_main_voice(self.state.config, target)
             if not startup:
-                from nova_tts.voice_library import clear_removed_engine_notice
                 # The admin has chosen voices again since a removed engine fell back.
-                clear_removed_engine_notice()
+                tts_section.clear_removed_engine_notice()
             self.profiles_applied = True
             self.phase = "ready" if members else "disabled"
             self.error = ""
@@ -638,9 +652,9 @@ class RoleCoordinator:
         self.sessions[voice.sessionid] = roles
         voice._role_coordinator = roles
         if self.enabled:
-            voice.avatar._role_presentation = RolePresentation()
+            voice.avatar.renderer.reset_role_presentation(True)
         if self.profiles_applied or self.enabled:
-            select_session_profile(voice.sessionid, roles.current_id)
+            self.select_llm_profile(voice.sessionid, roles.current_id)
         roles.notify()
 
     def unregister(self, sessionid):
@@ -669,18 +683,17 @@ class RoleCoordinator:
         if voice._closed or self.sessions.get(voice.sessionid) is not previous:
             return
         await previous.close()
-        from nova_llm.service import remove_session
-        remove_session(voice.sessionid)
+        self.llm.remove_session(SessionRef(session_id=voice.sessionid))
         voice.config = voice.avatar.config
         roles = ConversationRoles(self, voice)
         voice._turn_context = None
         voice.bind_conversation()
         if getattr(voice.avatar, "tts", None) is not None:
-            voice.avatar.tts.config = voice.config
-        voice.avatar._role_presentation = RolePresentation() if roles.enabled else None
+            voice.avatar.tts.set_voice(tts_section.voice(voice.config.tts))
+        voice.avatar.renderer.reset_role_presentation(roles.enabled)
         self.sessions[voice.sessionid] = roles
         voice._role_coordinator = roles
-        select_session_profile(voice.sessionid, roles.current_id)
+        self.select_llm_profile(voice.sessionid, roles.current_id)
         if voice._media_player is not None:
             voice._media_player.discard_stale_media()
         roles.notify()
@@ -695,7 +708,6 @@ class RoleCoordinator:
         for roles in list(self.sessions.values()):
             await roles.close()
         self.sessions.clear()
-        self.routing_clients.close()
 
 
 async def initialize_roles(state):

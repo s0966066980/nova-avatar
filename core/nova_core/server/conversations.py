@@ -10,11 +10,13 @@ from dataclasses import asdict
 
 from aiohttp import web
 
+from nova_contracts.tts import TtsError, TtsService, VoicePreparation
+
 from nova_core.config.schema import ConversationConfig
 from nova_core.config.overrides import persist_runtime_overrides
-from nova_llm.service import session_memory
+from nova_contracts.llm import ContextCapacityQuery, MemoryQuery
 from nova_core.server.state import state
-from nova_tts.voice_library import EDGE_TTS_EN_US_VOICES
+from nova_tts import config_section as tts_section
 
 
 VOICES = {
@@ -23,7 +25,7 @@ VOICES = {
         {'id': 'zh-TW-HsiaoYuNeural', 'label': '曉雨（女聲）'},
         {'id': 'zh-TW-YunJheNeural', 'label': '雲哲（男聲）'},
     ],
-    'en-US': [dict(voice) for voice in EDGE_TTS_EN_US_VOICES],
+    'en-US': [dict(voice) for voice in tts_section.EDGE_ENGLISH_VOICES],
 }
 
 
@@ -48,9 +50,7 @@ def validate(values: dict, current: dict) -> dict:
 
 def check_language_support(config, locale: str) -> None:
     # faster-whisper accepts Chinese and English.
-    from nova_tts.voice_library import ENGLISH_TTS_ENGINES
-
-    if locale == 'en-US' and getattr(config.tts, 'type', '') not in ENGLISH_TTS_ENGINES:
+    if locale == 'en-US' and getattr(config.tts, 'type', '') not in tts_section.ENGLISH_ENGINES:
         raise ValueError('english_requires_edge_tts')
 
 
@@ -67,17 +67,20 @@ def configure_avatar(avatar, values: dict) -> None:
     if getattr(getattr(config, 'tts', None), 'type', '') == 'edgetts':
         config.tts.ref_file = values['voice_en_us' if values['locale'] == 'en-US' else 'voice_zh_tw']
     if getattr(avatar, 'tts', None) is not None:
-        avatar.tts.config = config
+        avatar.tts.set_voice(tts_section.voice(config.tts))
 
 
-async def warm_voice(config, values: dict) -> None:
-    if getattr(config.tts, 'type', '') == 'edgetts':
-        from nova_tts.engines.edge import prewarm_edge_tts
-        voice = values['voice_en_us' if values['locale'] == 'en-US' else 'voice_zh_tw']
-        ready = await asyncio.to_thread(prewarm_edge_tts, voice, decode_pcm=True,
-                                        keep_connection=True, timeout_seconds=5)
-        if not ready:
-            raise RuntimeError('voice_unavailable')
+async def warm_voice(config, values: dict, tts: TtsService | None) -> None:
+    """Warm the Edge voice the conversation switches to; a session without a TTS service has none."""
+    if getattr(config.tts, 'type', '') == 'edgetts' and tts is not None:
+        voice = tts_section.voice(config.tts).model_copy(update={
+            'voice': values['voice_en_us' if values['locale'] == 'en-US' else 'voice_zh_tw'],
+            'edge_connection_reuse': True,
+        })
+        try:
+            await asyncio.to_thread(tts.prepare_voice, VoicePreparation(voice=voice, timeout_seconds=5))
+        except TtsError:
+            raise RuntimeError('voice_unavailable') from None
 
 
 def snapshot(session) -> dict:
@@ -91,15 +94,20 @@ def snapshot(session) -> dict:
         'idle_reset_seconds': clear_delay,
         'full_reset_seconds': full_delay,
         'profiles': role_memories(session),
-        'memory': session_memory(session.sessionid, settings['history_max_messages']),
+        'memory': _memory(session, settings['history_max_messages']),
     }
+
+
+def _memory(session, limit, profile_id=None) -> dict:
+    return session._llm.session_memory(MemoryQuery(
+        session_id=session.sessionid, limit=limit, profile_id=profile_id)).model_dump()
 
 
 def role_memories(session):
     roles = getattr(session, '_role_coordinator', None)
     profiles = roles.profiles.values() if roles is not None else [{'id': '', 'name': '目前角色'}]
     return [{'id': p['id'], 'name': p['name'],
-             'memory': session_memory(session.sessionid, session._conversation['history_max_messages'], p['id'])}
+             'memory': _memory(session, session._conversation['history_max_messages'], p['id'])}
             for p in profiles]
 
 
@@ -108,8 +116,8 @@ async def list_conversations(request):
         return web.json_response({'code': -1, 'msg': '服務尚未就緒'}, status=503)
     capacity = None
     if getattr(state.config.llm, 'provider', '') == 'llamacpp':
-        from nova_llm.context_usage import deployed_capacity
-        capacity = await asyncio.to_thread(deployed_capacity, state.config.llm.base_url)
+        capacity = (await asyncio.to_thread(state.llm.context_capacity, ContextCapacityQuery(
+            base_url=state.config.llm.base_url))).capacity
     return web.json_response({'code': 0, 'data': {
         'model_context': {'model': state.config.llm.model, 'capacity': capacity},
         'defaults': defaults(state.config), 'voices': VOICES,

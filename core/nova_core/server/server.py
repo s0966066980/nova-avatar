@@ -18,11 +18,7 @@ from aiohttp import web
 from nova_core.utils.logging import logger
 from nova_core.server.state import state
 from nova_core.server import routes
-from nova_llm.llamacpp import shutdown_llama_server
-from nova_tts.cosyvoice_runtime import shutdown_cosyvoice_server
-from nova_render.scene.service import scene_service
 from nova_core.profiles.coordinator import initialize_roles
-from nova_llm.ragflow.client import close_shared_session as close_ragflow_session
 from nova_core.server.routes.profiles import register_profile_routes
 from nova_core.server.access import access_guard, install_access
 from nova_core.utils.paths import WEB_DIR
@@ -85,13 +81,15 @@ async def on_shutdown(app):
             await session.close()
         except Exception:
             logger.exception("關閉語音工作階段失敗")
-    # Turns have ended; release the connections retrieval reused across them.
-    await close_ragflow_session()
-    from nova_tts.engines.edge import shutdown_edge_tts
-    await asyncio.to_thread(shutdown_edge_tts)
-    shutdown_llama_server()
-    shutdown_cosyvoice_server()
-    scene_service.close()
+    # Turns have ended; release the connections the LLM layer reused across them.
+    if state.llm is not None:
+        await state.llm.close_connections()
+    if state.tts_runtime is not None:
+        # Training jobs, transcription, Edge's shared sockets and BreezyVoice.
+        await asyncio.to_thread(state.tts_runtime.close)
+    _stop_local_llm()
+    if state.avatar_service is not None:
+        state.avatar_service.close()
 
 
 def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None = None):
@@ -115,6 +113,13 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
     app.router.add_post(r'/api/conversations/{sessionid:\d+}', conversations.update_conversation)
     app.router.add_post(r'/api/conversations/{sessionid:\d+}/clear', conversations.clear_conversation)
     app.on_shutdown.append(on_shutdown)
+
+    async def start_tts(app):
+        # Before any request: fail interrupted training jobs, stop their children.
+        if state.tts_runtime is not None:
+            await asyncio.to_thread(state.tts_runtime.start)
+    app.on_startup.append(start_tts)
+
     async def prepare_roles(app):
         if state.config is not None and state.config_path:
             from nova_core.server.deferred_settings import apply_pending
@@ -270,10 +275,17 @@ def _force_exit(code: int) -> None:
     """
     logger.error("強制結束程序 exit=%s", code)
     try:
-        shutdown_llama_server()
-        shutdown_cosyvoice_server()
+        _stop_local_llm()
+        if state.tts_runtime is not None:
+            state.tts_runtime.close(force=True)
     finally:
         os._exit(code)
+
+
+def _stop_local_llm() -> None:
+    """Stop the llama-server the LLM service owns; an external one is left alone."""
+    if state.llm is not None:
+        state.llm.stop_local_server()
 
 
 def _install_stop_signals(loop) -> list:
@@ -315,5 +327,5 @@ def _shutdown_loop(loop, runner) -> None:
         task.cancel()
     if pending:
         loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-    shutdown_llama_server()
+    _stop_local_llm()
     loop.close()

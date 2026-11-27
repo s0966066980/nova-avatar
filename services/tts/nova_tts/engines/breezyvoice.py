@@ -4,7 +4,7 @@
 
 """BreezyVoice (MediaTek Research, Apache-2.0): Taiwanese Mandarin voice cloning.
 
-Runs in the owned CosyVoice server process (``scripts/cosyvoice_fastapi_server.py``),
+Runs in the owned CosyVoice server process (``services/tts/scripts/cosyvoice_fastapi_server.py``),
 which adds BreezyVoice's g2pW 注音 frontend. BreezyVoice does not stream: each
 playable reply fragment is synthesized whole and returned as 22.05 kHz PCM16.
 The reference recording and its transcript come from the voice library.
@@ -88,7 +88,7 @@ class BreezyVoiceTTS(BaseTTS):
             if first:
                 logger.info("%s first audio:%.4fs", self.LOG_NAME, time.perf_counter() - started_at)
                 first = False
-                mark_stage = getattr(self.parent, "mark_stage_end", None)
+                mark_stage = getattr(self.sink, "mark_stage_end", None)
                 if callable(mark_stage):
                     mark_stage("tts_first_encoded")
                     mark_stage("tts_first_pcm")
@@ -145,4 +145,4 @@ class BreezyVoiceTTS(BaseTTS):
             eventpoint.update({"status": "start", "text": text})
         elif final:
             eventpoint.update({"status": "end", "text": text})
-        self.parent.put_audio_frame(samples, eventpoint)
+        self.sink.put_audio_frame(samples, eventpoint)

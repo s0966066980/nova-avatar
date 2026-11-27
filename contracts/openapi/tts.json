@@ -1,116 +1,177 @@
 {
-  "components": {
-    "schemas": {
-      "EngineRequest": {
-        "properties": {
-          "engine": {
-            "title": "Engine",
-            "type": "string"
-          }
-        },
-        "required": [
-          "engine"
-        ],
-        "title": "EngineRequest",
-        "type": "object"
-      },
-      "Health": {
-        "properties": {
-          "contract_version": {
-            "title": "Contract Version",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "status",
-          "contract_version"
-        ],
-        "title": "Health",
-        "type": "object"
-      },
-      "SynthesizeRequest": {
-        "properties": {
-          "fragment_sequence": {
-            "default": 0,
-            "title": "Fragment Sequence",
-            "type": "integer"
-          },
-          "generation": {
-            "default": 0,
-            "title": "Generation",
-            "type": "integer"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "turn_id": {
-            "default": "",
-            "title": "Turn Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "SynthesizeRequest",
-        "type": "object"
-      }
-    }
-  },
+  "openapi": "3.1.0",
   "info": {
     "title": "Nova Avatar TTS service",
+    "description": "Loopback speech synthesis, voice library and voice training. The core cancels a request by closing its connection.",
     "version": "1"
   },
-  "openapi": "3.1.0",
   "paths": {
-    "/engine": {
-      "put": {
-        "operationId": "set_engine",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EngineRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "The engine was switched."
-          }
-        }
-      }
-    },
-    "/flush": {
-      "post": {
-        "operationId": "flush",
-        "responses": {
-          "204": {
-            "description": "Queued text was dropped."
-          }
-        }
-      }
-    },
     "/health": {
       "get": {
         "operationId": "health",
+        "summary": "Contract version and readiness",
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Health"
+                  "$ref": "#/components/schemas/ServiceHealth"
                 }
               }
-            },
-            "description": "The service is up and reports its contract version."
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/engine": {
+      "put": {
+        "operationId": "apply_engine",
+        "summary": "Load an engine, then switch to it; the current one stays on failure",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TtsEngineSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsEngineSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog": {
+      "get": {
+        "operationId": "catalog",
+        "summary": "What a role's voice is chosen from",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsCatalog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/server-status": {
+      "post": {
+        "operationId": "server_status",
+        "summary": "Whether the voice's BreezyVoice server answers now",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TtsVoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceServerStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/prepare": {
+      "post": {
+        "operationId": "prepare_voice",
+        "summary": "Start the voice's server or warm its connection",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoicePreparation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TtsVoice"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         }
       }
@@ -118,35 +179,2770 @@
     "/synthesize": {
       "post": {
         "operationId": "synthesize",
+        "summary": "Synthesize one playable fragment",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SynthesizeRequest"
+                "$ref": "#/components/schemas/SynthesisRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
+            "description": "OK",
             "content": {
-              "application/octet-stream": {
+              "audio/L16;rate=16000": {
+                "description": "Chunked 16 kHz mono s16le PCM of the fragment",
                 "schema": {
-                  "format": "binary",
-                  "type": "string"
+                  "type": "string",
+                  "format": "binary"
                 }
               }
-            },
-            "description": "PCM, 16 kHz mono int16, chunked. The client closes the connection to cancel."
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices": {
+      "get": {
+        "operationId": "list_voices",
+        "summary": "The voice library",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "add_voice",
+        "summary": "Add a reference recording",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 1024,
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "name": "transcript",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 4096,
+              "title": "Transcript",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "description": "WAV, MP3, FLAC, OGG, M4A or WebM; at most 20971520 bytes",
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryVoice"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_voice",
+        "summary": "Move a voice to the recycle bin",
+        "parameters": [
+          {
+            "name": "voice_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Voice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voices/audio": {
+      "get": {
+        "operationId": "voice_audio",
+        "summary": "A library voice's stored recording",
+        "parameters": [
+          {
+            "name": "voice_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Voice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "audio/wav": {
+                "description": "Mono PCM16 WAV",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voice-models/preview": {
+      "post": {
+        "operationId": "preview_voice_model",
+        "summary": "A preset sentence in a voice model's voice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceModelPreview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "audio/wav": {
+                "description": "Mono PCM16 WAV",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/corpora": {
+      "get": {
+        "operationId": "list_corpora",
+        "summary": "Every corpus with its summary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create_corpus",
+        "summary": "Create a corpus with its source",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorpusCreation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/corpus": {
+      "get": {
+        "operationId": "get_corpus",
+        "summary": "A corpus's review table",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/lines": {
+      "post": {
+        "operationId": "add_line",
+        "summary": "Add one recording as a pending line",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 1024,
+              "title": "Filename",
+              "type": "string"
+            }
+          },
+          {
+            "name": "text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Text",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "description": "WAV, MP3, FLAC, OGG, M4A or WebM; at most 20971520 bytes",
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineAdded"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "edit_line",
+        "summary": "Change a line's transcript or review state",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineEdited"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/lines/audio": {
+      "get": {
+        "operationId": "line_audio",
+        "summary": "An uploaded line's stored audio",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Line Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "audio/wav": {
+                "description": "The stored recording",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/mpeg": {
+                "description": "The stored recording",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/flac": {
+                "description": "The stored recording",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/ogg": {
+                "description": "The stored recording",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/mp4": {
+                "description": "The stored recording",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/webm": {
+                "description": "The stored recording",
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/transcripts": {
+      "post": {
+        "operationId": "import_transcripts",
+        "summary": "Import same-name .txt files and/or one metadata.csv",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptImport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptsApplied"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/confirm": {
+      "post": {
+        "operationId": "confirm_lines",
+        "summary": "Confirm pending lines with text",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineConfirmation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinesConfirmed"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/acknowledgement": {
+      "post": {
+        "operationId": "acknowledge_clause",
+        "summary": "Record the Edge clause confirmation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClauseAcknowledgement"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClauseAcknowledged"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/transcription": {
+      "post": {
+        "operationId": "start_transcription",
+        "summary": "Transcribe the lines without a transcript",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptionStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionProgress"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "transcription_status",
+        "summary": "The corpus's transcription job",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionProgress"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancel_transcription",
+        "summary": "Stop the transcription after the current file",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionProgress"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/job": {
+      "get": {
+        "operationId": "training_status",
+        "summary": "The job, the layer's pre-flight checks and settings",
+        "parameters": [
+          {
+            "name": "corpus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Corpus"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "start_training",
+        "summary": "Check, then start a training job",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrainingStart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingJob"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancel_training",
+        "summary": "Cancel the running job",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingJobState"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/log": {
+      "get": {
+        "operationId": "training_log",
+        "summary": "Job log lines from an offset",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingLog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/activity": {
+      "get": {
+        "operationId": "training_activity",
+        "summary": "Whether a training job holds the GPU",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingActivity"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training/text-review": {
+      "post": {
+        "operationId": "review_text_list",
+        "summary": "How an Edge text list would be read, sentence by sentence",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextListReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextReview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         }
       }
     }
   },
-  "servers": [
-    {
-      "url": "http://127.0.0.1"
+  "components": {
+    "schemas": {
+      "ClauseAcknowledged": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged_at": {
+            "title": "Acknowledged At",
+            "type": "string"
+          },
+          "clause_reference": {
+            "title": "Clause Reference",
+            "type": "string"
+          },
+          "clause_effective": {
+            "title": "Clause Effective",
+            "type": "string"
+          }
+        },
+        "required": [
+          "acknowledged_at",
+          "clause_reference",
+          "clause_effective"
+        ],
+        "title": "ClauseAcknowledged",
+        "type": "object"
+      },
+      "ClauseAcknowledgement": {
+        "additionalProperties": false,
+        "description": "The Microsoft clause text the console showed and the administrator confirmed.",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "shown_text": {
+            "title": "Shown Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "shown_text"
+        ],
+        "title": "ClauseAcknowledgement",
+        "type": "object"
+      },
+      "CorpusCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "pending": {
+            "title": "Pending",
+            "type": "integer"
+          },
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "integer"
+          },
+          "excluded": {
+            "title": "Excluded",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pending",
+          "confirmed",
+          "excluded",
+          "total"
+        ],
+        "title": "CorpusCounts",
+        "type": "object"
+      },
+      "CorpusCreation": {
+        "additionalProperties": false,
+        "description": "A new corpus: uploaded recordings with a source declaration, or the Edge test teacher.",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          },
+          "consent": {
+            "default": false,
+            "title": "Consent",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "CorpusCreation",
+        "type": "object"
+      },
+      "CorpusDetail": {
+        "additionalProperties": false,
+        "description": "The review table: the summary and every line.",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          },
+          "declared_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Declared At"
+          },
+          "usage_label": {
+            "title": "Usage Label",
+            "type": "string"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CorpusCounts"
+          },
+          "trainable": {
+            "title": "Trainable",
+            "type": "boolean"
+          },
+          "reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CorpusLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slug",
+          "usage_label",
+          "counts",
+          "trainable"
+        ],
+        "title": "CorpusDetail",
+        "type": "object"
+      },
+      "CorpusLine": {
+        "additionalProperties": false,
+        "description": "One recording of a corpus with its transcript and review state.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "original_name": {
+            "title": "Original Name",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "normalized_text": {
+            "title": "Normalized Text",
+            "type": "string"
+          },
+          "unresolved": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/UnresolvedFragment"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          },
+          "review": {
+            "enum": [
+              "pending",
+              "confirmed",
+              "excluded"
+            ],
+            "title": "Review",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "original_name",
+          "text",
+          "normalized_text",
+          "review"
+        ],
+        "title": "CorpusLine",
+        "type": "object"
+      },
+      "CorpusList": {
+        "additionalProperties": false,
+        "properties": {
+          "corpora": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CorpusSummary"
+            },
+            "title": "Corpora",
+            "type": "array"
+          }
+        },
+        "title": "CorpusList",
+        "type": "object"
+      },
+      "CorpusRef": {
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "CorpusRef",
+        "type": "object"
+      },
+      "CorpusSummary": {
+        "additionalProperties": false,
+        "description": "A training corpus (訓練語料) with its source, usage label and trainability.",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          },
+          "declared_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Declared At"
+          },
+          "usage_label": {
+            "title": "Usage Label",
+            "type": "string"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CorpusCounts"
+          },
+          "trainable": {
+            "title": "Trainable",
+            "type": "boolean"
+          },
+          "reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slug",
+          "usage_label",
+          "counts",
+          "trainable"
+        ],
+        "title": "CorpusSummary",
+        "type": "object"
+      },
+      "EdgeClause": {
+        "additionalProperties": false,
+        "description": "The Microsoft clause the console shows and sends back verbatim.",
+        "properties": {
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "effective": {
+            "title": "Effective",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference",
+          "effective",
+          "text"
+        ],
+        "title": "EdgeClause",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "additionalProperties": false,
+        "description": "The JSON body of every non-2xx response; ``detail`` is shown to operators.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "FailedTranscription": {
+        "additionalProperties": false,
+        "properties": {
+          "line_id": {
+            "title": "Line Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_id",
+          "message"
+        ],
+        "title": "FailedTranscription",
+        "type": "object"
+      },
+      "FragmentEnvelope": {
+        "additionalProperties": false,
+        "description": "The turn identity a fragment carries; built from the core's TurnEnvelope.",
+        "properties": {
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "generation",
+          "sequence"
+        ],
+        "title": "FragmentEnvelope",
+        "type": "object"
+      },
+      "LibraryVoice": {
+        "additionalProperties": false,
+        "description": "A reference recording of the voice library (參考音訊庫).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "seconds": {
+            "title": "Seconds",
+            "type": "number"
+          },
+          "transcript": {
+            "title": "Transcript",
+            "type": "string"
+          },
+          "development": {
+            "default": false,
+            "title": "Development",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "seconds",
+          "transcript"
+        ],
+        "title": "LibraryVoice",
+        "type": "object"
+      },
+      "LineAdded": {
+        "additionalProperties": false,
+        "properties": {
+          "line": {
+            "$ref": "#/components/schemas/CorpusLine"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "number"
+          }
+        },
+        "required": [
+          "line",
+          "duration"
+        ],
+        "title": "LineAdded",
+        "type": "object"
+      },
+      "LineConfirmation": {
+        "additionalProperties": false,
+        "description": "Confirm every pending line with a transcript, or only ``line_ids``.",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "line_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Line Ids"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "LineConfirmation",
+        "type": "object"
+      },
+      "LineEdit": {
+        "additionalProperties": false,
+        "description": "A new transcript (the line goes back to pending) and/or a review state.",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "line_id": {
+            "title": "Line Id",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Text"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "confirmed",
+                  "excluded"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Review"
+          }
+        },
+        "required": [
+          "slug",
+          "line_id"
+        ],
+        "title": "LineEdit",
+        "type": "object"
+      },
+      "LineEdited": {
+        "additionalProperties": false,
+        "properties": {
+          "line": {
+            "$ref": "#/components/schemas/CorpusLine"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CorpusSummary"
+          }
+        },
+        "required": [
+          "line",
+          "summary"
+        ],
+        "title": "LineEdited",
+        "type": "object"
+      },
+      "LineRef": {
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "line_id": {
+            "title": "Line Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "line_id"
+        ],
+        "title": "LineRef",
+        "type": "object"
+      },
+      "LineUpload": {
+        "additionalProperties": false,
+        "description": "The fields sent with one uploaded recording (the audio is the body).",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "filename": {
+            "default": "",
+            "maxLength": 1024,
+            "title": "Filename",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "LineUpload",
+        "type": "object"
+      },
+      "LinesConfirmed": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "integer"
+          },
+          "without_text": {
+            "title": "Without Text",
+            "type": "integer"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CorpusSummary"
+          }
+        },
+        "required": [
+          "confirmed",
+          "without_text",
+          "summary"
+        ],
+        "title": "LinesConfirmed",
+        "type": "object"
+      },
+      "PlayableFragment": {
+        "additionalProperties": false,
+        "description": "A reply fragment the core cut and the TTS layer synthesizes.",
+        "properties": {
+          "envelope": {
+            "$ref": "#/components/schemas/FragmentEnvelope"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "estimated_seconds": {
+            "minimum": 0,
+            "title": "Estimated Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "envelope",
+          "text",
+          "estimated_seconds"
+        ],
+        "title": "PlayableFragment",
+        "type": "object"
+      },
+      "ReviewedSentence": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "string"
+          },
+          "unresolved": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/UnresolvedFragment"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          }
+        },
+        "required": [
+          "index",
+          "text",
+          "spoken"
+        ],
+        "title": "ReviewedSentence",
+        "type": "object"
+      },
+      "ServiceHealth": {
+        "additionalProperties": false,
+        "description": "``GET /health`` of a processing-layer service (ADR 0027).",
+        "properties": {
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contract_version",
+          "engine",
+          "ready"
+        ],
+        "title": "ServiceHealth",
+        "type": "object"
+      },
+      "SynthesisRequest": {
+        "additionalProperties": false,
+        "description": "One playable fragment in one voice.",
+        "properties": {
+          "fragment": {
+            "$ref": "#/components/schemas/PlayableFragment"
+          },
+          "voice": {
+            "$ref": "#/components/schemas/TtsVoice"
+          },
+          "max_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Seconds"
+          }
+        },
+        "required": [
+          "fragment",
+          "voice"
+        ],
+        "title": "SynthesisRequest",
+        "type": "object"
+      },
+      "TextListReview": {
+        "additionalProperties": false,
+        "description": "An administrator's text list for an Edge corpus, one sentence per line.",
+        "properties": {
+          "sentences": {
+            "title": "Sentences",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentences"
+        ],
+        "title": "TextListReview",
+        "type": "object"
+      },
+      "TextReview": {
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unresolved_count": {
+            "title": "Unresolved Count",
+            "type": "integer"
+          },
+          "estimated_seconds": {
+            "title": "Estimated Seconds",
+            "type": "number"
+          },
+          "sentences": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReviewedSentence"
+            },
+            "title": "Sentences",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "total",
+          "unresolved_count",
+          "estimated_seconds"
+        ],
+        "title": "TextReview",
+        "type": "object"
+      },
+      "TrainingActivity": {
+        "additionalProperties": false,
+        "description": "Whether a training job holds the GPU; the core refuses new stages meanwhile.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active"
+        ],
+        "title": "TrainingActivity",
+        "type": "object"
+      },
+      "TrainingCheck": {
+        "additionalProperties": false,
+        "description": "One named reason a training job may or may not start; ``detail`` has the numbers.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "warn"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "status",
+          "reason"
+        ],
+        "title": "TrainingCheck",
+        "type": "object"
+      },
+      "TrainingJob": {
+        "additionalProperties": false,
+        "description": "A training job (訓練工作): from a corpus to a voice model in the catalog.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "corpus": {
+            "title": "Corpus",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "voice_id": {
+            "title": "Voice Id",
+            "type": "string"
+          },
+          "usage": {
+            "title": "Usage",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "cancelling",
+              "done",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stage"
+          },
+          "stages": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TrainingStage"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "number"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Finished At"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "log_lines": {
+            "default": 0,
+            "title": "Log Lines",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "corpus",
+          "name",
+          "voice_id",
+          "usage",
+          "source",
+          "status",
+          "progress",
+          "started_at"
+        ],
+        "title": "TrainingJob",
+        "type": "object"
+      },
+      "TrainingJobState": {
+        "additionalProperties": false,
+        "description": "The running job, else the latest finished one; ``None`` when there is none.",
+        "properties": {
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingJob"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "title": "TrainingJobState",
+        "type": "object"
+      },
+      "TrainingLog": {
+        "additionalProperties": false,
+        "description": "Log lines from absolute line ``start``; ``next`` is where the following page starts.",
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Job Id"
+          },
+          "start": {
+            "title": "Start",
+            "type": "integer"
+          },
+          "lines": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "next": {
+            "title": "Next",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "next",
+          "total"
+        ],
+        "title": "TrainingLog",
+        "type": "object"
+      },
+      "TrainingLogQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "offset": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "title": "TrainingLogQuery",
+        "type": "object"
+      },
+      "TrainingPreflight": {
+        "additionalProperties": false,
+        "properties": {
+          "can_start": {
+            "title": "Can Start",
+            "type": "boolean"
+          },
+          "checks": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TrainingCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "can_start"
+        ],
+        "title": "TrainingPreflight",
+        "type": "object"
+      },
+      "TrainingQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "corpus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Corpus"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          }
+        },
+        "title": "TrainingQuery",
+        "type": "object"
+      },
+      "TrainingSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "min_free_vram_gb": {
+            "title": "Min Free Vram Gb",
+            "type": "number"
+          },
+          "whisper_model": {
+            "title": "Whisper Model",
+            "type": "string"
+          },
+          "edge_clause": {
+            "$ref": "#/components/schemas/EdgeClause"
+          }
+        },
+        "required": [
+          "min_free_vram_gb",
+          "whisper_model",
+          "edge_clause"
+        ],
+        "title": "TrainingSettings",
+        "type": "object"
+      },
+      "TrainingStage": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "progress": {
+            "default": 0.0,
+            "title": "Progress",
+            "type": "number"
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Seconds"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "status"
+        ],
+        "title": "TrainingStage",
+        "type": "object"
+      },
+      "TrainingStart": {
+        "additionalProperties": false,
+        "description": "Start a job; an Edge corpus also names a voice and a preset or its own text list.",
+        "properties": {
+          "corpus": {
+            "title": "Corpus",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Voice"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Preset"
+          },
+          "sentences": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Sentences"
+          }
+        },
+        "required": [
+          "corpus",
+          "name"
+        ],
+        "title": "TrainingStart",
+        "type": "object"
+      },
+      "TrainingStatus": {
+        "additionalProperties": false,
+        "description": "The job, the layer's pre-flight checks and the settings the console shows.",
+        "properties": {
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingJob"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "preflight": {
+            "$ref": "#/components/schemas/TrainingPreflight"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/TrainingSettings"
+          }
+        },
+        "required": [
+          "preflight",
+          "settings"
+        ],
+        "title": "TrainingStatus",
+        "type": "object"
+      },
+      "TranscriptFile": {
+        "additionalProperties": false,
+        "description": "An uploaded same-name ``.txt`` file or ``metadata.csv``; base64 in JSON.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "content": {
+            "format": "base64url",
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "content"
+        ],
+        "title": "TranscriptFile",
+        "type": "object"
+      },
+      "TranscriptImport": {
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptFile"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "slug",
+          "files"
+        ],
+        "title": "TranscriptImport",
+        "type": "object"
+      },
+      "TranscriptionProgress": {
+        "additionalProperties": false,
+        "description": "The automatic transcription job of a corpus; ``idle`` when it has none.",
+        "properties": {
+          "state": {
+            "enum": [
+              "idle",
+              "running",
+              "done",
+              "cancelled",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Slug"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "done": {
+            "default": 0,
+            "title": "Done",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "failed": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FailedTranscription"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "cancel_requested": {
+            "default": false,
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "enum": [
+                  "cuda",
+                  "cpu"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Device"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fallback Reason"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "TranscriptionProgress",
+        "type": "object"
+      },
+      "TranscriptionStart": {
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "line_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Line Ids"
+          },
+          "model": {
+            "default": "medium",
+            "title": "Model",
+            "type": "string"
+          },
+          "cpu_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cpu Reason"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "TranscriptionStart",
+        "type": "object"
+      },
+      "TranscriptsApplied": {
+        "additionalProperties": false,
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "integer"
+          },
+          "without_transcript": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Without Transcript",
+            "type": "array"
+          }
+        },
+        "required": [
+          "applied"
+        ],
+        "title": "TranscriptsApplied",
+        "type": "object"
+      },
+      "TtsCatalog": {
+        "additionalProperties": false,
+        "description": "What a role's voice is chosen from.",
+        "properties": {
+          "voices": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LibraryVoice"
+            },
+            "title": "Voices",
+            "type": "array"
+          },
+          "models": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TtsModel"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "voice_models": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/VoiceModelInfo"
+            },
+            "title": "Voice Models",
+            "type": "array"
+          }
+        },
+        "title": "TtsCatalog",
+        "type": "object"
+      },
+      "TtsEngineSettings": {
+        "additionalProperties": false,
+        "description": "What every voice of the process shares (``PUT /engine``).",
+        "properties": {
+          "frames_per_second": {
+            "default": 50,
+            "maximum": 1000,
+            "minimum": 1,
+            "title": "Frames Per Second",
+            "type": "integer"
+          },
+          "matcha_threads": {
+            "default": 4,
+            "minimum": 1,
+            "title": "Matcha Threads",
+            "type": "integer"
+          },
+          "training_min_free_vram_gb": {
+            "default": 8.0,
+            "exclusiveMinimum": 0,
+            "title": "Training Min Free Vram Gb",
+            "type": "number"
+          },
+          "training_whisper_model": {
+            "default": "small",
+            "title": "Training Whisper Model",
+            "type": "string"
+          }
+        },
+        "title": "TtsEngineSettings",
+        "type": "object"
+      },
+      "TtsModel": {
+        "additionalProperties": false,
+        "description": "A BreezyVoice model folder under ``models/``, named by its catalog ID.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "TtsModel",
+        "type": "object"
+      },
+      "TtsVoice": {
+        "additionalProperties": false,
+        "description": "The voice a role speaks with: its engine and what that engine needs.\n\n``voice`` is an Edge voice name, a voice-library ID (BreezyVoice) or a\nvoice-model ID (Matcha); ``server`` a loopback BreezyVoice address and\n``model`` a ``models/`` catalog ID, \"\" for the defaults. All are IDs the\ncore validated (CODING_STANDARDS rule 1), never paths.",
+        "properties": {
+          "engine": {
+            "enum": [
+              "edgetts",
+              "breezyvoice",
+              "matcha",
+              "fake"
+            ],
+            "title": "Engine",
+            "type": "string"
+          },
+          "voice": {
+            "default": "",
+            "title": "Voice",
+            "type": "string"
+          },
+          "server": {
+            "default": "",
+            "title": "Server",
+            "type": "string"
+          },
+          "model": {
+            "default": "",
+            "title": "Model",
+            "type": "string"
+          },
+          "edge_persistent_worker": {
+            "default": true,
+            "title": "Edge Persistent Worker",
+            "type": "boolean"
+          },
+          "edge_prefetch": {
+            "default": true,
+            "title": "Edge Prefetch",
+            "type": "boolean"
+          },
+          "edge_connection_reuse": {
+            "default": true,
+            "title": "Edge Connection Reuse",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "engine"
+        ],
+        "title": "TtsVoice",
+        "type": "object"
+      },
+      "UnresolvedFragment": {
+        "additionalProperties": false,
+        "description": "A token the digit normaliser would not guess; offsets index the original text.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "integer"
+          },
+          "end": {
+            "title": "End",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "start",
+          "end",
+          "reason"
+        ],
+        "title": "UnresolvedFragment",
+        "type": "object"
+      },
+      "VoiceList": {
+        "additionalProperties": false,
+        "properties": {
+          "voices": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LibraryVoice"
+            },
+            "title": "Voices",
+            "type": "array"
+          }
+        },
+        "title": "VoiceList",
+        "type": "object"
+      },
+      "VoiceModelInfo": {
+        "additionalProperties": false,
+        "description": "A voice model (聲線模型) under ``models/tts`` with its usage label.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "usage": {
+            "title": "Usage",
+            "type": "string"
+          },
+          "languages": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "usage",
+          "source"
+        ],
+        "title": "VoiceModelInfo",
+        "type": "object"
+      },
+      "VoiceModelPreview": {
+        "additionalProperties": false,
+        "description": "A preset sentence in a voice model's voice; no text of the caller's own.",
+        "properties": {
+          "voice_id": {
+            "title": "Voice Id",
+            "type": "string"
+          },
+          "sentence": {
+            "enum": [
+              "zh",
+              "digits",
+              "en"
+            ],
+            "title": "Sentence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "voice_id",
+          "sentence"
+        ],
+        "title": "VoiceModelPreview",
+        "type": "object"
+      },
+      "VoicePreparation": {
+        "additionalProperties": false,
+        "description": "Make a voice ready to speak: start its BreezyVoice server, warm Edge.",
+        "properties": {
+          "voice": {
+            "$ref": "#/components/schemas/TtsVoice"
+          },
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timeout Seconds"
+          }
+        },
+        "required": [
+          "voice"
+        ],
+        "title": "VoicePreparation",
+        "type": "object"
+      },
+      "VoiceRef": {
+        "additionalProperties": false,
+        "properties": {
+          "voice_id": {
+            "title": "Voice Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "voice_id"
+        ],
+        "title": "VoiceRef",
+        "type": "object"
+      },
+      "VoiceServerStatus": {
+        "additionalProperties": false,
+        "description": "Whether a voice's BreezyVoice server answers with its model now.",
+        "properties": {
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ready",
+          "url"
+        ],
+        "title": "VoiceServerStatus",
+        "type": "object"
+      },
+      "VoiceUpload": {
+        "additionalProperties": false,
+        "description": "The fields sent with an uploaded reference recording.",
+        "properties": {
+          "name": {
+            "default": "",
+            "maxLength": 1024,
+            "title": "Name",
+            "type": "string"
+          },
+          "transcript": {
+            "default": "",
+            "maxLength": 4096,
+            "title": "Transcript",
+            "type": "string"
+          }
+        },
+        "title": "VoiceUpload",
+        "type": "object"
+      }
     }
-  ]
+  }
 }

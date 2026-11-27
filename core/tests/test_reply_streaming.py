@@ -22,12 +22,10 @@ from nova_core.server.reply_streaming.metrics import TurnMetrics
 from nova_core.server.reply_streaming.turn import TurnContext, TurnState
 from nova_llm.base import BaseLLM
 from nova_llm.engines.openai import OpenAILLM
-from nova_core.server.reply_streaming.fragmenter import (
-    SemanticFragmenter,
-    SemanticWaitTimer,
-    make_fragmenter_factory,
-)
+from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
 from nova_core.server.reply_streaming.soak import build_soak_report
+from clock_fakes import FakeClock
+from speech_fakes import spoken_answer
 
 
 FIRST_SENTENCE = "這是一段足夠長度的第一句話用來觸發分段語音合成開始。"
@@ -65,18 +63,20 @@ class StreamingVersusOneShotTtsTests(unittest.TestCase):
         oneshot_avatar = RecordingAvatar()
 
         streaming_started = time.perf_counter()
-        SlowSentenceLLM(self.config).generate_response(
+        spoken_answer(
+            SlowSentenceLLM(self.config),
             "請回答",
             streaming_avatar,
-            stream_to_avatar=True,
+            stream=True,
         )
         streaming_first = streaming_avatar.events[0]["at"] - streaming_started
 
         oneshot_started = time.perf_counter()
-        full_text = SlowSentenceLLM(self.config).generate_response(
+        full_text = spoken_answer(
+            SlowSentenceLLM(self.config),
             "請回答",
             oneshot_avatar,
-            stream_to_avatar=False,
+            stream=False,
         )
         oneshot_avatar.put_msg_txt(full_text)
         oneshot_first = oneshot_avatar.events[0]["at"] - oneshot_started
@@ -88,17 +88,6 @@ class StreamingVersusOneShotTtsTests(unittest.TestCase):
         self.assertGreater(oneshot_first, TOKEN_GAP_SECONDS * 0.8)
         self.assertLess(streaming_first, oneshot_first)
         self.assertIn(FIRST_SENTENCE.strip("。"), streaming_avatar.events[0]["text"])
-
-
-class FakeClock:
-    def __init__(self):
-        self.now = 0.0
-
-    def __call__(self):
-        return self.now
-
-    def advance(self, seconds):
-        self.now += seconds
 
 
 class ReplyStreamingConfigTests(unittest.TestCase):
@@ -390,7 +379,8 @@ class LLMGenerationFenceTests(unittest.TestCase):
                 self.deltas.append((text, data))
 
         avatar = FakeAvatar()
-        response = FakeLLM(Config()).generate_response(
+        response = spoken_answer(
+            FakeLLM(Config()),
             "fixture",
             avatar,
             datainfo={"turn_id": "turn-1", "generation": 1},
@@ -418,7 +408,8 @@ class LLMGenerationFenceTests(unittest.TestCase):
         llm = FakeLLM(Config())
         avatar = FakeAvatar()
 
-        response = llm.generate_response(
+        response = spoken_answer(
+            llm,
             "fixture",
             avatar,
             datainfo={"turn_id": "turn-1", "generation": 5},
@@ -462,9 +453,9 @@ class LLMGenerationFenceTests(unittest.TestCase):
         config = Config()
         config.reply_streaming.semantic_wait_seconds = 0.1
         started = time.perf_counter()
-        StallingLLM(config).generate_response(
+        spoken_answer(
+            StallingLLM(config),
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
-            fragmenter_factory=make_fragmenter_factory(config),
         )
 
         self.assertEqual(
@@ -486,9 +477,9 @@ class LLMGenerationFenceTests(unittest.TestCase):
         avatar = RecordingAvatar()
         config = Config()
         config.reply_streaming.semantic_wait_seconds = 0.1
-        FencedLLM(config).generate_response(
+        spoken_answer(
+            FencedLLM(config),
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
-            fragmenter_factory=make_fragmenter_factory(config),
             chunk_guard=lambda sequence: sequence == 0,
         )
         time.sleep(0.3)
@@ -512,9 +503,9 @@ class LLMGenerationFenceTests(unittest.TestCase):
         avatar = RecordingAvatar()
         config = Config()
         config.reply_streaming.semantic_wait_seconds = 0.1
-        StalledAfterFenceLLM(config).generate_response(
+        spoken_answer(
+            StalledAfterFenceLLM(config),
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
-            fragmenter_factory=make_fragmenter_factory(config),
             chunk_guard=lambda _sequence: live.is_set(),
         )
         time.sleep(0.2)
@@ -538,7 +529,6 @@ class LLMHistoryTransactionTests(unittest.TestCase):
 
         response = llm.generate_response(
             "user fixture",
-            stream_to_avatar=False,
             datainfo={"turn_id": "voice-turn"},
             defer_history_commit=True,
         )
@@ -620,7 +610,6 @@ class LLMHistoryTransactionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "fixture failure"):
             llm.generate_response(
                 "user fixture",
-                stream_to_avatar=False,
                 datainfo={"turn_id": "failed-turn"},
             )
 
@@ -644,7 +633,6 @@ class LLMHistoryTransactionTests(unittest.TestCase):
 
         response = llm.generate_response(
             "user fixture",
-            stream_to_avatar=False,
             datainfo={"turn_id": "legacy-turn"},
         )
 

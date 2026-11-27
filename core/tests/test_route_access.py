@@ -19,7 +19,7 @@ from nova_core.server.access import ROUTE_ACCESS, Access, AdminAuth, route_key
 from nova_core.server.admin_password import hash_password, read_password_hash, verify_password
 from nova_core.server.server import create_app
 from nova_core.server.state import state
-from tests.access_helpers import (
+from access_helpers import (
     LAN_ADDRESS,
     TEST_ADMIN_PASSWORD,
     access_client,

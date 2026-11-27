@@ -13,7 +13,12 @@ from nova_core.server.voice_session import (
     VoiceTurnSession,
     speech_input_rejection_reason,
 )
-from tests.session_fakes import FakeASR, FakeAvatar, FakeSegmenter  # noqa: F401
+from nova_contracts.llm import (BoardItemShown, BoardReceipt, BoardStart, ModelChunk, Outcome, ReplyDone,
+                                SpeechEnd, SpokenDelta)
+from nova_contracts.stt import Transcription, TranscriptionOptions
+from llm_fakes import FakeLlm, answering, reply_events, started as reply_started
+from clock_fakes import FakeClock
+from session_fakes import fake_stt, FakeAvatar, FakeSegmenter  # noqa: F401
 
 
 class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
@@ -27,19 +32,19 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             speech_input_rejection_reason(
-                audio, 16000, 200, {"text": "上一輪內容"}, settings
+                audio, 16000, 200, Transcription(text="上一輪內容"), settings
             ),
             "speech_too_short",
         )
         self.assertEqual(
             speech_input_rejection_reason(
-                audio, 16000, 700, {"text": "上一輪內容", "confidence": 0.1}, settings
+                audio, 16000, 700, Transcription(text="上一輪內容", confidence=0.1), settings
             ),
             "transcript_low_confidence",
         )
         self.assertIsNone(
             speech_input_rejection_reason(
-                audio, 16000, 700, {"text": "有效問題", "confidence": 0.9}, settings
+                audio, 16000, 700, Transcription(text="有效問題", confidence=0.9), settings
             )
         )
 
@@ -55,11 +60,11 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             min_audio_rms=0.003,
             min_confidence=0.35,
         )
-        session._asr = SimpleNamespace(
-            transcribe=Mock(return_value={"text": "上一輪內容", "confidence": 0.1})
+        session._stt = SimpleNamespace(
+            transcribe=Mock(return_value=Transcription(text="上一輪內容", confidence=0.1))
         )
 
-        with patch("nova_core.server.voice_session.llm_response", return_value="") as llm:
+        with answering(session, "") as llm:
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             await session._turn_task
 
@@ -71,14 +76,14 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(events[-1]["state"], "listening")
 
             session._segmenter.segment = segment
-            session._asr.transcribe = Mock(
-                return_value={"text": "下一輪有效問題", "confidence": 0.9}
+            session._stt.transcribe = Mock(
+                return_value=Transcription(text="下一輪有效問題", confidence=0.9)
             )
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             await session._turn_task
 
         llm.assert_called_once()
-        self.assertIn("下一輪有效問題", str(llm.call_args))
+        self.assertEqual(llm.request.question.text, "下一輪有效問題")
         self.assertTrue(session._gate_open)
         await session.close()
 
@@ -94,12 +99,12 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             min_audio_rms=0.003,
             min_confidence=0.35,
         )
-        session._asr = SimpleNamespace(transcribe=Mock())
+        session._stt = Mock(wraps=fake_stt())
 
         await session.feed_pcm(np.ones(512, dtype=np.int16))
         await session._turn_task
 
-        session._asr.transcribe.assert_not_called()
+        session._stt.transcribe.assert_not_called()
         self.assertIsNone(session._turn_task)
         self.assertIsNone(session._turn_id)
         self.assertTrue(session._gate_open)
@@ -113,9 +118,9 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             reply_streaming=SimpleNamespace(enabled=streaming),
         )
         avatar = FakeAvatar()
-        session = VoiceTurnSession(7, config, avatar, clock=clock)
+        session = VoiceTurnSession(7, config, avatar, clock=clock, llm=FakeLlm())
         session._segmenter = FakeSegmenter(segment)
-        session._asr = FakeASR()
+        session._stt = fake_stt()
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         return session, avatar, events
@@ -127,29 +132,12 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         )
         session, avatar, events = self.make_session(segment)
 
-        # 逐句串流後，推送 TTS 的責任在 llm_response 內部，輪次只負責把
-        # turn_id 交下去。用 side_effect 模擬它逐句回推。
-        def fake_llm(
-            text,
-            avatar_stream,
-            *,
-            stream_to_avatar=True,
-            datainfo=None,
-            chunk_guard=None,
-            defer_history_commit=False,
-            fragmenter_factory=None,
-            published_config=None,
-        ):
-            self.assertTrue(stream_to_avatar)
-            self.assertTrue(chunk_guard(0))
-            self.assertEqual(datainfo["generation"], session._generation)
-            fragment_info = dict(datainfo or {})
-            fragment_info.pop("on_board", None)
-            fragment_info["fragment_sequence"] = 0
-            avatar_stream.put_msg_txt("您好", fragment_info)
-            return "您好"
+        # 串流時核心把口語增量切成可播回覆片段，每段由 LLM 審查後送進 avatar。
+        def fake_llm(request):
+            self.assertTrue(request.stream_speech)
+            return reply_events(request, "您好")
 
-        with patch("nova_core.server.voice_session.llm_response", side_effect=fake_llm):
+        with answering(session, fake_llm, speak=True):
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             task = session._turn_task
             self.assertIsNotNone(task)
@@ -187,27 +175,19 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(locale=locale):
                 session, _, _ = self.make_session(segment)
                 session._conversation["locale"] = locale
-                session._asr = SimpleNamespace(
-                    supports_language_options=True,
-                    transcribe=Mock(return_value={"text": "hello", "language": "en"}),
-                )
-                with patch("nova_core.server.voice_session.llm_response", return_value="ok"):
+                session._stt = Mock(wraps=fake_stt("hello"))
+                with answering(session, "ok"):
                     await session.feed_pcm(np.ones(512, dtype=np.int16))
                     await session._turn_task
 
                 # Visitors switch language mid-conversation; fixing the
                 # recognizer to the conversation locale garbles the other (Q24).
                 self.assertEqual(
-                    session._asr.transcribe.call_args.kwargs, {"language": "auto"})
+                    session._stt.transcribe.call_args.args[1],
+                    TranscriptionOptions(language="auto"))
                 await session.close()
 
     async def test_legacy_turn_exposes_first_audio_metric(self):
-        class FakeClock:
-            now = 0.0
-
-            def __call__(self):
-                return self.now
-
         clock = FakeClock()
         segment = SimpleNamespace(
             audio=np.ones(1600, dtype=np.int16),
@@ -215,7 +195,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         )
         session, _, _ = self.make_session(segment, clock=clock)
 
-        with patch("nova_core.server.voice_session.llm_response", return_value="您好"):
+        with answering(session, "您好"):
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             await session._turn_task
         clock.now = 0.8
@@ -449,25 +429,16 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         release = Event()
         finished = Event()
 
-        def blocked_llm(
-            _text,
-            avatar_stream,
-            *,
-            stream_to_avatar=True,
-            datainfo=None,
-            chunk_guard=None,
-            defer_history_commit=False,
-            fragmenter_factory=None,
-            published_config=None,
-        ):
+        def blocked_llm(request):
             started.set()
             release.wait(timeout=1)
-            if chunk_guard is None or chunk_guard(0):
-                avatar_stream.put_msg_txt("舊回覆", dict(datainfo or {}))
-            finished.set()
-            return "舊回覆"
+            try:
+                # The core fences the stale turn at the first model chunk.
+                yield from reply_events(request, "舊回覆")
+            finally:
+                finished.set()
 
-        with patch("nova_core.server.voice_session.llm_response", side_effect=blocked_llm):
+        with answering(session, blocked_llm, speak=True):
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             self.assertTrue(await asyncio.to_thread(started.wait, 1))
             with patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()):
@@ -488,25 +459,16 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         release = Event()
         finished = Event()
 
-        def blocked_llm(
-            _text,
-            avatar_stream,
-            *,
-            stream_to_avatar=True,
-            datainfo=None,
-            chunk_guard=None,
-            defer_history_commit=False,
-            fragmenter_factory=None,
-            published_config=None,
-        ):
+        def blocked_llm(request):
             started.set()
             release.wait(timeout=1)
-            if chunk_guard is None or chunk_guard(0):
-                avatar_stream.put_msg_txt("舊回覆", dict(datainfo or {}))
-            finished.set()
-            return "舊回覆"
+            try:
+                # The core fences the stale turn at the first model chunk.
+                yield from reply_events(request, "舊回覆")
+            finally:
+                finished.set()
 
-        with patch("nova_core.server.voice_session.llm_response", side_effect=blocked_llm):
+        with answering(session, blocked_llm, speak=True):
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             self.assertTrue(await asyncio.to_thread(started.wait, 1))
             await session.close()
@@ -524,31 +486,26 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
             reply_streaming=SimpleNamespace(enabled=streaming),
         )
         avatar = FakeAvatar()
-        session = VoiceTurnSession(7, config, avatar)
+        session = VoiceTurnSession(7, config, avatar, llm=FakeLlm())
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         session._segmenter = FakeSegmenter()
-        session._asr = FakeASR()
+        session._stt = fake_stt()
         return session, avatar, events
 
     async def test_legacy_text_turn_emits_one_complete_response(self):
         session, avatar, events = self.make_session(streaming=False)
-        calls = []
 
-        def fake_llm(text, avatar_stream, **kwargs):
-            calls.append((text, kwargs))
-            return "完整回覆"
-
-        with patch("nova_core.server.voice_session.llm_response", side_effect=fake_llm):
+        with answering(session, "完整回覆") as llm:
             started = await session.start_text_turn("請回答", interrupt=False)
             await session._turn_task
 
         self.assertEqual(started["reply_mode"], "legacy")
-        self.assertFalse(calls[0][1].get("stream_to_avatar", True))
-        self.assertEqual(calls[0][1]["datainfo"]["turn_id"], started["turn_id"])
-        self.assertTrue(callable(calls[0][1]["datainfo"]["on_board"]))
-        self.assertEqual(calls[0][1].get("chunk_guard"), None)
-        self.assertTrue(calls[0][1].get("defer_history_commit", False))
+        request = llm.request
+        self.assertFalse(request.stream_speech)  # nothing is played while generating
+        self.assertEqual(request.turn_id, started["turn_id"])
+        self.assertEqual(request.question.text, "請回答")
+        self.assertTrue(request.report_board)
         responses = [item for item in events if item["type"] == "assistant_response"]
         self.assertEqual([item["text"] for item in responses], ["完整回覆"])
         self.assertEqual(len(avatar.messages), 1)
@@ -575,7 +532,7 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
         session._segmenter.segment = microphone_segment
         self.assertTrue(session._gate_open)
 
-        with patch("nova_core.server.voice_session.llm_response", return_value="簡短回答"):
+        with answering(session, "簡短回答"):
             started = await session.start_text_turn("執行測試", interrupt=False)
 
             self.assertFalse(session._gate_open)
@@ -590,23 +547,14 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
     async def test_board_events_include_a_stable_board_id(self):
         session, _avatar, events = self.make_session(streaming=False)
 
-        def fake_llm(_text, _avatar_stream, **kwargs):
-            info = kwargs["datainfo"]
-            info["on_board"](
-                {"kind": "begin", "title": "部署前檢查", "turn_id": info["turn_id"]}
-            )
-            info["on_board"](
-                {
-                    "kind": "item",
-                    "index": 0,
-                    "title": "確認設定",
-                    "body": "確認環境變數已套用。",
-                    "turn_id": info["turn_id"],
-                }
-            )
-            return "先確認部署設定。"
+        def fake_llm(request):
+            yield reply_started(request)
+            yield BoardStart(turn_id=request.turn_id, title="部署前檢查")
+            yield BoardItemShown(turn_id=request.turn_id, index=0, title="確認設定",
+                                 body="確認環境變數已套用。")
+            yield ReplyDone(spoken="先確認部署設定。", visible="先確認部署設定。")
 
-        with patch("nova_core.server.voice_session.llm_response", side_effect=fake_llm):
+        with answering(session, fake_llm):
             started = await session.start_text_turn("列出部署步驟", interrupt=False)
             await session._turn_task
             await asyncio.sleep(0)
@@ -619,39 +567,32 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
     async def test_display_receipt_is_forwarded_once_per_presenter_item(self):
         session, _avatar, _events = self.make_session(streaming=False)
 
-        with patch(
-            "nova_core.server.voice_session.acknowledge_session_board_item",
-            create=True,
-            return_value=True,
-        ) as acknowledge:
-            receipt = json.dumps(
-                {
-                    "type": "board_displayed",
-                    "turn_id": "turn-42",
-                    "board_id": "turn-42",
-                    "item_index": 1,
-                    "presenter": "console",
-                }
-            )
-            session.handle_control(receipt)
-            session.handle_control(receipt)
+        acknowledge = session._llm.acknowledge_board_item = Mock(return_value=Outcome(done=True))
+        receipt = json.dumps(
+            {
+                "type": "board_displayed",
+                "turn_id": "turn-42",
+                "board_id": "turn-42",
+                "item_index": 1,
+                "presenter": "console",
+            }
+        )
+        session.handle_control(receipt)
+        session.handle_control(receipt)
 
-        acknowledge.assert_called_once_with(
-            session.sessionid,
+        acknowledge.assert_called_once_with(BoardReceipt(
+            session_id=session.sessionid,
             turn_id="turn-42",
             board_id="turn-42",
             item_index=1,
             presenter="console",
-        )
+        ))
         await session.close()
 
     async def test_legacy_no_first_audio_fails_and_releases_turn(self):
         session, avatar, events = self.make_session(streaming=False)
 
-        with patch(
-            "nova_core.server.voice_session.llm_response",
-            return_value="完整但沒有開始播放的回覆",
-        ):
+        with answering(session, "完整但沒有開始播放的回覆"):
             await session.start_text_turn("測試舊模式無首音", interrupt=False)
             await session._turn_task
 
@@ -671,33 +612,13 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
     async def test_streaming_text_turn_uses_guarded_played_fragment_delivery(self):
         session, avatar, events = self.make_session(streaming=True)
 
-        def fake_llm(
-            text,
-            avatar_stream,
-            *,
-            stream_to_avatar=True,
-            datainfo=None,
-            chunk_guard=None,
-            defer_history_commit=False,
-            fragmenter_factory=None,
-            published_config=None,
-        ):
-            self.assertEqual(text, "請串流")
-            self.assertTrue(stream_to_avatar)
-            self.assertIsNotNone(datainfo)
-            self.assertIsNotNone(chunk_guard)
-            self.assertTrue(defer_history_commit)
-            self.assertTrue(chunk_guard(0))
-            info = dict(datainfo)
-            info["fragment_sequence"] = 0
-            avatar_stream.put_msg_txt("逐段回覆", info)
-            return "逐段回覆"
-
-        with patch("nova_core.server.voice_session.llm_response", side_effect=fake_llm):
+        with answering(session, "逐段回覆", speak=True) as llm:
             started = await session.start_text_turn("請串流", interrupt=False)
             await session._turn_task
 
         self.assertEqual(started["reply_mode"], "streaming")
+        self.assertEqual(llm.request.question.text, "請串流")
+        self.assertTrue(llm.request.stream_speech)
         self.assertEqual(
             [item for item in events if item["type"] == "assistant_fragment"],
             [],
@@ -717,17 +638,26 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
             started_at = time.perf_counter()
             first_tts_at = []
 
-            def fake_llm(text, avatar_stream, **kwargs):
-                if kwargs.get("stream_to_avatar"):
-                    avatar_stream.put_msg_txt(first, kwargs.get("datainfo") or {})
-                    first_tts_at.append(time.perf_counter())
-                    time.sleep(gap)
-                    avatar_stream.put_msg_txt(second, kwargs.get("datainfo") or {})
-                    return first + second
-                time.sleep(gap)
-                return first + second
+            def timed(text, info, original=avatar.put_msg_txt):
+                first_tts_at.append(time.perf_counter())
+                original(text, info)
 
-            with patch("nova_core.server.voice_session.llm_response", side_effect=fake_llm):
+            avatar.put_msg_txt = timed
+
+            def fake_llm(request):
+                yield reply_started(request)
+                if request.stream_speech:
+                    yield ModelChunk(llm_sequence=0)
+                    yield SpokenDelta(text=first, llm_sequence=0)
+                    time.sleep(gap)
+                    yield ModelChunk(llm_sequence=1)
+                    yield SpokenDelta(text=second, llm_sequence=1)
+                    yield SpeechEnd()
+                else:
+                    time.sleep(gap)
+                yield ReplyDone(spoken=first + second, visible=first + second)
+
+            with answering(session, fake_llm):
                 await session.start_text_turn("請比較", interrupt=False)
                 await session._turn_task
             if not first_tts_at:
@@ -749,9 +679,10 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
     async def test_streaming_inter_fragment_gap_does_not_falsely_stall(self):
         session, avatar, events = self.make_session(streaming=True)
 
-        def slow_streaming_llm(text, avatar_stream, **kwargs):
-            datainfo = kwargs.get("datainfo") or {}
-            event0 = {**datainfo, "fragment_sequence": 0}
+        def slow_streaming_llm(request):
+            event0 = {"turn_id": request.turn_id, "generation": session._generation,
+                      "fragment_sequence": 0}
+            yield reply_started(request)
             session.register_fragment("第一句話。", event0)
             session.on_output_audio(True)
             session.on_output_audio_frame(event0, True)
@@ -761,14 +692,14 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
             for _ in range(60):
                 session.on_output_audio(False)
             # LLM emits fragment 1 after 1.2s pause
-            event1 = {**datainfo, "fragment_sequence": 1}
+            event1 = {**event0, "fragment_sequence": 1}
             session.register_fragment("第二句話。", event1)
             session.on_output_audio(True)
             session.on_output_audio_frame(event1, True)
             session.on_output_audio_frame({**event1, "fragment_end": True}, True)
-            return "第一句話。第二句話。"
+            yield ReplyDone(spoken="第一句話。第二句話。", visible="第一句話。第二句話。")
 
-        with patch("nova_core.server.voice_session.llm_response", side_effect=slow_streaming_llm):
+        with answering(session, slow_streaming_llm, speak=True):
             started = await session.start_text_turn("測試串流間隔不誤殺", interrupt=False)
             await session._turn_task
 
@@ -873,9 +804,9 @@ class SessionThreadSafetyTests(unittest.IsolatedAsyncioTestCase):
             stage=SimpleNamespace(idle_greeting_seconds=60),
         )
         avatar = FakeAvatar()
-        session = VoiceTurnSession(7, config, avatar)
+        session = VoiceTurnSession(7, config, avatar, llm=FakeLlm())
         session._segmenter = FakeSegmenter()
-        session._asr = FakeASR()
+        session._stt = fake_stt()
         events = []
 
         def loop_bound_sink(raw):

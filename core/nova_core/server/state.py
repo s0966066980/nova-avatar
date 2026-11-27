@@ -3,10 +3,16 @@
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
 """全域性狀態管理"""
-from typing import Any, Dict, Set
-from nova_render.base import BaseAvatar
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 from aiortc import RTCPeerConnection
 from nova_core.server.voice_test_history import VoiceTestHistory
+
+if TYPE_CHECKING:
+    from nova_contracts.avatar import AvatarService
+    from nova_contracts.llm import LlmService
+    from nova_contracts.stt import SttService
+    from nova_contracts.tts import TtsRuntime, TtsService
+    from nova_core.server.speaking_avatar import SpeakingAvatar
 
 
 class ServerState:
@@ -14,7 +20,7 @@ class ServerState:
     
     def __init__(self):
         # 會話管理
-        self.avatar_streams: Dict[int, BaseAvatar] = {}  # sessionid -> BaseAvatar
+        self.avatar_streams: Dict[int, "SpeakingAvatar"] = {}  # sessionid -> renderer + TTS
         self.voice_sessions: Dict[int, Any] = {}
         self.voice_test_history = VoiceTestHistory()
         self.session_roles: Dict[int, str] = {}
@@ -29,6 +35,16 @@ class ServerState:
         self.model = None
         self.avatar = None
         self.roles = None
+        # The STT layer's service, shared by every voice session and /asr.
+        self.stt: Optional["SttService"] = None
+        # The LLM layer's service: answers, handoffs, greetings, tools and memory.
+        self.llm: Optional["LlmService"] = None
+        # The TTS layer's service and, in-process, its runtime (speech channels,
+        # startup and shutdown); app.py sets both to the same adapter.
+        self.tts: Optional["TtsService"] = None
+        self.tts_runtime: Optional["TtsRuntime"] = None
+        # The avatar rendering layer: models, avatar catalog, imports, scene.
+        self.avatar_service: Optional["AvatarService"] = None
         
         # 服務狀態
         self.server_ready = False
@@ -41,7 +57,7 @@ class ServerState:
     def add_session(
         self,
         sessionid: int,
-        avatar_stream: BaseAvatar = None,
+        avatar_stream: "SpeakingAvatar" = None,
         role: str = "console",
     ):
         """新增會話"""
@@ -63,7 +79,7 @@ class ServerState:
             if self.session_roles.get(sessionid, "console") == role
         )
     
-    def get_session(self, sessionid: int) -> BaseAvatar:
+    def get_session(self, sessionid: int) -> "SpeakingAvatar":
         """獲取會話"""
         return self.avatar_streams.get(sessionid)
     

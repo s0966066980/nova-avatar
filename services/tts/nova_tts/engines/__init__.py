@@ -11,15 +11,15 @@
 
 from nova_tts.base import BaseTTS, State
 from .edge import EdgeTTS
-from .fake import FakeTTS
 from .breezyvoice import BreezyVoiceTTS
 from .matcha import MatchaTTS
+from .fake import FakeTTS
 
 __all__ = [
     "BaseTTS",
     "State",
     "EdgeTTS",
-    "FakeTTS",
     "BreezyVoiceTTS",
     "MatchaTTS",
+    "FakeTTS",
 ]

@@ -5,7 +5,7 @@
 
 from .metrics import TurnMetrics
 from .turn import TurnContext, TurnEnvelope, TurnState
-from .fragmenter import SemanticFragmenter, make_fragmenter_factory
+from .fragmenter import SemanticFragmenter
 
 __all__ = [
     "SemanticFragmenter",
@@ -13,5 +13,4 @@ __all__ = [
     "TurnEnvelope",
     "TurnMetrics",
     "TurnState",
-    "make_fragmenter_factory",
 ]

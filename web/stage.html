@@ -414,7 +414,8 @@ import {
   isKioskMode, kioskReconnectDelayMs, KIOSK_UNAVAILABLE_TITLE, KIOSK_UNAVAILABLE_TEXT
 } from '/src/stageKiosk.js';
 import {
-  fetchJsonWithTimeout, STAGE_CONNECT_TIMEOUT_MS, STAGE_OFFER_TIMEOUT_MS, STAGE_POLL_TIMEOUT_MS
+  fetchJsonWithTimeout, STAGE_CONNECT_TIMEOUT_MS, STAGE_OFFER_TIMEOUT_MS, STAGE_POLL_TIMEOUT_MS,
+  isVoiceTrainingPause, VOICE_TRAINING_TITLE, VOICE_TRAINING_TEXT
 } from '/src/stageConnection.js';
 import {
   boardReopenPresentation,
@@ -492,6 +493,8 @@ import {
   roleReturn.addEventListener('click',()=>send({type:'role_return'}));
   const kiosk = isKioskMode(window.location.search);
   let reconnectTimer=null, reconnectAttempt=0;
+  // 上一次 offer 因聲線訓練被拒：重試時保留暫停服務的說明，不閃回「連線中」。
+  let trainingPaused=false;
   // 每次 connect/teardown 都換新編號：逾時後仍在等待的舊嘗試回來時直接丟棄。
   let connectAttempt=0, connectWatchdog=null, lostAttempt=-1;
   let live=false;
@@ -927,7 +930,8 @@ import {
     entryLanguages.hidden=true;
     await syncStageSettings();
     if(stale()) return;
-    showVeil('連線中', '正在建立與數字人的即時通道。', {btn:'', onBtn:null});
+    if(!trainingPaused) showVeil('連線中', '正在建立與數字人的即時通道。', {btn:'', onBtn:null});
+    trainingPaused = false;
     veilBtn.hidden = true;
 
     const peer = pc = new RTCPeerConnection({iceServers:[]});
@@ -999,6 +1003,13 @@ import {
       if(stale()) return;
       if(!res.ok){
         const m = res.data?.msg || `HTTP ${res.status}`;
+        if(isVoiceTrainingPause(res)){
+          teardown();
+          trainingPaused = true;
+          showVeil(VOICE_TRAINING_TITLE, VOICE_TRAINING_TEXT, {btn:'', onBtn:null});
+          scheduleReconnect();
+          return;
+        }
         if(res.status === 409){
           teardown();
           if(kiosk) showKioskProblem();

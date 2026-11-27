@@ -5,12 +5,16 @@
 
 from __future__ import annotations
 
-import importlib.metadata
 import json
 import re
 from pathlib import Path
 
 import pytest
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
 
 from nova_tts.voice_models import LABEL_FILE, REQUIRED_FILES, RULE_FSTS, list_voice_models
 
@@ -144,16 +148,9 @@ def test_only_directories_with_a_safe_id_are_listed(tmp_path, caplog):
 
 
 def test_sherpa_onnx_is_a_main_dependency_and_importable():
-    """Voice models run on sherpa-onnx; a missing package fails here, never skips.
-
-    The TTS layer declares it; the root project reaches it through that layer.
-    """
-    main_requirements = [
-        requirement
-        for requirement in importlib.metadata.requires("nova-avatar-tts") or []
-        if "extra ==" not in requirement
-    ]
-    assert any(requirement.startswith("sherpa-onnx") for requirement in main_requirements)
+    """Voice models run on sherpa-onnx; a missing package fails here, never skips."""
+    manifest = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text("utf-8"))
+    assert any(requirement.startswith("sherpa-onnx") for requirement in manifest["project"]["dependencies"])
 
     import sherpa_onnx
 

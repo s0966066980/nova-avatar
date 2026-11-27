@@ -12,7 +12,7 @@ status: accepted
 Nova Avatar 要讓數位人使用管理者提供的文件，同時維持現有模型、回覆規則、語音與看板的回答契約。RAGFlow 在目前主機上作為獨立 Docker 服務運行，只提供知識庫檢索；Nova Avatar 仍負責產生及播放回答。管理者在 RAGFlow 介面上傳文件，Nova 控制台負責啟用、選擇知識庫、測試檢索與顯示連線狀態。RAGFlow API 金鑰由伺服器端設定，不經現有未驗證的控制台設定 API。
 
 2026-09-17 啟動流程修訂：RAGFlow 仍使用獨立 Compose 專案與資料卷；主機完成
-`scripts/ragflow.sh prepare` 後，`scripts/start-all.sh` 會協調啟動。
+`services/llm/scripts/ragflow.sh prepare` 後，`scripts/start-all.sh` 會協調啟動。
 它只在自己帶起服務時於結束時停止 RAGFlow；原本在執行的實例維持原生命週期。
 
 同一套 RAGFlow 服務可供多個數位人使用，但每個數位人的檢索啟用狀態與知識庫選擇分別保存。目前只有一位數位人，也維持此邊界，避免未來加入角色時共用錯誤的文件範圍。語音與控制台文字發問都採相同的檢索輔助回答流程；文件以中英混合為預設情境，嵌入模型在本機運行，文件不送往外部嵌入 API。

@@ -13,7 +13,7 @@ import pytest
 from nova_core.server import server
 from nova_core.server.server import FrontendNotBuilt, create_app, require_frontend
 from nova_core.utils.paths import PROJECT_ROOT
-from tests.access_helpers import LAN_ADDRESS, access_client
+from access_helpers import LAN_ADDRESS, access_client
 
 
 def test_default_frontend_is_the_absolute_vite_build_directory():

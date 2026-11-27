@@ -145,7 +145,7 @@ nova_stop_model_servers() {
     local proc script
     local -a args pids=()
     local -a scripts=(
-        "$PROJECT_ROOT/scripts/cosyvoice_fastapi_server.py"
+        "$PROJECT_ROOT/services/tts/scripts/cosyvoice_fastapi_server.py"
     )
     for proc in /proc/[0-9]*; do
         { mapfile -t -d '' args < "$proc/cmdline"; } 2>/dev/null || continue

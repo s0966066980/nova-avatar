@@ -18,21 +18,16 @@ import yaml
 
 from nova_core.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig, GreetingConfig
 from nova_core.greetings.content import validate_content
-from nova_llm.endpoints import (EndpointError, active_endpoint_name, apply_endpoint,
-                               configured_endpoints, endpoint_for_url)
-from nova_llm.rules import rules_from_config, validate_rules
+from nova_llm.config_section import (EndpointError, active_endpoint_name, apply_endpoint,
+                                    configured_endpoints, endpoint_for_url, rules_from_config,
+                                    validate_rules)
 from nova_core.profiles.composition import (
     HANDOFF_FIELDS, bump_revisions, canonical, incompatibility, new_member, profile_ids, validate_composition,
 )
 from nova_core.profiles.validation import ProfileError
 from nova_core.profiles.validation import identifier as _identifier, obj as _object, revision as _revision, text as _text
-from nova_llm.ragflow.settings import avatar_settings
-from nova_llm.ragflow.selection import validate_selection
-from nova_tts.voice_library import (
-    REFERENCE_AUDIO_ENGINES, TTS_ENGINES, VOICE_MODEL_ENGINES, VoiceLibraryError, check_model, check_reference,
-    check_tts_server, check_voice_model_installed,
-    drop_stale_transcript, migrate_tts_values, voice_transcript,
-)
+from nova_core.profiles.knowledge_scope import avatar_settings, validate_selection, web_access
+from nova_tts import config_section as tts_section
 from nova_core.utils.logging import logger
 
 __all__ = ["ProfileError", "ProfileStore", "profile_config", "validate_library", "validate_profile"]
@@ -115,8 +110,7 @@ def profile_config(base, profile: dict):
     result.tts = TTSConfig(**profile["tts"])
     result.greeting = GreetingConfig(**validate_content(profile.get("greeting")))
     result.profile_rag = deepcopy(profile["rag"])
-    from nova_llm.web_search.settings import settings
-    result.profile_web_search = settings(profile.get("web_search"))
+    result.profile_web_search = web_access(profile.get("web_search"))
     return result
 
 
@@ -173,18 +167,16 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
                 raise ProfileError("聲音設定格式不正確")
         elif current is not None:
             tts[item.name] = _text(current, item.name, 4000)
-    if tts["type"] not in TTS_ENGINES:
+    if tts["type"] not in tts_section.ENGINES:
         raise ProfileError(f"聲音設定：不支援的 TTS 引擎「{tts['type'][:40]}」")
-    drop_stale_transcript(tts, f"角色設定檔 {pid}")
+    tts_section.drop_stale_transcript(tts, f"角色設定檔 {pid}")
     try:
-        tts["ref_file"] = check_reference(tts["type"], tts["ref_file"])
-        tts["tts_server"] = check_tts_server(tts["tts_server"])
-        tts["model"] = check_model(tts["model"])
-    except VoiceLibraryError as exc:
-        raise ProfileError(f"聲音設定：{exc.message}") from None
-    if require_voice and tts["type"] in REFERENCE_AUDIO_ENGINES:
+        tts.update(tts_section.check_voice_values(tts["type"], tts["ref_file"], tts["tts_server"], tts["model"]))
+    except ValueError as exc:
+        raise ProfileError(f"聲音設定：{exc}") from None
+    if require_voice and tts["type"] in tts_section.REFERENCE_AUDIO_ENGINES:
         _require_reference(tts, name)
-    if require_voice and tts["type"] in VOICE_MODEL_ENGINES:
+    if require_voice and tts["type"] in tts_section.VOICE_MODEL_ENGINES:
         _require_voice_model(tts, name)
     try:
         rag = validate_selection(value.get("rag"))
@@ -198,8 +190,7 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
         raise ProfileError(str(exc)) from exc
     try:
         greeting = validate_content(value.get("greeting"))
-        from nova_llm.web_search.settings import settings
-        web_search = settings(value.get("web_search"))
+        web_search = web_access(value.get("web_search"))
     except ValueError as exc:
         raise ProfileError(str(exc)) from exc
     return {"id": pid, "name": name, "engine": engine, "avatar_id": avatar_id,
@@ -211,7 +202,7 @@ def _require_reference(tts: dict, name: str) -> None:
     """BreezyVoice clones a library recording and needs what it says; none is chosen for the admin."""
     if not tts["ref_file"]:
         raise ProfileError(f"角色「{name}」使用 BreezyVoice，請在「聲音」選擇有逐字稿的參考音檔")
-    if not voice_transcript(tts["ref_file"]):
+    if not tts_section.voice_transcript(tts["ref_file"]):
         raise ProfileError(f"角色「{name}」的參考音檔沒有逐字稿，請改選有逐字稿的參考音檔或重新上傳並填寫逐字稿")
 
 
@@ -220,9 +211,9 @@ def _require_voice_model(tts: dict, name: str) -> None:
     if not tts["ref_file"]:
         raise ProfileError(f"角色「{name}」使用 Matcha，請在「聲音」選擇聲線模型")
     try:
-        check_voice_model_installed(tts["ref_file"])
-    except VoiceLibraryError as exc:
-        raise ProfileError(f"聲音設定：{exc.message}") from None
+        tts_section.check_voice_model_installed(tts["ref_file"])
+    except ValueError as exc:
+        raise ProfileError(f"聲音設定：{exc}") from None
 
 
 def validate_library(value: dict, endpoints=None, *, require_endpoint=False, require_voice=False) -> dict:
@@ -252,7 +243,7 @@ def _migrate_voice_settings(raw) -> bool:
         tts = profile.get("tts") if isinstance(profile, dict) else None
         if isinstance(tts, dict):
             values = {"type": TTSConfig().type, **tts}
-            if migrate_tts_values(values, where=f"角色設定檔 {profile.get('id')}"):
+            if tts_section.migrate_profile_voice(values, where=f"角色設定檔 {profile.get('id')}"):
                 kept = {key: values[key] for key in tts if key in values}
                 tts.clear()
                 tts.update(kept)

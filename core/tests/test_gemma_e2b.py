@@ -15,6 +15,7 @@ from nova_llm.engines.openai import OpenAILLM
 from nova_llm.prompts import compose_system_prompt
 from nova_llm.router import ReplyMode
 from nova_core.profiles.routing import route_question
+from llm_fakes import FakeLlm
 from nova_core.profiles.store import ProfileStore
 
 E2B = "gemma-4-E2B_q4_0-it"
@@ -87,7 +88,7 @@ def _routing(raw, *, provider="llamacpp", model=E2B):
             pass
 
     routed = route_question(config, library, "main", "介紹你們的服務", [], {},
-                            client_factory=Client)
+                            llm=FakeLlm(routing_client_factory=Client))
     return routed, create.call_args.kwargs
 
 

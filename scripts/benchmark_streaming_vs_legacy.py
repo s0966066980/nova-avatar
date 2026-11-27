@@ -18,7 +18,6 @@ import sys
 import time
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import numpy as np
 
@@ -26,8 +25,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from nova_contracts.llm import (
+    AssistantProfile,
+    FragmentReviewContext,
+    ModelChunk,
+    ReplyDone,
+    ReplyStarted,
+    SpeechEnd,
+    SpokenDelta,
+)
+from nova_llm.adapter import InProcessLlmService
 from nova_core.server.voice_session import VoiceTurnSession
-from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter
 
 
 class BenchmarkAvatar:
@@ -37,6 +45,7 @@ class BenchmarkAvatar:
         self.media_guard = None
         self.on_stale_drop = None
         self.on_fragment_queued = None
+        self.on_put = None
         self.stale_drop_counts: dict[str, int] = {}
 
     def configure_media_fence(self, *, media_guard, on_stale_drop, on_fragment_queued=None, **_unused):
@@ -47,6 +56,8 @@ class BenchmarkAvatar:
     def put_msg_txt(self, text, data=None):
         eventpoint = dict(data or {})
         self.messages.append((text, eventpoint))
+        if self.on_put is not None:
+            self.on_put(text, eventpoint)
         if self.on_fragment_queued is not None and eventpoint.get("turn_id"):
             self.on_fragment_queued(text, eventpoint)
 
@@ -67,6 +78,33 @@ class BenchmarkAvatar:
 
     def is_speaking(self) -> bool:
         return False
+
+
+class BenchmarkLlm(InProcessLlmService):
+    """An LLM service that "generates" the case's sentences on the virtual clock."""
+
+    def __init__(self, clock, sentences, token_delay):
+        super().__init__()
+        self.clock, self.sentences, self.token_delay = clock, sentences, token_delay
+
+    def reply(self, request):
+        yield ReplyStarted(turn_id=request.turn_id, review=FragmentReviewContext(profile=AssistantProfile()))
+        full_text = "".join(sentence for sentence, _ in self.sentences)
+        if not request.stream_speech:
+            # Legacy: nothing is played until the whole answer exists.
+            self.clock.advance(sum(len(text) * self.token_delay + pause for text, pause in self.sentences))
+            yield ReplyDone(spoken=full_text, visible=full_text)
+            return
+        sequence = 0
+        for sentence, pause in self.sentences:
+            self.clock.advance(pause)
+            for char in sentence:
+                self.clock.advance(self.token_delay)
+                yield ModelChunk(llm_sequence=sequence)
+                yield SpokenDelta(text=char, llm_sequence=sequence)
+                sequence += 1
+        yield SpeechEnd()
+        yield ReplyDone(spoken=full_text, visible=full_text)
 
 
 class VirtualClock:
@@ -127,13 +165,13 @@ async def run_benchmark_turn(
         ),
     )
     avatar = BenchmarkAvatar()
-    session = VoiceTurnSession(101, config, avatar, clock=clock)
+    sentences = case["sentences"]
+    token_delay = case["token_delay_ms"] / 1000.0
+    session = VoiceTurnSession(101, config, avatar, clock=clock,
+                               llm=BenchmarkLlm(clock, sentences, token_delay))
     session._metrics_clock = clock
     events: list[dict] = []
     session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
-
-    sentences = case["sentences"]
-    token_delay = case["token_delay_ms"] / 1000.0
 
     full_text = "".join(s[0] for s in sentences)
     first_audio_time = None
@@ -144,48 +182,13 @@ async def run_benchmark_turn(
     # In streaming mode, TTS runs concurrently as fragments are emitted
     audio_timeline = []
 
-    def mock_llm_response(text, avatar_stream, **kwargs):
-        nonlocal first_audio_time
-        is_streaming = kwargs.get("stream_to_avatar", False)
-        datainfo = kwargs.get("datainfo") or {}
+    def schedule_audio(fragment, eventpoint):
+        # TTS starts as soon as a fragment is queued.
+        audio_timeline.append((clock.now + tts_synthesis_latency, eventpoint, max(5, int(len(fragment) * 7.5))))
 
-        if not is_streaming:
-            total_llm_duration = sum(len(s[0]) * token_delay + s[1] for s in sentences)
-            clock.advance(total_llm_duration)
-            return full_text
-
-        fragmenter = SemanticFragmenter()
-        frag_seq = 0
-        for sentence_text, inter_sentence_pause in sentences:
-            if inter_sentence_pause > 0:
-                clock.advance(inter_sentence_pause)
-            for char in sentence_text:
-                clock.advance(token_delay)
-                frags = fragmenter.feed(char)
-                for frag in frags:
-                    frag_info = {**datainfo, "fragment_sequence": frag_seq}
-                    session.register_fragment(frag, frag_info)
-                    avatar_stream.put_msg_txt(frag, frag_info)
-                    frag_seq += 1
-                    # When first fragment is emitted, it begins TTS immediately!
-                    frag_audio_ready_at = clock.now + tts_synthesis_latency
-                    num_frames = max(5, int(len(frag) * 7.5))
-                    audio_timeline.append((frag_audio_ready_at, frag_info, num_frames))
-        for frag in fragmenter.flush():
-            frag_info = {**datainfo, "fragment_sequence": frag_seq}
-            session.register_fragment(frag, frag_info)
-            avatar_stream.put_msg_txt(frag, frag_info)
-            frag_seq += 1
-            frag_audio_ready_at = clock.now + tts_synthesis_latency
-            num_frames = max(5, int(len(frag) * 7.5))
-            audio_timeline.append((frag_audio_ready_at, frag_info, num_frames))
-
-        return full_text
-
-    with patch("nova_core.server.voice_session.llm_response", side_effect=mock_llm_response):
-        started = await session.start_text_turn(case["prompt"], interrupt=False)
-        turn_task = session._turn_task
-        await turn_task
+    avatar.on_put = schedule_audio
+    started = await session.start_text_turn(case["prompt"], interrupt=False)
+    await session._turn_task
 
     if streaming:
         # Simulate playback according to arrival timeline

@@ -430,6 +430,7 @@ export default {
         gaugeLabel: '剩余显存 {free} GB，门槛 {threshold} GB', gaugeThreshold: '门槛 {n} GB',
         recheck: '重新检查', checkingShort: '检查中…', start: '开始训练',
         startHint: '开始后可以随时取消。',
+        stageBlocked: '训练进行中，舞台无法连接；训练结束后舞台会自动恢复。',
         reasonUnchecked: '还没有检查结果，请按「重新检查」。'
       },
       checks: {
@@ -450,7 +451,8 @@ export default {
         logGap: '较早的日志已从内存移除，完整日志保存在服务器的训练工作文件夹。',
         leaveHint: '离开这个画面不会中止训练；回到首页会看到进行中的训练工作。日志会保留，之后仍可查看。',
         cancelAsk: '取消这件训练工作？', cancelConsequence: '训练进度不会保留，GPU 显存会立即释放。语料会保留，之后可以重新开始。',
-        cancelConfirm: '确认取消训练', keepGoing: '继续训练', cancelJob: '取消训练', cancelHint: '取消后 GPU 会立即释放。'
+        cancelConfirm: '确认取消训练', keepGoing: '继续训练', cancelJob: '取消训练', cancelHint: '取消后 GPU 会立即释放。',
+        stageBlocked: '训练进行中，舞台无法连接；训练结束后舞台会自动恢复。'
       },
       done: {
         created: '声线模型「{name}」已建立', createdBody: '已加入声线模型列表，可以在数字人配置档选用。',

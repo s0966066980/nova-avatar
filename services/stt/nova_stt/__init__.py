@@ -2,19 +2,8 @@
 # Licensed under the Apache License, Version 2.0.
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
-"""ASR 語音識別模組"""
+"""ASR 語音識別模組 (the STT processing layer).
 
-from .base import BaseASR
-from .engines import WhisperASR
-from .factory import create_asr_engine, get_asr_engine, release_asr_engine
-
-__all__ = [
-    # base
-    "BaseASR",
-    # engines
-    "WhisperASR",
-    # factory
-    "create_asr_engine",
-    "get_asr_engine",
-    "release_asr_engine",
-]
+The core uses ``nova_stt.adapter`` and ``nova_stt.config_section`` only, so this
+package re-exports nothing.
+"""

@@ -1,50 +1,264 @@
 {
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Nova Avatar STT service",
+    "description": "Loopback speech-to-text. The core cancels a request by closing its connection.",
+    "version": "1"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Contract version and readiness",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceHealth"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/engine": {
+      "put": {
+        "operationId": "apply_engine",
+        "summary": "Load an engine, then switch to it; the current one stays on failure",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SttEngineSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SttEngineSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prepare": {
+      "post": {
+        "operationId": "prepare",
+        "summary": "Load, and optionally warm, the recognizer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SttPrepareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transcribe": {
+      "post": {
+        "operationId": "transcribe",
+        "summary": "Recognize one utterance",
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "zh",
+                "en",
+                "auto"
+              ],
+              "title": "Language",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "audio/wav": {
+              "description": "One encoded utterance; the core sends 16 kHz WAV",
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "application/octet-stream": {
+              "description": "One encoded utterance; the core sends 16 kHz WAV",
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transcription"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "components": {
     "schemas": {
-      "EngineRequest": {
+      "ErrorBody": {
+        "additionalProperties": false,
+        "description": "The JSON body of every non-2xx response; ``detail`` is shown to operators.",
         "properties": {
-          "engine": {
-            "title": "Engine",
+          "detail": {
+            "title": "Detail",
             "type": "string"
           }
         },
         "required": [
-          "engine"
+          "detail"
         ],
-        "title": "EngineRequest",
+        "title": "ErrorBody",
         "type": "object"
       },
-      "Health": {
+      "ServiceHealth": {
+        "additionalProperties": false,
+        "description": "``GET /health`` of a processing-layer service (ADR 0027).",
         "properties": {
           "contract_version": {
             "title": "Contract Version",
             "type": "string"
           },
-          "status": {
-            "title": "Status",
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contract_version",
+          "engine",
+          "ready"
+        ],
+        "title": "ServiceHealth",
+        "type": "object"
+      },
+      "SttEngineSettings": {
+        "additionalProperties": false,
+        "description": "The recognizer the service runs (``PUT /engine``).\n\n``model_size`` is a catalog name the core validated, never a path.",
+        "properties": {
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "model_size": {
+            "title": "Model Size",
+            "type": "string"
+          },
+          "device": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "cpu",
+              "cuda"
+            ],
+            "title": "Device",
             "type": "string"
           }
         },
         "required": [
-          "status",
-          "contract_version"
+          "engine",
+          "model_size"
         ],
-        "title": "Health",
+        "title": "SttEngineSettings",
         "type": "object"
       },
-      "TranscribeResult": {
+      "SttPrepareRequest": {
+        "additionalProperties": false,
+        "description": "Load the recognizer; with ``warm`` also run one silent inference.",
         "properties": {
-          "confidence": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Confidence"
+          "warm": {
+            "default": true,
+            "title": "Warm",
+            "type": "boolean"
+          }
+        },
+        "title": "SttPrepareRequest",
+        "type": "object"
+      },
+      "Transcription": {
+        "additionalProperties": false,
+        "description": "What was heard in one utterance.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
           },
           "language": {
             "anyOf": [
@@ -58,104 +272,89 @@
             "default": null,
             "title": "Language"
           },
+          "language_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Language Probability"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Confidence"
+          },
+          "segments": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TranscriptionSegment"
+            },
+            "title": "Segments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "Transcription",
+        "type": "object"
+      },
+      "TranscriptionOptions": {
+        "additionalProperties": false,
+        "description": "Per-request options; the recognizer itself is shared and unchanged.",
+        "properties": {
+          "language": {
+            "enum": [
+              "zh",
+              "en",
+              "auto"
+            ],
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "language"
+        ],
+        "title": "TranscriptionOptions",
+        "type": "object"
+      },
+      "TranscriptionSegment": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "title": "Start",
+            "type": "number"
+          },
+          "end": {
+            "title": "End",
+            "type": "number"
+          },
           "text": {
             "title": "Text",
             "type": "string"
           }
         },
         "required": [
+          "start",
+          "end",
           "text"
         ],
-        "title": "TranscribeResult",
+        "title": "TranscriptionSegment",
         "type": "object"
       }
     }
-  },
-  "info": {
-    "title": "Nova Avatar STT service",
-    "version": "1"
-  },
-  "openapi": "3.1.0",
-  "paths": {
-    "/engine": {
-      "put": {
-        "operationId": "set_engine",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EngineRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "The engine was switched."
-          }
-        }
-      }
-    },
-    "/health": {
-      "get": {
-        "operationId": "health",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Health"
-                }
-              }
-            },
-            "description": "The service is up and reports its contract version."
-          }
-        }
-      }
-    },
-    "/transcribe": {
-      "post": {
-        "operationId": "transcribe",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "language",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/octet-stream": {
-              "schema": {
-                "format": "binary",
-                "type": "string"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TranscribeResult"
-                }
-              }
-            },
-            "description": "The recognized text."
-          }
-        }
-      }
-    }
-  },
-  "servers": [
-    {
-      "url": "http://127.0.0.1"
-    }
-  ]
+  }
 }

@@ -1,18 +1,26 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+# Cross-layer contracts (ADR 0028): Pydantic models and Protocols only.
+# Keep the dependency list to pydantic; anything heavier belongs in a layer.
 [project]
-name = "nova-avatar-contracts"
+name = "nova-contracts"
 version = "0.1.0"
-description = "Cross-layer contracts of Nova Avatar: request/response models, stream events and layer protocols"
+description = "Cross-layer contracts (models and Protocols) for Nova Avatar"
 readme = "README.md"
 requires-python = ">=3.10, <3.12"
 license = { text = "Apache-2.0" }
 maintainers = [{ name = "HongXian0903" }]
-# Only Pydantic: a layer must be able to depend on its contract without
-# pulling in any other layer (ADR 0028).
-dependencies = ["pydantic>=2"]
+dependencies = [
+    "pydantic>=2.7,<3",
+]
+
+[tool.setuptools]
+packages = ["nova_contracts"]
+
+[tool.setuptools.package-data]
+nova_contracts = ["py.typed"]
 
 [build-system]
 requires = ["setuptools==69.5.1", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["nova_contracts*"]

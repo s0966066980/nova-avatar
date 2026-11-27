@@ -8,12 +8,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from nova_llm.adapter import InProcessLlmService
 from nova_llm.llamacpp import (
     ALL_GPU_LAYERS,
     build_server_env,
@@ -363,6 +364,7 @@ class StartupOrderTests(unittest.TestCase):
     """llama-server claims its VRAM before the avatar model loads."""
 
     def _run_startup(self, ensure_server):
+        from nova_contracts.avatar import AvatarBootCheck
         from nova_core.config.schema import Config
         from nova_core.server import app
         from nova_core.server.state import state
@@ -382,16 +384,18 @@ class StartupOrderTests(unittest.TestCase):
             calls.append(("avatar", None))
             return object(), object()
 
-        previous = (state.config, state.model, state.avatar, state.model_ready)
+        previous = (state.config, state.model, state.avatar, state.model_ready, state.llm)
         try:
             state.config = config
+            state.llm = InProcessLlmService()
+            avatars = Mock(**{"bootable.return_value": AvatarBootCheck(bootable=True),
+                              "prepare_model.side_effect": prepare})
             with patch("nova_llm.llamacpp.ensure_server", side_effect=ensure), \
-                    patch.object(app, "prepare_avatar_model", side_effect=prepare), \
-                    patch("nova_render.catalog.avatar_bootable", return_value=(True, "")):
+                    patch.object(state, "avatar_service", avatars):
                 app._load_startup_models()
             return calls, state.model_ready
         finally:
-            state.config, state.model, state.avatar, state.model_ready = previous
+            state.config, state.model, state.avatar, state.model_ready, state.llm = previous
 
     def test_llama_server_starts_before_the_avatar_model(self):
         calls, model_ready = self._run_startup(lambda *a, **k: "http://127.0.0.1:8080/v1")

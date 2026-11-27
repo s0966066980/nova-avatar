@@ -18,9 +18,8 @@ from nova_stt.engines.whisper import WhisperASR
 
 class WhisperASRLoadingTests(unittest.TestCase):
     def _load(self, device: str, cuda_available: bool) -> tuple[WhisperASR, Mock]:
-        config = SimpleNamespace(asr=SimpleNamespace(device=device))
         with patch("torch.cuda.is_available", return_value=cuda_available):
-            engine = WhisperASR(config, model_size="base")
+            engine = WhisperASR(model_size="base", device=device)
         faster_whisper = types.ModuleType("faster_whisper")
         faster_whisper.WhisperModel = Mock(return_value=object())
         with patch.dict(sys.modules, {"faster_whisper": faster_whisper}):
@@ -45,7 +44,7 @@ def _wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:
 
 def _ready_engine(model) -> WhisperASR:
     engine = WhisperASR.__new__(WhisperASR)
-    BaseASR.__init__(engine, None)
+    BaseASR.__init__(engine)
     engine.model_size = "small"
     engine.device = "cpu"
     engine.compute_type = "int8"
@@ -209,53 +208,42 @@ class ConversationLanguageTests(unittest.TestCase):
             asr_language("ja-JP")
 
 
-class ASRFactoryConcurrencyTests(unittest.TestCase):
+class SharedRecognizerConcurrencyTests(unittest.TestCase):
     def test_concurrent_sessions_load_one_shared_engine(self):
-        from nova_stt import factory
+        from nova_contracts.stt import SttEngineSettings, SttPrepareRequest
+        from nova_stt.adapter import InProcessSttService
 
         first_create_started = Event()
         release_create = Event()
         count_lock = Lock()
         create_count = 0
 
-        def slow_create(**_kwargs):
+        def slow_create(_settings):
             nonlocal create_count
             with count_lock:
                 create_count += 1
             first_create_started.set()
             release_create.wait(timeout=0.5)
-            return SimpleNamespace(set_language=Mock())
+            return SimpleNamespace(ensure_ready=Mock())
 
-        config = SimpleNamespace(
-            asr=SimpleNamespace(device="cpu", language="zh")
+        service = InProcessSttService(
+            SttEngineSettings(engine="whisper", model_size="tiny", device="cpu"),
+            create_engine=slow_create,
         )
-        old_instance = factory._asr_instance
-        old_key = factory._asr_instance_key
-        factory._asr_instance = None
-        factory._asr_instance_key = None
+        prepare = SttPrepareRequest(warm=False)
         try:
-            with (
-                patch("nova_stt.factory.create_asr_engine", side_effect=slow_create),
-                ThreadPoolExecutor(max_workers=2) as executor,
-            ):
-                first = executor.submit(
-                    factory.get_asr_engine, "whisper", "tiny", config
-                )
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                first = executor.submit(service.prepare, prepare)
                 self.assertTrue(first_create_started.wait(timeout=0.5))
-                second = executor.submit(
-                    factory.get_asr_engine, "whisper", "tiny", config
-                )
+                second = executor.submit(service.prepare, prepare)
                 time.sleep(0.02)
                 release_create.set()
-                first_engine = first.result(timeout=0.5)
-                second_engine = second.result(timeout=0.5)
+                first.result(timeout=0.5)
+                second.result(timeout=0.5)
 
             self.assertEqual(create_count, 1)
-            self.assertIs(first_engine, second_engine)
         finally:
             release_create.set()
-            factory._asr_instance = old_instance
-            factory._asr_instance_key = old_key
 
 
 if __name__ == "__main__":

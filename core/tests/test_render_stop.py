@@ -131,7 +131,7 @@ def test_render_stops_workers_when_its_loop_fails(monkeypatch, module_name, cls_
     avatar.max_tts_audio_wait_seconds = .2
     avatar.init_customindex = lambda: None
     avatar.process_frames = process_frames
-    avatar.tts = SimpleNamespace(render=lambda _: None, has_pending_work=lambda: False)
+    avatar.configure_pending_audio(lambda: False)
 
     def explode():
         raise RuntimeError("audio step failed")

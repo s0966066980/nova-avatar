@@ -11,6 +11,16 @@ export const STAGE_OFFER_TIMEOUT_MS = 15000
 // 從開始連線到 WebRTC connected 的整體看門狗。
 export const STAGE_CONNECT_TIMEOUT_MS = 25000
 
+// 聲線訓練進行中，後端以 409 與這個原因代碼拒絕舞台 offer。這不是錯誤：
+// 舞台顯示暫停服務，照重連節奏自動重試，訓練結束後自己連上。
+export const VOICE_TRAINING_ACTIVE = 'voice_training_active'
+export const VOICE_TRAINING_TITLE = '聲線訓練進行中，數位人暫停服務'
+export const VOICE_TRAINING_TEXT = '訓練結束後會自動連線，請稍候。'
+
+export function isVoiceTrainingPause(response) {
+  return response?.status === 409 && response?.data?.reason === VOICE_TRAINING_ACTIVE
+}
+
 export class StageTimeoutError extends Error {
   constructor(url, timeoutMs) {
     super('連線逾時')

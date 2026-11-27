@@ -10,7 +10,10 @@ from nova_core.config.overrides import load_runtime_overrides, persist_runtime_o
 from nova_llm.base import load_system_prompt
 from nova_llm.prompts import AUTO_MODE_PROMPT, compose_system_prompt
 from nova_llm.router import ReplyMode
+from nova_render.adapter import create_avatar_service
 from nova_core.server.runtime_settings import apply_llm_model, current_snapshot
+from llm_fakes import FakeLlm
+from tts_fakes import in_process_tts
 
 
 class AssistantProfileTests(unittest.TestCase):
@@ -45,13 +48,13 @@ class AssistantProfileTests(unittest.TestCase):
             clear_history=unittest.mock.Mock(),
             set_last_board=unittest.mock.Mock(),
         )
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"), patch(
-            "nova_llm.service._session_llm_instances", {1: session}
-        ), patch("nova_core.server.runtime_settings.ensure_server"):
-            first = apply_llm_model(config, "model", "ollama", assistant_profile=self._profile())
+        llm = FakeLlm()
+        llm.engines[1] = session
+        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
+            first = apply_llm_model(config, "model", "ollama", assistant_profile=self._profile(), llm=llm)
             self.assertTrue(first["history_reset"])
             self.assertEqual(session.clear_history.call_count, 1)
-            second = apply_llm_model(config, "model", "ollama", response_max_chars=180)
+            second = apply_llm_model(config, "model", "ollama", response_max_chars=180, llm=llm)
         self.assertFalse(second["history_reset"])
         self.assertEqual(session.clear_history.call_count, 1)
 
@@ -61,10 +64,10 @@ class AssistantProfileTests(unittest.TestCase):
         self.assertEqual(load_system_prompt(config), "舊設定")
         config.llm.assistant_profile.system_prompt = "新設定"
         config.llm.assistant_profile.assistant_name = "新助手"
-        with patch("nova_core.server.runtime_settings.list_avatar_characters", return_value=[]), patch(
-            "nova_core.server.runtime_settings.list_engines", return_value=[]
+        with patch("nova_render.catalog.list_avatar_characters", return_value=[]), patch(
+            "nova_render.catalog.list_engines", return_value=[]
         ):
-            snapshot = current_snapshot(config)
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
         self.assertEqual(snapshot["llm"]["assistant_profile"]["system_prompt"], "新設定")
         self.assertEqual(snapshot["llm"]["assistant_profile"]["assistant_name"], "新助手")
 

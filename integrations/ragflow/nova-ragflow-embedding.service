@@ -10,7 +10,7 @@ Description=Nova Avatar RAGFlow GPU embedding endpoint
 [Service]
 Type=simple
 WorkingDirectory=%h/nova-avatar
-ExecStart=/usr/bin/bash %h/nova-avatar/scripts/ragflow_embedding.sh
+ExecStart=/usr/bin/bash %h/nova-avatar/services/llm/scripts/ragflow_embedding.sh
 Restart=always
 RestartSec=5
 MemoryMax=4G

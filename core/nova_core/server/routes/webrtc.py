@@ -12,19 +12,32 @@ from aiortc import RTCPeerConnection, RTCSessionDescription, RTCIceServer, RTCCo
 from aiortc.rtcrtpsender import RTCRtpSender
 import asyncio
 
+from nova_contracts.avatar import AvatarService
 from nova_core.utils.webrtc import HumanPlayer
-from nova_render.factory import create_avatar
 from nova_core.utils.logging import logger
 from nova_core.server.state import state
-from nova_core.server.speech import tts_speech_factory
 from nova_core.server.utils import randN
 from nova_core.server.voice_session import VoiceTurnSession
 from nova_core.server.presentation import SessionPresentation
+from nova_core.server.stage_guard import stage_offer_refusal
+from nova_core.server.speaking_avatar import SpeakingAvatar
+
+
+def build_speaking_avatar(config, model, avatar_data, sessionid, *, avatars: AvatarService):
+    """Build the session's renderer, then the TTS channel that feeds it (ADR 0027)."""
+    return SpeakingAvatar(avatars.create_renderer(config, model, avatar_data, sessionid), speech=state.tts_runtime)
 
 
 async def offer(request):
     """Negotiate media while preparing speech only for an incoming audio track."""
     params = await request.json()
+    client_role = str(params.get("client_role", "console")).strip().lower()
+    if client_role not in {"console", "stage"}:
+        client_role = "console"
+    # No new stage while a voice-training job holds the GPU (spec decision 14).
+    refusal = stage_offer_refusal(client_role, state.tts)
+    if refusal is not None:
+        return refusal
     # The body can arrive while a resource update starts. Check availability
     # after reading it, without yielding again before reserving this session.
     if not getattr(state, "model_ready", False) or state.model is None or state.avatar is None:
@@ -36,9 +49,6 @@ async def offer(request):
     roles = getattr(state, "roles", None)
     if roles is not None and (roles.phase == "transition" or roles._apply_waiting):
         return web.json_response({"code": -1, "msg": "角色正在切換，請稍後連線"}, status=409)
-    client_role = str(params.get("client_role", "console")).strip().lower()
-    if client_role not in {"console", "stage"}:
-        client_role = "console"
     max_sessions = max(1, int(getattr(state.config.app, "max_session", 1)))
     if roles is not None and roles.enabled:
         max_sessions = 1
@@ -69,9 +79,9 @@ async def offer(request):
                 await presentation.unregister(sessionid)
             operations = []
             # Stop an unfinished recording's ffmpeg and remove its temporary files.
-            discard_recording = getattr(state.avatar_streams.get(sessionid), "discard_recording", None)
-            if callable(discard_recording):
-                operations.append(discard_recording())
+            avatar_stream = state.avatar_streams.get(sessionid)
+            if avatar_stream is not None:
+                operations.append(avatar_stream.renderer.discard_recording())
             if voice_session is not None:
                 operations.append(voice_session.close())
             if pc is not None:
@@ -89,8 +99,9 @@ async def offer(request):
             if pc is not None:
                 state.remove_peer_connection(pc)
             state.remove_session(sessionid)
-            from nova_llm.service import remove_session as remove_llm_session
-            remove_llm_session(sessionid)
+            if state.llm is not None:
+                from nova_contracts.llm import SessionRef
+                state.llm.remove_session(SessionRef(session_id=sessionid))
             if roles is not None:
                 roles.unregister(sessionid)
             if not state.avatar_streams and not state.shutting_down:
@@ -103,9 +114,9 @@ async def offer(request):
         # Shield the worker so a cancelled HTTP request can settle its resources
         # before releasing the role reservation.
         build = asyncio.create_task(asyncio.to_thread(
-            create_avatar, roles.config_for_session() if roles else state.config,
+            build_speaking_avatar, roles.config_for_session() if roles else state.config,
             state.model, roles.data_for_session() if roles else state.avatar, sessionid,
-            tts_speech_factory,
+            avatars=state.avatar_service,
         ))
         try:
             avatar_stream = await asyncio.shield(build)
@@ -119,6 +130,9 @@ async def offer(request):
             ) else state.config,
             avatar_stream, presenter=client_role,
             test_result_sink=state.voice_test_history.complete,
+            stt=state.stt,
+            llm=state.llm,
+            tts=state.tts,
         )
         from nova_core.server.conversations import validate, check_language_support
         if 'locale' in params:

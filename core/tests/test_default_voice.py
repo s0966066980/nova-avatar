@@ -19,12 +19,15 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
+from nova_render.adapter import create_avatar_service
 from nova_core.config import loader, overrides
 from nova_core.config.schema import Config
 from nova_core.profiles import coordinator
 from nova_core.profiles.store import ProfileStore
 from nova_core.server import deferred_settings
+from llm_fakes import FakeLlm
 from nova_core.server.state import state
+from tts_fakes import in_process_tts
 
 OLD_OVERRIDE_TTS = {"type": "edgetts", "ref_file": "zh-TW-HsiaoYuNeural", "ref_text": None,
                     "tts_server": "", "model": ""}
@@ -98,8 +101,9 @@ def test_startup_keeps_the_configured_voice_when_saved_profiles_are_unreadable(t
 
 def roles_state(tmp_path, config):
     return SimpleNamespace(config=config, config_path=str(tmp_path / "config.yaml"),
-                           voice_sessions={}, avatar_streams={}, avatar=object(),
-                           switching=False, settings_applying=False)
+                           voice_sessions={}, avatar_streams={}, avatar=object(), tts=in_process_tts(),
+                           avatar_service=create_avatar_service(),
+                           switching=False, settings_applying=False, llm=FakeLlm())
 
 
 def test_failed_startup_apply_still_speaks_with_the_main_voice(tmp_path, monkeypatch):
@@ -121,9 +125,8 @@ def test_startup_with_a_breezyvoice_main_starts_its_server_without_a_preview(tmp
     breezy = {"type": "breezyvoice", "ref_file": "0123456789abcdef", "ref_text": "逐字稿。",
               "tts_server": "http://127.0.0.1:50001", "model": ""}
     saved_profiles(tmp_path, monkeypatch, main_voice=breezy, config=config)
-    monkeypatch.setattr("nova_core.profiles.store.voice_transcript", lambda _: "逐字稿。")
+    monkeypatch.setattr("nova_tts.voice_library.voice_transcript", lambda _: "逐字稿。")
     monkeypatch.setattr("nova_tts.voice_library.check_reference", lambda _engine, value: value)
-    monkeypatch.setattr("nova_core.profiles.store.check_reference", lambda _engine, value: value)
     monkeypatch.setattr("nova_render.catalog.avatar_bootable", lambda *_: (True, ""))
     apply_tts = Mock(side_effect=AssertionError("startup must not synthesize a preview"))
     monkeypatch.setattr("nova_core.server.runtime_settings.apply_tts_settings", apply_tts)

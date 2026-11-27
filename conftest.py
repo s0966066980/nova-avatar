@@ -16,6 +16,7 @@ AREA_BY_FILE = {
     "test_conversation_attachments.py": "conversation",
     "test_conversation_settings.py": "conversation",
     "test_pc_conversations.py": "conversation",
+    "test_avatar_contract.py": "avatar",
     "test_avatar_import.py": "runtime",
     "test_avatar_safe_loading.py": "avatar",
     "test_avatar_profiles.py": "runtime",
@@ -26,6 +27,8 @@ AREA_BY_FILE = {
     "test_role_coordinator.py": "conversation",
     "test_reverse_role_handoff.py": "conversation",
     "test_n_way_routing.py": "conversation",
+    "test_llm_handoff.py": "conversation",
+    "test_llm_greeting.py": "conversation",
     "test_handoff_dry_run.py": "conversation",
     "test_any_to_any_handoff.py": "conversation",
     "test_assistant_profile.py": "llm",
@@ -40,6 +43,8 @@ AREA_BY_FILE = {
     "test_editable_llm_rules.py": "llm",
     "test_frontend_serving.py": "runtime",
     "test_tts_engine_cleanup.py": "speech",
+    "test_tts_contract.py": "speech",
+    "test_tts_fake_engine.py": "speech",
     "test_voice_models.py": "speech",
     "test_voice_preview.py": "speech",
     "test_training_numerals.py": "speech",
@@ -56,6 +61,7 @@ AREA_BY_FILE = {
     "test_training_edge_acknowledgement.py": "speech",
     "test_training_transcript_check.py": "speech",
     "test_matcha_training_scripts.py": "speech",
+    "test_stage_guard.py": "speech",
     "test_training_gpu.py": "speech",
     "test_training_asr.py": "speech",
     "test_training_processes.py": "speech",
@@ -67,17 +73,16 @@ AREA_BY_FILE = {
     "test_matcha_tts.py": "speech",
     "test_default_voice.py": "speech",
     "test_health_route.py": "runtime",
+    "test_config_entry_points.py": "runtime",
+    "test_layer_entry_points.py": "governance",
     "test_integration_check.py": "governance",
-    "test_select_tests.py": "governance",
     "test_kiosk_launcher.py": "runtime",
     "test_live_llm_board_contract.py": "conversation",
     "test_llamacpp.py": "llm",
+    "test_llm_contract.py": "llm",
+    "test_llm_fake_engine.py": "llm",
     "test_llm_endpoints.py": "llm",
     "test_llm_text_normalizer.py": "llm",
-    "test_llm_fragments.py": "llm",
-    "test_llm_handoff.py": "llm",
-    "test_contracts.py": "governance",
-    "test_layer_contracts.py": "governance",
     "test_gemma_e2b.py": "llm",
     "test_default_llm_endpoint.py": "llm",
     "test_first_sentence_rule.py": "llm",
@@ -94,6 +99,8 @@ AREA_BY_FILE = {
     "test_ragflow_llamacpp_embedding.py": "ragflow",
     "test_reply_streaming.py": "conversation",
     "test_first_fragment_exception.py": "conversation",
+    "test_reply_speech_seam.py": "conversation",
+    "test_speaking_avatar.py": "speech",
     "test_reply_latency.py": "conversation",
     "test_first_audio_latency.py": "conversation",
     "test_concurrent_routing.py": "conversation",
@@ -104,12 +111,11 @@ AREA_BY_FILE = {
     "test_runtime_settings.py": "runtime",
     "test_deferred_settings.py": "runtime",
     "test_dependency_lock.py": "governance",
+    "test_ci_select_tests.py": "governance",
     "test_ruff_security.py": "governance",
     "test_scene_background.py": "avatar",
     "test_server_shutdown.py": "runtime",
     "test_speech_timing.py": "conversation",
-    "test_speech_factory.py": "conversation",
-    "test_speech_prewarm.py": "speech",
     "test_idle_greetings.py": "conversation",
     "test_stage_idle_reset.py": "conversation",
     "test_stage_presentation.py": "conversation",
@@ -121,6 +127,8 @@ AREA_BY_FILE = {
     "test_webrtc_lifecycle.py": "conversation",
     "test_voice_test_history.py": "conversation",
     "test_whisper_asr.py": "speech",
+    "test_stt_contract.py": "speech",
+    "test_contracts.py": "governance",
 }
 
 LIVE_FILES = frozenset({"test_live_llm_board_contract.py"})
@@ -128,6 +136,13 @@ LIVE_TESTS = frozenset({
     "core/tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
     # A wall-clock budget on this host's CPU, not a deterministic regression.
     "core/tests/test_scene_background.py::test_chroma_composite_fits_the_render_frame_budget_on_a_portrait_avatar",
+})
+
+# Tests that need a GPU, a real model's weights or a model server on this host.
+# They are deselected by default (``addopts`` in pyproject.toml); run them with ``-m gpu``.
+GPU_FILES = frozenset({"test_live_llm_board_contract.py"})
+GPU_TESTS = frozenset({
+    "core/tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
 })
 
 SLOW_TESTS = frozenset(
@@ -148,6 +163,8 @@ def _matching_markers(item: pytest.Item) -> Iterable[str]:
         yield area
     if file_name in LIVE_FILES or item.nodeid.replace("\\", "/") in LIVE_TESTS:
         yield "live"
+    if file_name in GPU_FILES or item.nodeid.replace("\\", "/") in GPU_TESTS:
+        yield "gpu"
     if item.nodeid.replace("\\", "/") in SLOW_TESTS:
         yield "slow"
 
@@ -165,13 +182,13 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     if unclassified:
         names = ", ".join(sorted(unclassified))
         raise pytest.UsageError(
-            f"Unclassified test modules: {names}. Add them to tests/conftest.py."
+            f"Unclassified test modules: {names}. Add them to conftest.py."
         )
 
 
 # Tests write under tmp_path; the repository's data/ holds the venue's real
 # avatars, voices and imports. A run that adds entries there fails.
-REPO_DATA = Path(__file__).resolve().parents[0] / "data"
+REPO_DATA = Path(__file__).resolve().parent / "data"
 _DATA_BEFORE = pytest.StashKey[frozenset]()
 
 

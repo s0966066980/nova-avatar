@@ -74,6 +74,7 @@
       </div>
     </div>
     <p v-if="gate.canStart" class="vt-hint">{{ tx('preflight.startHint') }}</p>
+    <p class="vt-hint">{{ tx('preflight.stageBlocked') }}</p>
     <p v-for="warning in gate.warnings" :key="warning.id" class="vt-note"><i :class="icon('alert')" aria-hidden="true"></i><span>{{ checkNameById(warning.id) }}: {{ warning.text }}</span></p>
   </div>
 </template>

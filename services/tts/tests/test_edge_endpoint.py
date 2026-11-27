@@ -11,8 +11,8 @@ from unittest.mock import patch
 from edge_tts import communicate
 
 from nova_tts import edge_endpoint
-from tests.edge_fakes import _mp3_fixture
-from tests.edge_fakes import _handshake_error  # noqa: F401
+from edge_fakes import _mp3_fixture
+from edge_fakes import _handshake_error  # noqa: F401
 
 
 class EdgeEndpointTests(unittest.TestCase):

@@ -15,9 +15,10 @@ import pytest
 
 from nova_core.config.schema import Config
 from nova_core.profiles.routing import route_question
+from llm_fakes import FakeLlm
 from nova_core.profiles.store import ProfileStore
-from nova_llm.weather import COUNTIES, TAIPEI
-from nova_llm.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
+from nova_llm.tools.weather import COUNTIES, TAIPEI
+from nova_llm.tools.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
 
 FRIDAY = date(2026, 10, 30)
 
@@ -149,7 +150,7 @@ def _route(text, model_decision=None, *, history=(), weather_tool=True):
             pass
 
     routed = route_question(config, library, "main", text, list(history), {},
-                            client_factory=Client)
+                            llm=FakeLlm(routing_client_factory=Client))
     return routed, create
 
 

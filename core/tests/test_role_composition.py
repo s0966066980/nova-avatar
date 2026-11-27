@@ -15,7 +15,7 @@ from nova_core.profiles.composition import (
 )
 from nova_core.profiles.coordinator import ConversationRoles
 from nova_core.profiles.store import ProfileError, ProfileStore, validate_profile
-from tests.composition_fakes import _config, _request, composition_routes, store  # noqa: F401
+from composition_fakes import _config, _request, composition_routes, store  # noqa: F401
 
 _RULES = """\
   reply_rules:

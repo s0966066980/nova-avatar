@@ -19,8 +19,11 @@ from nova_render.mouth_quality import (
     normalize_quality,
     quality_from_model,
 )
+from nova_render.adapter import create_avatar_service
 from nova_core.config.schema import Config
 from nova_core.server.import_jobs import start_import_job
+from tts_fakes import in_process_tts
+from nova_core.server.state import state
 from nova_core.server.runtime_settings import (
     SettingsError,
     apply_mouth_quality,
@@ -107,9 +110,9 @@ class QualitySettingsTests(unittest.TestCase):
         config.model.mouth_sharpen = 0.7
         config.model.musetalk.bbox_shift = 5
         with patch(
-            "nova_core.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("nova_core.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "nova_render.catalog.list_avatar_characters", return_value=[]
+        ), patch("nova_render.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
         self.assertEqual(snapshot["avatar_quality"]["mouth_sharpen"], 0.7)
         self.assertEqual(snapshot["avatar_quality"]["musetalk"]["bbox_shift"], 5)
         self.assertEqual(snapshot["avatar_quality"]["paste_interpolation"], "lanczos")
@@ -125,6 +128,7 @@ class QualitySettingsTests(unittest.TestCase):
                     "bbox_shift": -4,
                     "extra_margin": 16,
                 },
+                avatars=create_avatar_service(),
             )
         persist.assert_called_once()
         self.assertEqual(config.model.mouth_sharpen, 0.8)
@@ -136,7 +140,7 @@ class QualitySettingsTests(unittest.TestCase):
     def test_apply_mouth_quality_rejects_invalid_values(self):
         config = Config()
         with self.assertRaises(SettingsError):
-            apply_mouth_quality(config, {"mouth_sharpen": 9})
+            apply_mouth_quality(config, {"mouth_sharpen": 9}, avatars=create_avatar_service())
 
 
 class BuildQualityForwardingTests(unittest.TestCase):
@@ -147,7 +151,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
             video.write_bytes(b"not-a-real-video")
             captured = {}
 
-            def fake_build(work_dir, avatar_id, video_path, report, options, vae_provider=None):
+            def fake_build(work_dir, avatar_id, video_path, report, options, **_kwargs):
                 captured["options"] = options
                 captured["avatar_id"] = avatar_id
                 captured["video_path"] = video_path
@@ -177,7 +181,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
             video.write_bytes(b"clip")
             seen = {}
 
-            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None, green_screen=False, replace_guard=None, vae_provider=None):
+            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None, green_screen=False, replace_guard=None, loaded_vae=None):
                 seen["quality"] = quality
                 seen["avatar_id"] = avatar_id
                 seen["green_screen"] = green_screen
@@ -185,7 +189,8 @@ class BuildQualityForwardingTests(unittest.TestCase):
                     progress(100, "done")
                 return {"type": engine, "avatar_id": avatar_id, "frames": 1}
 
-            with patch("nova_core.server.import_jobs.build_character", side_effect=fake_build), \
+            with patch("nova_render.builder.build_character", side_effect=fake_build), \
+                 patch.object(state, "avatar_service", create_avatar_service()), \
                  patch("nova_render.builder.get_data_dir", return_value=Path(tmp)), \
                  patch("nova_core.server.import_jobs._WORKER_LOCK") as lock:
                 lock.locked.return_value = False

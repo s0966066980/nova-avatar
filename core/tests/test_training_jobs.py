@@ -4,8 +4,8 @@
 """Training jobs: pre-flight checks, the stage pipeline, cancel, log and restart recovery.
 
 Everything outside the process is fake: the children (training, export, Whisper, the
-sherpa-onnx check), Edge, the GPU probe and the stage-session count. No network, no
-model, no GPU, no server.
+sherpa-onnx check), Edge and the GPU probe. No network, no model, no GPU, no server. The
+stage-connection check is the core's (``test_training_routes``).
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from pathlib import Path
 import pytest
 
 from nova_core.config.loader import dict_to_config
-from nova_core.server import tts_training_jobs as jobs
-from nova_core.server.tts_training_jobs import (
+from nova_tts.training import jobs
+from nova_tts.training.jobs import (
     JobLog,
     StartRequest,
     TrainingError,
@@ -35,8 +35,8 @@ from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledg
 from nova_tts.training.gpu_probe import VramReading
 from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from nova_tts.voice_models import REQUIRED_FILES, list_voice_models
-from tests.training_fakes import FakeProcess, FakeSpawner, argument, tone_wav
-from tests.training_fakes import ENOUGH_VRAM_MIB, Rig, edge_synthesis, rig  # noqa: F401
+from training_fakes import FakeProcess, FakeSpawner, argument, tone_wav
+from training_fakes import ENOUGH_VRAM_MIB, Rig, edge_synthesis, rig  # noqa: F401
 
 
 def request(**overrides) -> StartRequest:
@@ -75,19 +75,11 @@ def test_everything_in_order_can_start_and_each_check_has_a_reason(tmp_path):
     preflight = rig(tmp_path).manager.evaluate_preflight("voice", "我的聲音")
     assert preflight.can_start
     assert [c.id for c in preflight.checks] == [
-        "admin", "stage_connections", "free_vram", "environment", "other_job", "transcription", "corpus", "corpus_size",
-        "model_name",
+        "free_vram", "environment", "other_job", "transcription", "corpus", "corpus_size", "model_name",
     ]
     assert all(c.reason and c.label for c in preflight.checks)
     as_dict = preflight.to_dict()
-    assert as_dict["can_start"] is True and as_dict["checks"][2]["detail"] == {"free_gb": 9.6, "threshold_gb": 8.0}
-
-
-def test_a_stage_connection_blocks_with_the_count(tmp_path):
-    preflight = rig(tmp_path, sessions=2).manager.evaluate_preflight("voice", "x")
-    check = check_of(preflight, "stage_connections")
-    assert (check.status, check.detail) == ("fail", {"count": 2})
-    assert "2" in check.reason and not preflight.can_start
+    assert as_dict["can_start"] is True and as_dict["checks"][0]["detail"] == {"free_gb": 9.6, "threshold_gb": 8.0}
 
 
 @pytest.mark.parametrize(
@@ -187,14 +179,26 @@ def test_the_model_name_must_be_unique_among_voice_models(tmp_path):
 
 
 def test_a_refused_start_creates_no_job_and_starts_no_process(tmp_path):
-    r = rig(tmp_path, sessions=1, vram=VramReading(1024))
+    r = rig(tmp_path, vram=VramReading(1024), with_env=False)
     with pytest.raises(TrainingError) as caught:
         r.manager.start(request())
     error = caught.value
     assert error.status == 409
     failing = {c.id for c in error.preflight.checks if c.status == "fail"}
-    assert failing == {"stage_connections", "free_vram"}
-    assert "舞台" in error.message and "顯存" in error.message
+    assert failing == {"free_vram", "environment"}
+    assert "顯存" in error.message and "訓練環境" in error.message
+    assert r.spawner.commands == [] and r.manager.status() is None
+
+
+def test_the_layers_free_vram_check_refuses_the_start_by_itself(tmp_path):
+    # The core's stage check is tested with the routes (test_training_routes).
+    r = rig(tmp_path, vram=VramReading(1024))
+    with pytest.raises(TrainingError) as caught:
+        r.manager.start(request())
+    error = caught.value
+    assert error.status == 409
+    assert {c.id for c in error.preflight.checks if c.status == "fail"} == {"free_vram"}
+    assert "顯存" in error.message
     assert r.spawner.commands == [] and r.manager.status() is None
 
 
@@ -998,13 +1002,6 @@ def test_default_paths_follow_the_setup_script_layout():
     assert (paths.tools_dir / "train_matcha.py").is_file() and (paths.tools_dir / "export_matcha_onnx.py").is_file()
 
 
-def test_settings_come_from_the_matcha_section_of_the_configuration():
-    assert jobs.settings_from_config(dict_to_config({})) == TrainingSettings(8.0, "small")
-    configured = dict_to_config({"matcha": {"training_min_free_vram_gb": 6.5, "training_whisper_model": "base"}})
-    assert jobs.settings_from_config(configured) == TrainingSettings(6.5, "base")
-    assert jobs.settings_from_config(None) == TrainingSettings()
-
-
 @pytest.mark.parametrize(
     ("section", "message"),
     [
@@ -1018,3 +1015,15 @@ def test_settings_come_from_the_matcha_section_of_the_configuration():
 def test_invalid_training_settings_are_refused_at_load(section, message):
     with pytest.raises(ValueError, match=message):
         dict_to_config({"matcha": section})
+
+
+def test_a_transcription_that_starts_while_the_preflight_runs_still_blocks_the_start(tmp_path):
+    # The slow pre-flight saw no transcription; one began before the job was registered.
+    r = rig(tmp_path)
+    running = iter([False, True])
+    r.manager._transcription_active = lambda: next(running)
+    with pytest.raises(TrainingError) as caught:
+        r.manager.start(request())
+    assert caught.value.status == 409
+    assert check_of(caught.value.preflight, "transcription").status == "fail"
+    assert r.manager.status() is None and r.spawner.commands == []

@@ -12,7 +12,13 @@ import pytest
 
 from nova_render.scene import service
 from nova_render import catalog
+from nova_render.adapter import create_avatar_service
 from nova_core.server.routes import settings as settings_routes
+
+
+@pytest.fixture(autouse=True)
+def avatar_service(monkeypatch):
+    monkeypatch.setattr(settings_routes.state, "avatar_service", create_avatar_service())
 
 
 def test_green_screen_composites_person_and_keeps_background_independent(tmp_path, monkeypatch):
@@ -291,10 +297,9 @@ def test_background_pixel_count_is_checked_from_the_header_before_decoding(
 
 def test_background_bomb_upload_answers_400(tmp_path, monkeypatch):
     monkeypatch.setattr(service, "backgrounds_root", lambda: tmp_path / "backgrounds")
-    monkeypatch.setattr(settings_routes, "backgrounds_root", lambda: tmp_path / "backgrounds")
     monkeypatch.setattr(settings_routes.state, "config", SimpleNamespace())
     from aiohttp import FormData
-    from tests.access_helpers import access_client
+    from access_helpers import access_client
 
     async def run():
         async with access_client() as client:

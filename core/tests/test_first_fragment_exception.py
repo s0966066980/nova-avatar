@@ -7,11 +7,8 @@ import unittest
 
 from nova_core.config.schema import Config
 from nova_llm.base import BaseLLM
-from nova_core.server.reply_streaming.fragmenter import (
-    SemanticFragmenter,
-    make_fragmenter_factory,
-    speech_units,
-)
+from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter, speech_units
+from speech_fakes import spoken_answer
 
 
 def stream(text: str, fragmenter: SemanticFragmenter | None = None) -> list[str]:
@@ -115,9 +112,8 @@ class FirstFragmentStreamingTests(unittest.TestCase):
                 yield "降雨機率為六成。"
 
         avatar = self.Avatar()
-        response = LLM(Config()).generate_response(
-            "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
-            fragmenter_factory=make_fragmenter_factory(Config()))
+        response = spoken_answer(
+            LLM(Config()), "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1})
 
         self.assertEqual([text for _, text, _ in avatar.events],
                          ["明天台北多雲時陰短暫雨，", "降雨機率為六成。"])
@@ -132,10 +128,9 @@ class FirstFragmentStreamingTests(unittest.TestCase):
                 yield "機率為六成，記得帶傘。"
 
         avatar = self.Avatar()
-        LLM(Config()).generate_response(
-            "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
-            chunk_guard=lambda sequence: sequence == 0,
-            fragmenter_factory=make_fragmenter_factory(Config()))
+        spoken_answer(
+            LLM(Config()), "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+            chunk_guard=lambda sequence: sequence == 0)
         time.sleep(0.7)
 
         self.assertEqual([text for _, text, _ in avatar.events], ["明天台北多雲時陰短暫雨，"])

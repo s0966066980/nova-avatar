@@ -9,10 +9,10 @@
 
 from typing import Type
 
+from nova_contracts.tts import AudioSink
 from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS, FakeTTS, MatchaTTS
 
-# Keep in step with nova_tts.voice_library.TTS_ENGINES. "fake" is selectable by
-# configuration but is not offered in the console.
+# Keep in step with nova_tts.voice_library.CONFIGURABLE_TTS_ENGINES.
 _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
     "edgetts": EdgeTTS,
     "breezyvoice": BreezyVoiceTTS,
@@ -21,7 +21,7 @@ _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
 }
 
 
-def create_tts_engine(tts_type: str, config, parent) -> BaseTTS:
+def create_tts_engine(tts_type: str, config, sink: AudioSink) -> BaseTTS:
     """
     根據型別建立 TTS 引擎
     """
@@ -29,4 +29,4 @@ def create_tts_engine(tts_type: str, config, parent) -> BaseTTS:
     engine_cls = _ENGINE_MAP.get(tts_type)
     if engine_cls is None:
         raise ValueError(f"未知的 TTS 型別: {tts_type!r}")
-    return engine_cls(config, parent)
+    return engine_cls(config, sink)

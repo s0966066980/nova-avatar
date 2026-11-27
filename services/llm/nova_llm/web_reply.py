@@ -12,13 +12,27 @@ class WebSpeechGuard:
         self._stopped = False
         self._lock = RLock()
 
+    @classmethod
+    def resumed(cls, max_chars, accepted, *, stopped=False):
+        """The guard after it accepted ``accepted``, in order."""
+        guard = cls(max_chars)
+        for text in accepted:
+            guard._seen.add(guard._key(text))
+            guard._length += len(text)
+        guard._stopped = bool(stopped)
+        return guard
+
+    @staticmethod
+    def _key(text):
+        return ''.join(c for c in text.casefold() if c.isalnum())
+
     @property
     def stopped(self):
         with self._lock:
             return self._stopped
 
     def accept(self, text):
-        key = ''.join(c for c in text.casefold() if c.isalnum())
+        key = self._key(text)
         with self._lock:
             if self._stopped:
                 return False

@@ -1,17 +1,16 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""The current role's LLM chooses who answers a turn, never a spoken JSON.
+"""The LLM layer's handoff entry: which role answers a turn, never a spoken JSON.
 
-Every turn picks one of the members the core passes in; any role may hand off
-directly to any other (ADR 0023). A member is a plain dict the core prepares
-from the role composition::
-
-    {"id", "name", "main": bool, "description", "rules",
-     "weather": {"county", "town"} | None}      # set only on the weather holder
+The core sends the live members of the role composition, with each one's
+description and handoff rules, and the conversation's handoff context
+(ADR 0023, 0027); any role may hand off directly to any other. The weather
+tool and its keyword pre-filter stay inside this layer.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
 import json
 import re
@@ -20,13 +19,8 @@ from threading import Lock
 from openai import OpenAI
 
 from nova_llm.llamacpp_protocol import thinking_request_fields
-from nova_llm.weather import COUNTIES, TAIPEI
-from nova_llm.weather_keywords import canonical_county, explicit_counties, keyword_route
-
-
-class RoutingError(Exception):
-    """The routing model's reply is missing, too long, or not a usable decision."""
-
+from nova_llm.tools.weather import COUNTIES, TAIPEI
+from nova_llm.tools.weather_keywords import canonical_county, explicit_counties, keyword_route
 
 # Console profile ids are ``role_<hex>``; an id spelled "clarify" could never be chosen.
 CLARIFY = "clarify"
@@ -61,14 +55,37 @@ _WEATHER_FORMAT = ('固定格式：\n{"target":"角色 id|clarify","clarificatio
                    '"kind":"forecast","start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","context":""}\n')
 
 
-def candidates(members: list[dict]) -> list[str]:
-    """Who may answer a turn, in the order the core listed them."""
-    return [member["id"] for member in members]
+class RoutingError(ValueError):
+    """The model's handoff decision is unusable; the core asks the visitor again."""
 
 
-def weather_holder(members: list[dict]) -> dict | None:
-    """The member holding the weather tool, if any."""
-    return next((member for member in members if member["weather"] is not None), None)
+@dataclass(frozen=True)
+class RoleCandidate:
+    """One role that may answer a turn, as the core's role composition defines it.
+
+    ``weather_site`` is the site's default location (county, town) and is set
+    only on the one live member holding the weather tool.
+    """
+
+    id: str
+    name: str
+    main: bool
+    description: str
+    rules: str
+    weather_site: dict | None = None
+
+
+@dataclass(frozen=True)
+class HandoffContext:
+    """What this conversation brings to a decision; the LLM layer keeps none of it.
+
+    ``history`` is the current role's recent conversation; ``confirmed`` is the
+    place this conversation's visitor last confirmed for a weather lookup.
+    """
+
+    current_role: str
+    history: list = field(default_factory=list)
+    confirmed: dict = field(default_factory=dict)
 
 
 def _fields(weather: bool) -> tuple[str, ...]:
@@ -92,14 +109,14 @@ def route_schema(ids, weather: bool, *, explain: bool = False) -> dict:
 
 
 def _prompt(members, current_id, today, confirmed, holder) -> str:
-    roles = [{"id": member["id"], "name": member["name"], "main": member["main"],
-              "description": member["description"], "rules": member["rules"],
+    roles = [{"id": member.id, "name": member.name, "main": member.main,
+              "description": member.description, "rules": member.rules,
               "tools": ["weather"] if member is holder else []}
              for member in members]
     data = {"today": today, "current_role": current_id, "roles": roles}
     if holder is None:
         return _CONTRACT + _FORMAT + json.dumps(data, ensure_ascii=False)
-    site = holder["weather"]
+    site = holder.weather_site
     data.update(site_location={"county": site["county"], "town": site["town"]},
                 confirmed_context=confirmed)
     return _CONTRACT + _WEATHER_CONTRACT + _WEATHER_FORMAT + json.dumps(data, ensure_ascii=False)
@@ -152,26 +169,29 @@ class RoutingClients:
             client.close()
 
 
-def route(config, members, current_id, text, history, confirmed, *,
-          clients=None, client_factory=OpenAI, explain=False):
-    """Who answers ``text``: ``target`` is a member's id, or None to clarify.
+def route(config, question: str, members: list[RoleCandidate], context: HandoffContext, *,
+          clients=None, client_factory=OpenAI, explain=False) -> dict:
+    """Who answers ``question``: ``target`` is a member's id, or None to clarify.
 
-    ``history`` is the current role's recent conversation. The weather fields
-    are always present and filled only for the live weather-tool holder.
-    ``explain`` (the console's handoff dry run) also returns a short ``reason``;
-    conversations leave it off to keep the decision short.
+    ``config.llm`` names the answer model's endpoint and
+    ``config.conversation.locale`` the conversation language. The weather
+    fields are always present and filled only for the weather-tool holder.
+    ``explain`` (the console's handoff dry run) also returns a short
+    ``reason``; conversations leave it off to keep the decision short.
+    ``clarification`` stays in Chinese; the core localizes fixed replies.
     """
+    current_id, history, confirmed = context.current_role, context.history, context.confirmed
     now = datetime.now(TAIPEI)
-    ids = candidates(members)
-    holder = weather_holder(members)
+    ids = [member.id for member in members]
+    holder = next((member for member in members if member.weather_site is not None), None)
     empty = dict.fromkeys(WEATHER_FIELDS, "")
     if holder is not None:
         # A clear weather question about one county skips the small model,
         # which may drop or misspell an English county name (ticket 17); it
         # goes to the weather holder from any current role.
-        decided = keyword_route(text, now.date(), confirmed=confirmed, site=holder["weather"])
+        decided = keyword_route(question, now.date(), confirmed=confirmed, site=holder.weather_site)
         if decided is not None:
-            result = {"target": holder["id"], "clarification": "", "context": "", **decided,
+            result = {"target": holder.id, "clarification": "", "context": "", **decided,
                       "accepted_at": now.isoformat(), "decided_by": "keyword"}
             if explain:
                 result["reason"] = "關鍵字初篩：明確詢問單一縣市的天氣，交給天氣工具持有者。"
@@ -203,7 +223,7 @@ def route(config, members, current_id, text, history, confirmed, *,
             model=config.llm.model, stream=False, max_tokens=384, temperature=0,
             response_format=response_format, extra_body=extra or None,
             messages=[{"role": "system", "content": prompt},
-                      *history[-10:], {"role": "user", "content": text}])
+                      *history[-10:], {"role": "user", "content": question}])
     finally:
         if owned is not None:
             owned.close()
@@ -227,10 +247,10 @@ def route(config, members, current_id, text, history, confirmed, *,
     result.update(accepted_at=now.isoformat(), decided_by="model")
     # Place/date validation belongs only to a weather destination. General
     # questions may legitimately mention several cities, or none at all.
-    if holder is None or result["target"] != holder["id"]:
+    if holder is None or result["target"] != holder.id:
         result.update(empty)
         return result
-    _validate_weather(result, text, now.date().isoformat(), confirmed, holder["weather"])
+    _validate_weather(result, question, now.date().isoformat(), confirmed, holder.weather_site)
     if result["target"] is None:
         result.update(empty)
         if explain and decision["target"] != CLARIFY:

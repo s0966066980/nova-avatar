@@ -10,11 +10,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from nova_core.utils.avatar_id import AVATAR_ID_PATTERN, is_safe_avatar_id
+from nova_core.utils.avatar_ids import is_safe_avatar_id
 from nova_core.utils.paths import get_data_dir, get_models_dir
-
-__all__ = ["AVATAR_ID_PATTERN", "is_safe_avatar_id"]
-
 
 ENGINE_META: Dict[str, Dict[str, str]] = {
     "musetalk": {
@@ -25,6 +22,10 @@ ENGINE_META: Dict[str, Dict[str, str]] = {
 
 ENGINE_ORDER = list(ENGINE_META.keys())
 IMPORTABLE_ENGINES = ("musetalk",)
+# The fixed-frame test engine: selected with ``model.type: fake`` in the
+# config, so it is neither in ENGINE_META (the console's engine list) nor
+# backed by any weights or avatar files.
+FAKE_ENGINE = "fake"
 # The existing project trial asset has a verified uniform green backdrop. Keep
 # its files untouched; newly imported assets declare this in avator_info.json.
 CURRENT_GREEN_SCREEN_AVATAR_ID = "musetalk_avatar"
@@ -214,6 +215,8 @@ def avatar_bootable(engine: str, avatar_id: str) -> tuple[bool, str]:
     """啟動或套用前檢查該引擎+角色是否具備權重與素材。"""
     engine = (engine or "").strip().lower()
     avatar_id = (avatar_id or "").strip()
+    if engine == FAKE_ENGINE:
+        return True, ""
     if engine not in ENGINE_META:
         return False, f"不支援的數字人引擎: {engine or '(未選擇)'}"
     if not avatar_id:

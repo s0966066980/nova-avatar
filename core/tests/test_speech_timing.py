@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import numpy as np
 
-from nova_llm.base import TextStreamProcessor
+from nova_core.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
 from nova_tts.base import BaseTTS
 
 
@@ -553,7 +553,7 @@ class MuseTalkBufferPolicyTests(unittest.TestCase):
                 release.wait(timeout=1)
 
         config = SimpleNamespace(audio=SimpleNamespace(fps=50))
-        tts = BlockingTTS(config, parent=None)
+        tts = BlockingTTS(config, sink=None)
         tts.put_msg_txt("測試語音")
         worker = Thread(target=tts.process_tts, args=(quit_event,), daemon=True)
         worker.start()

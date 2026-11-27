@@ -10,11 +10,14 @@ import queue
 import threading
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 
 from nova_core.config.schema import Config
+from clock_fakes import FakeClock
+from llm_fakes import FakeLlm, answering, reply_events
+from session_fakes import FakeAvatar
 from nova_core.server.reply_streaming.latency_baseline import (
     CATEGORIES,
     FIXTURES,
@@ -31,21 +34,9 @@ from nova_core.server.reply_streaming.metrics import (
     ANSWER_STAGES,
     STAGE_NAMES,
     TurnMetrics,
-    observe_stages,
-    timed_stage,
 )
+from nova_core.utils.stage_timing import observe_stages, timed_stage
 from nova_core.server.voice_session import VoiceTurnSession
-
-
-class FakeClock:
-    def __init__(self) -> None:
-        self.now = 100.0
-
-    def __call__(self) -> float:
-        return self.now
-
-    def advance(self, seconds: float) -> None:
-        self.now += seconds
 
 
 class PreAnswerStageMetricsTests(unittest.TestCase):
@@ -54,7 +45,7 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
             self.assertIn(stage, STAGE_NAMES)
 
     def test_a_discarded_answer_forgets_its_stages_and_keeps_the_turns(self):
-        clock = FakeClock()
+        clock = FakeClock(100.0)
         metrics = TurnMetrics("turn", clock=clock)
         for stage in ("asr", "routing", "retrieval", "model_info", "llm_first_token",
                       "first_fragment", "webrtc_audible_onset"):
@@ -68,7 +59,7 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
         self.assertLessEqual(set(ANSWER_STAGES), set(STAGE_NAMES))
 
     def test_prompt_accepted_latency_is_reported_beside_first_audio(self):
-        clock = FakeClock()
+        clock = FakeClock(100.0)
         metrics = TurnMetrics("turn", clock=clock)
         metrics.mark_speech_end()
         clock.advance(0.5)
@@ -102,10 +93,10 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
                     raise RuntimeError("preflight failed")
         self.assertEqual(reported, ["model_info"])
 
-    def test_timed_stage_rejects_unknown_names(self):
+    def test_the_core_rejects_a_stage_name_outside_its_vocabulary(self):
+        # Layers time their own work; the core owns the stage names.
         with self.assertRaises(ValueError):
-            with timed_stage("transcript"):
-                pass
+            TurnMetrics("turn").record_stage_duration("transcript", 0.1)
 
     def test_llamacpp_model_info_preflight_is_timed(self):
         from nova_llm.engines.openai import OpenAILLM
@@ -130,20 +121,6 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
             with observe_stages(lambda stage, _seconds: reported.append(stage)):
                 list(engine.chat_stream("問題"))
         self.assertEqual(reported, ["preflight-running", "model_info"])
-
-
-class _Avatar:
-    def __init__(self):
-        self.messages = []
-
-    def put_msg_txt(self, text, data=None):
-        self.messages.append((text, data))
-
-    def flush_talk(self):
-        pass
-
-    def configure_media_fence(self, **_kwargs):
-        pass
 
 
 class _Roles:
@@ -181,8 +158,8 @@ class _Roles:
 
 class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.clock = FakeClock()
-        self.avatar = _Avatar()
+        self.clock = FakeClock(100.0)
+        self.avatar = FakeAvatar()
         config = SimpleNamespace(
             model=SimpleNamespace(avatar_id="alpha"),
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
@@ -190,7 +167,7 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
             reply_streaming=SimpleNamespace(enabled=False),
             profile_rag={"enabled": True, "dataset_ids": ["a" * 32]},
         )
-        self.session = VoiceTurnSession(94, config, self.avatar, clock=self.clock)
+        self.session = VoiceTurnSession(94, config, self.avatar, clock=self.clock, llm=FakeLlm())
         self.session._segmenter = SimpleNamespace(reset=lambda: None, is_speaking=False)
         self.events = []
         self.session.attach_event_sink(lambda raw: self.events.append(json.loads(raw)))
@@ -208,17 +185,18 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
             clock.advance(0.1)
             return {"status": "empty", "sources": []}
 
-        def fake_llm(_text, _avatar, **_kwargs):
+        def fake_llm(request):
             # The engine's preflight runs inside the LLM worker thread.
             clock.advance(0.2)
             with timed_stage("model_info"):
                 pass
             llm_started.set()
-            return "回答。"
+            return reply_events(request, "回答。", speak=False)
 
-        with patch("nova_core.server.voice_session.llm_response", side_effect=fake_llm), patch(
-            "nova_core.server.voice_session.RagFlowClient.retrieve", retrieve
-        ), patch("nova_core.server.voice_session.prepare_spoken_history"):
+        self.session._llm.begin_turn = Mock()
+        with answering(self.session, fake_llm), patch(
+            "nova_llm.adapter.RagFlowClient.retrieve", retrieve
+        ):
             await self.session.start_text_turn(text, interrupt=False)
             self.assertTrue(await asyncio.to_thread(llm_started.wait, 2))
             await asyncio.sleep(0)  # deliver the thread-safe model_info callback
@@ -259,7 +237,7 @@ class ClientOffsetMetricTests(unittest.TestCase):
             self.assertIn(stage, STAGE_NAMES)
 
     def test_clock_marks_expose_the_session_clock_for_same_host_clients(self):
-        clock = FakeClock()
+        clock = FakeClock(100.0)
         metrics = TurnMetrics("turn", clock=clock)
         self.assertEqual(metrics.snapshot()["clock_marks"],
                          {"speech_end": None, "first_audio": None, "first_audible": None})
@@ -276,14 +254,14 @@ class ClientOffsetMetricTests(unittest.TestCase):
 
 class VoiceSessionClientOffsetTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.clock = FakeClock()
+        self.clock = FakeClock(100.0)
         config = SimpleNamespace(
             model=SimpleNamespace(avatar_id="alpha"),
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
             vad=SimpleNamespace(),
             reply_streaming=SimpleNamespace(enabled=False),
         )
-        self.session = VoiceTurnSession(95, config, _Avatar(), clock=self.clock)
+        self.session = VoiceTurnSession(95, config, FakeAvatar(), clock=self.clock, llm=FakeLlm())
 
     async def asyncTearDown(self):
         await self.session.close()

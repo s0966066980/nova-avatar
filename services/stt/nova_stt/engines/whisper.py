@@ -41,18 +41,18 @@ class WhisperASR(BaseASR):
     
     supports_language_options = True
 
-    def __init__(self, config=None, model_size: str = "base"):
+    def __init__(self, model_size: str = "base", device: str = "auto"):
         """
         初始化 Whisper ASR
-        
+
         Args:
-            config: 配置物件
             model_size: 模型大小 ('tiny', 'base', 'small', 'medium', 'large')
+            device: 'auto' | 'cpu' | 'cuda'
         """
-        super().__init__(config)
-        
+        super().__init__()
+
         self.model_size = model_size
-        configured_device = getattr(getattr(config, "asr", None), "device", "auto")
+        configured_device = device
         if configured_device == "auto":
             try:
                 import torch
