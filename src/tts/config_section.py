@@ -27,7 +27,8 @@ from src.tts.voice_library import REMOVED_TTS_FIELDS, migrate_tts_config
 MAX_MATCHA_THREADS = 64
 MAX_TRAINING_VRAM_GB = 1024
 
-ENGINES = voice_library.TTS_ENGINES
+# Every engine a configuration may name; the console lists only voice_library.TTS_ENGINES.
+ENGINES = voice_library.CONFIGURABLE_TTS_ENGINES
 # Engines whose ``ref_file`` is a voice-library recording with its transcript.
 REFERENCE_AUDIO_ENGINES = voice_library.REFERENCE_AUDIO_ENGINES
 # Engines whose ``ref_file`` is a voice-model ID.

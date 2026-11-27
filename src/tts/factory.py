@@ -10,13 +10,14 @@
 from typing import Type
 
 from nova_contracts.tts import AudioSink
-from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS, MatchaTTS
+from .engines import BaseTTS, BreezyVoiceTTS, EdgeTTS, FakeTTS, MatchaTTS
 
-# Keep in step with src.tts.voice_library.TTS_ENGINES.
+# Keep in step with src.tts.voice_library.CONFIGURABLE_TTS_ENGINES.
 _ENGINE_MAP: dict[str, Type[BaseTTS]] = {
     "edgetts": EdgeTTS,
     "breezyvoice": BreezyVoiceTTS,
     "matcha": MatchaTTS,
+    "fake": FakeTTS,
 }
 
 
