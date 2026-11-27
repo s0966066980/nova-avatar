@@ -13,11 +13,14 @@ from typing import Type
 
 from nova_contracts.stt import SttEngineSettings
 from src.asr.base import BaseASR
-from src.asr.engines import WhisperASR
+from src.asr.engines import FakeASR, WhisperASR
 
 
+# "fake" is selectable by configuration only; the console lists engines from
+# runtime_settings.STT_ENGINE_META, which does not include it.
 _ENGINE_MAP: dict[str, Type[BaseASR]] = {
     "whisper": WhisperASR,
+    "fake": FakeASR,
 }
 
 

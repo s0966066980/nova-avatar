@@ -35,7 +35,9 @@ from nova_contracts.http import (
 if TYPE_CHECKING:  # numpy is the caller's dependency, never this package's.
     import numpy as np
 
-TtsEngine = Literal["edgetts", "breezyvoice", "matcha"]
+# "fake" speaks silence of a known length (spec decision 15): a configuration may
+# name it for tests and rehearsals, but no console lists it.
+TtsEngine = Literal["edgetts", "breezyvoice", "matcha", "fake"]
 # The three preset sentences of a voice-model preview; callers never send text.
 PreviewSentence = Literal["zh", "digits", "en"]
 

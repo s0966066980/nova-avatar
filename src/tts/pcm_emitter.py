@@ -185,12 +185,13 @@ class TurnPCMEmitter:
         start_media_sequence: int = 0,
         chunk_guard: Optional[Callable[[int], bool]] = None,
         frame_sink=None,
+        trimmer: Optional[StreamingSilenceTrimmer] = None,
     ):
         self.owner = owner
         self.text = text
         self.textevent = textevent
         self.frame_sink = frame_sink or DirectFrameSink(owner.sink)
-        self.trimmer = StreamingSilenceTrimmer(owner.sample_rate)
+        self.trimmer = trimmer or StreamingSilenceTrimmer(owner.sample_rate)
         self.samples = np.empty(0, dtype=np.float32)
         self.pending_chunk = None
         self.emitted_chunks = 0

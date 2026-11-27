@@ -9,8 +9,10 @@ ASR 引擎實現集中入口
     from src.asr.engines import WhisperASR
 """
 
+from .fake import FakeASR
 from .whisper import WhisperASR
 
 __all__ = [
+    "FakeASR",
     "WhisperASR",
 ]
