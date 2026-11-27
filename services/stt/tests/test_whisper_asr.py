@@ -12,8 +12,8 @@ from unittest.mock import Mock, patch
 import numpy as np
 import soundfile as sf
 
-from src.asr.base import SPEECH_LANGUAGES, BaseASR, asr_language
-from src.asr.engines.whisper import WhisperASR
+from nova_stt.base import SPEECH_LANGUAGES, BaseASR, asr_language
+from nova_stt.engines.whisper import WhisperASR
 
 
 class WhisperASRLoadingTests(unittest.TestCase):
@@ -190,7 +190,7 @@ class WhisperASRTranscribeTests(unittest.TestCase):
                                       all_language_probs=[("en", 0.8)]))
         engine = _ready_engine(self.model)
 
-        with patch("src.asr.base.logger") as log:
+        with patch("nova_stt.base.logger") as log:
             engine.transcribe(_wav_bytes(np.ones(1600, dtype=np.int16), 16000), language="auto")
 
         message, *args = log.info.call_args.args
@@ -211,7 +211,7 @@ class ConversationLanguageTests(unittest.TestCase):
 class SharedRecognizerConcurrencyTests(unittest.TestCase):
     def test_concurrent_sessions_load_one_shared_engine(self):
         from nova_contracts.stt import SttEngineSettings, SttPrepareRequest
-        from src.asr.adapter import InProcessSttService
+        from nova_stt.adapter import InProcessSttService
 
         first_create_started = Event()
         release_create = Event()

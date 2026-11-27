@@ -33,8 +33,8 @@ from av import AudioFrame, VideoFrame
 import av
 from fractions import Fraction
 
-from src.utils.logging import logger
-from src.avatars.video_output import limit_video_height
+from nova_core.utils.logging import logger
+from nova_render.video_output import limit_video_height
 
 from tqdm import tqdm
 
@@ -143,7 +143,7 @@ class BaseAvatar:
 
     def __init__(self, config):
         self.config = config
-        from src.avatars.catalog import avatar_uses_green_screen
+        from nova_render.catalog import avatar_uses_green_screen
 
         self._green_screen = (
             config.model.type == "musetalk"
@@ -389,7 +389,7 @@ class BaseAvatar:
     # Role presentation: the core directs it, every video frame passes it.
 
     def reset_role_presentation(self, enabled: bool) -> None:
-        from src.scene.role_presentation import RolePresentation
+        from nova_render.scene.role_presentation import RolePresentation
 
         self._role_presentation = RolePresentation() if enabled else None
 
@@ -419,7 +419,7 @@ class BaseAvatar:
         frame = limit_video_height(
             frame, getattr(getattr(self.config, "video", None), "max_height", 0))
         if getattr(self, "_green_screen", False):
-            from src.scene.service import scene_service
+            from nova_render.scene.service import scene_service
             frame = scene_service.compose(frame, green_screen=True)
         return frame, eventpoint
     

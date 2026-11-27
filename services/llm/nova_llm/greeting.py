@@ -13,8 +13,8 @@ import re
 
 from openai import AsyncOpenAI
 
-from src.llm.text_normalizer import normalize_assistant_identity, normalize_output_text
-from src.utils.graphemes import visible_length
+from nova_llm.text_normalizer import normalize_assistant_identity, normalize_output_text
+from nova_core.utils.graphemes import visible_length
 
 
 class GreetingGenerationError(ValueError):

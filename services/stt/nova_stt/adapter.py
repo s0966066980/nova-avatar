@@ -4,7 +4,7 @@
 """The STT layer's entry point: ``SttService`` served in-process (ADR 0027).
 
 The core reaches the STT layer only through this module and
-``config_section``; everything else under ``src.asr`` is internal
+``config_section``; everything else under ``nova_stt`` is internal
 (import-linter contract ``stt-internals-private``).
 """
 from __future__ import annotations
@@ -21,8 +21,8 @@ from nova_contracts.stt import (
     Transcription,
     TranscriptionOptions,
 )
-from src.asr.base import BaseASR
-from src.asr.factory import create_asr_engine
+from nova_stt.base import BaseASR
+from nova_stt.factory import create_asr_engine
 
 
 class InProcessSttService:

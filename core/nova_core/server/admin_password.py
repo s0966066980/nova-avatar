@@ -17,7 +17,7 @@ import secrets
 import tempfile
 from pathlib import Path
 
-ADMIN_ENV_PATH = Path(__file__).resolve().parents[2] / "config" / "admin.env"
+ADMIN_ENV_PATH = Path(__file__).resolve().parents[3] / "config" / "admin.env"
 ADMIN_ENV_KEY = "NOVA_ADMIN_PASSWORD_HASH"
 CONFIGURE_COMMAND = "uv run python scripts/configure-admin.py"
 MIN_PASSWORD_LENGTH = 10

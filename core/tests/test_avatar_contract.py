@@ -22,7 +22,7 @@ from nova_contracts.avatar import (
     FrameSize,
 )
 from nova_contracts.common import ServiceError
-from src.scene.service import scene_service
+from nova_render.scene.service import scene_service
 
 
 def test_a_boot_check_explains_why_an_avatar_cannot_start():
@@ -48,7 +48,7 @@ def test_the_stage_is_a_portrait_720p_canvas_at_25_fps():
 # One conversation's renderer, as the core sees it.
 
 def _renderer():
-    from src.avatars.base import BaseAvatar
+    from nova_render.base import BaseAvatar
 
     return BaseAvatar(SimpleNamespace(
         model=SimpleNamespace(type="none"), audio=SimpleNamespace(fps=50),
@@ -104,10 +104,10 @@ def test_without_role_composition_a_frame_is_only_height_limited():
 
 @pytest.fixture
 def avatars(tmp_path, monkeypatch):
-    from src.avatars.adapter import create_avatar_service
+    from nova_render.adapter import create_avatar_service
 
-    monkeypatch.setattr("src.avatars.catalog.get_data_dir", lambda: tmp_path)
-    monkeypatch.setattr("src.scene.service.get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr("nova_render.catalog.get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr("nova_render.scene.service.get_data_dir", lambda: tmp_path)
     return create_avatar_service()
 
 
@@ -167,7 +167,7 @@ def test_the_source_and_output_size_come_from_the_avatar_preview(avatars, tmp_pa
 
 def test_a_build_borrows_the_running_musetalk_vae(avatars, monkeypatch, tmp_path):
     calls = []
-    monkeypatch.setattr("src.avatars.builder.build_character",
+    monkeypatch.setattr("nova_render.builder.build_character",
                         lambda *args, **kwargs: calls.append(kwargs) or {"avatar_id": args[2]})
     vae = object()
 
@@ -180,7 +180,7 @@ def test_a_build_borrows_the_running_musetalk_vae(avatars, monkeypatch, tmp_path
 
 
 def test_a_failed_build_is_a_service_error(avatars, monkeypatch, tmp_path):
-    from src.avatars import builder
+    from nova_render import builder
 
     def refuse(*_args, **_kwargs):
         raise builder.BuildError("角色 angela 已存在，請換一個名稱")
@@ -197,7 +197,7 @@ CHUNK = 320
 
 
 def _fake_config():
-    from src.config.defaults import get_default_config
+    from nova_core.config.defaults import get_default_config
 
     config = get_default_config()
     config.model.type = "fake"
@@ -321,7 +321,7 @@ def test_the_fake_engine_loads_opaque_handles_and_a_renderer_for_the_session(ava
 
 
 def test_an_idle_fake_renderer_outputs_the_fixed_frame_and_silence(stage):
-    from src.avatars.fake import FAKE_FRAME_COLOR
+    from nova_render.fake import FAKE_FRAME_COLOR
 
     stage.wait_for(lambda: len(stage.video.items) >= 3 and len(stage.audio.items) >= 6, "idle media")
 

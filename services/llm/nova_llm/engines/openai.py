@@ -11,21 +11,21 @@ from typing import Generator, Optional
 
 from openai import OpenAI, OpenAIError
 
-from src.llm.base import (
+from nova_llm.base import (
     BaseLLM,
     DEFAULT_RESPONSE_MAX_CHARS,
     response_token_budget,
     validate_response_max_chars,
     with_response_length_instruction,
 )
-from src.utils.logging import logger
-from src.llm.history import HistoryTransaction, TransactionalHistory
-from src.llm.llamacpp_protocol import thinking_request_fields
-from src.llm.reply_contract import auto_reply_grammar
-from src.llm.context_usage import (
+from nova_core.utils.logging import logger
+from nova_llm.history import HistoryTransaction, TransactionalHistory
+from nova_llm.llamacpp_protocol import thinking_request_fields
+from nova_llm.reply_contract import auto_reply_grammar
+from nova_llm.context_usage import (
     ContextCapacityError, cached_capacity, measure_request, with_input_tokens,
 )
-from src.utils.stage_timing import timed_stage
+from nova_core.utils.stage_timing import timed_stage
 
 
 class OpenAILLM(BaseLLM):

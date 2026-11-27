@@ -13,9 +13,9 @@ from dataclasses import asdict
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-from src.config.overrides import persist_runtime_overrides
-from src.greetings.content import validate_interval, validate_content
-from src.llm.config_section import (
+from nova_core.config.overrides import persist_runtime_overrides
+from nova_core.greetings.content import validate_interval, validate_content
+from nova_llm.config_section import (
     DEFAULT_RESPONSE_MAX_CHARS,
     EndpointError,
     active_endpoint_name,
@@ -44,9 +44,9 @@ from nova_contracts.tts import (
     TtsVoice,
     VoicePreparation,
 )
-from src.tts import config_section as tts_section
-from src.utils.avatar_ids import is_safe_avatar_id
-from src.utils.logging import logger
+from nova_tts import config_section as tts_section
+from nova_core.utils.avatar_ids import is_safe_avatar_id
+from nova_core.utils.logging import logger
 
 _SWITCH_LOCK = threading.Lock()
 _RULES_LOCK = threading.RLock()
@@ -282,7 +282,7 @@ def apply_reply_rules(config, values: Any, expected_revision: Any = None) -> Dic
             raise SettingsError(str(exc)) from exc
         rule_config = getattr(config.llm, "reply_rules", None)
         if rule_config is None:
-            from src.config.schema import ReplyRulesConfig
+            from nova_core.config.schema import ReplyRulesConfig
             rule_config = ReplyRulesConfig()
             config.llm.reply_rules = rule_config
         rule_config.revision = int(checked["revision"])
@@ -307,7 +307,7 @@ def apply_reply_rules(config, values: Any, expected_revision: Any = None) -> Dic
 def apply_llm_behavior(config, assistant_profile: Any, rules: Any, expected_revision: Any = None,
                        *, llm: LlmService) -> Dict[str, Any]:
     """Save the model-independent persona and Rules together, without loading a model."""
-    from src.config.schema import AssistantProfileConfig, ReplyRulesConfig
+    from nova_core.config.schema import AssistantProfileConfig, ReplyRulesConfig
 
     profile = validate_assistant_profile(assistant_profile)
     with _RULES_LOCK:
@@ -414,7 +414,7 @@ def validate_board_preset(value) -> str:
 
 
 def stage_snapshot(config) -> Dict[str, Any]:
-    from src.config.stage_composer import snapshot as composer_snapshot
+    from nova_core.config.stage_composer import snapshot as composer_snapshot
     stage = getattr(config, "stage", None)
     caption = getattr(stage, "caption_max_chars", DEFAULT_STAGE_CAPTION_MAX_CHARS)
     return {
@@ -518,7 +518,7 @@ def stage_snapshot(config) -> Dict[str, Any]:
 
 def apply_stage_settings(config, params: Dict[str, Any], *, greeting_content=None) -> Dict[str, Any]:
     """更新並持久化數字人舞台顯示設定。"""
-    from src.config.stage_composer import validate as validate_composer
+    from nova_core.config.stage_composer import validate as validate_composer
     stage = getattr(config, "stage", None)
     if stage is None:
         raise SettingsError("當前配置不支援舞台設定，請更新 config.yaml", status=400)
@@ -872,7 +872,7 @@ def apply_llm_model(
         config.llm.response_max_chars = next_response_max_chars
         config.llm.board.max_items = next_board_max_items
         if profile_requested:
-            from src.config.schema import AssistantProfileConfig
+            from nova_core.config.schema import AssistantProfileConfig
             config.llm.assistant_profile = AssistantProfileConfig(**next_profile)
         # Model loading may have overlapped a behavior save. Model-only requests
         # always use the latest published profile instead of an earlier snapshot.
@@ -985,7 +985,7 @@ def apply_avatar(
     if match["type"] != engine:
         raise SettingsError(f"角色 {avatar_id} 屬於 {match['type']}，與所選引擎不一致")
 
-    from src.server.state import state as server_state
+    from nova_core.server.state import state as server_state
 
     already_selected = config.model.type == engine and config.model.avatar_id == avatar_id
     if already_selected and getattr(server_state, "model_ready", False):
@@ -1025,7 +1025,7 @@ def apply_mouth_quality(config, params: Dict[str, Any], *, avatars: AvatarServic
 def _reload_avatar(config, engine: str, avatar_id: str, *, avatars: AvatarService) -> Dict[str, Any]:
     from copy import deepcopy
 
-    from src.server.state import state
+    from nova_core.server.state import state
 
     previous = f"{config.model.type}/{config.model.avatar_id}"
     pending = deepcopy(config)
@@ -1079,7 +1079,7 @@ def _reload_avatar(config, engine: str, avatar_id: str, *, avatars: AvatarServic
 
 
 def _release_gpu_resources(*, clear_state: bool = True) -> None:
-    from src.server.state import state
+    from nova_core.server.state import state
 
     if clear_state:
         state.model = None
@@ -1203,7 +1203,7 @@ def apply_vad_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
 
     # 引擎引數變了就重建單例；順手預熱，避免第一次識別時才報缺依賴
     warmup_error = ""
-    from src.vad import get_vad_engine_from_config, release_vad_engine
+    from nova_core.vad import get_vad_engine_from_config, release_vad_engine
 
     release_vad_engine()
     if enabled:
@@ -1246,7 +1246,7 @@ TTS_ENGINE_META = {
         "label": "BreezyVoice",
         "module": "requests",
         "description": "本機 BreezyVoice（聯發科，Apache-2.0）；台灣華語與注音讀音，整段合成不串流，套用時自動啟動獨立 GPU 服務",
-        "setup": "需要 conda 環境 cosyvoice（另裝 g2pw）、scripts/breezyvoice_weights.py 下載的權重，以及音訊庫中附逐字稿的參考音訊",
+        "setup": "需要 conda 環境 cosyvoice（另裝 g2pw）、services/tts/scripts/breezyvoice_weights.py 下載的權重，以及音訊庫中附逐字稿的參考音訊",
     },
     "matcha": {
         "label": "Matcha-TTS (Research / Non-commercial)",

@@ -188,7 +188,7 @@ class BreezyVoiceFrontend:
         tokenizer = directory / G2PW_TOKENIZER_DIR
         if not (model / "g2pw.onnx").is_file() or not (tokenizer / "vocab.txt").is_file():
             raise FileNotFoundError(
-                f"找不到 g2pW 模型或分詞表（{model}、{tokenizer}）；請執行 scripts/breezyvoice_weights.py"
+                f"找不到 g2pW 模型或分詞表（{model}、{tokenizer}）；請執行 services/tts/scripts/breezyvoice_weights.py"
             )
         from g2pw import api
 

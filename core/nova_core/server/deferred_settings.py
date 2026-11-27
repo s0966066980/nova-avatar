@@ -14,8 +14,8 @@ import tempfile
 
 from aiohttp import web
 
-from src.server.state import state
-from src.utils.logging import logger
+from nova_core.server.state import state
+from nova_core.utils.logging import logger
 
 _handlers = {}
 _stores = {}

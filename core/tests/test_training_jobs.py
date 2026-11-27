@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
-from src.config.loader import dict_to_config
-from src.tts.training import jobs
-from src.tts.training.jobs import (
+from nova_core.config.loader import dict_to_config
+from nova_tts.training import jobs
+from nova_tts.training.jobs import (
     JobLog,
     StartRequest,
     TrainingError,
@@ -28,15 +28,15 @@ from src.tts.training.jobs import (
     TrainingPaths,
     TrainingSettings,
 )
-from src.tts.training import edge_teacher
-from src.tts.training.asr import TranscriberError
-from src.tts.training.corpus import REVIEW_CONFIRMED
-from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
-from src.tts.training.gpu_probe import VramReading
-from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
-from src.tts.voice_models import REQUIRED_FILES, list_voice_models
-from tests.training_fakes import FakeProcess, FakeSpawner, argument, tone_wav
-from tests.training_fakes import ENOUGH_VRAM_MIB, Rig, edge_synthesis, rig  # noqa: F401
+from nova_tts.training import edge_teacher
+from nova_tts.training.asr import TranscriberError
+from nova_tts.training.corpus import REVIEW_CONFIRMED
+from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
+from nova_tts.training.gpu_probe import VramReading
+from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
+from nova_tts.voice_models import REQUIRED_FILES, list_voice_models
+from training_fakes import FakeProcess, FakeSpawner, argument, tone_wav
+from training_fakes import ENOUGH_VRAM_MIB, Rig, edge_synthesis, rig  # noqa: F401
 
 
 def request(**overrides) -> StartRequest:
@@ -847,7 +847,7 @@ def test_the_orphan_cleanup_waits_for_the_group_to_be_gone_but_not_for_ever():
 
 
 def test_a_whisper_worker_left_behind_is_stopped_too():
-    group = FakeGroup("/venv/bin/python -m src.tts.training.whisper_worker --model small", dies_on="TERM")
+    group = FakeGroup("/venv/bin/python -m nova_tts.training.whisper_worker --model small", dies_on="TERM")
     assert stop(group) is True and group.sent == ["TERM"]
 
 
@@ -983,7 +983,7 @@ def test_the_default_whisper_transcriber_is_a_cpu_child_with_the_configured_mode
 
 def test_the_default_bundle_check_runs_sherpa_on_the_cpu_and_fails_the_job_when_it_cannot_load(tmp_path):
     def handler(command, env, cwd):
-        assert command[1:3] == ["-m", "src.tts.training.verify_bundle"] and env["CUDA_VISIBLE_DEVICES"] == ""
+        assert command[1:3] == ["-m", "nova_tts.training.verify_bundle"] and env["CUDA_VISIBLE_DEVICES"] == ""
         return FakeProcess(["RuntimeError: unexpected audio"], 1)
 
     r = rig(tmp_path)

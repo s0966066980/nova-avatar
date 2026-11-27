@@ -139,13 +139,13 @@ nova_clear_port() {
 }
 
 # 後端自行啟動的模型服務以獨立 session 執行：BreezyVoice 的 CosyVoice 伺服器
-# （src/tts/cosyvoice_runtime.py）。後端被強制終止時它會成孤兒繼續占用 GPU；
+# （services/tts/nova_tts/cosyvoice_runtime.py）。後端被強制終止時它會成孤兒繼續占用 GPU；
 # 停止本專案殘留的這個服務。
 nova_stop_model_servers() {
     local proc script
     local -a args pids=()
     local -a scripts=(
-        "$PROJECT_ROOT/scripts/cosyvoice_fastapi_server.py"
+        "$PROJECT_ROOT/services/tts/scripts/cosyvoice_fastapi_server.py"
     )
     for proc in /proc/[0-9]*; do
         { mapfile -t -d '' args < "$proc/cmdline"; } 2>/dev/null || continue

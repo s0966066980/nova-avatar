@@ -14,14 +14,14 @@ from unittest.mock import patch
 import aiohttp
 import pytest
 
-from src.avatars.builder import BuildError, build_character
-from src.avatars.catalog import list_archived_avatars, list_avatar_characters
-from src.config.schema import Config
-from src.avatars.adapter import create_avatar_service
-from src.server import import_jobs
-from src.server.routes import settings as settings_routes
-from src.server.state import state
-from tests.access_helpers import access_client, same_origin
+from nova_render.builder import BuildError, build_character
+from nova_render.catalog import list_archived_avatars, list_avatar_characters
+from nova_core.config.schema import Config
+from nova_render.adapter import create_avatar_service
+from nova_core.server import import_jobs
+from nova_core.server.routes import settings as settings_routes
+from nova_core.server.state import state
+from access_helpers import access_client, same_origin
 
 OLD_MARKER = b"old-avatar-frame"
 
@@ -33,8 +33,8 @@ def avatar_service(monkeypatch):
 
 @pytest.fixture
 def data_dir(tmp_path, monkeypatch):
-    monkeypatch.setattr("src.avatars.catalog.get_data_dir", lambda: tmp_path)
-    monkeypatch.setattr("src.avatars.builder.get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr("nova_render.catalog.get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr("nova_render.builder.get_data_dir", lambda: tmp_path)
     return tmp_path
 
 
@@ -67,8 +67,8 @@ def remaining_build_dirs(root: Path) -> list[str]:
 
 def test_overwrite_refused_when_guard_reports_avatar_in_use(data_dir):
     old = make_musetalk_avatar(data_dir, "musetalk_host")
-    with patch("src.avatars.builder.extract_frames", return_value=1), \
-         patch("src.avatars.builder._build_musetalk", side_effect=fake_musetalk_build) as build:
+    with patch("nova_render.builder.extract_frames", return_value=1), \
+         patch("nova_render.builder._build_musetalk", side_effect=fake_musetalk_build) as build:
         with pytest.raises(BuildError, match="使用"):
             build_character(
                 "musetalk", fake_video(data_dir), "musetalk_host", overwrite=True,
@@ -90,8 +90,8 @@ def test_failed_overwrite_keeps_old_avatar_and_removes_only_staging(data_dir):
         seen["old_intact"] = (old / "full_imgs" / "00000000.png").read_bytes() == OLD_MARKER
         raise BuildError("沒有偵測到臉")
 
-    with patch("src.avatars.builder.extract_frames", return_value=1), \
-         patch("src.avatars.builder._build_musetalk", side_effect=failing_build):
+    with patch("nova_render.builder.extract_frames", return_value=1), \
+         patch("nova_render.builder._build_musetalk", side_effect=failing_build):
         with pytest.raises(BuildError):
             build_character("musetalk", fake_video(data_dir), "musetalk_host", overwrite=True)
 
@@ -106,8 +106,8 @@ def test_failed_overwrite_keeps_old_avatar_and_removes_only_staging(data_dir):
 
 def test_successful_overwrite_moves_old_avatar_to_recycle_bin(data_dir):
     make_musetalk_avatar(data_dir, "musetalk_host")
-    with patch("src.avatars.builder.extract_frames", return_value=1), \
-         patch("src.avatars.builder._build_musetalk", side_effect=fake_musetalk_build):
+    with patch("nova_render.builder.extract_frames", return_value=1), \
+         patch("nova_render.builder._build_musetalk", side_effect=fake_musetalk_build):
         build_character("musetalk", fake_video(data_dir), "musetalk_host", overwrite=True)
 
     assert (data_dir / "avatars" / "musetalk_host" / "latents.pt").read_bytes() == b"new-latents"
@@ -125,8 +125,8 @@ def test_new_avatar_appears_only_after_a_successful_build(data_dir):
         seen["visible"] = (data_dir / "avatars" / "musetalk_new").exists()
         fake_musetalk_build(work_dir, avatar_id, source_name, report, options)
 
-    with patch("src.avatars.builder.extract_frames", return_value=1), \
-         patch("src.avatars.builder._build_musetalk", side_effect=build):
+    with patch("nova_render.builder.extract_frames", return_value=1), \
+         patch("nova_render.builder._build_musetalk", side_effect=build):
         build_character("musetalk", fake_video(data_dir), "musetalk_new")
 
     assert seen["visible"] is False
@@ -151,7 +151,7 @@ def test_unexpected_job_error_does_not_leak_absolute_paths(tmp_path, data_dir):
     video.write_bytes(b"clip")
     secret = f"{tmp_path}/models/musetalk/unet.pth"
 
-    with patch("src.avatars.builder.build_character", side_effect=FileNotFoundError(secret)):
+    with patch("nova_render.builder.build_character", side_effect=FileNotFoundError(secret)):
         job = import_jobs.start_import_job(
             engine="musetalk", video_path=video, original_name="clip.mp4", avatar_id="musetalk_x",
         )
@@ -164,10 +164,10 @@ def test_unexpected_job_error_does_not_leak_absolute_paths(tmp_path, data_dir):
 
 
 def test_the_builder_reuses_the_vae_the_core_hands_it_without_loading_models():
-    from src.avatars import builder
+    from nova_render import builder
 
     loaded = object()
-    with patch.dict("sys.modules", {"src.avatars.musetalk.utils.utils": None}):
+    with patch.dict("sys.modules", {"nova_render.musetalk.utils.utils": None}):
         # Loading the models would fail here; the handed-in VAE must be used instead.
         assert builder._musetalk_vae(lambda: loaded) is loaded
 
@@ -194,7 +194,7 @@ def test_an_import_job_hands_the_running_vae_to_the_builder(tmp_path, data_dir, 
     monkeypatch.setattr(state, "model", (vae, "unet", "pe"))
     video = tmp_path / "clip.mp4"
     video.write_bytes(b"clip")
-    with patch("src.avatars.builder.build_character", return_value={}) as build:
+    with patch("nova_render.builder.build_character", return_value={}) as build:
         wait_for(import_jobs.start_import_job(
             engine="musetalk", video_path=video, original_name="clip.mp4", avatar_id="musetalk_vae",
         ))
@@ -204,7 +204,7 @@ def test_an_import_job_hands_the_running_vae_to_the_builder(tmp_path, data_dir, 
 def test_finished_jobs_are_pruned(tmp_path, monkeypatch, data_dir):
     monkeypatch.setattr(import_jobs, "_JOBS", {})
     jobs = []
-    with patch("src.avatars.builder.build_character", return_value={}):
+    with patch("nova_render.builder.build_character", return_value={}):
         for index in range(import_jobs.MAX_FINISHED_JOBS + 5):
             video = tmp_path / f"clip{index}.mp4"
             video.write_bytes(b"clip")
@@ -282,7 +282,7 @@ def test_avatars_referenced_by_a_profile_cannot_be_replaced(import_server, monke
 
 
 def test_unreadable_profiles_refuse_overwrite_before_the_build(import_server, monkeypatch):
-    from src.profiles.store import ProfileError
+    from nova_core.profiles.store import ProfileError
 
     def broken():
         raise ProfileError("角色設定 YAML 無法解析")

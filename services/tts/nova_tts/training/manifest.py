@@ -32,10 +32,10 @@ from functools import cache
 from pathlib import Path
 from types import ModuleType
 
-from src.tts.engines.matcha import normalize_matcha_text
-from src.tts.training.corpus import Line
-from src.tts.training.preparation import prepared_path
-from src.utils.paths import get_project_root
+from nova_tts.engines.matcha import normalize_matcha_text
+from nova_tts.training.corpus import Line
+from nova_tts.training.preparation import prepared_path
+from nova_core.utils.paths import get_project_root
 
 TOOLS_DIR = get_project_root() / "tools" / "tts-distill"
 BASE_VOCAB = 2190  # rows of the base model's embedding table; valid token IDs are below this

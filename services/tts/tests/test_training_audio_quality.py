@@ -11,7 +11,7 @@ import wave
 import numpy as np
 import pytest
 
-from src.tts.training.audio_quality import (
+from nova_tts.training.audio_quality import (
     REASON_CLIPPED,
     REASON_SILENT,
     REASON_TOO_LONG,

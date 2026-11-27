@@ -20,8 +20,8 @@ from typing import Callable
 
 import numpy as np
 
-from src.tts.engines.prefetching import PrefetchingTTS
-from src.tts.pcm_emitter import StreamingSilenceTrimmer, TurnPCMEmitter
+from nova_tts.engines.prefetching import PrefetchingTTS
+from nova_tts.pcm_emitter import StreamingSilenceTrimmer, TurnPCMEmitter
 
 # How long the fake takes to "say" one character when no length is requested.
 SECONDS_PER_CHARACTER = 0.1

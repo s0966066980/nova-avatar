@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import Mock
 
-from src.server.presentation import SessionPresentation
+from nova_core.server.presentation import SessionPresentation
 
 
 class PresentationTests(IsolatedAsyncioTestCase):

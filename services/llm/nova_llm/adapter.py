@@ -6,7 +6,7 @@
 The core reaches the answer model, handoff decisions, AI greetings, the
 weather tool, RAGFlow, public web search and the owned llama-server only
 through this module and ``config_section``; everything else under
-``src.llm``, ``src.ragflow`` and ``src.web_search`` is internal
+``nova_llm``, ``nova_llm.ragflow`` and ``nova_llm.web_search`` is internal
 (import-linter contract ``llm-internals-private``).
 """
 from __future__ import annotations
@@ -77,20 +77,20 @@ from nova_contracts.llm import (
     WebSummary,
     WebSummaryRequest,
 )
-from src.llm import greeting as greetings
-from src.llm import llamacpp
-from src.llm.context_usage import ContextCapacityError, deployed_capacity
-from src.llm.handoff import HandoffContext, RoleCandidate, RoutingClients, RoutingError, route
-from src.llm.prewarm import prewarm_local_llm
-from src.llm.reply_events import review_fragment
-from src.llm.request_context import RequestQuestion
-from src.llm.service import EngineFactory, LlmSessions
-from src.llm.engines import DEFAULT_ENGINE, ENGINES
-from src.llm.tools.weather import CwaWeather, WeatherQuery as CwaQuery, weather_prompt
-from src.ragflow.client import MANAGEMENT_URL, RagFlowClient, RagFlowError, close_shared_session, retrieval_prompt
-from src.utils.logging import logger
-from src.web_search import planner, synthesis
-from src.web_search import service as web
+from nova_llm import greeting as greetings
+from nova_llm import llamacpp
+from nova_llm.context_usage import ContextCapacityError, deployed_capacity
+from nova_llm.handoff import HandoffContext, RoleCandidate, RoutingClients, RoutingError, route
+from nova_llm.prewarm import prewarm_local_llm
+from nova_llm.reply_events import review_fragment
+from nova_llm.request_context import RequestQuestion
+from nova_llm.service import EngineFactory, LlmSessions
+from nova_llm.engines import DEFAULT_ENGINE, ENGINES
+from nova_llm.tools.weather import CwaWeather, WeatherQuery as CwaQuery, weather_prompt
+from nova_llm.ragflow.client import MANAGEMENT_URL, RagFlowClient, RagFlowError, close_shared_session, retrieval_prompt
+from nova_core.utils.logging import logger
+from nova_llm.web_search import planner, synthesis
+from nova_llm.web_search import service as web
 
 
 class InProcessLlmService:

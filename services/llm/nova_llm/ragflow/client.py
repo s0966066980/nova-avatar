@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlsplit
-from src.ragflow.selection import ragflow_id
+from nova_llm.ragflow.selection import ragflow_id
 
 import aiohttp
 

@@ -10,12 +10,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.llm.adapter import InProcessLlmService
-from src.llm.llamacpp import (
+from nova_llm.adapter import InProcessLlmService
+from nova_llm.llamacpp import (
     ALL_GPU_LAYERS,
     build_server_env,
     cuda_library_dirs,
@@ -51,7 +51,7 @@ class CudaLibraryDiscoveryTests(unittest.TestCase):
             (cuda_dir / "libcudart.so.12").write_bytes(b"x")
             binary = bin_dir / "llama-server"
             binary.write_text("#!/bin/sh\n")
-            with patch("src.llm.llamacpp.cuda_library_dirs", return_value=[cuda_dir]):
+            with patch("nova_llm.llamacpp.cuda_library_dirs", return_value=[cuda_dir]):
                 env = build_server_env(binary)
             parts = env["LD_LIBRARY_PATH"].split(":")
             self.assertEqual(parts[0], str(bin_dir))
@@ -63,9 +63,9 @@ class GpuLayerPlanningTests(unittest.TestCase):
         self.assertEqual(suggest_gpu_layers(2 * 1024**3, 12000, 32), ALL_GPU_LAYERS)
 
     def test_external_server_offloading_all_layers_uses_the_same_sentinel(self):
-        from src.llm.llamacpp import _external_gpu_layers
-        with patch("src.llm.llamacpp._pids_listening_on", return_value=[4242]), patch(
-                "src.llm.llamacpp._process_cmdline", return_value="llama-server -ngl all"):
+        from nova_llm.llamacpp import _external_gpu_layers
+        with patch("nova_llm.llamacpp._pids_listening_on", return_value=[4242]), patch(
+                "nova_llm.llamacpp._process_cmdline", return_value="llama-server -ngl all"):
             self.assertEqual(_external_gpu_layers(8080), ALL_GPU_LAYERS)
 
     def test_partial_offload_when_vram_is_tight(self):
@@ -84,8 +84,8 @@ class GpuLayerPlanningTests(unittest.TestCase):
 
 class StopLlamaOnPortTests(unittest.TestCase):
     def test_refuses_to_kill_unrelated_process(self):
-        with patch("src.llm.llamacpp._pids_listening_on", return_value=[4242]):
-            with patch("src.llm.llamacpp._process_cmdline", return_value="python app.py"):
+        with patch("nova_llm.llamacpp._pids_listening_on", return_value=[4242]):
+            with patch("nova_llm.llamacpp._process_cmdline", return_value="python app.py"):
                 with self.assertRaises(RuntimeError) as ctx:
                     stop_llama_on_port(8080)
         self.assertIn("其他程式", str(ctx.exception))
@@ -98,19 +98,19 @@ class StopLlamaOnPortTests(unittest.TestCase):
             if sig == 15:
                 raise ProcessLookupError
 
-        with patch("src.llm.llamacpp._pids_listening_on", return_value=[335955]):
+        with patch("nova_llm.llamacpp._pids_listening_on", return_value=[335955]):
             with patch(
-                "src.llm.llamacpp._process_cmdline",
+                "nova_llm.llamacpp._process_cmdline",
                 return_value="/fixture/llama-server -m fixture-model.gguf",
             ):
-                with patch("src.llm.llamacpp.os.kill", side_effect=fake_kill):
+                with patch("nova_llm.llamacpp.os.kill", side_effect=fake_kill):
                     stop_llama_on_port(8080)
         self.assertEqual(killed[0][0], 335955)
 
 
 class ShutdownOwnedServerTests(unittest.TestCase):
     def test_shutdown_stops_only_owned_process_and_is_idempotent(self):
-        import src.llm.llamacpp as llamacpp
+        import nova_llm.llamacpp as llamacpp
 
         class Process:
             def __init__(self):
@@ -142,7 +142,7 @@ class ShutdownOwnedServerTests(unittest.TestCase):
         self.assertEqual(llamacpp._loaded_model, "")
 
     def test_shutdown_does_not_discover_or_kill_external_server(self):
-        import src.llm.llamacpp as llamacpp
+        import nova_llm.llamacpp as llamacpp
 
         with patch.object(llamacpp, "_server_proc", None), patch.object(
             llamacpp, "stop_llama_on_port"
@@ -172,8 +172,8 @@ class LlamaServerLaunchEnvTests(unittest.TestCase):
 
 class ModelInfoCacheTests(unittest.TestCase):
     def test_loading_another_model_replaces_the_cached_context_size(self):
-        import src.llm.llamacpp as llamacpp
-        from src.llm import context_usage
+        import nova_llm.llamacpp as llamacpp
+        from nova_llm import context_usage
 
         sizes = iter([4096, 8192])
 
@@ -245,7 +245,7 @@ class FullGpuStartupTests(unittest.TestCase):
     """ensure_server must run every layer on the GPU unless partial offload is allowed."""
 
     def setUp(self):
-        import src.llm.llamacpp as llamacpp
+        import nova_llm.llamacpp as llamacpp
 
         self.llamacpp = llamacpp
         self.tmp = tempfile.TemporaryDirectory()
@@ -365,9 +365,9 @@ class StartupOrderTests(unittest.TestCase):
 
     def _run_startup(self, ensure_server):
         from nova_contracts.avatar import AvatarBootCheck
-        from src.config.schema import Config
-        from src.server import app
-        from src.server.state import state
+        from nova_core.config.schema import Config
+        from nova_core.server import app
+        from nova_core.server.state import state
 
         config = Config()
         config.llm.provider = "llamacpp"
@@ -390,7 +390,7 @@ class StartupOrderTests(unittest.TestCase):
             state.llm = InProcessLlmService()
             avatars = Mock(**{"bootable.return_value": AvatarBootCheck(bootable=True),
                               "prepare_model.side_effect": prepare})
-            with patch("src.llm.llamacpp.ensure_server", side_effect=ensure), \
+            with patch("nova_llm.llamacpp.ensure_server", side_effect=ensure), \
                     patch.object(state, "avatar_service", avatars):
                 app._load_startup_models()
             return calls, state.model_ready
@@ -403,12 +403,12 @@ class StartupOrderTests(unittest.TestCase):
         self.assertTrue(model_ready)
 
     def test_gpu_shortfall_keeps_the_console_reachable(self):
-        from src.llm.llamacpp import GpuOffloadError
+        from nova_llm.llamacpp import GpuOffloadError
 
         def refuse(*_args, **_kwargs):
             raise GpuOffloadError("顯存不足")
 
-        with self.assertLogs("src.utils.logging", level="ERROR"):
+        with self.assertLogs("nova_core.utils.logging", level="ERROR"):
             calls, model_ready = self._run_startup(refuse)
         self.assertEqual(calls, [("llm", False), ("avatar", None)])
         self.assertTrue(model_ready)

@@ -36,7 +36,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.run_voice_soak import SoakPeer, synthesize_fixture
-from src.server.reply_streaming.latency_baseline import (
+from nova_core.server.reply_streaming.latency_baseline import (
     FIXTURES,
     LatencyFixture,
     build_latency_report,

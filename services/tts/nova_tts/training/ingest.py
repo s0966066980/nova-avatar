@@ -33,11 +33,11 @@ from pathlib import PurePosixPath
 
 import numpy as np
 
-from src.tts.training.audio_decode import decode_to_16k_mono, quality_message
-from src.tts.training.audio_quality import assess_audio, to_wav_bytes
-from src.tts.training.corpus import AUDIO_EXTENSIONS, Corpus, CorpusError, CorpusStore, Line
-from src.tts.training.transcript_check import DEFAULT_MIN_SIMILARITY, similarity_ratio
-from src.tts.training.usage import (
+from nova_tts.training.audio_decode import decode_to_16k_mono, quality_message
+from nova_tts.training.audio_quality import assess_audio, to_wav_bytes
+from nova_tts.training.corpus import AUDIO_EXTENSIONS, Corpus, CorpusError, CorpusStore, Line
+from nova_tts.training.transcript_check import DEFAULT_MIN_SIMILARITY, similarity_ratio
+from nova_tts.training.usage import (
     SOURCE_DEVELOPMENT_UNLICENSED,
     SOURCE_SELF_RECORDED,
     SOURCE_WRITTEN_AUTHORIZATION,

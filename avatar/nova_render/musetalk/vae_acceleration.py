@@ -13,7 +13,7 @@ from threading import Lock
 import numpy as np
 import torch
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 
 class TensorRTVAEDecoder:

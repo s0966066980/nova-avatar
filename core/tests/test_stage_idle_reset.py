@@ -14,9 +14,9 @@ from unittest.mock import Mock
 import numpy as np
 
 from nova_contracts.llm import SessionRef
-from src.server.voice_session import VoiceTurnSession
-from tests.llm_fakes import FakeLlm, answering
-from tests.session_fakes import fake_stt, FakeAvatar, FakeSegmenter
+from nova_core.server.voice_session import VoiceTurnSession
+from llm_fakes import FakeLlm, answering
+from session_fakes import fake_stt, FakeAvatar, FakeSegmenter
 
 DELAY = 0.08
 REPLY = "還沒開始播放的回覆"

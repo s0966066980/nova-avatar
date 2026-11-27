@@ -16,7 +16,7 @@ from typing import Iterable, Mapping, Optional, Sequence
 
 import numpy as np
 
-from src.vad.audio import voiced_end_sample  # noqa: F401  (harness re-export)
+from nova_core.vad.audio import voiced_end_sample  # noqa: F401  (harness re-export)
 
 from .metrics import AUDIBLE_PEAK, STAGE_NAMES
 from .soak import percentile

@@ -11,13 +11,13 @@ import asyncio
 
 from nova_contracts.llm import ContextCapacityExceeded, Question, ReplyRequest, TurnCommit
 from nova_contracts.stt import TranscriptionOptions
-from src.llm.config_section import reply_rules
-from src.server.reply_streaming.llm_reply import conversation_session, stream_reply
-from src.server.reply_streaming.speech import ReplySpeech
-from src.utils.logging import logger
-from src.server.state import state
-from src.vad import preprocess_pcm
-from src.vad.audio import AudioTooLongError, decode_audio
+from nova_llm.config_section import reply_rules
+from nova_core.server.reply_streaming.llm_reply import conversation_session, stream_reply
+from nova_core.server.reply_streaming.speech import ReplySpeech
+from nova_core.utils.logging import logger
+from nova_core.server.state import state
+from nova_core.vad import preprocess_pcm
+from nova_core.vad.audio import AudioTooLongError, decode_audio
 
 # Uploaded clips are decoded on worker threads, and only up to these lengths.
 MAX_ASR_AUDIO_SECONDS = 60.0

@@ -9,11 +9,11 @@ import subprocess
 
 import pytest
 
-from src.tts.training.gpu_guard import (
+from nova_tts.training.gpu_guard import (
     DeviceChoice,
     choose_transcription_device,
 )
-from src.tts.training.gpu_probe import QUERY, VramReading, read_free_vram
+from nova_tts.training.gpu_probe import QUERY, VramReading, read_free_vram
 
 
 def runner(stdout: str = "", returncode: int = 0, raises: Exception | None = None):
@@ -59,7 +59,7 @@ def test_an_unreadable_gpu_is_unknown_with_a_reason(run, reason):
 
 
 def test_free_vram_check_treats_unknown_as_insufficient():
-    from src.tts.training.gpu_guard import free_vram_check
+    from nova_tts.training.gpu_guard import free_vram_check
 
     assert free_vram_check(VramReading(8192), 8.0).status == "pass"
     assert free_vram_check(VramReading(8191), 8.0).status == "fail"

@@ -27,7 +27,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from src.tts.engines.matcha import (
+from nova_tts.engines.matcha import (
     VoiceModelUnavailable,
     _build_t2s_converter,
     generate_speech,
@@ -35,7 +35,7 @@ from src.tts.engines.matcha import (
     load_voice_model,
     resolve_voice_model,
 )
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 # The text of each code. The console shows the same sentences next to its play buttons.
 PREVIEW_SENTENCES = {

@@ -28,8 +28,8 @@ from nova_contracts.llm import (
     SpeechEnd,
     SpokenDelta,
 )
-from src.llm.adapter import InProcessLlmService
-from src.server.voice_session import VoiceTurnSession
+from nova_llm.adapter import InProcessLlmService
+from nova_core.server.voice_session import VoiceTurnSession
 
 
 class FakeClock:
@@ -134,7 +134,7 @@ async def replay_turn(
         guard_started.set()
         await release_guard.wait()
 
-    with patch("src.server.voice_session.asyncio.sleep", new=controlled_tail_guard):
+    with patch("nova_core.server.voice_session.asyncio.sleep", new=controlled_tail_guard):
         interrupt_task = asyncio.create_task(session.interrupt())
         await guard_started.wait()
         clock.advance(interrupt_stop_seconds)

@@ -9,7 +9,7 @@ teacher; this module only turns an uploaded file into the samples it expects and
 words its verdict for the administrator in Traditional Chinese.
 
 Decoding names its FFmpeg demuxer from the file's magic bytes
-(``src.utils.audio_container``), because letting FFmpeg probe could follow
+(``nova_core.utils.audio_container``), because letting FFmpeg probe could follow
 playlist formats to other files on the host. It is CPU work that can take longer
 than 50 ms: async callers run it in ``asyncio.to_thread`` (CODING_STANDARDS 3).
 """
@@ -20,7 +20,7 @@ import io
 
 import numpy as np
 
-from src.tts.training.audio_quality import (
+from nova_tts.training.audio_quality import (
     MAX_SECONDS,
     MIN_SECONDS,
     REASON_CLIPPED,
@@ -30,8 +30,8 @@ from src.tts.training.audio_quality import (
     REASON_TOO_SHORT,
     SAMPLE_RATE,
 )
-from src.tts.training.corpus import CorpusError
-from src.utils.audio_container import HEADER_BYTES, demuxer_for
+from nova_tts.training.corpus import CorpusError
+from nova_core.utils.audio_container import HEADER_BYTES, demuxer_for
 
 # A recording this much longer than a training line is refused before it is
 # decoded in full, so a 20 MB upload cannot become hours of samples in memory.

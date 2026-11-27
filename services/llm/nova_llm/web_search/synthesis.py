@@ -9,7 +9,7 @@ import re
 import unicodedata
 
 from openai import AsyncOpenAI
-from src.llm.llamacpp_protocol import thinking_request_fields
+from nova_llm.llamacpp_protocol import thinking_request_fields
 
 PROMPT = '''你是公開網頁證據整理器，不是角色扮演。只輸出固定 JSON：focus、mode 與 items。focus 必須先指出問題真正詢問的欄位或重點，不要把成立年份當成總部地點，不要把人物介紹當成日期。
 mode=extractive：問題只問一個事實，而且一段不超過40字的來源原文即可直接完整回答。只選一個 item。
@@ -31,7 +31,7 @@ mode=extractive：問題只問一個事實，而且一段不超過40字的來源
 
 
 def _norm(text):
-    from src.llm.text_normalizer import normalize_output_text
+    from nova_llm.text_normalizer import normalize_output_text
     text = normalize_output_text(unicodedata.normalize('NFKC', text), locale='zh-TW', enabled=True).casefold()
     text = re.sub(r'(?<=[a-z])-(?=[a-z])', '', text)
     return re.sub(r'[\s「」『』“”\"]+', '', text)

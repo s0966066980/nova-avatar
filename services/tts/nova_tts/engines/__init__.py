@@ -6,10 +6,10 @@
 
 對外只需要從這裡 import 對應的引擎類即可，例如：
 
-    from src.tts.engines import EdgeTTS, BreezyVoiceTTS, MatchaTTS
+    from nova_tts.engines import EdgeTTS, BreezyVoiceTTS, MatchaTTS
 """
 
-from src.tts.base import BaseTTS, State
+from nova_tts.base import BaseTTS, State
 from .edge import EdgeTTS
 from .breezyvoice import BreezyVoiceTTS
 from .matcha import MatchaTTS

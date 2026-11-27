@@ -5,12 +5,12 @@
 
 import unittest
 
-from src.config.schema import Config
-from src.llm.base import BaseLLM
+from nova_core.config.schema import Config
+from nova_llm.base import BaseLLM
 from pydantic import TypeAdapter
 
 from nova_contracts.llm import ReviewedFragment, SpeechEnd, SpeechEvent, SpokenDelta
-from src.server.reply_streaming.speech import ReplySpeech
+from nova_core.server.reply_streaming.speech import ReplySpeech
 
 
 class RecordingSink:

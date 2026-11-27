@@ -17,21 +17,21 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from src.config.schema import Config
-from src.server.runtime_settings import (
+from nova_core.config.schema import Config
+from nova_core.server.runtime_settings import (
     SettingsError,
     TTS_ENGINE_META,
     apply_tts_settings,
     speech_snapshot,
 )
-from src.tts import cosyvoice_runtime as runtime
-from src.tts import voice_library
-from src.tts.base import State
-from src.tts.factory import create_tts_engine
+from nova_tts import cosyvoice_runtime as runtime
+from nova_tts import voice_library
+from nova_tts.base import State
+from nova_tts.factory import create_tts_engine
 
-from scripts import breezyvoice_frontend as frontend
-from scripts import breezyvoice_weights
-from tests.tts_fakes import in_process_tts
+import breezyvoice_frontend as frontend
+import breezyvoice_weights
+from tts_fakes import in_process_tts
 
 WORD_UTILS = '''from collections import Counter, defaultdict
 
@@ -337,8 +337,8 @@ def test_breezyvoice_is_a_selectable_local_engine():
 
 def test_apply_requires_a_library_voice_with_transcript(voices, tmp_path):
     voice = add_voice(tmp_path)
-    with patch("src.server.runtime_settings._engine_available", return_value=True), \
-            patch("src.tts.cosyvoice_runtime.ensure_server") as ensure:
+    with patch("nova_core.server.runtime_settings._engine_available", return_value=True), \
+            patch("nova_tts.cosyvoice_runtime.ensure_server") as ensure:
         with pytest.raises(SettingsError, match="音訊庫"):
             apply_tts_settings(Config(), {"type": "breezyvoice"}, session_count=0, tts=in_process_tts())
         with pytest.raises(SettingsError, match="逐字稿"):
@@ -349,10 +349,10 @@ def test_apply_requires_a_library_voice_with_transcript(voices, tmp_path):
 def test_apply_starts_the_owned_server_for_breezyvoice(voices, tmp_path):
     voice = add_voice(tmp_path, transcript="參考逐字稿。")
     config = Config()
-    with patch("src.server.runtime_settings._engine_available", return_value=True), \
-            patch("src.tts.cosyvoice_runtime.ensure_server", return_value="http://127.0.0.1:50000") as ensure, \
-            patch("src.server.runtime_settings._preview_tts", return_value="data:audio/wav;base64,dA==") as preview, \
-            patch("src.server.runtime_settings.persist_runtime_overrides"):
+    with patch("nova_core.server.runtime_settings._engine_available", return_value=True), \
+            patch("nova_tts.cosyvoice_runtime.ensure_server", return_value="http://127.0.0.1:50000") as ensure, \
+            patch("nova_core.server.runtime_settings._preview_tts", return_value="data:audio/wav;base64,dA==") as preview, \
+            patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
         apply_tts_settings(config, {"type": "breezyvoice", "ref_file": voice}, session_count=0, tts=in_process_tts())
     ensure.assert_called_once_with(model_dir="", host="127.0.0.1", port=50000)
     assert preview.call_args.kwargs["ref_file"] == voice
@@ -369,8 +369,8 @@ def test_engine_reports_http_errors_and_empty_audio_after_notifying(voices, tmp_
         tts.state = State.RUNNING
         response = MagicMock(status_code=status, text="bad prompt",
                              iter_content=lambda chunk_size=None, chunks=chunks: iter(chunks))
-        with patch("src.tts.engines.breezyvoice.prepare_prompt_wav", side_effect=lambda path: path), \
-                patch("src.tts.engines.breezyvoice.requests.post", return_value=response) as post:
+        with patch("nova_tts.engines.breezyvoice.prepare_prompt_wav", side_effect=lambda path: path), \
+                patch("nova_tts.engines.breezyvoice.requests.post", return_value=response) as post:
             with pytest.raises(RuntimeError, match=message):
                 tts.txt_to_audio(("你好", {"turn_id": "t1"}))
         assert post.call_args.args[0] == "http://127.0.0.1:50000/inference_zero_shot"

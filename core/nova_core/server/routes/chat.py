@@ -7,8 +7,8 @@ import json
 from aiohttp import web
 
 from nova_contracts.llm import SessionRef
-from src.utils.logging import logger
-from src.server.state import state
+from nova_core.utils.logging import logger
+from nova_core.server.state import state
 
 
 async def human(request):
@@ -55,7 +55,7 @@ async def human(request):
                 raise web.HTTPBadRequest(text=str(exc)) from exc
             if selection:
                 import asyncio
-                from src.server.attachments import vision_ready
+                from nova_core.server.attachments import vision_ready
                 if not await asyncio.to_thread(vision_ready, voice_session.config):
                     raise web.HTTPConflict(text='vision_unavailable')
             request_id = params.get('request_id')

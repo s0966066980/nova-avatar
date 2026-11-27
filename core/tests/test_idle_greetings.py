@@ -13,18 +13,18 @@ from unittest.mock import AsyncMock, Mock, patch
 import numpy as np
 import pytest
 
-from src.config.loader import dict_to_config
-from src.config.schema import Config, GreetingConfig
-from src.greetings.content import (GreetingError, prepare_greeting,
+from nova_core.config.loader import dict_to_config
+from nova_core.config.schema import Config, GreetingConfig
+from nova_core.greetings.content import (GreetingError, prepare_greeting,
                                   validate_content, validate_interval, visible_length)
 from nova_contracts.llm import GreetingReceipt, SessionRef
-from src.llm.adapter import InProcessLlmService
-from src.llm.greeting import greeting_messages
-from src.profiles.store import ProfileStore, profile_config, validate_library
-from src.server.voice_session import VoiceTurnSession
-from tests.llm_fakes import FakeLlm, ask
-from tests.session_fakes import FakeAvatar, FakeSegmenter
-from src.tts import config_section as tts_section
+from nova_llm.adapter import InProcessLlmService
+from nova_llm.greeting import greeting_messages
+from nova_core.profiles.store import ProfileStore, profile_config, validate_library
+from nova_core.server.voice_session import VoiceTurnSession
+from llm_fakes import FakeLlm, ask
+from session_fakes import FakeAvatar, FakeSegmenter
+from nova_tts import config_section as tts_section
 
 
 @pytest.mark.parametrize('text,count', [('你好，世界！', 6), ('a e\u0301 👨‍👩‍👧‍👦 🇹🇼\n', 4), ('\t\n　', 0), ('👍🏽！', 2), ('a\u0085b', 2)])
@@ -340,7 +340,7 @@ def test_latest_receipt_replaces_and_clears_without_history():
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
     def setup_field(self):
-        from src.server.routes import profiles
+        from nova_core.server.routes import profiles
         from tempfile import TemporaryDirectory
         from pathlib import Path
         directory = TemporaryDirectory()
@@ -418,18 +418,18 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
 
 
 def test_stage_enable_validates_content_and_persists_atomically():
-    from src.server.runtime_settings import apply_stage_settings, SettingsError
+    from nova_core.server.runtime_settings import apply_stage_settings, SettingsError
     config = Config()
     with pytest.raises(SettingsError, match='至少一篇'):
         apply_stage_settings(config, {'idle_greeting_enabled': True})
     assert not config.stage.idle_greeting_enabled
     config.greeting.scripts = ['歡迎！']
     before = config.stage
-    with patch('src.server.runtime_settings.persist_runtime_overrides', side_effect=OSError):
+    with patch('nova_core.server.runtime_settings.persist_runtime_overrides', side_effect=OSError):
         with pytest.raises(OSError):
             apply_stage_settings(config, {'idle_greeting_enabled': True, 'idle_greeting_seconds': 15})
     assert config.stage is before
-    with patch('src.server.runtime_settings.persist_runtime_overrides') as persist:
+    with patch('nova_core.server.runtime_settings.persist_runtime_overrides') as persist:
         result = apply_stage_settings(config, {'idle_greeting_enabled': True, 'idle_greeting_seconds': .5})
     assert result['idle_greeting_enabled'] is True
     assert result['idle_greeting_seconds'] == .5
@@ -438,12 +438,12 @@ def test_stage_enable_validates_content_and_persists_atomically():
 
 def test_only_latest_played_greeting_is_injected_into_visitor_followup(monkeypatch):
     from nova_contracts.llm import ReplyDone
-    from src.llm.engines.openai import OpenAILLM
+    from nova_llm.engines.openai import OpenAILLM
     config = Config()
     config.profile_id = 'main'
     avatar = SimpleNamespace(config=config, sessionid=444)
     service = InProcessLlmService()
-    monkeypatch.setattr('src.llm.adapter._ensure_local_server', lambda _config: None)
+    monkeypatch.setattr('nova_llm.adapter._ensure_local_server', lambda _config: None)
     contexts = []
     engine = OpenAILLM(config=config, api_key='test')
 

@@ -23,7 +23,7 @@ Review states: a new line is ``pending``; the administrator moves it to
 ``confirmed`` or ``excluded``. Editing the text of a confirmed line sends it back
 to ``pending`` so a changed transcript is never trained unreviewed. The review
 table (``Corpus.review_table``) shows each line's digit-expanded text and the
-tokens ``src.tts.training.numerals`` could not decide.
+tokens ``nova_tts.training.numerals`` could not decide.
 
 The source declaration is one of ``usage.SOURCE_KINDS``. It is set once, at
 creation or later, and never changed afterwards: the usage label derives from it
@@ -51,11 +51,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.tts.training.numerals import NormalizedText, normalize_digits
-from src.tts.training.usage import SOURCE_KINDS, corpus_usage_label
-from src.tts.voice_models import VOICE_MODEL_ID
-from src.utils.logging import logger
-from src.utils.paths import get_project_root
+from nova_tts.training.numerals import NormalizedText, normalize_digits
+from nova_tts.training.usage import SOURCE_KINDS, corpus_usage_label
+from nova_tts.voice_models import VOICE_MODEL_ID
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_project_root
 
 TRAINING_ROOT = get_project_root() / "data" / "tts" / "training"
 MANIFEST_FILE = "corpus.json"

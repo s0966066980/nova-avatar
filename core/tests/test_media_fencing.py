@@ -9,7 +9,7 @@ import numpy as np
 
 class MuseTalkEnvelopePropagationTests(unittest.TestCase):
     def test_flush_clears_every_musetalk_stage_queue(self):
-        from src.avatars.audio_stream_handler import BaseAudioStreamHandler
+        from nova_render.audio_stream_handler import BaseAudioStreamHandler
 
         config = SimpleNamespace(
             audio=SimpleNamespace(fps=50, l=0, r=0),
@@ -31,7 +31,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
         self.assertEqual(handler.frames, [])
 
     def test_avatar_flush_clears_completed_gpu_results(self):
-        from src.avatars.base import BaseAvatar
+        from nova_render.base import BaseAvatar
 
         class Flushable:
             def __init__(self):
@@ -58,7 +58,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
         self.assertEqual(avatar.audio_stream.flush_count, 1)
 
     def test_avatar_assigns_one_monotonic_media_sequence_across_fragments(self):
-        from src.avatars.base import BaseAvatar
+        from nova_render.base import BaseAvatar
 
         class AudioStream:
             def __init__(self):
@@ -97,7 +97,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
         )
 
     def test_audio_stream_rechecks_generation_after_dequeue(self):
-        from src.avatars.audio_stream_handler import BaseAudioStreamHandler
+        from nova_render.audio_stream_handler import BaseAudioStreamHandler
 
         valid = [True]
         stale_drops = []
@@ -143,7 +143,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
 
 
     def test_feature_batch_preserves_paired_audio_envelopes(self):
-        from src.avatars.musetalk.audio_stream_handler import (
+        from nova_render.musetalk.audio_stream_handler import (
             MuseAudioStreamHandler,
             MuseInferenceBatch,
         )
@@ -188,7 +188,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
         self.assertTrue(handler.output_queue.empty())
 
     def test_first_feature_batch_uses_startup_microbatch(self):
-        from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+        from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
         seen_batch_sizes = []
 
@@ -220,7 +220,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
         self.assertTrue(handler.startup_batch_emitted)
 
     def test_idle_batch_skips_whisper_feature_extraction(self):
-        from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+        from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
         class AudioProcessor:
             @staticmethod
@@ -249,7 +249,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
     def test_full_audio_queue_rechecks_generation_after_interrupt_flush(self):
         from threading import Thread
 
-        from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+        from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
         valid = [True]
 
@@ -300,8 +300,8 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
     def test_cancelled_batch_is_rejected_before_gpu_inference(self):
         import torch
 
-        from src.avatars.musetalk.audio_stream_handler import MuseInferenceBatch
-        from src.avatars.musetalk.avatar import inference
+        from nova_render.musetalk.audio_stream_handler import MuseInferenceBatch
+        from nova_render.musetalk.avatar import inference
 
         quit_event = __import__("threading").Event()
         envelope = {
@@ -353,8 +353,8 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
     def test_batch_cancelled_during_gpu_inference_cannot_publish_results(self):
         import torch
 
-        from src.avatars.musetalk.audio_stream_handler import MuseInferenceBatch
-        from src.avatars.musetalk.avatar import inference
+        from nova_render.musetalk.audio_stream_handler import MuseInferenceBatch
+        from nova_render.musetalk.avatar import inference
 
         quit_event = __import__("threading").Event()
         valid = [True]
@@ -424,7 +424,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
 
 class DirectAudioFanoutTests(unittest.IsolatedAsyncioTestCase):
     async def test_streaming_keeps_validated_coupled_audio_clock_by_default(self):
-        from src.server.voice_session import VoiceTurnSession
+        from nova_core.server.voice_session import VoiceTurnSession
 
         configured = []
 
@@ -449,7 +449,7 @@ class DirectAudioFanoutTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(configured, [])
 
     async def test_decoupled_audio_clock_can_only_be_enabled_explicitly(self):
-        from src.server.voice_session import VoiceTurnSession
+        from nova_core.server.voice_session import VoiceTurnSession
 
         configured = []
 
@@ -475,7 +475,7 @@ class DirectAudioFanoutTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(configured[0][1], asyncio.get_running_loop())
 
     async def test_tts_pcm_is_fanned_out_before_avatar_result(self):
-        from src.avatars.base import BaseAvatar
+        from nova_render.base import BaseAvatar
 
         class AudioStream:
             def __init__(self):
@@ -526,7 +526,7 @@ class DirectAudioFanoutTests(unittest.IsolatedAsyncioTestCase):
 
 class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
     async def test_slow_video_drops_oldest_frame_without_blocking_audio_path(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         drops = []
         player = HumanPlayer(
@@ -551,7 +551,7 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
         player.video.stop()
 
     async def test_video_repeats_last_valid_frame_when_gpu_is_late(self):
-        from src.utils.webrtc import PlayerStreamTrack
+        from nova_core.utils.webrtc import PlayerStreamTrack
 
         class Player:
             @staticmethod
@@ -584,14 +584,14 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
     async def test_video_stall_cannot_rebase_the_audio_master_clock(self):
         from unittest.mock import AsyncMock, patch
 
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         now = [100.0]
         player = HumanPlayer(None)
         with (
-            patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-            patch("src.utils.webrtc.asyncio.sleep", new=AsyncMock()),
-            patch("src.utils.webrtc.mylogger"),
+            patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+            patch("nova_core.utils.webrtc.asyncio.sleep", new=AsyncMock()),
+            patch("nova_core.utils.webrtc.mylogger"),
         ):
             await player.audio.next_timestamp()
             await player.video.next_timestamp()
@@ -604,7 +604,7 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
         player.video.stop()
 
     async def test_interrupt_drain_removes_only_stale_outbound_media(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         generation = [1]
         stale_drops = []
@@ -645,7 +645,7 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
     async def test_renderer_drops_stale_result_and_pairs_video_with_audio_envelope(self):
         from threading import Event
 
-        from src.avatars.base import BaseAvatar
+        from nova_render.base import BaseAvatar
 
         current_generation = [2]
         stale_drops = []
@@ -761,8 +761,8 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
         """The real renderer seam must mask-only blend a speech/idle boundary."""
         from threading import Event
 
-        from src.avatars.base import BaseAvatar
-        from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+        from nova_render.base import BaseAvatar
+        from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
         quit_event = Event()
 
@@ -841,7 +841,7 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(int(second[0, 0].mean()), 0)
 
     async def test_commit_boundary_skips_queued_frame_after_generation_changes(self):
-        from src.utils.webrtc import PlayerStreamTrack
+        from nova_core.utils.webrtc import PlayerStreamTrack
 
         generation = [1]
         stale_drops = []
@@ -905,7 +905,7 @@ class WebRTCMediaFenceTests(unittest.IsolatedAsyncioTestCase):
         track.stop()
 
     async def test_commit_boundary_rechecks_generation_after_pacing(self):
-        from src.utils.webrtc import PlayerStreamTrack
+        from nova_core.utils.webrtc import PlayerStreamTrack
 
         generation = [1]
         callbacks = []

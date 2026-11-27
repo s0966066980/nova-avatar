@@ -22,24 +22,24 @@ from queue import Queue
 from threading import Thread, Event
 import torch.multiprocessing as mp
 
-from src.avatars.musetalk.utils.utils import get_file_type,get_video_fps,datagen
+from nova_render.musetalk.utils.utils import get_file_type,get_video_fps,datagen
 #from musetalk.utils.preprocessing import get_landmark_and_bbox,read_imgs,coord_placeholder
-from src.avatars.musetalk.myutil import get_image_blending
-from src.avatars.mouth_quality import enhance_from_config
-from src.avatars.musetalk.utils.utils import load_all_model
-from src.avatars.musetalk.whisper.audio2feature import Audio2Feature
+from nova_render.musetalk.myutil import get_image_blending
+from nova_render.mouth_quality import enhance_from_config
+from nova_render.musetalk.utils.utils import load_all_model
+from nova_render.musetalk.whisper.audio2feature import Audio2Feature
 
-from src.avatars.musetalk.audio_stream_handler import (
+from nova_render.musetalk.audio_stream_handler import (
     MuseAudioStreamHandler,
     MuseInferenceBatch,
 )
 import asyncio
 from av import AudioFrame, VideoFrame
-from src.avatars.asset_io import coords_present, load_avatar_tensors, load_coords
-from src.avatars.base import BaseAvatar
+from nova_render.asset_io import coords_present, load_avatar_tensors, load_coords
+from nova_render.base import BaseAvatar
 
 from tqdm import tqdm
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 MIN_VIDEO_BUFFER_FRAMES = 5
 MAX_TTS_AUDIO_WAIT_SECONDS = 0.20
@@ -215,7 +215,7 @@ def load_avatar(avatar_id):
             f"MuseTalk 數字人素材不完整: {avatar_path}\n"
             f"缺少: {', '.join(missing)}\n"
             "請先用閉嘴正面影片生成素材:\n"
-            f"  uv run python src/avatars/musetalk/genavatar_musetalk.py "
+            f"  uv run python avatar/nova_render/musetalk/genavatar_musetalk.py "
             f"--avatar_id {avatar_id} --file /path/to/silent_video.mp4"
         )
 
@@ -523,7 +523,7 @@ class MuseTalkAvatar(BaseAvatar):
 
     def bind_profile(self, config, avatar):
         """Swap immutable preloaded material; keep the renderer and media tracks."""
-        from src.avatars.catalog import avatar_uses_green_screen
+        from nova_render.catalog import avatar_uses_green_screen
         self.flush_talk()
         with self._assets_lock:
             self._asset_epoch += 1

@@ -12,7 +12,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from src.tts.base import State
+from nova_tts.base import State
 
 ACTIVITY_THRESHOLD = 1e-4
 ONSET_THRESHOLD = 1e-5

@@ -20,14 +20,14 @@ from nova_contracts.llm import (
     ReviewState,
     ReviewedFragment,
 )
-from src.llm.identity_policy import IdentityPolicy
-from src.llm.text_normalizer import (
+from nova_llm.identity_policy import IdentityPolicy
+from nova_llm.text_normalizer import (
     normalize_assistant_identity,
     normalize_output_text,
     strip_unsolicited_self_introduction,
 )
-from src.llm.web_reply import WebSpeechGuard
-from src.utils.spoken_text import join_spoken_fragments
+from nova_llm.web_reply import WebSpeechGuard
+from nova_core.utils.spoken_text import join_spoken_fragments
 
 
 def visible_text_normalizer(profile, user_message: str) -> Callable[[str], str]:

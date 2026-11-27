@@ -6,16 +6,16 @@
 
 One model client per conversation and role holds that role's committed
 history and its displayed board. The core decides when a turn is committed,
-discarded or forgotten (``src.llm.adapter``).
+discarded or forgotten (``nova_llm.adapter``).
 """
 
 from __future__ import annotations
 
 from typing import Any, Callable
 
-from src.llm.base import BaseLLM, load_system_prompt
-from src.llm.engines import OpenAILLM
-from src.utils.logging import logger
+from nova_llm.base import BaseLLM, load_system_prompt
+from nova_llm.engines import OpenAILLM
+from nova_core.utils.logging import logger
 
 DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_MODEL = "qwen-plus"

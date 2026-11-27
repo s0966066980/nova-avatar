@@ -3,7 +3,7 @@
 
 """CPU faster-whisper worker for the training job's transcript check.
 
-Started by ``asr.SubprocessTranscriber`` as ``python -m src.tts.training.whisper_worker
+Started by ``asr.SubprocessTranscriber`` as ``python -m nova_tts.training.whisper_worker
 --model <size>`` in a child of the application's own interpreter with
 ``CUDA_VISIBLE_DEVICES=`` set, so it never touches the GPU the training needs.
 
@@ -68,7 +68,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
     args = parser.parse_args(argv)
-    root = Path(__file__).resolve().parents[3]
+    root = Path(__file__).resolve().parents[4]
     serve(load_model(args.model, root), sys.stdin, sys.stdout)
     return 0
 

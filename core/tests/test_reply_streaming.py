@@ -16,16 +16,16 @@ from pathlib import Path
 
 import yaml
 
-from src.config.schema import Config
-from src.config.loader import dict_to_config
-from src.server.reply_streaming.metrics import TurnMetrics
-from src.server.reply_streaming.turn import TurnContext, TurnState
-from src.llm.base import BaseLLM
-from src.llm.engines.openai import OpenAILLM
-from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
-from src.server.reply_streaming.soak import build_soak_report
-from tests.clock_fakes import FakeClock
-from tests.speech_fakes import spoken_answer
+from nova_core.config.schema import Config
+from nova_core.config.loader import dict_to_config
+from nova_core.server.reply_streaming.metrics import TurnMetrics
+from nova_core.server.reply_streaming.turn import TurnContext, TurnState
+from nova_llm.base import BaseLLM
+from nova_llm.engines.openai import OpenAILLM
+from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
+from nova_core.server.reply_streaming.soak import build_soak_report
+from clock_fakes import FakeClock
+from speech_fakes import spoken_answer
 
 
 FIRST_SENTENCE = "這是一段足夠長度的第一句話用來觸發分段語音合成開始。"
@@ -116,15 +116,15 @@ class ReplyStreamingConfigTests(unittest.TestCase):
         self.assertTrue(config.reply_streaming.decoupled_audio_clock)
 
     def test_main_yaml_explicitly_keeps_reply_streaming_disabled(self):
-        config_path = Path(__file__).resolve().parents[1] / "config" / "config.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
         config_dict = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
         self.assertIs(config_dict["reply_streaming"]["enabled"], False)
 
     def test_process_scoped_environment_can_enable_soak_without_changing_yaml(self):
-        from src.config.loader import load_config
+        from nova_core.config.loader import load_config
 
-        config_path = Path(__file__).resolve().parents[1] / "config" / "config.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
         with patch.dict(os.environ, {"NOVA_AVATAR_REPLY_STREAMING_ENABLED": "1"}):
             config = load_config(str(config_path))
 
@@ -274,7 +274,7 @@ class TurnMetricsTests(unittest.TestCase):
 
 class BaselineReplayHarnessTests(unittest.TestCase):
     def test_fake_replay_is_reproducible_content_free_and_judges_slos(self):
-        project_root = Path(__file__).resolve().parents[1]
+        project_root = Path(__file__).resolve().parents[2]
         command = [sys.executable, "scripts/replay_voice_baseline.py"]
 
         first = subprocess.check_output(command, cwd=project_root, text=True)

@@ -4,16 +4,16 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.config.schema import Config
-from src.config.loader import dict_to_config
-from src.config.overrides import load_runtime_overrides, persist_runtime_overrides
-from src.llm.base import load_system_prompt
-from src.llm.prompts import AUTO_MODE_PROMPT, compose_system_prompt
-from src.llm.router import ReplyMode
-from src.avatars.adapter import create_avatar_service
-from src.server.runtime_settings import apply_llm_model, current_snapshot
-from tests.llm_fakes import FakeLlm
-from tests.tts_fakes import in_process_tts
+from nova_core.config.schema import Config
+from nova_core.config.loader import dict_to_config
+from nova_core.config.overrides import load_runtime_overrides, persist_runtime_overrides
+from nova_llm.base import load_system_prompt
+from nova_llm.prompts import AUTO_MODE_PROMPT, compose_system_prompt
+from nova_llm.router import ReplyMode
+from nova_render.adapter import create_avatar_service
+from nova_core.server.runtime_settings import apply_llm_model, current_snapshot
+from llm_fakes import FakeLlm
+from tts_fakes import in_process_tts
 
 
 class AssistantProfileTests(unittest.TestCase):
@@ -50,7 +50,7 @@ class AssistantProfileTests(unittest.TestCase):
         )
         llm = FakeLlm()
         llm.engines[1] = session
-        with patch("src.server.runtime_settings.persist_runtime_overrides"):
+        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
             first = apply_llm_model(config, "model", "ollama", assistant_profile=self._profile(), llm=llm)
             self.assertTrue(first["history_reset"])
             self.assertEqual(session.clear_history.call_count, 1)
@@ -64,8 +64,8 @@ class AssistantProfileTests(unittest.TestCase):
         self.assertEqual(load_system_prompt(config), "舊設定")
         config.llm.assistant_profile.system_prompt = "新設定"
         config.llm.assistant_profile.assistant_name = "新助手"
-        with patch("src.avatars.catalog.list_avatar_characters", return_value=[]), patch(
-            "src.avatars.catalog.list_engines", return_value=[]
+        with patch("nova_render.catalog.list_avatar_characters", return_value=[]), patch(
+            "nova_render.catalog.list_engines", return_value=[]
         ):
             snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
         self.assertEqual(snapshot["llm"]["assistant_profile"]["system_prompt"], "新設定")
@@ -78,7 +78,7 @@ class AssistantProfileTests(unittest.TestCase):
             setattr(config.llm.assistant_profile, key, value)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "runtime_overrides.yaml"
-            with patch("src.config.overrides.RUNTIME_OVERRIDES_FILE", path):
+            with patch("nova_core.config.overrides.RUNTIME_OVERRIDES_FILE", path):
                 persist_runtime_overrides(config)
                 saved = load_runtime_overrides()
         restored = dict_to_config({"llm": saved["llm"]})

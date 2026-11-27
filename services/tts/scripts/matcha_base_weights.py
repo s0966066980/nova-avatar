@@ -24,7 +24,7 @@ import urllib.request
 from pathlib import Path
 from typing import Callable
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 
 REPO = "dengcunqin/matcha_tts_zh_en_20251010"
 REVISION = "839c6c33693e1ac54a17a6c4d24ef44d96904674"

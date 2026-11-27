@@ -18,7 +18,7 @@ from threading import Event, Thread
 from typing import TYPE_CHECKING
 
 from nova_contracts.tts import strip_visual_markup
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 if TYPE_CHECKING:
     from nova_contracts.tts import AudioSink

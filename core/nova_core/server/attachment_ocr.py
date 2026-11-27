@@ -12,7 +12,7 @@ import subprocess
 def extract_image_text(image):
     binary = shutil.which('tesseract')
     environment = {**os.environ, 'OMP_THREAD_LIMIT': '1'}
-    local = Path(__file__).resolve().parents[2] / '.local/ocr-packages/root/usr'
+    local = Path(__file__).resolve().parents[3] / '.local/ocr-packages/root/usr'
     if binary is None and (local / 'bin/tesseract').is_file():
         binary = str(local / 'bin/tesseract')
         environment['TESSDATA_PREFIX'] = str(local / 'share/tesseract-ocr/5/tessdata')

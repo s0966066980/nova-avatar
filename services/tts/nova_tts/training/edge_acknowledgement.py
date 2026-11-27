@@ -29,9 +29,9 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from src.tts.training.corpus import CorpusError, CorpusStore
-from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
-from src.utils.logging import logger
+from nova_tts.training.corpus import CorpusError, CorpusStore
+from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
+from nova_core.utils.logging import logger
 
 ACKNOWLEDGEMENT_FILE = "msa-acknowledgement.json"
 ACKNOWLEDGEMENT_VERSION = 1

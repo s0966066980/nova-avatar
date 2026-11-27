@@ -10,9 +10,9 @@ from unittest.mock import patch
 
 from edge_tts import communicate
 
-from src.tts import edge_endpoint
-from tests.edge_fakes import _mp3_fixture
-from tests.edge_fakes import _handshake_error  # noqa: F401
+from nova_tts import edge_endpoint
+from edge_fakes import _mp3_fixture
+from edge_fakes import _handshake_error  # noqa: F401
 
 
 class EdgeEndpointTests(unittest.TestCase):
@@ -50,7 +50,7 @@ class EdgeEndpointTests(unittest.TestCase):
             self.assertEqual(edge_endpoint.current_url(), edge_endpoint.PRIMARY_WSS_URL)
 
     def test_prewarm_rejection_retries_the_other_host_before_first_turn(self):
-        from src.tts.engines.edge import prewarm_edge_tts
+        from nova_tts.engines.edge import prewarm_edge_tts
 
         attempted_urls = []
 
@@ -61,7 +61,7 @@ class EdgeEndpointTests(unittest.TestCase):
                 yield  # pragma: no cover
 
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: Rejected(),
         ):
             self.assertFalse(prewarm_edge_tts("zh-TW-YunJheNeural", timeout_seconds=1))
@@ -78,7 +78,7 @@ class EdgeWorkerHostFailoverTests(unittest.TestCase):
         self.addCleanup(edge_endpoint.reset)
 
     def test_first_attempt_rejection_retries_on_the_other_host_and_speaks(self):
-        from src.tts.engines.edge import EdgeTTS
+        from nova_tts.engines.edge import EdgeTTS
 
         payload = _mp3_fixture()
         hosts_used = []
@@ -112,7 +112,7 @@ class EdgeWorkerHostFailoverTests(unittest.TestCase):
         self.addCleanup(tts.close_worker)
 
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: communicates.pop(0)(),
         ):
             tts.txt_to_audio(("你好。", {}))

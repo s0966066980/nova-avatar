@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock, patch
 
 import numpy as np
 
-from src.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
-from src.tts.base import BaseTTS
+from nova_core.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
+from nova_tts.base import BaseTTS
 
 
 class TTSSpeechTextTests(unittest.TestCase):
@@ -30,7 +30,7 @@ class TTSSpeechTextTests(unittest.TestCase):
 class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_video_scheduler_jitter_does_not_create_periodic_rtp_gaps(self):
-        from src.utils.webrtc import VIDEO_CLOCK_RATE, PlayerStreamTrack
+        from nova_core.utils.webrtc import VIDEO_CLOCK_RATE, PlayerStreamTrack
 
         now = [100.0]
         timestamps = []
@@ -42,9 +42,9 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         track = PlayerStreamTrack(None, kind="video")
         try:
             with (
-                patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-                patch("src.utils.webrtc.asyncio.sleep", new=overshooting_sleep),
-                patch("src.utils.webrtc.mylogger"),
+                patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+                patch("nova_core.utils.webrtc.asyncio.sleep", new=overshooting_sleep),
+                patch("nova_core.utils.webrtc.mylogger"),
             ):
                 for _ in range(160):
                     pts, _ = await track.next_timestamp()
@@ -64,7 +64,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
 
 
     async def test_player_reports_media_debt_and_av_offset_without_frames(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         observations = []
         player = HumanPlayer(
@@ -89,7 +89,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         player.video.stop()
 
     async def test_player_ignores_unpaired_media_for_av_metric(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         observations = []
         player = HumanPlayer(
@@ -113,7 +113,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         player.video.stop()
 
     async def test_speech_start_discards_only_paired_idle_runway(self):
-        from src.utils.webrtc import HumanPlayer, VIDEO_PTIME
+        from nova_core.utils.webrtc import HumanPlayer, VIDEO_PTIME
 
         player = HumanPlayer(None)
         audio = player.audio
@@ -140,7 +140,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         # Since avatar epochs were added, every idle renderer frame carries
         # {"avatar_epoch": n}.  That marker is not reply metadata, so it must
         # not stop the trim (regression: ~0.2 s idle audio before speech).
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         player = HumanPlayer(None)
         audio = player.audio
@@ -158,7 +158,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         video.stop()
 
     async def test_speech_start_keeps_queued_reply_audio(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         player = HumanPlayer(None)
         audio = player.audio
@@ -185,7 +185,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         video.stop()
 
     async def test_audio_and_video_apply_equal_low_latency_backpressure(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         player = HumanPlayer(None)
         audio = player.audio
@@ -213,7 +213,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         video.stop()
 
     async def test_audio_and_video_share_one_stall_rebase(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         now = [100.0]
         sleeper = AsyncMock()
@@ -222,10 +222,10 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         video = player.video
 
         with (
-            patch("src.utils.webrtc.time.time", side_effect=lambda: now[0]),
-            patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-            patch("src.utils.webrtc.asyncio.sleep", new=sleeper),
-            patch("src.utils.webrtc.mylogger") as pacing_logger,
+            patch("nova_core.utils.webrtc.time.time", side_effect=lambda: now[0]),
+            patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+            patch("nova_core.utils.webrtc.asyncio.sleep", new=sleeper),
+            patch("nova_core.utils.webrtc.mylogger") as pacing_logger,
         ):
             await audio.next_timestamp()
             await video.next_timestamp()
@@ -240,7 +240,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         video.stop()
 
     async def test_audio_rebases_and_video_skips_after_stall_without_bursting(self):
-        from src.utils.webrtc import (
+        from nova_core.utils.webrtc import (
             AUDIO_PTIME,
             SAMPLE_RATE,
             VIDEO_CLOCK_RATE,
@@ -259,10 +259,10 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
                 track = PlayerStreamTrack(None, kind=kind)
 
                 with (
-                    patch("src.utils.webrtc.time.time", side_effect=lambda: now[0]),
-                    patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-                    patch("src.utils.webrtc.asyncio.sleep", new=sleeper),
-                    patch("src.utils.webrtc.mylogger") as pacing_logger,
+                    patch("nova_core.utils.webrtc.time.time", side_effect=lambda: now[0]),
+                    patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+                    patch("nova_core.utils.webrtc.asyncio.sleep", new=sleeper),
+                    patch("nova_core.utils.webrtc.mylogger") as pacing_logger,
                 ):
                     first_pts, _ = await track.next_timestamp()
                     now[0] += 1.0
@@ -284,7 +284,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
                 track.stop()
 
     async def test_video_does_not_release_catch_up_frames_after_short_stall(self):
-        from src.utils.webrtc import VIDEO_PTIME, PlayerStreamTrack
+        from nova_core.utils.webrtc import VIDEO_PTIME, PlayerStreamTrack
 
         now = [100.0]
         deliveries = []
@@ -294,9 +294,9 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
 
         track = PlayerStreamTrack(None, kind="video")
         with (
-            patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-            patch("src.utils.webrtc.asyncio.sleep", new=fake_sleep),
-            patch("src.utils.webrtc.mylogger"),
+            patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+            patch("nova_core.utils.webrtc.asyncio.sleep", new=fake_sleep),
+            patch("nova_core.utils.webrtc.mylogger"),
         ):
             await track.next_timestamp()
             deliveries.append(now[0])
@@ -315,7 +315,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         track.stop()
 
     async def test_audio_does_not_catch_up_after_sub_threshold_stall(self):
-        from src.utils.webrtc import AUDIO_PTIME, SAMPLE_RATE, PlayerStreamTrack
+        from nova_core.utils.webrtc import AUDIO_PTIME, SAMPLE_RATE, PlayerStreamTrack
 
         now = [100.0]
         deliveries = []
@@ -325,9 +325,9 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
 
         track = PlayerStreamTrack(None, kind="audio")
         with (
-            patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-            patch("src.utils.webrtc.asyncio.sleep", new=fake_sleep),
-            patch("src.utils.webrtc.mylogger"),
+            patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+            patch("nova_core.utils.webrtc.asyncio.sleep", new=fake_sleep),
+            patch("nova_core.utils.webrtc.mylogger"),
         ):
             pts_list = []
             first_pts, _ = await track.next_timestamp()
@@ -359,7 +359,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
         track.stop()
 
     async def test_audio_recovers_20ms_pacing_after_short_stalls(self):
-        from src.utils.webrtc import AUDIO_PTIME, SAMPLE_RATE, PlayerStreamTrack
+        from nova_core.utils.webrtc import AUDIO_PTIME, SAMPLE_RATE, PlayerStreamTrack
 
         for stall in (0.030, 0.050, 0.090, 0.100, 1.0):
             with self.subTest(stall=stall):
@@ -370,9 +370,9 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
 
                 track = PlayerStreamTrack(None, kind="audio")
                 with (
-                    patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-                    patch("src.utils.webrtc.asyncio.sleep", new=fake_sleep),
-                    patch("src.utils.webrtc.mylogger"),
+                    patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+                    patch("nova_core.utils.webrtc.asyncio.sleep", new=fake_sleep),
+                    patch("nova_core.utils.webrtc.mylogger"),
                 ):
                     pts_list = []
                     deliveries = []
@@ -402,7 +402,7 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
                 track.stop()
 
     async def test_audio_pacing_callback_is_content_free(self):
-        from src.utils.webrtc import HumanPlayer
+        from nova_core.utils.webrtc import HumanPlayer
 
         observations = []
         now = [100.0]
@@ -415,9 +415,9 @@ class WebRTCPacingTests(unittest.IsolatedAsyncioTestCase):
             on_audio_pacing=lambda **values: observations.append(values),
         )
         with (
-            patch("src.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
-            patch("src.utils.webrtc.asyncio.sleep", new=fake_sleep),
-            patch("src.utils.webrtc.mylogger"),
+            patch("nova_core.utils.webrtc.time.monotonic", side_effect=lambda: now[0]),
+            patch("nova_core.utils.webrtc.asyncio.sleep", new=fake_sleep),
+            patch("nova_core.utils.webrtc.mylogger"),
         ):
             await player.audio.next_timestamp()
             now[0] += 0.090
@@ -451,7 +451,7 @@ class TextStreamTimingTests(unittest.TestCase):
 
 class MuseTalkAudioWindowTests(unittest.TestCase):
     def test_feature_window_is_centered_on_the_video_frame(self):
-        from src.avatars.musetalk.whisper.audio2feature import Audio2Feature
+        from nova_render.musetalk.whisper.audio2feature import Audio2Feature
 
         processor = Audio2Feature.__new__(Audio2Feature)
         features = np.zeros((64, 5, 384), dtype=np.float32)
@@ -468,7 +468,7 @@ class MuseTalkAudioWindowTests(unittest.TestCase):
 
 class MuseTalkBufferPolicyTests(unittest.TestCase):
     def test_empty_batch_uses_one_blocking_poll(self):
-        from src.avatars.audio_stream_handler import BaseAudioStreamHandler
+        from nova_render.audio_stream_handler import BaseAudioStreamHandler
 
         config = SimpleNamespace(
             audio=SimpleNamespace(fps=50, l=2, r=2),
@@ -483,7 +483,7 @@ class MuseTalkBufferPolicyTests(unittest.TestCase):
         self.assertLess(elapsed, 0.08)
 
     def test_waits_for_pending_tts_while_playback_has_headroom(self):
-        from src.avatars.musetalk.avatar import should_wait_for_tts_audio
+        from nova_render.musetalk.avatar import should_wait_for_tts_audio
 
         self.assertTrue(
             should_wait_for_tts_audio(
@@ -495,7 +495,7 @@ class MuseTalkBufferPolicyTests(unittest.TestCase):
         )
 
     def test_partial_tts_batch_waits_instead_of_inserting_mid_speech_silence(self):
-        from src.avatars.musetalk.avatar import should_wait_for_tts_audio
+        from nova_render.musetalk.avatar import should_wait_for_tts_audio
 
         # Once real speech has entered the queue, consuming a short batch makes
         # run_step() fill the remainder with timeout-generated silence.  Keep
@@ -505,7 +505,7 @@ class MuseTalkBufferPolicyTests(unittest.TestCase):
         )
 
     def test_pending_tts_wait_is_bounded_to_keep_idle_video_advancing(self):
-        from src.avatars.musetalk.avatar import (
+        from nova_render.musetalk.avatar import (
             MAX_TTS_AUDIO_WAIT_SECONDS,
             should_wait_for_tts_audio,
         )
@@ -530,7 +530,7 @@ class MuseTalkBufferPolicyTests(unittest.TestCase):
         )
 
     def test_does_not_starve_idle_playback_or_delay_ready_audio(self):
-        from src.avatars.musetalk.avatar import should_wait_for_tts_audio
+        from nova_render.musetalk.avatar import should_wait_for_tts_audio
 
         self.assertFalse(
             should_wait_for_tts_audio(True, 0, 32, queued_video_frames=4)
@@ -569,7 +569,7 @@ class MuseTalkBufferPolicyTests(unittest.TestCase):
 
 class MuseTalkShutdownTests(unittest.TestCase):
     def test_full_result_queue_releases_inference_when_stopping(self):
-        from src.avatars.musetalk.avatar import put_result_frame
+        from nova_render.musetalk.avatar import put_result_frame
 
         result_queue = queue.Queue(maxsize=1)
         result_queue.put(object())
@@ -600,7 +600,7 @@ class MuseTalkResultQueuePolicyTests(unittest.TestCase):
         return (None, index, idle_audio)
 
     def test_full_idle_queue_does_not_block_the_inference_thread(self):
-        from src.avatars.musetalk.avatar import put_result_frame
+        from nova_render.musetalk.avatar import put_result_frame
 
         result_queue = queue.Queue(maxsize=1)
         result_queue.put(self._idle_result(0))
@@ -623,7 +623,7 @@ class MuseTalkResultQueuePolicyTests(unittest.TestCase):
         self.assertEqual(result_queue.qsize(), 1)
 
     def test_first_speech_result_does_not_wait_behind_idle_backlog(self):
-        from src.avatars.musetalk.avatar import put_result_frame
+        from nova_render.musetalk.avatar import put_result_frame
 
         result_queue = queue.Queue(maxsize=16)
         for index in range(12):
@@ -658,7 +658,7 @@ class MuseTalkIdleContinuityTests(unittest.TestCase):
         """Idle rendering outruns the 25 fps consumer. The surplus silent pairs
         may be dropped, but the frames that do play must stay consecutive;
         skipping indices made idle motion visibly stutter."""
-        from src.avatars.musetalk.avatar import inference
+        from nova_render.musetalk.avatar import inference
 
         batch_size = 4
         quit_event = Event()
@@ -700,7 +700,7 @@ class MuseTalkSpeechOnsetTests(unittest.TestCase):
     def test_mixed_batch_keeps_leading_silent_pair_idle(self):
         import torch
 
-        from src.avatars.musetalk.avatar import inference
+        from nova_render.musetalk.avatar import inference
 
         quit_event = Event()
         audio_feat_queue = queue.Queue()

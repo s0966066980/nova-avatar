@@ -9,10 +9,10 @@ import json
 
 import pytest
 
-from src.tts.training.corpus import REVIEW_CONFIRMED, CorpusStore
-from src.tts.training.manifest import BASE_VOCAB, SKIP_NO_AUDIO, SKIP_NO_TOKENS, SKIP_UNKNOWN_TOKEN, build_manifest
-from src.tts.training.preparation import prepared_path
-from src.tts.training.usage import SOURCE_SELF_RECORDED
+from nova_tts.training.corpus import REVIEW_CONFIRMED, CorpusStore
+from nova_tts.training.manifest import BASE_VOCAB, SKIP_NO_AUDIO, SKIP_NO_TOKENS, SKIP_UNKNOWN_TOKEN, build_manifest
+from nova_tts.training.preparation import prepared_path
+from nova_tts.training.usage import SOURCE_SELF_RECORDED
 
 TOKENS = {" ": 1, ",": 4, ".": 5, "wo3": 11, "you3": 12, "san1": 13, "ge4": 14, "ping2": 15, "guo3": 16,
           "er4": 17, "ling2": 18, "liu4": 19, "nian2": 20, "dian4": 21, "hua4": 22, "<|unused|>": 2190}

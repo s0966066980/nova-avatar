@@ -8,7 +8,7 @@
 
 set -euo pipefail  # Exit on error
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # Always patch the project's own environment, never an unrelated active
 # VIRTUAL_ENV or the system Python.
 VENV_PATH="$PROJECT_ROOT/.venv"

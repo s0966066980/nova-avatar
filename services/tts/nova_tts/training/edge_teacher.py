@@ -54,13 +54,13 @@ import av
 import numpy as np
 from edge_tts.exceptions import EdgeTTSException
 
-from src.tts.edge_connection import EdgeConnectionPool
-from src.tts.training.audio_quality import SAMPLE_RATE, assess_audio, to_wav_bytes
-from src.tts.training.corpus import REVIEW_CONFIRMED, CorpusError, CorpusStore
-from src.tts.training.edge_acknowledgement import require_acknowledgement
-from src.tts.training.numerals import normalize_digits
-from src.tts.training.sentences import refusal_for_unresolved, review_text_list
-from src.utils.logging import logger
+from nova_tts.edge_connection import EdgeConnectionPool
+from nova_tts.training.audio_quality import SAMPLE_RATE, assess_audio, to_wav_bytes
+from nova_tts.training.corpus import REVIEW_CONFIRMED, CorpusError, CorpusStore
+from nova_tts.training.edge_acknowledgement import require_acknowledgement
+from nova_tts.training.numerals import normalize_digits
+from nova_tts.training.sentences import refusal_for_unresolved, review_text_list
+from nova_core.utils.logging import logger
 
 # The Edge zh-TW voices; English lines are read by the same voice. Kept equal to
 # ``runtime_settings.EDGE_TTS_ZH_TW_VOICES`` by a test.

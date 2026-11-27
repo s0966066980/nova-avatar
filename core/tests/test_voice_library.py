@@ -22,14 +22,14 @@ import pytest
 import soundfile as sf
 import yaml
 
-from src.config.schema import Config
-from src.server.state import state
-from src.tts import voice_library
-from src.tts.voice_library import VoiceLibraryError
-from tests.access_helpers import access_client, same_origin
-from tests.tts_fakes import in_process_tts
+from nova_core.config.schema import Config
+from nova_core.server.state import state
+from nova_tts import voice_library
+from nova_tts.voice_library import VoiceLibraryError
+from access_helpers import access_client, same_origin
+from tts_fakes import in_process_tts
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 UNSAFE_REFERENCES = [
     "/etc/passwd",
     "config/ragflow.env",
@@ -146,7 +146,7 @@ def test_dev_voice_import_script_is_repeatable(tmp_path):
     source = tmp_path / "prompt.wav"
     source.write_bytes(wav_bytes(seconds=1.5))
     root = tmp_path / "voices"
-    command = [sys.executable, str(PROJECT_ROOT / "scripts" / "import-dev-voice.py"),
+    command = [sys.executable, str(PROJECT_ROOT / "services/tts/scripts/import-dev-voice.py"),
                str(source), "--voices-dir", str(root)]
     for _ in range(2):
         result = subprocess.run(command, capture_output=True, text=True, timeout=60, cwd=tmp_path)
@@ -193,7 +193,7 @@ def test_loopback_tts_servers_are_accepted(server, normalized):
 
 
 def test_tts_models_come_from_the_models_folder(tmp_path, monkeypatch):
-    from src.tts import cosyvoice_runtime as runtime
+    from nova_tts import cosyvoice_runtime as runtime
 
     models = tmp_path / "models"
     for folder in ("BreezyVoice", "tts/BreezyVoice-tw"):
@@ -221,7 +221,7 @@ def run(coro):
 
 def test_global_tts_route_is_gone(server_config):
     """The default voice is the main role profile's; there is no global TTS form."""
-    from src.server.access import ROUTE_ACCESS
+    from nova_core.server.access import ROUTE_ACCESS
 
     async def scenario():
         async with access_client() as client:
@@ -309,7 +309,7 @@ def test_voice_upload_keeps_its_transcript(voices, server_config):
 
 
 def test_oversized_voice_upload_is_rejected_and_cleaned(voices, server_config, monkeypatch):
-    monkeypatch.setattr("src.server.routes.settings.MAX_VOICE_UPLOAD_BYTES", 1024)
+    monkeypatch.setattr("nova_core.server.routes.settings.MAX_VOICE_UPLOAD_BYTES", 1024)
 
     async def scenario():
         async with access_client() as client:
@@ -348,7 +348,7 @@ def test_saved_paths_migrate_into_the_library_or_are_cleared(voices, tmp_path, m
 
 
 def test_load_config_migrates_runtime_override_paths(voices, tmp_path, monkeypatch):
-    from src.config import loader, overrides
+    from nova_core.config import loader, overrides
 
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.safe_dump({"tts": {"type": "breezyvoice", "ref_file": "/etc/passwd",
@@ -360,9 +360,9 @@ def test_load_config_migrates_runtime_override_paths(voices, tmp_path, monkeypat
 
 
 def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, stored_voice, tmp_path, monkeypatch):
-    from src.profiles.store import ProfileError, ProfileStore
+    from nova_core.profiles.store import ProfileError, ProfileStore
 
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     config = Config()
     config.model.avatar_id = "musetalk_angela"
     store = ProfileStore(tmp_path / "profiles.yaml")
@@ -391,9 +391,9 @@ def test_profiles_reject_unsafe_voice_settings_and_migrate_saved_ones(voices, st
 
 
 def test_breezyvoice_profiles_need_a_transcribed_reference_before_saving(voices, stored_voice, tmp_path, monkeypatch):
-    from src.profiles.store import ProfileError, ProfileStore
+    from nova_core.profiles.store import ProfileError, ProfileStore
 
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     config = Config()
     config.model.avatar_id = "musetalk_angela"
     store = ProfileStore(tmp_path / "profiles.yaml")
@@ -414,9 +414,9 @@ def test_breezyvoice_profiles_need_a_transcribed_reference_before_saving(voices,
 
 def test_library_transcript_is_the_only_reference_transcript(voices, stored_voice, tmp_path, monkeypatch, caplog):
     """The console no longer edits a profile transcript; a saved one is stale and dropped."""
-    from src.profiles.store import ProfileError, ProfileStore
+    from nova_core.profiles.store import ProfileError, ProfileStore
 
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     config = Config()
     config.model.avatar_id = "musetalk_angela"
     store = ProfileStore(tmp_path / "profiles.yaml")
@@ -451,14 +451,14 @@ def test_library_transcript_is_the_only_reference_transcript(voices, stored_voic
 
 
 def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_path, monkeypatch):
-    from src.profiles import store as profile_store
-    from src.profiles.store import ProfileStore
+    from nova_core.profiles import store as profile_store
+    from nova_core.profiles.store import ProfileStore
 
     allowed = tmp_path / "data" / "tts"
     allowed.mkdir(parents=True)
     (allowed / "host.wav").write_bytes(wav_bytes())
     monkeypatch.setattr(voice_library, "MIGRATION_ROOTS", (tmp_path / "data",))
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     config = Config()
     config.model.avatar_id = "musetalk_angela"
     store = ProfileStore(tmp_path / "profiles.yaml")
@@ -489,15 +489,15 @@ def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_p
 
 
 def test_breezyvoice_prompt_comes_from_the_library(voices, stored_voice):
-    from src.tts.engines.breezyvoice import BreezyVoiceTTS
+    from nova_tts.engines.breezyvoice import BreezyVoiceTTS
 
     engine = BreezyVoiceTTS.__new__(BreezyVoiceTTS)
     engine.config = SimpleNamespace(tts=SimpleNamespace(type="breezyvoice", ref_file=stored_voice))
-    with patch("src.tts.engines.breezyvoice.prepare_prompt_wav", side_effect=lambda path: path) as prepare:
+    with patch("nova_tts.engines.breezyvoice.prepare_prompt_wav", side_effect=lambda path: path) as prepare:
         assert engine._prompt_wav() == str(voices / f"{stored_voice}.wav")
     prepare.assert_called_once()
     engine.config = SimpleNamespace(tts=SimpleNamespace(type="breezyvoice", ref_file="/etc/passwd"))
-    with patch("src.tts.engines.breezyvoice.prepare_prompt_wav") as prepare:
+    with patch("nova_tts.engines.breezyvoice.prepare_prompt_wav") as prepare:
         with pytest.raises(VoiceLibraryError):
             engine._prompt_wav()
     prepare.assert_not_called()

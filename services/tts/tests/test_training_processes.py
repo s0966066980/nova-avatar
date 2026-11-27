@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from src.tts.training import processes
-from src.tts.training.processes import PopenProcess, run_process
-from tests.training_fakes import FakeProcess
+from nova_tts.training import processes
+from nova_tts.training.processes import PopenProcess, run_process
+from training_fakes import FakeProcess
 
 CLOCK = time.monotonic
 

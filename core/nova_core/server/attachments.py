@@ -254,7 +254,7 @@ class AttachmentStore:
             if item.kind == 'image':
                 with Image.open(item.path) as source:
                     image = ImageOps.exif_transpose(source).convert('RGB')
-                from src.server.attachment_ocr import extract_image_text
+                from nova_core.server.attachment_ocr import extract_image_text
                 yield f'{item.name}', extract_image_text(image), image
             else:
                 for number in pages:
@@ -275,7 +275,7 @@ class AttachmentStore:
                         finally:
                             page.close()
                     if not text.strip():
-                        from src.server.attachment_ocr import extract_image_text
+                        from nova_core.server.attachment_ocr import extract_image_text
                         text = extract_image_text(image)
                     yield f'{item.name} — page {number}', text, image
 

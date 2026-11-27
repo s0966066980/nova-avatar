@@ -23,6 +23,13 @@ except ModuleNotFoundError:  # Python 3.10
 
 ROOT = Path(__file__).resolve().parents[1]
 ENTRY_MODULES = ("adapter", "config_section")
+# The folder each layer package lives in (it holds ``<package>/``).
+SOURCE_ROOTS = {
+    "nova_stt": ROOT / "services/stt",
+    "nova_llm": ROOT / "services/llm",
+    "nova_tts": ROOT / "services/tts",
+    "nova_render": ROOT / "avatar",
+}
 
 
 def _private_contracts() -> list[dict]:
@@ -31,11 +38,16 @@ def _private_contracts() -> list[dict]:
             if contract["id"].endswith("-internals-private")]
 
 
+def _package_dir(package: str) -> Path:
+    return SOURCE_ROOTS[package.split(".")[0]].joinpath(*package.split("."))
+
+
 def _modules(package: str) -> set[str]:
-    directory = ROOT.joinpath(*package.split("."))
+    directory = _package_dir(package)
+    assert directory.is_dir(), f"{package} is not under {SOURCE_ROOTS[package.split('.')[0]]}"
     names = set()
     for path in directory.rglob("*.py"):
-        parts = path.relative_to(ROOT).with_suffix("").parts
+        parts = path.relative_to(SOURCE_ROOTS[package.split(".")[0]]).with_suffix("").parts
         names.add(".".join(parts[:-1] if parts[-1] == "__init__" else parts))
     return names
 
@@ -51,8 +63,7 @@ def test_the_stt_layer_is_converted():
 def test_the_llm_layer_is_converted():
     contracts = {contract["id"]: contract for contract in _private_contracts()}
 
-    assert contracts["llm-internals-private"]["allowed_importers"] == [
-        "src.llm", "src.ragflow", "src.web_search"]
+    assert contracts["llm-internals-private"]["allowed_importers"] == ["nova_llm"]
 
 
 def test_the_tts_layer_is_converted():
@@ -82,7 +93,7 @@ def test_every_module_of_a_converted_layer_is_private_or_an_entry_point(contract
 @pytest.mark.parametrize("contract", _private_contracts(), ids=lambda contract: contract["id"])
 def test_a_converted_layer_package_reexports_nothing(contract):
     for package in contract["allowed_importers"]:
-        init = ROOT.joinpath(*package.split("."), "__init__.py")
+        init = _package_dir(package) / "__init__.py"
         tree = ast.parse(init.read_text("utf-8"))
         assert not [node for node in ast.walk(tree) if isinstance(node, (ast.Import, ast.ImportFrom))], (
             f"{package}/__init__.py imports; the core must use {package}.adapter")

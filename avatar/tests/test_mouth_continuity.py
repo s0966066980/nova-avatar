@@ -5,7 +5,7 @@ import numpy as np
 
 class MouthContinuityControllerTests(unittest.TestCase):
     def make_controller(self, *, gap_grace_frames=1, opening_frames=2, closing_frames=4):
-        from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+        from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
         source = np.zeros((8, 8, 3), dtype=np.uint8)
         mask = np.zeros((8, 8), dtype=np.uint8)
@@ -95,7 +95,7 @@ class MouthContinuityControllerTests(unittest.TestCase):
         self.assertEqual(int(idle[2:6, 2:6].mean()), 0)
 
     def test_crop_mask_from_opencv_bgr_image_is_projected_to_full_frame(self):
-        from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+        from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
         source = np.zeros((10, 12, 3), dtype=np.uint8)
         crop_mask = np.zeros((4, 6, 3), dtype=np.uint8)
@@ -116,7 +116,7 @@ class MouthContinuityControllerTests(unittest.TestCase):
         self.assertEqual(int(composed[0, 0].mean()), 180)
 
     def test_optional_neutral_frame_is_used_only_inside_mouth_roi(self):
-        from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+        from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
         source = np.zeros((8, 8, 3), dtype=np.uint8)
         mask = np.zeros((8, 8), dtype=np.uint8)
@@ -134,7 +134,7 @@ class MouthContinuityControllerTests(unittest.TestCase):
         self.assertEqual(int(closing[0, 0].mean()), 0)
 
     def test_idle_return_aligns_the_previous_mouth_to_a_moving_mask(self):
-        from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+        from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
         source = np.zeros((12, 12, 3), dtype=np.uint8)
         left_mask = np.zeros((12, 12), dtype=np.uint8)
@@ -167,7 +167,7 @@ class MouthContinuityControllerTests(unittest.TestCase):
         self.assertEqual(int(closing[4:8, 7:10].mean()), 0)
 
     def test_idle_return_alignment_canary_keeps_the_legacy_blend_disabled(self):
-        from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+        from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
         source = np.zeros((12, 12, 3), dtype=np.uint8)
         left_mask = np.zeros((12, 12), dtype=np.uint8)
@@ -190,7 +190,7 @@ class MouthContinuityControllerTests(unittest.TestCase):
         self.assertEqual(int(closing[4:8, 3:7].mean()), 75)
 
     def test_settling_keeps_idle_motion_while_the_mouth_closes_over_twelve_frames(self):
-        from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+        from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
         sources = [np.full((8, 8, 3), value, dtype=np.uint8) for value in (0, 20, 40)]
         mask = np.zeros((8, 8), dtype=np.uint8)

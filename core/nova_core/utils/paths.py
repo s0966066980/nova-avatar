@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 # 專案根目錄
-PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
+PROJECT_ROOT = Path(__file__).absolute().parents[3]
 
 # 各資源目錄
 MODELS_DIR = PROJECT_ROOT / "models"

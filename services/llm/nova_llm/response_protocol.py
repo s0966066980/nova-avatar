@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Generator, Optional
 
-from src.llm.router import ReplyMode
+from nova_llm.router import ReplyMode
 
 logger = logging.getLogger(__name__)
 
@@ -353,7 +353,7 @@ class ResponseProtocolParser:
         return self._append_visible_speech(text, is_board_mode=is_board_mode)
 
     def _flush_board_summary(self, text: Optional[str] = None) -> list[str]:
-        from src.llm.reply_contract import guard_board_summary
+        from nova_llm.reply_contract import guard_board_summary
         if text is None:
             text, self._board_speech_pending = self._board_speech_pending, ""
         candidate = text.strip()

@@ -102,7 +102,7 @@ async def read_page(client, url, domains):
 
 
 def search_engine(query, engine, timeout):
-    from src.web_search.ddgs_adapter import search as ddgs_search
+    from nova_llm.web_search.ddgs_adapter import search as ddgs_search
     return ddgs_search(query, engine, timeout)
 
 

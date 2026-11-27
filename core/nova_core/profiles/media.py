@@ -17,8 +17,8 @@ from uuid import uuid4
 import cv2
 
 from nova_contracts.avatar import STAGE_FPS, STAGE_FRAME
-from src.profiles.store import ProfileError
-from src.utils.paths import get_data_dir
+from nova_core.profiles.store import ProfileError
+from nova_core.utils.paths import get_data_dir
 
 # Imported transition clips are fitted to the stage canvas the renderer composes.
 WIDTH, HEIGHT, FPS = STAGE_FRAME.width, STAGE_FRAME.height, STAGE_FPS

@@ -17,8 +17,8 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-from src.utils.logging import logger
-from src.utils.paths import get_project_root
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_project_root
 
 _server_proc: Optional[subprocess.Popen] = None
 _loaded_model: str = ""
@@ -444,7 +444,7 @@ def _refreshes_model_info(start: Callable[..., str]) -> Callable[..., str]:
     @functools.wraps(start)
     def ensure(*args, **kwargs) -> str:
         base_url = start(*args, **kwargs)
-        from src.llm.context_usage import deployed_capacity
+        from nova_llm.context_usage import deployed_capacity
         deployed_capacity(base_url, refresh=True)
         return base_url
     return ensure

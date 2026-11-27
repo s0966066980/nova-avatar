@@ -15,16 +15,19 @@ import time
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
+# ``-I`` ignores PYTHONPATH, so the child gets the package roots explicitly.
+PACKAGE_ROOTS = ":".join(str(ROOT / folder) for folder in (
+    "contracts", "core", "avatar", "services/stt", "services/llm", "services/tts"))
 
 # Each mode mimics a session thread that only ends when shutdown releases it.
 SERVER_SCRIPT = textwrap.dedent(
     """
     import asyncio, sys, threading
     from types import SimpleNamespace
-    sys.path.insert(0, sys.argv[5])
+    sys.path[:0] = sys.argv[5].split(":")
     from aiohttp import web
-    import src.server.server as server
+    import nova_core.server.server as server
 
     mode, port, marker, deadline = sys.argv[1], int(sys.argv[2]), sys.argv[3], float(sys.argv[4])
     server.SHUTDOWN_DEADLINE_SECONDS = deadline
@@ -85,7 +88,7 @@ class ServerShutdownTests(unittest.TestCase):
         marker = workdir / "marker.txt"
         port = _free_port()
         process = subprocess.Popen(
-            [sys.executable, "-I", str(script), mode, str(port), str(marker), str(deadline), str(ROOT)],
+            [sys.executable, "-I", str(script), mode, str(port), str(marker), str(deadline), PACKAGE_ROOTS],
             # The backend logger writes to ./logs; keep test runs out of the project's logs.
             cwd=workdir,
             stdout=subprocess.PIPE,

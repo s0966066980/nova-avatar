@@ -132,25 +132,25 @@ AREA_BY_FILE = {
 
 LIVE_FILES = frozenset({"test_live_llm_board_contract.py"})
 LIVE_TESTS = frozenset({
-    "tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
+    "core/tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
     # A wall-clock budget on this host's CPU, not a deterministic regression.
-    "tests/test_scene_background.py::test_chroma_composite_fits_the_render_frame_budget_on_a_portrait_avatar",
+    "core/tests/test_scene_background.py::test_chroma_composite_fits_the_render_frame_budget_on_a_portrait_avatar",
 })
 
 # Tests that need a GPU, a real model's weights or a model server on this host.
 # They are deselected by default (``addopts`` in pyproject.toml); run them with ``-m gpu``.
 GPU_FILES = frozenset({"test_live_llm_board_contract.py"})
 GPU_TESTS = frozenset({
-    "tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
+    "core/tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
 })
 
 SLOW_TESTS = frozenset(
     {
-        "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_keeps_only_the_next_fragment_in_flight",
-        "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request",
-        "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio",
-        "tests/test_media_fencing.py::MuseTalkEnvelopePropagationTests::test_batch_cancelled_during_gpu_inference_cannot_publish_results",
-        "tests/test_reply_streaming.py::BaselineReplayHarnessTests::test_fake_replay_is_reproducible_content_free_and_judges_slos",
+        "core/tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_keeps_only_the_next_fragment_in_flight",
+        "core/tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request",
+        "core/tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio",
+        "core/tests/test_media_fencing.py::MuseTalkEnvelopePropagationTests::test_batch_cancelled_during_gpu_inference_cannot_publish_results",
+        "core/tests/test_reply_streaming.py::BaselineReplayHarnessTests::test_fake_replay_is_reproducible_content_free_and_judges_slos",
     }
 )
 
@@ -181,13 +181,13 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     if unclassified:
         names = ", ".join(sorted(unclassified))
         raise pytest.UsageError(
-            f"Unclassified test modules: {names}. Add them to tests/conftest.py."
+            f"Unclassified test modules: {names}. Add them to conftest.py."
         )
 
 
 # Tests write under tmp_path; the repository's data/ holds the venue's real
 # avatars, voices and imports. A run that adds entries there fails.
-REPO_DATA = Path(__file__).resolve().parents[1] / "data"
+REPO_DATA = Path(__file__).resolve().parent / "data"
 _DATA_BEFORE = pytest.StashKey[frozenset]()
 
 
@@ -222,4 +222,4 @@ def _training_data_in_tmp(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pyt
     ``create_app`` builds the training manager on ``corpus.TRAINING_ROOT``, and the manager
     recovers (and may signal) the jobs saved under it at startup.
     """
-    monkeypatch.setattr("src.tts.training.corpus.TRAINING_ROOT", tmp_path_factory.mktemp("training-root"))
+    monkeypatch.setattr("nova_tts.training.corpus.TRAINING_ROOT", tmp_path_factory.mktemp("training-root"))

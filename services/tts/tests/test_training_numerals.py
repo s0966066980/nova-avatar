@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.tts.training.numerals import normalize_digits
+from nova_tts.training.numerals import normalize_digits
 
 
 @pytest.mark.parametrize(

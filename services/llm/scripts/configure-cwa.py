@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import tempfile
 
-path = Path(__file__).resolve().parents[1] / "config/cwa.env"
+path = Path(__file__).resolve().parents[3] / "config/cwa.env"
 key = getpass.getpass("CWA 授權碼（隱藏輸入；留白取消）：").strip()
 if not key:
     raise SystemExit("已取消，原設定未變更。")

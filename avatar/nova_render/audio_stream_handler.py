@@ -11,7 +11,7 @@ from queue import Queue
 from threading import Event
 import torch.multiprocessing as mp
 
-from src.avatars.base import BaseAvatar
+from nova_render.base import BaseAvatar
 
 
 def _drain_queue(target) -> None:

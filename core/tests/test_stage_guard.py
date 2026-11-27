@@ -12,7 +12,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from nova_contracts.tts import TrainingActivity, TrainingCheck, TrainingPreflight
-from src.server.stage_guard import (
+from nova_core.server.stage_guard import (
     count_stage_connections,
     stage_connection_check,
     stage_offer_refusal,
@@ -22,7 +22,7 @@ from src.server.stage_guard import (
 
 
 def test_stage_connections_are_counted_from_the_session_registry(monkeypatch):
-    from src.server.state import state
+    from nova_core.server.state import state
 
     monkeypatch.setattr(state, "avatar_streams", {1: object(), 2: None})  # 2 is still connecting
     assert count_stage_connections() == 2

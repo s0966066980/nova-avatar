@@ -9,14 +9,14 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.web_search import service
-from src.profiles.knowledge_scope import web_access as settings
-from src.server import web_evidence
-from tests.llm_fakes import FakeLlm
-from tests.session_fakes import FakeAvatar, FakeSegmenter
-from src.config.schema import Config
-from src.server.voice_session import VoiceTurnSession
-from tests.speech_fakes import spoken_answer
+from nova_llm.web_search import service
+from nova_core.profiles.knowledge_scope import web_access as settings
+from nova_core.server import web_evidence
+from llm_fakes import FakeLlm
+from session_fakes import FakeAvatar, FakeSegmenter
+from nova_core.config.schema import Config
+from nova_core.server.voice_session import VoiceTurnSession
+from speech_fakes import spoken_answer
 
 
 @pytest.fixture(autouse=True)
@@ -26,7 +26,7 @@ def offline_evidence_model(monkeypatch):
         source = result['sources'][0]
         return {'mode': 'context', 'items': [{'source_id': source['id'],
                 'quote': source.get('text') or source.get('snippet') or ''}]}
-    monkeypatch.setattr('src.web_search.synthesis.summarize', AsyncMock(side_effect=selected))
+    monkeypatch.setattr('nova_llm.web_search.synthesis.summarize', AsyncMock(side_effect=selected))
 
 
 def test_policy_and_old_profile_defaults():
@@ -155,11 +155,11 @@ RESULT = {'status': 'available', 'query': '台北活動', 'sources': [
 
 def test_real_turn_uses_raw_question_not_attachment_or_rag_and_cancels_stale_result():
     async def run():
-        from src.server.voice_session import AnswerInputs
+        from nova_core.server.voice_session import AnswerInputs
         voice, _, events = session()
         try:
             planner = AsyncMock(return_value={'search': True, 'query': '台北活動', 'reuse': False})
-            with patch('src.web_search.planner.plan', planner), patch('src.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch.object(
+            with patch('nova_llm.web_search.planner.plan', planner), patch('nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch.object(
                     voice, '_answer_inputs', AsyncMock(return_value=AnswerInputs('PRIVATE ATTACHMENT', {'status': 'matched', 'sources': []}))):
                 await voice.start_text_turn('台北有什麼活動')
                 await voice._turn_task
@@ -175,7 +175,7 @@ def test_real_turn_uses_raw_question_not_attachment_or_rag_and_cancels_stale_res
                 started.set()
                 await gate.wait()
                 return deepcopy(RESULT)
-            with patch('src.web_search.planner.plan', planner), patch('src.web_search.service.search', pending):
+            with patch('nova_llm.web_search.planner.plan', planner), patch('nova_llm.web_search.service.search', pending):
                 await voice.start_text_turn('重新查台北最新活動', interrupt=True)
                 await started.wait()
                 before = len([e for e in events if e['type'] == 'web_search_result'])
@@ -193,7 +193,7 @@ def test_legacy_web_turn_bounds_speech_at_fragments_without_playing_it():
     async def run():
         from nova_contracts.llm import (AssistantProfile, FragmentReviewContext, ModelChunk, ReplyDone,
                                         ReplyStarted, SpeechEnd, SpokenDelta)
-        from src.server.voice_session import AnswerInputs
+        from nova_core.server.voice_session import AnswerInputs
 
         def answer(request):
             # The service tells the core to bound web speech at 12 spoken characters.
@@ -210,8 +210,8 @@ def test_legacy_web_turn_bounds_speech_at_fragments_without_playing_it():
         voice, avatar, events = session()
         voice._llm.script = answer
         try:
-            with patch('src.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '台北活動', 'reuse': False})), patch(
-                    'src.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch.object(
+            with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '台北活動', 'reuse': False})), patch(
+                    'nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch.object(
                     voice, '_answer_inputs', AsyncMock(return_value=AnswerInputs('台北有什麼活動', None))):
                 await voice.start_text_turn('台北有什麼活動')
                 await voice._turn_task
@@ -227,10 +227,10 @@ def test_legacy_web_turn_bounds_speech_at_fragments_without_playing_it():
 
 def test_disabled_weather_and_no_search_never_call_external_service():
     async def run():
-        from src.server.voice_session import AnswerInputs
+        from nova_core.server.voice_session import AnswerInputs
         voice, _, _ = session()
         try:
-            with patch('src.web_search.planner.plan', AsyncMock(return_value={'search': False, 'query': '', 'reuse': False})) as planner, patch('src.web_search.service.search', AsyncMock()) as external:
+            with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': False, 'query': '', 'reuse': False})) as planner, patch('nova_llm.web_search.service.search', AsyncMock()) as external:
                 voice.config.profile_web_search['enabled'] = False
                 await voice._web_inputs(AnswerInputs('hello', None), 'hello', 'unused', 0, None)
                 planner.assert_not_called()
@@ -247,14 +247,14 @@ def test_disabled_weather_and_no_search_never_call_external_service():
 
 def test_followup_reuses_evidence_but_explicit_refresh_fetches_again_and_reset_clears():
     async def run():
-        from src.server.voice_session import AnswerInputs
+        from nova_core.server.voice_session import AnswerInputs
         voice, _, _ = session()
         policy = voice.config.profile_web_search
         voice._web_cache.put('role1', policy, deepcopy(RESULT))
         try:
-            with patch.object(voice, '_is_current', return_value=True), patch('src.web_search.planner.plan', AsyncMock(
+            with patch.object(voice, '_is_current', return_value=True), patch('nova_llm.web_search.planner.plan', AsyncMock(
                     return_value={'search': True, 'query': '台北活動', 'reuse': True})), patch(
-                    'src.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))) as external:
+                    'nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))) as external:
                 followup = await voice._web_inputs(AnswerInputs('地點？', None), '活動地點在哪裡？', 'turn', 0, None)
                 assert followup.web_result['reused']
                 external.assert_not_called()
@@ -299,11 +299,11 @@ def test_enabled_role_waits_for_routing_before_planning_or_answering():
 
 def test_planning_failure_supplies_unverified_context_instead_of_claiming_success():
     async def run():
-        from src.server.voice_session import AnswerInputs
+        from nova_core.server.voice_session import AnswerInputs
         voice, _, events = session()
         try:
-            with patch.object(voice, '_is_current', return_value=True), patch('src.web_search.planner.plan', AsyncMock(side_effect=ValueError())), patch(
-                    'src.web_search.service.search', AsyncMock()) as external:
+            with patch.object(voice, '_is_current', return_value=True), patch('nova_llm.web_search.planner.plan', AsyncMock(side_effect=ValueError())), patch(
+                    'nova_llm.web_search.service.search', AsyncMock()) as external:
                 value = await voice._web_inputs(AnswerInputs('最新消息', None), '最新消息', 'turn', 0, None)
                 assert value.web_result['status'] == 'planning_failed'
                 assert '未能查證' in service.reference_prompt(value.web_result)
@@ -318,8 +318,8 @@ def test_search_failure_never_asks_answer_model_to_invent_current_information():
     async def run():
         voice, _, events = session()
         try:
-            with patch('src.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '台北最新活動', 'reuse': False})), patch(
-                    'src.web_search.service.search', AsyncMock(return_value={'status': 'unavailable', 'sources': [], 'query': '台北最新活動'})):
+            with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '台北最新活動', 'reuse': False})), patch(
+                    'nova_llm.web_search.service.search', AsyncMock(return_value={'status': 'unavailable', 'sources': [], 'query': '台北最新活動'})):
                 await voice.start_text_turn('台北最新活動')
                 await voice._turn_task
                 assert voice._llm.calls == 0
@@ -376,7 +376,7 @@ def test_ddgs_actual_request_uses_instance_header_and_parses_real_engine(monkeyp
 def test_ddgs_http_restrictions_remain_unavailable_not_empty(monkeypatch, status, reason):
     import httpx
     from ddgs.http_client2 import HttpClient2
-    from src.web_search.ddgs_adapter import SearchUnavailable
+    from nova_llm.web_search.ddgs_adapter import SearchUnavailable
     calls = []
     def request(*args, **kwargs):
         calls.append(1)
@@ -393,7 +393,7 @@ def test_ddgs_valid_empty_page_is_empty_and_missing_engine_cannot_fan_out(monkey
     from ddgs.ddgs import DDGS
     from ddgs.engines import ENGINES
     from ddgs.http_client2 import HttpClient2
-    from src.web_search.ddgs_adapter import SearchUnavailable
+    from nova_llm.web_search.ddgs_adapter import SearchUnavailable
     monkeypatch.setattr(HttpClient2, 'request', lambda *a, **k: httpx.Response(200, text='<html><body>No results</body></html>'))
     assert service.search_engine('nonexistent synthetic query', 'duckduckgo', 2) == []
     monkeypatch.delitem(ENGINES['text'], 'duckduckgo')
@@ -404,7 +404,7 @@ def test_ddgs_valid_empty_page_is_empty_and_missing_engine_cannot_fan_out(monkey
 
 
 def test_ddgs_version_or_external_network_client_fails_closed(monkeypatch):
-    from src.web_search import ddgs_adapter
+    from nova_llm.web_search import ddgs_adapter
     from ddgs.ddgs import DDGS
     with pytest.raises(ddgs_adapter.SearchUnavailable, match='engine_not_allowed'):
         service.search_engine('Python', 'auto', 2)
@@ -418,7 +418,7 @@ def test_ddgs_version_or_external_network_client_fails_closed(monkeypatch):
 
 
 def test_web_evidence_reminder_is_request_only_and_not_committed_as_user_text():
-    from src.llm.engines.openai import OpenAILLM
+    from nova_llm.engines.openai import OpenAILLM
     class Question(str):
         request_instructions = '本輪已有公開資料，請重新核對舊拒答。'
     config = Config()
@@ -440,8 +440,8 @@ def test_web_evidence_reminder_is_request_only_and_not_committed_as_user_text():
 
 
 def test_web_request_context_keeps_attachment_parts_and_does_not_mutate_them():
-    from src.llm.request_context import RequestQuestion
-    from src.llm.engines.openai import OpenAILLM
+    from nova_llm.request_context import RequestQuestion
+    from nova_llm.engines.openai import OpenAILLM
     class AttachmentQuestion(str):
         parts = [{'type': 'text', 'text': '附件觀察'}, {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,test'}}]
     original = AttachmentQuestion('附件追問')
@@ -471,8 +471,8 @@ def test_web_request_context_keeps_attachment_parts_and_does_not_mutate_them():
     ('簡短比較兩種接頭', ['甲接頭只能單向插入。', '乙接頭則可以正反插入。']),
 ])
 def test_web_answer_stops_repetition_before_preview_playback_or_return(stream_to_avatar, question, sentences):
-    from src.llm.base import BaseLLM
-    from src.llm.request_context import RequestQuestion
+    from nova_llm.base import BaseLLM
+    from nova_llm.request_context import RequestQuestion
     from types import SimpleNamespace
     class RepeatingModel(BaseLLM):
         def chat_stream(self, message, system_prompt=None):
@@ -491,8 +491,8 @@ def test_web_answer_stops_repetition_before_preview_playback_or_return(stream_to
 
 
 def test_web_speech_budget_keeps_complete_dates_and_closes_degenerate_generator():
-    from src.llm.base import BaseLLM
-    from src.llm.request_context import RequestQuestion
+    from nova_llm.base import BaseLLM
+    from nova_llm.request_context import RequestQuestion
     from types import SimpleNamespace
     consumed, closed, spoken = [], [], []
     class LongModel(BaseLLM):
@@ -516,7 +516,7 @@ def test_web_speech_budget_keeps_complete_dates_and_closes_degenerate_generator(
 
 
 def test_source_selection_rejects_invented_values_and_merges_only_identical_facts():
-    from src.web_search.synthesis import validate_selection
+    from nova_llm.web_search.synthesis import validate_selection
     result = {'sources': [{'id': '1', 'snippet': '甲公司成立於1987年。', 'text': ''},
                           {'id': '2', 'snippet': '甲公司成立於1987年。乙公司成立於1990年。', 'text': ''}]}
     selected = validate_selection({'mode': 'extractive', 'items': [
@@ -539,9 +539,9 @@ def test_single_fact_uses_validated_quote_without_a_second_model_elaboration(que
         result = deepcopy(RESULT)
         result['sources'][0]['text'] = quote
         try:
-            with patch('src.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': question, 'reuse': False})), patch(
-                    'src.web_search.service.search', AsyncMock(return_value=result)), patch(
-                    'src.web_search.synthesis.summarize', AsyncMock(return_value={'mode': 'extractive', 'items': [{'source_id': '1', 'quote': quote}]})):
+            with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': question, 'reuse': False})), patch(
+                    'nova_llm.web_search.service.search', AsyncMock(return_value=result)), patch(
+                    'nova_llm.web_search.synthesis.summarize', AsyncMock(return_value={'mode': 'extractive', 'items': [{'source_id': '1', 'quote': quote}]})):
                 await voice.start_text_turn(question)
                 await voice._turn_task
                 assert voice._llm.calls == 0
@@ -555,9 +555,9 @@ def test_failed_organization_does_not_fall_back_to_reading_raw_search_pages():
     async def run():
         voice, _, events = session()
         try:
-            with patch('src.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '公開資料', 'reuse': False})), patch(
-                    'src.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch(
-                    'src.web_search.synthesis.summarize', AsyncMock(side_effect=ValueError())):
+            with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '公開資料', 'reuse': False})), patch(
+                    'nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch(
+                    'nova_llm.web_search.synthesis.summarize', AsyncMock(side_effect=ValueError())):
                 await voice.start_text_turn('公開資料')
                 await voice._turn_task
                 assert voice._llm.calls == 0
@@ -568,7 +568,7 @@ def test_failed_organization_does_not_fall_back_to_reading_raw_search_pages():
 
 
 def test_context_keeps_valid_quotes_when_another_quote_was_spliced():
-    from src.web_search.synthesis import validate_selection
+    from nova_llm.web_search.synthesis import validate_selection
     result = {'sources': [{'id': '1', 'snippet': 'USB-A接頭有方向性。USB-C接頭可正反插。'}]}
     selection = validate_selection({'mode': 'context', 'items': [
         {'source_id': '1', 'quote': 'USB-A接頭可正反插。'},
@@ -580,14 +580,14 @@ def test_context_keeps_valid_quotes_when_another_quote_was_spliced():
 
 @pytest.mark.parametrize('source,quote', [('-1.5%', '1.5%'), ('3.15.2', '3.15'), ('1492年', '492年')])
 def test_selected_numbers_cannot_be_substrings_of_another_value(source, quote):
-    from src.web_search.synthesis import validate_selection
+    from nova_llm.web_search.synthesis import validate_selection
     with pytest.raises(ValueError):
         validate_selection({'mode': 'extractive', 'items': [{'source_id': '1', 'quote': quote}]},
                            {'sources': [{'id': '1', 'snippet': source}]})
 
 
 def test_evidence_windows_find_the_asked_field_after_site_navigation():
-    from src.web_search.synthesis import evidence_window
+    from nova_llm.web_search.synthesis import evidence_window
     text = '選單導覽 ' * 300 + '甲公司總部位於新竹科學園區。' + '服務介紹 ' * 200
     window = evidence_window(text, '甲公司總部在哪裡', '甲公司總部地點')
     assert '總部位於新竹科學園區' in window
@@ -603,9 +603,9 @@ def test_interrupt_while_organizing_never_speaks_or_commits_stale_quotes():
             await release.wait()
             return {'mode': 'extractive', 'items': [{'source_id': '1', 'quote': '過期資料'}]}
         try:
-            with patch('src.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '公開資料', 'reuse': False})), patch(
-                    'src.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch(
-                    'src.web_search.synthesis.summarize', delayed):
+            with patch('nova_llm.web_search.planner.plan', AsyncMock(return_value={'search': True, 'query': '公開資料', 'reuse': False})), patch(
+                    'nova_llm.web_search.service.search', AsyncMock(return_value=deepcopy(RESULT))), patch(
+                    'nova_llm.web_search.synthesis.summarize', delayed):
                 await voice.start_text_turn('公開資料')
                 await asyncio.wait_for(started.wait(), 1)
                 assert any(e.get('state') == 'summarizing' for e in events)

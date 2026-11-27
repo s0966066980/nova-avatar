@@ -14,11 +14,11 @@ from aiohttp import WSMsgType, web
 from edge_tts import communicate
 
 from nova_contracts.tts import TtsEngineSettings
-from src.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
-from src.tts.adapter import InProcessTtsService
-from src.tts.engines import edge
-from src.tts.edge_connection import EdgeConnectionPool
-from tests.edge_fakes import _mp3_fixture
+from nova_core.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
+from nova_tts.adapter import InProcessTtsService
+from nova_tts.engines import edge
+from nova_tts.edge_connection import EdgeConnectionPool
+from edge_fakes import _mp3_fixture
 
 
 class FakeEdgeServer:
@@ -143,7 +143,7 @@ class StartupConnectionTests(unittest.TestCase):
 
     def test_invalid_audio_never_marks_startup_ready(self):
         self.server.payload = b"invalid mp3"
-        with patch("src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0):
+        with patch("nova_core.server.app.EDGE_PREWARM_RETRY_SECONDS", 0):
             self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self.config, self.tts)))
         self.assertEqual(self.server.requests, 3)
 
@@ -206,7 +206,7 @@ class ConnectionPoolTests(unittest.TestCase):
             self.assertNotEqual(self.server.request_connections[-1], 1)
 
         with patch(
-            "src.tts.edge_connection.REUSED_FIRST_AUDIO_TIMEOUT_SECONDS",
+            "nova_tts.edge_connection.REUSED_FIRST_AUDIO_TIMEOUT_SECONDS",
             0.03,
         ):
             self.run_pool(scenario)

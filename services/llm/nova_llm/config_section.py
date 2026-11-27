@@ -21,14 +21,14 @@ from nova_contracts.llm import (
     LocalServerSettings,
     ReplyRules,
 )
-from src.llm.base import (
+from nova_llm.base import (
     DEFAULT_RESPONSE_MAX_CHARS,
     load_system_prompt,
     response_token_budget,
     validate_response_max_chars,
 )
-from src.llm.engines import DEFAULT_ENGINE, ENGINES
-from src.llm.endpoints import (
+from nova_llm.engines import DEFAULT_ENGINE, ENGINES
+from nova_llm.endpoints import (
     EndpointError,
     active_endpoint_name,
     apply_endpoint,
@@ -37,7 +37,7 @@ from src.llm.endpoints import (
     freeze_endpoints,
     resolve_endpoint,
 )
-from src.llm.rules import (
+from nova_llm.rules import (
     MAX_RULE_CHARS,
     MAX_TOTAL_RULE_CHARS,
     default_rules,

@@ -19,15 +19,15 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
-from src.avatars.adapter import create_avatar_service
-from src.config import loader, overrides
-from src.config.schema import Config
-from src.profiles import coordinator
-from src.profiles.store import ProfileStore
-from src.server import deferred_settings
-from tests.llm_fakes import FakeLlm
-from src.server.state import state
-from tests.tts_fakes import in_process_tts
+from nova_render.adapter import create_avatar_service
+from nova_core.config import loader, overrides
+from nova_core.config.schema import Config
+from nova_core.profiles import coordinator
+from nova_core.profiles.store import ProfileStore
+from nova_core.server import deferred_settings
+from llm_fakes import FakeLlm
+from nova_core.server.state import state
+from tts_fakes import in_process_tts
 
 OLD_OVERRIDE_TTS = {"type": "edgetts", "ref_file": "zh-TW-HsiaoYuNeural", "ref_text": None,
                     "tts_server": "", "model": ""}
@@ -42,7 +42,7 @@ def overrides_file(tmp_path, monkeypatch):
 
 def saved_profiles(tmp_path, monkeypatch, *, main_voice, config=None):
     """A saved role library whose main role speaks with ``main_voice``."""
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     config = config or Config()
     store = ProfileStore(tmp_path / "avatar_profiles.yaml")
     library = store.initialize(config)
@@ -108,9 +108,9 @@ def roles_state(tmp_path, config):
 
 def test_failed_startup_apply_still_speaks_with_the_main_voice(tmp_path, monkeypatch):
     saved_profiles(tmp_path, monkeypatch, main_voice={"ref_file": "zh-TW-YunJheNeural"})
-    monkeypatch.setattr("src.avatars.catalog.avatar_bootable", lambda *_: (False, "素材不存在"))
+    monkeypatch.setattr("nova_render.catalog.avatar_bootable", lambda *_: (False, "素材不存在"))
     apply_tts = Mock(side_effect=AssertionError("startup must not synthesize a preview"))
-    monkeypatch.setattr("src.server.runtime_settings.apply_tts_settings", apply_tts)
+    monkeypatch.setattr("nova_core.server.runtime_settings.apply_tts_settings", apply_tts)
     roles_state_ = roles_state(tmp_path, Config())
     roles = asyncio.run(coordinator.initialize_roles(roles_state_))
     assert not roles.profiles_applied
@@ -125,13 +125,13 @@ def test_startup_with_a_breezyvoice_main_starts_its_server_without_a_preview(tmp
     breezy = {"type": "breezyvoice", "ref_file": "0123456789abcdef", "ref_text": "逐字稿。",
               "tts_server": "http://127.0.0.1:50001", "model": ""}
     saved_profiles(tmp_path, monkeypatch, main_voice=breezy, config=config)
-    monkeypatch.setattr("src.tts.voice_library.voice_transcript", lambda _: "逐字稿。")
-    monkeypatch.setattr("src.tts.voice_library.check_reference", lambda _engine, value: value)
-    monkeypatch.setattr("src.avatars.catalog.avatar_bootable", lambda *_: (True, ""))
+    monkeypatch.setattr("nova_tts.voice_library.voice_transcript", lambda _: "逐字稿。")
+    monkeypatch.setattr("nova_tts.voice_library.check_reference", lambda _engine, value: value)
+    monkeypatch.setattr("nova_render.catalog.avatar_bootable", lambda *_: (True, ""))
     apply_tts = Mock(side_effect=AssertionError("startup must not synthesize a preview"))
-    monkeypatch.setattr("src.server.runtime_settings.apply_tts_settings", apply_tts)
+    monkeypatch.setattr("nova_core.server.runtime_settings.apply_tts_settings", apply_tts)
     start = Mock(return_value="http://127.0.0.1:50001")
-    monkeypatch.setattr("src.tts.cosyvoice_runtime.ensure_server", start)
+    monkeypatch.setattr("nova_tts.cosyvoice_runtime.ensure_server", start)
     state_ = roles_state(tmp_path, config)
     roles = asyncio.run(coordinator.initialize_roles(state_))
     assert roles.profiles_applied, roles.error
@@ -142,7 +142,7 @@ def test_startup_with_a_breezyvoice_main_starts_its_server_without_a_preview(tmp
 
 def test_applying_a_new_main_voice_updates_the_default_voice_without_saving_it(tmp_path, monkeypatch, overrides_file):
     store = saved_profiles(tmp_path, monkeypatch, main_voice={"ref_file": "zh-TW-HsiaoChenNeural"})
-    monkeypatch.setattr("src.avatars.catalog.avatar_bootable", lambda *_: (True, ""))
+    monkeypatch.setattr("nova_render.catalog.avatar_bootable", lambda *_: (True, ""))
     config = Config()
     config.llm.provider = "ollama"
     library = store.load()
@@ -165,7 +165,7 @@ def test_a_pending_global_tts_change_from_the_removed_page_is_dropped(tmp_path, 
         "語音辨識": {"type": "whisper", "model_size": "small"},
     }, ensure_ascii=False), "utf-8")
     apply_stt = Mock(return_value={})
-    monkeypatch.setattr("src.server.routes.settings.apply_stt_settings", apply_stt)
+    monkeypatch.setattr("nova_core.server.routes.settings.apply_stt_settings", apply_stt)
     log = Mock()
     monkeypatch.setattr(deferred_settings, "logger", log)
     asyncio.run(deferred_settings.apply_pending())

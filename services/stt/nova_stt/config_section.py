@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 # STT engines removed from the product; saved settings naming one load as
 # faster-whisper with the model size that config/config.yaml ships.

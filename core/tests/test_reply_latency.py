@@ -6,13 +6,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import pytest
 
-from src.config.schema import Config
-from src.llm.base import BaseLLM, response_token_budget
-from src.llm.router import ReplyMode
-from src.llm.engines.openai import OpenAILLM
-from src.llm.prewarm import prewarm_local_llm
-from tests.llm_fakes import FakeLlm
-from tests.speech_fakes import spoken_answer
+from nova_core.config.schema import Config
+from nova_llm.base import BaseLLM, response_token_budget
+from nova_llm.router import ReplyMode
+from nova_llm.engines.openai import OpenAILLM
+from nova_llm.prewarm import prewarm_local_llm
+from llm_fakes import FakeLlm
+from speech_fakes import spoken_answer
 
 
 def test_local_prewarm_finishes_the_disposable_completion_before_readiness():
@@ -32,17 +32,17 @@ def test_local_prewarm_finishes_the_disposable_completion_before_readiness():
     client = MagicMock()
     client.with_options.return_value = client
     client.chat.completions.create.return_value = completion
-    with patch('src.llm.engines.openai.OpenAI', return_value=client):
+    with patch('nova_llm.engines.openai.OpenAI', return_value=client):
         assert prewarm_local_llm(config)
     assert consumed == ['[[SPEECH]]', '準備完成。'], 'readiness interrupted the prompt warmup'
     assert completion.closed
 
 
 def test_disabled_prewarm_does_not_contact_edge():
-    from src.server.app import _start_edge_tts_prewarm
+    from nova_core.server.app import _start_edge_tts_prewarm
     config = Config()
     config.app.prewarm = False
-    with patch('src.tts.engines.edge.prewarm_edge_tts') as warm:
+    with patch('nova_tts.engines.edge.prewarm_edge_tts') as warm:
         assert _start_edge_tts_prewarm(config, object()) is None
     warm.assert_not_called()
 
@@ -50,8 +50,8 @@ def test_disabled_prewarm_does_not_contact_edge():
 def test_health_exposes_incomplete_prewarm_without_disabling_runtime_recovery():
     import asyncio
     import json
-    from src.server.routes.health import health_check
-    from src.server.state import state
+    from nova_core.server.routes.health import health_check
+    from nova_core.server.state import state
 
     status = {'enabled': True, 'edge_tts': False, 'local_llm': True}
     with (
@@ -65,10 +65,10 @@ def test_health_exposes_incomplete_prewarm_without_disabling_runtime_recovery():
 
 def test_listening_preparation_warms_stt_inference_once_without_a_turn():
     from nova_contracts.stt import SttEngineSettings
-    from src.asr.adapter import InProcessSttService
-    from src.asr.base import BaseASR
-    from src.server.voice_session import VoiceTurnSession
-    from tests.session_fakes import FakeAvatar
+    from nova_stt.adapter import InProcessSttService
+    from nova_stt.base import BaseASR
+    from nova_core.server.voice_session import VoiceTurnSession
+    from session_fakes import FakeAvatar
 
     inferences = []
 
@@ -86,7 +86,7 @@ def test_listening_preparation_warms_stt_inference_once_without_a_turn():
         create_engine=lambda _settings: Recognizer())
     avatar = FakeAvatar()
     session = VoiceTurnSession(7, config, avatar, stt=stt, llm=FakeLlm())
-    with patch('src.server.voice_session.create_segmenter', return_value=MagicMock()):
+    with patch('nova_core.server.voice_session.create_segmenter', return_value=MagicMock()):
         session._prepare_sync()
         session._prepare_sync()
     assert len(inferences) == 1, 'STT was loaded but first-utterance inference remained cold'
@@ -96,7 +96,7 @@ def test_listening_preparation_warms_stt_inference_once_without_a_turn():
 
 def test_failed_stt_warmup_can_retry_and_removes_temporary_audio():
     from pathlib import Path
-    from src.asr.base import BaseASR
+    from nova_stt.base import BaseASR
 
     paths = []
 
@@ -123,14 +123,14 @@ def test_failed_stt_warmup_can_retry_and_removes_temporary_audio():
 def test_edge_prewarm_retries_rate_limit_within_one_deadline():
     import aiohttp
     from unittest.mock import AsyncMock
-    from src.tts.engines.edge import prewarm_edge_tts
+    from nova_tts.engines.edge import prewarm_edge_tts
 
     limited = aiohttp.WSServerHandshakeError(MagicMock(), (), status=429)
     warm = AsyncMock(side_effect=[limited, True])
     sleep = AsyncMock()
     with (
-        patch('src.tts.engines.edge._prewarm_edge_tts', warm),
-        patch('src.tts.engines.edge.asyncio.sleep', sleep),
+        patch('nova_tts.engines.edge._prewarm_edge_tts', warm),
+        patch('nova_tts.engines.edge.asyncio.sleep', sleep),
     ):
         assert prewarm_edge_tts('zh-TW-HsiaoChenNeural', timeout_seconds=1)
     assert warm.await_count == 2
@@ -140,21 +140,21 @@ def test_edge_prewarm_retries_rate_limit_within_one_deadline():
 def test_edge_prewarm_swaps_hosts_once_for_each_rejected_attempt():
     import aiohttp
     from unittest.mock import AsyncMock
-    from src.tts.engines.edge import prewarm_edge_tts
+    from nova_tts.engines.edge import prewarm_edge_tts
 
     rejected = aiohttp.WSServerHandshakeError(MagicMock(), (), status=403)
     with (
-        patch('src.tts.engines.edge._prewarm_edge_tts', AsyncMock(side_effect=rejected)),
-        patch('src.tts.engines.edge.asyncio.sleep', AsyncMock()),
-        patch('src.tts.engines.edge.edge_endpoint.note_failure') as swap,
+        patch('nova_tts.engines.edge._prewarm_edge_tts', AsyncMock(side_effect=rejected)),
+        patch('nova_tts.engines.edge.asyncio.sleep', AsyncMock()),
+        patch('nova_tts.engines.edge.edge_endpoint.note_failure') as swap,
     ):
         assert not prewarm_edge_tts('zh-TW-HsiaoChenNeural', timeout_seconds=1)
     assert swap.call_count == 2
 
 
 def test_process_prewarm_switch_is_explicit_and_does_not_change_saved_config(monkeypatch):
-    from src.config.loader import load_config
-    with patch('src.config.overrides.load_runtime_overrides', return_value={}) as load:
+    from nova_core.config.loader import load_config
+    with patch('nova_core.config.overrides.load_runtime_overrides', return_value={}) as load:
         monkeypatch.setenv('NOVA_AVATAR_PREWARM_ENABLED', '0')
         assert load_config().app.prewarm is False
         monkeypatch.setenv('NOVA_AVATAR_PREWARM_ENABLED', '1')
@@ -168,7 +168,7 @@ def test_process_prewarm_switch_is_explicit_and_does_not_change_saved_config(mon
 def _benchmark_module():
     import importlib.util
     from pathlib import Path
-    path = Path(__file__).resolve().parents[1] / 'scripts/benchmark-prewarm.py'
+    path = Path(__file__).resolve().parents[2] / 'scripts/benchmark-prewarm.py'
     spec = importlib.util.spec_from_file_location('nova_prewarm_benchmark', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -287,7 +287,7 @@ def test_local_prewarm_uses_the_current_profile_without_session_history():
     client = MagicMock()
     client.with_options.return_value = client
     client.chat.completions.create.return_value = Completion()
-    with patch("src.llm.engines.openai.OpenAI", return_value=client):
+    with patch("nova_llm.engines.openai.OpenAI", return_value=client):
         assert prewarm_local_llm(config, timeout_seconds=3)
     request = client.chat.completions.create.call_args.kwargs
     assert request["max_tokens"] == 16
@@ -301,11 +301,11 @@ def test_local_prewarm_uses_the_current_profile_without_session_history():
 def test_prewarm_skips_paid_remote_providers_and_reports_local_failure():
     config = Config()
     config.llm.provider = "openai"
-    with patch("src.llm.prewarm.OpenAILLM") as constructor:
+    with patch("nova_llm.prewarm.OpenAILLM") as constructor:
         assert prewarm_local_llm(config)
         constructor.assert_not_called()
     config.llm.provider = "llamacpp"
-    with patch("src.llm.prewarm.OpenAILLM", side_effect=RuntimeError("failed")):
+    with patch("nova_llm.prewarm.OpenAILLM", side_effect=RuntimeError("failed")):
         assert not prewarm_local_llm(config)
 
 
@@ -317,8 +317,8 @@ def test_prewarm_deadline_closes_stream_and_client_even_if_content_arrives():
     completion = Completion()
     client.chat.completions.create.return_value = completion
     with (
-        patch("src.llm.engines.openai.OpenAI", return_value=client),
-        patch("src.llm.prewarm.time.monotonic", side_effect=[0, 4]),
+        patch("nova_llm.engines.openai.OpenAI", return_value=client),
+        patch("nova_llm.prewarm.time.monotonic", side_effect=[0, 4]),
     ):
         assert not prewarm_local_llm(config, timeout_seconds=3)
     assert completion.closed
@@ -326,8 +326,8 @@ def test_prewarm_deadline_closes_stream_and_client_even_if_content_arrives():
 
 
 def test_edge_prewarm_requires_decoded_pcm_when_requested():
-    from src.tts.engines.edge import prewarm_edge_tts
-    from tests.edge_fakes import _mp3_fixture
+    from nova_tts.engines.edge import prewarm_edge_tts
+    from edge_fakes import _mp3_fixture
 
     for payload, expected in [(_mp3_fixture(), True), (b"not audio", False)]:
         class Communicate:
@@ -335,7 +335,7 @@ def test_edge_prewarm_requires_decoded_pcm_when_requested():
                 yield {"type": "audio", "data": payload}
 
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_: Communicate(),
         ):
             assert prewarm_edge_tts(

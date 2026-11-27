@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 
 import aiohttp
 
-from src.utils.paths import CONFIG_DIR
+from nova_core.utils.paths import CONFIG_DIR
 
 TAIPEI = ZoneInfo("Asia/Taipei")
 # CWA F-D0047 county products: three-day index, one-week index = +2.

@@ -13,8 +13,8 @@ from typing import Any, BinaryIO, Dict
 import numpy as np
 import soundfile as sf
 
-from src.utils.logging import logger
-from src.asr.base import SPEECH_LANGUAGES, BaseASR
+from nova_core.utils.logging import logger
+from nova_stt.base import SPEECH_LANGUAGES, BaseASR
 
 WHISPER_SAMPLE_RATE = 16000
 
@@ -78,7 +78,7 @@ class WhisperASR(BaseASR):
             f'({self.device}/{self.compute_type})'
         )
         local_name = {'small': 'whisper-small', 'turbo': 'whisper-large-v3-turbo'}.get(self.model_size)
-        local = Path(__file__).resolve().parents[3] / 'models' / (local_name or '')
+        local = Path(__file__).resolve().parents[4] / 'models' / (local_name or '')
         model_path = str(local) if local_name and (local / 'model.bin').is_file() else self.model_size
         self.model = WhisperModel(
             model_path,

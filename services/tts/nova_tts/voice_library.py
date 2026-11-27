@@ -24,9 +24,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from src.utils.audio_container import HEADER_BYTES, demuxer_for
-from src.utils.logging import logger
-from src.utils.paths import get_project_root
+from nova_core.utils.audio_container import HEADER_BYTES, demuxer_for
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_project_root
 
 VOICES_ROOT = get_project_root() / "data" / "voices"
 # Saved paths under these roots are imported into the library on load; any
@@ -41,10 +41,10 @@ TTS_ENGINES = frozenset({"edgetts", "breezyvoice", "matcha"})
 # Engines a configuration may name without any console offering them: the
 # silent fake of tests and rehearsals (spec decision 15).
 TEST_TTS_ENGINES = frozenset({"fake"})
-# Every engine src.tts.factory builds.
+# Every engine nova_tts.factory builds.
 CONFIGURABLE_TTS_ENGINES = TTS_ENGINES | TEST_TTS_ENGINES
 REFERENCE_AUDIO_ENGINES = frozenset({"breezyvoice"})
-# Engines whose ``ref_file`` is a voice-model ID (src.tts.voice_models).
+# Engines whose ``ref_file`` is a voice-model ID (nova_tts.voice_models).
 VOICE_MODEL_ENGINES = frozenset({"matcha"})
 # Engines that speak en-US as well as zh-TW.
 ENGLISH_TTS_ENGINES = frozenset({"edgetts", "matcha"}) | TEST_TTS_ENGINES
@@ -150,7 +150,7 @@ def _clean_transcript(transcript: Any) -> str:
 
 
 def _sniff_format(path: Path) -> str:
-    """The FFmpeg demuxer for ``path`` (see src.utils.audio_container)."""
+    """The FFmpeg demuxer for ``path`` (see nova_core.utils.audio_container)."""
     try:
         with path.open("rb") as handle:
             head = handle.read(HEADER_BYTES)
@@ -288,7 +288,7 @@ def check_reference(engine: str, value: Any) -> str:
     value = value.strip()
     engine = str(engine or "").strip().lower()
     if engine in VOICE_MODEL_ENGINES:
-        from src.tts.voice_models import VOICE_MODEL_ID
+        from nova_tts.voice_models import VOICE_MODEL_ID
 
         if value and not VOICE_MODEL_ID.fullmatch(value):
             raise VoiceLibraryError("聲線模型 ID 只能包含英數字、點、底線與連字號")
@@ -309,7 +309,7 @@ def check_reference(engine: str, value: Any) -> str:
 
 def check_voice_model_installed(value: str) -> None:
     """Refuse a voice-model ID that ``list_voice_models`` does not list, naming it."""
-    from src.tts.voice_models import list_voice_models
+    from nova_tts.voice_models import list_voice_models
 
     if value and value not in {model.id for model in list_voice_models()}:
         raise VoiceLibraryError(f"聲線模型「{value[:120]}」不在 models/tts 清單中，請改選已安裝的聲線模型")
@@ -354,7 +354,7 @@ def check_tts_server(value: Any) -> str:
 
 def check_model(value: Any) -> str:
     """An empty model (engine default) or a model ID from the ``models/`` catalog."""
-    from src.tts.cosyvoice_runtime import local_models
+    from nova_tts.cosyvoice_runtime import local_models
 
     if value is None:
         value = ""

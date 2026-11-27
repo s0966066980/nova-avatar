@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import pytest
 
-from src.tts.training.usage import (
+from nova_tts.training.usage import (
     BASE_MODEL_USAGE,
     SOURCE_KINDS,
     corpus_usage_label,
     strictest_label,
 )
-from src.tts.voice_models import USAGE_LABELS
+from nova_tts.voice_models import USAGE_LABELS
 
 DEVELOPMENT = "Development only"
 RESEARCH = "Research / Non-commercial"

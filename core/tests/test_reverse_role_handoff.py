@@ -10,9 +10,9 @@ from uuid import uuid4
 
 import pytest
 
-from src.profiles.routing import route_question
-from tests.llm_fakes import FakeLlm
-from tests.role_fakes import (answers, async_test, connect, field, remember, route_to,  # noqa: F401
+from nova_core.profiles.routing import route_question
+from llm_fakes import FakeLlm
+from role_fakes import (answers, async_test, connect, field, remember, route_to,  # noqa: F401
                               session_history, wait_until)
 
 
@@ -198,13 +198,13 @@ async def test_mixed_question_clarifies_then_can_hand_back_the_nonweather_topic(
 
 @async_test
 async def test_reverse_handoff_checks_main_attachment_capability_before_announcing(field, monkeypatch):
-    from tests.session_fakes import picture
+    from session_fakes import picture
     field.router = Mock(return_value=route_to('main'))
     voice, _ = connect(field)
     roles = use_weather(voice)
     item = voice.attachments.add_batch([('question.png', picture())], 0)[0]
     voice.attachments.select([{'id': item['id']}])
-    monkeypatch.setattr('src.server.attachments.vision_ready', lambda config: config.profile_id == 'weather')
+    monkeypatch.setattr('nova_core.server.attachments.vision_ready', lambda config: config.profile_id == 'weather')
     try:
         await voice.start_text_turn('說明附件中的公司服務')
         await voice._turn_task
@@ -235,7 +235,7 @@ def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
 @async_test
 async def test_a_new_question_supersedes_continuation_waiting_for_attachment_validation(field, monkeypatch):
     from threading import Event
-    from tests.session_fakes import picture
+    from session_fakes import picture
     field.router = Mock(return_value=route_to('main'))
     voice, _ = connect(field)
     roles = voice._role_coordinator
@@ -247,7 +247,7 @@ async def test_a_new_question_supersedes_continuation_waiting_for_attachment_val
         checking.set()
         assert resume.wait(3)
         return True
-    monkeypatch.setattr('src.server.attachments.vision_ready', vision_ready)
+    monkeypatch.setattr('nova_core.server.attachments.vision_ready', vision_ready)
     llm = answers(field, 'new answer')
     old = asyncio.create_task(voice.start_text_turn('stale continued question',
         _handoff_id='old-handoff', attachments=[{'id': item['id']}]))
@@ -272,7 +272,7 @@ async def test_a_new_question_supersedes_continuation_waiting_for_attachment_val
 async def test_stale_handoff_failure_cannot_cancel_a_new_forward_handoff(field, monkeypatch):
     from threading import Event
     from unittest.mock import AsyncMock
-    from tests.session_fakes import picture
+    from session_fakes import picture
     field.router = Mock(return_value=route_to('weather', county='臺北市', town='',
         kind='forecast', start_date='2026-10-29', end_date='2026-10-29'))
     field.weather.query = AsyncMock(return_value={'status': 'available', 'source': 'CWA', 'series': {}})
@@ -289,7 +289,7 @@ async def test_stale_handoff_failure_cannot_cancel_a_new_forward_handoff(field, 
         checking.set()
         assert resume.wait(3)
         return True
-    monkeypatch.setattr('src.server.attachments.vision_ready', vision_ready)
+    monkeypatch.setattr('nova_core.server.attachments.vision_ready', vision_ready)
     old = asyncio.create_task(roles.after_playback(voice, 'old-source'))
     try:
         assert await asyncio.to_thread(checking.wait, 2)

@@ -21,7 +21,7 @@ import aiohttp
 from edge_tts import communicate as _communicate
 from edge_tts import constants as _constants
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 PRIMARY_WSS_URL = (
     "wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1"

@@ -12,12 +12,12 @@ from unittest.mock import AsyncMock, Mock, patch
 import numpy as np
 import pytest
 
-from src.utils.webrtc import HumanPlayer
+from nova_core.utils.webrtc import HumanPlayer
 
 
 def test_echo_without_roles_reports_success_after_speaking_once():
-    from src.server.routes.chat import human
-    from src.server.state import state
+    from nova_core.server.routes.chat import human
+    from nova_core.server.state import state
 
     request = AsyncMock()
     request.json.return_value = {"type": "echo", "text": "你好", "sessionid": 7}
@@ -75,7 +75,7 @@ def test_track_stop_does_not_block_the_event_loop():
 
 
 def test_track_stop_gives_up_on_a_renderer_that_never_quits(monkeypatch):
-    import src.utils.webrtc as module
+    import nova_core.utils.webrtc as module
 
     monkeypatch.setattr(module, "RENDER_THREAD_JOIN_TIMEOUT", 0.1)
     release = threading.Event()
@@ -106,7 +106,7 @@ def _silent_batch(batch_size):
 
 
 @pytest.mark.parametrize("module_name,cls_name", [
-    ("src.avatars.musetalk.avatar", "MuseTalkAvatar"),
+    ("nova_render.musetalk.avatar", "MuseTalkAvatar"),
 ])
 def test_render_stops_workers_when_its_loop_fails(monkeypatch, module_name, cls_name):
     import importlib
@@ -159,7 +159,7 @@ def test_render_stops_workers_when_its_loop_fails(monkeypatch, module_name, cls_
 
 
 def test_process_frames_failure_ends_speaking_state():
-    from src.avatars.base import BaseAvatar
+    from nova_render.base import BaseAvatar
 
     async def run():
         quit_event = threading.Event()

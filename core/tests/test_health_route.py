@@ -6,9 +6,9 @@ from types import SimpleNamespace
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from src.llm.adapter import InProcessLlmService
-from src.server.routes.health import health_check
-from src.server.state import state
+from nova_llm.adapter import InProcessLlmService
+from nova_core.server.routes.health import health_check
+from nova_core.server.state import state
 
 
 class HealthRouteTests(unittest.IsolatedAsyncioTestCase):
@@ -63,7 +63,7 @@ class HealthLlmGpuWarningTests(unittest.TestCase):
             llm=SimpleNamespace(provider=provider),
         )
         try:
-            with patch("src.llm.llamacpp.gpu_offload_status", return_value=offload):
+            with patch("nova_llm.llamacpp.gpu_offload_status", return_value=offload):
                 return json.loads(asyncio.run(health_check(None)).text)
         finally:
             state.server_ready, state.config, state.llm = previous

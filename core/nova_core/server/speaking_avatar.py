@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # _decode_audio_file and SpeakingAvatar.put_audio_file were moved from
-# src/avatars/base.py: derived from Kedreamix/Linly-Talker-Stream
+# avatar/nova_render/base.py: derived from Kedreamix/Linly-Talker-Stream
 # (Copyright [Linly-talker-stream@kedreamix], Apache-2.0), based on LiveTalking
 # (C) 2024 LiveTalking@lipku (Apache-2.0). Modified by HongXian0903, 2026.
 # See LICENSE and NOTICE for details.
@@ -28,9 +28,9 @@ import soundfile as sf
 
 from nova_contracts.avatar import AvatarRenderer
 from nova_contracts.tts import TtsRuntime, strip_visual_markup
-from src.tts import config_section as tts_section
-from src.utils.logging import logger
-from src.vad.audio import AudioTooLongError
+from nova_tts import config_section as tts_section
+from nova_core.utils.logging import logger
+from nova_core.vad.audio import AudioTooLongError
 
 SAMPLE_RATE = 16000
 # Audio files sent to /humanaudio are decoded only up to this length.

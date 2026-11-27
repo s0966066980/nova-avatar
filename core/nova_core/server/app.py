@@ -7,10 +7,6 @@
 # Based on LiveTalking (C) 2024 LiveTalking@lipku https://github.com/lipku/LiveTalking (Apache-2.0).
 
 """主啟動檔案"""
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 import json
 import time
 import argparse
@@ -18,10 +14,10 @@ from threading import Thread
 from typing import TYPE_CHECKING
 import torch.multiprocessing as mp
 
-from src.utils.logging import logger
-from src.config.loader import load_config
-from src.server.state import state
-from src.server.server import FrontendNotBuilt, create_app, require_frontend, run_server
+from nova_core.utils.logging import logger
+from nova_core.config.loader import load_config
+from nova_core.server.state import state
+from nova_core.server.server import FrontendNotBuilt, create_app, require_frontend, run_server
 
 
 if TYPE_CHECKING:
@@ -39,7 +35,7 @@ def _start_edge_tts_prewarm(config, tts: "TtsService") -> Thread | None:
             or str(getattr(config.tts, "type", "")).strip().lower() != "edgetts"):
         return None
     from nova_contracts.tts import TtsError, VoicePreparation
-    from src.tts.config_section import voice as tts_voice
+    from nova_tts.config_section import voice as tts_voice
 
     preparation = VoicePreparation(voice=tts_voice(config.tts), timeout_seconds=EDGE_PREWARM_TIMEOUT_SECONDS)
 
@@ -80,7 +76,7 @@ def _start_local_llm() -> None:
     if getattr(state.config.llm, "provider", "") != "llamacpp":
         return
     try:
-        from src.llm.config_section import local_server_settings
+        from nova_llm.config_section import local_server_settings
 
         logger.info("正在啟動 llama-server: %s", state.config.llm.model)
         state.config.llm.base_url = state.llm.start_local_server(
@@ -146,23 +142,23 @@ def main():
     state.config_path = args.config
     state.config = load_config(config_file=args.config)
     from nova_contracts.stt import SttEngineSettings
-    from src.asr.adapter import create_stt_service
+    from nova_stt.adapter import create_stt_service
 
     asr = state.config.asr
     state.stt = create_stt_service(SttEngineSettings(
         engine=asr.type, model_size=asr.model_size, device=asr.device))
-    from src.tts.adapter import create_tts_service
-    from src.tts.config_section import engine_settings as tts_engine_settings
+    from nova_tts.adapter import create_tts_service
+    from nova_tts.config_section import engine_settings as tts_engine_settings
 
     # One adapter is both the TTS service and its in-process runtime.
     state.tts = state.tts_runtime = create_tts_service(tts_engine_settings(state.config))
     # Prewarm and start the main role's voice, not the configuration file's.
-    from src.profiles.coordinator import adopt_saved_main_voice, profiles_path
+    from nova_core.profiles.coordinator import adopt_saved_main_voice, profiles_path
 
     adopt_saved_main_voice(state.config, profiles_path(state.config_path))
     logger.info(f"已載入配置: {state.config}")
     from nova_contracts.common import ServiceError
-    from src.avatars.adapter import create_avatar_service
+    from nova_render.adapter import create_avatar_service
 
     state.avatar_service = create_avatar_service()
     try:
@@ -175,7 +171,7 @@ def main():
     # The llama.cpp child belongs to this backend when the LLM service starts
     # it; the service registers termination cleanup before model loading so
     # even Ctrl-C during startup cannot leave the GPU process behind.
-    from src.llm.adapter import create_llm_service
+    from nova_llm.adapter import create_llm_service
 
     state.llm = create_llm_service()
     
@@ -190,7 +186,7 @@ def main():
     if str(getattr(state.config.tts, "type", "")).strip().lower() == "breezyvoice":
         try:
             from nova_contracts.tts import VoicePreparation
-            from src.tts.config_section import voice as tts_voice
+            from nova_tts.config_section import voice as tts_voice
 
             logger.info("正在啟動 BreezyVoice: %s", getattr(state.config.tts, "model", "") or "models/BreezyVoice")
             state.config.tts.tts_server = state.tts.prepare_voice(
@@ -205,8 +201,8 @@ def main():
     llm_ready = speech_ready = None
     if enabled:
         from nova_contracts.llm import PrewarmRequest
-        from src.llm.config_section import llm_settings, reply_rules
-        from src.server.speech_prewarm import prewarm_speech_input
+        from nova_llm.config_section import llm_settings, reply_rules
+        from nova_core.server.speech_prewarm import prewarm_speech_input
 
         if state.config.llm.provider == "llamacpp":
             llm_ready = state.llm.prewarm(PrewarmRequest(

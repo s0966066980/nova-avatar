@@ -4,7 +4,7 @@
 """Route access classes, console login and the guard that enforces them.
 
 Every route belongs to exactly one class in ``ROUTE_ACCESS`` (enforced by
-tests/test_route_access.py):
+core/tests/test_route_access.py):
 
 * ``PUBLIC``  - no credentials (health check, static frontend, login itself).
 * ``STAGE``   - the stage page on the venue host: loopback clients, or a
@@ -30,15 +30,15 @@ from urllib.parse import urlsplit
 
 from aiohttp import web
 
-from src.server.admin_password import (
+from nova_core.server.admin_password import (
     ADMIN_ENV_PATH,
     CONFIGURE_COMMAND,
     MAX_PASSWORD_LENGTH,
     read_password_hash,
     verify_password,
 )
-from src.server.state import state
-from src.utils.logging import logger
+from nova_core.server.state import state
+from nova_core.utils.logging import logger
 
 
 class Access(enum.Enum):
@@ -162,7 +162,7 @@ ROUTE_ACCESS: dict[tuple[str, str], Access | Resolver] = {
     ("DELETE", "/api/speech/voices/{voice_id}"): ADMIN,
     ("GET", "/api/speech/voices/{voice_id}/audio"): ADMIN,
     ("GET", "/api/speech/breezyvoice/status"): ADMIN,
-    # Console: training corpora (src/server/routes/tts_corpus.py)
+    # Console: training corpora (core/nova_core/server/routes/tts_corpus.py)
     ("GET", "/api/tts/corpora"): ADMIN,
     ("POST", "/api/tts/corpora"): ADMIN,
     ("GET", "/api/tts/corpora/{slug}"): ADMIN,

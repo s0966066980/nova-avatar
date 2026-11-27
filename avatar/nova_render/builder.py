@@ -13,17 +13,17 @@ from typing import Any, Callable, Optional
 
 import cv2
 
-from src.avatars.asset_io import save_coords
-from src.avatars.catalog import (
+from nova_render.asset_io import save_coords
+from nova_render.catalog import (
     IMPORTABLE_ENGINES,
     archive_avatar,
     avatars_root,
     is_safe_avatar_id,
     list_avatar_characters,
 )
-from src.avatars.mouth_quality import QualityError, normalize_quality
-from src.utils.logging import logger
-from src.utils.paths import get_data_dir
+from nova_render.mouth_quality import QualityError, normalize_quality
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_data_dir
 
 ProgressCb = Optional[Callable[[int, str], None]]
 
@@ -218,9 +218,9 @@ def _build_musetalk(
 ) -> None:
     import torch
 
-    from src.avatars.musetalk.utils.blending import get_image_prepare_material
-    from src.avatars.musetalk.utils.face_parsing import FaceParsing
-    from src.avatars.musetalk.utils.preprocessing import get_landmark_and_bbox
+    from nova_render.musetalk.utils.blending import get_image_prepare_material
+    from nova_render.musetalk.utils.face_parsing import FaceParsing
+    from nova_render.musetalk.utils.preprocessing import get_landmark_and_bbox
 
     full_imgs = work_dir / "full_imgs"
     mask_dir = work_dir / "mask"
@@ -313,7 +313,7 @@ def _musetalk_vae(loaded_vae: LoadedVae = None):
 
     import torch
 
-    from src.avatars.musetalk.utils.utils import load_all_model
+    from nova_render.musetalk.utils.utils import load_all_model
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     vae, _unet, _pe = load_all_model(device=device)

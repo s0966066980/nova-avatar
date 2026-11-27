@@ -15,10 +15,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.tts.training import whisper_worker
-from src.tts.training import asr
-from src.tts.training.asr import SubprocessTranscriber, TranscriberCancelled, TranscriberError
-from tests.training_fakes import FakeProcess, FakeSpawner
+from nova_tts.training import whisper_worker
+from nova_tts.training import asr
+from nova_tts.training.asr import SubprocessTranscriber, TranscriberCancelled, TranscriberError
+from training_fakes import FakeProcess, FakeSpawner
 
 
 def worker(replies: dict[str, str] | None = None, *, crash_after: int | None = None, noise: bool = False):
@@ -47,7 +47,7 @@ def test_transcriber_runs_the_worker_on_the_cpu_with_the_app_interpreter(tmp_pat
         assert transcribe(Path("/corpus/a.wav")) == "你好"
     command = spawner.commands[0]
     assert command[0] == sys.executable
-    assert command[1:] == ["-m", "src.tts.training.whisper_worker", "--model", "base"]
+    assert command[1:] == ["-m", "nova_tts.training.whisper_worker", "--model", "base"]
     assert spawner.envs[0]["CUDA_VISIBLE_DEVICES"] == "" and spawner.envs[0]["X"] == "1"
     assert spawner.cwds[0] == tmp_path
     assert process.signals == ["TERM"]  # released when the context ends

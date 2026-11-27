@@ -17,9 +17,9 @@ from typing import Any
 
 import yaml
 
-from src.utils.avatar_ids import is_safe_avatar_id
-from src.utils.logging import logger
-from src.utils.paths import get_config_dir
+from nova_core.utils.avatar_ids import is_safe_avatar_id
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_config_dir
 
 SETTINGS_FILE = get_config_dir() / "ragflow_settings.yaml"
 _LOCK = RLock()

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
-# Adapted from src/server/routes/tts_training.py on the jetson-orin branch.
+# Adapted from core/nova_core/server/routes/tts_training.py on the jetson-orin branch.
 # Modified by HongXian0903, 2026.
 
 """Console API of the Matcha training job (all routes are ADMIN, ADR 0021).
@@ -51,9 +51,9 @@ from nova_contracts.tts import (
     TtsService,
     VoiceModelPreview,
 )
-from src.server import stage_guard
-from src.server.state import state
-from src.utils.logging import logger
+from nova_core.server import stage_guard
+from nova_core.server.state import state
+from nova_core.utils.logging import logger
 
 PREFIX = "/api/tts/training"
 PREVIEW_SENTENCES = get_args(PreviewSentence)

@@ -11,7 +11,7 @@ from PIL import Image
 
 from nova_contracts.stt import SttEngineSettings
 from nova_contracts.tts import strip_visual_markup
-from src.asr.adapter import InProcessSttService
+from nova_stt.adapter import InProcessSttService
 
 
 class FakeAvatar:

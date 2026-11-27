@@ -5,22 +5,22 @@ from unittest.mock import patch
 
 import numpy as np
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.config.loader import dict_to_config
-from src.vad.audio import decode_audio, pcm16_to_wav_bytes, resample_int16
-from src.vad.base import BaseVAD, to_int16
-from src.vad.engines import SileroVAD
-from src.vad.factory import (
+from nova_core.config.loader import dict_to_config
+from nova_core.vad.audio import decode_audio, pcm16_to_wav_bytes, resample_int16
+from nova_core.vad.base import BaseVAD, to_int16
+from nova_core.vad.engines import SileroVAD
+from nova_core.vad.factory import (
     create_vad_engine,
     get_vad_engine,
     list_vad_types,
     release_vad_engine,
 )
-from src.vad.segmenter import VADSegmenter, detect_speech_segments, extract_speech
-from src.vad.service import preprocess_audio_bytes
+from nova_core.vad.segmenter import VADSegmenter, detect_speech_segments, extract_speech
+from nova_core.vad.service import preprocess_audio_bytes
 
 SR = 16000
 
@@ -149,7 +149,7 @@ class SegmenterTests(unittest.TestCase):
         self.assertIsNone(list(segmenter.flush())[0].speech_tail_ms)
 
     def test_voiced_end_ignores_leading_and_trailing_silence(self):
-        from src.vad.audio import voiced_end_sample
+        from nova_core.vad.audio import voiced_end_sample
 
         audio = np.concatenate([silence(200), tone(500), silence(900)])
         self.assertAlmostEqual(voiced_end_sample(audio) / SR, 0.7, delta=0.021)
@@ -260,7 +260,7 @@ class ConfigTests(unittest.TestCase):
         # silence before the turn ends. The wait is counted in whole Silero
         # frames (32 ms) and rounded up, so 192 ms = 6 frames; 200 would
         # round up to 7 frames = 224 ms.
-        from src.config.loader import load_yaml_config
+        from nova_core.config.loader import load_yaml_config
 
         shipped = dict_to_config(load_yaml_config(PROJECT_ROOT / "config" / "config.yaml")).vad
         frame_ms = SileroVAD(sample_rate=SR).frame_ms
@@ -376,13 +376,13 @@ class SettingsApiTests(unittest.TestCase):
 
     def setUp(self):
         self.config = dict_to_config({})
-        patcher = patch("src.server.runtime_settings.persist_runtime_overrides")
+        patcher = patch("nova_core.server.runtime_settings.persist_runtime_overrides")
         self.persist = patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(release_vad_engine)
 
     def test_snapshot_is_always_server_side(self):
-        from src.server.runtime_settings import vad_snapshot
+        from nova_core.server.runtime_settings import vad_snapshot
 
         self.config.asr.mode = "browser"
         snapshot = vad_snapshot(self.config)
@@ -391,7 +391,7 @@ class SettingsApiTests(unittest.TestCase):
         self.assertEqual(snapshot["asr_mode"], "server")
 
     def test_silero_is_enforced_and_persisted(self):
-        from src.server.runtime_settings import SettingsError, apply_vad_settings
+        from nova_core.server.runtime_settings import SettingsError, apply_vad_settings
 
         with self.assertRaises(SettingsError):
             apply_vad_settings(self.config, {"type": "webrtc"})
@@ -402,30 +402,30 @@ class SettingsApiTests(unittest.TestCase):
         self.assertTrue(self.persist.called)
 
     def test_values_are_clamped(self):
-        from src.server.runtime_settings import apply_vad_settings
+        from nova_core.server.runtime_settings import apply_vad_settings
 
         result = apply_vad_settings(self.config, {"threshold": 9, "min_silence_ms": -5})
         self.assertEqual(result["threshold"], 0.95)
         self.assertEqual(result["min_silence_ms"], 100)
 
     def test_unknown_engine_rejected(self):
-        from src.server.runtime_settings import SettingsError, apply_vad_settings
+        from nova_core.server.runtime_settings import SettingsError, apply_vad_settings
 
         with self.assertRaises(SettingsError):
             apply_vad_settings(self.config, {"type": "kaldi"})
 
     def test_missing_dependency_reports_install_command(self):
-        from src.server.runtime_settings import SettingsError, apply_vad_settings
+        from nova_core.server.runtime_settings import SettingsError, apply_vad_settings
 
-        with patch("src.server.runtime_settings._module_installed", return_value=False):
+        with patch("nova_core.server.runtime_settings._module_installed", return_value=False):
             with self.assertRaises(SettingsError) as ctx:
                 apply_vad_settings(self.config, {"type": "silero", "enabled": True})
         self.assertIn("silero-vad", ctx.exception.message)
 
     def test_disable_skips_dependency_check(self):
-        from src.server.runtime_settings import apply_vad_settings
+        from nova_core.server.runtime_settings import apply_vad_settings
 
-        with patch("src.server.runtime_settings._module_installed", return_value=False):
+        with patch("nova_core.server.runtime_settings._module_installed", return_value=False):
             result = apply_vad_settings(self.config, {"enabled": False})
         self.assertFalse(result["enabled"])
 

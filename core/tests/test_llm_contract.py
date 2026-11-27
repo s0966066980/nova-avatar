@@ -62,10 +62,10 @@ from nova_contracts.llm import (  # noqa: E402
     SessionRef,
     TurnCommit,
 )
-from src.llm.adapter import InProcessLlmService  # noqa: E402
-from src.llm.engines import OpenAILLM  # noqa: E402
-from src.server.reply_streaming.llm_reply import stream_reply  # noqa: E402
-from src.server.reply_streaming.speech import ReplySpeech  # noqa: E402
+from nova_llm.adapter import InProcessLlmService  # noqa: E402
+from nova_llm.engines import OpenAILLM  # noqa: E402
+from nova_core.server.reply_streaming.llm_reply import stream_reply  # noqa: E402
+from nova_core.server.reply_streaming.speech import ReplySpeech  # noqa: E402
 
 
 def _engine(*replies, error=None):
@@ -160,7 +160,7 @@ def test_the_web_bound_stops_once_the_spoken_budget_is_used():
 
 
 def test_an_overflowing_conversation_is_a_context_capacity_error_and_leaves_no_history():
-    from src.llm.context_usage import ContextCapacityError
+    from nova_llm.context_usage import ContextCapacityError
 
     service = InProcessLlmService(create_engine=_engine(error=ContextCapacityError("context_capacity")))
 
@@ -334,8 +334,8 @@ def test_the_owned_server_failing_to_start_is_a_service_error_and_offload_starts
     def refuse(*_args, **_kwargs):
         raise RuntimeError("no llama-server binary")
 
-    monkeypatch.setattr("src.llm.adapter.llamacpp.ensure_server", refuse)
-    monkeypatch.setattr("src.llm.adapter.llamacpp.gpu_offload_status", lambda: None)
+    monkeypatch.setattr("nova_llm.adapter.llamacpp.ensure_server", refuse)
+    monkeypatch.setattr("nova_llm.adapter.llamacpp.gpu_offload_status", lambda: None)
     service = InProcessLlmService()
 
     with pytest.raises(ServiceError, match="no llama-server binary"):

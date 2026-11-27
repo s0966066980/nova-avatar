@@ -9,8 +9,8 @@ primes its own recognizer.
 import numpy as np
 
 from nova_contracts.stt import SttPrepareRequest, SttService
-from src.utils.logging import logger
-from src.vad.factory import create_vad_from_config
+from nova_core.utils.logging import logger
+from nova_core.vad.factory import create_vad_from_config
 
 
 def prewarm_speech_input(config, stt: SttService) -> bool:

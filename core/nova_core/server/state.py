@@ -5,14 +5,14 @@
 """全域性狀態管理"""
 from typing import TYPE_CHECKING, Any, Dict, Optional, Set
 from aiortc import RTCPeerConnection
-from src.server.voice_test_history import VoiceTestHistory
+from nova_core.server.voice_test_history import VoiceTestHistory
 
 if TYPE_CHECKING:
     from nova_contracts.avatar import AvatarService
     from nova_contracts.llm import LlmService
     from nova_contracts.stt import SttService
     from nova_contracts.tts import TtsRuntime, TtsService
-    from src.server.speaking_avatar import SpeakingAvatar
+    from nova_core.server.speaking_avatar import SpeakingAvatar
 
 
 class ServerState:

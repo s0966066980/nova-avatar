@@ -20,17 +20,17 @@ from pathlib import Path
 import pytest
 
 from nova_contracts.tts import TrainingQuery, TtsEngineSettings, TtsError, VoiceModelPreview
-from src.server.access import ROUTE_ACCESS, Access
-from src.server.routes import tts_training
-from src.server.server import create_app
-from src.server.state import state
-from src.tts.training.jobs import TrainingJobManager
-from src.tts.training.service import InProcessVoiceTraining
-from tests.access_helpers import access_client, built_frontend, same_origin
-from tests.training_fakes import ENOUGH_VRAM_MIB, edge_synthesis, rig
-from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
-from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
-from src.tts.training.gpu_probe import VramReading
+from nova_core.server.access import ROUTE_ACCESS, Access
+from nova_core.server.routes import tts_training
+from nova_core.server.server import create_app
+from nova_core.server.state import state
+from nova_tts.training.jobs import TrainingJobManager
+from nova_tts.training.service import InProcessVoiceTraining
+from access_helpers import access_client, built_frontend, same_origin
+from training_fakes import ENOUGH_VRAM_MIB, edge_synthesis, rig
+from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
+from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
+from nova_tts.training.gpu_probe import VramReading
 
 PREVIEW_SENTENCES = ("zh", "digits", "en")
 
@@ -514,7 +514,7 @@ def test_startup_recovers_interrupted_jobs_and_shutdown_stops_the_running_one(tm
 
 
 def test_a_job_running_at_shutdown_is_cancelled_and_its_child_stopped(tmp_path):
-    from src.tts.training.jobs import StartRequest
+    from nova_tts.training.jobs import StartRequest
 
     r = rig(tmp_path, train_code=None)
     training = TrainingService(r.manager)

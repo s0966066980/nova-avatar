@@ -9,7 +9,7 @@
 # it as host.docker.internal. CUDA sees no device, so nothing loads on the GPU.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 MODEL="$ROOT/models/ragflow/bge-m3-f16.gguf"
 PORT=11437
 # BGE-M3 is not causal: llama.cpp embeds an input in a single micro-batch, so
@@ -27,7 +27,7 @@ if [ ! -x "$SERVER" ]; then
     exit 1
 fi
 if [ ! -f "$MODEL" ]; then
-    printf '找不到 %s；請先執行 bash scripts/ragflow.sh pull-model。\n' "$MODEL" >&2
+    printf '找不到 %s；請先執行 bash services/llm/scripts/ragflow.sh pull-model。\n' "$MODEL" >&2
     exit 1
 fi
 

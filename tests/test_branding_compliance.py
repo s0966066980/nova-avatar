@@ -74,16 +74,16 @@ class BrandingComplianceTests(unittest.TestCase):
 
     def test_wav2lip_is_gone_but_its_restriction_record_is_kept(self):
         """The engine was removed 2026-11-24; earlier revisions still carry the restriction."""
-        self.assertFalse((ROOT / "src/avatars/wav2lip").exists())
+        self.assertFalse((ROOT / "avatar/nova_render/wav2lip").exists())
         notice = (ROOT / "third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt").read_text(encoding="utf-8")
         self.assertIn("Non-commercial", notice)
-        from src.avatars.catalog import ENGINE_META, IMPORTABLE_ENGINES
+        from nova_render.catalog import ENGINE_META, IMPORTABLE_ENGINES
 
         self.assertEqual(set(ENGINE_META), {"musetalk"})
         self.assertEqual(IMPORTABLE_ENGINES, ("musetalk",))
 
     def test_restricted_tts_engines_are_labeled_in_catalog_ui_and_notices(self):
-        from src.server.runtime_settings import TTS_ENGINE_META, _catalog
+        from nova_core.server.runtime_settings import TTS_ENGINE_META, _catalog
 
         expected = {
             "edgetts": ("Edge TTS (Development only)", "開發用"),
@@ -107,7 +107,7 @@ class BrandingComplianceTests(unittest.TestCase):
         }
         for name, marker in engine_files.items():
             with self.subTest(engine_file=name):
-                header = (ROOT / "src/tts/engines" / name).read_text(encoding="utf-8")[:600]
+                header = (ROOT / "services/tts/nova_tts/engines" / name).read_text(encoding="utf-8")[:600]
                 self.assertIn(marker, header)
 
         third_party = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")

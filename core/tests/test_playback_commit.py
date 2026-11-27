@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 
-from src.server.voice_session import OUTPUT_STALL_FRAMES, VoiceTurnSession
+from nova_core.server.voice_session import OUTPUT_STALL_FRAMES, VoiceTurnSession
 from nova_contracts.llm import Outcome, TurnCommit
-from tests.llm_fakes import FakeLlm
-from tests.session_fakes import FakeAvatar
-from tests.speech_fakes import spoken_answer
+from llm_fakes import FakeLlm
+from session_fakes import FakeAvatar
+from speech_fakes import spoken_answer
 
 
 @contextmanager
@@ -83,7 +83,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             committing(session) as commit,
-            patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
+            patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             await session.interrupt()
 
@@ -102,7 +102,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session._metrics.mark_speech_end()
         session.on_output_audio(True)
 
-        with patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()):
+        with patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()):
             await session.interrupt()
 
         metric_event = next(event for event in events if event["type"] == "turn_metrics")
@@ -295,7 +295,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             committing(session),
-            patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
+            patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             await session.interrupt()
 
@@ -331,7 +331,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             committing(session),
-            patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
+            patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             session.on_output_audio(False)
             session.on_output_audio(False)
@@ -364,7 +364,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             committing(session),
-            patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
+            patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             session.on_output_audio(False)
             session.on_output_audio(False)
@@ -381,7 +381,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
 
 class PlaybackMetadataTests(unittest.IsolatedAsyncioTestCase):
     async def test_audio_track_reports_activity_with_committed_eventpoint(self):
-        from src.utils.webrtc import PlayerStreamTrack
+        from nova_core.utils.webrtc import PlayerStreamTrack
 
         callbacks = []
 
@@ -424,8 +424,8 @@ class PlaybackMetadataTests(unittest.IsolatedAsyncioTestCase):
         track.stop()
 
     def test_single_chunk_fragment_marks_start_and_end_without_text_metadata(self):
-        from src.tts.base import State
-        from src.tts.engines.edge import _EdgePCMEmitter
+        from nova_tts.base import State
+        from nova_tts.engines.edge import _EdgePCMEmitter
 
         captured = []
         sink = SimpleNamespace(
@@ -455,7 +455,7 @@ class PlaybackMetadataTests(unittest.IsolatedAsyncioTestCase):
 
 class PrivacyLoggingTests(unittest.TestCase):
     def test_media_log_only_records_fragment_boundaries(self):
-        from src.avatars.base import BaseAvatar
+        from nova_render.base import BaseAvatar
 
         middle = {
             "turn_id": "turn-1",
@@ -463,7 +463,7 @@ class PrivacyLoggingTests(unittest.TestCase):
             "fragment_sequence": 0,
             "media_sequence": 10,
         }
-        with patch("src.avatars.base.logger") as media_logger:
+        with patch("nova_render.base.logger") as media_logger:
             BaseAvatar.notify(SimpleNamespace(), middle)
             BaseAvatar.notify(
                 SimpleNamespace(),
@@ -477,9 +477,9 @@ class PrivacyLoggingTests(unittest.TestCase):
         self.assertEqual(media_logger.info.call_count, 2)
 
     def test_turn_aware_llm_and_media_logs_exclude_content(self):
-        from src.config.schema import Config
-        from src.llm.base import BaseLLM
-        from src.avatars.base import BaseAvatar
+        from nova_core.config.schema import Config
+        from nova_llm.base import BaseLLM
+        from nova_render.base import BaseAvatar
 
         class FakeLLM(BaseLLM):
             def chat_stream(self, message, system_prompt=None):
@@ -487,14 +487,14 @@ class PrivacyLoggingTests(unittest.TestCase):
                 yield "private assistant reply。"
 
         avatar = SimpleNamespace(put_msg_txt=Mock())
-        with patch("src.llm.base.logger") as llm_logger:
+        with patch("nova_llm.base.logger") as llm_logger:
             spoken_answer(
                 FakeLLM(Config()),
                 "private transcript",
                 avatar,
                 datainfo={"turn_id": "turn-1", "generation": 0},
             )
-        with patch("src.avatars.base.logger") as media_logger:
+        with patch("nova_render.base.logger") as media_logger:
             BaseAvatar.notify(
                 SimpleNamespace(),
                 {
@@ -510,7 +510,7 @@ class PrivacyLoggingTests(unittest.TestCase):
         self.assertNotIn("private assistant reply", logs)
 
     def test_asr_success_log_excludes_transcript(self):
-        from src.asr.base import BaseASR
+        from nova_stt.base import BaseASR
 
         class FakeASR(BaseASR):
             def _load_model(self):
@@ -524,8 +524,8 @@ class PrivacyLoggingTests(unittest.TestCase):
         engine.ensure_ready = Mock()
         engine._save_temp_audio = Mock(return_value="/tmp/fake-asr.wav")
         with (
-            patch("src.asr.base.logger") as asr_logger,
-            patch("src.asr.base.os.path.exists", return_value=False),
+            patch("nova_stt.base.logger") as asr_logger,
+            patch("nova_stt.base.os.path.exists", return_value=False),
         ):
             result = engine.transcribe(b"private raw audio")
 

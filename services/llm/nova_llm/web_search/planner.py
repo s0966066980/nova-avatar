@@ -6,7 +6,7 @@ from datetime import datetime
 
 from openai import AsyncOpenAI
 
-from src.llm.llamacpp_protocol import thinking_request_fields
+from nova_llm.llamacpp_protocol import thinking_request_fields
 
 SCHEMA = {
     'type': 'object', 'properties': {

@@ -11,9 +11,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.tts.training.corpus import CorpusError, CorpusStore
-from src.tts.training.gpu_guard import DeviceChoice
-from src.tts.training.transcription import (
+from nova_tts.training.corpus import CorpusError, CorpusStore
+from nova_tts.training.gpu_guard import DeviceChoice
+from nova_tts.training.transcription import (
     ALLOWED_MODELS,
     DEFAULT_MODEL,
     FasterWhisperTranscriber,
@@ -491,9 +491,9 @@ def test_a_cpu_failure_is_not_retried(tmp_path):
 def test_running_is_true_only_while_a_job_works(tmp_path):
     import threading
 
-    from src.tts.training.corpus import CorpusStore
-    from src.tts.training.gpu_guard import DeviceChoice
-    from src.tts.training.transcription import TranscriptionJobs
+    from nova_tts.training.corpus import CorpusStore
+    from nova_tts.training.gpu_guard import DeviceChoice
+    from nova_tts.training.transcription import TranscriptionJobs
 
     store = CorpusStore(tmp_path / "training")
     store.create("mine", source="self-recorded")

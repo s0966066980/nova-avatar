@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
-from src.tts.training.corpus import CorpusError, CorpusStore, clean_text
+from nova_tts.training.corpus import CorpusError, CorpusStore, clean_text
 
 MAX_TXT_BYTES = 8 * 1024
 MAX_CSV_BYTES = 2 * 1024 * 1024

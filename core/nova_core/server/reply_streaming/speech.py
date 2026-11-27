@@ -14,9 +14,9 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from nova_contracts.llm import FragmentReview, SpeechEnd, SpeechEvent
-from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
-from src.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
-from src.utils.logging import logger
+from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
+from nova_core.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
+from nova_core.utils.logging import logger
 
 
 class ReplySpeech:

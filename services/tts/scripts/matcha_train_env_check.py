@@ -4,7 +4,7 @@
 """Prove the Matcha-TTS training venv works: strict checkpoint load, then CPU steps.
 
 Run with the venv's interpreter (``.local/matcha-train/venv/bin/python``), never
-the main project venv; ``scripts/setup-matcha-train.sh`` does this last.
+the main project venv; ``services/tts/scripts/setup-matcha-train.sh`` does this last.
 
 1. Build the architecture of ``dengcunqin/matcha_tts_zh_en_20251010`` with the
    upstream ``matcha.models.matcha_tts.MatchaTTS`` and load
@@ -27,7 +27,7 @@ import torch  # noqa: E402
 
 # The architecture, checkpoint loader and fake batch live with the training scripts, so the
 # check exercises exactly what training uses. ``-I`` keeps the script folder off sys.path.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools" / "tts-distill"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools" / "tts-distill"))
 from matcha_arch import SEGMENT_FRAMES, fake_batch, load_sherpa_checkpoint  # noqa: E402
 
 DEFAULT_CHECKPOINT = Path(".local/matcha-base/pytorch_model_sherpa.bin")

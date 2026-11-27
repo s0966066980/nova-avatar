@@ -21,11 +21,11 @@ from nova_contracts.llm import (
     ReplyStarted,
 )
 from nova_contracts.llm import LlmEngineSettings, LocalServer, LocalServerSettings, Question, TurnCommit
-from src.llm.adapter import InProcessLlmService
-from src.llm.engines import FakeLLM
-from src.llm.engines.fake import answer_chunks
-from src.llm.config_section import reply_rules
-from src.server.reply_streaming.llm_reply import conversation_session, stream_reply
+from nova_llm.adapter import InProcessLlmService
+from nova_llm.engines import FakeLLM
+from nova_llm.engines.fake import answer_chunks
+from nova_llm.config_section import reply_rules
+from nova_core.server.reply_streaming.llm_reply import conversation_session, stream_reply
 
 Script = Callable[[ReplyRequest], Union[str, Iterable[ReplyEvent]]]
 

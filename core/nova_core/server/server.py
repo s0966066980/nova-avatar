@@ -15,13 +15,13 @@ import threading
 from pathlib import Path
 from aiohttp import web
 
-from src.utils.logging import logger
-from src.server.state import state
-from src.server import routes
-from src.profiles.coordinator import initialize_roles
-from src.server.routes.profiles import register_profile_routes
-from src.server.access import access_guard, install_access
-from src.utils.paths import WEB_DIR
+from nova_core.utils.logging import logger
+from nova_core.server.state import state
+from nova_core.server import routes
+from nova_core.profiles.coordinator import initialize_roles
+from nova_core.server.routes.profiles import register_profile_routes
+from nova_core.server.access import access_guard, install_access
+from nova_core.utils.paths import WEB_DIR
 
 
 # Upper bound for an orderly stop after SIGTERM/SIGINT. Closing WebRTC peers
@@ -102,12 +102,12 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
     state.shutting_down = False
     # 單獨設定較大的請求體上限，方便上傳音影片
     # Leave space for multipart headers around the 100 MB background asset.
-    # access_guard runs first: every route's class lives in src/server/access.py.
+    # access_guard runs first: every route's class lives in core/nova_core/server/access.py.
     app = web.Application(client_max_size=1024**2*101, middlewares=[access_guard, profile_settings_guard])
     install_access(app, admin_env_path, getattr(getattr(state.config, "app", None), "allowed_hosts", ()))
-    from src.server.routes.attachments import register as register_attachments
+    from nova_core.server.routes.attachments import register as register_attachments
     register_attachments(app)
-    from src.server import conversations
+    from nova_core.server import conversations
     app.router.add_get('/api/conversations', conversations.list_conversations)
     app.router.add_post('/api/conversations/defaults', conversations.save_defaults)
     app.router.add_post(r'/api/conversations/{sessionid:\d+}', conversations.update_conversation)
@@ -122,13 +122,13 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
 
     async def prepare_roles(app):
         if state.config is not None and state.config_path:
-            from src.server.deferred_settings import apply_pending
+            from nova_core.server.deferred_settings import apply_pending
             await apply_pending()
             await initialize_roles(state)
     app.on_startup.append(prepare_roles)
     register_profile_routes(app)
     routes.register_tts_corpus_routes(app)
-    from src.server.routes.tts_training import register as register_tts_training
+    from nova_core.server.routes.tts_training import register as register_tts_training
     register_tts_training(app)
 
     # 路由集中註冊，避免分散難維護

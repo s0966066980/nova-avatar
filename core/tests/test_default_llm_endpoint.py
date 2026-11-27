@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from src.config.loader import load_config
+from nova_core.config.loader import load_config
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OLLAMA_URL = "http://localhost:11434/v1"
 DEFAULT_GGUF = "gemma-4-E2B_q4_0-it"
 
@@ -20,7 +20,7 @@ DEFAULT_GGUF = "gemma-4-E2B_q4_0-it"
 def overrides(monkeypatch):
     """Runtime overrides as the console would have saved them; none by default."""
     saved: dict = {}
-    monkeypatch.setattr("src.config.overrides.load_runtime_overrides", lambda: saved)
+    monkeypatch.setattr("nova_core.config.overrides.load_runtime_overrides", lambda: saved)
     return saved
 
 

@@ -17,7 +17,7 @@ from typing import Any, Dict, Iterator, Union
 
 import numpy as np
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 AudioLike = Union[bytes, bytearray, memoryview, np.ndarray]
 

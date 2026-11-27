@@ -10,12 +10,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.llm.handoff import CLARIFY, route_schema
-from src.profiles.routing import route_question
-from src.profiles.store import ProfileError
-from tests.llm_fakes import FakeLlm
-from tests.role_fakes import _config, _prompt, _schema, composition
-from tests.composition_fakes import _request, composition_routes, store  # noqa: F401
+from nova_llm.handoff import CLARIFY, route_schema
+from nova_core.profiles.routing import route_question
+from nova_core.profiles.store import ProfileError
+from llm_fakes import FakeLlm
+from role_fakes import _config, _prompt, _schema, composition
+from composition_fakes import _request, composition_routes, store  # noqa: F401
 
 DRY_RUN = "/api/profiles/composition/dry-run"
 
@@ -48,7 +48,7 @@ def test_dry_run_routes_with_the_saved_composition_and_a_fresh_conversation(rout
         return {"target": "s1", "clarification": "", "context": "", "county": "", "town": "",
                 "kind": "", "start_date": "", "end_date": "", "decided_by": "model", "reason": "s1 的專長"}
 
-    monkeypatch.setattr("src.server.routes.profiles.route_question", fake_route)
+    monkeypatch.setattr("nova_core.server.routes.profiles.route_question", fake_route)
     before = store.load()
     status, body = _request("POST", DRY_RUN, {"current_profile_id": "weather", "text": "  問到 s1  "})
     assert status == 200, body
@@ -72,7 +72,7 @@ def test_dry_run_reports_clarify_and_staying_with_the_current_role(routes, monke
         return {"context": "", "county": "", "town": "", "kind": "", "start_date": "", "end_date": "",
                 "decided_by": "model", **next(replies)}
 
-    monkeypatch.setattr("src.server.routes.profiles.route_question", fake_route)
+    monkeypatch.setattr("nova_core.server.routes.profiles.route_question", fake_route)
     status, body = _request("POST", DRY_RUN, {"current_profile_id": "main", "text": "天氣和訂單"})
     assert status == 200
     assert (body["target"], body["target_name"], body["handoff"]) == (None, "", False)
@@ -109,7 +109,7 @@ def test_an_unreachable_model_is_reported_as_unavailable(routes, monkeypatch):
     def broken(*_args, **_options):
         raise ConnectionError("refused")
 
-    monkeypatch.setattr("src.server.routes.profiles.route_question", broken)
+    monkeypatch.setattr("nova_core.server.routes.profiles.route_question", broken)
     status, body = _request("POST", DRY_RUN, {"current_profile_id": "main", "text": "你好"})
     assert status == 503 and "模型" in body["msg"]
 

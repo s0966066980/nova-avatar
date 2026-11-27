@@ -15,16 +15,16 @@ import pytest
 import soundfile as sf
 import yaml
 
-from src.config.schema import Config, TTSConfig
-from src.server.runtime_settings import (
+from nova_core.config.schema import Config, TTSConfig
+from nova_core.server.runtime_settings import (
     SettingsError,
     TTS_ENGINE_META,
     apply_tts_settings,
     speech_snapshot,
 )
-from src.tts import voice_library
-from src.tts.factory import create_tts_engine
-from tests.tts_fakes import in_process_tts
+from nova_tts import voice_library
+from nova_tts.factory import create_tts_engine
+from tts_fakes import in_process_tts
 
 # Every retired name takes the same "not a current engine" branch; two stand in for all of them.
 REMOVED = ("cosyvoice", "gpt-sovits")
@@ -96,7 +96,7 @@ def test_supported_engines_keep_their_settings_and_leave_no_notice(voices, store
 
 def test_startup_config_with_a_removed_engine_and_legacy_fields_loads_on_edge_tts(
         voices, stored_voice, tmp_path, monkeypatch, caplog):
-    from src.config import loader, overrides
+    from nova_core.config import loader, overrides
 
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml.safe_dump({"tts": {
@@ -113,17 +113,17 @@ def test_startup_config_with_a_removed_engine_and_legacy_fields_loads_on_edge_tt
 
 def test_applying_a_tts_engine_clears_the_fallback_notice(voices, monkeypatch):
     voice_library.migrate_tts_values({"type": "xtts", "ref_file": ""}, where="設定檔")
-    monkeypatch.setattr("src.server.runtime_settings._preview_tts", lambda *a, **k: "data:audio/wav;base64,dA==")
-    monkeypatch.setattr("src.server.runtime_settings.persist_runtime_overrides", lambda config: None)
+    monkeypatch.setattr("nova_core.server.runtime_settings._preview_tts", lambda *a, **k: "data:audio/wav;base64,dA==")
+    monkeypatch.setattr("nova_core.server.runtime_settings.persist_runtime_overrides", lambda config: None)
     result = apply_tts_settings(Config(), {"type": "edgetts", "ref_file": "zh-TW-HsiaoYuNeural"},
                                 session_count=0, tts=in_process_tts())
     assert result["notice"] == ""
 
 
 def test_saved_role_with_a_removed_engine_starts_on_edge_tts(voices, stored_voice, tmp_path, monkeypatch):
-    from src.profiles.store import ProfileError, ProfileStore
+    from nova_core.profiles.store import ProfileError, ProfileStore
 
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     config = Config()
     config.model.avatar_id = "musetalk_angela"
     store = ProfileStore(tmp_path / "profiles.yaml")

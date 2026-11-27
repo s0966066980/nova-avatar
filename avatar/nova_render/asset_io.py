@@ -24,7 +24,7 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 MAX_COORDS_BYTES = 16 * 1024 * 1024
 BOX_LENGTH = 4

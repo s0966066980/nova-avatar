@@ -7,24 +7,24 @@ from unittest.mock import patch
 
 import numpy as np
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.avatars.builder import build_character
-from src.avatars.mouth_quality import (
+from nova_render.builder import build_character
+from nova_render.mouth_quality import (
     QualityError,
     enhance_generated_mouth,
     enhance_from_config,
     normalize_quality,
     quality_from_model,
 )
-from src.avatars.adapter import create_avatar_service
-from src.config.schema import Config
-from src.server.import_jobs import start_import_job
-from tests.tts_fakes import in_process_tts
-from src.server.state import state
-from src.server.runtime_settings import (
+from nova_render.adapter import create_avatar_service
+from nova_core.config.schema import Config
+from nova_core.server.import_jobs import start_import_job
+from tts_fakes import in_process_tts
+from nova_core.server.state import state
+from nova_core.server.runtime_settings import (
     SettingsError,
     apply_mouth_quality,
     current_snapshot,
@@ -85,7 +85,7 @@ class QualityNormalizeTests(unittest.TestCase):
         self.assertEqual(set(quality), {"mouth_sharpen", "paste_interpolation", "musetalk"})
 
     def test_a_saved_model_section_for_wav2lip_still_loads(self):
-        from src.config.loader import dict_to_config
+        from nova_core.config.loader import dict_to_config
 
         config = dict_to_config({"model": {"type": "musetalk", "wav2lip": {"pad_bottom": 10}}})
         self.assertEqual(config.model.type, "musetalk")
@@ -110,8 +110,8 @@ class QualitySettingsTests(unittest.TestCase):
         config.model.mouth_sharpen = 0.7
         config.model.musetalk.bbox_shift = 5
         with patch(
-            "src.avatars.catalog.list_avatar_characters", return_value=[]
-        ), patch("src.avatars.catalog.list_engines", return_value=[]):
+            "nova_render.catalog.list_avatar_characters", return_value=[]
+        ), patch("nova_render.catalog.list_engines", return_value=[]):
             snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
         self.assertEqual(snapshot["avatar_quality"]["mouth_sharpen"], 0.7)
         self.assertEqual(snapshot["avatar_quality"]["musetalk"]["bbox_shift"], 5)
@@ -119,7 +119,7 @@ class QualitySettingsTests(unittest.TestCase):
 
     def test_apply_mouth_quality_persists_without_disconnect(self):
         config = Config()
-        with patch("src.server.runtime_settings.persist_runtime_overrides") as persist:
+        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
             result = apply_mouth_quality(
                 config,
                 {
@@ -157,9 +157,9 @@ class BuildQualityForwardingTests(unittest.TestCase):
                 captured["video_path"] = video_path
                 report(80, "ok")
 
-            with patch("src.avatars.builder.avatars_root", return_value=root / "avatars"), \
-                 patch("src.avatars.builder.extract_frames", return_value=4), \
-                 patch("src.avatars.builder._build_musetalk", side_effect=fake_build):
+            with patch("nova_render.builder.avatars_root", return_value=root / "avatars"), \
+                 patch("nova_render.builder.extract_frames", return_value=4), \
+                 patch("nova_render.builder._build_musetalk", side_effect=fake_build):
                 result = build_character(
                     "musetalk",
                     video,
@@ -189,10 +189,10 @@ class BuildQualityForwardingTests(unittest.TestCase):
                     progress(100, "done")
                 return {"type": engine, "avatar_id": avatar_id, "frames": 1}
 
-            with patch("src.avatars.builder.build_character", side_effect=fake_build), \
+            with patch("nova_render.builder.build_character", side_effect=fake_build), \
                  patch.object(state, "avatar_service", create_avatar_service()), \
-                 patch("src.avatars.builder.get_data_dir", return_value=Path(tmp)), \
-                 patch("src.server.import_jobs._WORKER_LOCK") as lock:
+                 patch("nova_render.builder.get_data_dir", return_value=Path(tmp)), \
+                 patch("nova_core.server.import_jobs._WORKER_LOCK") as lock:
                 lock.locked.return_value = False
                 lock.acquire.return_value = True
                 job = start_import_job(

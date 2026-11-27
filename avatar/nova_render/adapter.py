@@ -3,8 +3,8 @@
 
 """The avatar rendering layer's entry point: ``AvatarService`` served in-process.
 
-The core reaches the layer (``src.avatars`` and ``src.scene``) only through
-this module and ``src.avatars.config_section``; everything else is internal
+The core reaches the layer (``nova_render`` and ``nova_render.scene``) only through
+this module and ``nova_render.config_section``; everything else is internal
 (import-linter contract ``avatar-internals-private``). Renderers stay in the
 core's process (spec decision 1): ``create_renderer`` returns the engine's
 renderer, which implements ``AvatarRenderer`` itself.
@@ -30,8 +30,8 @@ from nova_contracts.avatar import (
     TransitionClip,
 )
 from nova_contracts.common import ServiceError
-from src.avatars import builder, catalog, mouth_quality, video_output
-from src.scene import service as scene
+from nova_render import builder, catalog, mouth_quality, video_output
+from nova_render.scene import service as scene
 
 
 @contextmanager
@@ -49,23 +49,23 @@ class InProcessAvatarService:
     # Models and renderers.
 
     def prepare_model(self, config: Any) -> tuple[LoadedAvatarModel, AvatarAssets]:
-        from src.avatars import factory
+        from nova_render import factory
 
         return factory.prepare_avatar_model(config)
 
     def load_assets(self, config: Any) -> AvatarAssets:
-        from src.avatars import factory
+        from nova_render import factory
 
         return factory.load_avatar_data(config)
 
     def create_renderer(self, config: Any, model: LoadedAvatarModel, assets: AvatarAssets,
                         sessionid: int) -> AvatarRenderer:
-        from src.avatars import factory
+        from nova_render import factory
 
         return factory.create_avatar(config, model, assets, sessionid)
 
     def open_transition_clip(self, path: Path, frames: int) -> TransitionClip:
-        from src.scene.role_presentation import TransitionClipReader
+        from nova_render.scene.role_presentation import TransitionClipReader
 
         return TransitionClipReader(path, frames)
 
@@ -182,7 +182,7 @@ class InProcessAvatarService:
         return FrameSize(width=width, height=height)
 
     def records_dir(self) -> Path:
-        from src.avatars import base
+        from nova_render import base
 
         return base.RECORDS_DIR
 

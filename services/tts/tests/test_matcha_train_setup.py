@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from scripts import matcha_base_weights as weights
+import matcha_base_weights as weights
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 CONTENT = b"fake matcha checkpoint"
 
 
@@ -110,7 +110,7 @@ def test_dependency_files_keep_heavy_and_copyleft_packages_out():
     assert "--hash=sha256:" in matcha
 
 
-# --- scripts/setup-matcha-train.sh, with stand-ins for uv and the venv's python ---
+# --- services/tts/scripts/setup-matcha-train.sh, with stand-ins for uv and the venv's python ---
 
 FAKE_UV = """#!/bin/bash
 echo "uv $*" >> "$NOVA_TEST_LOG"
@@ -128,8 +128,8 @@ echo "python CUDA=[${CUDA_VISIBLE_DEVICES-unset}] $*" >> "$NOVA_TEST_LOG"
 @pytest.fixture
 def project(tmp_path):
     root = tmp_path / "project"
-    (root / "scripts").mkdir(parents=True)
-    shutil.copy2(ROOT / "scripts/setup-matcha-train.sh", root / "scripts")
+    (root / "services/tts/scripts").mkdir(parents=True)
+    shutil.copy2(ROOT / "services/tts/scripts/setup-matcha-train.sh", root / "services/tts/scripts")
     shutil.copytree(ROOT / "integrations/matcha-train", root / "integrations/matcha-train")
     (root / ".venv").mkdir()
     (root / ".venv/marker").write_text("main venv")
@@ -148,7 +148,7 @@ def run_setup(project, tmp_path):
 
     def run(**env):
         return subprocess.run(
-            ["bash", str(project / "scripts/setup-matcha-train.sh")],
+            ["bash", str(project / "services/tts/scripts/setup-matcha-train.sh")],
             capture_output=True, text=True, timeout=30, cwd=tmp_path,
             env={**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}", "NOVA_TEST_LOG": str(log),
                  "NOVA_TEST_PYTHON": str(fake_bin / "python-stub"), **env},
@@ -171,9 +171,9 @@ def test_setup_installs_into_local_matcha_train_and_never_touches_the_main_venv(
     assert all(str(project / ".venv") not in line for line in lines)
     assert (project / ".venv/marker").read_text() == "main venv"
     # Checkpoint download, then the check against it with the GPU hidden.
-    assert lines[4] == f"python CUDA=[0] -I {project}/scripts/matcha_base_weights.py --dir {project}/.local/matcha-base"
+    assert lines[4] == f"python CUDA=[0] -I {project}/services/tts/scripts/matcha_base_weights.py --dir {project}/.local/matcha-base"
     assert lines[5] == (
-        f"python CUDA=[] -I {project}/scripts/matcha_train_env_check.py "
+        f"python CUDA=[] -I {project}/services/tts/scripts/matcha_train_env_check.py "
         f"--checkpoint {project}/.local/matcha-base/pytorch_model_sherpa.bin"
     )
 
@@ -207,7 +207,7 @@ def test_setup_requires_uv(project, tmp_path):
     for tool in ("bash", "dirname"):
         (only_bash / tool).symlink_to(shutil.which(tool))
     result = subprocess.run(
-        [str(only_bash / "bash"), str(project / "scripts/setup-matcha-train.sh")],
+        [str(only_bash / "bash"), str(project / "services/tts/scripts/setup-matcha-train.sh")],
         capture_output=True, text=True, timeout=30, env={"PATH": str(only_bash)},
     )
     assert result.returncode != 0

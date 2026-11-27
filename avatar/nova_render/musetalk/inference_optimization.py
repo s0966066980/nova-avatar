@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import torch
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 class TensorRTUNet(torch.nn.Module):
     """Single-step MuseTalk predictor with an original-model fallback.

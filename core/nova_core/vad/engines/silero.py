@@ -22,8 +22,8 @@ from typing import Any, Dict
 
 import numpy as np
 
-from src.utils.logging import logger
-from src.vad.base import BaseVAD
+from nova_core.utils.logging import logger
+from nova_core.vad.base import BaseVAD
 
 
 class SileroVAD(BaseVAD):

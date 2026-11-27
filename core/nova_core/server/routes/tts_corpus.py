@@ -4,7 +4,7 @@
 """Console routes for training corpora: upload, transcripts, transcription, review.
 
 Every route is an ``ADMIN`` route (ADR 0021) and is listed in ``ROUTES`` and in
-``src.server.access.ROUTE_ACCESS``. Corpora are TTS assets (ADR 0027): these routes
+``nova_core.server.access.ROUTE_ACCESS``. Corpora are TTS assets (ADR 0027): these routes
 read the request, enforce its size limits and hand it to the TTS layer through
 ``state.tts`` (``TtsService``), which validates the corpus slug and line ID, builds
 every path on disk itself (CODING_STANDARDS 1) and keeps an uploaded file's own name
@@ -48,9 +48,9 @@ from nova_contracts.tts import (
     TtsError,
     TtsService,
 )
-from src.server.stage_guard import count_stage_connections, transcription_cpu_reason
-from src.server.state import state
-from src.utils.logging import logger
+from nova_core.server.stage_guard import count_stage_connections, transcription_cpu_reason
+from nova_core.server.state import state
+from nova_core.utils.logging import logger
 
 BASE = "/api/tts/corpora"
 CORPUS = BASE + "/{slug}"

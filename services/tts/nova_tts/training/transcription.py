@@ -38,9 +38,9 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
 
-from src.tts.training.corpus import REVIEW_EXCLUDED, CorpusError, CorpusStore, Line
-from src.tts.training.gpu_guard import DEVICE_CPU, DEVICE_CUDA, DeviceChoice
-from src.utils.logging import logger
+from nova_tts.training.corpus import REVIEW_EXCLUDED, CorpusError, CorpusStore, Line
+from nova_tts.training.gpu_guard import DEVICE_CPU, DEVICE_CUDA, DeviceChoice
+from nova_core.utils.logging import logger
 
 # faster-whisper models that may be requested; they must already be in the cache.
 ALLOWED_MODELS = ("small", "medium", "large-v3")

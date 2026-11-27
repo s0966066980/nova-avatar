@@ -18,9 +18,9 @@ from threading import Lock
 
 from openai import OpenAI
 
-from src.llm.llamacpp_protocol import thinking_request_fields
-from src.llm.tools.weather import COUNTIES, TAIPEI
-from src.llm.tools.weather_keywords import canonical_county, explicit_counties, keyword_route
+from nova_llm.llamacpp_protocol import thinking_request_fields
+from nova_llm.tools.weather import COUNTIES, TAIPEI
+from nova_llm.tools.weather_keywords import canonical_county, explicit_counties, keyword_route
 
 # Console profile ids are ``role_<hex>``; an id spelled "clarify" could never be chosen.
 CLARIFY = "clarify"

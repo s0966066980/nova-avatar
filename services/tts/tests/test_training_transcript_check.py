@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from src.tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, REVIEW_PENDING, CorpusStore
-from src.tts.training.transcript_check import (
+from nova_tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, REVIEW_PENDING, CorpusStore
+from nova_tts.training.transcript_check import (
     DEFAULT_MIN_SIMILARITY,
     similarity_ratio,
     verify_with_asr,

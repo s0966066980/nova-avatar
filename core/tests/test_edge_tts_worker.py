@@ -14,10 +14,10 @@ from urllib.parse import parse_qs, urlsplit
 import numpy as np
 
 from nova_contracts.tts import TtsEngineSettings
-from src.config.schema import TTSConfig
-from src.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
-from src.tts.adapter import InProcessTtsService
-from tests.edge_fakes import (
+from nova_core.config.schema import TTSConfig
+from nova_core.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
+from nova_tts.adapter import InProcessTtsService
+from edge_fakes import (
     _handshake_error,
     _mp3_fixture,  # noqa: F401
 )
@@ -38,7 +38,7 @@ class EdgeTTSStartupTests(unittest.TestCase):
         called = Event()
 
         with patch(
-            "src.tts.engines.edge.prewarm_edge_tts",
+            "nova_tts.engines.edge.prewarm_edge_tts",
             side_effect=lambda voice, **_kwargs: called.set() or True,
         ) as prewarm:
             worker = _start_edge_tts_prewarm(self._config(), self._tts())
@@ -50,7 +50,7 @@ class EdgeTTSStartupTests(unittest.TestCase):
         self.assertFalse(worker.is_alive())
 
     def test_non_edge_engine_does_not_start_edge_prewarm(self):
-        with patch("src.tts.engines.edge.prewarm_edge_tts") as prewarm:
+        with patch("nova_tts.engines.edge.prewarm_edge_tts") as prewarm:
             worker = _start_edge_tts_prewarm(self._config("breezyvoice"), self._tts())
             _await_edge_tts_prewarm(worker)
 
@@ -58,15 +58,15 @@ class EdgeTTSStartupTests(unittest.TestCase):
         prewarm.assert_not_called()
 
     def test_startup_prewarm_recovers_from_a_temporary_failure(self):
-        with patch("src.tts.engines.edge.prewarm_edge_tts", side_effect=[False, True]) as prewarm, patch(
-            "src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
+        with patch("nova_tts.engines.edge.prewarm_edge_tts", side_effect=[False, True]) as prewarm, patch(
+            "nova_core.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
         ):
             self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config(), self._tts())))
         self.assertEqual(prewarm.call_count, 2)
 
     def test_startup_prewarm_stops_after_three_failures(self):
-        with patch("src.tts.engines.edge.prewarm_edge_tts", return_value=False) as prewarm, patch(
-            "src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
+        with patch("nova_tts.engines.edge.prewarm_edge_tts", return_value=False) as prewarm, patch(
+            "nova_core.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
         ):
             self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config(), self._tts())))
         self.assertEqual(prewarm.call_count, 3)
@@ -76,7 +76,7 @@ class EdgeTTSTransportTests(unittest.IsolatedAsyncioTestCase):
     async def _capture_prewarm_url(self, endpoint):
         from edge_tts import communicate
 
-        from src.tts.engines.edge import _prewarm_edge_tts
+        from nova_tts.engines.edge import _prewarm_edge_tts
 
         requests = []
 
@@ -125,7 +125,7 @@ class EdgeTTSTransportTests(unittest.IsolatedAsyncioTestCase):
 
 class EdgeTTSWorkerTests(unittest.TestCase):
     def _make_tts(self, parent, **tts_fields):
-        from src.tts.engines.edge import EdgeTTS
+        from nova_tts.engines.edge import EdgeTTS
 
         fields = {
             "ref_file": "zh-TW-YunJheNeural",
@@ -142,7 +142,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         return tts
 
     def test_prefetch_handoff_preserves_pcm_order_while_output_is_blocked(self):
-        from src.tts.engines.edge import _GatedFrameSink
+        from nova_tts.engines.edge import _GatedFrameSink
 
         blocked, resume = Event(), Event()
         received = []
@@ -172,7 +172,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         self.assertEqual(received, [(0, 0), (1, 1), (2, 2)])
 
     def test_cancelling_prefetch_handoff_discards_unsent_pcm(self):
-        from src.tts.engines.edge import _GatedFrameSink
+        from nova_tts.engines.edge import _GatedFrameSink
 
         blocked, resume = Event(), Event()
         received = []
@@ -233,7 +233,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
             "turn_id": "turn-1", "generation": 1, "fragment_sequence": 0,
         }),))
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: RateLimitedCommunicate(),
         ), patch.object(tts, '_wait_for_rate_limit', side_effect=observe_wait):
             worker.start()
@@ -253,8 +253,8 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         from aiohttp import WSServerHandshakeError
 
         from nova_contracts.tts import PlayableFragment
-        from src.tts.retry import RetryBudget
-        from src.server.reply_streaming.turn import TurnContext
+        from nova_tts.retry import RetryBudget
+        from nova_core.server.reply_streaming.turn import TurnContext
 
         requests, failures = [], []
 
@@ -278,7 +278,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         )
         tts = self._make_tts(Parent())
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: RateLimitedCommunicate(),
         ):
             tts.synthesize_fragment(
@@ -310,7 +310,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         job = None
         try:
             with patch(
-                "src.tts.engines.edge.edge_tts.Communicate",
+                "nova_tts.engines.edge.edge_tts.Communicate",
                 side_effect=lambda *_args: RateLimitedCommunicate(),
             ):
                 job = tts._launch_stream(("第一輪回覆。", {
@@ -325,7 +325,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
             tts._cancel_job(job)
 
     def test_prefetch_limits_requests_and_eventually_emits_all_fragments_in_order(self):
-        from src.tts.engines.edge import EDGE_MAX_PREFETCH_JOBS
+        from nova_tts.engines.edge import EDGE_MAX_PREFETCH_JOBS
 
         payload = _mp3_fixture()
         release = Event()
@@ -355,7 +355,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda text, _voice: Communicate(int(text)),
         ):
             worker.start()
@@ -389,7 +389,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
 
         tts = self._make_tts(Parent())
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: WorkingCommunicate(),
         ):
             tts.txt_to_audio(("第一段。", {}))
@@ -440,7 +440,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         )
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             worker.start()
             try:
                 self.assertTrue(first_pcm.wait(timeout=1.5))
@@ -496,7 +496,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
             )
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             worker.start()
             try:
                 self.assertTrue(first_pcm.wait(timeout=1.5))
@@ -556,7 +556,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
             )
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             worker.start()
             try:
                 self.assertTrue(blocked.wait(timeout=1))
@@ -612,7 +612,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         )
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             worker.start()
             try:
                 self.assertTrue(first_pcm.wait(timeout=1.5))
@@ -654,7 +654,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: FirstCommunicate(),
         ):
             worker.start()
@@ -708,7 +708,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
                                       'fragment_sequence': sequence})
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
-        with patch('src.tts.engines.edge.edge_tts.Communicate',
+        with patch('nova_tts.engines.edge.edge_tts.Communicate',
                    side_effect=lambda *_args: WorkingCommunicate()):
             worker.start()
             try:
@@ -767,7 +767,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         )
         quit_event = Event()
         worker = Thread(target=tts.process_tts, args=(quit_event,))
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             worker.start()
             try:
                 self.assertTrue(first_pcm.wait(timeout=1.5))
@@ -825,7 +825,7 @@ class FakeEdge:
 
 class EdgeResilienceTests(unittest.TestCase):
     def make_tts(self, parent):
-        from src.tts.engines.edge import EdgeTTS
+        from nova_tts.engines.edge import EdgeTTS
 
         config = SimpleNamespace(
             audio=SimpleNamespace(fps=50),
@@ -843,8 +843,8 @@ class EdgeResilienceTests(unittest.TestCase):
         parent = Parent()
         tts = self.make_tts(parent)
         patches = [
-            patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=edge),
-            patch("src.tts.engines.edge.EDGE_RATE_LIMIT_BACKOFF_SECONDS", 0.001),
+            patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=edge),
+            patch("nova_tts.engines.edge.EDGE_RATE_LIMIT_BACKOFF_SECONDS", 0.001),
         ]
         for item in patches:
             item.start()
@@ -869,7 +869,7 @@ class EdgeResilienceTests(unittest.TestCase):
 
 class EdgeTTSSilenceTests(unittest.TestCase):
     def test_trims_synthesizer_padding_but_keeps_short_natural_pause(self):
-        from src.tts.engines.edge import trim_edge_silence
+        from nova_tts.engines.edge import trim_edge_silence
 
         sample_rate = 16000
         stream = np.concatenate(
@@ -887,13 +887,13 @@ class EdgeTTSSilenceTests(unittest.TestCase):
         self.assertTrue(np.allclose(trimmed[-int(sample_rate * 0.12) :], 0.0))
 
     def test_does_not_drop_an_entire_quiet_clip(self):
-        from src.tts.engines.edge import trim_edge_silence
+        from nova_tts.engines.edge import trim_edge_silence
 
         stream = np.zeros(1600, dtype=np.float32)
         self.assertIs(trim_edge_silence(stream, 16000), stream)
 
     def test_streaming_trim_matches_batch_trim_across_partial_frames(self):
-        from src.tts.engines.edge import (
+        from nova_tts.engines.edge import (
             _StreamingSilenceTrimmer,
             trim_edge_silence,
         )
@@ -920,7 +920,7 @@ class EdgeTTSSilenceTests(unittest.TestCase):
 
     @staticmethod
     def _trim_chunked(stream, sample_rate, sizes):
-        from src.tts.engines.edge import _StreamingSilenceTrimmer
+        from nova_tts.engines.edge import _StreamingSilenceTrimmer
 
         trimmer = _StreamingSilenceTrimmer(sample_rate)
         output = []
@@ -987,7 +987,7 @@ class EdgeTTSSilenceTests(unittest.TestCase):
         self.assertTrue(np.allclose(result[int(sample_rate * 0.04) :], voiced))
 
     def test_chunk_boundaries_do_not_change_onset_preservation(self):
-        from src.tts.engines.edge import trim_edge_silence
+        from nova_tts.engines.edge import trim_edge_silence
 
         sample_rate = 16000
         quiet_onset = np.full(int(sample_rate * 0.08), 5e-5, dtype=np.float32)
@@ -1044,7 +1044,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
     @staticmethod
     def _make_tts(parent):
-        from src.tts.engines.edge import EdgeTTS
+        from nova_tts.engines.edge import EdgeTTS
 
         config = SimpleNamespace(
             audio=SimpleNamespace(fps=50),
@@ -1073,7 +1073,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
         tts = self._make_tts(Parent())
         worker = Thread(target=tts.txt_to_audio, args=(("測試即時播放。", {}),))
-        with patch("src.tts.engines.edge.edge_tts.Communicate", SlowEndingCommunicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", SlowEndingCommunicate):
             worker.start()
             try:
                 self.assertTrue(first_pcm.wait(timeout=0.20))
@@ -1110,7 +1110,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
         parent = Parent()
         tts = self._make_tts(parent)
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             tts.txt_to_audio(("測試逾時重試。", {}))
 
         self.assertEqual(calls, [1, 2])
@@ -1143,7 +1143,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         }
         tts = self._make_tts(Parent())
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: TimeoutCommunicate(),
         ):
             tts.txt_to_audio(("測試最終失敗。", metadata))
@@ -1184,7 +1184,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
         parent = Parent()
         tts = self._make_tts(parent)
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             tts.txt_to_audio(("測試中斷不接續。", {}))
 
         self.assertEqual(calls, [1])
@@ -1194,7 +1194,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
     def test_timeout_after_playback_commit_does_not_retry(self):
         from nova_contracts.tts import PlayableFragment
-        from src.server.reply_streaming.turn import TurnContext
+        from nova_core.server.reply_streaming.turn import TurnContext
 
         calls = []
 
@@ -1224,7 +1224,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         )
         parent = Parent()
         tts = self._make_tts(parent)
-        with patch("src.tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
+        with patch("nova_tts.engines.edge.edge_tts.Communicate", side_effect=communicate):
             tts.synthesize_fragment(
                 fragment,
                 chunk_guard=lambda _sequence: True,
@@ -1237,7 +1237,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
     def test_turn_aware_frames_are_fenced_and_keep_20ms_media_sequences(self):
         from nova_contracts.tts import PlayableFragment
-        from src.server.reply_streaming.turn import TurnContext
+        from nova_core.server.reply_streaming.turn import TurnContext
 
         class Parent:
             def __init__(self):
@@ -1262,7 +1262,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         tts = self._make_tts(parent)
 
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: WorkingCommunicate(),
         ):
             tts.synthesize_fragment(
@@ -1287,9 +1287,9 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
     def test_fragment_retry_uses_the_shared_one_second_budget(self):
         from nova_contracts.tts import PlayableFragment
-        from src.tts.retry import RetryBudget
-        from src.server.reply_streaming.turn import TurnContext
-        from src.tts.engines.edge import EDGE_INITIAL_STREAM_TIMEOUT_SECONDS
+        from nova_tts.retry import RetryBudget
+        from nova_core.server.reply_streaming.turn import TurnContext
+        from nova_tts.engines.edge import EDGE_INITIAL_STREAM_TIMEOUT_SECONDS
 
         class Parent:
             def put_audio_frame(self, _frame, _eventpoint):
@@ -1318,10 +1318,10 @@ class EdgeTTSStreamingTests(unittest.TestCase):
 
         with (
             patch(
-                "src.tts.engines.edge.edge_tts.Communicate",
+                "nova_tts.engines.edge.edge_tts.Communicate",
                 side_effect=lambda *_args: HangingCommunicate(),
             ),
-            patch("src.tts.engines.edge.asyncio.wait_for", new=immediate_timeout),
+            patch("nova_tts.engines.edge.asyncio.wait_for", new=immediate_timeout),
         ):
             tts.synthesize_fragment(
                 fragment,
@@ -1335,7 +1335,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         )
 
     def test_default_retry_allows_a_slow_edge_first_byte(self):
-        from src.tts.engines.edge import (
+        from nova_tts.engines.edge import (
             EDGE_INITIAL_STREAM_TIMEOUT_SECONDS,
             EDGE_RETRY_STREAM_TIMEOUT_SECONDS,
         )
@@ -1360,10 +1360,10 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         tts = self._make_tts(Parent())
         with (
             patch(
-                "src.tts.engines.edge.edge_tts.Communicate",
+                "nova_tts.engines.edge.edge_tts.Communicate",
                 side_effect=lambda *_args: HangingCommunicate(),
             ),
-            patch("src.tts.engines.edge.asyncio.wait_for", new=immediate_timeout),
+            patch("nova_tts.engines.edge.asyncio.wait_for", new=immediate_timeout),
         ):
             tts.txt_to_audio(("測試慢速首包。", {}))
 
@@ -1377,7 +1377,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         self.assertGreaterEqual(EDGE_RETRY_STREAM_TIMEOUT_SECONDS, 15.0)
 
     def test_first_attempt_switches_to_continuation_timeout_after_audio(self):
-        from src.tts.engines.edge import (
+        from nova_tts.engines.edge import (
             EDGE_CONTINUATION_STREAM_TIMEOUT_SECONDS,
             EDGE_INITIAL_STREAM_TIMEOUT_SECONDS,
         )
@@ -1406,11 +1406,11 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         tts = self._make_tts(parent)
         with (
             patch(
-                "src.tts.engines.edge.edge_tts.Communicate",
+                "nova_tts.engines.edge.edge_tts.Communicate",
                 side_effect=lambda *_args: WorkingCommunicate(),
             ),
             patch(
-                "src.tts.engines.edge.asyncio.wait_for",
+                "nova_tts.engines.edge.asyncio.wait_for",
                 new=recording_wait_for,
             ),
         ):
@@ -1424,7 +1424,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
         )
 
     def test_edge_prewarm_stops_after_first_audio_packet(self):
-        from src.tts.engines.edge import prewarm_edge_tts
+        from nova_tts.engines.edge import prewarm_edge_tts
 
         calls = []
 
@@ -1438,7 +1438,7 @@ class EdgeTTSStreamingTests(unittest.TestCase):
                 yield {"type": "audio", "data": b"unused"}
 
         with patch(
-            "src.tts.engines.edge.edge_tts.Communicate",
+            "nova_tts.engines.edge.edge_tts.Communicate",
             side_effect=lambda *_args: WarmupCommunicate(),
         ):
             ready = prewarm_edge_tts("zh-TW-YunJheNeural", timeout_seconds=0.5)

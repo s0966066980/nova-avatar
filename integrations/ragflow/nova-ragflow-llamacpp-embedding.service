@@ -7,7 +7,7 @@ Description=Nova Avatar RAGFlow CPU embedding endpoint (llama.cpp BGE-M3)
 [Service]
 Type=simple
 WorkingDirectory=%h/nova-avatar
-ExecStart=/usr/bin/bash %h/nova-avatar/scripts/ragflow_llamacpp_embedding.sh
+ExecStart=/usr/bin/bash %h/nova-avatar/services/llm/scripts/ragflow_llamacpp_embedding.sh
 Restart=always
 RestartSec=5
 MemoryMax=4G

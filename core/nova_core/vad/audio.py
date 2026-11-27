@@ -15,8 +15,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from src.utils.audio_container import HEADER_BYTES, demuxer_for
-from src.utils.logging import logger
+from nova_core.utils.audio_container import HEADER_BYTES, demuxer_for
+from nova_core.utils.logging import logger
 
 
 def resample_int16(pcm: np.ndarray, src_sr: int, dst_sr: int) -> np.ndarray:

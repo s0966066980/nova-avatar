@@ -14,11 +14,11 @@ from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 
-from src.config.schema import Config
-from tests.clock_fakes import FakeClock
-from tests.llm_fakes import FakeLlm, answering, reply_events
-from tests.session_fakes import FakeAvatar
-from src.server.reply_streaming.latency_baseline import (
+from nova_core.config.schema import Config
+from clock_fakes import FakeClock
+from llm_fakes import FakeLlm, answering, reply_events
+from session_fakes import FakeAvatar
+from nova_core.server.reply_streaming.latency_baseline import (
     CATEGORIES,
     FIXTURES,
     TARGETS,
@@ -30,13 +30,13 @@ from src.server.reply_streaming.latency_baseline import (
     turn_plan,
     voiced_end_sample,
 )
-from src.server.reply_streaming.metrics import (
+from nova_core.server.reply_streaming.metrics import (
     ANSWER_STAGES,
     STAGE_NAMES,
     TurnMetrics,
 )
-from src.utils.stage_timing import observe_stages, timed_stage
-from src.server.voice_session import VoiceTurnSession
+from nova_core.utils.stage_timing import observe_stages, timed_stage
+from nova_core.server.voice_session import VoiceTurnSession
 
 
 class PreAnswerStageMetricsTests(unittest.TestCase):
@@ -99,7 +99,7 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
             TurnMetrics("turn").record_stage_duration("transcript", 0.1)
 
     def test_llamacpp_model_info_preflight_is_timed(self):
-        from src.llm.engines.openai import OpenAILLM
+        from nova_llm.engines.openai import OpenAILLM
 
         config = Config()
         config.llm.provider = "llamacpp"
@@ -117,7 +117,7 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
             reported.append("preflight-running")
             return {"over_capacity": False, "estimated": True}
 
-        with patch("src.llm.engines.openai.measure_request", side_effect=preflight):
+        with patch("nova_llm.engines.openai.measure_request", side_effect=preflight):
             with observe_stages(lambda stage, _seconds: reported.append(stage)):
                 list(engine.chat_stream("問題"))
         self.assertEqual(reported, ["preflight-running", "model_info"])
@@ -195,7 +195,7 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
 
         self.session._llm.begin_turn = Mock()
         with answering(self.session, fake_llm), patch(
-            "src.llm.adapter.RagFlowClient.retrieve", retrieve
+            "nova_llm.adapter.RagFlowClient.retrieve", retrieve
         ):
             await self.session.start_text_turn(text, interrupt=False)
             self.assertTrue(await asyncio.to_thread(llm_started.wait, 2))
@@ -267,7 +267,7 @@ class VoiceSessionClientOffsetTests(unittest.IsolatedAsyncioTestCase):
         await self.session.close()
 
     async def test_endpoint_records_the_speech_tail_and_vad_processing(self):
-        from src.vad.segmenter import SpeechSegment
+        from nova_core.vad.segmenter import SpeechSegment
 
         segment = SpeechSegment(start_ms=0, end_ms=900, audio=np.zeros(160, np.int16),
                                 speech_ms=600, endpoint_wait_ms=320, speech_tail_ms=64)
@@ -347,7 +347,7 @@ class OutboundAudioPeakTests(unittest.IsolatedAsyncioTestCase):
     async def test_outbound_track_reports_each_frame_peak(self):
         from av import AudioFrame
 
-        from src.utils.webrtc import HumanPlayer, PlayerStreamTrack
+        from nova_core.utils.webrtc import HumanPlayer, PlayerStreamTrack
 
         reported = []
 
@@ -393,7 +393,7 @@ class VideoEnqueueStageTests(unittest.TestCase):
     """Idle frames carry an avatar_epoch eventpoint; they are not reply video."""
 
     def _avatar(self, marks):
-        from src.avatars.base import BaseAvatar
+        from nova_render.base import BaseAvatar
 
         avatar = BaseAvatar.__new__(BaseAvatar)
         avatar.config = SimpleNamespace(sessionid=7, video=SimpleNamespace(max_height=0))

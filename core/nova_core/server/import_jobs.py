@@ -16,10 +16,10 @@ from typing import Any, Dict, Optional, Tuple
 
 from nova_contracts.avatar import ReplaceGuard
 from nova_contracts.common import ServiceError
-from src.server.runtime_settings import SettingsError
-from src.server.state import state
-from src.utils.avatar_ids import is_safe_avatar_id
-from src.utils.logging import logger
+from nova_core.server.runtime_settings import SettingsError
+from nova_core.server.state import state
+from nova_core.utils.avatar_ids import is_safe_avatar_id
+from nova_core.utils.logging import logger
 
 VIDEO_EXTS = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"}
 

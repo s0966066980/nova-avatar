@@ -17,7 +17,7 @@ from uuid import uuid4
 SCHEMA_VERSION = 2
 DEFAULT_HISTORY_LIMIT = 200
 DEFAULT_HISTORY_PATH = (
-    Path(__file__).resolve().parents[2] / "logs" / "voice-test-history.json"
+    Path(__file__).resolve().parents[3] / "logs" / "voice-test-history.json"
 )
 VOICE_TEST_THRESHOLDS = {
     "first_audio_seconds": 2.5,

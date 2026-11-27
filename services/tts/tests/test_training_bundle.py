@@ -10,9 +10,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.tts.training import bundle
-from src.tts.training.bundle import BundleError, check_model_name, install_voice_model, new_model_id, source_description
-from src.tts.voice_models import REQUIRED_FILES, VOICE_MODEL_ID, list_voice_models
+from nova_tts.training import bundle
+from nova_tts.training.bundle import BundleError, check_model_name, install_voice_model, new_model_id, source_description
+from nova_tts.voice_models import REQUIRED_FILES, VOICE_MODEL_ID, list_voice_models
 
 
 @pytest.fixture
@@ -144,7 +144,7 @@ def fake_sherpa(monkeypatch):
 
 
 def test_verify_loads_the_bundle_on_the_cpu_and_returns_the_seconds_synthesised(staging, fake_sherpa):
-    from src.tts.training import verify_bundle
+    from nova_tts.training import verify_bundle
 
     assert verify_bundle.verify(staging) == 1.0
     config = fake_sherpa.seen["config"]
@@ -154,7 +154,7 @@ def test_verify_loads_the_bundle_on_the_cpu_and_returns_the_seconds_synthesised(
 
 
 def test_verify_rejects_audio_that_is_not_16_khz_speech(staging, fake_sherpa):
-    from src.tts.training import verify_bundle
+    from nova_tts.training import verify_bundle
 
     fake_sherpa.audio.sample_rate = 22050
     with pytest.raises(RuntimeError, match="unexpected audio"):
@@ -162,7 +162,7 @@ def test_verify_rejects_audio_that_is_not_16_khz_speech(staging, fake_sherpa):
 
 
 def test_the_check_exits_zero_or_one_with_the_reason(staging, fake_sherpa, capsys):
-    from src.tts.training import verify_bundle
+    from nova_tts.training import verify_bundle
 
     assert verify_bundle.main([str(staging)]) == 0
     assert capsys.readouterr().out == "OK 1.00\n"

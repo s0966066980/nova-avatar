@@ -9,15 +9,15 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from src.profiles.media import TransitionMedia
-from src.scene.role_presentation import HEIGHT, WIDTH, RolePresentation
-from src.profiles.store import ProfileError
-from src.scene.service import scene_service
+from nova_core.profiles.media import TransitionMedia
+from nova_render.scene.role_presentation import HEIGHT, WIDTH, RolePresentation
+from nova_core.profiles.store import ProfileError
+from nova_render.scene.service import scene_service
 
 
 def test_role_continuity_masks_have_a_bounded_memory_cost():
-    from src.avatars.musetalk.mouth_continuity import MouthContinuityController
-    from src.avatars.musetalk.avatar_transition import AvatarTransitionController
+    from nova_render.musetalk.mouth_continuity import MouthContinuityController
+    from nova_render.musetalk.avatar_transition import AvatarTransitionController
     frame = np.zeros((1024, 1024, 3), np.uint8)
     mask = np.full((32, 32), 255, np.uint8)
     frames, masks = [frame] * 12, [mask] * 12
@@ -124,7 +124,7 @@ def test_uploaded_clip_is_fully_decoded_silent_and_protected_while_referenced(tm
 
 
 def test_cancelled_upload_waits_for_worker_and_removes_its_unpublished_asset():
-    from src.server.routes.profiles import upload
+    from nova_core.server.routes.profiles import upload
     async def scenario():
         started, release = Event(), Event()
         deleted, sources = [], []

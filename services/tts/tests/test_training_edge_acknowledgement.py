@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from src.tts.training.corpus import CorpusError, CorpusStore
-from src.tts.training.edge_acknowledgement import (
+from nova_tts.training.corpus import CorpusError, CorpusStore
+from nova_tts.training.edge_acknowledgement import (
     ACKNOWLEDGEMENT_FILE,
     MSA_CLAUSE,
     read_acknowledgement,
@@ -42,7 +42,7 @@ def _ack_path(store: CorpusStore, slug: str) -> Path:
 
 
 def test_the_clause_text_is_the_one_quoted_in_the_notices():
-    notices = (Path(__file__).resolve().parents[1] / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    notices = (Path(__file__).resolve().parents[3] / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
 
     assert MSA_CLAUSE.reference == "Microsoft Services Agreement §14(s)(iv)"
     assert MSA_CLAUSE.effective == "2026-09-30"

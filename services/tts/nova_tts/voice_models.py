@@ -39,8 +39,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.utils.logging import logger
-from src.utils.paths import get_project_root
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_project_root
 
 VOICE_MODELS_ROOT = get_project_root() / "models" / "tts"
 LABEL_FILE = "voice.json"

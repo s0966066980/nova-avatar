@@ -1,6 +1,6 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
-# Adapted from src/server/tts_training_jobs.py on the jetson-orin branch.
+# Adapted from core/nova_core/server/tts_training_jobs.py on the jetson-orin branch.
 # Modified by HongXian0903, 2026.
 
 """Training jobs (訓練工作): from a corpus to a voice model in the catalog.
@@ -59,21 +59,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from src.tts.training import edge_teacher
-from src.tts.training.asr import DEFAULT_MODEL as DEFAULT_WHISPER_MODEL
-from src.tts.training.asr import (
+from nova_tts.training import edge_teacher
+from nova_tts.training.asr import DEFAULT_MODEL as DEFAULT_WHISPER_MODEL
+from nova_tts.training.asr import (
     UTTERANCE_TIMEOUT_SECONDS,
     SubprocessTranscriber,
     TranscriberError,
 )
-from src.tts.training.bundle import (
+from nova_tts.training.bundle import (
     BundleError,
     check_model_name,
     install_voice_model,
     new_model_id,
     source_description,
 )
-from src.tts.training.corpus import (
+from nova_tts.training.corpus import (
     REASON_NO_CONFIRMED_LINES,
     REASON_PENDING_LINES,
     REASON_SOURCE_MISSING,
@@ -82,8 +82,8 @@ from src.tts.training.corpus import (
     CorpusError,
     CorpusStore,
 )
-from src.tts.training.edge_acknowledgement import MSA_CLAUSE, require_acknowledgement
-from src.tts.training.gpu_guard import (
+from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, require_acknowledgement
+from nova_tts.training.gpu_guard import (
     DEFAULT_MIN_FREE_VRAM_GB,
     FAIL,
     PASS,
@@ -91,16 +91,16 @@ from src.tts.training.gpu_guard import (
     Check,
     free_vram_check,
 )
-from src.tts.training.gpu_probe import VramReading, read_free_vram
-from src.tts.training.manifest import build_manifest
-from src.tts.training.preparation import PreparationReport, check_quality, convert_uploads
-from src.tts.training.processes import DEFAULT_GRACE_SECONDS, Spawn, run_process, spawn_process
-from src.tts.training.sentences import PRESETS, estimate_seconds, review_text_list, select_preset
-from src.tts.training.transcript_check import DEFAULT_MIN_SIMILARITY, Transcriber, verify_with_asr
-from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
-from src.tts.voice_models import VOICE_MODELS_ROOT, list_voice_models
-from src.utils.logging import logger
-from src.utils.paths import get_project_root
+from nova_tts.training.gpu_probe import VramReading, read_free_vram
+from nova_tts.training.manifest import build_manifest
+from nova_tts.training.preparation import PreparationReport, check_quality, convert_uploads
+from nova_tts.training.processes import DEFAULT_GRACE_SECONDS, Spawn, run_process, spawn_process
+from nova_tts.training.sentences import PRESETS, estimate_seconds, review_text_list, select_preset
+from nova_tts.training.transcript_check import DEFAULT_MIN_SIMILARITY, Transcriber, verify_with_asr
+from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
+from nova_tts.voice_models import VOICE_MODELS_ROOT, list_voice_models
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_project_root
 
 # ------------------------------------------------------------------ vocabulary
 
@@ -156,7 +156,7 @@ STEP_PATTERN = re.compile(r"step=(\d+)/(\d+)(?:\s+loss=([0-9.]+))?")
 INTERRUPTED_MESSAGE = "伺服器重新啟動，訓練工作已中斷"
 # A recorded pid may have been reused: only a process whose command line names one of the
 # children this job starts (the training tools, the Whisper worker) is ever signalled.
-ORPHAN_MARKERS = ("tts-distill", "src.tts.training.whisper_worker")
+ORPHAN_MARKERS = ("tts-distill", "nova_tts.training.whisper_worker")
 # Server shutdown waits for the cancelled job this long beyond the SIGTERM grace period.
 SHUTDOWN_MARGIN_SECONDS = 5.0
 ORPHAN_KILL_WAIT_SECONDS = 5.0
@@ -476,7 +476,7 @@ class TrainingJobManager:
         if missing:
             return Check(
                 CHECK_ENVIRONMENT, "訓練環境", FAIL,
-                f"找不到 {'、'.join(missing)}；請執行 scripts/setup-matcha-train.sh", {"missing": missing},
+                f"找不到 {'、'.join(missing)}；請執行 services/tts/scripts/setup-matcha-train.sh", {"missing": missing},
             )
         return Check(CHECK_ENVIRONMENT, "訓練環境", PASS, "訓練環境與底模權重已就緒")
 
@@ -1075,7 +1075,7 @@ class TrainingJobManager:
         env = {**os.environ, "CUDA_VISIBLE_DEVICES": ""}
         result = run_process(
             self._spawn,
-            [sys.executable, "-m", "src.tts.training.verify_bundle", str(bundle)],
+            [sys.executable, "-m", "nova_tts.training.verify_bundle", str(bundle)],
             env, self.paths.root, lines.append, cancel, grace_seconds=self.settings().cancel_grace_seconds,
         )
         if result.cancelled or cancel.is_set():

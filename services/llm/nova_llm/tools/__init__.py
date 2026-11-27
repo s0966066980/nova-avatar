@@ -7,6 +7,6 @@ The weather tool queries CWA for a place the handoff decision accepted and
 turns the result into the answer's tool facts. Its cache is shared by every
 conversation; the place itself belongs to one conversation (CONTEXT.md).
 """
-from src.llm.tools.weather import CwaWeather, WeatherQuery, weather_prompt
+from nova_llm.tools.weather import CwaWeather, WeatherQuery, weather_prompt
 
 __all__ = ["CwaWeather", "WeatherQuery", "weather_prompt"]

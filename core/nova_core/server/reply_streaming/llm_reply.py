@@ -33,8 +33,8 @@ from nova_contracts.llm import (
     SpeechSink,
     SpokenDelta,
 )
-from src.llm.config_section import llm_session
-from src.utils.spoken_text import join_spoken_fragments
+from nova_llm.config_section import llm_session
+from nova_core.utils.spoken_text import join_spoken_fragments
 
 
 def conversation_session(config, published, session_id: int, *, profile: Any = None) -> LlmSession:

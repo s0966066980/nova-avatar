@@ -59,7 +59,7 @@ def test_contract_models_are_immutable():
         settings.device = "cuda"  # type: ignore[misc]
 
 
-# --- the in-process adapter (src.asr.adapter) --------------------------------
+# --- the in-process adapter (nova_stt.adapter) --------------------------------
 
 
 class Recognizer:
@@ -85,7 +85,7 @@ class Recognizer:
 
 
 def stt_service(settings, *, failing=()):
-    from src.asr.adapter import InProcessSttService
+    from nova_stt.adapter import InProcessSttService
 
     built = []
 
@@ -184,8 +184,8 @@ ZH = TranscriptionOptions(language="zh")
 
 def fake_stt_service(settings, *, configure=lambda engine, requested: None):
     """The real adapter and factory; ``configure`` may adjust each engine built."""
-    from src.asr.adapter import InProcessSttService
-    from src.asr.factory import create_asr_engine
+    from nova_stt.adapter import InProcessSttService
+    from nova_stt.factory import create_asr_engine
 
     def create(requested):
         engine = create_asr_engine(requested)
@@ -203,7 +203,7 @@ def refuse_to_load_broken(engine, requested):
 
 
 def test_the_fake_engine_answers_every_utterance_with_the_configured_text():
-    from src.asr.adapter import create_stt_service
+    from nova_stt.adapter import create_stt_service
 
     service = create_stt_service(HELLO)
 
@@ -306,8 +306,8 @@ def test_a_request_during_a_switch_is_answered_by_the_current_recognizer():
 
 
 def test_the_fake_engine_is_not_offered_by_the_console():
-    from src.config.loader import dict_to_config
-    from src.server import runtime_settings
+    from nova_core.config.loader import dict_to_config
+    from nova_core.server import runtime_settings
 
     assert [engine["id"] for engine in runtime_settings._stt_catalog()] == ["whisper"]
     with pytest.raises(runtime_settings.SettingsError, match="不支援的 STT 引擎"):
@@ -317,7 +317,7 @@ def test_the_fake_engine_is_not_offered_by_the_console():
 
 
 def test_the_asr_section_of_the_config_selects_the_fake_engine():
-    from src.config.loader import dict_to_config
+    from nova_core.config.loader import dict_to_config
 
     asr = dict_to_config({"asr": {"type": "fake", "model_size": "歡迎光臨", "device": "cpu"}}).asr
     service = fake_stt_service(

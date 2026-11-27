@@ -34,8 +34,8 @@ from nova_contracts.llm import (
     SpeechEnd,
     SpokenDelta,
 )
-from src.llm.adapter import InProcessLlmService
-from src.server.voice_session import VoiceTurnSession
+from nova_llm.adapter import InProcessLlmService
+from nova_core.server.voice_session import VoiceTurnSession
 
 
 class BenchmarkAvatar:

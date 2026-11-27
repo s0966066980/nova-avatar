@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from src.avatars.musetalk.avatar_transition import AvatarTransitionController, TransitionState
-from src.avatars.musetalk.mouth_continuity import MouthContinuityController
+from nova_render.musetalk.avatar_transition import AvatarTransitionController, TransitionState
+from nova_render.musetalk.mouth_continuity import MouthContinuityController
 
 
 class AvatarTransitionTests(unittest.TestCase):
@@ -127,7 +127,7 @@ class AvatarTransitionTests(unittest.TestCase):
         self.assertEqual(controller.state, TransitionState.IDLE)
 
     def test_musetalk_config_loads_all_transition_fields(self):
-        from src.config.loader import load_config
+        from nova_core.config.loader import load_config
 
         musetalk = load_config("config/config_musetalk.yaml").model.musetalk
 

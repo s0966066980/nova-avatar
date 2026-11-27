@@ -15,13 +15,13 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from src.config.schema import Config
-from src.server.access import ROUTE_ACCESS, Access
+from nova_core.config.schema import Config
+from nova_core.server.access import ROUTE_ACCESS, Access
 from nova_contracts.tts import TtsEngineSettings
-from src.server.state import state
-from src.tts.adapter import InProcessTtsService
-from src.tts import cosyvoice_runtime, voice_library
-from tests.access_helpers import access_client, same_origin
+from nova_core.server.state import state
+from nova_tts.adapter import InProcessTtsService
+from nova_tts import cosyvoice_runtime, voice_library
+from access_helpers import access_client, same_origin
 
 PREVIEW = "/api/speech/preview"
 STATUS = "/api/speech/breezyvoice/status"

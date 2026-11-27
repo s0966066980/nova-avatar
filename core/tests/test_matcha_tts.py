@@ -20,17 +20,17 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-from src.config.schema import Config
-from src.tts.factory import create_tts_engine
-from tests.matcha_fakes import FakeSherpa, LABEL, Parent, VOICE_ID, make_voice_model, matcha_config, tone  # noqa: F401
-from tests.tts_fakes import in_process_tts
+from nova_core.config.schema import Config
+from nova_tts.factory import create_tts_engine
+from matcha_fakes import FakeSherpa, LABEL, Parent, VOICE_ID, make_voice_model, matcha_config, tone  # noqa: F401
+from tts_fakes import in_process_tts
 
 
 @pytest.fixture
 def voice_models(tmp_path, monkeypatch):
     root = tmp_path / "models" / "tts"
     root.mkdir(parents=True)
-    monkeypatch.setattr("src.tts.voice_models.VOICE_MODELS_ROOT", root)
+    monkeypatch.setattr("nova_tts.voice_models.VOICE_MODELS_ROOT", root)
     return root
 
 
@@ -155,14 +155,14 @@ def test_text_is_simplified_and_english_spelled_as_the_lexicon_knows_it(voice_mo
 
 
 def test_enumeration_commas_between_chinese_words_do_not_split_clauses():
-    from src.tts.engines.matcha import normalize_matcha_text
+    from nova_tts.engines.matcha import normalize_matcha_text
 
     assert (normalize_matcha_text("我會用自然、口語化的方式，提供準確、有用的資訊。")
             == "我會用自然口語化的方式，提供準確有用的資訊。")
 
 
 def test_thread_count_is_a_server_setting_read_from_the_configuration_file():
-    from src.config.loader import dict_to_config
+    from nova_core.config.loader import dict_to_config
 
     assert dict_to_config({}).matcha.num_threads == 4
     assert dict_to_config({"matcha": {"num_threads": 8}}).matcha.num_threads == 8
@@ -173,9 +173,9 @@ def test_thread_count_is_a_server_setting_read_from_the_configuration_file():
 
 @pytest.fixture
 def store(tmp_path, monkeypatch):
-    from src.profiles.store import ProfileStore
+    from nova_core.profiles.store import ProfileStore
 
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     config = Config()
     config.model.avatar_id = "musetalk_angela"
     profiles = ProfileStore(tmp_path / "profiles.yaml")
@@ -192,7 +192,7 @@ def _save_voice(store, **tts):
 
 
 def test_profiles_save_only_a_listed_voice_model_for_matcha(voice_models, store):
-    from src.profiles.store import ProfileError
+    from nova_core.profiles.store import ProfileError
 
     make_voice_model(voice_models)
     for voice_model, message in (("", "選擇聲線模型"), ("zh-tw-missing", "zh-tw-missing」不在 models/tts 清單中")):
@@ -236,7 +236,7 @@ def test_saved_voice_model_id_that_breaks_the_id_format_is_cleared(voice_models,
 
 
 def test_applying_a_missing_voice_model_names_it(voice_models, sherpa):
-    from src.server.runtime_settings import SettingsError, apply_tts_settings
+    from nova_core.server.runtime_settings import SettingsError, apply_tts_settings
 
     make_voice_model(voice_models)
     sherpa()
@@ -246,7 +246,7 @@ def test_applying_a_missing_voice_model_names_it(voice_models, sherpa):
 
 
 def test_console_lists_matcha_and_only_labelled_voice_models(voice_models):
-    from src.server.runtime_settings import speech_snapshot
+    from nova_core.server.runtime_settings import speech_snapshot
 
     make_voice_model(voice_models)
     (voice_models / "matcha-base").mkdir()
@@ -260,7 +260,7 @@ def test_console_lists_matcha_and_only_labelled_voice_models(voice_models):
 
 
 def test_profile_preview_speaks_with_the_chosen_voice_model(voice_models, sherpa):
-    from src.server.runtime_settings import SettingsError, preview_profile_voice
+    from nova_core.server.runtime_settings import SettingsError, preview_profile_voice
 
     make_voice_model(voice_models)
     fake = sherpa()
@@ -275,7 +275,7 @@ def test_profile_preview_speaks_with_the_chosen_voice_model(voice_models, sherpa
 
 
 def test_matcha_speaks_both_conversation_languages():
-    from src.server.conversations import check_language_support
+    from nova_core.server.conversations import check_language_support
 
     config = matcha_config()
     for locale in ("zh-TW", "en-US"):

@@ -10,9 +10,9 @@ import re
 import pytest
 from opencc import OpenCC
 
-from src.tts.training.corpus import MAX_TEXT_CHARS, CorpusError
-from src.tts.training.numerals import normalize_digits
-from src.tts.training.sentences import (
+from nova_tts.training.corpus import MAX_TEXT_CHARS, CorpusError
+from nova_tts.training.numerals import normalize_digits
+from nova_tts.training.sentences import (
     MAX_TEXT_LIST_BYTES,
     PRESETS,
     estimate_seconds,

@@ -10,9 +10,9 @@ from aiohttp import web
 
 from nova_contracts.common import ServiceError
 from nova_contracts.llm import DocumentsQuery, RetrievalRequest
-from src.utils.avatar_ids import is_safe_avatar_id
-from src.profiles.knowledge_scope import avatar_settings, ragflow_id, save_avatar_settings, validate_selection
-from src.server.state import state
+from nova_core.utils.avatar_ids import is_safe_avatar_id
+from nova_core.profiles.knowledge_scope import avatar_settings, ragflow_id, save_avatar_settings, validate_selection
+from nova_core.server.state import state
 
 
 def _json(data: dict, status: int = 200) -> web.Response:

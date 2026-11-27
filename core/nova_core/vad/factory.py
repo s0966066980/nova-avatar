@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Type
 
-from src.utils.logging import logger
-from src.vad.base import BaseVAD
-from src.vad.engines import SileroVAD
+from nova_core.utils.logging import logger
+from nova_core.vad.base import BaseVAD
+from nova_core.vad.engines import SileroVAD
 
 _ENGINE_MAP: Dict[str, Type[BaseVAD]] = {
     "silero": SileroVAD,

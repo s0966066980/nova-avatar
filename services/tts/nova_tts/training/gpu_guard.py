@@ -4,7 +4,7 @@
 """The free-VRAM check that keeps GPU work from hurting the stage.
 
 The TTS layer's half of the GPU guard. Whether a stage is connected is core state, so the
-core checks that first (``src.server.stage_guard``) and asks this module only about free
+core checks that first (``nova_core.server.stage_guard``) and asks this module only about free
 memory: the training job's pre-flight uses ``free_vram_check``, and the automatic
 transcription of uploaded recordings asks ``choose_transcription_device``, which calls the
 same check instead of copying it. A ``Check`` says ``pass`` or ``fail`` with a reason the
@@ -19,7 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.tts.training.gpu_probe import VramReading, read_free_vram
+from nova_tts.training.gpu_probe import VramReading, read_free_vram
 
 CHECK_VRAM = "free_vram"
 PASS, FAIL, WARN = "pass", "fail", "warn"

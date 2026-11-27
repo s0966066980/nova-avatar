@@ -8,12 +8,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from nova_contracts.llm import Outcome
-from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
-from src.server.voice_session import VoiceTurnSession
+from nova_core.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
+from nova_core.server.voice_session import VoiceTurnSession
 from nova_contracts.tts import strip_visual_markup
-from tests.clock_fakes import FakeClock
-from tests.llm_fakes import FakeLlm, answering
-from tests.session_fakes import FakeAvatar
+from clock_fakes import FakeClock
+from llm_fakes import FakeLlm, answering
+from session_fakes import FakeAvatar
 
 
 def make_session(*, streaming):
@@ -78,7 +78,7 @@ class PublishedConfigTests(unittest.IsolatedAsyncioTestCase):
     async def test_the_core_hands_the_published_config_to_the_llm_layer(self):
         # The LLM layer does not read the core's global state; the core sends the
         # reply rules the console last published with every answer request.
-        from src.server.state import state
+        from nova_core.server.state import state
 
         session, _avatar, _events = make_session(streaming=False)
         session.config.conversation_snapshot = False
@@ -249,7 +249,7 @@ class PerTurnMemoryTests(unittest.IsolatedAsyncioTestCase):
     def test_avatar_media_sequences_do_not_grow_per_turn(self):
         from threading import RLock
 
-        from src.avatars.base import BaseAvatar
+        from nova_render.base import BaseAvatar
 
         avatar = BaseAvatar.__new__(BaseAvatar)
         avatar._media_guard = None

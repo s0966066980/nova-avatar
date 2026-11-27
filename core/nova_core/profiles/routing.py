@@ -11,10 +11,10 @@ from __future__ import annotations
 
 from nova_contracts.common import ServiceError
 from nova_contracts.llm import ChatMessage, HandoffRequest, LlmService, RoleCandidate
-from src.llm.config_section import llm_settings
-from src.profiles.composition import live_members, main_profile_id
-from src.profiles.language import fixed_text
-from src.profiles.validation import ProfileError
+from nova_llm.config_section import llm_settings
+from nova_core.profiles.composition import live_members, main_profile_id
+from nova_core.profiles.language import fixed_text
+from nova_core.profiles.validation import ProfileError
 
 
 def candidates(library: dict) -> list[str]:

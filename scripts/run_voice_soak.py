@@ -34,8 +34,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.server.reply_streaming.soak import build_soak_report
-from src.tts import edge_endpoint  # noqa: F401  (selects the working Edge TTS host)
+from nova_core.server.reply_streaming.soak import build_soak_report
+from nova_tts import edge_endpoint  # noqa: F401  (selects the working Edge TTS host)
 
 
 SAMPLE_RATE = 16000

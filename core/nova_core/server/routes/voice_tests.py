@@ -8,7 +8,7 @@ from typing import Any
 
 from aiohttp import web
 
-from src.server.state import state
+from nova_core.server.state import state
 
 
 def _json(payload: dict[str, Any], *, status: int = 200) -> web.Response:

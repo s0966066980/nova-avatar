@@ -25,16 +25,16 @@ from aiohttp import web
 
 from nova_contracts.tts import MAX_CORPUS_UPLOAD_BYTES as MAX_UPLOAD_BYTES
 from nova_contracts.tts import TtsEngineSettings
-from src.server.access import ROUTE_ACCESS, Access, access_guard, install_access, route_key
-from src.server.state import state
-from src.tts.training.corpus import CorpusStore
-from src.tts.training.edge_acknowledgement import MSA_CLAUSE, read_acknowledgement
-from src.tts.training.gpu_guard import DeviceChoice
-from src.tts.training.gpu_probe import VramReading
-from src.tts.training.service import InProcessVoiceTraining
-from src.tts.training.transcription import TranscriptionJobs
-from src.server.routes.tts_corpus import ROUTES, register
-from tests.access_helpers import access_client, same_origin
+from nova_core.server.access import ROUTE_ACCESS, Access, access_guard, install_access, route_key
+from nova_core.server.state import state
+from nova_tts.training.corpus import CorpusStore
+from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, read_acknowledgement
+from nova_tts.training.gpu_guard import DeviceChoice
+from nova_tts.training.gpu_probe import VramReading
+from nova_tts.training.service import InProcessVoiceTraining
+from nova_tts.training.transcription import TranscriptionJobs
+from nova_core.server.routes.tts_corpus import ROUTES, register
+from access_helpers import access_client, same_origin
 
 BASE = "/api/tts/corpora"
 
@@ -700,7 +700,7 @@ async def test_transcription_with_nothing_to_do_conflicts(client):
 @console
 async def test_handlers_do_the_heavy_work_off_the_event_loop(client, monkeypatch):
     """Decoding and QC run in a worker thread, never on the server's event loop."""
-    from src.tts.training import ingest
+    from nova_tts.training import ingest
 
     main = threading.get_ident()
     seen: list[int] = []
@@ -710,7 +710,7 @@ async def test_handlers_do_the_heavy_work_off_the_event_loop(client, monkeypatch
         seen.append(threading.get_ident())
         return real(*args, **kwargs)
 
-    monkeypatch.setattr("src.tts.training.service.ingest_audio", spy)
+    monkeypatch.setattr("nova_tts.training.service.ingest_audio", spy)
     await create(client)
     await upload(client)
 
@@ -798,7 +798,7 @@ async def test_only_an_edge_corpus_can_be_acknowledged(client, env):
 
 @console
 async def test_review_payloads_are_built_off_the_event_loop(client, env, monkeypatch):
-    from src.tts.training import service
+    from nova_tts.training import service
 
     main = threading.get_ident()
     seen: dict[str, set[int]] = {}
@@ -831,7 +831,7 @@ async def test_review_payloads_are_built_off_the_event_loop(client, env, monkeyp
 
 @console
 async def test_transcript_files_are_parsed_off_the_event_loop(client, monkeypatch):
-    from src.tts.training import service
+    from nova_tts.training import service
 
     main = threading.get_ident()
     seen: list[int] = []

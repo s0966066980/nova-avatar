@@ -14,8 +14,8 @@ from typing import Any
 
 import queue
 from queue import Queue
-from src.avatars.audio_stream_handler import BaseAudioStreamHandler
-from src.avatars.musetalk.whisper.audio2feature import Audio2Feature
+from nova_render.audio_stream_handler import BaseAudioStreamHandler
+from nova_render.musetalk.whisper.audio2feature import Audio2Feature
 
 # Matches MuseTalkConfig.max_tts_audio_wait_seconds; the parent avatar's
 # configured value takes precedence.

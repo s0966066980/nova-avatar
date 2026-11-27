@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.avatars.asset_io import (
+from nova_render.asset_io import (
     UnsafeAssetError,
     coords_present,
     load_avatar_tensors,
@@ -24,7 +24,7 @@ from src.avatars.asset_io import (
     save_coords,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 SCANNED_ENGINES = ("musetalk",)
 TORCH_LOADERS = {"load_url", "load_state_dict_from_url"}
 
@@ -111,7 +111,7 @@ def test_legacy_coords_still_load_from_a_read_only_avatar_dir(tmp_path, monkeypa
     def refuse(*_args, **_kwargs):
         raise PermissionError("read-only")
 
-    monkeypatch.setattr("src.avatars.asset_io.os.replace", refuse)
+    monkeypatch.setattr("nova_render.asset_io.os.replace", refuse)
 
     assert load_coords(tmp_path, "coords") == [[1, 2, 3, 4]]
     assert not (tmp_path / "coords.json").exists()
@@ -174,7 +174,7 @@ def _musetalk_fixture(root: Path, avatar_id: str) -> Path:
 
 
 def test_musetalk_avatar_rejects_malicious_coords(tmp_path, monkeypatch):
-    from src.avatars.musetalk.avatar import load_avatar
+    from nova_render.musetalk.avatar import load_avatar
 
     avatar = _musetalk_fixture(tmp_path, "musetalk_evil")
     marker = tmp_path / "pwned"
@@ -188,7 +188,7 @@ def test_musetalk_avatar_rejects_malicious_coords(tmp_path, monkeypatch):
 
 
 def test_musetalk_avatar_rejects_malicious_latents(tmp_path, monkeypatch):
-    from src.avatars.musetalk.avatar import load_avatar
+    from nova_render.musetalk.avatar import load_avatar
 
     avatar = _musetalk_fixture(tmp_path, "musetalk_evil")
     marker = tmp_path / "pwned"
@@ -203,7 +203,7 @@ def test_musetalk_avatar_rejects_malicious_latents(tmp_path, monkeypatch):
 
 
 def test_musetalk_avatar_converts_legacy_coords(tmp_path, monkeypatch):
-    from src.avatars.musetalk.avatar import load_avatar
+    from nova_render.musetalk.avatar import load_avatar
 
     avatar = _musetalk_fixture(tmp_path, "musetalk_old")
     _write_pickle(avatar / "coords.pkl", [[1, 2, 3, 4]])
@@ -246,7 +246,7 @@ def _tracked_engine_sources() -> list[Path]:
     # Gitignored local copies (for example vendored model packages under a
     # ``models/`` directory) are outside the repository's control.
     listed = subprocess.run(
-        ["git", "ls-files", "--", *(f"src/avatars/{engine}" for engine in SCANNED_ENGINES)],
+        ["git", "ls-files", "--", *(f"avatar/nova_render/{engine}" for engine in SCANNED_ENGINES)],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

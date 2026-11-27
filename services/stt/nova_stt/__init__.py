@@ -4,6 +4,6 @@
 
 """ASR 語音識別模組 (the STT processing layer).
 
-The core uses ``src.asr.adapter`` and ``src.asr.config_section`` only, so this
+The core uses ``nova_stt.adapter`` and ``nova_stt.config_section`` only, so this
 package re-exports nothing.
 """

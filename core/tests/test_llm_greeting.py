@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.config.schema import Config
-from src.llm.greeting import GreetingGenerationError, generate_greeting
+from nova_core.config.schema import Config
+from nova_llm.greeting import GreetingGenerationError, generate_greeting
 
 
 def test_a_greeting_out_of_range_is_regenerated_once_with_a_correction():

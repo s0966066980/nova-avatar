@@ -66,7 +66,7 @@ def _legacy_endpoint(llm) -> LLMEndpoint:
     provider = str(getattr(llm, "provider", "") or "").strip().lower()
     provider = provider if provider in PROVIDERS else "openai"
     if provider == "llamacpp":
-        from src.llm.llamacpp import openai_base_url
+        from nova_llm.llamacpp import openai_base_url
 
         # llama-server is always started at llamacpp_host:llamacpp_port.
         base_url = openai_base_url(getattr(llm, "llamacpp_host", "127.0.0.1") or "127.0.0.1",

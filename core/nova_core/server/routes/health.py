@@ -6,7 +6,7 @@
 import json
 from aiohttp import web
 
-from src.server.state import state
+from nova_core.server.state import state
 
 
 def _llm_full_gpu() -> dict:

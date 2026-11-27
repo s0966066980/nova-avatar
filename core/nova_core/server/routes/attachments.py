@@ -5,8 +5,8 @@
 import asyncio
 from aiohttp import web
 
-from src.server.attachments import AttachmentError, MAX_FILE_BYTES, MAX_REFERENCES, vision_ready
-from src.server.state import state
+from nova_core.server.attachments import AttachmentError, MAX_FILE_BYTES, MAX_REFERENCES, vision_ready
+from nova_core.server.state import state
 
 
 def get_session(request, *, writing=False):

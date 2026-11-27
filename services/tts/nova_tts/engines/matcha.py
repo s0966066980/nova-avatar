@@ -4,7 +4,7 @@
 """CPU-only Matcha-TTS engine backed by sherpa-onnx.
 
 A role profile names its voice model (聲線模型) by catalog ID in
-``tts.ref_file`` (see ``src.tts.voice_models``); the same voice model speaks
+``tts.ref_file`` (see ``nova_tts.voice_models``); the same voice model speaks
 zh-TW and en-US. The thread count is the server-wide ``matcha.num_threads``;
 ``length_scale`` and ``noise_scale`` are fixed. A loaded voice model is shared
 by every engine that uses it, so roles and sessions do not load it again.
@@ -25,10 +25,10 @@ from typing import Any, Callable
 import numpy as np
 
 from nova_contracts.tts import strip_visual_markup
-from src.tts.base import State
-from src.tts.engines.prefetching import PrefetchingTTS
-from src.tts.voice_models import VoiceModel, list_voice_models
-from src.utils.logging import logger
+from nova_tts.base import State
+from nova_tts.engines.prefetching import PrefetchingTTS
+from nova_tts.voice_models import VoiceModel, list_voice_models
+from nova_core.utils.logging import logger
 
 MODEL_TYPE = "matcha-tts"
 LENGTH_SCALE = 1.0

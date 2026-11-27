@@ -11,9 +11,9 @@ from types import SimpleNamespace
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from src.server.routes.voice_tests import run_voice_test
-from src.server.state import state
-from src.server.voice_test_history import VoiceTestHistory, evaluate_voice_test
+from nova_core.server.routes.voice_tests import run_voice_test
+from nova_core.server.state import state
+from nova_core.server.voice_test_history import VoiceTestHistory, evaluate_voice_test
 
 
 def passing_metrics() -> dict:

@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import pytest
 
-from src.llm.prompts import compose_system_prompt
-from src.llm.reply_contract import (
+from nova_llm.prompts import compose_system_prompt
+from nova_llm.reply_contract import (
     FIRST_SENTENCE_MAX_CHARS, FIRST_SENTENCE_PROMPT, first_sentence_prompt,
 )
-from src.llm.router import ReplyMode
+from nova_llm.router import ReplyMode
 
 SAVED_RULES = {
     "activation": "依本輪問題選擇簡答或看板回覆。",

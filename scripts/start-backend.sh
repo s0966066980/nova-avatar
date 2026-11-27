@@ -95,7 +95,7 @@ check_and_kill_port() {
     local port=8010
 
     echo -e "${BLUE}🔍 檢查埠 $port 是否被佔用...${NC}"
-    nova_clear_port "$port" '*src/server/app.py*' || exit 1
+    nova_clear_port "$port" '*core/nova_core/server/app.py*' || exit 1
     # 舊後端若曾被強制終止，其 CosyVoice 會成孤兒占用 GPU。
     nova_stop_model_servers || true
     echo -e "${GREEN}✓${NC} 埠 $port 可用"
@@ -123,7 +123,7 @@ start_backend() {
     echo -e "${YELLOW}💡 按 Ctrl+C 停止服務${NC}"
     echo ""
 
-    uv run python src/server/app.py --config "$CONFIG_FILE"
+    uv run python core/nova_core/server/app.py --config "$CONFIG_FILE"
 }
 
 # 主流程

@@ -5,7 +5,7 @@
 """伺服器工具函式"""
 import random
 import aiohttp
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 
 def randN(N: int) -> int:

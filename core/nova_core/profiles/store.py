@@ -16,19 +16,19 @@ from urllib.parse import urlsplit
 
 import yaml
 
-from src.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig, GreetingConfig
-from src.greetings.content import validate_content
-from src.llm.config_section import (EndpointError, active_endpoint_name, apply_endpoint,
+from nova_core.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig, GreetingConfig
+from nova_core.greetings.content import validate_content
+from nova_llm.config_section import (EndpointError, active_endpoint_name, apply_endpoint,
                                     configured_endpoints, endpoint_for_url, rules_from_config,
                                     validate_rules)
-from src.profiles.composition import (
+from nova_core.profiles.composition import (
     HANDOFF_FIELDS, bump_revisions, canonical, incompatibility, new_member, profile_ids, validate_composition,
 )
-from src.profiles.validation import ProfileError
-from src.profiles.validation import identifier as _identifier, obj as _object, revision as _revision, text as _text
-from src.profiles.knowledge_scope import avatar_settings, validate_selection, web_access
-from src.tts import config_section as tts_section
-from src.utils.logging import logger
+from nova_core.profiles.validation import ProfileError
+from nova_core.profiles.validation import identifier as _identifier, obj as _object, revision as _revision, text as _text
+from nova_core.profiles.knowledge_scope import avatar_settings, validate_selection, web_access
+from nova_tts import config_section as tts_section
+from nova_core.utils.logging import logger
 
 __all__ = ["ProfileError", "ProfileStore", "profile_config", "validate_library", "validate_profile"]
 
@@ -332,7 +332,7 @@ class ProfileStore:
                     library["profiles_revision"] += 1
                     self._write(library)
                 return library
-            defaults_path = defaults_path or Path(__file__).resolve().parents[2] / "config/avatar_profiles.defaults.yaml"
+            defaults_path = defaults_path or Path(__file__).resolve().parents[3] / "config/avatar_profiles.defaults.yaml"
             defaults = yaml.safe_load(defaults_path.read_text("utf-8"))
             main = dict(id="main", name=config.llm.assistant_profile.assistant_name or config.model.avatar_id,
                         engine=config.model.type, avatar_id=config.model.avatar_id,

@@ -4,7 +4,7 @@
 
 """BreezyVoice (MediaTek Research, Apache-2.0): Taiwanese Mandarin voice cloning.
 
-Runs in the owned CosyVoice server process (``scripts/cosyvoice_fastapi_server.py``),
+Runs in the owned CosyVoice server process (``services/tts/scripts/cosyvoice_fastapi_server.py``),
 which adds BreezyVoice's g2pW 注音 frontend. BreezyVoice does not stream: each
 playable reply fragment is synthesized whole and returned as 22.05 kHz PCM16.
 The reference recording and its transcript come from the voice library.
@@ -20,10 +20,10 @@ import numpy as np
 import requests
 import resampy
 
-from src.tts.base import BaseTTS, State
-from src.tts.cosyvoice_runtime import parse_server_url, prepare_prompt_wav, server_url
-from src.tts.voice_library import voice_path, voice_transcript
-from src.utils.logging import logger
+from nova_tts.base import BaseTTS, State
+from nova_tts.cosyvoice_runtime import parse_server_url, prepare_prompt_wav, server_url
+from nova_tts.voice_library import voice_path, voice_transcript
+from nova_core.utils.logging import logger
 
 
 class BreezyVoiceTTS(BaseTTS):

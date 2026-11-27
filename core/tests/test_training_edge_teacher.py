@@ -13,12 +13,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.server.runtime_settings import EDGE_TTS_ZH_TW_VOICE_IDS
-from src.tts.training import edge_teacher
-from src.tts.training.audio_quality import SAMPLE_RATE
-from src.tts.training.corpus import REVIEW_CONFIRMED, REVIEW_PENDING, CorpusError, CorpusStore
-from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
-from src.tts.training.edge_teacher import (
+from nova_core.server.runtime_settings import EDGE_TTS_ZH_TW_VOICE_IDS
+from nova_tts.training import edge_teacher
+from nova_tts.training.audio_quality import SAMPLE_RATE
+from nova_tts.training.corpus import REVIEW_CONFIRMED, REVIEW_PENDING, CorpusError, CorpusStore
+from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
+from nova_tts.training.edge_teacher import (
     BASE_BACKOFF_SECONDS,
     DEFAULT_VOICE,
     EDGE_ZH_TW_VOICES,
@@ -246,7 +246,7 @@ def test_every_unresolved_fragment_is_listed_in_the_refusal(store, corpus):
 
 
 def test_a_preset_whose_sentence_cannot_be_expanded_is_refused_at_runtime(store, corpus, monkeypatch):
-    from src.tts.training import sentences as sentence_module
+    from nova_tts.training import sentences as sentence_module
 
     monkeypatch.setattr(sentence_module, "select_by_duration", lambda target: ["你好。", "要價 $50。"])
     with pytest.raises(CorpusError, match="內建句庫"):

@@ -18,18 +18,18 @@ import pytest
 import soundfile as sf
 
 from nova_contracts.stt import SttEngineSettings, SttPrepareRequest, Transcription
-from src.asr.adapter import InProcessSttService
-from src.avatars import base as avatar_base
-from src.avatars.adapter import create_avatar_service
-from src.avatars.base import BaseAvatar
-from src.config.schema import Config, TTSConfig
-from src.server.routes import audio as audio_routes
-from src.server.speaking_avatar import SpeakingAvatar
-from src.server.state import state
-from src.vad import audio as vad_audio
-from tests.access_helpers import access_client
-from tests.llm_fakes import FakeLlm
-from tests.tts_fakes import in_process_tts
+from nova_stt.adapter import InProcessSttService
+from nova_render import base as avatar_base
+from nova_render.adapter import create_avatar_service
+from nova_render.base import BaseAvatar
+from nova_core.config.schema import Config, TTSConfig
+from nova_core.server.routes import audio as audio_routes
+from nova_core.server.speaking_avatar import SpeakingAvatar
+from nova_core.server.state import state
+from nova_core.vad import audio as vad_audio
+from access_helpers import access_client
+from llm_fakes import FakeLlm
+from tts_fakes import in_process_tts
 
 SESSION = 271828
 BLOCK_SECONDS = 2.0
@@ -224,7 +224,7 @@ def test_asr_rejects_playlists_that_read_files_on_the_host(server, monkeypatch, 
 
 
 def test_asr_decodes_the_upload_once_and_hands_asr_only_decoded_audio(server, monkeypatch):
-    from src.vad import service as vad_service
+    from nova_core.vad import service as vad_service
 
     decodes = []
     real = vad_audio._decode_with_soundfile
@@ -477,7 +477,7 @@ def test_stopped_ffmpeg_that_hangs_is_killed():
 
 @pytest.mark.parametrize("path", ["/api/speech", "/api/settings"])
 def test_speech_snapshot_scans_files_off_the_loop(server, monkeypatch, path):
-    from src.tts import voice_library
+    from nova_tts import voice_library
 
     blocker = Blocker(result=[])
     monkeypatch.setattr(voice_library, "list_voices", blocker)
@@ -490,7 +490,7 @@ def test_speech_snapshot_scans_files_off_the_loop(server, monkeypatch, path):
 
 
 def test_deferred_speech_settings_snapshot_scans_files_off_the_loop(server, monkeypatch):
-    from src.server import deferred_settings, runtime_settings
+    from nova_core.server import deferred_settings, runtime_settings
 
     blocker = Blocker(result=[])
     monkeypatch.setattr(runtime_settings, "_stt_catalog", blocker)

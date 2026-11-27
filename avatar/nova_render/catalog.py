@@ -10,8 +10,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.utils.avatar_ids import is_safe_avatar_id
-from src.utils.paths import get_data_dir, get_models_dir
+from nova_core.utils.avatar_ids import is_safe_avatar_id
+from nova_core.utils.paths import get_data_dir, get_models_dir
 
 ENGINE_META: Dict[str, Dict[str, str]] = {
     "musetalk": {

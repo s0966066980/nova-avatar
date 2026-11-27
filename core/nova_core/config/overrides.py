@@ -11,9 +11,9 @@ from typing import Any, Dict
 
 import yaml
 
-from src.utils.logging import logger
-from src.utils.paths import get_config_dir
-from src.config.stage_composer import snapshot as composer_snapshot
+from nova_core.utils.logging import logger
+from nova_core.utils.paths import get_config_dir
+from nova_core.config.stage_composer import snapshot as composer_snapshot
 
 RUNTIME_OVERRIDES_FILE = get_config_dir() / "runtime_overrides.yaml"
 
@@ -30,9 +30,9 @@ def load_runtime_overrides() -> Dict[str, Any]:
 
 
 def persist_runtime_overrides(config) -> None:
-    from src.avatars import config_section as avatar_section
-    from src.llm import config_section as llm_section
-    from src.config.schema import ConversationConfig
+    from nova_render import config_section as avatar_section
+    from nova_llm import config_section as llm_section
+    from nova_core.config.schema import ConversationConfig
     conversation = getattr(config, 'conversation', ConversationConfig())
 
     payload = {

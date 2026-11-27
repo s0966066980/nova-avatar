@@ -3,7 +3,7 @@
 #
 # Direct dependencies of the Matcha-TTS training venv (.local/matcha-train/venv).
 # torch/torchaudio and matcha-tts itself are installed separately by
-# scripts/setup-matcha-train.sh: torch because its wheel index depends on the
+# services/tts/scripts/setup-matcha-train.sh: torch because its wheel index depends on the
 # GPU variant, matcha-tts with --no-deps because its metadata pins gradio,
 # hydra-optuna-sweeper, jupyter and a dozen other packages training never imports.
 # Everything below is what `import matcha.models.matcha_tts` plus our training

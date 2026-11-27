@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Callable, Generator, Iterable, Optional, Union
 
-from src.llm.engines.openai import OpenAILLM
+from nova_llm.engines.openai import OpenAILLM
 
 # The default answer: a spoken sentence and a two-item board, in two chunks so
 # a reply has a chunk boundary for the core to cancel at.

@@ -1,17 +1,17 @@
 import time
 import unittest
 
-from src.config.schema import Config
-from src.llm.base import BaseLLM
-from src.llm.response_protocol import (
+from nova_core.config.schema import Config
+from nova_llm.base import BaseLLM
+from nova_llm.response_protocol import (
     BoardItem,
     BoardPayload,
     FORMAT_RECOVERY_MESSAGE,
     ResponseProtocolParser,
     ThinkFilter,
 )
-from src.llm.router import ReplyMode
-from tests.speech_fakes import spoken_answer
+from nova_llm.router import ReplyMode
+from speech_fakes import spoken_answer
 
 
 class ThinkFilterTests(unittest.TestCase):

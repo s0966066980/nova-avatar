@@ -18,8 +18,9 @@ import textwrap
 
 import pytest
 
-from scripts import musetalk_weights, ragflow_prepare
-from scripts.ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
+import ragflow_prepare
+from scripts import musetalk_weights
+from ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
 
 ROOT = Path(__file__).resolve().parents[1]
 SETUP_ENV = ROOT / "scripts" / "setup-env.sh"
@@ -107,7 +108,7 @@ def test_setup_env_packages_outside_the_lock_are_pinned():
         if not match:
             continue
         for token in shlex.split(match[1]):
-            if token.startswith("-") or token.startswith(("$", "src/", '"')) or "/" in token:
+            if token.startswith("-") or token.startswith(("$", '"')) or "/" in token:
                 continue
             specs.append(token)
     assert specs, "expected extra packages in setup-env.sh"
@@ -162,7 +163,7 @@ def test_main_exits_non_zero_when_verification_fails(tmp_path, monkeypatch):
 
 
 def test_download_script_delegates_to_the_pinned_module():
-    text = (ROOT / "scripts/download_musetalk_weights.sh").read_text(encoding="utf-8")
+    text = (ROOT / "avatar/scripts/download_musetalk_weights.sh").read_text(encoding="utf-8")
     assert "scripts/musetalk_weights.py" in text
     assert "snapshot_download" not in text
 
@@ -213,12 +214,12 @@ def ragflow_pull(tmp_path):
     BGE-M3 digest, so the pull, copy and verification run for real.
     """
     project = tmp_path / "project"
-    (project / "scripts").mkdir(parents=True)
-    source = (ROOT / "scripts/ragflow.sh").read_text(encoding="utf-8")
+    (project / "services/llm/scripts").mkdir(parents=True)
+    source = (ROOT / "services/llm/scripts/ragflow.sh").read_text(encoding="utf-8")
     real_pin = re.compile(r'^BGE_M3_BLOB="sha256-([0-9a-f]{64})"$', re.M)
     assert real_pin.search(source)
     pinned = hashlib.sha256(PINNED_WEIGHTS.encode()).hexdigest()
-    (project / "scripts/ragflow.sh").write_text(
+    (project / "services/llm/scripts/ragflow.sh").write_text(
         real_pin.sub(f'BGE_M3_BLOB="sha256-{pinned}"', source), encoding="utf-8")
     state = tmp_path / "state"
     (state / "blobs").mkdir(parents=True)
@@ -254,7 +255,7 @@ def ragflow_pull(tmp_path):
             subprocess.run([str(bin_dir / "ollama"), "install", installed], check=True)
         (state / "registry").write_text(registry)
         result = subprocess.run(
-            ["bash", str(project / "scripts/ragflow.sh"), "pull-model"],
+            ["bash", str(project / "services/llm/scripts/ragflow.sh"), "pull-model"],
             env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"},
             capture_output=True, text=True, timeout=15,
         )

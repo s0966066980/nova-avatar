@@ -14,8 +14,8 @@ import random
 
 from nova_contracts.common import ServiceError
 from nova_contracts.llm import GreetingRequest, LlmService
-from src.llm.config_section import llm_settings
-from src.utils.graphemes import visible_length
+from nova_llm.config_section import llm_settings
+from nova_core.utils.graphemes import visible_length
 
 __all__ = ["GreetingError", "prepare_greeting", "validate_content", "validate_interval", "visible_length"]
 

@@ -3,7 +3,7 @@
 
 """Answer the way the core does: the LLM's spoken deltas go through ReplySpeech."""
 
-from src.server.reply_streaming.speech import ReplySpeech
+from nova_core.server.reply_streaming.speech import ReplySpeech
 
 _CALLBACK_KEYS = ("on_board", "on_mode", "rules_snapshot", "incremental_board")
 

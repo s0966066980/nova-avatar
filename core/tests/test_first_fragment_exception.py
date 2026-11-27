@@ -5,10 +5,10 @@
 import time
 import unittest
 
-from src.config.schema import Config
-from src.llm.base import BaseLLM
-from src.server.reply_streaming.fragmenter import SemanticFragmenter, speech_units
-from tests.speech_fakes import spoken_answer
+from nova_core.config.schema import Config
+from nova_llm.base import BaseLLM
+from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter, speech_units
+from speech_fakes import spoken_answer
 
 
 def stream(text: str, fragmenter: SemanticFragmenter | None = None) -> list[str]:

@@ -32,9 +32,9 @@ from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
-from src.tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusStore
-from src.tts.training.numerals import normalize_digits
-from src.utils.logging import logger
+from nova_tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusStore
+from nova_tts.training.numerals import normalize_digits
+from nova_core.utils.logging import logger
 
 DEFAULT_MIN_SIMILARITY = 0.65
 

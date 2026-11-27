@@ -10,13 +10,13 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
-from src.config.schema import Config
-from src.llm.engines.openai import OpenAILLM
-from src.llm.prompts import compose_system_prompt
-from src.llm.router import ReplyMode
-from src.profiles.routing import route_question
-from tests.llm_fakes import FakeLlm
-from src.profiles.store import ProfileStore
+from nova_core.config.schema import Config
+from nova_llm.engines.openai import OpenAILLM
+from nova_llm.prompts import compose_system_prompt
+from nova_llm.router import ReplyMode
+from nova_core.profiles.routing import route_question
+from llm_fakes import FakeLlm
+from nova_core.profiles.store import ProfileStore
 
 E2B = "gemma-4-E2B_q4_0-it"
 
@@ -121,7 +121,7 @@ def test_routing_treats_null_fields_as_empty():
 
 def test_routing_still_rejects_text_that_is_not_a_decision():
     import pytest
-    from src.profiles.store import ProfileError
+    from nova_core.profiles.store import ProfileError
 
     for raw in ("我覺得應該交給主角色。", '{"route": "weather"}', '{"target": "answer"}', "[]"):
         with pytest.raises(ProfileError):

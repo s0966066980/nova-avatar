@@ -14,12 +14,12 @@ from pathlib import Path
 
 import pytest
 
-from src.server import access
-from src.server.access import ROUTE_ACCESS, Access, AdminAuth, route_key
-from src.server.admin_password import hash_password, read_password_hash, verify_password
-from src.server.server import create_app
-from src.server.state import state
-from tests.access_helpers import (
+from nova_core.server import access
+from nova_core.server.access import ROUTE_ACCESS, Access, AdminAuth, route_key
+from nova_core.server.admin_password import hash_password, read_password_hash, verify_password
+from nova_core.server.server import create_app
+from nova_core.server.state import state
+from access_helpers import (
     LAN_ADDRESS,
     TEST_ADMIN_PASSWORD,
     access_client,
@@ -65,7 +65,7 @@ def session_roles():
 def test_every_route_has_exactly_one_access_class():
     routes = registered_routes()
     missing = [route for route in routes if route not in ROUTE_ACCESS]
-    assert not missing, f"Classify these routes in src/server/access.py ROUTE_ACCESS: {missing}"
+    assert not missing, f"Classify these routes in core/nova_core/server/access.py ROUTE_ACCESS: {missing}"
     stale = sorted(set(ROUTE_ACCESS) - set(routes))
     assert not stale, f"ROUTE_ACCESS names routes create_app() no longer registers: {stale}"
     for key, kind in ROUTE_ACCESS.items():
@@ -288,7 +288,7 @@ def test_new_password_after_admin_env_removal_signs_everyone_out(tmp_path):
 
 @pytest.fixture
 def allowed_hosts():
-    from src.config.schema import Config
+    from nova_core.config.schema import Config
 
     previous = state.config
     state.config = Config()
@@ -320,12 +320,12 @@ def test_stage_routes_reject_dns_rebinding_hosts(allowed_hosts, session_roles):
 
 
 def test_admin_env_is_gitignored():
-    ignored = (Path(__file__).resolve().parents[1] / ".gitignore").read_text(encoding="utf-8").splitlines()
+    ignored = (Path(__file__).resolve().parents[2] / ".gitignore").read_text(encoding="utf-8").splitlines()
     assert "config/admin.env" in ignored
 
 
 def test_cors_middleware_is_gone():
     app = create_app(admin_env_path=Path(tempfile.gettempdir()) / "nova-avatar-missing-admin.env", frontend_dir=built_frontend())
     assert not [route for route in app.router.routes() if route.method == "OPTIONS"]
-    pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    pyproject = (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8")
     assert "aiohttp-cors" not in pyproject

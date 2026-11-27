@@ -13,11 +13,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.config.schema import Config
-from src.llm.engines.openai import OpenAILLM
-from src.llm.response_protocol import BoardItem, SessionBoardContext
-from src.llm.tools import weather as weather_tool
-from src.llm.tools.weather import (
+from nova_core.config.schema import Config
+from nova_llm.engines.openai import OpenAILLM
+from nova_llm.response_protocol import BoardItem, SessionBoardContext
+from nova_llm.tools import weather as weather_tool
+from nova_llm.tools.weather import (
     SOURCE,
     SOURCE_URL,
     TAIPEI,
@@ -129,8 +129,8 @@ def test_cache_does_not_cross_locations_and_expires():
 def test_the_key_comes_from_the_environment_or_the_git_excluded_config_file(monkeypatch, tmp_path):
     for name in ("NOVA_CWA_API_KEY", "CWA_API_KEY"):
         monkeypatch.delenv(name, raising=False)
-    # scripts/configure-cwa.py writes the repository's config/cwa.env.
-    assert weather_tool.CONFIG_DIR.resolve() == Path(__file__).resolve().parents[1] / "config"
+    # services/llm/scripts/configure-cwa.py writes the repository's config/cwa.env.
+    assert weather_tool.CONFIG_DIR.resolve() == Path(__file__).resolve().parents[2] / "config"
     monkeypatch.setattr(weather_tool, "CONFIG_DIR", tmp_path)
     (tmp_path / "cwa.env").write_text('NOVA_CWA_API_KEY="CWA-FILE"\n', "utf-8")
     assert cwa_key() == "CWA-FILE"
@@ -139,7 +139,7 @@ def test_the_key_comes_from_the_environment_or_the_git_excluded_config_file(monk
 
 
 def test_missing_key_and_out_of_range_fail_before_network(monkeypatch):
-    monkeypatch.setattr("src.llm.tools.weather.cwa_key", lambda: "")
+    monkeypatch.setattr("nova_llm.tools.weather.cwa_key", lambda: "")
     monkeypatch.delenv("NOVA_CWA_API_KEY", raising=False)
     monkeypatch.delenv("CWA_API_KEY", raising=False)
     async def scenario():
@@ -312,7 +312,7 @@ def test_observation_and_failure_facts_remain_unchanged():
 
 
 def test_today_then_week_fits_without_discarding_history_or_displayed_board(monkeypatch):
-    from src.llm import context_usage
+    from nova_llm import context_usage
     config = Config()
     config.llm.provider = 'llamacpp'
     config.llm.assistant_profile.assistant_name = '天氣助手'

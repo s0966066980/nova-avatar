@@ -31,11 +31,11 @@ from nova_contracts.llm import (
     TurnCommit,
     TurnRef,
 )
-from src.config.schema import Config
-from src.llm.adapter import InProcessLlmService
-from src.llm.config_section import llm_session, reply_rules
-from src.llm.engines import ENGINES, FakeLLM, OpenAILLM
-from src.llm.engines.fake import answer_chunks
+from nova_core.config.schema import Config
+from nova_llm.adapter import InProcessLlmService
+from nova_llm.config_section import llm_session, reply_rules
+from nova_llm.engines import ENGINES, FakeLLM, OpenAILLM
+from nova_llm.engines.fake import answer_chunks
 
 EVENTS = TypeAdapter(ReplyEvent)
 
@@ -186,8 +186,8 @@ def test_a_discarded_turn_cannot_be_committed_and_the_next_turn_starts_clean():
 
 
 def test_the_engine_is_chosen_by_the_llm_section_and_is_no_console_endpoint():
-    from src.config.loader import dict_to_config
-    from src.server.runtime_settings import endpoint_choices
+    from nova_core.config.loader import dict_to_config
+    from nova_core.server.runtime_settings import endpoint_choices
 
     config = dict_to_config({"llm": {"engine": "fake", "provider": "ollama",
                                      "base_url": "http://127.0.0.1:11434/v1", "model": "m"}})
@@ -199,7 +199,7 @@ def test_the_engine_is_chosen_by_the_llm_section_and_is_no_console_endpoint():
 
 
 def test_an_engine_name_nobody_provides_is_refused_when_the_configuration_loads():
-    from src.config.loader import dict_to_config
+    from nova_core.config.loader import dict_to_config
 
     with pytest.raises(ValueError, match="未知的 LLM 引擎"):
         dict_to_config({"llm": {"engine": "fkae"}})

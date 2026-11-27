@@ -25,7 +25,7 @@ from nova_contracts.tts import (
     TtsEngineSettings,
     TtsVoice,
 )
-from src.tts.adapter import InProcessTtsService
+from nova_tts.adapter import InProcessTtsService
 
 SETTINGS = TtsEngineSettings(frames_per_second=50)
 FAKE_VOICE = TtsVoice(engine="fake")
@@ -116,7 +116,7 @@ def engines() -> list:
 
 @pytest.fixture
 def tts(engines) -> InProcessTtsService:
-    from src.tts.factory import create_tts_engine
+    from nova_tts.factory import create_tts_engine
 
     def create_engine(kind, config, sink):
         engines.append(create_tts_engine(kind, config, sink))
@@ -143,8 +143,8 @@ def channel(tts):
 
 
 def test_the_fake_engine_is_built_by_the_factory_like_any_other_engine():
-    from src.tts.base import BaseTTS
-    from src.tts.factory import create_tts_engine
+    from nova_tts.base import BaseTTS
+    from nova_tts.factory import create_tts_engine
 
     config = SimpleNamespace(audio=SimpleNamespace(fps=50), tts=SimpleNamespace(type="fake"))
 
@@ -152,7 +152,7 @@ def test_the_fake_engine_is_built_by_the_factory_like_any_other_engine():
 
 
 def test_a_saved_configuration_may_name_the_fake_engine():
-    from src.tts import config_section, voice_library
+    from nova_tts import config_section, voice_library
 
     values = {"type": "fake"}
 
@@ -166,8 +166,8 @@ def test_a_saved_configuration_may_name_the_fake_engine():
 
 
 def test_no_console_list_offers_the_fake_engine(tts):
-    from src.config.schema import Config
-    from src.server.runtime_settings import SettingsError, apply_tts_settings, speech_snapshot
+    from nova_core.config.schema import Config
+    from nova_core.server.runtime_settings import SettingsError, apply_tts_settings, speech_snapshot
 
     config = Config()
     config.tts.type = "fake"
@@ -194,7 +194,7 @@ def test_synthesize_returns_silence_as_long_as_the_fragment_is_estimated_to_last
 
 
 def test_synthesize_without_an_estimate_lasts_as_long_as_the_text_takes_to_say(tts):
-    from src.tts.engines.fake import SECONDS_PER_CHARACTER
+    from nova_tts.engines.fake import SECONDS_PER_CHARACTER
 
     request = SynthesisRequest(fragment=fragment("一二三四"), voice=FAKE_VOICE)
 

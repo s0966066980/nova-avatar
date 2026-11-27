@@ -9,13 +9,13 @@
 # weights are downloaded at a pinned commit and verified against a SHA-256; if a file is
 # already there with a different hash the script stops instead of overwriting it.
 #
-# Usage: bash scripts/setup-matcha-train.sh
+# Usage: bash services/tts/scripts/setup-matcha-train.sh
 # MATCHA_TRAIN_TORCH=cu124 (default; the same torch 2.5.0+cu124 as the main environment,
 # for training) or cpu (CPU-only torch, for checks and tests). The last step loads the base
 # weights strictly on the CPU and runs a few training steps on fake data.
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 TRAIN_DIR="$PROJECT_ROOT/.local/matcha-train"
 BASE_DIR="$PROJECT_ROOT/.local/matcha-base"
 VENV="$TRAIN_DIR/venv"
@@ -49,8 +49,8 @@ uv pip install --python "$VENV/bin/python" -r "$DEPS/requirements.txt"
 # jupyter and other packages that training does not need.
 uv pip install --python "$VENV/bin/python" --no-deps --require-hashes -r "$DEPS/matcha-tts.txt"
 
-"$VENV/bin/python" -I "$PROJECT_ROOT/scripts/matcha_base_weights.py" --dir "$BASE_DIR"
-CUDA_VISIBLE_DEVICES= "$VENV/bin/python" -I "$PROJECT_ROOT/scripts/matcha_train_env_check.py" \
+"$VENV/bin/python" -I "$PROJECT_ROOT/services/tts/scripts/matcha_base_weights.py" --dir "$BASE_DIR"
+CUDA_VISIBLE_DEVICES= "$VENV/bin/python" -I "$PROJECT_ROOT/services/tts/scripts/matcha_train_env_check.py" \
     --checkpoint "$BASE_DIR/pytorch_model_sherpa.bin"
 echo "✓ Matcha 訓練環境：$VENV"
 echo "  底模：$BASE_DIR/pytorch_model_sherpa.bin"

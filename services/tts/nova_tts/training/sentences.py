@@ -24,9 +24,9 @@ import unicodedata
 from dataclasses import dataclass
 from functools import cache
 
-from src.tts.training.corpus import MAX_LINES, MAX_TEXT_CHARS, CorpusError
-from src.tts.training.numerals import Unresolved, normalize_digits
-from src.tts.training.sentence_data import CATEGORIES
+from nova_tts.training.corpus import MAX_LINES, MAX_TEXT_CHARS, CorpusError
+from nova_tts.training.numerals import Unresolved, normalize_digits
+from nova_tts.training.sentence_data import CATEGORIES
 
 # Average speaking rates of an Edge zh-TW voice at its default speed.
 CJK_CHARS_PER_SECOND = 5.0

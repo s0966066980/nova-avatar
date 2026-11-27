@@ -22,11 +22,11 @@ import av
 import edge_tts
 import numpy as np
 
-from src.tts.base import BaseTTS, State
-from src.tts.edge_connection import EdgeConnectionPool, configure_edge_endpoint
-from src.tts import edge_endpoint
-from src.tts.retry import RetryBudget
-from src.utils.logging import logger
+from nova_tts.base import BaseTTS, State
+from nova_tts.edge_connection import EdgeConnectionPool, configure_edge_endpoint
+from nova_tts import edge_endpoint
+from nova_tts.retry import RetryBudget
+from nova_core.utils.logging import logger
 from nova_contracts.tts import PlayableFragment
 
 

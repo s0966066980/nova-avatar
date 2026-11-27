@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import time
 
-from src.llm.base import load_system_prompt
-from src.llm.engines.openai import OpenAILLM
-from src.llm.prompts import compose_system_prompt
-from src.llm.router import ReplyMode
-from src.llm.rules import snapshot_from_config
-from src.utils.logging import logger
+from nova_llm.base import load_system_prompt
+from nova_llm.engines.openai import OpenAILLM
+from nova_llm.prompts import compose_system_prompt
+from nova_llm.router import ReplyMode
+from nova_llm.rules import snapshot_from_config
+from nova_core.utils.logging import logger
 
 
 def prewarm_local_llm(config, *, timeout_seconds: float = 25.0) -> bool:

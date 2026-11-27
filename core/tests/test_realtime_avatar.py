@@ -10,11 +10,11 @@ import numpy as np
 import pytest
 from av import AudioFrame, VideoFrame
 
-from src.utils.webrtc import HumanPlayer
+from nova_core.utils.webrtc import HumanPlayer
 
 
 def test_first_speech_after_interrupt_keeps_feature_and_pcm_centers_aligned():
-    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+    from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
     class Features:
         def audio2feat(self, samples):
@@ -41,7 +41,7 @@ def test_first_speech_after_interrupt_keeps_feature_and_pcm_centers_aligned():
 
 
 def test_interrupt_during_whisper_cannot_publish_or_restore_old_context():
-    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+    from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
     class Features:
         interrupt = True
@@ -78,7 +78,7 @@ def test_interrupt_during_whisper_cannot_publish_or_restore_old_context():
 def test_interrupt_releases_a_batch_waiting_for_feature_queue_space(monkeypatch):
     import queue
     from threading import Event, Thread
-    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+    from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
     config = SimpleNamespace(model=SimpleNamespace(batch_size=1),
                              audio=SimpleNamespace(fps=50, l=0, r=0, av_offset_ms=0))
@@ -146,8 +146,8 @@ def test_audio_timeout_uses_remaining_packet_budget_after_encoding(monkeypatch):
             now[0] += timeout
             return set(), set(pending)
 
-        monkeypatch.setattr('src.utils.webrtc.time.monotonic', lambda: now[0])
-        monkeypatch.setattr('src.utils.webrtc.asyncio.wait', timeout_wait)
+        monkeypatch.setattr('nova_core.utils.webrtc.time.monotonic', lambda: now[0])
+        monkeypatch.setattr('nova_core.utils.webrtc.asyncio.wait', timeout_wait)
         try:
             for _ in range(20):
                 frame = await player.audio.recv()
@@ -187,7 +187,7 @@ def test_track_cancellation_is_preserved_when_queue_read_finishes_at_same_time()
 def test_untagged_tts_pause_and_final_pcm_survive_idle_backlog_trimming(event):
     import queue
     from threading import Event
-    from src.avatars.musetalk.avatar import put_result_frame
+    from nova_render.musetalk.avatar import put_result_frame
 
     results = queue.Queue(maxsize=16)
     # Quiet synthesized PCM is normalized to idle mouth shape, but remains
@@ -202,7 +202,7 @@ def test_untagged_tts_pause_and_final_pcm_survive_idle_backlog_trimming(event):
 
 
 def test_speech_onset_replaces_only_unscoped_idle_lookahead():
-    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+    from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
     feature_inputs = []
     class Features:
@@ -241,7 +241,7 @@ def test_speech_onset_replaces_only_unscoped_idle_lookahead():
 
 
 def _muse_handler(pending=lambda: True):
-    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+    from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
     class Features:
         def audio2feat(self, _samples): return np.zeros((36, 5, 384), np.float32)
@@ -291,7 +291,7 @@ def test_each_reply_turn_starts_with_a_startup_batch_of_its_own_speech():
 
 
 def test_first_speech_runway_wait_is_bounded(monkeypatch):
-    import src.avatars.musetalk.audio_stream_handler as module
+    import nova_render.musetalk.audio_stream_handler as module
 
     handler = _muse_handler()
     now = [100.0]
@@ -308,7 +308,7 @@ def test_first_speech_runway_wait_is_bounded(monkeypatch):
 @pytest.mark.parametrize('first_speech,expected_runs', [(True, 1), (False, 0)])
 def test_render_does_not_hold_first_speech_batch_for_a_full_batch(monkeypatch, first_speech, expected_runs):
     from threading import Event
-    import src.avatars.musetalk.avatar as module
+    import nova_render.musetalk.avatar as module
 
     quit_event = Event()
     runs = []
@@ -342,7 +342,7 @@ def test_render_does_not_hold_first_speech_batch_for_a_full_batch(monkeypatch, f
 
 
 def test_completed_short_utterance_does_not_wait_for_full_lookahead():
-    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+    from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
     class Features:
         def audio2feat(self, _samples): return np.zeros((36, 5, 384), np.float32)
@@ -368,7 +368,7 @@ def test_completed_short_utterance_does_not_wait_for_full_lookahead():
 @pytest.mark.parametrize('queued_audio,expected_delay', [(32, []), (0, [.192])])
 def test_render_throttles_only_idle_when_video_queue_is_full(monkeypatch, queued_audio, expected_delay):
     from threading import Event
-    import src.avatars.musetalk.avatar as module
+    import nova_render.musetalk.avatar as module
 
     quit_event = Event()
     delays = []
@@ -397,7 +397,7 @@ def test_render_throttles_only_idle_when_video_queue_is_full(monkeypatch, queued
 
 def test_idle_throttle_wakes_as_soon_as_reply_audio_is_queued():
     import threading
-    from src.avatars.musetalk.audio_stream_handler import MuseAudioStreamHandler
+    from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler
 
     config = SimpleNamespace(model=SimpleNamespace(batch_size=8),
                              audio=SimpleNamespace(fps=50, l=10, r=10, av_offset_ms=0))
@@ -458,10 +458,10 @@ def test_renderer_gap_does_not_delay_matching_video_after_audio_resumes():
 
 def test_paused_uplink_is_drained_without_resampling():
     from unittest.mock import Mock
-    from src.config.schema import Config
-    from src.server.voice_session import VoiceTurnSession
-    from tests.llm_fakes import FakeLlm
-    from tests.session_fakes import FakeAvatar
+    from nova_core.config.schema import Config
+    from nova_core.server.voice_session import VoiceTurnSession
+    from llm_fakes import FakeLlm
+    from session_fakes import FakeAvatar
 
     async def run():
         session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
@@ -486,10 +486,10 @@ def test_paused_uplink_is_drained_without_resampling():
 
 def test_capture_stays_closed_until_preparation_and_preserves_manual_pause():
     from threading import Event
-    from src.config.schema import Config
-    from src.server.voice_session import VoiceTurnSession
-    from tests.llm_fakes import FakeLlm
-    from tests.session_fakes import FakeAvatar
+    from nova_core.config.schema import Config
+    from nova_core.server.voice_session import VoiceTurnSession
+    from llm_fakes import FakeLlm
+    from session_fakes import FakeAvatar
 
     async def run():
         ready = Event()

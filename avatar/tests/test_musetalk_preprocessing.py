@@ -6,7 +6,7 @@ import numpy as np
 
 
 def test_musetalk_preprocessing_uses_bundled_face_detector_without_mmpose(tmp_path, monkeypatch):
-    from src.avatars.musetalk.utils import preprocessing
+    from nova_render.musetalk.utils import preprocessing
 
     frame = np.full((240, 320, 3), (50, 180, 50), np.uint8)
     path = tmp_path / "00000000.png"

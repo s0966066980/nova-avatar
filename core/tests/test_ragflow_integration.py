@@ -16,23 +16,23 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from aiohttp import web
 
-from scripts.ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
-from src.config.schema import Config
-from src.llm.base import BaseLLM
-from src.ragflow import client as ragflow_client
-from src.profiles import knowledge_scope as settings
-from src.ragflow.client import (
+from ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
+from nova_core.config.schema import Config
+from nova_llm.base import BaseLLM
+from nova_llm.ragflow import client as ragflow_client
+from nova_core.profiles import knowledge_scope as settings
+from nova_llm.ragflow.client import (
     RagFlowClient,
     RagFlowConnection,
     RagFlowError,
     close_shared_session,
     retrieval_prompt,
 )
-from src.server.routes.ragflow import get_ragflow_settings
-from src.server.state import state
-from src.server.voice_session import VoiceTurnSession
-from tests.llm_fakes import FakeLlm, answering, reply_events
-from tests.session_fakes import FakeAvatar
+from nova_core.server.routes.ragflow import get_ragflow_settings
+from nova_core.server.state import state
+from nova_core.server.voice_session import VoiceTurnSession
+from llm_fakes import FakeLlm, answering, reply_events
+from session_fakes import FakeAvatar
 
 DATASET_A = "a" * 32
 DATASET_B = "b" * 32
@@ -161,7 +161,7 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(self.client_ports[-1], self.client_ports[:-1])
 
     async def test_server_shutdown_releases_pooled_connections(self):
-        import src.server.server as server
+        import nova_core.server.server as server
         await self.client.retrieve("問題", [DATASET_A])
         llm = FakeLlm()
         llm.stop_local_server = Mock()
@@ -269,7 +269,7 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
             return result
 
         with answering(self.session, "一般回答") as llm, patch(
-            "src.llm.adapter.RagFlowClient.retrieve", fake_retrieve
+            "nova_llm.adapter.RagFlowClient.retrieve", fake_retrieve
         ):
             await self.session.start_text_turn("問題", interrupt=False)
             await self.session._turn_task
@@ -308,7 +308,7 @@ class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(3600)
             return {"status": "matched", "sources": []}
 
-        with answering(self.session, "") as llm, patch("src.llm.adapter.RagFlowClient.retrieve", delayed_retrieve):
+        with answering(self.session, "") as llm, patch("nova_llm.adapter.RagFlowClient.retrieve", delayed_retrieve):
             old = await self.session.start_text_turn("問題", interrupt=False)
             await asyncio.wait_for(started.wait(), timeout=2)
             await self.session.interrupt()
@@ -330,7 +330,7 @@ class RagFlowRouteTests(unittest.IsolatedAsyncioTestCase):
 
 class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
     async def test_saved_profile_and_draft_tests_use_role_scope_not_visual_id(self):
-        from src.server.routes.ragflow import test_ragflow_retrieval
+        from nova_core.server.routes.ragflow import test_ragflow_retrieval
         saved_selection = {'enabled': True, 'dataset_ids': [DATASET_A],
                            'document_scope': 'selected', 'document_ids': ['c' * 32]}
         profile = {'id': 'main', 'avatar_id': 'shared_visual', 'rag': saved_selection}
@@ -350,7 +350,7 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(profile['rag'], saved_selection)
 
     async def test_empty_explicit_document_scope_never_searches_entire_dataset(self):
-        from src.server.routes.ragflow import test_ragflow_retrieval
+        from nova_core.server.routes.ragflow import test_ragflow_retrieval
         retrieve = AsyncMock()
         request = SimpleNamespace(json=AsyncMock(return_value={
             'profile_id': 'main', 'question': '問題', 'selection': {
@@ -399,7 +399,7 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
 
 
 def script(name):
-    path = Path(__file__).resolve().parents[1] / 'scripts' / name
+    path = Path(__file__).resolve().parents[2] / 'services/llm/scripts' / name
     spec = importlib.util.spec_from_file_location('pc_port_' + path.stem, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

@@ -4,10 +4,10 @@
 
 # Run after setup-env.sh and downloading the MuseTalk weights.
 set -euo pipefail
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then
-    echo 'Usage: bash scripts/setup-tensorrt.sh [builder options]'
+    echo 'Usage: bash avatar/scripts/setup-tensorrt.sh [builder options]'
     echo 'Installs CUDA 12 TensorRT, builds/checks engines, then enables verified speedups.'
     echo 'Options: --verify-only, --batch-size N, --components unet vae, --config PATH'
     exit 0
@@ -19,4 +19,4 @@ command -v nvidia-smi >/dev/null || { echo 'NVIDIA driver is required.' >&2; exi
 # Preserve manually built mmcv and other installed providers.
 uv sync --inexact --extra vad --extra musetalk --extra tensorrt
 uv run --no-sync python -c 'import torch, tensorrt as trt; assert torch.cuda.is_available(); assert trt.Builder(trt.Logger()); print("GPU:", torch.cuda.get_device_name(), "TensorRT:", trt.__version__)'
-uv run --no-sync python scripts/build-musetalk-tensorrt.py --enable "$@"
+uv run --no-sync python avatar/scripts/build-musetalk-tensorrt.py --enable "$@"

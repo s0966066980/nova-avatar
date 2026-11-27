@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 from .frame_masks import BoundedFrameMasks
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 
 class TransitionState(str, Enum):

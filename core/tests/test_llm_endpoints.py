@@ -12,12 +12,12 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from src.config.schema import Config
-from src.profiles.store import ProfileError, ProfileStore, profile_config, validate_profile
-from src.server.state import state
-from tests.access_helpers import access_client, same_origin
+from nova_core.config.schema import Config
+from nova_core.profiles.store import ProfileError, ProfileStore, profile_config, validate_profile
+from nova_core.server.state import state
+from access_helpers import access_client, same_origin
 from nova_contracts.llm import LocalModel, LocalModels
-from tests.llm_fakes import FakeLlm
+from llm_fakes import FakeLlm
 
 SERVER_KEY = "server-only-test-credential"
 REMOTE_KEY = "remote-endpoint-credential"
@@ -39,7 +39,7 @@ def _config(endpoints=None):
 
 @pytest.fixture
 def no_rag(monkeypatch):
-    monkeypatch.setattr("src.profiles.store.avatar_settings",
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings",
                         lambda _: {"enabled": False, "dataset_ids": []})
 
 
@@ -70,7 +70,7 @@ class RecordingClient:
 
 
 def test_existing_install_without_endpoints_keeps_its_current_server():
-    from src.llm.endpoints import configured_endpoints
+    from nova_llm.endpoints import configured_endpoints
 
     endpoints = configured_endpoints(_config().llm)
     assert list(endpoints) == ["llamacpp"]
@@ -87,14 +87,14 @@ def test_existing_install_without_endpoints_keeps_its_current_server():
     {"provider": "openai", "base_url": "http://gpu.lan/v1", "extra": 1},
 ])
 def test_invalid_endpoint_definitions_are_rejected(bad):
-    from src.llm.endpoints import EndpointError, configured_endpoints
+    from nova_llm.endpoints import EndpointError, configured_endpoints
 
     with pytest.raises(EndpointError):
         configured_endpoints(_config({"bad": bad}).llm)
 
 
 def test_provider_is_explicit_and_not_guessed_from_the_port():
-    from src.llm.endpoints import apply_endpoint
+    from nova_llm.endpoints import apply_endpoint
 
     config = _config({"gpu": {"provider": "openai", "base_url": "http://gpu.lan:11434/v1"},
                       "ollama": {"provider": "ollama", "base_url": "http://ollama.lan:9000/v1"}})
@@ -184,7 +184,7 @@ def greeting_route(no_rag, tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr(state, "roles", SimpleNamespace(enabled=False, close=close), raising=False)
-    monkeypatch.setattr("src.llm.greeting.AsyncOpenAI", RecordingClient)
+    monkeypatch.setattr("nova_llm.greeting.AsyncOpenAI", RecordingClient)
     RecordingClient.calls = []
     return _ai_greeting(library["profiles"][0])
 
@@ -226,7 +226,7 @@ def test_greeting_preview_reaches_only_the_named_endpoint(greeting_route):
 
 def test_validate_profile_never_returns_a_url():
     config = _config()
-    from src.profiles.store import validate_library  # noqa: F401  (module import check)
+    from nova_core.profiles.store import validate_library  # noqa: F401  (module import check)
 
     profile = {"id": "main", "name": "接待", "engine": "musetalk", "avatar_id": "musetalk_angela",
                "assistant_profile": {}, "llm": {"endpoint": "llamacpp", "model": "m"},
@@ -239,7 +239,7 @@ def test_validate_profile_never_returns_a_url():
 
 
 def test_model_catalog_lists_endpoints_without_keys(monkeypatch):
-    from src.server import runtime_settings
+    from nova_core.server import runtime_settings
 
     config = _config({"local": {"provider": "llamacpp", "base_url": "http://127.0.0.1:8080/v1",
                                 "api_key": SERVER_KEY},
@@ -263,8 +263,8 @@ def test_model_catalog_lists_endpoints_without_keys(monkeypatch):
 
 
 def test_global_switch_accepts_only_configured_endpoints(monkeypatch):
-    from src.server import runtime_settings
-    from src.server.runtime_settings import SettingsError, apply_llm_model
+    from nova_core.server import runtime_settings
+    from nova_core.server.runtime_settings import SettingsError, apply_llm_model
 
     config = _config({"local": {"provider": "llamacpp", "base_url": "http://127.0.0.1:8080/v1"},
                       "lan": {"provider": "ollama", "base_url": "http://ollama.lan:9000/v1",
@@ -281,7 +281,7 @@ def test_global_switch_accepts_only_configured_endpoints(monkeypatch):
 
 
 def test_loaded_config_freezes_endpoints_and_persists_only_the_selection(tmp_path, monkeypatch):
-    from src.config import loader, overrides
+    from nova_core.config import loader, overrides
 
     path = tmp_path / "config.yaml"
     path.write_text(yaml.safe_dump({"llm": {
@@ -291,7 +291,7 @@ def test_loaded_config_freezes_endpoints_and_persists_only_the_selection(tmp_pat
     config = loader.load_config(str(path))
     assert config.llm.endpoint == "llamacpp"
     config.llm.base_url = "http://127.0.0.1:9999/v1"  # e.g. a restarted local server
-    from src.llm.endpoints import configured_endpoints
+    from nova_llm.endpoints import configured_endpoints
     assert configured_endpoints(config.llm)["llamacpp"].base_url == "http://127.0.0.1:8080/v1"
     overrides.persist_runtime_overrides(config)
     saved = yaml.safe_load((tmp_path / "runtime_overrides.yaml").read_text("utf-8"))
@@ -303,19 +303,19 @@ def test_default_config_offers_both_local_servers(tmp_path, monkeypatch):
     """The console swaps Ollama and llama.cpp; both must be listed out of the box."""
     from pathlib import Path
 
-    from src.config import loader, overrides
-    from src.llm.endpoints import configured_endpoints
+    from nova_core.config import loader, overrides
+    from nova_llm.endpoints import configured_endpoints
 
     monkeypatch.setattr(overrides, "RUNTIME_OVERRIDES_FILE", tmp_path / "absent.yaml")
-    config = loader.load_config(str(Path(__file__).resolve().parents[1] / "config" / "config.yaml"))
+    config = loader.load_config(str(Path(__file__).resolve().parents[2] / "config" / "config.yaml"))
     providers = {item.provider for item in configured_endpoints(config.llm).values()}
     assert {"ollama", "llamacpp"} <= providers
 
 
 @pytest.mark.parametrize("target", ["remote", "local"])
 def test_switching_away_from_ollama_drops_ollama_only_request_fields(monkeypatch, target):
-    from src.server import runtime_settings
-    from src.server.runtime_settings import apply_llm_model
+    from nova_core.server import runtime_settings
+    from nova_core.server.runtime_settings import apply_llm_model
 
     config = _config({"ollama": {"provider": "ollama", "base_url": "http://localhost:11434/v1"},
                       "local": {"provider": "llamacpp", "base_url": "http://127.0.0.1:8080/v1"},

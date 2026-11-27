@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 
-from src.server.voice_session import (
+from nova_core.server.voice_session import (
     OUTPUT_STALL_FRAMES,
     VoiceTurnSession,
     speech_input_rejection_reason,
@@ -16,9 +16,9 @@ from src.server.voice_session import (
 from nova_contracts.llm import (BoardItemShown, BoardReceipt, BoardStart, ModelChunk, Outcome, ReplyDone,
                                 SpeechEnd, SpokenDelta)
 from nova_contracts.stt import Transcription, TranscriptionOptions
-from tests.llm_fakes import FakeLlm, answering, reply_events, started as reply_started
-from tests.clock_fakes import FakeClock
-from tests.session_fakes import fake_stt, FakeAvatar, FakeSegmenter  # noqa: F401
+from llm_fakes import FakeLlm, answering, reply_events, started as reply_started
+from clock_fakes import FakeClock
+from session_fakes import fake_stt, FakeAvatar, FakeSegmenter  # noqa: F401
 
 
 class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
@@ -348,7 +348,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
 
         media_player = MediaPlayer()
         session.attach_media_player(media_player)
-        with patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()):
+        with patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()):
             await session.interrupt()
         self.assertEqual(avatar.flush_count, 1)
         self.assertEqual(media_player.discard_count, 1)
@@ -369,7 +369,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         ):
             session._turn_id = "old-turn"
             sleep = AsyncMock()
-            with patch("src.server.voice_session.asyncio.sleep", new=sleep):
+            with patch("nova_core.server.voice_session.asyncio.sleep", new=sleep):
                 started = await start()
             # The guard only keeps capture closed while old audio drains; a
             # replacement turn closes capture itself, so the 0.3 s delayed
@@ -388,7 +388,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         session, _avatar, _events = self.make_session()
         session._turn_id = "old-turn"
         sleep = AsyncMock()
-        with patch("src.server.voice_session.asyncio.sleep", new=sleep):
+        with patch("nova_core.server.voice_session.asyncio.sleep", new=sleep):
             await session.interrupt()
         sleep.assert_awaited_once_with(0.3)
         await session.close()
@@ -409,7 +409,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         session._turn_id = None
         self.assertFalse(avatar.media_guard(eventpoint, "avatar_audio_enqueue"))
         session._turn_id = "turn-1"
-        with patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()):
+        with patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()):
             await session.interrupt()
         self.assertFalse(avatar.media_guard(eventpoint, "avatar_audio_enqueue"))
         avatar.on_stale_drop("avatar_audio", "stale_generation")
@@ -441,7 +441,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         with answering(session, blocked_llm, speak=True):
             await session.feed_pcm(np.ones(512, dtype=np.int16))
             self.assertTrue(await asyncio.to_thread(started.wait, 1))
-            with patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()):
+            with patch("nova_core.server.voice_session.asyncio.sleep", new=AsyncMock()):
                 await session.interrupt()
             release.set()
             self.assertTrue(await asyncio.to_thread(finished.wait, 1))
@@ -720,8 +720,8 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
 
 class ChatReplyModeRouteTests(unittest.IsolatedAsyncioTestCase):
     async def test_human_chat_delegates_to_text_turn_and_returns_ack(self):
-        from src.server.routes.chat import human
-        from src.server.state import state
+        from nova_core.server.routes.chat import human
+        from nova_core.server.state import state
 
         request = AsyncMock()
         request.json.return_value = {
@@ -758,8 +758,8 @@ class ChatReplyModeRouteTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_human_chat_rejects_missing_voice_session(self):
         from aiohttp import web
-        from src.server.routes.chat import human
-        from src.server.state import state
+        from nova_core.server.routes.chat import human
+        from nova_core.server.state import state
 
         request = AsyncMock()
         request.json.return_value = {
@@ -775,8 +775,8 @@ class ChatReplyModeRouteTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_human_chat_rejects_when_event_sink_is_not_ready(self):
         from aiohttp import web
-        from src.server.routes.chat import human
-        from src.server.state import state
+        from nova_core.server.routes.chat import human
+        from nova_core.server.state import state
 
         request = AsyncMock()
         request.json.return_value = {
@@ -852,7 +852,7 @@ class SessionThreadSafetyTests(unittest.IsolatedAsyncioTestCase):
         eventpoint = self.register_fragment(session, "orphan-turn")
         before = list(events)
 
-        with self.assertLogs("src.utils.logging", level="WARNING"):
+        with self.assertLogs("nova_core.utils.logging", level="WARNING"):
             await asyncio.to_thread(
                 session.on_fragment_synthesis_failed, eventpoint, "no_audio"
             )
@@ -897,7 +897,7 @@ class SessionThreadSafetyTests(unittest.IsolatedAsyncioTestCase):
         async def controlled_sleep(_seconds):
             await release.wait()
 
-        with patch("src.server.voice_session.asyncio.sleep", new=controlled_sleep):
+        with patch("nova_core.server.voice_session.asyncio.sleep", new=controlled_sleep):
             interrupting = asyncio.create_task(session.interrupt())
             for _ in range(3):
                 await real_sleep(0)

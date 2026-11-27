@@ -13,14 +13,14 @@ from aiortc.rtcrtpsender import RTCRtpSender
 import asyncio
 
 from nova_contracts.avatar import AvatarService
-from src.utils.webrtc import HumanPlayer
-from src.utils.logging import logger
-from src.server.state import state
-from src.server.utils import randN
-from src.server.voice_session import VoiceTurnSession
-from src.server.presentation import SessionPresentation
-from src.server.stage_guard import stage_offer_refusal
-from src.server.speaking_avatar import SpeakingAvatar
+from nova_core.utils.webrtc import HumanPlayer
+from nova_core.utils.logging import logger
+from nova_core.server.state import state
+from nova_core.server.utils import randN
+from nova_core.server.voice_session import VoiceTurnSession
+from nova_core.server.presentation import SessionPresentation
+from nova_core.server.stage_guard import stage_offer_refusal
+from nova_core.server.speaking_avatar import SpeakingAvatar
 
 
 def build_speaking_avatar(config, model, avatar_data, sessionid, *, avatars: AvatarService):
@@ -105,7 +105,7 @@ async def offer(request):
             if roles is not None:
                 roles.unregister(sessionid)
             if not state.avatar_streams and not state.shutting_down:
-                from src.server.deferred_settings import apply_pending
+                from nova_core.server.deferred_settings import apply_pending
                 await apply_pending()
                 if roles is not None:
                     await roles.apply_pending()
@@ -134,7 +134,7 @@ async def offer(request):
             llm=state.llm,
             tts=state.tts,
         )
-        from src.server.conversations import validate, check_language_support
+        from nova_core.server.conversations import validate, check_language_support
         if 'locale' in params:
             values = validate({'locale': params['locale']}, voice_session._conversation)
             check_language_support(voice_session.config, values['locale'])

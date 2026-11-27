@@ -4,10 +4,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.config.schema import Config, ReplyRulesConfig
-from src.config.overrides import load_runtime_overrides, persist_runtime_overrides
-from src.llm.rules import default_rules, snapshot_from_config, validate_rules
-from src.server.runtime_settings import SettingsError, apply_reply_rules, reply_rules_snapshot
+from nova_core.config.schema import Config, ReplyRulesConfig
+from nova_core.config.overrides import load_runtime_overrides, persist_runtime_overrides
+from nova_llm.rules import default_rules, snapshot_from_config, validate_rules
+from nova_core.server.runtime_settings import SettingsError, apply_reply_rules, reply_rules_snapshot
 
 
 class EditableRuleTests(unittest.TestCase):
@@ -36,7 +36,7 @@ class EditableRuleTests(unittest.TestCase):
             config = Config()
             config.llm.reply_rules = ReplyRulesConfig(**default_rules())
             values = {**default_rules(), "speech": "本輪只用一句話回答。"}
-            with patch("src.config.overrides.RUNTIME_OVERRIDES_FILE", override_path):
+            with patch("nova_core.config.overrides.RUNTIME_OVERRIDES_FILE", override_path):
                 result = apply_reply_rules(config, values, expected_revision=1)
                 persisted = load_runtime_overrides()
             self.assertEqual(result["applied_revision"], 2)

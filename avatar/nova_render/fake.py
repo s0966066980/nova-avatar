@@ -28,7 +28,7 @@ from typing import Any, Optional
 import numpy as np
 
 from nova_contracts.avatar import STAGE_FRAME
-from src.avatars.base import BaseAvatar, drain_media_queue, put_until_quit
+from nova_render.base import BaseAvatar, drain_media_queue, put_until_quit
 
 # BGR; the picture every frame of the fake avatar shows.
 FAKE_FRAME_COLOR = (64, 128, 192)

@@ -28,9 +28,9 @@ from av.audio.resampler import AudioResampler
 
 from nova_contracts.stt import SttPrepareRequest, SttService, Transcription, TranscriptionOptions
 from nova_contracts.tts import TtsService, strip_visual_markup
-from src.greetings.controller import IdleGreetingController
-from src.greetings.content import GreetingError
-from src.tts import config_section as tts_section
+from nova_core.greetings.controller import IdleGreetingController
+from nova_core.greetings.content import GreetingError
+from nova_tts import config_section as tts_section
 from nova_contracts.llm import (
     BoardReceipt,
     ContextCapacityExceeded,
@@ -53,18 +53,18 @@ from nova_contracts.llm import (
     WebSearchResult,
     WebSummaryRequest,
 )
-from src.llm.config_section import llm_settings, reply_rules
-from src.profiles.knowledge_scope import avatar_settings
-from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
-from src.server.reply_streaming.llm_reply import conversation_session, stream_reply
-from src.server.reply_streaming.metrics import AUDIBLE_PEAK, TurnMetrics
-from src.server.reply_streaming.speech import ReplySpeech
-from src.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
-from src.server.web_evidence import EvidenceCache, public_result
-from src.utils.logging import logger
-from src.utils.spoken_text import join_spoken_fragments
-from src.utils.stage_timing import observe_stages
-from src.vad.service import create_segmenter
+from nova_llm.config_section import llm_settings, reply_rules
+from nova_core.profiles.knowledge_scope import avatar_settings
+from nova_core.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
+from nova_core.server.reply_streaming.llm_reply import conversation_session, stream_reply
+from nova_core.server.reply_streaming.metrics import AUDIBLE_PEAK, TurnMetrics
+from nova_core.server.reply_streaming.speech import ReplySpeech
+from nova_core.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
+from nova_core.server.web_evidence import EvidenceCache, public_result
+from nova_core.utils.logging import logger
+from nova_core.utils.spoken_text import join_spoken_fragments
+from nova_core.utils.stage_timing import observe_stages
+from nova_core.vad.service import create_segmenter
 
 
 EventSink = Callable[[str], None]
@@ -219,7 +219,7 @@ class VoiceTurnSession:
         self._gate_open = False
         self._manual_pause = False
         self._closed = False
-        from src.server.conversations import defaults, configure_avatar
+        from nova_core.server.conversations import defaults, configure_avatar
         self._conversation = defaults(self.config)
         self._role_voices = {}
         self._voice_overrides = set()
@@ -262,7 +262,7 @@ class VoiceTurnSession:
         self._board_display_receipts = RecentKeys(256)
         self._conversation_dirty = False
         self._idle_reset_task: Optional[asyncio.Task] = None
-        from src.server.attachments import AttachmentStore
+        from nova_core.server.attachments import AttachmentStore
         self.attachments = AttachmentStore()
         self._attachment_busy = 0
         self._composer_editing = False
@@ -318,7 +318,7 @@ class VoiceTurnSession:
             )
 
     def bind_conversation(self):
-        from src.server.conversations import configure_avatar
+        from nova_core.server.conversations import configure_avatar
         identity = getattr(self.config, 'profile_id', '')
         if identity not in self._voice_overrides:
             self._role_voices[identity] = {
@@ -346,7 +346,7 @@ class VoiceTurnSession:
         try:
             await loop.run_in_executor(None, self._prepare_sync)
             if self._conversation['locale'] == 'en-US':
-                from src.server.conversations import warm_voice
+                from nova_core.server.conversations import warm_voice
                 await warm_voice(self.config, self._conversation, self._tts_service)
         except Exception as exc:
             self._preparing = False
@@ -508,7 +508,7 @@ class VoiceTurnSession:
             self._emit('conversation_settings_error', error=str(exc), **self._conversation)
 
     async def apply_conversation(self, values: dict) -> None:
-        from src.server.conversations import validate, check_language_support, configure_avatar, warm_voice
+        from nova_core.server.conversations import validate, check_language_support, configure_avatar, warm_voice
         async with self._settings_lock:
             candidate = validate(values, self._conversation)
             voice_change = any(candidate[key] != self._conversation[key] for key in ("voice_zh_tw", "voice_en_us"))
@@ -687,7 +687,7 @@ class VoiceTurnSession:
         if request_id and request_id in self._cancelled_text_requests:
             raise ValueError('cancelled')
         if selected:
-            from src.server.attachments import vision_ready
+            from nova_core.server.attachments import vision_ready
             if not await asyncio.to_thread(vision_ready, self.config):
                 raise ValueError('vision_unavailable')
         # A replacement and cancellation may arrive together. Serialize their
@@ -1177,7 +1177,7 @@ class VoiceTurnSession:
         loop = asyncio.get_running_loop()
         resolved = self.attachments.validate_selection(self.attachments.selection)
         if resolved:
-            from src.server.attachments import vision_ready
+            from nova_core.server.attachments import vision_ready
             if not await asyncio.to_thread(vision_ready, self.config):
                 raise ValueError('vision_unavailable')
             self._emit('attachment_status', turn_id=turn_id, state='reading', total=sum(len(p) for _, p in resolved))
@@ -1322,7 +1322,7 @@ class VoiceTurnSession:
         A conversation fixed to a role or avatar profile is its own
         publication; otherwise the console's published settings apply.
         """
-        from src.server.state import state
+        from nova_core.server.state import state
 
         config = getattr(self.avatar, "config", None) or state.config
         if getattr(config, "conversation_snapshot", False):
@@ -1436,7 +1436,7 @@ class VoiceTurnSession:
 
     def _speak_fixed(self, question, response, turn_id, generation, input_source):
         """Fixed announcements/failures use the real TTS and played-only history."""
-        from src.profiles.language import fixed_text
+        from nova_core.profiles.language import fixed_text
         response = fixed_text(response, self._conversation["locale"])
         self.mark_stage_end("pre_answer")
         if not self.is_greeting:
@@ -1471,7 +1471,7 @@ class VoiceTurnSession:
             self._role_coordinator.cancel(self.sessionid)
         if not self._is_current(turn_id, generation):
             return
-        from src.server.attachments import AttachmentError
+        from nova_core.server.attachments import AttachmentError
         if isinstance(exc, AttachmentError):
             if self._turn_context is not None:
                 self._turn_context.fail('attachment_error')
@@ -2157,7 +2157,7 @@ class VoiceTurnSession:
             # affects the next conversation, preserving the current scene.
             published = self.config
             if not getattr(self.config, 'conversation_snapshot', False):
-                from src.server.state import state
+                from nova_core.server.state import state
                 published = state.config or self.config
             self._rules_snapshot = reply_rules(published)
             self._assistant_profile_snapshot = deepcopy(
@@ -2410,7 +2410,7 @@ class VoiceTurnSession:
             self._pending_history_limit = None
             self._conversation['history_max_messages'] = limit
             self._llm.set_history_limit(HistoryLimit(session_id=self.sessionid, limit=limit))
-            from src.server.conversations import configure_avatar
+            from nova_core.server.conversations import configure_avatar
             configure_avatar(self.avatar, self._conversation)
         was_open = self._gate_open
         allowed = (

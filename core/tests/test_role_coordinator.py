@@ -11,10 +11,10 @@ from unittest.mock import Mock
 import pytest
 
 from nova_contracts.llm import SessionRef
-from src.profiles.coordinator import RoleCoordinator
-from src.profiles.routing import route_question
-from tests.llm_fakes import FakeLlm
-from tests.role_fakes import async_test, connect, field, wait_until  # noqa: F401
+from nova_core.profiles.coordinator import RoleCoordinator
+from nova_core.profiles.routing import route_question
+from llm_fakes import FakeLlm
+from role_fakes import async_test, connect, field, wait_until  # noqa: F401
 
 
 @pytest.mark.parametrize('text,confirmed,expected', [
@@ -234,9 +234,9 @@ async def test_disabling_handoff_applies_main_profile_for_existing_and_new_peers
         disabled['profiles'][0]['assistant_profile']['assistant_name'] = '單角色接待員'
         disabled['profiles'][0]['rag'] = {'enabled': True, 'dataset_ids': ['a'*32],
             'document_scope': 'selected', 'document_ids': ['c'*32]}
-        monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+        monkeypatch.setattr('nova_render.catalog.avatar_bootable', lambda *_: (True, ''))
         roles.loader = Mock(return_value=object())
-        monkeypatch.setattr('src.llm.llamacpp.ensure_server', lambda *_args, **_kwargs: 'http://localhost:8080/v1')
+        monkeypatch.setattr('nova_llm.llamacpp.ensure_server', lambda *_args, **_kwargs: 'http://localhost:8080/v1')
         await roles.apply(disabled)
         assert not roles.enabled
         assert voice.config.profile_id == 'weather'
@@ -365,8 +365,8 @@ async def test_console_answer_does_not_cancel_stage_greeting(field):
 @async_test
 async def test_greeting_only_profile_apply_keeps_playing_media_and_avoids_rebinding(field, monkeypatch):
     # Weights and avatar material live in gitignored directories, so a clean checkout has none.
-    monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
-    monkeypatch.setattr('src.avatars.catalog.avatar_uses_green_screen', lambda *_: True)
+    monkeypatch.setattr('nova_render.catalog.avatar_bootable', lambda *_: (True, ''))
+    monkeypatch.setattr('nova_render.catalog.avatar_uses_green_screen', lambda *_: True)
     roles = field
     roles.profiles_applied = True
     roles.state.config.stage.idle_greeting_enabled = True
@@ -435,7 +435,7 @@ async def test_greeting_apply_preserves_unapplied_identity_model_and_playing_med
 async def test_greeting_apply_requires_current_main_and_current_saved_revision(field):
     roles = field
     before = deepcopy(roles.library)
-    from src.profiles.store import ProfileError
+    from nova_core.profiles.store import ProfileError
     with pytest.raises(ProfileError, match='主數位人已變更'):
         await roles.apply_greeting('weather', expected_revision=1)
     with pytest.raises(ProfileError, match='設定已更新'):
@@ -494,8 +494,8 @@ async def test_profile_model_change_stays_pending_until_both_pages_disconnect(fi
         field.state.avatar_streams.pop(8)
         field.state.voice_sessions.pop(8)
         field.unregister(8)
-        monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
-        monkeypatch.setattr('src.avatars.catalog.avatar_uses_green_screen', lambda *_: True)
+        monkeypatch.setattr('nova_render.catalog.avatar_bootable', lambda *_: (True, ''))
+        monkeypatch.setattr('nova_render.catalog.avatar_uses_green_screen', lambda *_: True)
         await field.apply_pending()
         assert [server.model for server in started] == ['new-local-model']
         assert not field.snapshot()['pending']
@@ -507,7 +507,7 @@ async def test_profile_model_change_stays_pending_until_both_pages_disconnect(fi
 
 @async_test
 async def test_http_role_controls_require_and_affect_only_the_requested_session(field, monkeypatch):
-    from src.server.routes import profiles
+    from nova_core.server.routes import profiles
     from unittest.mock import AsyncMock
     console, _ = connect(field, 7, 'console')
     stage, _ = connect(field, 8, 'stage')
@@ -531,7 +531,7 @@ async def test_http_role_controls_require_and_affect_only_the_requested_session(
 
 @async_test
 async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_live_peers(field, monkeypatch):
-    from src.profiles.store import ProfileError
+    from nova_core.profiles.store import ProfileError
 
     field.state.config.tts.type = 'breezyvoice'
     target = deepcopy(field.library)
@@ -539,9 +539,9 @@ async def test_applying_a_breezyvoice_profile_starts_its_server_only_without_liv
     main = next(p for p in target['profiles'] if p['id'] == 'main')
     main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
                        tts_server='http://127.0.0.1:50001')
-    monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+    monkeypatch.setattr('nova_render.catalog.avatar_bootable', lambda *_: (True, ''))
     start = Mock(return_value='http://127.0.0.1:50001')
-    monkeypatch.setattr('src.tts.cosyvoice_runtime.ensure_server', start)
+    monkeypatch.setattr('nova_tts.cosyvoice_runtime.ensure_server', start)
     await field.apply(deepcopy(target))
     start.assert_called_once_with(model_dir='tts/BreezyVoice-tw', host='127.0.0.1', port=50001)
 
@@ -569,9 +569,9 @@ async def test_breezyvoice_server_change_waits_until_conversations_disconnect(fi
     main = next(p for p in target['profiles'] if p['id'] == 'main')
     main['tts'].update(type='breezyvoice', ref_file='0123456789abcdef', model='tts/BreezyVoice-tw',
                        tts_server='http://127.0.0.1:50001')
-    monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
+    monkeypatch.setattr('nova_render.catalog.avatar_bootable', lambda *_: (True, ''))
     start = Mock(return_value='http://127.0.0.1:50001')
-    monkeypatch.setattr('src.tts.cosyvoice_runtime.ensure_server', start)
+    monkeypatch.setattr('nova_tts.cosyvoice_runtime.ensure_server', start)
     await field.apply(deepcopy(target))
     start.reset_mock()
 

@@ -26,18 +26,18 @@ from nova_contracts.llm import (
     SpeechSink,
     SpokenDelta,
 )
-from src.llm.prompts import compose_system_prompt
-from src.llm.identity_policy import IdentityPolicy
-from src.llm.reply_events import SpokenTextReview, review_context, review_for, visible_text_normalizer
-from src.llm.response_protocol import (
+from nova_llm.prompts import compose_system_prompt
+from nova_llm.identity_policy import IdentityPolicy
+from nova_llm.reply_events import SpokenTextReview, review_context, review_for, visible_text_normalizer
+from nova_llm.response_protocol import (
     BoardItem,
     BoardPayload,
     ResponseProtocolParser,
     SessionBoardContext,
 )
-from src.llm.rules import snapshot_from_config
-from src.llm.router import ReplyMode
-from src.utils.logging import logger
+from nova_llm.rules import snapshot_from_config
+from nova_llm.router import ReplyMode
+from nova_core.utils.logging import logger
 
 
 DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.'
@@ -483,7 +483,7 @@ class BaseLLM(ABC):
             return text
 
         except Exception as e:
-            from src.llm.context_usage import ContextCapacityError
+            from nova_llm.context_usage import ContextCapacityError
             if (
                 history_transaction is not None
                 and not history_committed

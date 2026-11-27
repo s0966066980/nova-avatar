@@ -15,10 +15,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from src.utils.logging import logger
-from src.vad.audio import decode_audio, pcm16_to_wav_bytes, resample_int16
-from src.vad.factory import create_vad_from_config, get_vad_engine_from_config
-from src.vad.segmenter import detect_speech_segments
+from nova_core.utils.logging import logger
+from nova_core.vad.audio import decode_audio, pcm16_to_wav_bytes, resample_int16
+from nova_core.vad.factory import create_vad_from_config, get_vad_engine_from_config
+from nova_core.vad.segmenter import detect_speech_segments
 
 
 @dataclass
@@ -149,7 +149,7 @@ def create_segmenter(vad_config, config=None):
         for seg in segmenter.process(pcm_chunk):
             ...  # seg.audio 是一整句話
     """
-    from src.vad.segmenter import VADSegmenter
+    from nova_core.vad.segmenter import VADSegmenter
 
     # Silero keeps recurrent state inside the model. Each microphone runs in
     # its own executor, so sharing the singleton here mixes conversations and

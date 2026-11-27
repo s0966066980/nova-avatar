@@ -19,7 +19,7 @@ from io import BytesIO
 from typing import Dict, Any
 from abc import ABC, abstractmethod
 
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 # Conversation locale -> recognizer language.
 _LOCALE_LANGUAGES = {"zh-TW": "zh", "en-US": "en"}

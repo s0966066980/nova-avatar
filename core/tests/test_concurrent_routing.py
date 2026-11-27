@@ -11,14 +11,14 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from src.llm.history import TransactionalHistory
-from src.profiles.coordinator import ANSWER_CONTEXT
-from src.server.voice_session import VoiceTurnSession
+from nova_llm.history import TransactionalHistory
+from nova_core.profiles.coordinator import ANSWER_CONTEXT
+from nova_core.server.voice_session import VoiceTurnSession
 from nova_contracts.llm import ModelChunk, ReplyDone, SpeechEnd, SpokenDelta, TurnRef
-from tests.clock_fakes import FakeClock
-from tests.llm_fakes import FakeLlm, started as reply_started
-from tests.session_fakes import FakeAvatar
-from tests.role_fakes import answers, async_test, connect, field, route_to  # noqa: F401
+from clock_fakes import FakeClock
+from llm_fakes import FakeLlm, started as reply_started
+from session_fakes import FakeAvatar
+from role_fakes import answers, async_test, connect, field, route_to  # noqa: F401
 
 SPECULATIVE = {"context": ANSWER_CONTEXT}
 FIXED = "接下來請天氣助手為您說明。"
@@ -389,7 +389,7 @@ class CancellationTests(_SessionCase):
     async def test_input_failure_after_the_fence_ends_the_turn(self):
         roles = _Roles({"weather": None, "context": "已確認臺北市"})
         answer = _Answer(self.session)
-        with patch("src.server.attachments.vision_ready", return_value=False):
+        with patch("nova_core.server.attachments.vision_ready", return_value=False):
             turn_id, _ = await self._start(roles, answer)
             # The turn task has not run yet: its attachment step now fails.
             self.session.attachments.validate_selection = lambda _selection: [("圖", [1])]
@@ -411,8 +411,8 @@ class RetrievalBudgetTests(_SessionCase):
             return {"status": "matched", "sources": [{"content": "晚到的事實"}]}
 
         answer = _Answer(self.session)
-        with patch("src.llm.adapter.RagFlowClient.retrieve", slow), patch(
-            "src.server.voice_session.RETRIEVAL_BUDGET_SECONDS", 0.05
+        with patch("nova_llm.adapter.RagFlowClient.retrieve", slow), patch(
+            "nova_core.server.voice_session.RETRIEVAL_BUDGET_SECONDS", 0.05
         ):
             await self._start(None, answer)
             await asyncio.wait_for(self.session._turn_task, 2)
@@ -431,7 +431,7 @@ class RetrievalBudgetTests(_SessionCase):
                 "document_id": "d", "dataset_id": "a" * 32}]}
 
         answer = _Answer(self.session)
-        with patch("src.llm.adapter.RagFlowClient.retrieve", delayed):
+        with patch("nova_llm.adapter.RagFlowClient.retrieve", delayed):
             await self._start(None, answer)
             await asyncio.wait_for(self.session._turn_task, 3)
         return answer, [e["status"] for e in self.events if e["type"] == "rag_retrieval"]
@@ -451,7 +451,7 @@ class RetrievalBudgetTests(_SessionCase):
                 "document_id": "d", "dataset_id": "a" * 32}]}
 
         answer = _Answer(self.session)
-        with patch("src.llm.adapter.RagFlowClient.retrieve", fast):
+        with patch("nova_llm.adapter.RagFlowClient.retrieve", fast):
             await self._start(None, answer)
             await self.session._turn_task
         self.assertEqual(answer.calls[0].retrieval[0].content, "可查的事實")
@@ -464,7 +464,7 @@ class RetrievalBudgetTests(_SessionCase):
 
         roles = _Roles({"fixed": FIXED, "handoff_id": "h1"})
         answer = _Answer(self.session)
-        with patch("src.llm.adapter.RagFlowClient.retrieve", fast):
+        with patch("nova_llm.adapter.RagFlowClient.retrieve", fast):
             await self._start(roles, answer)
             await asyncio.to_thread(answer.started.wait, 2)
             roles.gate.set()

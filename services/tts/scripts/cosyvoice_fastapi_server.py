@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 import uvicorn
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(ROOT_DIR)))
 PROJECT_HINTS = [
     os.path.expanduser("~/CosyVoice"),
     "/home/oliver/CosyVoice",
@@ -184,7 +185,7 @@ def main() -> None:
     parser.add_argument(
         "--model_dir",
         type=str,
-        default=os.path.join(os.path.dirname(ROOT_DIR), "models", "BreezyVoice"),
+        default=os.path.join(PROJECT_ROOT, "models", "BreezyVoice"),
     )
     args = parser.parse_args()
     model_dir = _prepare_cosyvoice_path(args.model_dir)

@@ -15,11 +15,11 @@ from .schema import (
     MuseTalkQualityConfig, ReplyStreamingConfig, StageConfig,
     BoardConfig, ReplyRulesConfig, AssistantProfileConfig, GreetingConfig, ConversationConfig,
 )
-from src.asr import config_section as asr_section
-from src.avatars import config_section as avatar_section
-from src.llm import config_section as llm_section
-from src.tts import config_section as tts_section
-from src.utils.logging import logger
+from nova_stt import config_section as asr_section
+from nova_render import config_section as avatar_section
+from nova_llm import config_section as llm_section
+from nova_tts import config_section as tts_section
+from nova_core.utils.logging import logger
 
 
 def _merge_dicts(base: Dict, override: Dict) -> Dict:
@@ -119,7 +119,7 @@ def dict_to_config(config_dict: Dict) -> Config:
         **{key: value for key, value in stage_dict.items() if key in allowed_stage}
     )
 
-    from src.greetings.content import validate_content, validate_interval
+    from nova_core.greetings.content import validate_content, validate_interval
     greeting = GreetingConfig(**validate_content(config_dict.get("greeting")))
     if type(stage_config.idle_greeting_enabled) is not bool:
         raise ValueError("招呼開關須為布林值")
@@ -178,8 +178,8 @@ def load_config(
             config_dict = _merge_dicts(config_dict, default_config)
     
     # 4. 合併設定面板寫入的執行時覆蓋（llm.model / 數字人引擎與角色）
-    from src.config.overrides import load_runtime_overrides
-    from src.utils.logging import logger
+    from nova_core.config.overrides import load_runtime_overrides
+    from nova_core.utils.logging import logger
 
     # An isolated diagnostic profile must not inherit the control panel's
     # selected local LLM or avatar. Saved preferences remain untouched.

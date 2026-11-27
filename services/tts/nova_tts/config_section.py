@@ -19,9 +19,9 @@ from __future__ import annotations
 from typing import Any
 
 from nova_contracts.tts import TtsEngineSettings, TtsVoice
-from src.tts import cosyvoice_runtime, voice_library
-from src.tts.training.asr import WHISPER_MODELS
-from src.tts.voice_library import REMOVED_TTS_FIELDS, migrate_tts_config
+from nova_tts import cosyvoice_runtime, voice_library
+from nova_tts.training.asr import WHISPER_MODELS
+from nova_tts.voice_library import REMOVED_TTS_FIELDS, migrate_tts_config
 
 # sherpa-onnx CPU threads for Matcha-TTS; more than the cores only adds contention.
 MAX_MATCHA_THREADS = 64

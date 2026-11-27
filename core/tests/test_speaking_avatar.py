@@ -6,8 +6,8 @@
 import numpy as np
 
 from nova_contracts.tts import TtsVoice
-from src.config.schema import Config
-from src.server.speaking_avatar import SpeakingAvatar
+from nova_core.config.schema import Config
+from nova_core.server.speaking_avatar import SpeakingAvatar
 
 
 class FakeRenderer:
@@ -232,8 +232,8 @@ def test_tts_runs_for_as_long_as_the_renderer_and_reports_pending_audio():
 def test_a_webrtc_session_gets_a_renderer_fed_by_the_tts_runtime(monkeypatch):
     from types import SimpleNamespace
 
-    from src.server.routes import webrtc
-    from src.server.state import state
+    from nova_core.server.routes import webrtc
+    from nova_core.server.state import state
 
     renderer = FakeRenderer()
     built = []
@@ -323,7 +323,7 @@ def test_the_media_fence_and_played_boundaries_reach_the_renderer():
 def test_the_renderer_builds_no_tts_and_asks_the_core_whether_pcm_is_due():
     from types import SimpleNamespace
 
-    from src.avatars.base import BaseAvatar
+    from nova_render.base import BaseAvatar
 
     renderer = BaseAvatar(SimpleNamespace(
         model=SimpleNamespace(type="none"), audio=SimpleNamespace(fps=50),
@@ -360,8 +360,8 @@ def test_an_uploaded_audio_file_plays_as_16k_frames_on_the_renderer():
 def test_an_overlong_audio_file_is_refused_before_playing(monkeypatch):
     import pytest
 
-    from src.server import speaking_avatar
-    from src.vad.audio import AudioTooLongError
+    from nova_core.server import speaking_avatar
+    from nova_core.vad.audio import AudioTooLongError
 
     monkeypatch.setattr(speaking_avatar, "MAX_AUDIO_FILE_SECONDS", 0.25)
     avatar, renderer, _ = speaking()

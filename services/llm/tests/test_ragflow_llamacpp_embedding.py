@@ -15,9 +15,9 @@ import textwrap
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 UNIT = ROOT / "integrations/ragflow/nova-ragflow-llamacpp-embedding.service"
-LAUNCHER = ROOT / "scripts/ragflow_llamacpp_embedding.sh"
+LAUNCHER = ROOT / "services/llm/scripts/ragflow_llamacpp_embedding.sh"
 
 
 def _fake_bin(directory: Path, name: str, body: str) -> Path:
@@ -30,8 +30,8 @@ def _fake_bin(directory: Path, name: str, body: str) -> Path:
 @pytest.fixture
 def launch(tmp_path):
     project = tmp_path / "project"
-    (project / "scripts").mkdir(parents=True)
-    (project / "scripts" / LAUNCHER.name).write_text(LAUNCHER.read_text())
+    (project / "services/llm/scripts").mkdir(parents=True)
+    (project / "services/llm/scripts" / LAUNCHER.name).write_text(LAUNCHER.read_text())
     gguf = project / "models/ragflow/bge-m3-f16.gguf"
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -45,7 +45,7 @@ def launch(tmp_path):
 
     def run(**env):
         result = subprocess.run(
-            ["bash", str(project / "scripts" / LAUNCHER.name)],
+            ["bash", str(project / "services/llm/scripts" / LAUNCHER.name)],
             env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
                  "NOVA_RAGFLOW_LLAMA_SERVER": str(server), **env},
             capture_output=True, text=True, timeout=15,
@@ -101,7 +101,7 @@ def test_unit_runs_the_launcher_with_cpu_and_memory_limits():
 
 
 def _connection():
-    path = ROOT / "scripts/ragflow_connection.py"
+    path = ROOT / "services/llm/scripts/ragflow_connection.py"
     spec = importlib.util.spec_from_file_location("ragflow_connection_under_test", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from tests.role_fakes import (answers, async_test, connect, field, route_to, session_history,  # noqa: F401
+from role_fakes import (answers, async_test, connect, field, route_to, session_history,  # noqa: F401
                               wait_until)
 
 SERVICE_ANNOUNCEMENT = '接下來請客服小幫手為您說明。'
@@ -187,8 +187,8 @@ async def test_idle_greeting_only_runs_on_the_main_avatar(field):
 
 @async_test
 async def test_apply_loads_each_live_member_avatar_once_and_releases_unused_ones(field, monkeypatch):
-    monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
-    monkeypatch.setattr('src.avatars.catalog.avatar_uses_green_screen', lambda *_: True)
+    monkeypatch.setattr('nova_render.catalog.avatar_bootable', lambda *_: (True, ''))
+    monkeypatch.setattr('nova_render.catalog.avatar_uses_green_screen', lambda *_: True)
     field.state.config.model.avatar_id = 'musetalk_angela'
     add_member(field, 'service', avatar_id='musetalk_angela')           # shares the main avatar
     add_member(field, 'guide', '展覽導覽', avatar_id='guide_avatar')

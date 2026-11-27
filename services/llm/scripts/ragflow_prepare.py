@@ -12,11 +12,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 UPSTREAM = ROOT / ".local" / "ragflow" / "upstream"
 ENV_FILE = UPSTREAM / "docker" / ".env"
 MANAGED_MARKER = "# NOVA_RAGFLOW_MANAGED=1"
-# Must equal scripts/ragflow_validate.py; a re-pushed tag cannot change the image.
+# Must equal services/llm/scripts/ragflow_validate.py; a re-pushed tag cannot change the image.
 RAGFLOW_IMAGE = (
     "infiniflow/ragflow:v0.27.2"
     "@sha256:e6b3f1a185c0a70abb3a72e1092415df8c5c6a4fae0089545554f2936c4b27ab"

@@ -18,17 +18,17 @@ from unittest.mock import Mock
 import pytest
 
 from nova_contracts.llm import SessionRef, SpokenTurn, TurnCommit
-from src.avatars.adapter import create_avatar_service
-from src.config.schema import Config
-from src.profiles.composition import new_member
-from src.profiles.coordinator import RoleCoordinator
-from src.profiles.store import ProfileStore, profile_config
-from src.scene.role_presentation import RolePresentation
-from src.server.reply_streaming.llm_reply import conversation_session
-from src.server.voice_session import VoiceTurnSession
-from tests.llm_fakes import FakeLlm
-from tests.session_fakes import FakeAvatar
-from tests.tts_fakes import in_process_tts
+from nova_render.adapter import create_avatar_service
+from nova_core.config.schema import Config
+from nova_core.profiles.composition import new_member
+from nova_core.profiles.coordinator import RoleCoordinator
+from nova_core.profiles.store import ProfileStore, profile_config
+from nova_render.scene.role_presentation import RolePresentation
+from nova_core.server.reply_streaming.llm_reply import conversation_session
+from nova_core.server.voice_session import VoiceTurnSession
+from llm_fakes import FakeLlm
+from session_fakes import FakeAvatar
+from tts_fakes import in_process_tts
 
 
 class Avatar(FakeAvatar):
@@ -74,7 +74,7 @@ def route_to(target, **fields):
 
 @pytest.fixture
 def field(tmp_path, monkeypatch):
-    monkeypatch.setattr('src.profiles.store.avatar_settings', lambda _: {'enabled': False, 'dataset_ids': []})
+    monkeypatch.setattr('nova_core.profiles.store.avatar_settings', lambda _: {'enabled': False, 'dataset_ids': []})
     config = Config()
     config.model.type = 'musetalk'
     config.model.avatar_id = 'musetalk_angela'

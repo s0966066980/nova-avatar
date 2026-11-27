@@ -11,15 +11,15 @@ import time
 from uuid import uuid4
 
 from nova_contracts.llm import SessionProfile, SessionRef, WeatherQuery
-from src.llm.config_section import local_server_settings
-from src.profiles.media import TransitionMedia
-from src.profiles.routing import route_question, weather_member
-from src.config.schema import TTSConfig
-from src.greetings.content import validate_content
-from src.profiles.composition import MAIN_ANNOUNCEMENTS, live_members, main_profile_id, referenced_media, transition
-from src.profiles.store import ProfileError, ProfileStore, profile_config
-from src.tts import config_section as tts_section
-from src.utils.logging import logger
+from nova_llm.config_section import local_server_settings
+from nova_core.profiles.media import TransitionMedia
+from nova_core.profiles.routing import route_question, weather_member
+from nova_core.config.schema import TTSConfig
+from nova_core.greetings.content import validate_content
+from nova_core.profiles.composition import MAIN_ANNOUNCEMENTS, live_members, main_profile_id, referenced_media, transition
+from nova_core.profiles.store import ProfileError, ProfileStore, profile_config
+from nova_tts import config_section as tts_section
+from nova_core.utils.logging import logger
 
 # The plan of a turn the current main role answers itself. It is also the
 # plan a concurrently started main answer assumes before routing decides.
@@ -192,7 +192,7 @@ class ConversationRoles:
             return self.speculative_plan()
         target = self.profiles[target_id]
         if getattr(voice, 'attachments', None) and voice.attachments.selection:
-            from src.server.attachments import vision_ready
+            from nova_core.server.attachments import vision_ready
             target_config = profile_config(self.base_config, target)
             if not await asyncio.to_thread(vision_ready, target_config):
                 voice._emit('attachment_status', state='error', error='handoff_vision_unavailable')
@@ -563,13 +563,13 @@ class RoleCoordinator:
         self._apply_waiting = True
         try:
             if config.model.type != self.state.config.model.type:
-                from src.server.runtime_settings import apply_avatar
+                from nova_core.server.runtime_settings import apply_avatar
                 await asyncio.to_thread(apply_avatar, self.state.config,
                     main["engine"], main["avatar_id"], session_count=0,
                     avatars=self.state.avatar_service)
                 self.assets = {}
             if config.tts.type != self.state.config.tts.type:
-                from src.server.runtime_settings import apply_tts_settings
+                from nova_core.server.runtime_settings import apply_tts_settings
                 await asyncio.to_thread(apply_tts_settings, self.state.config,
                     main["tts"], session_count=0, tts=self.state.tts)
             elif config.tts.type == "breezyvoice" and not self.state.avatar_streams:

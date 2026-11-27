@@ -4,7 +4,7 @@
 
 """LLM 引擎實現集中入口"""
 
-from src.llm.base import BaseLLM
+from nova_llm.base import BaseLLM
 from .fake import FakeLLM
 from .openai import OpenAILLM
 

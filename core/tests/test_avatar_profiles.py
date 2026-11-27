@@ -6,18 +6,18 @@ import json
 
 import pytest
 
-from src.config.schema import Config
-from src.profiles.composition import MAIN_ANNOUNCEMENTS, incompatibility, live_members
-from src.profiles.store import ProfileError, ProfileStore, profile_config
+from nova_core.config.schema import Config
+from nova_core.profiles.composition import MAIN_ANNOUNCEMENTS, incompatibility, live_members
+from nova_core.profiles.store import ProfileError, ProfileStore, profile_config
 from nova_contracts.llm import SessionProfile, SessionRef, SpokenTurn, TurnCommit
-from src.server.reply_streaming.llm_reply import conversation_session
-from tests.llm_fakes import FakeLlm
+from nova_core.server.reply_streaming.llm_reply import conversation_session
+from llm_fakes import FakeLlm
 from types import SimpleNamespace
 
 
 @pytest.fixture
 def profiles(tmp_path, monkeypatch):
-    monkeypatch.setattr("src.profiles.store.avatar_settings",
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings",
                         lambda _: {"enabled": True, "dataset_ids": ["a" * 32]})
     config = Config()
     config.model.avatar_id = "musetalk_angela"

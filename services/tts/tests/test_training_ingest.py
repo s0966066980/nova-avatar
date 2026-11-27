@@ -13,8 +13,8 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from src.tts.training.corpus import CorpusError, CorpusStore
-from src.tts.training.ingest import (
+from nova_tts.training.corpus import CorpusError, CorpusStore
+from nova_tts.training.ingest import (
     MAX_UPLOAD_BYTES,
     create_uploaded_corpus,
     ingest_audio,

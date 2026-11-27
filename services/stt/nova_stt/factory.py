@@ -6,14 +6,14 @@
 ASR 工廠類
 
 統一根據引擎名稱建立不同的 ASR 引擎例項。Sharing one loaded recognizer is the
-in-process adapter's job (src/asr/adapter.py), not this module's.
+in-process adapter's job (services/stt/nova_stt/adapter.py), not this module's.
 """
 
 from typing import Type
 
 from nova_contracts.stt import SttEngineSettings
-from src.asr.base import BaseASR
-from src.asr.engines import FakeASR, WhisperASR
+from nova_stt.base import BaseASR
+from nova_stt.engines import FakeASR, WhisperASR
 
 
 # "fake" is selectable by configuration only; the console lists engines from

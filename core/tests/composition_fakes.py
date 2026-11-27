@@ -11,11 +11,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.config.schema import Config
-from src.profiles.store import ProfileStore
-from src.server.state import state
-from tests.access_helpers import access_client, same_origin
-from tests.llm_fakes import FakeLlm
+from nova_core.config.schema import Config
+from nova_core.profiles.store import ProfileStore
+from nova_core.server.state import state
+from access_helpers import access_client, same_origin
+from llm_fakes import FakeLlm
 
 
 def _config():
@@ -28,7 +28,7 @@ def _config():
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     """main + weather (seeded) and seven more profiles compatible with main."""
-    monkeypatch.setattr("src.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
+    monkeypatch.setattr("nova_core.profiles.store.avatar_settings", lambda _: {"enabled": False, "dataset_ids": []})
     store = ProfileStore(tmp_path / "avatar_profiles.yaml")
     library = store.initialize(_config())
     extra = []

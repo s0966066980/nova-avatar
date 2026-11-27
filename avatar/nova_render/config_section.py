@@ -19,6 +19,6 @@ def export_config(model: Any) -> dict[str, Any]:
     """Mouth-quality values of the ``model`` section to persist."""
     # Loading a configuration is also used by offline release checks; keep the
     # OpenCV-dependent quality code on the write path that needs it.
-    from src.avatars.mouth_quality import quality_from_model
+    from nova_render.mouth_quality import quality_from_model
 
     return quality_from_model(model)

@@ -10,12 +10,12 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from src.profiles.composition import (
+from nova_core.profiles.composition import (
     MAX_ENABLED_MEMBERS, compatibility_report, live_members, profile_ids, referenced_media, transition,
 )
-from src.profiles.coordinator import ConversationRoles
-from src.profiles.store import ProfileError, ProfileStore, validate_profile
-from tests.composition_fakes import _config, _request, composition_routes, store  # noqa: F401
+from nova_core.profiles.coordinator import ConversationRoles
+from nova_core.profiles.store import ProfileError, ProfileStore, validate_profile
+from composition_fakes import _config, _request, composition_routes, store  # noqa: F401
 
 _RULES = """\
   reply_rules:

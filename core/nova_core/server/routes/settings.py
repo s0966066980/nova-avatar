@@ -12,11 +12,11 @@ from uuid import uuid4
 from aiohttp import web
 
 from nova_contracts.common import ServiceError
-from src.server.import_jobs import (
+from nova_core.server.import_jobs import (
     MAX_IMPORT_VIDEO_BYTES, VIDEO_EXTS, discard_upload, get_job, import_in_progress,
     start_import_job, validate_import_request,
 )
-from src.server.runtime_settings import (
+from nova_core.server.runtime_settings import (
     apply_video_settings,
     breezyvoice_server_ready,
     preview_profile_voice,
@@ -38,11 +38,11 @@ from src.server.runtime_settings import (
     apply_reply_rules,
     reply_rules_snapshot,
 )
-from src.profiles.store import ProfileError
-from src.server.deferred_settings import defer_when_connected, snapshot as pending_snapshot
-from src.server.state import state
+from nova_core.profiles.store import ProfileError
+from nova_core.server.deferred_settings import defer_when_connected, snapshot as pending_snapshot
+from nova_core.server.state import state
 from nova_contracts.tts import MAX_VOICE_UPLOAD_BYTES, TtsError, VoiceRef, VoiceUpload
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 
 def _json(payload: dict, status: int = 200) -> web.Response:

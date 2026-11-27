@@ -1,8 +1,8 @@
 import unittest
 
-from src.llm.prompts import compose_system_prompt
-from src.llm.response_protocol import ResponseProtocolParser
-from src.llm.router import ReplyMode
+from nova_llm.prompts import compose_system_prompt
+from nova_llm.response_protocol import ResponseProtocolParser
+from nova_llm.router import ReplyMode
 
 
 class AutoResponseProtocolTests(unittest.TestCase):

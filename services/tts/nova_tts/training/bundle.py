@@ -4,7 +4,7 @@
 """Writing a trained voice model into the catalog (``models/tts/<id>/``).
 
 "Export" in this project means only this step (spec decision 14): the bundle stays on
-this machine, in the directory ``src.tts.voice_models`` lists; no route offers a
+this machine, in the directory ``nova_tts.voice_models`` lists; no route offers a
 download, and moving a voice model to another machine is a manual copy by the
 administrator.
 
@@ -26,7 +26,7 @@ from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.tts.voice_models import (
+from nova_tts.voice_models import (
     LABEL_FILE,
     REQUIRED_FILES,
     USAGE_LABELS,
@@ -34,7 +34,7 @@ from src.tts.voice_models import (
     VOICE_MODELS_ROOT,
     list_voice_models,
 )
-from src.utils.logging import logger
+from nova_core.utils.logging import logger
 
 LANGUAGES = ["zh-TW", "en-US"]
 MAX_NAME_CHARS = 40

@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from src.tts.training.corpus import CorpusStore
-from src.tts.training.transcripts import (
+from nova_tts.training.corpus import CorpusStore
+from nova_tts.training.transcripts import (
     TranscriptError,
     apply_transcripts,
     parse_metadata_csv,

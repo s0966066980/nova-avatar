@@ -25,12 +25,12 @@ from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[3]
 ENV_FILE = ROOT / "config/ragflow.env"
 BASE_URL = "http://127.0.0.1:9380"
 SHARED_OLLAMA = ROOT / ".local/ragflow/shared-ollama"
 SHARED_MODEL_URL = "http://host.docker.internal:11436"
-# BGE-M3 on the CPU-only llama.cpp server (scripts/ragflow_llamacpp_embedding.sh).
+# BGE-M3 on the CPU-only llama.cpp server (services/llm/scripts/ragflow_llamacpp_embedding.sh).
 EMBEDDING_PROVIDER = "OpenAI-API-Compatible"
 EMBEDDING_INSTANCE = "nova-llamacpp"
 EMBEDDING_MODEL = "bge-m3"
@@ -175,7 +175,7 @@ def switch_embedding(key: str | None = None) -> None:
     if key is None:
         key = read_key()
         if not works(key):
-            raise RuntimeError("RAGFlow API 金鑰無效；請先執行 bash scripts/ragflow.sh connect。")
+            raise RuntimeError("RAGFlow API 金鑰無效；請先執行 bash services/llm/scripts/ragflow.sh connect。")
     api = partial(model_api, key)
     backup = _backup_embedding_settings(key)
     print(f"已備份知識庫與預設模型設定：{backup}")
@@ -267,7 +267,7 @@ def setup_model_sync() -> None:
     (units / "nova-ragflow-model-sync.service").write_text(
         "# Copyright (c) 2026 HongXian0903\n# SPDX-License-Identifier: Apache-2.0\n\n"
         "[Unit]\nDescription=Nova Avatar shared Ollama model discovery\n\n"
-        f'[Service]\nExecStart=/usr/bin/python3 "{ROOT / "scripts/ragflow_connection.py"}" --watch-models\n'
+        f'[Service]\nExecStart=/usr/bin/python3 "{ROOT / "services/llm/scripts/ragflow_connection.py"}" --watch-models\n'
         "Restart=on-failure\nRestartSec=5\nNoNewPrivileges=yes\nMemoryMax=128M\nCPUQuota=10%\n\n"
         "[Install]\nWantedBy=default.target\n"
     )
@@ -279,12 +279,12 @@ def unify_models() -> None:
     """Serve RAGFlow's chat models from the host Ollama; embeddings stay on llama.cpp."""
     key = read_key()
     if not works(key):
-        raise RuntimeError("RAGFlow API 金鑰無效；請先執行 bash scripts/ragflow.sh connect。")
+        raise RuntimeError("RAGFlow API 金鑰無效；請先執行 bash services/llm/scripts/ragflow.sh connect。")
     ollama_datasets = [d["name"] for d in _paged(key, "/datasets")
                        if d.get("embedding_model_name", "").endswith("@Ollama")]
     if ollama_datasets:
         raise RuntimeError("知識庫仍使用 Ollama 嵌入（" + "、".join(ollama_datasets)
-                           + "）；請先執行 bash scripts/ragflow.sh switch-embedding。")
+                           + "）；請先執行 bash services/llm/scripts/ragflow.sh switch-embedding。")
     setup_chat_proxy()
     # Old instances on the retired GPU embedding Ollama (11435) also carry
     # chat models; repoint them so those models stay usable.
@@ -373,7 +373,7 @@ def configure_chat(key: str, model_name: str) -> None:
 def connect_chat(model_name: str) -> None:
     key = read_key()
     if not works(key):
-        raise RuntimeError("RAGFlow API 金鑰無效；請先執行 bash scripts/ragflow.sh connect。")
+        raise RuntimeError("RAGFlow API 金鑰無效；請先執行 bash services/llm/scripts/ragflow.sh connect。")
     with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=10) as response:
         models = json.load(response).get("models", [])
     if not any(model.get("name") == model_name for model in models):

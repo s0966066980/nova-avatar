@@ -22,23 +22,23 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.config.schema import Config
-from src.tts.engines import matcha
-from src.tts.factory import create_tts_engine
-from src.tts.voice_preview import (
+from nova_core.config.schema import Config
+from nova_tts.engines import matcha
+from nova_tts.factory import create_tts_engine
+from nova_tts.voice_preview import (
     MAX_PREVIEW_SECONDS,
     PREVIEW_SENTENCES,
     PreviewError,
     synthesize_preview,
 )
-from tests.matcha_fakes import VOICE_ID, FakeSherpa, Parent, make_voice_model, matcha_config, tone
+from matcha_fakes import VOICE_ID, FakeSherpa, Parent, make_voice_model, matcha_config, tone
 
 
 @pytest.fixture
 def voice_models(tmp_path, monkeypatch):
     root = tmp_path / "models" / "tts"
     root.mkdir(parents=True)
-    monkeypatch.setattr("src.tts.voice_models.VOICE_MODELS_ROOT", root)
+    monkeypatch.setattr("nova_tts.voice_models.VOICE_MODELS_ROOT", root)
     return root
 
 
@@ -244,16 +244,16 @@ def test_cancelling_stops_generation_and_returns_no_audio(voice_models, sherpa):
 
 
 def test_the_console_shows_the_same_three_sentences_the_server_speaks():
-    constants = (Path(__file__).resolve().parents[1] / "web/src/voiceTraining/constants.js").read_text(encoding="utf-8")
+    constants = (Path(__file__).resolve().parents[2] / "web/src/voiceTraining/constants.js").read_text(encoding="utf-8")
     shown = dict(re.findall(r"\{ key: '(\w+)', text: '([^']+)' \}", constants))
 
     assert shown == PREVIEW_SENTENCES
 
 
 def test_the_console_keeps_no_copy_of_the_microsoft_clause():
-    from src.tts.training.edge_acknowledgement import MSA_CLAUSE
+    from nova_tts.training.edge_acknowledgement import MSA_CLAUSE
 
-    root = Path(__file__).resolve().parents[1] / "web/src"
+    root = Path(__file__).resolve().parents[2] / "web/src"
     marker = MSA_CLAUSE.text.split(",")[0]
     copies = [
         str(path.relative_to(root))

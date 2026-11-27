@@ -13,12 +13,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.config.schema import Config
-from src.profiles.routing import route_question
-from tests.llm_fakes import FakeLlm
-from src.profiles.store import ProfileStore
-from src.llm.tools.weather import COUNTIES, TAIPEI
-from src.llm.tools.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
+from nova_core.config.schema import Config
+from nova_core.profiles.routing import route_question
+from llm_fakes import FakeLlm
+from nova_core.profiles.store import ProfileStore
+from nova_llm.tools.weather import COUNTIES, TAIPEI
+from nova_llm.tools.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
 
 FRIDAY = date(2026, 10, 30)
 

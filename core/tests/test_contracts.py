@@ -17,9 +17,9 @@ from pydantic import ValidationError
 
 import nova_contracts
 from nova_contracts.http import HttpApi
-from src.server.reply_streaming.turn import TurnContext
+from nova_core.server.reply_streaming.turn import TurnContext
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "scripts" / "generate_openapi.py"
 
 

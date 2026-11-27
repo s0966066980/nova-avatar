@@ -26,10 +26,10 @@ from pathlib import Path
 
 import numpy as np
 
-from src.tts.training.audio_decode import decode_to_16k_mono
-from src.tts.training.audio_quality import assess_audio, to_wav_bytes
-from src.tts.training.corpus import MAX_AUDIO_BYTES, REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusError, CorpusStore
-from src.utils.logging import logger
+from nova_tts.training.audio_decode import decode_to_16k_mono
+from nova_tts.training.audio_quality import assess_audio, to_wav_bytes
+from nova_tts.training.corpus import MAX_AUDIO_BYTES, REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusError, CorpusStore
+from nova_core.utils.logging import logger
 
 CONVERTED_DIR = "converted"
 PREPARED_DIR = "prepared"

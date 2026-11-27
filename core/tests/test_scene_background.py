@@ -10,10 +10,10 @@ import cv2
 import numpy as np
 import pytest
 
-from src.scene import service
-from src.avatars import catalog
-from src.avatars.adapter import create_avatar_service
-from src.server.routes import settings as settings_routes
+from nova_render.scene import service
+from nova_render import catalog
+from nova_render.adapter import create_avatar_service
+from nova_core.server.routes import settings as settings_routes
 
 
 @pytest.fixture(autouse=True)
@@ -299,7 +299,7 @@ def test_background_bomb_upload_answers_400(tmp_path, monkeypatch):
     monkeypatch.setattr(service, "backgrounds_root", lambda: tmp_path / "backgrounds")
     monkeypatch.setattr(settings_routes.state, "config", SimpleNamespace())
     from aiohttp import FormData
-    from tests.access_helpers import access_client
+    from access_helpers import access_client
 
     async def run():
         async with access_client() as client:

@@ -13,13 +13,13 @@ import pytest
 import yaml
 
 from nova_contracts.llm import GreetingReceipt, HistoryLimit, MemoryQuery
-from src.llm.history import TransactionalHistory
-from src.profiles.store import profile_config
-from src.server import conversations
-from src.server.state import state
-from tests.llm_fakes import FakeLlm
-from tests.role_fakes import answers, async_test, connect, field, wait_until  # noqa: F401
-from tests.session_fakes import picture  # noqa: F401
+from nova_llm.history import TransactionalHistory
+from nova_core.profiles.store import profile_config
+from nova_core.server import conversations
+from nova_core.server.state import state
+from llm_fakes import FakeLlm
+from role_fakes import answers, async_test, connect, field, wait_until  # noqa: F401
+from session_fakes import picture  # noqa: F401
 
 
 def engine(text='earlier question'):
@@ -53,7 +53,7 @@ async def test_short_clear_keeps_all_roles_until_full_reset(field, monkeypatch):
             assert any(e['type'] == 'answer_clear' for e in events)
             assert not any(e['type'] == 'conversation_reset' for e in events)
 
-    monkeypatch.setattr('src.server.voice_session.asyncio.sleep', advance)
+    monkeypatch.setattr('nova_core.server.voice_session.asyncio.sleep', advance)
     await voice._reset_after_idle(60)
     assert waits == [15, 45]
     assert not a._history.snapshot() and not b._history.snapshot()
@@ -243,7 +243,7 @@ async def test_unsupported_attachment_handoff_is_rejected_before_role_announceme
     voice, _ = connect(field)
     item = voice.attachments.add_batch([('receipt.png', picture())], 0)[0]
     voice.attachments.select([{'id': item['id']}])
-    monkeypatch.setattr('src.server.attachments.vision_ready', lambda _: False)
+    monkeypatch.setattr('nova_core.server.attachments.vision_ready', lambda _: False)
     voice._turn_id = 'question'
     voice._start_turn_context('question')
     result = await voice._role_coordinator.before_generate(voice, '明天天氣如何', 'question', voice._generation)
@@ -278,7 +278,7 @@ def test_profile_english_voice_defaults_preserve_original_chinese_voice(field):
 
 
 def script(name):
-    path = Path(__file__).resolve().parents[1] / 'scripts' / name
+    path = Path(__file__).resolve().parents[2] / 'scripts' / name
     spec = importlib.util.spec_from_file_location('pc_port_' + path.stem, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

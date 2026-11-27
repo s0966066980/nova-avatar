@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.llm.handoff import HandoffContext, RoleCandidate, RoutingError, route
+from nova_llm.handoff import HandoffContext, RoleCandidate, RoutingError, route
 
 TAIPEI_TODAY = datetime.now().date().isoformat()
 

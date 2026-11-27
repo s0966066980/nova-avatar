@@ -1,9 +1,9 @@
 import unittest
 
-from src.config.schema import Config
-from src.llm.base import BaseLLM
-from src.llm.router import ReplyMode
-from src.llm.text_normalizer import (
+from nova_core.config.schema import Config
+from nova_llm.base import BaseLLM
+from nova_llm.router import ReplyMode
+from nova_llm.text_normalizer import (
     normalize_assistant_identity,
     normalize_output_text,
     strip_unsolicited_self_introduction,

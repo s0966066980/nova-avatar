@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.config.schema import Config
-from src.server import deferred_settings
-from src.server.routes import settings
-from src.server.state import state
+from nova_core.config.schema import Config
+from nova_core.server import deferred_settings
+from nova_core.server.routes import settings
+from nova_core.server.state import state
 
 
 @pytest.fixture

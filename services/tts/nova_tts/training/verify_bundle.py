@@ -3,7 +3,7 @@
 
 """Load an exported voice-model bundle in sherpa-onnx on the CPU and synthesise a sentence.
 
-Run as ``python -m src.tts.training.verify_bundle <bundle dir>`` in a subprocess of the
+Run as ``python -m nova_tts.training.verify_bundle <bundle dir>`` in a subprocess of the
 application's interpreter with ``CUDA_VISIBLE_DEVICES=`` (the training job does this
 before it installs a bundle): a model that sherpa-onnx cannot load, or that yields no
 16 kHz audio, must never reach ``models/tts/``. Prints ``OK <seconds>`` and exits 0, or
@@ -46,7 +46,7 @@ def verify(bundle: Path) -> float:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
-        print("usage: python -m src.tts.training.verify_bundle <bundle dir>", file=sys.stderr)
+        print("usage: python -m nova_tts.training.verify_bundle <bundle dir>", file=sys.stderr)
         return 2
     try:
         seconds = verify(Path(argv[0]))

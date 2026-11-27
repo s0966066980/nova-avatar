@@ -22,9 +22,9 @@ from typing import Iterator, List, Optional
 
 import numpy as np
 
-from src.utils.logging import logger
-from src.vad.audio import voiced_end_sample
-from src.vad.base import AudioLike, BaseVAD, to_int16
+from nova_core.utils.logging import logger
+from nova_core.vad.audio import voiced_end_sample
+from nova_core.vad.base import AudioLike, BaseVAD, to_int16
 
 
 @dataclass

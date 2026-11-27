@@ -56,7 +56,7 @@ class FakeEngine:
 
 
 def service(**kwargs):
-    from src.tts.adapter import InProcessTtsService
+    from nova_tts.adapter import InProcessTtsService
 
     created = []
 
@@ -184,7 +184,7 @@ def wav_bytes(seconds=1.0, rate=16000):
 
 @pytest.fixture
 def library(tmp_path, monkeypatch):
-    from src.tts import voice_library
+    from nova_tts import voice_library
 
     monkeypatch.setattr(voice_library, "VOICES_ROOT", tmp_path / "voices")
     return tmp_path / "voices"
@@ -213,12 +213,12 @@ def test_the_voice_library_refuses_oversized_or_undecodable_audio(library, monke
     from nova_contracts.tts import VoiceUpload
 
     tts, _ = service()
-    monkeypatch.setattr("src.tts.adapter.MAX_VOICE_UPLOAD_BYTES", 16)
+    monkeypatch.setattr("nova_tts.adapter.MAX_VOICE_UPLOAD_BYTES", 16)
 
     with pytest.raises(TtsError) as oversized:
         tts.add_voice(wav_bytes(), VoiceUpload())
     assert oversized.value.status == 413
-    monkeypatch.setattr("src.tts.adapter.MAX_VOICE_UPLOAD_BYTES", 1024 * 1024)
+    monkeypatch.setattr("nova_tts.adapter.MAX_VOICE_UPLOAD_BYTES", 1024 * 1024)
     with pytest.raises(TtsError) as undecodable:
         tts.add_voice(b"not audio at all", VoiceUpload())
     assert undecodable.value.status == 400
@@ -226,7 +226,7 @@ def test_the_voice_library_refuses_oversized_or_undecodable_audio(library, monke
 
 def test_preparing_a_breezyvoice_voice_starts_its_server_and_returns_its_address(monkeypatch):
     from nova_contracts.tts import VoicePreparation
-    from src.tts import cosyvoice_runtime
+    from nova_tts import cosyvoice_runtime
 
     started = []
 
@@ -247,7 +247,7 @@ def test_preparing_a_breezyvoice_voice_starts_its_server_and_returns_its_address
 @pytest.mark.parametrize("error, status", [(FileNotFoundError("沒有權重"), 400), (TimeoutError("逾時"), 503)])
 def test_a_breezyvoice_server_that_cannot_start_is_a_tts_error(monkeypatch, error, status):
     from nova_contracts.tts import VoicePreparation
-    from src.tts import cosyvoice_runtime
+    from nova_tts import cosyvoice_runtime
 
     def ensure_server(**_kwargs):
         raise error
@@ -265,7 +265,7 @@ def test_preparing_an_edge_voice_warms_it_and_fails_when_edge_is_unreachable(mon
 
     calls = []
     ready = [True, False]
-    monkeypatch.setattr("src.tts.engines.edge.prewarm_edge_tts",
+    monkeypatch.setattr("nova_tts.engines.edge.prewarm_edge_tts",
                         lambda voice, **kwargs: calls.append((voice, kwargs)) or ready.pop(0))
     tts, _ = service()
     voice = TtsVoice(engine="edgetts", voice="zh-TW-HsiaoYuNeural", edge_connection_reuse=False)
@@ -288,7 +288,7 @@ def test_a_matcha_voice_needs_no_preparation():
 
 
 def test_server_status_reports_the_normalized_address(monkeypatch):
-    from src.tts import cosyvoice_runtime
+    from nova_tts import cosyvoice_runtime
 
     monkeypatch.setattr(cosyvoice_runtime, "server_ready", lambda server, model: (server, model) == ("", "m"))
     tts, _ = service()
@@ -300,7 +300,7 @@ def test_server_status_reports_the_normalized_address(monkeypatch):
 
 def test_a_voice_model_preview_uses_the_shared_thread_count_and_its_own_deadline(monkeypatch):
     from nova_contracts.tts import VoiceModelPreview
-    from src.tts.voice_preview import PreviewError
+    from nova_tts.voice_preview import PreviewError
 
     calls = []
 
@@ -310,7 +310,7 @@ def test_a_voice_model_preview_uses_the_shared_thread_count_and_its_own_deadline
             raise PreviewError("找不到聲線模型", status=404)
         return b"RIFF"
 
-    monkeypatch.setattr("src.tts.adapter.synthesize_preview", synthesize_preview)
+    monkeypatch.setattr("nova_tts.adapter.synthesize_preview", synthesize_preview)
     tts, _ = service()
 
     assert tts.preview_voice_model(VoiceModelPreview(voice_id="model-a", sentence="digits")) == b"RIFF"
@@ -323,11 +323,11 @@ def test_a_voice_model_preview_uses_the_shared_thread_count_and_its_own_deadline
 
 
 def test_closing_stops_jobs_edge_and_owned_servers_and_a_forced_close_only_the_servers(monkeypatch):
-    from src.tts import cosyvoice_runtime
+    from nova_tts import cosyvoice_runtime
 
     stopped = []
     monkeypatch.setattr(cosyvoice_runtime, "shutdown_cosyvoice_server", lambda: stopped.append("breezyvoice"))
-    monkeypatch.setattr("src.tts.engines.edge.shutdown_edge_tts", lambda: stopped.append("edge"))
+    monkeypatch.setattr("nova_tts.engines.edge.shutdown_edge_tts", lambda: stopped.append("edge"))
     tts, _ = service()
     monkeypatch.setattr(tts, "_stop_training", lambda: stopped.append("training"))
 
@@ -345,8 +345,8 @@ def test_closing_stops_jobs_edge_and_owned_servers_and_a_forced_close_only_the_s
 
 def _training(tmp_path, **kwargs):
     from nova_contracts.tts import VoiceTraining
-    from src.tts.training.corpus import CorpusStore
-    from src.tts.training.service import InProcessVoiceTraining
+    from nova_tts.training.corpus import CorpusStore
+    from nova_tts.training.service import InProcessVoiceTraining
 
     training = InProcessVoiceTraining(settings=TtsEngineSettings, corpus_store=CorpusStore(tmp_path), **kwargs)
     assert isinstance(training, VoiceTraining)
@@ -409,7 +409,7 @@ def test_transcript_problems_come_back_as_extra_problems(tmp_path):
 
 def test_the_layers_preflight_has_no_stage_or_admin_check(tmp_path):
     from nova_contracts.tts import TrainingQuery
-    from src.tts.training.gpu_probe import VramReading
+    from nova_tts.training.gpu_probe import VramReading
 
     training = _training(tmp_path, vram_probe=lambda: VramReading(None, "no GPU"))
     status = training.training_status(TrainingQuery())
@@ -422,11 +422,11 @@ def test_the_layers_preflight_has_no_stage_or_admin_check(tmp_path):
 
 def test_a_core_cpu_reason_keeps_a_transcription_off_the_gpu(tmp_path):
     from nova_contracts.tts import CorpusCreation, TranscriptionStart
-    from src.tts.training.corpus import CorpusStore
-    from src.tts.training.gpu_guard import DeviceChoice
-    from src.tts.training.service import InProcessVoiceTraining
-    from src.tts.training.transcription import TranscriptionJobs
-    from tests.training_fakes import tone_wav
+    from nova_tts.training.corpus import CorpusStore
+    from nova_tts.training.gpu_guard import DeviceChoice
+    from nova_tts.training.service import InProcessVoiceTraining
+    from nova_tts.training.transcription import TranscriptionJobs
+    from training_fakes import tone_wav
 
     class Transcriber:
         def transcribe(self, path):
@@ -449,7 +449,7 @@ def test_a_core_cpu_reason_keeps_a_transcription_off_the_gpu(tmp_path):
 
 def test_a_running_job_is_reported_as_training_activity(tmp_path):
     from nova_contracts.tts import TrainingStart
-    from tests.training_fakes import rig
+    from training_fakes import rig
 
     r = rig(tmp_path, train_code=None)
     training = _training(tmp_path / "unused", training_jobs=r.manager)

@@ -13,12 +13,12 @@ corpus source declaration (spec decision 3, ADR 0026):
 
 The label depends only on the declared source and the base model, never on what
 was done to the corpus, so processing can not lower it. Label strings are those
-of ``src.tts.voice_models.USAGE_LABELS``; no source is ever commercially usable.
+of ``nova_tts.voice_models.USAGE_LABELS``; no source is ever commercially usable.
 """
 
 from __future__ import annotations
 
-from src.tts.voice_models import USAGE_LABELS
+from nova_tts.voice_models import USAGE_LABELS
 
 SOURCE_EDGE_TEST_TEACHER = "edge-test-teacher"
 SOURCE_SELF_RECORDED = "self-recorded"

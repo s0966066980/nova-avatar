@@ -8,12 +8,12 @@ from pathlib import Path
 import tempfile
 
 from aiohttp import web
-from src.profiles.composition import compatibility_report, profile_ids, referenced_media
-from src.profiles.media import MAX_BYTES
-from src.profiles.routing import candidates, route_question
-from src.profiles.store import ProfileError, validate_profile, profile_config
-from src.greetings.content import prepare_greeting, GreetingError
-from src.server.state import state
+from nova_core.profiles.composition import compatibility_report, profile_ids, referenced_media
+from nova_core.profiles.media import MAX_BYTES
+from nova_core.profiles.routing import candidates, route_question
+from nova_core.profiles.store import ProfileError, validate_profile, profile_config
+from nova_core.greetings.content import prepare_greeting, GreetingError
+from nova_core.server.state import state
 
 
 def endpoint(handler):

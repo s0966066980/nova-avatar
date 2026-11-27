@@ -4,7 +4,7 @@
 """The TTS layer's entry point: ``TtsService`` and ``TtsRuntime`` served in-process.
 
 The core reaches the TTS layer only through this module and ``config_section``;
-everything else under ``src.tts`` is internal (import-linter contract
+everything else under ``nova_tts`` is internal (import-linter contract
 ``tts-internals-private``, ADR 0027).
 
 The real-time path is unchanged by the split: a ``SpeechChannel`` is the
@@ -43,14 +43,14 @@ from nova_contracts.tts import (
     VoiceUpload,
     strip_visual_markup,
 )
-from src.tts import cosyvoice_runtime, voice_library
-from src.tts.base import BaseTTS
-from src.tts.engines import edge
-from src.tts.factory import create_tts_engine
-from src.tts.training.service import InProcessVoiceTraining
-from src.tts.voice_models import list_voice_models
-from src.tts.voice_preview import PreviewError, synthesize_preview
-from src.utils.logging import logger
+from nova_tts import cosyvoice_runtime, voice_library
+from nova_tts.base import BaseTTS
+from nova_tts.engines import edge
+from nova_tts.factory import create_tts_engine
+from nova_tts.training.service import InProcessVoiceTraining
+from nova_tts.voice_models import list_voice_models
+from nova_tts.voice_preview import PreviewError, synthesize_preview
+from nova_core.utils.logging import logger
 
 SAMPLE_RATE = 16000
 # A voice-model preview gives up after this long (the console waits as long).

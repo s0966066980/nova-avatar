@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from typing import Optional, Any
 
-from src.llm.router import ReplyMode
-from src.llm.rules import default_rules
-from src.llm.reply_contract import (
+from nova_llm.router import ReplyMode
+from nova_llm.rules import default_rules
+from nova_llm.reply_contract import (
     AUTO_BOARD_SCHEMA_PROMPT, AUTO_MODE_PROMPT, CHANNEL_SPLIT_PROMPT, first_sentence_prompt,
 )
 

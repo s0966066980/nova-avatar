@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from src.tts.training import corpus as corpus_module
-from src.tts.training.corpus import (
+from nova_tts.training import corpus as corpus_module
+from nova_tts.training.corpus import (
     CorpusError,
     CorpusStore,
     REVIEW_CONFIRMED,

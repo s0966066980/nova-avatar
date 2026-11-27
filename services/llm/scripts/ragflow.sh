@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 DEPLOY_DIR="$ROOT/.local/ragflow/upstream"
 REF="v0.27.2"
 COMPOSE_FILE="$DEPLOY_DIR/docker/docker-compose.yml"
@@ -79,7 +79,7 @@ prepare() {
         printf '預期 RAGFlow %s，但目前是 %s。\n' "$REF" "$actual_ref" >&2
         return 1
     fi
-    python3 "$ROOT/scripts/ragflow_prepare.py"
+    python3 "$ROOT/services/llm/scripts/ragflow_prepare.py"
 }
 
 compose() {
@@ -91,7 +91,7 @@ compose() {
 
 validate_compose() {
     compose config --quiet
-    compose config --format json | python3 "$ROOT/scripts/ragflow_validate.py"
+    compose config --format json | python3 "$ROOT/services/llm/scripts/ragflow_validate.py"
 }
 
 require_compose() {
@@ -233,19 +233,19 @@ case "${1:-}" in
         validate_compose
         ;;
     connect)
-        exec python3 "$ROOT/scripts/ragflow_connection.py"
+        exec python3 "$ROOT/services/llm/scripts/ragflow_connection.py"
         ;;
     connect-chat)
-        exec python3 "$ROOT/scripts/ragflow_connection.py" --chat-model "${2:-qwen3.5:4b}"
+        exec python3 "$ROOT/services/llm/scripts/ragflow_connection.py" --chat-model "${2:-qwen3.5:4b}"
         ;;
     switch-embedding)
-        exec python3 "$ROOT/scripts/ragflow_connection.py" --switch-embedding
+        exec python3 "$ROOT/services/llm/scripts/ragflow_connection.py" --switch-embedding
         ;;
     unify-models)
-        exec python3 "$ROOT/scripts/ragflow_connection.py" --unify-models
+        exec python3 "$ROOT/services/llm/scripts/ragflow_connection.py" --unify-models
         ;;
     sync-models)
-        exec python3 "$ROOT/scripts/ragflow_connection.py" --sync-models
+        exec python3 "$ROOT/services/llm/scripts/ragflow_connection.py" --sync-models
         ;;
     up)
         STARTUP_TIMEOUT="${NOVA_RAGFLOW_STARTUP_TIMEOUT:-180}"
@@ -261,7 +261,7 @@ case "${1:-}" in
         systemctl --user daemon-reload
         systemctl --user enable --now "$EMBEDDING_SERVICE"
         if [ -f "$ROOT/.local/ragflow/shared-ollama" ]; then
-            python3 "$ROOT/scripts/ragflow_connection.py" --setup-proxy
+            python3 "$ROOT/services/llm/scripts/ragflow_connection.py" --setup-proxy
             systemctl --user enable --now nova-ragflow-model-sync.service
             systemctl --user enable --now nova-ragflow-chat-proxy.socket
         fi

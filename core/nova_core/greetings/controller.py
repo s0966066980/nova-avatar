@@ -9,7 +9,7 @@ from copy import deepcopy
 from dataclasses import asdict
 import time
 
-from src.greetings.content import GreetingError, prepare_greeting
+from nova_core.greetings.content import GreetingError, prepare_greeting
 
 
 class IdleGreetingController:

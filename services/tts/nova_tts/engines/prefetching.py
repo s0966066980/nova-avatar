@@ -23,9 +23,9 @@ from typing import Callable
 
 import numpy as np
 
-from src.tts.base import BaseTTS, State
-from src.tts.pcm_emitter import TurnPCMEmitter
-from src.utils.logging import logger
+from nova_tts.base import BaseTTS, State
+from nova_tts.pcm_emitter import TurnPCMEmitter
+from nova_core.utils.logging import logger
 
 # Fragments synthesised and held ahead of the one being emitted. Synthesis runs
 # far faster than real time, so one is enough to hide it behind playback.

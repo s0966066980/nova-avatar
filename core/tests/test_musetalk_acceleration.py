@@ -13,9 +13,9 @@ import numpy as np
 import torch
 import pytest
 
-from src.avatars.base import BaseAvatar
+from nova_render.base import BaseAvatar
 
-from src.config.schema import Config
+from nova_core.config.schema import Config
 
 
 def test_utilities_import_without_loading_optional_model_classes(monkeypatch):
@@ -30,9 +30,9 @@ def test_utilities_import_without_loading_optional_model_classes(monkeypatch):
             raise AssertionError("utility imports must not load model classes")
         return original_import(name, *args, **kwargs)
 
-    path = Path(__file__).resolve().parents[1] / "src/avatars/musetalk/utils/utils.py"
+    path = Path(__file__).resolve().parents[2] / "avatar/nova_render/musetalk/utils/utils.py"
     spec = importlib.util.spec_from_file_location(
-        "src.avatars.musetalk.utils._import_probe", path
+        "nova_render.musetalk.utils._import_probe", path
     )
     module = importlib.util.module_from_spec(spec)
     with monkeypatch.context() as isolated:
@@ -45,7 +45,7 @@ def test_utilities_import_without_loading_optional_model_classes(monkeypatch):
 
 @pytest.mark.parametrize('batch_size,expected_shapes', [(1, [1]), (4, [4]), (8, [4, 8])])
 def test_model_warmup_exercises_whisper_and_both_runtime_batch_shapes(batch_size, expected_shapes):
-    from src.avatars.musetalk.avatar import warm_up
+    from nova_render.musetalk.avatar import warm_up
 
     calls = []
 
@@ -76,8 +76,8 @@ def test_model_warmup_exercises_whisper_and_both_runtime_batch_shapes(batch_size
 
 
 def test_engine_paths_survive_control_panel_save(monkeypatch, tmp_path):
-    import src.config.overrides as overrides
-    from src.config.loader import dict_to_config
+    import nova_core.config.overrides as overrides
+    from nova_core.config.loader import dict_to_config
     config = Config()
     config.model.musetalk.unet_engine_path = "/local/unet.engine"
     config.model.musetalk.vae_engine_path = "/local/vae.engine"
@@ -91,7 +91,7 @@ def test_engine_paths_survive_control_panel_save(monkeypatch, tmp_path):
 def _builder_module():
     import importlib.util
     from pathlib import Path
-    path = Path(__file__).resolve().parents[1] / "scripts/build-musetalk-tensorrt.py"
+    path = Path(__file__).resolve().parents[2] / "avatar/scripts/build-musetalk-tensorrt.py"
     spec = importlib.util.spec_from_file_location("musetalk_builder", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -101,8 +101,8 @@ def _builder_module():
 def test_enabling_verified_engines_preserves_private_settings(monkeypatch, tmp_path):
     import hashlib
     import yaml
-    import src.config.loader
-    import src.config.overrides as overrides
+    import nova_core.config.loader
+    import nova_core.config.overrides as overrides
     builder = _builder_module()
     path = tmp_path / "runtime.yaml"
     path.write_text("llm:\n  api_key: private-test-key\nmodel:\n  avatar_id: existing\n")
@@ -112,7 +112,7 @@ def test_enabling_verified_engines_preserves_private_settings(monkeypatch, tmp_p
         "engine": str(engine), "sha256": hashlib.sha256(engine.read_bytes()).hexdigest(),
         "batches": {"16": {"speedup": 2}},
     }}}
-    monkeypatch.setattr(src.config.loader, "load_config", lambda _: Config())
+    monkeypatch.setattr(nova_core.config.loader, "load_config", lambda _: Config())
     monkeypatch.setattr(overrides, "RUNTIME_OVERRIDES_FILE", path)
     builder.enable_engines(report, "unused.yaml")
     saved = yaml.safe_load(path.read_text())
@@ -127,8 +127,8 @@ def test_enabling_verified_engines_preserves_private_settings(monkeypatch, tmp_p
 
 @pytest.mark.parametrize("speedup,digest", [(0.9, "unused"), (2, "wrong-hash")])
 def test_unverified_speed_or_changed_engine_never_enables(monkeypatch, tmp_path, speedup, digest):
-    import src.config.loader
-    import src.config.overrides as overrides
+    import nova_core.config.loader
+    import nova_core.config.overrides as overrides
     path = tmp_path / "runtime.yaml"
     path.write_text("model: {}\n")
     engine = tmp_path / "unet.engine"
@@ -137,7 +137,7 @@ def test_unverified_speed_or_changed_engine_never_enables(monkeypatch, tmp_path,
         "engine": str(engine), "sha256": digest,
         "batches": {"16": {"speedup": speedup}},
     }}}
-    monkeypatch.setattr(src.config.loader, "load_config", lambda _: Config())
+    monkeypatch.setattr(nova_core.config.loader, "load_config", lambda _: Config())
     monkeypatch.setattr(overrides, "RUNTIME_OVERRIDES_FILE", path)
     with pytest.raises(RuntimeError):
         _builder_module().enable_engines(report, "unused.yaml")
@@ -145,7 +145,7 @@ def test_unverified_speed_or_changed_engine_never_enables(monkeypatch, tmp_path,
 
 
 def test_accelerated_vae_falls_back_for_unsupported_inputs():
-    from src.avatars.musetalk.vae_acceleration import TensorRTVAEDecoder
+    from nova_render.musetalk.vae_acceleration import TensorRTVAEDecoder
 
     original_calls = []
     expected = np.zeros((1, 256, 256, 3), np.uint8)
@@ -166,7 +166,7 @@ def test_accelerated_vae_falls_back_for_unsupported_inputs():
 
 
 def test_unet_engine_unsupported_conditioning_preserves_original_fallback():
-    from src.avatars.musetalk.inference_optimization import TensorRTUNet
+    from nova_render.musetalk.inference_optimization import TensorRTUNet
 
     calls = []
     class Original(torch.nn.Module):
@@ -189,8 +189,8 @@ def test_unet_engine_unsupported_conditioning_preserves_original_fallback():
 
 
 def test_engine_paths_reach_the_production_loader(monkeypatch):
-    from src.avatars.factory import prepare_avatar_model
-    import src.avatars.musetalk.avatar as module
+    from nova_render.factory import prepare_avatar_model
+    import nova_render.musetalk.avatar as module
     config = Config()
     config.model.type = "musetalk"
     config.model.musetalk.unet_engine_path = "local/unet.engine"
@@ -207,7 +207,7 @@ def test_engine_paths_reach_the_production_loader(monkeypatch):
 
 
 def test_unavailable_engines_keep_the_original_models(monkeypatch):
-    import src.avatars.musetalk.avatar as module
+    import nova_render.musetalk.avatar as module
     vae = SimpleNamespace(vae=torch.nn.Identity())
     unet = SimpleNamespace(model=torch.nn.Identity())
     monkeypatch.setattr(module.torch.cuda, "is_available", lambda: False)

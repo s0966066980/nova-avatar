@@ -11,16 +11,16 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
-from src.config.schema import Config
-from src.llm.adapter import InProcessLlmService
-from src.llm.context_usage import measure_request, ContextCapacityError
-from src.llm.engines.openai import OpenAILLM
-from src.llm.history import TransactionalHistory
-from src.server import conversations
-from src.server.state import state
-from src.server.voice_session import VoiceTurnSession
-from tests.llm_fakes import FakeLlm, ask
-from tests.speech_fakes import spoken_answer
+from nova_core.config.schema import Config
+from nova_llm.adapter import InProcessLlmService
+from nova_llm.context_usage import measure_request, ContextCapacityError
+from nova_llm.engines.openai import OpenAILLM
+from nova_llm.history import TransactionalHistory
+from nova_core.server import conversations
+from nova_core.server.state import state
+from nova_core.server.voice_session import VoiceTurnSession
+from llm_fakes import FakeLlm, ask
+from speech_fakes import spoken_answer
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def env(monkeypatch):
     monkeypatch.setattr(state, 'config', config)
     monkeypatch.setattr(state, 'voice_sessions', {})
     monkeypatch.setattr(conversations, 'warm_voice', AsyncMock())
-    monkeypatch.setattr('src.llm.adapter._ensure_local_server', lambda _config: None)
+    monkeypatch.setattr('nova_llm.adapter._ensure_local_server', lambda _config: None)
     service = InProcessLlmService()
     def create(number):
         avatar = SimpleNamespace(config=deepcopy(config), flush_talk=Mock())
@@ -205,7 +205,7 @@ def test_clear_selected_session_stops_output_and_preserves_other_history(env):
 
 
 def test_context_capacity_uses_deployed_server_not_training_size(monkeypatch):
-    from src.llm import context_usage
+    from nova_llm import context_usage
     class Response:
         def __init__(self, value): self.value = value
         def raise_for_status(self): pass
@@ -223,7 +223,7 @@ def test_context_capacity_uses_deployed_server_not_training_size(monkeypatch):
 
 
 def test_answer_starts_without_model_info_requests_and_reports_provider_usage(monkeypatch):
-    from src.llm import context_usage
+    from nova_llm import context_usage
     class Response:
         def __init__(self, value): self.value = value
         def raise_for_status(self): pass
@@ -317,11 +317,11 @@ def test_request_language_hint_never_enters_retained_user_history():
 
 def test_behavior_save_preserves_existing_english_session_and_updates_new_conversations(env, monkeypatch):
     from dataclasses import asdict
-    from src.llm.rules import default_rules
-    from src.server.runtime_settings import apply_llm_behavior
+    from nova_llm.rules import default_rules
+    from nova_core.server.runtime_settings import apply_llm_behavior
 
     config, create = env
-    monkeypatch.setattr('src.server.runtime_settings.persist_runtime_overrides', Mock())
+    monkeypatch.setattr('nova_core.server.runtime_settings.persist_runtime_overrides', Mock())
     session, engine = create(1)
     conversations.configure_avatar(session.avatar, {**session._conversation, 'locale':'en-US'})
     session.avatar.sessionid = 1
@@ -365,10 +365,10 @@ def test_english_token_spaces_survive_identity_normalization(monkeypatch):
 
 
 def test_conversation_defaults_roundtrip(tmp_path, monkeypatch):
-    from src.config.overrides import persist_runtime_overrides
-    from src.config.loader import dict_to_config, load_yaml_config
+    from nova_core.config.overrides import persist_runtime_overrides
+    from nova_core.config.loader import dict_to_config, load_yaml_config
     path = tmp_path / 'runtime.yaml'
-    monkeypatch.setattr('src.config.overrides.RUNTIME_OVERRIDES_FILE', path)
+    monkeypatch.setattr('nova_core.config.overrides.RUNTIME_OVERRIDES_FILE', path)
     config = Config()
     config.conversation.locale = 'en-US'
     config.conversation.history_max_messages = 37
@@ -444,7 +444,7 @@ def test_model_restriction_keeps_third_party_facts_and_configured_role(monkeypat
 
 
 def test_model_guard_retains_permitted_intro_and_public_creator():
-    from src.llm.identity_policy import IdentityPolicy
+    from nova_llm.identity_policy import IdentityPolicy
     config = Config()
     profile = config.llm.assistant_profile
     profile.assistant_name = 'Museum guide'
@@ -465,7 +465,7 @@ def test_model_guard_retains_permitted_intro_and_public_creator():
     'Your underlying language model was developed by Another Provider.',
 ])
 def test_role_mentions_do_not_authorize_restricted_creator_disclosure(role):
-    from src.llm.identity_policy import IdentityPolicy
+    from nova_llm.identity_policy import IdentityPolicy
     profile = Config().llm.assistant_profile
     profile.system_prompt = role
     profile.restriction_prompt = '不得提供LLM模型資訊。'
@@ -474,7 +474,7 @@ def test_role_mentions_do_not_authorize_restricted_creator_disclosure(role):
 
 
 def test_model_guard_is_inactive_without_explicit_restriction():
-    from src.llm.identity_policy import IdentityPolicy
+    from nova_llm.identity_policy import IdentityPolicy
     policy = IdentityPolicy(Config().llm.assistant_profile)
     answer = 'I was developed by Another Provider.'
     assert policy.sanitize(answer) == answer
@@ -505,7 +505,7 @@ def test_the_console_published_role_is_handed_to_the_llm_layer_by_the_core(monke
     # The LLM layer never reads the core's global state: the role comes from the
     # published configuration the core sends, even with no global config at all.
     monkeypatch.setattr(state, 'config', None)
-    monkeypatch.setattr('src.llm.adapter._ensure_local_server', lambda _config: None)
+    monkeypatch.setattr('nova_llm.adapter._ensure_local_server', lambda _config: None)
     published = Config()
     published.llm.assistant_profile.system_prompt = 'Published museum role.'
     avatar_config = Config()
@@ -526,8 +526,8 @@ def test_the_console_published_role_is_handed_to_the_llm_layer_by_the_core(monke
 
 def test_role_and_rules_remain_frozen_across_turns_of_the_same_conversation(env, monkeypatch):
     from dataclasses import asdict
-    from src.llm.rules import default_rules
-    from src.server.runtime_settings import apply_llm_behavior
+    from nova_llm.rules import default_rules
+    from nova_core.server.runtime_settings import apply_llm_behavior
     config, create = env
     config.llm.assistant_profile.system_prompt = 'Original museum role.'
     config.llm.assistant_profile.restriction_prompt = 'Original restriction.'
@@ -536,7 +536,7 @@ def test_role_and_rules_remain_frozen_across_turns_of_the_same_conversation(env,
     session._start_turn_context('original')
     session.avatar._assistant_profile_snapshot = session._assistant_profile_snapshot
     session.avatar._reply_rules_snapshot = session._rules_snapshot
-    monkeypatch.setattr('src.server.runtime_settings.persist_runtime_overrides', Mock())
+    monkeypatch.setattr('nova_core.server.runtime_settings.persist_runtime_overrides', Mock())
     profile = asdict(config.llm.assistant_profile)
     profile.update(system_prompt='New museum role.', restriction_prompt='New restriction.')
     apply_llm_behavior(config, profile, {**default_rules(), 'speech':'New speech rule.'}, expected_revision=1,

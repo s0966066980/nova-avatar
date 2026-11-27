@@ -6,7 +6,7 @@
 #     --python-version 3.10 --python-platform x86_64-manylinux_2_28 \
 #     --extra-index-url https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match \
 #     --no-emit-package torch --no-emit-package torchaudio --no-header
-# Install with scripts/setup-matcha-train.sh, which adds torch, torchaudio and matcha-tts.
+# Install with services/tts/scripts/setup-matcha-train.sh, which adds torch, torchaudio and matcha-tts.
 aiohappyeyeballs==2.7.1
     # via aiohttp
 aiohttp==3.14.5

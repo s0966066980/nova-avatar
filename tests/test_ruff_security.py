@@ -29,7 +29,7 @@ BAD_SNIPPETS = {
 }
 
 
-def _ruff_codes(source: str, filename: str = "src/ruff_probe.py", *extra: str) -> list[str]:
+def _ruff_codes(source: str, filename: str = "core/nova_core/ruff_probe.py", *extra: str) -> list[str]:
     """Lint ``source`` as if it lived at ``filename`` under the repository config."""
     result = subprocess.run(
         [
@@ -73,12 +73,16 @@ class RuffSecurityGateTests(unittest.TestCase):
         bad = BAD_SNIPPETS["S113"]
         self.assertEqual(_ruff_codes(bad, "tests/test_probe.py"), ["S113"])
         self.assertEqual(_ruff_codes(bad, "scripts/probe.py"), ["S113"])
+        self.assertEqual(_ruff_codes(bad, "core/tests/test_probe.py"), ["S113"])
+        self.assertEqual(_ruff_codes(bad, "services/tts/nova_tts/probe.py"), ["S113"])
 
     def test_assert_is_allowed_only_in_tests(self):
         snippet = "def f(x):\n    assert x\n"
         extend = ("--extend-select", "S101")
-        self.assertEqual(_ruff_codes(snippet, "src/ruff_probe.py", *extend), ["S101"])
+        self.assertEqual(_ruff_codes(snippet, "core/nova_core/ruff_probe.py", *extend), ["S101"])
         self.assertEqual(_ruff_codes(snippet, "tests/test_probe.py", *extend), [])
+        self.assertEqual(_ruff_codes(snippet, "core/tests/test_probe.py", *extend), [])
+        self.assertEqual(_ruff_codes(snippet, "services/tts/tests/test_probe.py", *extend), [])
 
 
 if __name__ == "__main__":

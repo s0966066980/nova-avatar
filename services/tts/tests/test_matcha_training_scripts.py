@@ -21,7 +21,7 @@ import pytest
 import soundfile as sf
 import torch
 
-TOOLS = Path(__file__).resolve().parent.parent / "tools" / "tts-distill"
+TOOLS = Path(__file__).resolve().parents[3] / "tools" / "tts-distill"
 
 
 @pytest.fixture(scope="module")

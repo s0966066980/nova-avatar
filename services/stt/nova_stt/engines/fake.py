@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from src.asr.base import BaseASR
+from nova_stt.base import BaseASR
 
 
 class FakeASR(BaseASR):

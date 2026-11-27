@@ -13,9 +13,9 @@ from __future__ import annotations
 import os
 import unittest
 
-from src.config.loader import load_config
-from src.llm.engines.openai import OpenAILLM
-from src.llm.rules import RulesSnapshot, default_rules
+from nova_core.config.loader import load_config
+from nova_llm.engines.openai import OpenAILLM
+from nova_llm.rules import RulesSnapshot, default_rules
 
 
 @unittest.skipUnless(
@@ -27,7 +27,7 @@ class LiveLLMBoardContractTests(unittest.TestCase):
     def setUpClass(cls):
         config = load_config("config/config.yaml")
         if "127.0.0.1:8080" in config.llm.base_url or "localhost:8080" in config.llm.base_url:
-            from src.llm.llamacpp import ensure_server
+            from nova_llm.llamacpp import ensure_server
             ensure_server(model=config.llm.model, extra_dir=config.llm.llamacpp_dir)
 
     def make_default_rules(self) -> RulesSnapshot:

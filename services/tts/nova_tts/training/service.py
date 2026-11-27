@@ -57,23 +57,23 @@ from nova_contracts.tts import (
     TtsError,
     UnresolvedFragment,
 )
-from src.tts.training import jobs
-from src.tts.training.corpus import Corpus, CorpusError, CorpusStore, Line
-from src.tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
-from src.tts.training.gpu_guard import DeviceChoice, choose_transcription_device
-from src.tts.training.gpu_probe import VramReading, read_free_vram
-from src.tts.training.ingest import create_uploaded_corpus, ingest_audio
-from src.tts.training.numerals import NormalizedText, normalize_digits
-from src.tts.training.sentences import review_text_list
-from src.tts.training.transcription import TranscriptionJobs, TranscriptionStatus, cuda_available, default_factory
-from src.tts.training.transcripts import (
+from nova_tts.training import jobs
+from nova_tts.training.corpus import Corpus, CorpusError, CorpusStore, Line
+from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
+from nova_tts.training.gpu_guard import DeviceChoice, choose_transcription_device
+from nova_tts.training.gpu_probe import VramReading, read_free_vram
+from nova_tts.training.ingest import create_uploaded_corpus, ingest_audio
+from nova_tts.training.numerals import NormalizedText, normalize_digits
+from nova_tts.training.sentences import review_text_list
+from nova_tts.training.transcription import TranscriptionJobs, TranscriptionStatus, cuda_available, default_factory
+from nova_tts.training.transcripts import (
     TranscriptEntry,
     TranscriptError,
     apply_transcripts,
     parse_metadata_csv,
     parse_txt,
 )
-from src.tts.training.usage import SOURCE_EDGE_TEST_TEACHER
+from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 
 
 @contextmanager

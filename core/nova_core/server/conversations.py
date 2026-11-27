@@ -12,11 +12,11 @@ from aiohttp import web
 
 from nova_contracts.tts import TtsError, TtsService, VoicePreparation
 
-from src.config.schema import ConversationConfig
-from src.config.overrides import persist_runtime_overrides
+from nova_core.config.schema import ConversationConfig
+from nova_core.config.overrides import persist_runtime_overrides
 from nova_contracts.llm import ContextCapacityQuery, MemoryQuery
-from src.server.state import state
-from src.tts import config_section as tts_section
+from nova_core.server.state import state
+from nova_tts import config_section as tts_section
 
 
 VOICES = {

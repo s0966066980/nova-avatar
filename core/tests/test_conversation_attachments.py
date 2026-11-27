@@ -10,10 +10,10 @@ import pytest
 from PIL import Image
 import pypdfium2 as pdfium
 
-from src.config.schema import Config
-from src.llm.context_usage import measure_request
-from src.llm.engines.openai import OpenAILLM
-from src.server.attachments import AttachmentError, AttachmentStore, page_numbers
+from nova_core.config.schema import Config
+from nova_llm.context_usage import measure_request
+from nova_llm.engines.openai import OpenAILLM
+from nova_core.server.attachments import AttachmentError, AttachmentStore, page_numbers
 
 
 def image_bytes():
@@ -70,7 +70,7 @@ def test_disabling_input_only_removes_unsent_files(store):
 
 
 def test_selection_and_session_quotas(store):
-    with patch('src.server.attachments.MAX_FILES', 1):
+    with patch('nova_core.server.attachments.MAX_FILES', 1):
         store.add_batch([('one.png', image_bytes())], store.generation)
         with pytest.raises(AttachmentError, match='session_quota'):
             store.add_batch([('two.png', image_bytes())], store.generation)
@@ -89,7 +89,7 @@ def test_page_ranges_have_bounds_and_no_silent_truncation():
 
 def test_real_pdf_pages_are_validated_rendered_and_released(store, monkeypatch):
     # OCR needs a local tesseract binary; the page-validation contract does not.
-    monkeypatch.setattr('src.server.attachment_ocr.extract_image_text', lambda _image: '')
+    monkeypatch.setattr('nova_core.server.attachment_ocr.extract_image_text', lambda _image: '')
     output = BytesIO()
     with pdfium.PdfDocument.new() as document:
         for _ in range(3):
@@ -110,7 +110,7 @@ def test_pdf_with_empty_open_password_but_encryption_is_rejected(store):
     with pdfium.PdfDocument.new() as document:
         document.new_page(100, 100).close()
         document.save(output)
-    with patch('src.server.attachments.pdfium.raw.FPDF_GetSecurityHandlerRevision', return_value=4):
+    with patch('nova_core.server.attachments.pdfium.raw.FPDF_GetSecurityHandlerRevision', return_value=4):
         with pytest.raises(AttachmentError, match='encrypted_pdf'):
             store.add_batch([('encrypted.pdf', output.getvalue())], store.generation)
     assert store.snapshot()['files'] == []
@@ -147,7 +147,7 @@ def test_current_request_has_image_but_retained_history_does_not(store):
 def test_image_context_is_not_falsely_measured_by_text_tokenizer():
     messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'hello'},
                 {'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,' + 'X' * 200000}}]}]
-    with patch('src.llm.context_usage.requests.post') as post:
+    with patch('nova_llm.context_usage.requests.post') as post:
         result = measure_request(messages, 500, capacity=8192, model='local')
     post.assert_not_called()
     assert result['estimated'] is True
@@ -198,9 +198,9 @@ def test_field_question_preserves_exact_source_and_excludes_unrelated_codes(stor
 
 def test_cancel_before_acceptance_rejects_late_request_without_interrupting_old_turn():
     import asyncio
-    from src.server.voice_session import VoiceTurnSession
-    from tests.llm_fakes import FakeLlm, answering
-    from tests.session_fakes import FakeAvatar, fake_stt, FakeSegmenter
+    from nova_core.server.voice_session import VoiceTurnSession
+    from llm_fakes import FakeLlm, answering
+    from session_fakes import FakeAvatar, fake_stt, FakeSegmenter
 
     async def exercise():
         session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
@@ -224,9 +224,9 @@ def test_cancel_before_acceptance_rejects_late_request_without_interrupting_old_
 
 def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
     import asyncio
-    from src.server.voice_session import VoiceTurnSession
-    from tests.llm_fakes import FakeLlm, answering
-    from tests.session_fakes import FakeAvatar, fake_stt, FakeSegmenter
+    from nova_core.server.voice_session import VoiceTurnSession
+    from llm_fakes import FakeLlm, answering
+    from session_fakes import FakeAvatar, fake_stt, FakeSegmenter
 
     async def exercise():
         session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
@@ -241,7 +241,7 @@ def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
             return True
 
         try:
-            with patch('src.server.voice_session.asyncio.to_thread', side_effect=validate):
+            with patch('nova_core.server.voice_session.asyncio.to_thread', side_effect=validate):
                 old = asyncio.create_task(session.start_text_turn('Old document question',
                     attachments=[{'id': item['id']}], request_id='old'))
                 await validating.wait()
@@ -262,9 +262,9 @@ def test_cancelled_attachment_validation_cannot_interrupt_a_new_text_turn():
 
 def test_pending_text_cancellation_and_replacement_do_not_overlap_interrupts():
     import asyncio
-    from src.server.voice_session import VoiceTurnSession
-    from tests.llm_fakes import FakeLlm, answering
-    from tests.session_fakes import FakeAvatar, fake_stt, FakeSegmenter
+    from nova_core.server.voice_session import VoiceTurnSession
+    from llm_fakes import FakeLlm, answering
+    from session_fakes import FakeAvatar, fake_stt, FakeSegmenter
 
     async def exercise():
         session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())

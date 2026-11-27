@@ -7,7 +7,7 @@ Independently authored data, not derived from any inherited lexicon. Every line
 is a standalone sentence of roughly 8 to 40 characters. Digits are written as
 Arabic numerals on purpose so that ``numerals.normalize_digits`` is exercised;
 the tests require every sentence to expand fully. English lines are read by the
-same voice as the Chinese ones. ``src.tts.training.sentences`` selects from this
+same voice as the Chinese ones. ``nova_tts.training.sentences`` selects from this
 data by target duration.
 """
 

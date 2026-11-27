@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from src.profiles.validation import ProfileError, identifier, obj, revision, text
-from src.tts.config_section import server_identity
-from src.utils.logging import logger
+from nova_core.profiles.validation import ProfileError, identifier, obj, revision, text
+from nova_tts.config_section import server_identity
+from nova_core.utils.logging import logger
 
 MAX_ENABLED_MEMBERS = 5
 # Every profile but the main one; the library holds at most 30.

@@ -37,7 +37,7 @@ VOICE_TRAINING_MESSAGE = "聲線訓練進行中，數位人暫停服務"
 
 def count_stage_connections() -> int:
     """Every stage session, including one still connecting (its placeholder is ``None``)."""
-    from src.server.state import state
+    from nova_core.server.state import state
 
     return len(state.avatar_streams)
 

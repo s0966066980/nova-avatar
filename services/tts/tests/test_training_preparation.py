@@ -12,16 +12,16 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from src.tts.training.audio_quality import MAX_SECONDS, SAMPLE_RATE
-from src.tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusStore
-from src.tts.training.preparation import (
+from nova_tts.training.audio_quality import MAX_SECONDS, SAMPLE_RATE
+from nova_tts.training.corpus import REVIEW_CONFIRMED, REVIEW_EXCLUDED, CorpusStore
+from nova_tts.training.preparation import (
     DecodeError,
     check_quality,
     convert_uploads,
     decode_audio_file,
     prepared_path,
 )
-from src.tts.training.usage import SOURCE_SELF_RECORDED
+from nova_tts.training.usage import SOURCE_SELF_RECORDED
 
 
 def tone(seconds: float, rate: int = SAMPLE_RATE, channels: int = 1, amplitude: float = 0.3, lead: float = 0.3) -> bytes:

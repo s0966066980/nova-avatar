@@ -4,6 +4,6 @@
 
 """LLM 大語言模型模組
 
-The core uses ``src.llm.adapter`` (the in-process ``LlmService``) and
-``src.llm.config_section``; every other module here is internal.
+The core uses ``nova_llm.adapter`` (the in-process ``LlmService``) and
+``nova_llm.config_section``; every other module here is internal.
 """

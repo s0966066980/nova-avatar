@@ -22,8 +22,8 @@ from edge_tts import communicate as transport
 from edge_tts.data_classes import TTSConfig
 from edge_tts.drm import DRM
 
-from src.utils.logging import logger
-from src.tts import edge_endpoint
+from nova_core.utils.logging import logger
+from nova_tts import edge_endpoint
 
 MAX_IDLE_AGE_SECONDS = 60.0
 REFRESH_BEFORE_EXPIRY_SECONDS = 10.0

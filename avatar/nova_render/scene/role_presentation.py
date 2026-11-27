@@ -5,7 +5,7 @@
 
 The renderer composes every video frame through it while role composition is
 on; the core directs a transition (which edge, when it starts) through
-``AvatarRenderer``. Moved from ``src/profiles/media.py`` (ticket 07).
+``AvatarRenderer``. Moved from ``core/nova_core/profiles/media.py`` (ticket 07).
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ import numpy as np
 
 from nova_contracts.avatar import STAGE_FPS, STAGE_FRAME
 from nova_contracts.common import ServiceError
-from src.scene.service import chroma_composite, scene_service
+from nova_render.scene.service import chroma_composite, scene_service
 
 WIDTH, HEIGHT, FPS = STAGE_FRAME.width, STAGE_FRAME.height, STAGE_FPS
 

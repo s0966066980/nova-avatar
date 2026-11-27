@@ -36,8 +36,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from types import TracebackType
 
-from src.tts.training.processes import Process, Spawn, spawn_process
-from src.utils.paths import get_project_root
+from nova_tts.training.processes import Process, Spawn, spawn_process
+from nova_core.utils.paths import get_project_root
 
 # Model sizes whose faster-whisper weights may already be in the Hugging Face cache.
 WHISPER_MODELS = ("tiny", "base", "small", "medium", "large-v3")
@@ -78,7 +78,7 @@ class SubprocessTranscriber:
         if model not in WHISPER_MODELS:
             raise ValueError(f"unknown Whisper model {model!r}")
         self._root = get_project_root() if root is None else root
-        self._command = [python, "-m", "src.tts.training.whisper_worker", "--model", model]
+        self._command = [python, "-m", "nova_tts.training.whisper_worker", "--model", model]
         self._env = {**(os.environ if environ is None else environ), "CUDA_VISIBLE_DEVICES": ""}
         self._spawn = spawn
         self._utterance_timeout = utterance_timeout

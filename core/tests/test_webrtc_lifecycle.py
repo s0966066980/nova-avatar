@@ -10,10 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from src.config.schema import Config
-from src.server.routes import webrtc
-from src.server.state import state
-from src.server.voice_session import (
+from nova_core.config.schema import Config
+from nova_core.server.routes import webrtc
+from nova_core.server.state import state
+from nova_core.server.voice_session import (
     VoiceTurnSession,
 )
 
@@ -174,7 +174,7 @@ def test_disconnect_releases_all_role_llm_sessions(rtc, monkeypatch):
     import json
 
     from nova_contracts.llm import SessionProfile
-    from tests.llm_fakes import FakeLlm
+    from llm_fakes import FakeLlm
     service = FakeLlm()
     monkeypatch.setattr(state, 'llm', service, raising=False)
     async def run():
@@ -229,7 +229,7 @@ def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, 
     roles.register = lambda voice: setattr(voice, '_role_coordinator', roles)
     monkeypatch.setattr(state, 'roles', roles)
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', VoiceTurnSession)
-    from tests.llm_fakes import FakeLlm
+    from llm_fakes import FakeLlm
     monkeypatch.setattr(state, 'llm', FakeLlm(), raising=False)
     use_renderers(monkeypatch, lambda config, *args: fake_renderer(
         config=config, configure_media_fence=Mock(), flush_talk=Mock()))
@@ -337,8 +337,8 @@ def test_lost_microphone_track_closes_the_peer_so_the_page_reconnects(rtc):
 
 class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
     async def test_offer_rejects_before_loading_when_session_capacity_is_full(self):
-        from src.server.routes.webrtc import offer
-        from src.server.state import state
+        from nova_core.server.routes.webrtc import offer
+        from nova_core.server.state import state
 
         request = AsyncMock()
         request.app = {}
@@ -362,8 +362,8 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
         request.json.assert_awaited_once()
 
     async def test_console_and_stage_have_independent_capacity(self):
-        from src.server.routes.webrtc import offer
-        from src.server.state import state
+        from nova_core.server.routes.webrtc import offer
+        from nova_core.server.state import state
 
         class ReachedOfferParsing(Exception):
             pass
@@ -384,7 +384,7 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
             patch.object(state, "avatar_streams", {1: object()}),
             patch.object(state, "session_roles", {1: "stage"}, create=True),
             patch(
-                "src.server.routes.webrtc.RTCSessionDescription",
+                "nova_core.server.routes.webrtc.RTCSessionDescription",
                 side_effect=ReachedOfferParsing,
             ),
         ):
@@ -398,7 +398,7 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
 def training_app(manager):
     """The TTS service whose training job the offer route asks about; no aiohttp app state."""
     from nova_contracts.tts import TtsEngineSettings
-    from src.tts.training.service import InProcessVoiceTraining
+    from nova_tts.training.service import InProcessVoiceTraining
 
     state.tts = InProcessVoiceTraining(settings=TtsEngineSettings, training_jobs=manager)
     return {}
@@ -406,8 +406,8 @@ def training_app(manager):
 
 def training_rig(tmp_path, **kwargs):
     """A training job whose child keeps running until it is released or signalled."""
-    from tests.training_fakes import rig
-    from src.tts.training.jobs import StartRequest
+    from training_fakes import rig
+    from nova_tts.training.jobs import StartRequest
 
     r = rig(tmp_path, **kwargs)
     r.manager.start(StartRequest(corpus='voice', name='我的聲音'))

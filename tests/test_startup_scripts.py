@@ -70,18 +70,19 @@ def launcher(tmp_path):
     for directory in (
         "scripts", "config", "web/node_modules", ".venv",
         ".local/ragflow/upstream/.git", "integrations/ragflow",
+        "services/llm/scripts", "services/tts/scripts", "core/nova_core/server",
     ):
         (project / directory).mkdir(parents=True)
-    for name in ("start-all.sh", "start-backend.sh", "start-frontend.sh", "ragflow.sh",
-                 "process-control.sh"):
+    for name in ("start-all.sh", "start-backend.sh", "start-frontend.sh", "process-control.sh"):
         shutil.copy2(ROOT / "scripts" / name, project / "scripts" / name)
-    _write_fake_server(project / "src/server/app.py")
+    shutil.copy2(ROOT / "services/llm/scripts/ragflow.sh", project / "services/llm/scripts/ragflow.sh")
+    _write_fake_server(project / "core/nova_core/server/app.py")
     _write_fake_server(project / "web/node_modules/.bin/vite")
-    _write_fake_server(project / "scripts/cosyvoice_fastapi_server.py")
+    _write_fake_server(project / "services/tts/scripts/cosyvoice_fastapi_server.py")
     (project / "config/config.yaml").write_text("app:\n  ssl: false\n")
     (project / "config/ragflow.env").write_text("NOVA_RAGFLOW_API_KEY=test-private-key\n")
-    (project / "scripts/ragflow_prepare.py").write_text("pass\n")
-    (project / "scripts/ragflow_validate.py").write_text("import sys\nsys.stdin.read()\n")
+    (project / "services/llm/scripts/ragflow_prepare.py").write_text("pass\n")
+    (project / "services/llm/scripts/ragflow_validate.py").write_text("import sys\nsys.stdin.read()\n")
 
     state = tmp_path / "state"
     state.mkdir()
@@ -174,11 +175,11 @@ def launcher(tmp_path):
             assert os.environ.get("NOVA_RAGFLOW_API_KEY") == "test-private-key"
             if marked("spawn-children"):
                 # A worker in the backend's group, and CosyVoice in its own
-                # session like src/tts/cosyvoice_runtime.py starts it.
+                # session like services/tts/nova_tts/cosyvoice_runtime.py starts it.
                 worker = subprocess.Popen(["sleep", "60"])
                 (state / "worker-pid").write_text(str(worker.pid))
                 cosyvoice = subprocess.Popen(
-                    [sys.executable, os.path.join(os.getcwd(), "scripts/cosyvoice_fastapi_server.py")],
+                    [sys.executable, os.path.join(os.getcwd(), "services/tts/scripts/cosyvoice_fastapi_server.py")],
                     start_new_session=True,
                 )
                 (state / "cosyvoice-pid").write_text(str(cosyvoice.pid))
@@ -233,7 +234,7 @@ def launcher(tmp_path):
 
     def run(script="start-all.sh", *args, cwd=project, **env):
         result = subprocess.run(
-            ["bash", str(project / "scripts" / script), *args],
+            ["bash", str(project / (script if "/" in script else f"scripts/{script}")), *args],
             cwd=cwd, env=launcher_env(env),
             capture_output=True, text=True, timeout=30,
         )
@@ -241,7 +242,7 @@ def launcher(tmp_path):
 
     def start(script="start-all.sh", *args, **env):
         return subprocess.Popen(
-            ["bash", str(project / "scripts" / script), *args],
+            ["bash", str(project / (script if "/" in script else f"scripts/{script}")), *args],
             cwd=project, env=launcher_env(env),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         )
@@ -289,7 +290,7 @@ def reap_pids(launcher):
 
 
 def _backend_config(events: str) -> str:
-    line = next(line for line in events.splitlines() if line.startswith("uv run python src/server/app.py"))
+    line = next(line for line in events.splitlines() if line.startswith("uv run python core/nova_core/server/app.py"))
     return line.split("--config ", 1)[1]
 
 
@@ -299,7 +300,7 @@ def test_start_all_builds_the_frontend_and_serves_it_from_the_backend(launcher):
     assert result.returncode == 0, result.stdout + result.stderr
     assert " run build" in events
     assert " run dev" not in events
-    assert events.index(" run build") < events.index("uv run python src/server/app.py")
+    assert events.index(" run build") < events.index("uv run python core/nova_core/server/app.py")
     output = result.stdout
     assert "控制台 Local: \x1b[0mhttp://localhost:8010" in output
     assert "數字人舞台 Local: \x1b[0mhttp://localhost:8010/stage.html" in output
@@ -390,7 +391,7 @@ def test_docker_authentication_failure_skips_ragflow_but_starts_the_avatar(launc
 
 def test_remote_docker_failure_does_not_start_local_daemon(launcher):
     _, run = launcher
-    result, events = run("ragflow.sh", "ensure-docker", DOCKER_HOST="tcp://remote.invalid:2376")
+    result, events = run("services/llm/scripts/ragflow.sh", "ensure-docker", DOCKER_HOST="tcp://remote.invalid:2376")
     assert result.returncode != 0
     assert "systemctl start docker" not in events
     assert "sudo " not in events
@@ -400,7 +401,7 @@ def test_active_daemon_with_socket_permission_error_is_not_restarted(launcher):
     state, run = launcher
     (state / "docker-ready").touch()
     (state / "socket-denied").touch()
-    result, events = run("ragflow.sh", "ensure-docker")
+    result, events = run("services/llm/scripts/ragflow.sh", "ensure-docker")
     assert result.returncode != 0
     assert "systemctl start docker" not in events
     assert "權限" in result.stderr
@@ -415,7 +416,7 @@ def test_ragflow_startup_failure_is_stopped_and_the_avatar_still_starts(launcher
     assert result.returncode == 0, result.stdout + result.stderr
     # The partly started RAGFlow is taken down before the backend starts.
     assert " down" in events
-    assert events.index(" down") < events.index("uv run python src/server/app.py")
+    assert events.index(" down") < events.index("uv run python core/nova_core/server/app.py")
     assert not (state / "containers").exists()
     assert (state / "backend").exists()
     assert "RAGFlow 管理頁 Local" not in result.stdout
@@ -432,7 +433,7 @@ def test_explicitly_disabled_ragflow_does_not_require_docker(launcher):
 
 def test_read_only_status_does_not_start_docker(launcher):
     _, run = launcher
-    result, events = run("ragflow.sh", "status")
+    result, events = run("services/llm/scripts/ragflow.sh", "status")
     assert result.returncode != 0
     assert "sudo " not in events
     assert "systemctl start docker" not in events
@@ -440,22 +441,22 @@ def test_read_only_status_does_not_start_docker(launcher):
 
 # Each launcher clears its own port: (script, args, port, stand-in path in a checkout, cwd).
 PORT_OWNERS = [
-    ("start-all.sh", ("config/config.yaml",), 8010, "src/server/app.py", "."),
-    ("start-backend.sh", (), 8010, "src/server/app.py", "."),
+    ("start-all.sh", ("config/config.yaml",), 8010, "core/nova_core/server/app.py", "."),
+    ("start-backend.sh", (), 8010, "core/nova_core/server/app.py", "."),
     ("start-frontend.sh", ("--dev",), 3000, "web/node_modules/.bin/vite", "web"),
 ]
 
 
 def _stand_in_args(checkout: Path, relative: str) -> list[str]:
-    # The backend runs as `python src/server/app.py` from the project root;
+    # The backend runs as `python core/nova_core/server/app.py` from the project root;
     # Vite runs as `node <web>/node_modules/.bin/vite`.
-    if relative == "src/server/app.py":
+    if relative == "core/nova_core/server/app.py":
         return [sys.executable, relative, "--config", "config/config.yaml"]
     return [sys.executable, str(checkout / relative)]
 
 
 def _started(events: str, port: int) -> bool:
-    return (" run dev" if port == 3000 else "uv run python src/server/app.py") in events
+    return (" run dev" if port == 3000 else "uv run python core/nova_core/server/app.py") in events
 
 
 @pytest.mark.parametrize("script,args,port,relative,cwd", PORT_OWNERS)
@@ -499,7 +500,7 @@ def test_stale_backend_ignoring_sigterm_is_killed_after_the_shared_grace(launche
     state, run = launcher
     project = run.project
     term = tmp_path / "term"
-    stale = spawn(_stand_in_args(project, "src/server/app.py"), cwd=project,
+    stale = spawn(_stand_in_args(project, "core/nova_core/server/app.py"), cwd=project,
                   NOVA_TEST_TERM_MARKER=str(term), NOVA_TEST_IGNORE_TERM="1")
     (state / "listen-8010").write_text(str(stale.pid))
     started = time.monotonic()
@@ -515,10 +516,10 @@ def test_start_all_stops_stale_model_servers_of_this_checkout_only(launcher, spa
     _, run = launcher
     script = "cosyvoice_fastapi_server.py"
     project = run.project
-    ours = spawn([sys.executable, str(project / "scripts" / script)], cwd=project)
+    ours = spawn([sys.executable, str(project / "services/tts/scripts" / script)], cwd=project)
     other = tmp_path / "other-checkout"
-    _write_fake_server(other / "scripts" / script)
-    theirs = spawn([sys.executable, str(other / "scripts" / script)], cwd=other)
+    _write_fake_server(other / "services/tts/scripts" / script)
+    theirs = spawn([sys.executable, str(other / "services/tts/scripts" / script)], cwd=other)
     result, _ = run(NOVA_START_RAGFLOW="0")
     assert result.returncode == 0, result.stdout + result.stderr
     assert _wait_for(lambda: not _alive(ours.pid), timeout=2)
@@ -561,14 +562,14 @@ def test_start_all_stops_the_whole_backend_group_and_cosyvoice_when_stopped(laun
 
 def _post_musetalk(tmp_path):
     project = tmp_path / "project"
-    (project / "scripts").mkdir(parents=True)
+    (project / "avatar/scripts").mkdir(parents=True)
     (project / ".venv").mkdir(exist_ok=True)
-    shutil.copy2(ROOT / "scripts/post_musetalk_install.sh", project / "scripts")
+    shutil.copy2(ROOT / "avatar/scripts/post_musetalk_install.sh", project / "avatar/scripts")
     other = tmp_path / "other-venv/lib/python3.10/site-packages/mmdet/__init__.py"
     other.parent.mkdir(parents=True)
     other.write_text("mmcv_maximum_version = '2.1.0'\n")
     result = subprocess.run(
-        ["bash", str(project / "scripts/post_musetalk_install.sh")],
+        ["bash", str(project / "avatar/scripts/post_musetalk_install.sh")],
         cwd=tmp_path, capture_output=True, text=True, timeout=15,
         env={**os.environ, "VIRTUAL_ENV": str(tmp_path / "other-venv")},
     )

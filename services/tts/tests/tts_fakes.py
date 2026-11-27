@@ -13,6 +13,6 @@ def in_process_tts():
     For core tests whose behaviour (voice checks, BreezyVoice start, previews)
     now happens behind ``TtsService``.
     """
-    from src.tts.adapter import InProcessTtsService
+    from nova_tts.adapter import InProcessTtsService
 
     return InProcessTtsService(TtsEngineSettings())

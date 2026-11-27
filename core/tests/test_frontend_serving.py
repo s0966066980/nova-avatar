@@ -10,10 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from src.server import server
-from src.server.server import FrontendNotBuilt, create_app, require_frontend
-from src.utils.paths import PROJECT_ROOT
-from tests.access_helpers import LAN_ADDRESS, access_client
+from nova_core.server import server
+from nova_core.server.server import FrontendNotBuilt, create_app, require_frontend
+from nova_core.utils.paths import PROJECT_ROOT
+from access_helpers import LAN_ADDRESS, access_client
 
 
 def test_default_frontend_is_the_absolute_vite_build_directory():

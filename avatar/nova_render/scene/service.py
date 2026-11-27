@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
-from src.utils.paths import get_data_dir
+from nova_core.utils.paths import get_data_dir
 
 IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".webp"})
 VIDEO_EXTS = frozenset({".mp4", ".mov", ".webm"})
@@ -507,7 +507,7 @@ scene_service = SceneService()
 
 def render_avatar_preview(avatar_id: str, scene: SceneService = scene_service) -> bytes:
     """Return the same foreground/background combination for console still previews."""
-    from src.avatars.catalog import avatar_uses_green_screen, resolve_preview_path
+    from nova_render.catalog import avatar_uses_green_screen, resolve_preview_path
 
     path = resolve_preview_path(avatar_id)
     if path is None or not path.is_file():
