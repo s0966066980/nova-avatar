@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 from nova_contracts.tts import TrainingActivity, TrainingCheck, TrainingPreflight
 from nova_core.server.stage_guard import (
+    current_stage_check,
     count_stage_connections,
     stage_connection_check,
     stage_offer_refusal,
@@ -26,6 +27,15 @@ def test_stage_connections_are_counted_from_the_session_registry(monkeypatch):
 
     monkeypatch.setattr(state, "avatar_streams", {1: object(), 2: None})  # 2 is still connecting
     assert count_stage_connections() == 2
+
+
+def test_current_stage_check_reads_the_registry_now(monkeypatch):
+    from nova_core.server.state import state
+
+    monkeypatch.setattr(state, "avatar_streams", {})
+    assert current_stage_check().status == "pass"
+    monkeypatch.setattr(state, "avatar_streams", {1: None})
+    assert (current_stage_check().status, current_stage_check().detail) == ("fail", {"count": 1})
 
 
 def test_stage_connection_check_names_the_count():

@@ -76,24 +76,21 @@ Shared fakes and fixtures live in the `*_fakes.py` and `access_helpers.py` helpe
 modules. A test module never imports another test module, so merging or deleting
 one cannot break the rest.
 
-## Where tests live
+## 測試放在哪裡
 
-Each processing layer owns its tests (ADR 0027): `core/tests/`, `avatar/tests/`,
-`services/stt/tests/`, `services/llm/tests/` and `services/tts/tests/`. A test
-goes into a layer's folder only when it needs nothing from the core except
-`nova_core.utils`; everything that builds a core config, drives the server or
-wires several layers (including the layers' contract tests, which load the core's
-configuration) lives in `core/tests/`. This folder, `tests/`, keeps the tests that
-belong to no single layer: the branding and licence audit, the dependency lock,
-the startup and weight scripts, the ruff security rules and the layer-boundary
-configuration. Test file names stay unique across the repository.
+每個處理層自己擁有測試（ADR 0027）：`core/tests/`、`avatar/tests/`、
+`services/stt/tests/`、`services/llm/tests/` 與 `services/tts/tests/`。測試只有在
+除了 `nova_core.utils` 之外不需要核心任何東西時，才放進某一層的資料夾；凡是會建立
+核心設定、驅動伺服器或串接多個層的測試（包含會載入核心設定的各層合約測試）都放在
+`core/tests/`。本資料夾 `tests/` 只保留不屬於任何單一層的測試：品牌與授權稽核、
+相依鎖定、啟動與權重腳本、ruff 安全規則，以及層級邊界設定。測試檔名在整個儲存庫內
+保持唯一。
 
-The product-area classification, the `gpu`/`live`/`slow` markers and the rule that
-tests must not write to `data/` are in the root `conftest.py`, so they apply to
-every folder. Test folders have no `__init__.py`; `pythonpath` in `pyproject.toml`
-puts every package root, tests folder and layer script folder on `sys.path`, so a
-helper such as `llm_fakes` is imported by its module name from any test.
-`uv run --no-sync pytest <folder>` runs one folder.
+產品領域分類、`gpu`/`live`/`slow` 標記，以及測試不得寫入 `data/` 的規則都在根目錄的
+`conftest.py`，因此適用於每個資料夾。測試資料夾沒有 `__init__.py`；`pyproject.toml`
+的 `pythonpath` 把每個套件根目錄、測試資料夾與各層腳本資料夾放進 `sys.path`，所以
+像 `llm_fakes` 這樣的輔助模組可在任何測試中直接以模組名稱匯入。
+`uv run --no-sync pytest <資料夾>` 只執行單一資料夾。
 
 Research and benchmark tools whose result is recorded in a `.scratch` issue are
 deleted together with their tests once the decision has been applied.

@@ -27,7 +27,7 @@ export const DECLARATIONS = [
 
 export { EDGE_VOICES } from '../voiceSelection.js'
 
-// Server presets (src/tts/training/sentences.py): about 220 and 833 sentences.
+// Server presets (services/tts/nova_tts/training/sentences.py): about 220 and 833 sentences.
 export const EDGE_PRESETS = [
   { key: 'quick-test', lines: 220, minutes: 15 },
   { key: 'standard', lines: 833, minutes: 60 }
@@ -46,8 +46,8 @@ export const AUDIO_EXTENSIONS = ['.wav', '.mp3', '.flac', '.ogg', '.m4a', '.webm
 
 // The three preset preview sentences of the done screen (no custom sentence in
 // version 1). ``key`` is the code POST /api/tts/training/preview accepts; the
-// text is what the server speaks for that code (src/tts/voice_preview.py, kept
-// equal by tests/test_voice_preview.py).
+// text is what the server speaks for that code (services/tts/nova_tts/voice_preview.py,
+// kept equal by core/tests/test_voice_preview.py).
 export const PREVIEW_SENTENCES = [
   { key: 'zh', text: '您好，歡迎光臨，很高興為您服務。' },
   { key: 'digits', text: '今天是2026年11月24日，票價是150元。' },

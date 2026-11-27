@@ -85,7 +85,7 @@ async def get_status(request: web.Request) -> web.Response:
     query = TrainingQuery(corpus=request.query.get("corpus") or None, name=request.query.get("name"))
 
     def collect() -> dict[str, Any]:
-        stage = stage_guard.stage_connection_check(stage_guard.count_stage_connections())
+        stage = stage_guard.current_stage_check()
         status = tts.training_status(query)
         data = status.model_dump(mode="json")
         data["preflight"] = stage_guard.with_core_checks(status.preflight, stage).model_dump(mode="json")
@@ -110,7 +110,7 @@ async def _json_object(request: web.Request) -> dict[str, Any] | web.Response:
 
 def _start(tts: TtsService, job_request: TrainingStart) -> TrainingJob:
     """The core's stage check, the layer's start, then the stage check once more (blocking)."""
-    stage = stage_guard.stage_connection_check(stage_guard.count_stage_connections())
+    stage = stage_guard.current_stage_check()
     if stage.status == "fail":
         layer = tts.training_status(TrainingQuery(corpus=job_request.corpus, name=job_request.name)).preflight
         preflight = stage_guard.with_core_checks(layer, stage)
@@ -123,7 +123,7 @@ def _start(tts: TtsService, job_request: TrainingStart) -> TrainingJob:
             layer = TrainingPreflight.model_validate(exc.extra["preflight"])
             exc.extra["preflight"] = stage_guard.with_core_checks(layer, stage).model_dump(mode="json")
         raise
-    stage = stage_guard.stage_connection_check(stage_guard.count_stage_connections())
+    stage = stage_guard.current_stage_check()
     if stage.status == "fail":
         # A stage connected while the layer checked; POST /offer refuses new ones from now on.
         tts.cancel_training()

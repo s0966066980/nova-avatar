@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 搬到新的資料夾結構
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 07, 08
 
 依規格決定 5、17、「依賴管理的補充」與 ADR 0028。
@@ -72,3 +72,12 @@ Blocked by: 07, 08
 - 第一次更新後先 `uv sync --inexact`（`uv run` 也會同步），讓新套件裝進 venv。
 - 舊後端若仍在執行，新的 `start-*.sh` 認不出它（指令列從 `src/server/app.py` 變成 `core/nova_core/server/app.py`），會回報「埠被非本專案程式佔用」；先停掉舊的。同理，升級前留下的孤兒 `src.tts.training.whisper_worker` 不會被辨識。
 - RAGFlow 的 systemd 單元：`nova-ragflow-llamacpp-embedding.service` 是 link 到 repo 內的檔案；`ragflow.sh up`（`start-all.sh` 在已準備好 RAGFlow 的主機上會執行）會重新 link 並重新載入。由 `ragflow_connection.py --setup-proxy` 寫入的 model-sync 單元寫死了腳本路徑，`up` 在使用共用 Ollama 的主機上會重寫它；沒走 `up` 的主機需手動執行一次 `python3 services/llm/scripts/ragflow_connection.py --setup-proxy`。
+
+### 2026-11-27 剩餘驗收（交給維護者）
+
+程式與文件的搬移已完成並通過 CI 的每一步；剩下兩項只有維護者能在場域主機上做：
+
+1. 在場域主機執行 `scripts/start-all.sh`，確認舞台與控制台行為不變（含 GPU 上的 MuseTalk 與本機 LLM）。升級時請照上一則留言的「場域主機要注意」處理（先停舊後端、`uv sync --inexact`、RAGFlow 的 systemd 單元）。
+2. 重新建立 codebase-memory 索引（`project="nova-avatar"`，見 `docs/agents/code-navigation.md`），讓查詢回傳新路徑。
+
+兩項都完成後，把本工單改為 `Status: resolved`。

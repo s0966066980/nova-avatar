@@ -19,12 +19,15 @@ from typing import TYPE_CHECKING
 from aiohttp import web
 
 from nova_contracts.tts import TrainingCheck, TrainingPreflight
+from nova_core.server.state import state
 
 if TYPE_CHECKING:
     from nova_contracts.tts import TtsService
 
 CHECK_ADMIN = "admin"
 CHECK_STAGE = "stage_connections"
+LABEL_ADMIN = "管理者登入"
+LABEL_STAGE = "舞台連線"
 
 # What the console shows when transcription falls back to the CPU because of the stage.
 REASON_STAGE = "有舞台連線"
@@ -37,24 +40,27 @@ VOICE_TRAINING_MESSAGE = "聲線訓練進行中，數位人暫停服務"
 
 def count_stage_connections() -> int:
     """Every stage session, including one still connecting (its placeholder is ``None``)."""
-    from nova_core.server.state import state
-
     return len(state.avatar_streams)
 
 
 def admin_check() -> TrainingCheck:
     """Every training route is ADMIN (ADR 0021): reaching it means the login passed."""
-    return TrainingCheck(id=CHECK_ADMIN, label="管理者登入", status="pass", reason="以管理者身分操作")
+    return TrainingCheck(id=CHECK_ADMIN, label=LABEL_ADMIN, status="pass", reason="以管理者身分操作")
 
 
 def stage_connection_check(count: int) -> TrainingCheck:
     if count:
         return TrainingCheck(
-            id=CHECK_STAGE, label="舞台連線", status="fail",
+            id=CHECK_STAGE, label=LABEL_STAGE, status="fail",
             reason=f"有 {count} 個舞台正在連線，請先關閉再重新檢查", detail={"count": count},
         )
-    return TrainingCheck(id=CHECK_STAGE, label="舞台連線", status="pass", reason="目前沒有舞台連線",
+    return TrainingCheck(id=CHECK_STAGE, label=LABEL_STAGE, status="pass", reason="目前沒有舞台連線",
                          detail={"count": 0})
+
+
+def current_stage_check() -> TrainingCheck:
+    """The stage-connection check for the stage sessions registered right now."""
+    return stage_connection_check(count_stage_connections())
 
 
 def with_core_checks(layer: TrainingPreflight, stage: TrainingCheck) -> TrainingPreflight:
