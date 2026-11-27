@@ -15,6 +15,7 @@ import pytest
 
 from src.config.schema import Config
 from src.profiles.routing import route_question
+from tests.llm_fakes import FakeLlm
 from src.profiles.store import ProfileStore
 from src.llm.tools.weather import COUNTIES, TAIPEI
 from src.llm.tools.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
@@ -149,7 +150,7 @@ def _route(text, model_decision=None, *, history=(), weather_tool=True):
             pass
 
     routed = route_question(config, library, "main", text, list(history), {},
-                            client_factory=Client)
+                            llm=FakeLlm(routing_client_factory=Client))
     return routed, create
 
 

@@ -10,11 +10,12 @@ import queue
 import threading
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 
 from src.config.schema import Config
+from tests.llm_fakes import FakeLlm, answering, reply_events
 from src.server.reply_streaming.latency_baseline import (
     CATEGORIES,
     FIXTURES,
@@ -189,7 +190,7 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
             reply_streaming=SimpleNamespace(enabled=False),
             profile_rag={"enabled": True, "dataset_ids": ["a" * 32]},
         )
-        self.session = VoiceTurnSession(94, config, self.avatar, clock=self.clock)
+        self.session = VoiceTurnSession(94, config, self.avatar, clock=self.clock, llm=FakeLlm())
         self.session._segmenter = SimpleNamespace(reset=lambda: None, is_speaking=False)
         self.events = []
         self.session.attach_event_sink(lambda raw: self.events.append(json.loads(raw)))
@@ -207,17 +208,18 @@ class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
             clock.advance(0.1)
             return {"status": "empty", "sources": []}
 
-        def fake_llm(_text, _avatar, **_kwargs):
+        def fake_llm(request):
             # The engine's preflight runs inside the LLM worker thread.
             clock.advance(0.2)
             with timed_stage("model_info"):
                 pass
             llm_started.set()
-            return "回答。"
+            return reply_events(request, "回答。", speak=False)
 
-        with patch("src.server.voice_session.llm_response", side_effect=fake_llm), patch(
-            "src.server.voice_session.RagFlowClient.retrieve", retrieve
-        ), patch("src.server.voice_session.prepare_spoken_history"):
+        self.session._llm.begin_turn = Mock()
+        with answering(self.session, fake_llm), patch(
+            "src.llm.adapter.RagFlowClient.retrieve", retrieve
+        ):
             await self.session.start_text_turn(text, interrupt=False)
             self.assertTrue(await asyncio.to_thread(llm_started.wait, 2))
             await asyncio.sleep(0)  # deliver the thread-safe model_info callback
@@ -282,7 +284,7 @@ class VoiceSessionClientOffsetTests(unittest.IsolatedAsyncioTestCase):
             vad=SimpleNamespace(),
             reply_streaming=SimpleNamespace(enabled=False),
         )
-        self.session = VoiceTurnSession(95, config, _Avatar(), clock=self.clock)
+        self.session = VoiceTurnSession(95, config, _Avatar(), clock=self.clock, llm=FakeLlm())
 
     async def asyncTearDown(self):
         await self.session.close()

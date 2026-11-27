@@ -12,7 +12,7 @@ from aiohttp import web
 
 from src.config.schema import ConversationConfig
 from src.config.overrides import persist_runtime_overrides
-from src.llm.service import session_memory
+from nova_contracts.llm import ContextCapacityQuery, MemoryQuery
 from src.server.state import state
 from src.tts.voice_library import EDGE_TTS_EN_US_VOICES
 
@@ -91,15 +91,20 @@ def snapshot(session) -> dict:
         'idle_reset_seconds': clear_delay,
         'full_reset_seconds': full_delay,
         'profiles': role_memories(session),
-        'memory': session_memory(session.sessionid, settings['history_max_messages']),
+        'memory': _memory(session, settings['history_max_messages']),
     }
+
+
+def _memory(session, limit, profile_id=None) -> dict:
+    return session._llm.session_memory(MemoryQuery(
+        session_id=session.sessionid, limit=limit, profile_id=profile_id)).model_dump()
 
 
 def role_memories(session):
     roles = getattr(session, '_role_coordinator', None)
     profiles = roles.profiles.values() if roles is not None else [{'id': '', 'name': '目前角色'}]
     return [{'id': p['id'], 'name': p['name'],
-             'memory': session_memory(session.sessionid, session._conversation['history_max_messages'], p['id'])}
+             'memory': _memory(session, session._conversation['history_max_messages'], p['id'])}
             for p in profiles]
 
 
@@ -108,8 +113,8 @@ async def list_conversations(request):
         return web.json_response({'code': -1, 'msg': '服務尚未就緒'}, status=503)
     capacity = None
     if getattr(state.config.llm, 'provider', '') == 'llamacpp':
-        from src.llm.context_usage import deployed_capacity
-        capacity = await asyncio.to_thread(deployed_capacity, state.config.llm.base_url)
+        capacity = (await asyncio.to_thread(state.llm.context_capacity, ContextCapacityQuery(
+            base_url=state.config.llm.base_url))).capacity
     return web.json_response({'code': 0, 'data': {
         'model_context': {'model': state.config.llm.model, 'capacity': capacity},
         'defaults': defaults(state.config), 'voices': VOICES,

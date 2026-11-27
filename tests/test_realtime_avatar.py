@@ -460,10 +460,11 @@ def test_paused_uplink_is_drained_without_resampling():
     from unittest.mock import Mock
     from src.config.schema import Config
     from src.server.voice_session import VoiceTurnSession
+    from tests.llm_fakes import FakeLlm
     from tests.session_fakes import FakeAvatar
 
     async def run():
-        session = VoiceTurnSession(7, Config(), FakeAvatar())
+        session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
         resample = Mock()
         session._resample_frame_sync = resample
         session._segmenter = object()
@@ -487,11 +488,12 @@ def test_capture_stays_closed_until_preparation_and_preserves_manual_pause():
     from threading import Event
     from src.config.schema import Config
     from src.server.voice_session import VoiceTurnSession
+    from tests.llm_fakes import FakeLlm
     from tests.session_fakes import FakeAvatar
 
     async def run():
         ready = Event()
-        session = VoiceTurnSession(7, Config(), FakeAvatar())
+        session = VoiceTurnSession(7, Config(), FakeAvatar(), llm=FakeLlm())
         session._prepare_sync = lambda: ready.wait(timeout=1)
         session.attach_event_sink(lambda _: None)
         task = asyncio.create_task(session.prepare())

@@ -117,7 +117,7 @@ async def set_llm_rules(request):
 async def list_llm_models(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    result = await fetch_llm_catalog(state.config)
+    result = await fetch_llm_catalog(state.config, llm=state.llm)
     return _json({"code": 0, "data": result})
 
 
@@ -127,7 +127,8 @@ async def set_llm_behavior(request):
     try:
         params = await request.json()
         result = apply_llm_behavior(state.config, params.get("assistant_profile"),
-                                    params.get("rules"), params.get("expected_revision"))
+                                    params.get("rules"), params.get("expected_revision"),
+                                    llm=state.llm)
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
@@ -155,6 +156,7 @@ async def set_llm_model(request):
                 params.get("board_max_items"),
                 params.get("assistant_profile"),
                 params.get("semantic_wait_seconds"),
+                llm=state.llm,
             ),
         )
         return _json({"code": 0, "msg": "ok", "data": result})

@@ -17,10 +17,12 @@ from src.config.loader import dict_to_config
 from src.config.schema import Config, GreetingConfig
 from src.greetings.content import (GreetingError, prepare_greeting,
                                   validate_content, validate_interval, visible_length)
-from src.llm import service
+from nova_contracts.llm import GreetingReceipt, SessionRef
+from src.llm.adapter import InProcessLlmService
 from src.llm.greeting import greeting_messages
 from src.profiles.store import ProfileStore, profile_config, validate_library
 from src.server.voice_session import VoiceTurnSession
+from tests.llm_fakes import FakeLlm, ask
 from tests.session_fakes import FakeAvatar, FakeSegmenter
 
 
@@ -63,17 +65,17 @@ class ContentTests(unittest.IsolatedAsyncioTestCase):
     async def test_scripts_deduplicate_and_avoid_repeat_but_allow_single_and_out_of_range(self):
         config = Config(greeting=GreetingConfig(scripts=['甲', '甲', '乙', ' ']))
         for _ in range(5):
-            result = await prepare_greeting(config, previous='甲')
+            result = await prepare_greeting(config, llm=FakeLlm(), previous='甲')
             self.assertEqual(result, dict(text='乙', length=1, in_range=False))
         config.greeting.scripts = ['甲']
-        self.assertEqual((await prepare_greeting(config, previous='甲'))['text'], '甲')
+        self.assertEqual((await prepare_greeting(config, llm=FakeLlm(), previous='甲'))['text'], '甲')
 
     async def test_ai_has_only_identity_and_prompt_and_retries_once(self):
         config = Config(greeting=GreetingConfig(mode='ai', prompt='介紹服務', min_chars=4, max_chars=8))
         config.llm.assistant_profile.system_prompt = '你是展館導覽員'
         config.llm.assistant_profile.restriction_prompt = '只回答展館資訊'
         generate = AsyncMock(side_effect=['短', '歡迎來參觀！'])
-        result = await prepare_greeting(config, generate=generate)
+        result = await prepare_greeting(config, llm=InProcessLlmService(generate_greeting=generate))
         self.assertEqual(result['text'], '歡迎來參觀！')
         self.assertEqual(generate.await_count, 2)
         messages = greeting_messages(config, config.greeting.prompt, 4, 8)
@@ -86,11 +88,11 @@ class ContentTests(unittest.IsolatedAsyncioTestCase):
         config = Config(greeting=GreetingConfig(mode='ai', prompt='介紹'))
         generate = AsyncMock(return_value='短')
         with self.assertRaisesRegex(GreetingError, '字數不合格'):
-            await prepare_greeting(config, generate=generate)
+            await prepare_greeting(config, llm=InProcessLlmService(generate_greeting=generate))
         self.assertEqual(generate.await_count, 2)
         generate = AsyncMock(side_effect=RuntimeError('SECRET https://private.example'))
         with self.assertRaisesRegex(GreetingError, '^AI 招呼生成失敗，已略過本次$'):
-            await prepare_greeting(config, generate=generate)
+            await prepare_greeting(config, llm=InProcessLlmService(generate_greeting=generate))
         self.assertEqual(generate.await_count, 1)
 
     async def test_timeout_budget_includes_second_attempt(self):
@@ -101,7 +103,7 @@ class ContentTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(.04)
             return '短'
         with self.assertRaisesRegex(GreetingError, '超過 15 秒'):
-            await prepare_greeting(config, generate=generate, timeout=.06)
+            await prepare_greeting(config, llm=InProcessLlmService(generate_greeting=generate), timeout=.06)
         self.assertEqual(len(calls), 2)
 
 
@@ -114,13 +116,14 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         config.stage.idle_reset_seconds = 120
         avatar = FakeAvatar()
         avatar.config = config
-        session = VoiceTurnSession(111, config, avatar, presenter=presenter, clock=lambda: self.now)
+        self.llm = FakeLlm()
+        session = VoiceTurnSession(111, config, avatar, presenter=presenter, clock=lambda: self.now,
+                                   llm=self.llm)
         session._segmenter = FakeSegmenter()
         session._event_loop = asyncio.get_running_loop()
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         self.addAsyncCleanup(session.close)
-        self.addCleanup(service.remove_session, 111)
         return session, events
 
     def ready(self, session, **changes):
@@ -200,21 +203,21 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(session.accepts_media(old, 'late_tts'))
         self.assertTrue(session._conversation_dirty)
         self.assertTrue(session._gate_open)
-        self.assertNotIn(111, service._latest_greetings)
+        self.assertNotIn(111, self.llm._sessions._latest_greetings)
 
     async def test_only_played_receipt_no_visitor_history_and_full_interval_after_play(self):
         session, _ = self.make()
-        with patch('src.server.voice_session.prepare_spoken_history') as history:
-            await self.trigger(session)
+        history = session._llm.begin_turn = Mock()
+        await self.trigger(session)
         history.assert_not_called()
-        self.assertNotIn(111, service._latest_greetings)
+        self.assertNotIn(111, self.llm._sessions._latest_greetings)
         metadata = session.avatar.messages[-1][1]
         session.on_output_audio_frame(metadata, True)
         session.on_output_audio(True)
         self.assertFalse(session._gate_open)
         session._commit_history('completed')
-        self.assertEqual(service._latest_greetings[111], '歡迎光臨！')
-        self.assertEqual(service.session_history(111), [])
+        self.assertEqual(self.llm._sessions._latest_greetings[111], '歡迎光臨！')
+        self.assertEqual(self.llm.session_history(SessionRef(session_id=111)).messages, ())
         self.now = 70
         session._output_active = False
         await session._finish_tail_guard()
@@ -324,15 +327,14 @@ class SessionTests(unittest.IsolatedAsyncioTestCase):
 
 
 def test_latest_receipt_replaces_and_clears_without_history():
-    try:
-        service.remember_greeting(222, 'old', profile_id='main')
-        service.remember_greeting(222, 'new', profile_id='main')
-        assert service._latest_greetings[(222, 'main')] == 'new'
-        assert service.session_history(222, 'main') == []
-        service.clear_session_history(222)
-        assert (222, 'main') not in service._latest_greetings
-    finally:
-        service.remove_session(222)
+    llm = FakeLlm()
+    greetings = llm._sessions._latest_greetings
+    for text in ('old', 'new'):
+        llm.remember_greeting(GreetingReceipt(session_id=222, profile_id='main', text=text))
+    assert greetings[(222, 'main')] == 'new'
+    assert llm.session_history(SessionRef(session_id=222, profile_id='main')).messages == ()
+    llm.clear_history(SessionRef(session_id=222))
+    assert (222, 'main') not in greetings
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
@@ -348,7 +350,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         draft = deepcopy(library['profiles'][0])
         draft['greeting']['scripts'] = ['未儲存的招呼草稿']
         roles = SimpleNamespace(mode='console')
-        fake_state = SimpleNamespace(config=config, voice_sessions={})
+        fake_state = SimpleNamespace(config=config, voice_sessions={}, llm=FakeLlm())
         fake_state.roles = roles
         patcher = patch.object(profiles, 'state', fake_state)
         patcher.start()
@@ -372,11 +374,10 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         avatar = FakeAvatar()
         avatar.config = config
         avatar.tts = SimpleNamespace(config=config)
-        voice = VoiceTurnSession(333, config, avatar)
+        voice = VoiceTurnSession(333, config, avatar, llm=FakeLlm())
         voice.attach_event_sink(lambda _: None)
         state.voice_sessions[333] = voice
         self.addAsyncCleanup(voice.close)
-        self.addCleanup(service.remove_session, 333)
         draft['tts']['ref_file'] = 'draft-voice'
         request = SimpleNamespace(json=AsyncMock(return_value={'profile': draft, 'sessionid': 333}))
         voice._presenter = 'stage'
@@ -394,7 +395,7 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         routes, state, draft = self.setup_field()
         avatar = FakeAvatar()
         avatar.config = state.config
-        voice = VoiceTurnSession(334, state.config, avatar)
+        voice = VoiceTurnSession(334, state.config, avatar, llm=FakeLlm())
         voice.attach_event_sink(lambda _: None)
         state.voice_sessions[334] = voice
         self.addAsyncCleanup(voice.close)
@@ -434,20 +435,25 @@ def test_stage_enable_validates_content_and_persists_atomically():
 
 
 def test_only_latest_played_greeting_is_injected_into_visitor_followup(monkeypatch):
+    from nova_contracts.llm import ReplyDone
+    from src.llm.engines.openai import OpenAILLM
     config = Config()
     config.profile_id = 'main'
     avatar = SimpleNamespace(config=config, sessionid=444)
-    llm = SimpleNamespace(generate_response=Mock(return_value='可以協助您導覽'))
-    monkeypatch.setattr(service, '_session_llm_instances', {(444, 'main'): llm})
-    monkeypatch.setattr(service, '_latest_greetings', {})
-    monkeypatch.setattr(service, '_ensure_llamacpp_if_needed', lambda _: None)
-    service.remember_greeting(444, '舊招呼', profile_id='main')
-    service.remember_greeting(444, '新的導覽介紹', profile_id='main')
-    try:
-        service.llm_response('你剛才提到什麼服務？', avatar)
-        context = llm.generate_response.call_args.kwargs['rag_context']
-        assert '新的導覽介紹' in context
-        assert '舊招呼' not in context
-        assert service.session_history(444) == []
-    finally:
-        service.remove_session(444)
+    service = InProcessLlmService()
+    monkeypatch.setattr('src.llm.adapter._ensure_local_server', lambda _config: None)
+    contexts = []
+    engine = OpenAILLM(config=config, api_key='test')
+
+    def reply_events(message, **kwargs):
+        contexts.append(kwargs['rag_context'])
+        yield ReplyDone(spoken='可以協助您導覽', visible='可以協助您導覽')
+    monkeypatch.setattr(engine, 'reply_events', reply_events)
+    service._sessions._instances[(444, 'main')] = engine
+    for text in ('舊招呼', '新的導覽介紹'):
+        service.remember_greeting(GreetingReceipt(session_id=444, profile_id='main', text=text))
+    ask(service, avatar, '你剛才提到什麼服務？', commit=False)
+    assert '新的導覽介紹' in contexts[0]
+    assert '舊招呼' not in contexts[0]
+    # The greeting is context only: no visitor history was made up for it.
+    assert service.session_history(SessionRef(session_id=444)).messages == ()

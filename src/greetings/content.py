@@ -4,7 +4,7 @@
 """Bounded, history-free greeting preparation shared by scheduling and previews.
 
 Scripted greetings are chosen here; an AI greeting is the LLM layer's request
-(``src.llm.greeting``, ADR 0027).
+(``LlmService.generate_greeting``, ADR 0027).
 """
 from __future__ import annotations
 
@@ -12,7 +12,9 @@ from dataclasses import asdict
 import math
 import random
 
-from src.llm.greeting import GreetingGenerationError, generate_greeting
+from nova_contracts.common import ServiceError
+from nova_contracts.llm import GreetingRequest, LlmService
+from src.llm.config_section import llm_settings
 from src.utils.graphemes import visible_length
 
 __all__ = ["GreetingError", "prepare_greeting", "validate_content", "validate_interval", "visible_length"]
@@ -63,7 +65,7 @@ def validate_interval(value) -> float:
     return float(value)
 
 
-async def prepare_greeting(config, *, previous: str = "", generate=None, timeout=15.) -> dict:
+async def prepare_greeting(config, *, llm: LlmService, previous: str = "", timeout=15.) -> dict:
     settings = validate_content(asdict(config.greeting), required=True)
     if settings["mode"] == "scripts":
         locale = getattr(getattr(config, 'conversation', None), 'locale', config.llm.assistant_profile.output_locale)
@@ -74,10 +76,11 @@ async def prepare_greeting(config, *, previous: str = "", generate=None, timeout
         text = random.choice([s for s in choices if s != previous] or choices)
     else:
         try:
-            text = await generate_greeting(config, settings["prompt"], min_chars=settings["min_chars"],
-                                           max_chars=settings["max_chars"], generate=generate,
-                                           timeout=timeout)
-        except GreetingGenerationError as exc:
+            text = (await llm.generate_greeting(GreetingRequest(
+                settings=llm_settings(config), prompt=settings["prompt"],
+                min_chars=settings["min_chars"], max_chars=settings["max_chars"],
+                timeout_seconds=timeout))).text
+        except ServiceError as exc:
             raise GreetingError(str(exc)) from exc
     length = visible_length(text)
     return dict(text=text, length=length,

@@ -13,6 +13,7 @@ import pytest
 from src.llm.handoff import CLARIFY, route_schema
 from src.profiles.routing import route_question
 from src.profiles.store import ProfileError
+from tests.llm_fakes import FakeLlm
 from tests.role_fakes import _config, _prompt, _schema, composition
 from tests.composition_fakes import _request, composition_routes, store  # noqa: F401
 
@@ -32,9 +33,7 @@ def _enable(store, *members):  # noqa: F811
 
 
 @pytest.fixture
-def routes(composition_routes, monkeypatch):  # noqa: F811
-    from src.server.state import state
-    state.roles.routing_clients = SimpleNamespace(name="shared clients")
+def routes(composition_routes):  # noqa: F811
     return composition_routes
 
 
@@ -127,7 +126,7 @@ def _route(library, current, text, decision, *, explain=False):
         def close(self):
             pass
 
-    return route_question(_config(), library, current, text, [], {}, client_factory=Client,
+    return route_question(_config(), library, current, text, [], {}, llm=FakeLlm(routing_client_factory=Client),
                           explain=explain), create
 
 

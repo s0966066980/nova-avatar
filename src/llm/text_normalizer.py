@@ -20,17 +20,6 @@ _IDENTITY_QUESTION = re.compile(
 )
 
 
-def join_spoken_fragments(fragments) -> str:
-    """Keep Latin sentence spacing when individually trimmed speech is committed."""
-    result = ''
-    for text in fragments:
-        if (result and text and result[-1] in '.!?,;:'
-                and text[0].isascii() and text[0].isalnum()):
-            result += ' '
-        result += text
-    return result
-
-
 def strip_unsolicited_self_introduction(
     text: str, *, user_message: str, assistant_name: str
 ) -> str:

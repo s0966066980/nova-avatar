@@ -8,10 +8,10 @@ import json
 
 from aiohttp import web
 
+from nova_contracts.common import ServiceError
+from nova_contracts.llm import DocumentsQuery, RetrievalRequest
 from src.utils.avatar_ids import is_safe_avatar_id
-from src.ragflow.client import MANAGEMENT_URL, RagFlowClient, RagFlowError
-from src.ragflow.settings import avatar_settings, save_avatar_settings
-from src.ragflow.selection import ragflow_id, validate_selection
+from src.profiles.knowledge_scope import avatar_settings, ragflow_id, save_avatar_settings, validate_selection
 from src.server.state import state
 
 
@@ -35,12 +35,12 @@ async def get_ragflow_settings(request):
         avatar_id = _avatar_id(request.query.get("avatar_id"))
     except ValueError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=400)
-    client = RagFlowClient()
+    status = state.llm.ragflow_status()
     return _json({"code": 0, "data": {
         "avatar_id": avatar_id,
         **avatar_settings(avatar_id),
-        "configured": client.connection.configured,
-        "management_url": MANAGEMENT_URL,
+        "configured": status.configured,
+        "management_url": status.management_url,
     }})
 
 
@@ -61,18 +61,15 @@ async def put_ragflow_settings(request):
 
 
 async def list_ragflow_datasets(request):
-    client = RagFlowClient()
     try:
-        datasets = await client.list_datasets()
-    except RagFlowError as exc:
+        datasets = list((await state.llm.list_ragflow_datasets()).datasets)
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc), "data": {"status": "unavailable"}}, status=503)
     return _json({"code": 0, "data": {"status": "ready", "datasets": datasets}})
 
 
 async def ragflow_status(request):
-    return _json({"code": 0, "data": {
-        "configured": RagFlowClient().connection.configured, "management_url": MANAGEMENT_URL,
-    }})
+    return _json({"code": 0, "data": state.llm.ragflow_status().model_dump()})
 
 
 async def list_ragflow_documents(request):
@@ -84,8 +81,9 @@ async def list_ragflow_documents(request):
     except (ValueError, TypeError) as exc:
         return _json({"code": -1, "msg": str(exc)}, status=400)
     try:
-        result = await RagFlowClient().list_documents(dataset_id, page=page)
-    except RagFlowError as exc:
+        result = (await state.llm.list_ragflow_documents(
+            DocumentsQuery(dataset_id=dataset_id, page=page))).page
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=503)
     return _json({"code": 0, "data": result})
 
@@ -121,11 +119,11 @@ async def test_ragflow_retrieval(request):
     except (ValueError, json.JSONDecodeError) as exc:
         return _json({"code": -1, "msg": str(exc)}, status=400)
     try:
-        result = await RagFlowClient().retrieve(
-            question, selection["dataset_ids"],
-            **({"document_ids": selection["document_ids"]}
-               if selection.get("document_scope") == "selected" else {}),
-        )
-    except RagFlowError as exc:
+        result = await state.llm.retrieve(RetrievalRequest(
+            question=question, dataset_ids=tuple(selection["dataset_ids"]),
+            document_ids=(tuple(selection["document_ids"])
+                          if selection.get("document_scope") == "selected" else ()),
+        ))
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc), "data": {"status": "unavailable"}}, status=503)
-    return _json({"code": 0, "data": result})
+    return _json({"code": 0, "data": result.model_dump(mode="json")})

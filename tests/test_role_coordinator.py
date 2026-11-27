@@ -10,9 +10,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.llm import service
+from nova_contracts.llm import SessionRef
 from src.profiles.coordinator import RoleCoordinator
 from src.profiles.routing import route_question
+from tests.llm_fakes import FakeLlm
 from tests.role_fakes import async_test, connect, field, wait_until  # noqa: F401
 
 
@@ -29,13 +30,13 @@ def test_routing_does_not_guess_a_county_for_an_ambiguous_district(field, text, 
         def __init__(self, **_):
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
         def close(self): pass
-    route = route_question(field.state.config, field.library, 'main', text, [], confirmed, client_factory=Client)
+    route = route_question(field.state.config, field.library, 'main', text, [], confirmed,
+                           llm=FakeLlm(routing_client_factory=Client))
     assert route['target'] == expected
 
 
 def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field):
     from concurrent.futures import ThreadPoolExecutor
-    from src.llm.handoff import RoutingClients
     result = dict(target='main')
     response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps(result)))])
     built = []
@@ -45,8 +46,8 @@ def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field)
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
             built.append(self)
         def close(self): self.closed = True
-    roles = RoleCoordinator(field.state, field.store, field.library, weather=field.weather,
-                            routing_clients=RoutingClients(Client))
+    field.state.llm = FakeLlm(routing_client_factory=Client)
+    roles = RoleCoordinator(field.state, field.store, field.library)
     config = field.state.config
     with ThreadPoolExecutor(4) as pool:
         routes = list(pool.map(lambda text: roles.router(config, roles.library, 'main', text, [], {}),
@@ -54,7 +55,7 @@ def test_routing_reuses_one_client_across_concurrent_turns_until_shutdown(field)
     assert [r['target'] for r in routes] == ['main'] * 4
     assert len(built) == 1
     assert built[0].options['max_retries'] == 0
-    asyncio.run(roles.close())
+    asyncio.run(field.state.llm.close_connections())
     assert built[0].closed
     # A turn that outlives shutdown cannot reopen a connection.
     with pytest.raises(RuntimeError):
@@ -118,15 +119,15 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
     async def query(_):
         return weather
     roles.weather.query = query
-    llm = Mock(return_value='專門角色依資料回答')
-    monkeypatch.setattr('src.server.voice_session.llm_response', llm)
+    llm = roles.state.llm
+    llm.script, llm.speak = '專門角色依資料回答', False
     try:
         accepted = await voice.start_text_turn(question)
         await voice._turn_task
         assert runtime.phase == 'announcement', voice.avatar.messages
         assert runtime.current_id == 'main'
         # The main answer generated beside routing (ADR 0022) is never delivered.
-        source_calls = llm.call_count
+        source_calls = llm.calls
         assert source_calls <= 1
         assert [text for text, _ in voice.avatar.messages] == [roles.library['composition']['members'][0]['announcement']]
         roles._apply_waiting = apply_waiting
@@ -137,19 +138,20 @@ async def test_handoff_waits_for_completed_audio_and_transition_video_before_one
             voice.on_output_audio(False)
         await wait_until(lambda: runtime.phase == 'transition')
         assert runtime.current_id == 'main'
-        assert llm.call_count == source_calls
+        assert llm.calls == source_calls
         runtime.video_committed(voice.sessionid, {'role_transition_id': 'stale', 'role_transition_end': True})
         assert not runtime._transition_event.is_set()
         runtime.video_committed(voice.sessionid, {'role_transition_id': runtime._transition_id, 'role_transition_end': True})
         await voice._tail_task
         await wait_until(lambda: voice._turn_task is None)
         assert runtime.current_id == 'weather'
-        assert llm.call_count == source_calls + 1
-        assert llm.call_args.args[0] == question
-        assert '本輪氣象工具資料' in llm.call_args.kwargs['rag_context']
+        assert llm.calls == source_calls + 1
+        assert llm.requests[-1].question.text == question
+        assert llm.requests[-1].weather.facts == weather
         assert voice.config.llm.assistant_profile.assistant_name == '天氣助手'
         assert len([e for e in events if e['type'] == 'role_handoff']) == 1
-        assert service.session_history(7, 'main')[-1]['content'] == roles.library['composition']['members'][0]['announcement']
+        history = roles.state.llm.session_history(SessionRef(session_id=7, profile_id='main')).messages
+        assert history[-1].content == roles.library['composition']['members'][0]['announcement']
         assert accepted['turn_id'] != voice._turn_id
     finally:
         await voice.close()
@@ -286,7 +288,8 @@ def test_county_weather_question_handoffs_without_inventing_a_district(field, te
         def __init__(self, **_):
             self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: response))
         def close(self): pass
-    route = route_question(field.state.config, field.library, 'main', text, [], {}, client_factory=Client)
+    route = route_question(field.state.config, field.library, 'main', text, [], {},
+                           llm=FakeLlm(routing_client_factory=Client))
     assert route['target'] == 'weather', route
     assert route['county'] == '臺北市'
     assert route.get('town', '') == ''
@@ -473,30 +476,28 @@ async def test_profile_model_change_stays_pending_until_both_pages_disconnect(fi
     for profile in target['profiles']:
         profile['llm']['model'] = 'new-local-model'
         profile['llm']['endpoint'] = 'local'
-    loader = Mock()
-    monkeypatch.setattr('src.llm.llamacpp.ensure_server', loader)
+    started = field.state.llm.local_servers
     try:
         result = await field.apply(target)
         assert result['pending']
         assert field.library['revision'] != target['revision']
         assert console.config.llm.model != 'new-local-model'
         assert stage.config.llm.model != 'new-local-model'
-        loader.assert_not_called()
+        assert not started
         await console.close()
         field.state.avatar_streams.pop(7)
         field.state.voice_sessions.pop(7)
         field.unregister(7)
         await field.apply_pending()
-        loader.assert_not_called()
+        assert not started
         await stage.close()
         field.state.avatar_streams.pop(8)
         field.state.voice_sessions.pop(8)
         field.unregister(8)
-        loader.return_value = 'http://localhost:8080/v1'
         monkeypatch.setattr('src.avatars.catalog.avatar_bootable', lambda *_: (True, ''))
         monkeypatch.setattr('src.avatars.catalog.avatar_uses_green_screen', lambda *_: True)
         await field.apply_pending()
-        loader.assert_called_once()
+        assert [server.model for server in started] == ['new-local-model']
         assert not field.snapshot()['pending']
         assert field.config_for_session().llm.model == 'new-local-model'
     finally:

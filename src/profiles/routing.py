@@ -3,15 +3,15 @@
 
 """The core's side of a handoff decision: the role composition becomes the LLM layer's request.
 
-The LLM layer decides (``src.llm.handoff``); the composition, the site's
-default location and the conversation's confirmed place stay with the core
-and are sent on every request (ADR 0027).
+The LLM layer decides (``LlmService.route_handoff``); the composition, the
+site's default location and the conversation's confirmed place stay with the
+core and are sent on every request (ADR 0027).
 """
 from __future__ import annotations
 
-from openai import OpenAI
-
-from src.llm.handoff import HandoffContext, RoleCandidate, RoutingError, route
+from nova_contracts.common import ServiceError
+from nova_contracts.llm import ChatMessage, HandoffRequest, LlmService, RoleCandidate
+from src.llm.config_section import llm_settings
 from src.profiles.composition import live_members, main_profile_id
 from src.profiles.language import fixed_text
 from src.profiles.validation import ProfileError
@@ -42,8 +42,8 @@ def role_candidates(library: dict) -> list[RoleCandidate]:
     return result
 
 
-def route_question(config, library, current_id, text, history, confirmed, *,
-                   clients=None, client_factory=OpenAI, explain=False):
+def route_question(config, library, current_id, text, history, confirmed, *, llm: LlmService,
+                   explain=False):
     """Who answers ``text``: ``target`` is a candidate's profile id, or None to clarify.
 
     ``history`` is the current role's recent conversation and ``confirmed``
@@ -51,10 +51,15 @@ def route_question(config, library, current_id, text, history, confirmed, *,
     """
     locale = getattr(getattr(config, "conversation", None), "locale", "zh-TW")
     try:
-        result = route(config, text, role_candidates(library),
-                       HandoffContext(current_role=current_id, history=history, confirmed=confirmed),
-                       clients=clients, client_factory=client_factory, explain=explain)
-    except RoutingError as exc:
+        decision = llm.route_handoff(HandoffRequest(
+            settings=llm_settings(config), locale=locale, question=text,
+            candidates=tuple(role_candidates(library)), current_role=current_id,
+            history=tuple(ChatMessage(role=m["role"], content=m["content"]) for m in history),
+            confirmed=dict(confirmed), explain=explain))
+    except ServiceError as exc:
         raise ProfileError(str(exc)) from exc
+    result = decision.model_dump()
+    if result["reason"] is None:
+        del result["reason"]
     result["clarification"] = fixed_text(result["clarification"], locale)
     return result

@@ -161,19 +161,20 @@ def test_cancelled_offer_waits_for_worker_then_releases_reservation(rtc, monkeyp
 def test_disconnect_releases_all_role_llm_sessions(rtc, monkeypatch):
     import json
 
-    from src.llm import service
-    monkeypatch.setattr(service, '_session_llm_instances', {})
-    monkeypatch.setattr(service, '_active_profiles', {})
+    from nova_contracts.llm import SessionProfile
+    from tests.llm_fakes import FakeLlm
+    service = FakeLlm()
+    monkeypatch.setattr(state, 'llm', service, raising=False)
     async def run():
         response = await webrtc.offer(rtc.request())
         sid = json.loads(response.text)['sessionid']
-        service._session_llm_instances[(sid, 'main')] = SimpleNamespace()
-        service._session_llm_instances[(sid, 'weather')] = SimpleNamespace()
-        service.select_session_profile(sid, 'weather')
+        service.engines[(sid, 'main')] = SimpleNamespace()
+        service.engines[(sid, 'weather')] = SimpleNamespace()
+        service.select_profile(SessionProfile(session_id=sid, profile_id='weather'))
         rtc.peers[0].connectionState = 'failed'
         await rtc.peers[0].handlers['connectionstatechange']()
-        assert not service._session_llm_instances
-        assert sid not in service._active_profiles
+        assert not service.engines
+        assert sid not in service._sessions._active_profiles
     asyncio.run(run())
 
 
@@ -216,6 +217,8 @@ def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, 
     roles.register = lambda voice: setattr(voice, '_role_coordinator', roles)
     monkeypatch.setattr(state, 'roles', roles)
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', VoiceTurnSession)
+    from tests.llm_fakes import FakeLlm
+    monkeypatch.setattr(state, 'llm', FakeLlm(), raising=False)
     monkeypatch.setattr(webrtc, 'create_avatar', lambda config, *args: SimpleNamespace(
         config=config, configure_media_fence=Mock(), flush_talk=Mock()))
 
@@ -242,11 +245,12 @@ def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, 
             viewer = next(v for v in state.voice_sessions.values() if v is not source)
             receipt = json.dumps(dict(type='board_displayed', presenter=viewer._presenter,
                 turn_id='current-turn', board_id='current-turn', item_index=0))
-            with patch('src.server.voice_session.acknowledge_session_board_item', return_value=True) as acknowledge:
-                viewer.handle_control(receipt)
-                viewer.handle_control(receipt)
-                acknowledge.assert_called_once_with(viewer.sessionid, turn_id='current-turn',
-                    board_id='current-turn', item_index=0, presenter=viewer._presenter)
+            from nova_contracts.llm import BoardReceipt, Outcome
+            acknowledge = viewer._llm.acknowledge_board_item = Mock(return_value=Outcome(done=True))
+            viewer.handle_control(receipt)
+            viewer.handle_control(receipt)
+            acknowledge.assert_called_once_with(BoardReceipt(session_id=viewer.sessionid, turn_id='current-turn',
+                board_id='current-turn', item_index=0, presenter=viewer._presenter))
         finally:
             for peer in rtc.peers:
                 peer.connectionState = 'failed'

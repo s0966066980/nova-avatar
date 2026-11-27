@@ -100,8 +100,9 @@ async def offer(request):
             if pc is not None:
                 state.remove_peer_connection(pc)
             state.remove_session(sessionid)
-            from src.llm.service import remove_session as remove_llm_session
-            remove_llm_session(sessionid)
+            if state.llm is not None:
+                from nova_contracts.llm import SessionRef
+                state.llm.remove_session(SessionRef(session_id=sessionid))
             if roles is not None:
                 roles.unregister(sessionid)
             if not state.avatar_streams and not state.shutting_down:
@@ -130,6 +131,7 @@ async def offer(request):
             avatar_stream, presenter=client_role,
             test_result_sink=state.voice_test_history.complete,
             stt=state.stt,
+            llm=state.llm,
         )
         from src.server.conversations import validate, check_language_support
         if 'locale' in params:

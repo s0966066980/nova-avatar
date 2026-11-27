@@ -11,6 +11,7 @@ from src.llm.base import load_system_prompt
 from src.llm.prompts import AUTO_MODE_PROMPT, compose_system_prompt
 from src.llm.router import ReplyMode
 from src.server.runtime_settings import apply_llm_model, current_snapshot
+from tests.llm_fakes import FakeLlm
 
 
 class AssistantProfileTests(unittest.TestCase):
@@ -45,13 +46,13 @@ class AssistantProfileTests(unittest.TestCase):
             clear_history=unittest.mock.Mock(),
             set_last_board=unittest.mock.Mock(),
         )
-        with patch("src.server.runtime_settings.persist_runtime_overrides"), patch(
-            "src.llm.service._session_llm_instances", {1: session}
-        ), patch("src.server.runtime_settings.ensure_server"):
-            first = apply_llm_model(config, "model", "ollama", assistant_profile=self._profile())
+        llm = FakeLlm()
+        llm.engines[1] = session
+        with patch("src.server.runtime_settings.persist_runtime_overrides"):
+            first = apply_llm_model(config, "model", "ollama", assistant_profile=self._profile(), llm=llm)
             self.assertTrue(first["history_reset"])
             self.assertEqual(session.clear_history.call_count, 1)
-            second = apply_llm_model(config, "model", "ollama", response_max_chars=180)
+            second = apply_llm_model(config, "model", "ollama", response_max_chars=180, llm=llm)
         self.assertFalse(second["history_reset"])
         self.assertEqual(session.clear_history.call_count, 1)
 

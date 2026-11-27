@@ -27,6 +27,7 @@ from src.server.speaking_avatar import SpeakingAvatar
 from src.server.state import state
 from src.vad import audio as vad_audio
 from tests.access_helpers import access_client
+from tests.llm_fakes import FakeLlm
 
 SESSION = 271828
 BLOCK_SECONDS = 2.0
@@ -183,7 +184,7 @@ def test_asr_reuses_the_session_recognizer(server, monkeypatch):
         created.append(settings)
         return Recognizer(settings)
 
-    monkeypatch.setattr(audio_routes, "llm_response", lambda text, *_a, **_k: f"reply to {text}")
+    monkeypatch.setattr(state, "llm", FakeLlm(lambda request: f"reply to {request.question.text}", speak=False))
     server.asr.language = "en"
     replies = []
     state.avatar_streams[SESSION] = SimpleNamespace(put_msg_txt=replies.append)

@@ -12,12 +12,13 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 import yaml
 
-from src.llm import service
+from nova_contracts.llm import GreetingReceipt, HistoryLimit, MemoryQuery
 from src.llm.history import TransactionalHistory
 from src.profiles.store import profile_config
 from src.server import conversations
 from src.server.state import state
-from tests.role_fakes import async_test, connect, field, wait_until  # noqa: F401
+from tests.llm_fakes import FakeLlm
+from tests.role_fakes import answers, async_test, connect, field, wait_until  # noqa: F401
 from tests.session_fakes import picture  # noqa: F401
 
 
@@ -38,7 +39,7 @@ async def test_short_clear_keeps_all_roles_until_full_reset(field, monkeypatch):
     voice.greetings = Mock()
     voice._role_coordinator = None
     a, b = engine(), engine('specialist question')
-    service._session_llm_instances.update({(8, 'main'): a, (8, 'weather'): b})
+    field.state.llm.engines.update({(8, 'main'): a, (8, 'weather'): b})
     voice.attachments.add_batch([('receipt.png', picture())], 0)
     voice._composer_has_draft = True
     voice._conversation_dirty = True
@@ -77,7 +78,7 @@ async def test_idle_deadlines_clear_display_then_reset_and_return_from_each_role
     try:
         if profile_id != 'main':
             await roles._switch(profile_id, voice)
-        service._session_llm_instances.update({(8, 'main'): main, (8, 'weather'): weather, (9, 'main'): separate})
+        field.state.llm.engines.update({(8, 'main'): main, (8, 'weather'): weather, (9, 'main'): separate})
         voice.attachments.add_batch([('receipt.png', picture())], 0)
         voice._composer_has_draft = True
         voice._conversation_dirty = True
@@ -108,7 +109,7 @@ async def test_idle_deadlines_resume_after_weather_handoff_and_answer_playback(f
     field.state.config.stage.clear_display_seconds = .04
     field.state.config.stage.idle_reset_seconds = .2
     field.weather.query = AsyncMock(return_value={'status': 'available', 'source': 'CWA', 'series': {}})
-    monkeypatch.setattr('src.server.voice_session.llm_response', Mock(return_value='天氣回答'))
+    answers(field, '天氣回答')
     voice, events = connect(field, 8, presenter)
     roles = voice._role_coordinator
     voice._media_player = None
@@ -166,11 +167,11 @@ async def test_any_visitor_record_blocks_greeting_but_console_records_do_not(fie
     field.state.config.stage.idle_greeting_enabled = True
     voice, _ = connect(field, 8, 'stage')
     voice.handle_control(json.dumps(dict(type='stage_ready', audible=True, microphone=True, interaction=True)))
-    service._session_llm_instances[(9, 'main')] = engine('console test')
-    service.remember_greeting(8, 'Welcome!', profile_id='main')
+    field.state.llm.engines[(9, 'main')] = engine('console test')
+    field.state.llm.remember_greeting(GreetingReceipt(session_id=8, text='Welcome!', profile_id='main'))
     assert voice.greeting_conditions() == (True, True, True)
     if record == 'inactive_role_history':
-        service._session_llm_instances[(8, 'weather')] = engine()
+        field.state.llm.engines[(8, 'weather')] = engine()
     elif record == 'attachment':
         voice.attachments.add_batch([('receipt.png', picture())], 0)
     else:
@@ -259,12 +260,13 @@ def test_history_limits_apply_to_all_roles_without_combining_their_context(monke
     for entry in (main, specialist):
         for i in range(5):
             entry._history.append_message('user', str(i))
-    monkeypatch.setattr(service, '_session_llm_instances', {(8, 'main'): main, (8, 'weather'): specialist, (9, 'main'): other})
-    service.set_session_history_limit(8, 3)
+    llm = FakeLlm()
+    llm.engines.update({(8, 'main'): main, (8, 'weather'): specialist, (9, 'main'): other})
+    llm.set_history_limit(HistoryLimit(session_id=8, limit=3))
     assert main._history.info()['retained_messages'] == 3
     assert specialist._history.info()['retained_messages'] == 3
     assert other._history.info()['max_messages'] == 20
-    assert service.session_memory(8, profile_id='main')['retained_messages'] == 3
+    assert llm.session_memory(MemoryQuery(session_id=8, profile_id='main')).retained_messages == 3
 
 
 def test_profile_english_voice_defaults_preserve_original_chinese_voice(field):

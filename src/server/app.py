@@ -72,20 +72,11 @@ def _start_local_llm() -> None:
     if getattr(state.config.llm, "provider", "") != "llamacpp":
         return
     try:
-        from src.llm.llamacpp import ensure_server
+        from src.llm.config_section import local_server_settings
 
         logger.info("正在啟動 llama-server: %s", state.config.llm.model)
-        state.config.llm.base_url = ensure_server(
-            state.config.llm.model,
-            extra_dir=getattr(state.config.llm, "llamacpp_dir", "") or "",
-            host=getattr(state.config.llm, "llamacpp_host", "127.0.0.1") or "127.0.0.1",
-            port=int(getattr(state.config.llm, "llamacpp_port", 8080) or 8080),
-            ctx=int(getattr(state.config.llm, "llamacpp_ctx", 8192) or 8192),
-            threads=int(getattr(state.config.llm, "llamacpp_threads", 0) or 0),
-            allow_partial_offload=bool(
-                getattr(state.config.llm, "llamacpp_allow_partial_offload", False)
-            ),
-        )
+        state.config.llm.base_url = state.llm.start_local_server(
+            local_server_settings(state.config.llm)).base_url
         logger.info("llama-server 已就緒: %s", state.config.llm.base_url)
     except Exception:
         # The console must stay reachable to change the model or free VRAM.
@@ -168,12 +159,12 @@ def main():
         state.config.stage.background_id = ""
     edge_tts_prewarm = _start_edge_tts_prewarm(state.config)
 
-    # The llama.cpp child belongs to this backend when ensure_server starts it;
-    # register termination cleanup before model loading so even Ctrl-C during
-    # startup cannot leave the GPU process behind.
-    from src.llm.llamacpp import install_shutdown_handlers
+    # The llama.cpp child belongs to this backend when the LLM service starts
+    # it; the service registers termination cleanup before model loading so
+    # even Ctrl-C during startup cannot leave the GPU process behind.
+    from src.llm.adapter import create_llm_service
 
-    install_shutdown_handlers()
+    state.llm = create_llm_service()
     
     # 載入自定義影片配置
     state.config.customopt = []
@@ -203,11 +194,13 @@ def main():
     enabled = state.config.app.prewarm
     llm_ready = speech_ready = None
     if enabled:
-        from src.llm.prewarm import prewarm_local_llm
+        from nova_contracts.llm import PrewarmRequest
+        from src.llm.config_section import llm_settings, reply_rules
         from src.server.speech_prewarm import prewarm_speech_input
 
         if state.config.llm.provider == "llamacpp":
-            llm_ready = prewarm_local_llm(state.config)
+            llm_ready = state.llm.prewarm(PrewarmRequest(
+                settings=llm_settings(state.config), rules=reply_rules(state.config))).ready
         if state.config.vad.enabled:
             speech_ready = prewarm_speech_input(state.config, state.stt)
     edge_ready = _await_edge_tts_prewarm(edge_tts_prewarm)

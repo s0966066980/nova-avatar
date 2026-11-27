@@ -12,13 +12,14 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient, TestServer
 
 from src.config.schema import Config
-from src.llm import service
+from src.llm.adapter import InProcessLlmService
 from src.llm.context_usage import measure_request, ContextCapacityError
 from src.llm.engines.openai import OpenAILLM
 from src.llm.history import TransactionalHistory
 from src.server import conversations
 from src.server.state import state
 from src.server.voice_session import VoiceTurnSession
+from tests.llm_fakes import FakeLlm, ask
 from tests.speech_fakes import spoken_answer
 
 
@@ -28,15 +29,17 @@ def env(monkeypatch):
     config.stage.idle_reset_seconds = 0
     monkeypatch.setattr(state, 'config', config)
     monkeypatch.setattr(state, 'voice_sessions', {})
-    monkeypatch.setattr(service, '_session_llm_instances', {})
     monkeypatch.setattr(conversations, 'warm_voice', AsyncMock())
+    monkeypatch.setattr('src.llm.adapter._ensure_local_server', lambda _config: None)
+    service = InProcessLlmService()
     def create(number):
         avatar = SimpleNamespace(config=deepcopy(config), flush_talk=Mock())
-        session = VoiceTurnSession(number, config, avatar, presenter='stage')
+        session = VoiceTurnSession(number, config, avatar, presenter='stage', llm=service)
         state.voice_sessions[number] = session
         llm = OpenAILLM(config=avatar.config, api_key='test')
-        service._session_llm_instances[number] = llm
+        service._sessions._instances[number] = llm
         return session, llm
+    create.service = service
     return config, create
 
 
@@ -319,7 +322,6 @@ def test_behavior_save_preserves_existing_english_session_and_updates_new_conver
 
     config, create = env
     monkeypatch.setattr('src.server.runtime_settings.persist_runtime_overrides', Mock())
-    monkeypatch.setattr(service, '_ensure_llamacpp_if_needed', Mock())
     session, engine = create(1)
     conversations.configure_avatar(session.avatar, {**session._conversation, 'locale':'en-US'})
     session.avatar.sessionid = 1
@@ -333,14 +335,14 @@ def test_behavior_save_preserves_existing_english_session_and_updates_new_conver
     profile.update(assistant_name='Museum guide', system_prompt='你是博物館導覽員。',
                    restriction_prompt='不得提供模型開發者資訊。')
     rules = {**default_rules(), 'speech':'口語必須先說 Museum guide。'}
-    apply_llm_behavior(config, profile, rules, expected_revision=1)
-    service.llm_response('Introduce yourself.', session.avatar)
+    apply_llm_behavior(config, profile, rules, expected_revision=1, llm=create.service)
+    ask(create.service, session.avatar, 'Introduce yourself.')
     assert '不得提供模型開發者資訊。' not in prompts[0]
     assert '口語必須先說 Museum guide。' not in prompts[0]
     new_session, new_engine = create(2)
     new_session.avatar.sessionid = 2
     monkeypatch.setattr(new_engine, 'chat_stream', stream)
-    service.llm_response('Introduce yourself.', new_session.avatar)
+    ask(create.service, new_session.avatar, 'Introduce yourself.')
     assert '不得提供模型開發者資訊。' in prompts[1]
     assert 'Museum guide' in prompts[1]
     assert '口語必須先說 Museum guide。' in prompts[1]
@@ -501,24 +503,25 @@ def test_prohibited_model_requests_do_not_call_the_model_or_expose_boards(monkey
 
 def test_the_console_published_role_is_handed_to_the_llm_layer_by_the_core(monkeypatch):
     # The LLM layer never reads the core's global state: the role comes from the
-    # published configuration the caller passes in, even with no global config at all.
+    # published configuration the core sends, even with no global config at all.
     monkeypatch.setattr(state, 'config', None)
+    monkeypatch.setattr('src.llm.adapter._ensure_local_server', lambda _config: None)
     published = Config()
     published.llm.assistant_profile.system_prompt = 'Published museum role.'
     avatar_config = Config()
     avatar_config.llm.assistant_profile.system_prompt = 'Stale copied role.'
     avatar = SimpleNamespace(config=avatar_config, sessionid=7)
-    llm = SimpleNamespace(generate_response=Mock(return_value='ok'))
-    monkeypatch.setattr(service, '_session_llm_instances', {7: llm})
-    monkeypatch.setattr(service, '_ensure_llamacpp_if_needed', lambda _config: None)
-    service.llm_response('Hello', avatar, published_config=published)
-    assert llm.config.llm.assistant_profile.system_prompt == 'Published museum role.'
-    assert 'Published museum role.' in llm.system_prompt
+    service = InProcessLlmService()
+    engine = OpenAILLM(config=avatar_config, api_key='test')
+    monkeypatch.setattr(engine, 'chat_stream', lambda *a, **k: iter(['ok']))
+    service._sessions._instances[7] = engine
+    ask(service, avatar, 'Hello', published=published)
+    assert engine.config.llm.assistant_profile.system_prompt == 'Published museum role.'
+    assert 'Published museum role.' in engine.system_prompt
     # Without an avatar configuration the published one is used, never mutated in place.
-    service.llm_response('Hello', SimpleNamespace(config=None, sessionid=7),
-                         published_config=published)
-    assert llm.config.llm.assistant_profile.system_prompt == 'Published museum role.'
-    assert llm.config is not published
+    ask(service, SimpleNamespace(config=None, sessionid=7), 'Hello', published=published)
+    assert engine.config.llm.assistant_profile.system_prompt == 'Published museum role.'
+    assert engine.config is not published
 
 
 def test_role_and_rules_remain_frozen_across_turns_of_the_same_conversation(env, monkeypatch):
@@ -534,22 +537,22 @@ def test_role_and_rules_remain_frozen_across_turns_of_the_same_conversation(env,
     session.avatar._assistant_profile_snapshot = session._assistant_profile_snapshot
     session.avatar._reply_rules_snapshot = session._rules_snapshot
     monkeypatch.setattr('src.server.runtime_settings.persist_runtime_overrides', Mock())
-    monkeypatch.setattr(service, '_ensure_llamacpp_if_needed', Mock())
     profile = asdict(config.llm.assistant_profile)
     profile.update(system_prompt='New museum role.', restriction_prompt='New restriction.')
-    apply_llm_behavior(config, profile, {**default_rules(), 'speech':'New speech rule.'}, expected_revision=1)
+    apply_llm_behavior(config, profile, {**default_rules(), 'speech':'New speech rule.'}, expected_revision=1,
+                       llm=create.service)
     prompts = []
     def stream(*args, **kwargs):
         prompts.append(kwargs['system_prompt'])
         yield 'The museum is open.'
     monkeypatch.setattr(engine, 'chat_stream', stream)
-    service.llm_response('Hello', session.avatar)
+    ask(create.service, session.avatar, 'Hello')
     assert 'Original museum role.' in prompts[0] and 'Original restriction.' in prompts[0]
     assert 'New museum role.' not in prompts[0] and 'New speech rule.' not in prompts[0]
     session._start_turn_context('next')
     session.avatar._assistant_profile_snapshot = session._assistant_profile_snapshot
     session.avatar._reply_rules_snapshot = session._rules_snapshot
-    service.llm_response('Hello again', session.avatar)
+    ask(create.service, session.avatar, 'Hello again')
     assert 'Original museum role.' in prompts[1] and 'Original restriction.' in prompts[1]
     assert 'New museum role.' not in prompts[1] and 'New speech rule.' not in prompts[1]
     session._voice_executor.shutdown(wait=False)

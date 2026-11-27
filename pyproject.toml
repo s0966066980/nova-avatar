@@ -228,28 +228,6 @@ forbidden_modules = [
     "src.vad",
 ]
 
-# Handoff decisions, the weather tool and AI greetings belong to the LLM layer
-# (ADR 0027). The core calls src.llm.handoff, src.llm.tools and
-# src.llm.greeting, never the llama.cpp protocol or the tools' own modules.
-[[tool.importlinter.contracts]]
-id = "core-uses-llm-entry-points"
-name = "The core reaches handoff, weather and greetings only through LLM entry points"
-type = "forbidden"
-allow_indirect_imports = true
-source_modules = [
-    "src.server",
-    "src.profiles",
-    "src.config",
-    "src.greetings",
-    "src.vad",
-    "src.utils",
-]
-forbidden_modules = [
-    "src.llm.llamacpp_protocol",
-    "src.llm.tools.weather",
-    "src.llm.tools.weather_keywords",
-]
-
 # Converted layers (ticket 07): the core reaches the layer only through
 # src.<layer>.adapter (its in-process service) and src.<layer>.config_section.
 # One block per layer, id "<layer>-internals-private"; protected_modules lists
@@ -267,7 +245,42 @@ protected_modules = [
 ]
 allowed_importers = ["src.asr"]
 
-# llm-internals-private: ticket 07 step 2 (LLM) replaces this line with its block.
+[[tool.importlinter.contracts]]
+id = "llm-internals-private"
+name = "Only the LLM layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "src.llm.base",
+    "src.llm.context_usage",
+    "src.llm.endpoints",
+    "src.llm.engines",
+    "src.llm.factory",
+    "src.llm.greeting",
+    "src.llm.handoff",
+    "src.llm.history",
+    "src.llm.identity_policy",
+    "src.llm.llamacpp",
+    "src.llm.llamacpp_protocol",
+    "src.llm.prewarm",
+    "src.llm.prompts",
+    "src.llm.reply_contract",
+    "src.llm.reply_events",
+    "src.llm.request_context",
+    "src.llm.response_protocol",
+    "src.llm.router",
+    "src.llm.rules",
+    "src.llm.service",
+    "src.llm.text_normalizer",
+    "src.llm.tools",
+    "src.llm.web_reply",
+    "src.ragflow.client",
+    "src.ragflow.selection",
+    "src.web_search.ddgs_adapter",
+    "src.web_search.planner",
+    "src.web_search.service",
+    "src.web_search.synthesis",
+]
+allowed_importers = ["src.llm", "src.ragflow", "src.web_search"]
 
 
 # tts-internals-private: ticket 07 step 2 (TTS) replaces this line with its block.

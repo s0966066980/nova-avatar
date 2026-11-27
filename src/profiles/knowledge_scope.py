@@ -1,7 +1,12 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Non-secret RAGFlow choices, stored independently for each avatar."""
+"""What each avatar or role may draw on: knowledge bases and public web domains.
+
+These choices are profile data the core keeps (ADR 0027); the LLM layer only
+receives the chosen dataset ids and allowed domains with each request.
+Non-secret RAGFlow choices are stored independently for each avatar.
+"""
 from __future__ import annotations
 
 import os
@@ -99,3 +104,61 @@ def save_avatar_settings(avatar_id: str, *, enabled: Any, dataset_ids: Any) -> d
                     pass
             raise
     return {"enabled": enabled, "dataset_ids": list(dataset_ids)}
+
+
+def ragflow_id(value):
+    if not isinstance(value, str) or not _DATASET_ID.fullmatch(value):
+        raise ValueError("知識庫或文件識別碼不正確")
+    return value
+
+
+def validate_selection(value):
+    """A role's explicit dataset and document retrieval scope."""
+    if not isinstance(value, dict) or set(value) - {
+        "enabled", "dataset_ids", "document_scope", "document_ids"
+    }:
+        raise ValueError("知識範圍含未知欄位或格式不正確")
+    enabled = value.get("enabled")
+    if not isinstance(enabled, bool):
+        raise ValueError("檢索啟用狀態必須是布林值")
+    datasets = value.get("dataset_ids")
+    documents = value.get("document_ids", [])
+    for ids, limit in ((datasets, 8), (documents, 200)):
+        if not isinstance(ids, list) or len(ids) > limit:
+            raise ValueError("知識庫最多 8 個、指定文件最多 200 份")
+        for item in ids:
+            ragflow_id(item)
+        if len(set(ids)) != len(ids):
+            raise ValueError("知識庫或文件不可重複選擇")
+    scope = value.get("document_scope", "selected" if documents else "all")
+    if not isinstance(scope, str) or scope not in {"all", "selected"}:
+        raise ValueError("請選擇全部文件或指定文件")
+    if enabled and not datasets:
+        raise ValueError("啟用檢索前請選擇知識庫")
+    if enabled and scope == "selected" and not documents:
+        raise ValueError("指定文件模式至少需選擇一份文本")
+    if documents and not datasets:
+        raise ValueError("指定文件前請選擇所屬知識庫")
+    return {"enabled": enabled, "dataset_ids": list(datasets),
+            "document_scope": scope, "document_ids": list(documents) if scope == "selected" else []}
+
+
+def web_access(value=None):
+    """A role's public web access policy, independent of composition tools."""
+    value = {} if value is None else value
+    if not isinstance(value, dict) or set(value) - {'enabled', 'allowed_domains'}:
+        raise ValueError('網頁搜尋設定不正確')
+    enabled = value.get('enabled', False)
+    domains = value.get('allowed_domains', [])
+    if not isinstance(enabled, bool) or not isinstance(domains, list) or len(domains) > 30:
+        raise ValueError('網頁搜尋開關或網域清單不正確')
+    normalized = []
+    for domain in domains:
+        if not isinstance(domain, str):
+            raise ValueError('請填寫網域名稱，不含網址或路徑')
+        domain = domain.strip().lower()
+        if len(domain) > 253 or not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}', domain):
+            raise ValueError('請填寫公開網域名稱，例如 gov.tw，不含網址或路徑')
+        if domain not in normalized:
+            normalized.append(domain)
+    return {'enabled': enabled, 'allowed_domains': normalized}

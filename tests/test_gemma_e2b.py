@@ -15,6 +15,7 @@ from src.llm.engines.openai import OpenAILLM
 from src.llm.prompts import compose_system_prompt
 from src.llm.router import ReplyMode
 from src.profiles.routing import route_question
+from tests.llm_fakes import FakeLlm
 from src.profiles.store import ProfileStore
 
 E2B = "gemma-4-E2B_q4_0-it"
@@ -87,7 +88,7 @@ def _routing(raw, *, provider="llamacpp", model=E2B):
             pass
 
     routed = route_question(config, library, "main", "介紹你們的服務", [], {},
-                            client_factory=Client)
+                            llm=FakeLlm(routing_client_factory=Client))
     return routed, create.call_args.kwargs
 
 

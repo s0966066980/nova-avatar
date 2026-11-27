@@ -13,10 +13,11 @@ from src.greetings.content import GreetingError, prepare_greeting
 
 
 class IdleGreetingController:
-    def __init__(self, host, *, clock=time.monotonic, prepare=prepare_greeting):
+    def __init__(self, host, *, clock=time.monotonic, prepare=None):
         self.host = host
         self.clock = clock
-        self.prepare = prepare
+        # An AI greeting is the LLM service's; scripted ones need none.
+        self.prepare = prepare or self._prepare_with_service
         self.deadline = None
         self.signature = None
         self.task = None
@@ -25,6 +26,9 @@ class IdleGreetingController:
         self.status = "paused"
         self.error = ""
         self._closed = False
+
+    async def _prepare_with_service(self, config, *, previous=""):
+        return await prepare_greeting(config, llm=self.host._llm, previous=previous)
 
     def report(self, status, error=""):
         if (status, error) != (self.status, self.error):

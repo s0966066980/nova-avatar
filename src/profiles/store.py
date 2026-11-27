@@ -18,16 +18,15 @@ import yaml
 
 from src.config.schema import AssistantProfileConfig, ReplyRulesConfig, TTSConfig, GreetingConfig
 from src.greetings.content import validate_content
-from src.llm.endpoints import (EndpointError, active_endpoint_name, apply_endpoint,
-                               configured_endpoints, endpoint_for_url)
-from src.llm.rules import rules_from_config, validate_rules
+from src.llm.config_section import (EndpointError, active_endpoint_name, apply_endpoint,
+                                    configured_endpoints, endpoint_for_url, rules_from_config,
+                                    validate_rules)
 from src.profiles.composition import (
     HANDOFF_FIELDS, bump_revisions, canonical, incompatibility, new_member, profile_ids, validate_composition,
 )
 from src.profiles.validation import ProfileError
 from src.profiles.validation import identifier as _identifier, obj as _object, revision as _revision, text as _text
-from src.ragflow.settings import avatar_settings
-from src.ragflow.selection import validate_selection
+from src.profiles.knowledge_scope import avatar_settings, validate_selection, web_access
 from src.tts.voice_library import (
     REFERENCE_AUDIO_ENGINES, TTS_ENGINES, VOICE_MODEL_ENGINES, VoiceLibraryError, check_model, check_reference,
     check_tts_server, check_voice_model_installed,
@@ -115,8 +114,7 @@ def profile_config(base, profile: dict):
     result.tts = TTSConfig(**profile["tts"])
     result.greeting = GreetingConfig(**validate_content(profile.get("greeting")))
     result.profile_rag = deepcopy(profile["rag"])
-    from src.web_search.settings import settings
-    result.profile_web_search = settings(profile.get("web_search"))
+    result.profile_web_search = web_access(profile.get("web_search"))
     return result
 
 
@@ -198,8 +196,7 @@ def validate_profile(value: dict, endpoints=None, *, require_endpoint=False, req
         raise ProfileError(str(exc)) from exc
     try:
         greeting = validate_content(value.get("greeting"))
-        from src.web_search.settings import settings
-        web_search = settings(value.get("web_search"))
+        web_search = web_access(value.get("web_search"))
     except ValueError as exc:
         raise ProfileError(str(exc)) from exc
     return {"id": pid, "name": name, "engine": engine, "avatar_id": avatar_id,

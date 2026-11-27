@@ -11,6 +11,7 @@ from src.llm.base import BaseLLM, response_token_budget
 from src.llm.router import ReplyMode
 from src.llm.engines.openai import OpenAILLM
 from src.llm.prewarm import prewarm_local_llm
+from tests.llm_fakes import FakeLlm
 from tests.speech_fakes import spoken_answer
 
 
@@ -84,7 +85,7 @@ def test_listening_preparation_warms_stt_inference_once_without_a_turn():
         SttEngineSettings(engine='whisper', model_size='base', device='cpu'),
         create_engine=lambda _settings: Recognizer())
     avatar = FakeAvatar()
-    session = VoiceTurnSession(7, config, avatar, stt=stt)
+    session = VoiceTurnSession(7, config, avatar, stt=stt, llm=FakeLlm())
     with patch('src.server.voice_session.create_segmenter', return_value=MagicMock()):
         session._prepare_sync()
         session._prepare_sync()

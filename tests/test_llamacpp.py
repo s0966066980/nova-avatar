@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.llm.adapter import InProcessLlmService
 from src.llm.llamacpp import (
     ALL_GPU_LAYERS,
     build_server_env,
@@ -382,16 +383,17 @@ class StartupOrderTests(unittest.TestCase):
             calls.append(("avatar", None))
             return object(), object()
 
-        previous = (state.config, state.model, state.avatar, state.model_ready)
+        previous = (state.config, state.model, state.avatar, state.model_ready, state.llm)
         try:
             state.config = config
+            state.llm = InProcessLlmService()
             with patch("src.llm.llamacpp.ensure_server", side_effect=ensure), \
                     patch.object(app, "prepare_avatar_model", side_effect=prepare), \
                     patch("src.avatars.catalog.avatar_bootable", return_value=(True, "")):
                 app._load_startup_models()
             return calls, state.model_ready
         finally:
-            state.config, state.model, state.avatar, state.model_ready = previous
+            state.config, state.model, state.avatar, state.model_ready, state.llm = previous
 
     def test_llama_server_starts_before_the_avatar_model(self):
         calls, model_ready = self._run_startup(lambda *a, **k: "http://127.0.0.1:8080/v1")

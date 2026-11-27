@@ -2,16 +2,8 @@
 # Licensed under the Apache License, Version 2.0.
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
-"""LLM 大語言模型模組"""
+"""LLM 大語言模型模組
 
-from src.llm.base import BaseLLM
-from src.llm.factory import create_llm_engine
-from src.llm.service import llm_response
-from src.llm.engines import OpenAILLM
-
-__all__ = [
-    "BaseLLM",
-    "create_llm_engine",
-    "llm_response",
-    "OpenAILLM",
-]
+The core uses ``src.llm.adapter`` (the in-process ``LlmService``) and
+``src.llm.config_section``; every other module here is internal.
+"""

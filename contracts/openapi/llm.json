@@ -1,0 +1,3587 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Nova Avatar LLM service",
+    "description": "Loopback answer model. The reply streams server-sent events; the core cancels a reply by closing its connection.",
+    "version": "1"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Contract version and readiness",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceHealth"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/engine": {
+      "put": {
+        "operationId": "apply_engine",
+        "summary": "Load an engine, then switch to it; the current one stays on failure",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmEngineSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmEngineSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reply": {
+      "post": {
+        "operationId": "reply",
+        "summary": "Stream one answer's events",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "description": "One ReplyEvent per message, reply_started first and reply_done last",
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyEvent"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fragments/review": {
+      "post": {
+        "operationId": "review_fragment",
+        "summary": "Review one playable fragment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FragmentReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FragmentVerdict"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/turns": {
+      "post": {
+        "operationId": "begin_turn",
+        "summary": "Open a fixed reply's history turn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpokenTurn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/turns/commit": {
+      "post": {
+        "operationId": "commit_turn",
+        "summary": "Commit what was played",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnCommit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Outcome"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/turns/discard": {
+      "post": {
+        "operationId": "discard_turn",
+        "summary": "Drop an unplayed answer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnRef"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Outcome"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/greeting": {
+      "put": {
+        "operationId": "remember_greeting",
+        "summary": "Remember the played greeting",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GreetingReceipt"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/board/receipts": {
+      "post": {
+        "operationId": "acknowledge_board_item",
+        "summary": "Record a rendered board item",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoardReceipt"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Outcome"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/clear": {
+      "post": {
+        "operationId": "clear_history",
+        "summary": "Forget a conversation's content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRef"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions": {
+      "delete": {
+        "operationId": "remove_session",
+        "summary": "Forget a conversation",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/profile": {
+      "put": {
+        "operationId": "select_profile",
+        "summary": "Select the answering role",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionProfile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/history": {
+      "get": {
+        "operationId": "session_history",
+        "summary": "One role's committed messages",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionHistory"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/memory": {
+      "get": {
+        "operationId": "session_memory",
+        "summary": "Retention and context usage",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionMemory"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/history-limit": {
+      "put": {
+        "operationId": "set_history_limit",
+        "summary": "Retained messages",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoryLimit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions/records": {
+      "get": {
+        "operationId": "has_session_records",
+        "summary": "Anything remembered",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRecords"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/handoff": {
+      "post": {
+        "operationId": "route_handoff",
+        "summary": "Decide which role answers",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffDecision"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/greeting": {
+      "post": {
+        "operationId": "generate_greeting",
+        "summary": "Write one AI greeting",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GreetingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Greeting"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/weather": {
+      "get": {
+        "operationId": "weather_tool",
+        "summary": "Weather tool readiness",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherTool"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "query_weather",
+        "summary": "CWA facts for an accepted place",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeatherQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherReport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ragflow": {
+      "get": {
+        "operationId": "ragflow_status",
+        "summary": "RAGFlow configuration",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RagFlowStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ragflow/datasets": {
+      "get": {
+        "operationId": "list_ragflow_datasets",
+        "summary": "Knowledge bases",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RagFlowDatasets"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ragflow/documents": {
+      "get": {
+        "operationId": "list_ragflow_documents",
+        "summary": "A dataset's documents",
+        "parameters": [
+          {
+            "name": "dataset_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RagFlowDocuments"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ragflow/retrieval": {
+      "post": {
+        "operationId": "retrieve",
+        "summary": "Retrieve knowledge for a question",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetrievalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Retrieval"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/plan": {
+      "post": {
+        "operationId": "plan_web_search",
+        "summary": "Decide whether to search the web",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebSearchPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSearchPlan"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/search": {
+      "post": {
+        "operationId": "search_web",
+        "summary": "Search public web pages",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebSearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSearchResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/web/summary": {
+      "post": {
+        "operationId": "summarize_web",
+        "summary": "Select verified quotes",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebSummaryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-server": {
+      "post": {
+        "operationId": "start_local_server",
+        "summary": "Start the owned llama-server",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalServerSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalServer"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "stop_local_server",
+        "summary": "Stop the owned llama-server",
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "local_server_status",
+        "summary": "Probe a llama-server",
+        "parameters": [
+          {
+            "name": "host",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "127.0.0.1",
+              "title": "Host",
+              "type": "string"
+            }
+          },
+          {
+            "name": "port",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 8080,
+              "title": "Port",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalServerStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-server/offload": {
+      "get": {
+        "operationId": "local_server_offload",
+        "summary": "GPU offload of the owned server",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GpuOffload"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/local-server/models": {
+      "get": {
+        "operationId": "list_local_models",
+        "summary": "GGUF models",
+        "parameters": [
+          {
+            "name": "models_dir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Models Dir",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalModels"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/prewarm": {
+      "post": {
+        "operationId": "prewarm",
+        "summary": "Prefill the local prompt",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrewarmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrewarmResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/context-capacity": {
+      "get": {
+        "operationId": "context_capacity",
+        "summary": "Deployed context size",
+        "parameters": [
+          {
+            "name": "base_url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Base Url",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextCapacity"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/close": {
+      "post": {
+        "operationId": "close_connections",
+        "summary": "Release pooled clients",
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AssistantProfile": {
+        "additionalProperties": false,
+        "description": "The console's assistant identity and output preferences.",
+        "properties": {
+          "assistant_name": {
+            "default": "",
+            "title": "Assistant Name",
+            "type": "string"
+          },
+          "system_prompt": {
+            "default": "",
+            "title": "System Prompt",
+            "type": "string"
+          },
+          "restriction_prompt": {
+            "default": "",
+            "title": "Restriction Prompt",
+            "type": "string"
+          },
+          "output_locale": {
+            "default": "zh-TW",
+            "title": "Output Locale",
+            "type": "string"
+          },
+          "enforce_output_locale": {
+            "default": true,
+            "title": "Enforce Output Locale",
+            "type": "boolean"
+          },
+          "forbidden_self_names": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden Self Names",
+            "type": "array"
+          }
+        },
+        "title": "AssistantProfile",
+        "type": "object"
+      },
+      "Board": {
+        "additionalProperties": false,
+        "description": "The complete board; the layer remembers it once a presenter shows an item.",
+        "properties": {
+          "type": {
+            "const": "board",
+            "default": "board",
+            "title": "Type",
+            "type": "string"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Summary"
+          },
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BoardEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "incremental": {
+            "default": false,
+            "title": "Incremental",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "turn_id",
+          "title"
+        ],
+        "title": "Board",
+        "type": "object"
+      },
+      "BoardEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subtitle"
+          },
+          "badge": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Badge"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ],
+        "title": "BoardEntry",
+        "type": "object"
+      },
+      "BoardItemShown": {
+        "additionalProperties": false,
+        "description": "One incrementally parsed board item.",
+        "properties": {
+          "type": {
+            "const": "board_item",
+            "default": "board_item",
+            "title": "Type",
+            "type": "string"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "turn_id",
+          "index",
+          "title",
+          "body"
+        ],
+        "title": "BoardItemShown",
+        "type": "object"
+      },
+      "BoardReceipt": {
+        "additionalProperties": false,
+        "description": "A presenter rendered one board item; only shown items become context.",
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "board_id": {
+            "title": "Board Id",
+            "type": "string"
+          },
+          "item_index": {
+            "title": "Item Index",
+            "type": "integer"
+          },
+          "presenter": {
+            "title": "Presenter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "turn_id",
+          "board_id",
+          "item_index",
+          "presenter"
+        ],
+        "title": "BoardReceipt",
+        "type": "object"
+      },
+      "BoardStart": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "board_start",
+            "default": "board_start",
+            "title": "Type",
+            "type": "string"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "turn_id",
+          "title"
+        ],
+        "title": "BoardStart",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
+      "ContextCapacity": {
+        "additionalProperties": false,
+        "properties": {
+          "capacity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Capacity"
+          }
+        },
+        "title": "ContextCapacity",
+        "type": "object"
+      },
+      "ContextCapacityQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "base_url"
+        ],
+        "title": "ContextCapacityQuery",
+        "type": "object"
+      },
+      "DocumentsQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "page": {
+            "default": 1,
+            "title": "Page",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset_id"
+        ],
+        "title": "DocumentsQuery",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "additionalProperties": false,
+        "description": "The JSON body of every non-2xx response; ``detail`` is shown to operators.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "FragmentReviewContext": {
+        "additionalProperties": false,
+        "description": "What the layer needs to review one answer's fragments; the core echoes it back.",
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/AssistantProfile"
+          },
+          "model": {
+            "default": "",
+            "title": "Model",
+            "type": "string"
+          },
+          "question": {
+            "default": "",
+            "title": "Question",
+            "type": "string"
+          },
+          "web_max_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Web Max Chars"
+          }
+        },
+        "required": [
+          "profile"
+        ],
+        "title": "FragmentReviewContext",
+        "type": "object"
+      },
+      "FragmentReviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/FragmentReviewContext"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "fragment": {
+            "title": "Fragment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "context",
+          "fragment"
+        ],
+        "title": "FragmentReviewRequest",
+        "type": "object"
+      },
+      "FragmentVerdict": {
+        "additionalProperties": false,
+        "properties": {
+          "fragment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewedFragment"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "state": {
+            "$ref": "#/components/schemas/ReviewState"
+          },
+          "answer": {
+            "default": "",
+            "title": "Answer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "FragmentVerdict",
+        "type": "object"
+      },
+      "GpuOffload": {
+        "additionalProperties": false,
+        "description": "Whether the owned llama-server runs every layer on the GPU; ``known`` false before one ran.",
+        "properties": {
+          "known": {
+            "title": "Known",
+            "type": "boolean"
+          },
+          "full": {
+            "default": false,
+            "title": "Full",
+            "type": "boolean"
+          },
+          "gpu_layers": {
+            "default": 0,
+            "title": "Gpu Layers",
+            "type": "integer"
+          },
+          "total_layers": {
+            "default": 0,
+            "title": "Total Layers",
+            "type": "integer"
+          },
+          "error": {
+            "default": "",
+            "title": "Error",
+            "type": "string"
+          }
+        },
+        "required": [
+          "known"
+        ],
+        "title": "GpuOffload",
+        "type": "object"
+      },
+      "Greeting": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "Greeting",
+        "type": "object"
+      },
+      "GreetingReceipt": {
+        "additionalProperties": false,
+        "description": "The greeting actually played; a later question may refer to it.",
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "profile_id": {
+            "default": "",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "text"
+        ],
+        "title": "GreetingReceipt",
+        "type": "object"
+      },
+      "GreetingRequest": {
+        "additionalProperties": false,
+        "description": "``POST /greeting``: one history-free AI greeting.",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/LlmSettings"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "min_chars": {
+            "title": "Min Chars",
+            "type": "integer"
+          },
+          "max_chars": {
+            "title": "Max Chars",
+            "type": "integer"
+          },
+          "timeout_seconds": {
+            "default": 15.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "settings",
+          "prompt",
+          "min_chars",
+          "max_chars"
+        ],
+        "title": "GreetingRequest",
+        "type": "object"
+      },
+      "HandoffDecision": {
+        "additionalProperties": false,
+        "description": "``target`` is a candidate id, or ``None`` to ask the visitor first.",
+        "properties": {
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target"
+          },
+          "clarification": {
+            "default": "",
+            "title": "Clarification",
+            "type": "string"
+          },
+          "context": {
+            "default": "",
+            "title": "Context",
+            "type": "string"
+          },
+          "county": {
+            "default": "",
+            "title": "County",
+            "type": "string"
+          },
+          "town": {
+            "default": "",
+            "title": "Town",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "title": "Kind",
+            "type": "string"
+          },
+          "start_date": {
+            "default": "",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "end_date": {
+            "default": "",
+            "title": "End Date",
+            "type": "string"
+          },
+          "accepted_at": {
+            "default": "",
+            "title": "Accepted At",
+            "type": "string"
+          },
+          "decided_by": {
+            "default": "",
+            "title": "Decided By",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          }
+        },
+        "title": "HandoffDecision",
+        "type": "object"
+      },
+      "HandoffRequest": {
+        "additionalProperties": false,
+        "description": "``POST /handoff``: which role answers ``question``.",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/LlmSettings"
+          },
+          "locale": {
+            "default": "zh-TW",
+            "title": "Locale",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/RoleCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "current_role": {
+            "title": "Current Role",
+            "type": "string"
+          },
+          "history": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "confirmed": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Confirmed",
+            "type": "object"
+          },
+          "explain": {
+            "default": false,
+            "title": "Explain",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "settings",
+          "question",
+          "candidates",
+          "current_role"
+        ],
+        "title": "HandoffRequest",
+        "type": "object"
+      },
+      "HistoryLimit": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "limit"
+        ],
+        "title": "HistoryLimit",
+        "type": "object"
+      },
+      "LlmEngineSettings": {
+        "additionalProperties": false,
+        "description": "``PUT /engine``: the console switched the published model or persona.\n\nLive conversations that are not snapshots follow it; unset fields keep\ntheir values.",
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "base_url": {
+            "default": "",
+            "title": "Base Url",
+            "type": "string"
+          },
+          "api_key": {
+            "default": "",
+            "title": "Api Key",
+            "type": "string"
+          },
+          "extra_body": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Extra Body"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Tokens"
+          },
+          "response_max_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Response Max Chars"
+          },
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "System Prompt"
+          },
+          "reset_history": {
+            "default": false,
+            "title": "Reset History",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "LlmEngineSettings",
+        "type": "object"
+      },
+      "LlmSession": {
+        "additionalProperties": false,
+        "description": "One conversation as its requests name it; memory is keyed by these ids.",
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "profile_id": {
+            "default": "",
+            "title": "Profile Id",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/LlmSettings"
+          },
+          "history_max_messages": {
+            "default": 20,
+            "title": "History Max Messages",
+            "type": "integer"
+          },
+          "snapshot": {
+            "default": false,
+            "title": "Snapshot",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "session_id",
+          "settings"
+        ],
+        "title": "LlmSession",
+        "type": "object"
+      },
+      "LlmSettings": {
+        "additionalProperties": false,
+        "description": "The answer model one request uses: an allowlisted endpoint and its options.",
+        "properties": {
+          "provider": {
+            "enum": [
+              "llamacpp",
+              "ollama",
+              "openai"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "api_key": {
+            "default": "",
+            "title": "Api Key",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "extra_body": {
+            "additionalProperties": true,
+            "title": "Extra Body",
+            "type": "object"
+          },
+          "response_max_chars": {
+            "default": 120,
+            "title": "Response Max Chars",
+            "type": "integer"
+          },
+          "board_max_items": {
+            "default": 8,
+            "title": "Board Max Items",
+            "type": "integer"
+          },
+          "system_prompt": {
+            "default": "",
+            "title": "System Prompt",
+            "type": "string"
+          },
+          "assistant_profile": {
+            "$ref": "#/components/schemas/AssistantProfile"
+          },
+          "local_server": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocalServerSettings"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "provider",
+          "base_url",
+          "model"
+        ],
+        "title": "LlmSettings",
+        "type": "object"
+      },
+      "LocalModel": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "size_label": {
+            "default": "",
+            "title": "Size Label",
+            "type": "string"
+          },
+          "family": {
+            "default": "gguf",
+            "title": "Family",
+            "type": "string"
+          },
+          "parameter_size": {
+            "default": "",
+            "title": "Parameter Size",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "size"
+        ],
+        "title": "LocalModel",
+        "type": "object"
+      },
+      "LocalModels": {
+        "additionalProperties": false,
+        "properties": {
+          "models": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LocalModel"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "binary": {
+            "default": "",
+            "title": "Binary",
+            "type": "string"
+          }
+        },
+        "title": "LocalModels",
+        "type": "object"
+      },
+      "LocalModelsQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "models_dir": {
+            "default": "",
+            "title": "Models Dir",
+            "type": "string"
+          }
+        },
+        "title": "LocalModelsQuery",
+        "type": "object"
+      },
+      "LocalServer": {
+        "additionalProperties": false,
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "base_url"
+        ],
+        "title": "LocalServer",
+        "type": "object"
+      },
+      "LocalServerQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "host": {
+            "default": "127.0.0.1",
+            "title": "Host",
+            "type": "string"
+          },
+          "port": {
+            "default": 8080,
+            "title": "Port",
+            "type": "integer"
+          }
+        },
+        "title": "LocalServerQuery",
+        "type": "object"
+      },
+      "LocalServerSettings": {
+        "additionalProperties": false,
+        "description": "An owned llama-server: a GGUF name from the model list, served on loopback.",
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "models_dir": {
+            "default": "",
+            "title": "Models Dir",
+            "type": "string"
+          },
+          "host": {
+            "default": "127.0.0.1",
+            "title": "Host",
+            "type": "string"
+          },
+          "port": {
+            "default": 8080,
+            "title": "Port",
+            "type": "integer"
+          },
+          "ctx": {
+            "default": 8192,
+            "title": "Ctx",
+            "type": "integer"
+          },
+          "threads": {
+            "default": 0,
+            "title": "Threads",
+            "type": "integer"
+          },
+          "allow_partial_offload": {
+            "default": false,
+            "title": "Allow Partial Offload",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "LocalServerSettings",
+        "type": "object"
+      },
+      "LocalServerStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "owned": {
+            "default": false,
+            "title": "Owned",
+            "type": "boolean"
+          },
+          "loaded_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Loaded Model"
+          },
+          "base_url": {
+            "default": "",
+            "title": "Base Url",
+            "type": "string"
+          },
+          "binary": {
+            "default": "",
+            "title": "Binary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "running"
+        ],
+        "title": "LocalServerStatus",
+        "type": "object"
+      },
+      "MemoryQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 20,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Id"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "MemoryQuery",
+        "type": "object"
+      },
+      "ModelChunk": {
+        "additionalProperties": false,
+        "description": "The model produced chunk ``llm_sequence``; the core may cancel before it is used.",
+        "properties": {
+          "type": {
+            "const": "model_chunk",
+            "default": "model_chunk",
+            "title": "Type",
+            "type": "string"
+          },
+          "llm_sequence": {
+            "title": "Llm Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "llm_sequence"
+        ],
+        "title": "ModelChunk",
+        "type": "object"
+      },
+      "Outcome": {
+        "additionalProperties": false,
+        "description": "Whether the operation found something to change.",
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "done"
+        ],
+        "title": "Outcome",
+        "type": "object"
+      },
+      "PrewarmRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/LlmSettings"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/ReplyRules"
+          },
+          "timeout_seconds": {
+            "default": 25.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "settings",
+          "rules"
+        ],
+        "title": "PrewarmRequest",
+        "type": "object"
+      },
+      "PrewarmResult": {
+        "additionalProperties": false,
+        "properties": {
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready"
+        ],
+        "title": "PrewarmResult",
+        "type": "object"
+      },
+      "Question": {
+        "additionalProperties": false,
+        "description": "The visitor's question; ``parts`` are this request's OpenAI content parts.\n\nAttachments are sent only with the current request (images as data URLs);\nhistory keeps ``text``.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "parts": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Parts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "Question",
+        "type": "object"
+      },
+      "RagFlowDatasets": {
+        "additionalProperties": false,
+        "properties": {
+          "datasets": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Datasets",
+            "type": "array"
+          }
+        },
+        "title": "RagFlowDatasets",
+        "type": "object"
+      },
+      "RagFlowDocuments": {
+        "additionalProperties": false,
+        "description": "One page of a dataset's documents, as RAGFlow's console listing shows it.",
+        "properties": {
+          "page": {
+            "additionalProperties": true,
+            "title": "Page",
+            "type": "object"
+          }
+        },
+        "required": [
+          "page"
+        ],
+        "title": "RagFlowDocuments",
+        "type": "object"
+      },
+      "RagFlowStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "management_url": {
+            "title": "Management Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "management_url"
+        ],
+        "title": "RagFlowStatus",
+        "type": "object"
+      },
+      "ReplyDone": {
+        "additionalProperties": false,
+        "description": "The last event. The core's reviewed speech wins over ``spoken`` when there is any.",
+        "properties": {
+          "type": {
+            "const": "reply_done",
+            "default": "reply_done",
+            "title": "Type",
+            "type": "string"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "string"
+          },
+          "visible": {
+            "title": "Visible",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spoken",
+          "visible"
+        ],
+        "title": "ReplyDone",
+        "type": "object"
+      },
+      "ReplyEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ReplyStarted"
+          },
+          {
+            "$ref": "#/components/schemas/ModelChunk"
+          },
+          {
+            "$ref": "#/components/schemas/SpokenDelta"
+          },
+          {
+            "$ref": "#/components/schemas/SpeechEnd"
+          },
+          {
+            "$ref": "#/components/schemas/ReplyModeChosen"
+          },
+          {
+            "$ref": "#/components/schemas/BoardStart"
+          },
+          {
+            "$ref": "#/components/schemas/BoardItemShown"
+          },
+          {
+            "$ref": "#/components/schemas/Board"
+          },
+          {
+            "$ref": "#/components/schemas/ReplyDone"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "reply_started": "#/components/schemas/ReplyStarted",
+            "model_chunk": "#/components/schemas/ModelChunk",
+            "spoken_delta": "#/components/schemas/SpokenDelta",
+            "speech_end": "#/components/schemas/SpeechEnd",
+            "reply_mode": "#/components/schemas/ReplyModeChosen",
+            "board_start": "#/components/schemas/BoardStart",
+            "board_item": "#/components/schemas/BoardItemShown",
+            "board": "#/components/schemas/Board",
+            "reply_done": "#/components/schemas/ReplyDone"
+          }
+        }
+      },
+      "ReplyModeChosen": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "const": "reply_mode",
+            "default": "reply_mode",
+            "title": "Type",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "simple",
+              "board",
+              "auto"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "ReplyModeChosen",
+        "type": "object"
+      },
+      "ReplyRequest": {
+        "additionalProperties": false,
+        "description": "``POST /reply``: generate one answer.",
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/LlmSession"
+          },
+          "question": {
+            "$ref": "#/components/schemas/Question"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/ReplyRules"
+          },
+          "turn_id": {
+            "default": "",
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "reply_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "simple",
+                  "board",
+                  "auto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reply Mode"
+          },
+          "report_mode": {
+            "default": false,
+            "title": "Report Mode",
+            "type": "boolean"
+          },
+          "report_board": {
+            "default": false,
+            "title": "Report Board",
+            "type": "boolean"
+          },
+          "incremental_board": {
+            "default": false,
+            "title": "Incremental Board",
+            "type": "boolean"
+          },
+          "stream_speech": {
+            "default": false,
+            "title": "Stream Speech",
+            "type": "boolean"
+          },
+          "retrieval": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RetrievedChunk"
+            },
+            "title": "Retrieval",
+            "type": "array"
+          },
+          "role_context": {
+            "default": "",
+            "title": "Role Context",
+            "type": "string"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeatherReport"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "web": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "session",
+          "question",
+          "rules"
+        ],
+        "title": "ReplyRequest",
+        "type": "object"
+      },
+      "ReplyRules": {
+        "additionalProperties": false,
+        "description": "One published version of the editable reply rules; the core validated it.",
+        "properties": {
+          "revision": {
+            "default": 1,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "activation": {
+            "title": "Activation",
+            "type": "string"
+          },
+          "speech": {
+            "title": "Speech",
+            "type": "string"
+          },
+          "board": {
+            "title": "Board",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activation",
+          "speech",
+          "board"
+        ],
+        "title": "ReplyRules",
+        "type": "object"
+      },
+      "ReplyStarted": {
+        "additionalProperties": false,
+        "description": "The first event: the turn's id and how its fragments must be reviewed.",
+        "properties": {
+          "type": {
+            "const": "reply_started",
+            "default": "reply_started",
+            "title": "Type",
+            "type": "string"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "review": {
+            "$ref": "#/components/schemas/FragmentReviewContext"
+          },
+          "bounded": {
+            "default": false,
+            "title": "Bounded",
+            "type": "boolean"
+          },
+          "previews_fragments": {
+            "default": false,
+            "title": "Previews Fragments",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "turn_id",
+          "review"
+        ],
+        "title": "ReplyStarted",
+        "type": "object"
+      },
+      "Retrieval": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "sources": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RetrievedChunk"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Retrieval",
+        "type": "object"
+      },
+      "RetrievalRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "dataset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dataset Ids",
+            "type": "array"
+          },
+          "document_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Document Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question",
+          "dataset_ids"
+        ],
+        "title": "RetrievalRequest",
+        "type": "object"
+      },
+      "RetrievedChunk": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "document_name": {
+            "default": "",
+            "title": "Document Name",
+            "type": "string"
+          },
+          "document_id": {
+            "default": "",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "dataset_id": {
+            "default": "",
+            "title": "Dataset Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "RetrievedChunk",
+        "type": "object"
+      },
+      "ReviewState": {
+        "additionalProperties": false,
+        "description": "One answer's review so far; the core keeps it and sends it with the next fragment.",
+        "properties": {
+          "accepted": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Accepted",
+            "type": "array"
+          },
+          "stopped": {
+            "default": false,
+            "title": "Stopped",
+            "type": "boolean"
+          }
+        },
+        "title": "ReviewState",
+        "type": "object"
+      },
+      "ReviewedFragment": {
+        "additionalProperties": false,
+        "description": "A playable fragment the LLM accepted, with its live-transcript increment.",
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "preview": {
+            "title": "Preview",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "preview"
+        ],
+        "title": "ReviewedFragment",
+        "type": "object"
+      },
+      "RoleCandidate": {
+        "additionalProperties": false,
+        "description": "One role that may answer a turn, as the core's role composition defines it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "main": {
+            "title": "Main",
+            "type": "boolean"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "rules": {
+            "default": "",
+            "title": "Rules",
+            "type": "string"
+          },
+          "weather_site": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Weather Site"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "main"
+        ],
+        "title": "RoleCandidate",
+        "type": "object"
+      },
+      "ServiceHealth": {
+        "additionalProperties": false,
+        "description": "``GET /health`` of a processing-layer service (ADR 0027).",
+        "properties": {
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contract_version",
+          "engine",
+          "ready"
+        ],
+        "title": "ServiceHealth",
+        "type": "object"
+      },
+      "SessionHistory": {
+        "additionalProperties": false,
+        "properties": {
+          "messages": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "title": "SessionHistory",
+        "type": "object"
+      },
+      "SessionMemory": {
+        "additionalProperties": false,
+        "properties": {
+          "retained_messages": {
+            "default": 0,
+            "title": "Retained Messages",
+            "type": "integer"
+          },
+          "max_messages": {
+            "default": 20,
+            "title": "Max Messages",
+            "type": "integer"
+          },
+          "pending_max_messages": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pending Max Messages"
+          },
+          "evicted_messages": {
+            "default": 0,
+            "title": "Evicted Messages",
+            "type": "integer"
+          },
+          "oldest_message": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Oldest Message"
+          },
+          "oldest_message_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Oldest Message Number"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context"
+          }
+        },
+        "title": "SessionMemory",
+        "type": "object"
+      },
+      "SessionProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "profile_id": {
+            "default": "",
+            "title": "Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "SessionProfile",
+        "type": "object"
+      },
+      "SessionRecords": {
+        "additionalProperties": false,
+        "description": "Whether any role of the conversation remembers a message or a board.",
+        "properties": {
+          "present": {
+            "title": "Present",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "present"
+        ],
+        "title": "SessionRecords",
+        "type": "object"
+      },
+      "SessionRef": {
+        "additionalProperties": false,
+        "description": "A conversation, and optionally one role's memory in it.\n\n``profile_id`` ``None`` means the role currently selected (or, for\nclearing, every role); ``\"\"`` is a conversation without roles.",
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Id"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "SessionRef",
+        "type": "object"
+      },
+      "SpeechEnd": {
+        "additionalProperties": false,
+        "description": "The spoken section is complete: a boundary even without punctuation.",
+        "properties": {
+          "type": {
+            "const": "speech_end",
+            "default": "speech_end",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "title": "SpeechEnd",
+        "type": "object"
+      },
+      "SpokenDelta": {
+        "additionalProperties": false,
+        "description": "A spoken-text increment from one model chunk; not a playable fragment.",
+        "properties": {
+          "type": {
+            "const": "spoken_delta",
+            "default": "spoken_delta",
+            "title": "Type",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "llm_sequence": {
+            "title": "Llm Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "llm_sequence"
+        ],
+        "title": "SpokenDelta",
+        "type": "object"
+      },
+      "SpokenTurn": {
+        "additionalProperties": false,
+        "description": "A fixed reply (handoff announcement, failure) enters history when played.",
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/LlmSession"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session",
+          "question",
+          "turn_id"
+        ],
+        "title": "SpokenTurn",
+        "type": "object"
+      },
+      "TurnCommit": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "assistant_text": {
+            "default": "",
+            "title": "Assistant Text",
+            "type": "string"
+          },
+          "terminal_reason": {
+            "title": "Terminal Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "turn_id",
+          "terminal_reason"
+        ],
+        "title": "TurnCommit",
+        "type": "object"
+      },
+      "TurnRef": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "turn_id"
+        ],
+        "title": "TurnRef",
+        "type": "object"
+      },
+      "WeatherQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "county": {
+            "title": "County",
+            "type": "string"
+          },
+          "town": {
+            "default": "",
+            "title": "Town",
+            "type": "string"
+          },
+          "kind": {
+            "default": "forecast",
+            "title": "Kind",
+            "type": "string"
+          },
+          "start_date": {
+            "title": "Start Date",
+            "type": "string"
+          },
+          "end_date": {
+            "title": "End Date",
+            "type": "string"
+          },
+          "as_of": {
+            "default": "",
+            "title": "As Of",
+            "type": "string"
+          }
+        },
+        "required": [
+          "county",
+          "start_date",
+          "end_date"
+        ],
+        "title": "WeatherQuery",
+        "type": "object"
+      },
+      "WeatherReport": {
+        "additionalProperties": false,
+        "description": "CWA facts for one accepted place and date range, as the console shows them.",
+        "properties": {
+          "facts": {
+            "additionalProperties": true,
+            "title": "Facts",
+            "type": "object"
+          }
+        },
+        "required": [
+          "facts"
+        ],
+        "title": "WeatherReport",
+        "type": "object"
+      },
+      "WeatherTool": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "configured"
+        ],
+        "title": "WeatherTool",
+        "type": "object"
+      },
+      "WebEvidence": {
+        "additionalProperties": false,
+        "description": "Public web references this answer must rely on.",
+        "properties": {
+          "result": {
+            "$ref": "#/components/schemas/WebSearchResult"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WebEvidenceSelection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "WebEvidence",
+        "type": "object"
+      },
+      "WebEvidenceSelection": {
+        "additionalProperties": false,
+        "description": "The verified quotes chosen from a search; ``unavailable`` when none could be.",
+        "properties": {
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "items": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WebQuote"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "WebEvidenceSelection",
+        "type": "object"
+      },
+      "WebQuote": {
+        "additionalProperties": false,
+        "properties": {
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "quote"
+        ],
+        "title": "WebQuote",
+        "type": "object"
+      },
+      "WebSearchPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "search": {
+            "title": "Search",
+            "type": "boolean"
+          },
+          "query": {
+            "default": "",
+            "title": "Query",
+            "type": "string"
+          },
+          "reuse": {
+            "default": false,
+            "title": "Reuse",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "search"
+        ],
+        "title": "WebSearchPlan",
+        "type": "object"
+      },
+      "WebSearchPlanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/LlmSettings"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "previous_queries": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Previous Queries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "settings",
+          "question"
+        ],
+        "title": "WebSearchPlanRequest",
+        "type": "object"
+      },
+      "WebSearchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "allowed_domains": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Domains",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "WebSearchRequest",
+        "type": "object"
+      },
+      "WebSearchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "query": {
+            "default": "",
+            "title": "Query",
+            "type": "string"
+          },
+          "sources": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WebSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "fetched_at": {
+            "default": "",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "reused": {
+            "default": false,
+            "title": "Reused",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "WebSearchResult",
+        "type": "object"
+      },
+      "WebSource": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "snippet": {
+            "default": "",
+            "title": "Snippet",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          },
+          "kind": {
+            "default": "snippet",
+            "title": "Kind",
+            "type": "string"
+          },
+          "engine": {
+            "default": "",
+            "title": "Engine",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url"
+        ],
+        "title": "WebSource",
+        "type": "object"
+      },
+      "WebSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "selection": {
+            "$ref": "#/components/schemas/WebEvidenceSelection"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Quote"
+          }
+        },
+        "required": [
+          "selection"
+        ],
+        "title": "WebSummary",
+        "type": "object"
+      },
+      "WebSummaryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/LlmSettings"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/WebSearchResult"
+          },
+          "locale": {
+            "default": "zh-TW",
+            "title": "Locale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "settings",
+          "question",
+          "result"
+        ],
+        "title": "WebSummaryRequest",
+        "type": "object"
+      }
+    }
+  }
+}

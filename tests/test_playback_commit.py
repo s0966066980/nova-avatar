@@ -1,12 +1,15 @@
 import asyncio
 import json
 import unittest
+from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 
 from src.server.voice_session import OUTPUT_STALL_FRAMES, VoiceTurnSession
+from nova_contracts.llm import Outcome, TurnCommit
+from tests.llm_fakes import FakeLlm
 from tests.speech_fakes import spoken_answer
 
 
@@ -37,6 +40,13 @@ class FakeAvatar:
         return False
 
 
+@contextmanager
+def committing(session):
+    """Watch the history commits the session sends to the LLM service."""
+    commit = session._llm.commit_turn = Mock(return_value=Outcome(done=True))
+    yield commit
+
+
 class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
     def make_session(self):
         config = SimpleNamespace(
@@ -45,7 +55,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
             reply_streaming=SimpleNamespace(enabled=True),
         )
         avatar = FakeAvatar()
-        session = VoiceTurnSession(9, config, avatar)
+        session = VoiceTurnSession(9, config, avatar, llm=FakeLlm())
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         session._turn_id = "turn-1"
@@ -98,20 +108,17 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session.on_output_audio_frame(first, True)
 
         with (
-            patch(
-                "src.server.voice_session.commit_session_history",
-                return_value=True,
-            ) as commit,
+            committing(session) as commit,
             patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             await session.interrupt()
 
-        commit.assert_called_once_with(
-            9,
-            "turn-1",
+        commit.assert_called_once_with(TurnCommit(
+            session_id=9,
+            turn_id="turn-1",
             assistant_text="已播放。",
             terminal_reason="interrupt",
-        )
+        ))
         await session.close()
 
     async def test_interrupt_metrics_are_emitted_after_output_stops_and_listening_resumes(self):
@@ -164,7 +171,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session.on_output_audio_frame(first, True)
         session.on_output_audio(True)
 
-        with patch("src.server.voice_session.commit_session_history") as commit:
+        with committing(session) as commit:
             session.on_output_audio(False)
             session.on_output_audio(False)
             session.on_output_audio(False)
@@ -186,18 +193,15 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session._llm_finished = True
         session._silent_output_frames = 49
 
-        with patch(
-            "src.server.voice_session.commit_session_history",
-            return_value=True,
-        ) as commit:
+        with committing(session) as commit:
             session.on_output_audio(False)
 
-        commit.assert_called_once_with(
-            9,
-            "turn-1",
+        commit.assert_called_once_with(TurnCommit(
+            session_id=9,
+            turn_id="turn-1",
             assistant_text="",
             terminal_reason="playback_error_before_commit",
-        )
+        ))
         self.assertEqual(avatar.flush_count, 1)
         error = next(event for event in events if event.get("state") == "error")
         self.assertEqual(error["error"], "playback_error_before_commit")
@@ -216,7 +220,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session._llm_finished = True
         session._silent_output_frames = 49
 
-        with patch("src.server.voice_session.commit_session_history") as commit:
+        with committing(session) as commit:
             session.on_output_audio(False)
 
         commit.assert_not_called()
@@ -239,7 +243,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
             OUTPUT_STALL_FRAMES * 4,
             session._inter_fragment_stall_frames * 2,
         )
-        with patch("src.server.voice_session.commit_session_history") as commit:
+        with committing(session) as commit:
             for _ in range(max_tts_stall):
                 session.on_output_audio(False)
 
@@ -266,19 +270,16 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session.on_output_audio_frame(first, True)
         session.on_output_audio(True)
 
-        with patch(
-            "src.server.voice_session.commit_session_history",
-            return_value=True,
-        ) as commit:
+        with committing(session) as commit:
             avatar.on_fragment_failed(failed, "tts_exhausted_before_audio")
             await asyncio.sleep(0)
 
-        commit.assert_called_once_with(
-            9,
-            "turn-1",
+        commit.assert_called_once_with(TurnCommit(
+            session_id=9,
+            turn_id="turn-1",
             assistant_text="已播放。",
             terminal_reason="tts_error_after_commit",
-        )
+        ))
         self.assertEqual(avatar.flush_count, 1)
         error = next(event for event in events if event.get("state") == "error")
         self.assertEqual(error["error"], "tts_error_after_commit")
@@ -301,10 +302,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         }
         avatar.on_fragment_queued("從未播放", metadata)
 
-        with patch(
-            "src.server.voice_session.commit_session_history",
-            return_value=True,
-        ):
+        with committing(session):
             avatar.on_fragment_failed(metadata, "tts_exhausted_before_audio")
             await asyncio.sleep(0)
 
@@ -322,10 +320,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session.on_output_audio_frame(first, True)
 
         with (
-            patch(
-                "src.server.voice_session.commit_session_history",
-                return_value=True,
-            ),
+            committing(session),
             patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             await session.interrupt()
@@ -337,10 +332,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_history_commit_emits_turn_committed_only_once(self):
         session, _, events = self.make_session()
-        with patch(
-            "src.server.voice_session.commit_session_history",
-            return_value=True,
-        ):
+        with committing(session):
             self.assertTrue(session._commit_history("completed", turn_id="turn-1"))
             self.assertFalse(session._commit_history("completed", turn_id="turn-1"))
 
@@ -364,7 +356,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session.on_output_audio(True)
 
         with (
-            patch("src.server.voice_session.commit_session_history"),
+            committing(session),
             patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             session.on_output_audio(False)
@@ -397,7 +389,7 @@ class PlaybackCommitTests(unittest.IsolatedAsyncioTestCase):
         session.on_output_audio(True)
 
         with (
-            patch("src.server.voice_session.commit_session_history"),
+            committing(session),
             patch("src.server.voice_session.asyncio.sleep", new=AsyncMock()),
         ):
             session.on_output_audio(False)

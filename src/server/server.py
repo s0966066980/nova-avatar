@@ -18,11 +18,9 @@ from aiohttp import web
 from src.utils.logging import logger
 from src.server.state import state
 from src.server import routes
-from src.llm.llamacpp import shutdown_llama_server
 from src.tts.cosyvoice_runtime import shutdown_cosyvoice_server
 from src.scene.service import scene_service
 from src.profiles.coordinator import initialize_roles
-from src.ragflow.client import close_shared_session as close_ragflow_session
 from src.server.routes.profiles import register_profile_routes
 from src.server.access import access_guard, install_access
 from src.utils.paths import WEB_DIR
@@ -85,11 +83,12 @@ async def on_shutdown(app):
             await session.close()
         except Exception:
             logger.exception("關閉語音工作階段失敗")
-    # Turns have ended; release the connections retrieval reused across them.
-    await close_ragflow_session()
+    # Turns have ended; release the connections the LLM layer reused across them.
+    if state.llm is not None:
+        await state.llm.close_connections()
     from src.tts.engines.edge import shutdown_edge_tts
     await asyncio.to_thread(shutdown_edge_tts)
-    shutdown_llama_server()
+    _stop_local_llm()
     shutdown_cosyvoice_server()
     scene_service.close()
 
@@ -270,10 +269,16 @@ def _force_exit(code: int) -> None:
     """
     logger.error("強制結束程序 exit=%s", code)
     try:
-        shutdown_llama_server()
+        _stop_local_llm()
         shutdown_cosyvoice_server()
     finally:
         os._exit(code)
+
+
+def _stop_local_llm() -> None:
+    """Stop the llama-server the LLM service owns; an external one is left alone."""
+    if state.llm is not None:
+        state.llm.stop_local_server()
 
 
 def _install_stop_signals(loop) -> list:
@@ -315,5 +320,5 @@ def _shutdown_loop(loop, runner) -> None:
         task.cancel()
     if pending:
         loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-    shutdown_llama_server()
+    _stop_local_llm()
     loop.close()

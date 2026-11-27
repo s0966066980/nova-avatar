@@ -15,6 +15,7 @@ from src.config.schema import Config
 from src.profiles.store import ProfileStore
 from src.server.state import state
 from tests.access_helpers import access_client, same_origin
+from tests.llm_fakes import FakeLlm
 
 
 def _config():
@@ -42,6 +43,7 @@ def store(tmp_path, monkeypatch):
 @pytest.fixture
 def composition_routes(store, monkeypatch):
     monkeypatch.setattr(state, "config", _config())
+    monkeypatch.setattr(state, "llm", FakeLlm(), raising=False)
     library = store.load()
 
     async def close():

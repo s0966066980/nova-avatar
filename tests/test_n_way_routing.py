@@ -12,6 +12,7 @@ from unittest.mock import Mock
 import pytest
 
 from src.profiles.routing import candidates, route_question, weather_member
+from tests.llm_fakes import FakeLlm
 from src.profiles.store import ProfileError
 from src.llm.tools.weather import TAIPEI
 from tests.role_fakes import async_test, connect, field  # noqa: F401
@@ -31,7 +32,7 @@ def _route(library, current, text, decision, *, history=(), confirmed=None, conf
             pass
 
     routed = route_question(config or _config(), library, current, text, list(history),
-                            confirmed or {}, client_factory=Client)
+                            confirmed or {}, llm=FakeLlm(routing_client_factory=Client))
     return routed, create
 
 

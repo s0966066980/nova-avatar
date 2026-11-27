@@ -17,13 +17,15 @@ from unittest.mock import Mock
 
 import pytest
 
+from nova_contracts.llm import SessionRef, SpokenTurn, TurnCommit
 from src.config.schema import Config
-from src.llm import service
 from src.profiles.composition import new_member
 from src.profiles.coordinator import RoleCoordinator
 from src.profiles.media import RolePresentation
 from src.profiles.store import ProfileStore, profile_config
+from src.server.reply_streaming.llm_reply import conversation_session
 from src.server.voice_session import VoiceTurnSession
+from tests.llm_fakes import FakeLlm
 
 
 class Avatar:
@@ -61,8 +63,6 @@ def route_to(target, **fields):
 
 @pytest.fixture
 def field(tmp_path, monkeypatch):
-    monkeypatch.setattr(service, '_session_llm_instances', {})
-    monkeypatch.setattr(service, '_active_profiles', {})
     monkeypatch.setattr('src.profiles.store.avatar_settings', lambda _: {'enabled': False, 'dataset_ids': []})
     config = Config()
     config.model.type = 'musetalk'
@@ -71,12 +71,13 @@ def field(tmp_path, monkeypatch):
     store = ProfileStore(tmp_path / 'profiles.yaml')
     library = store.initialize(config)
     library['composition']['enabled'] = True
-    state = SimpleNamespace(config=config, voice_sessions={}, avatar_streams={},
-        avatar=object(),
-        count_sessions=lambda kind: sum(v._presenter == kind for v in state.voice_sessions.values()))
     weather = SimpleNamespace(configured=True, query=Mock())
+    state = SimpleNamespace(config=config, voice_sessions={}, avatar_streams={},
+        avatar=object(), llm=FakeLlm(weather=weather),
+        count_sessions=lambda kind: sum(v._presenter == kind for v in state.voice_sessions.values()))
     route = route_to('weather', county='臺北市', town='中正區', kind='forecast', context='已確認臺北市中正區')
-    roles = RoleCoordinator(state, store, library, router=lambda *_: dict(route), weather=weather)
+    roles = RoleCoordinator(state, store, library, router=lambda *_: dict(route))
+    roles.weather = weather
     roles.phase = 'ready'
     roles.assets = {'musetalk_angela': object(), 'musetalk_1': object()}
     return roles
@@ -85,7 +86,7 @@ def field(tmp_path, monkeypatch):
 def connect(roles, sid=7, presenter='console'):
     config = profile_config(roles.state.config, roles.profiles[roles.current_id])
     avatar = Avatar(config, sid)
-    voice = VoiceTurnSession(sid, config, avatar, presenter=presenter)
+    voice = VoiceTurnSession(sid, config, avatar, presenter=presenter, llm=roles.state.llm)
     voice._media_player = SimpleNamespace(discard_stale_media=lambda: None)
     roles.state.voice_sessions[sid] = voice
     roles.state.avatar_streams[sid] = avatar
@@ -93,6 +94,28 @@ def connect(roles, sid=7, presenter='console'):
     events = []
     voice.attach_event_sink(lambda raw: events.append(json.loads(raw)))
     return voice, events
+
+
+def answers(roles, text, *, speak=False):
+    """Script what the shared LLM service answers; returns it to read its requests."""
+    llm = roles.state.llm
+    llm.script, llm.speak = text, speak
+    return llm
+
+
+def session_history(roles, sessionid, profile_id=None):
+    """One role's committed messages as ``{"role", "content"}`` dicts."""
+    return [message.model_dump() for message in roles.state.llm.session_history(
+        SessionRef(session_id=sessionid, profile_id=profile_id)).messages]
+
+
+def remember(roles, voice, question, answer, turn_id):
+    """Commit one earlier question and answer to the role the conversation is talking to."""
+    llm = roles.state.llm
+    llm.begin_turn(SpokenTurn(session=conversation_session(voice.config, voice.config, voice.sessionid),
+                              question=question, turn_id=turn_id))
+    llm.commit_turn(TurnCommit(session_id=voice.sessionid, turn_id=turn_id, assistant_text=answer,
+                               terminal_reason='completed'))
 
 
 async def wait_until(predicate):

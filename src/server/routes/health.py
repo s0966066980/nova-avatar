@@ -12,12 +12,10 @@ from src.server.state import state
 def _llm_full_gpu() -> dict:
     """One boolean for the console warning; layer counts and VRAM holders stay in the log."""
     llm = getattr(state.config, "llm", None) if state.config else None
-    if getattr(llm, "provider", "") != "llamacpp":
+    if getattr(llm, "provider", "") != "llamacpp" or state.llm is None:
         return {}
-    from src.llm.llamacpp import gpu_offload_status
-
-    offload = gpu_offload_status()
-    return {} if offload is None else {"llm_full_gpu": bool(offload.get("full"))}
+    offload = state.llm.local_server_offload()
+    return {"llm_full_gpu": offload.full} if offload.known else {}
 
 
 async def health_check(request):

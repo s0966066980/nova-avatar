@@ -4,11 +4,15 @@
 
 """音訊相關路由"""
 import json
+from uuid import uuid4
+
 from aiohttp import web
 import asyncio
 
+from nova_contracts.llm import ContextCapacityExceeded, Question, ReplyRequest, TurnCommit
 from nova_contracts.stt import TranscriptionOptions
-from src.llm.service import llm_response
+from src.llm.config_section import reply_rules
+from src.server.reply_streaming.llm_reply import conversation_session, stream_reply
 from src.server.reply_streaming.speech import ReplySpeech
 from src.utils.logging import logger
 from src.server.state import state
@@ -97,21 +101,9 @@ async def asr(request):
 
             logger.info(f'[ASR] 識別結果: {text}')
 
-            llm_config = state.config.llm if state.config else None
-            logger.info(f'[ASR] LLM 配置: {llm_config}')
-            llm_text = await asyncio.to_thread(
-                llm_response,
-                text,
-                avatar_stream,
-                llm_config.api_key if llm_config else None,
-                llm_config.base_url if llm_config else "https://dashscope.aliyuncs.com/compatible-mode/v1",
-                llm_config.model if llm_config else "qwen-plus",
-                speech=ReplySpeech(
-                    avatar_stream, {},
-                    settings=getattr(state.config, "reply_streaming", None),
-                ),
-                published_config=state.config,
-            )
+            if state.llm is None:
+                return _json({"code": -1, "msg": "回答模型服務尚未就緒"}, status=503)
+            llm_text = await asyncio.to_thread(_answer, sessionid, avatar_stream, text)
             logger.info(f'[ASR] LLM 回覆: {llm_text}')
             
             avatar_stream.put_msg_txt(llm_text)
@@ -140,3 +132,29 @@ async def asr(request):
                 {"code": -1, "msg": str(e)}
             ),
         )
+
+
+def _answer(sessionid: int, avatar_stream, text: str) -> str:
+    """Answer one recognized question with whole sentences; history keeps what was said."""
+    config = getattr(avatar_stream, "config", None) or state.config
+    published = config if getattr(config, "conversation_snapshot", False) else state.config or config
+    turn_id = uuid4().hex
+    request = ReplyRequest(
+        session=conversation_session(config, published, sessionid),
+        question=Question(text=text),
+        rules=reply_rules(config if getattr(config, "profile_id", "") else published),
+        turn_id=turn_id,
+        stream_speech=True,
+    )
+    speech = ReplySpeech(avatar_stream, {}, settings=getattr(state.config, "reply_streaming", None))
+    try:
+        answer = stream_reply(state.llm, request, speech=speech).text
+    except ContextCapacityExceeded:
+        raise
+    except Exception:
+        state.llm.commit_turn(TurnCommit(session_id=sessionid, turn_id=turn_id,
+                                         terminal_reason="llm_error"))
+        raise
+    state.llm.commit_turn(TurnCommit(session_id=sessionid, turn_id=turn_id,
+                                     assistant_text=answer, terminal_reason="completed"))
+    return answer

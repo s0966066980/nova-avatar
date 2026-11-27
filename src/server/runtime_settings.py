@@ -4,6 +4,7 @@
 """執行時設定：Ollama 模型列表、LLM 切換、數字人切換與配置持久化。"""
 from __future__ import annotations
 
+import asyncio
 import gc
 import base64
 import threading
@@ -28,28 +29,24 @@ from src.avatars.mouth_quality import (
 )
 from src.config.overrides import persist_runtime_overrides
 from src.greetings.content import validate_interval, validate_content
-from src.llm.base import (
+from src.llm.config_section import (
     DEFAULT_RESPONSE_MAX_CHARS,
-    load_system_prompt,
-    response_token_budget,
-    validate_response_max_chars,
-)
-from src.llm.llamacpp import (
-    ensure_server,
-    find_llama_server,
-    list_gguf_models,
-    server_status,
-)
-from src.llm.endpoints import (
     EndpointError,
     active_endpoint_name,
     apply_endpoint,
     configured_endpoints,
+    default_rules,
+    load_system_prompt,
+    local_server_settings,
     resolve_endpoint,
+    response_token_budget,
+    rules_from_config,
+    snapshot_from_config,
+    validate_response_max_chars,
+    validate_rules,
 )
-from src.llm.service import switch_llm_endpoint
-from src.llm.rules import default_rules, rules_from_config, snapshot_from_config, validate_rules
 from nova_contracts.common import ServiceError
+from nova_contracts.llm import LlmEngineSettings, LlmService, LocalModelsQuery, LocalServerQuery
 from nova_contracts.stt import SttEngineSettings, SttService
 from src.utils.logging import logger
 
@@ -316,7 +313,8 @@ def apply_reply_rules(config, values: Any, expected_revision: Any = None) -> Dic
         }
 
 
-def apply_llm_behavior(config, assistant_profile: Any, rules: Any, expected_revision: Any = None) -> Dict[str, Any]:
+def apply_llm_behavior(config, assistant_profile: Any, rules: Any, expected_revision: Any = None,
+                       *, llm: LlmService) -> Dict[str, Any]:
     """Save the model-independent persona and Rules together, without loading a model."""
     from src.config.schema import AssistantProfileConfig, ReplyRulesConfig
 
@@ -352,8 +350,9 @@ def apply_llm_behavior(config, assistant_profile: Any, rules: Any, expected_revi
             config.llm.assistant_profile = previous_profile
             config.llm.reply_rules = previous_rules
             raise SettingsError(f"儲存 Prompt 與規則失敗：{exc}", status=500) from exc
-        switch_llm_endpoint(model=config.llm.model, system_prompt=profile["system_prompt"],
-                            reset_history=profile_changed)
+        llm.apply_engine(LlmEngineSettings(model=config.llm.model,
+                                           system_prompt=profile["system_prompt"],
+                                           reset_history=profile_changed))
         return {"assistant_profile": profile, "system_prompt": profile["system_prompt"],
                 "rules": checked, "applied_revision": checked["revision"],
                 "history_reset": profile_changed}
@@ -789,6 +788,8 @@ def apply_llm_model(
     board_max_items: Optional[int] = None,
     assistant_profile: Optional[Dict[str, Any]] = None,
     semantic_wait_seconds: Optional[float] = None,
+    *,
+    llm: LlmService,
 ) -> Dict[str, Any]:
     model = (model or "").strip()
     if not model:
@@ -845,20 +846,9 @@ def apply_llm_model(
     apply_endpoint(target_llm, target.name)
     base_url, api_key = target.base_url, target.api_key
     if provider == "llamacpp":
-        host = target_llm.llamacpp_host
-        port = int(target_llm.llamacpp_port)
-        extra_dir = getattr(config.llm, "llamacpp_dir", "") or ""
         try:
-            ensure_server(
-                model,
-                extra_dir=extra_dir,
-                host=host,
-                port=port,
-                ctx=int(getattr(config.llm, "llamacpp_ctx", 8192) or 8192),
-                threads=int(getattr(config.llm, "llamacpp_threads", 0) or 0),
-                allow_partial_offload=bool(getattr(config.llm, "llamacpp_allow_partial_offload", False)),
-            )
-        except Exception as exc:
+            llm.start_local_server(local_server_settings(target_llm, model=model))
+        except ServiceError as exc:
             raise SettingsError(f"無法啟動 llama.cpp：{exc}", status=500) from exc
         extra_body = {}
     elif provider == "openai":
@@ -901,7 +891,7 @@ def apply_llm_model(
         config.llm.extra_body = extra_body
         config.reply_streaming.enabled = next_reply_mode == "streaming"
         config.reply_streaming.semantic_wait_seconds = next_semantic_wait
-        switch_llm_endpoint(
+        llm.apply_engine(LlmEngineSettings(
             model=model,
             base_url=base_url,
             extra_body=extra_body,
@@ -910,7 +900,7 @@ def apply_llm_model(
             response_max_chars=next_response_max_chars,
             system_prompt=next_system_prompt,
             reset_history=profile_changed,
-        )
+        ))
         persist_runtime_overrides(config)
     logger.info(f"LLM 已切換: {previous} -> {target.name}/{model} @ {base_url}")
     return {
@@ -928,16 +918,20 @@ def apply_llm_model(
     }
 
 
-async def _endpoint_catalog(config, endpoint) -> Dict[str, Any]:
+async def _endpoint_catalog(config, endpoint, llm: LlmService) -> Dict[str, Any]:
     """Model discovery for one allowlisted endpoint, chosen by its provider."""
     block = {**endpoint.public(), "id": endpoint.name,
              "label": PROVIDER_LABELS[endpoint.provider], "models": []}
     if endpoint.provider == "llamacpp":
         local = deepcopy(config.llm)
         apply_endpoint(local, endpoint.name)
-        ggufs = list_gguf_models(getattr(config.llm, "llamacpp_dir", "") or "")
-        status = server_status(local.llamacpp_host, int(local.llamacpp_port))
-        binary = find_llama_server()
+        # Scanning model folders and probing the server block: keep them off the event loop.
+        local_models = await asyncio.to_thread(llm.list_local_models, LocalModelsQuery(
+            models_dir=getattr(config.llm, "llamacpp_dir", "") or ""))
+        ggufs = [model.model_dump() for model in local_models.models]
+        status = (await asyncio.to_thread(llm.local_server_status, LocalServerQuery(
+            host=local.llamacpp_host, port=int(local.llamacpp_port)))).model_dump()
+        binary = local_models.binary
         return {**block, "reachable": bool(binary) or bool(ggufs),
                 "error": "" if (binary or ggufs) else "找不到 llama-server 或 GGUF 模型",
                 "models": ggufs, "server_running": status["running"], "binary": status["binary"]}
@@ -960,11 +954,9 @@ async def _endpoint_catalog(config, endpoint) -> Dict[str, Any]:
 PROVIDER_LABELS = {"llamacpp": "llama.cpp", "ollama": "Ollama", "openai": "OpenAI 相容服務"}
 
 
-async def fetch_llm_catalog(config) -> Dict[str, Any]:
-    import asyncio
-
+async def fetch_llm_catalog(config, *, llm: LlmService) -> Dict[str, Any]:
     endpoints = list(configured_endpoints(config.llm).values())
-    blocks = await asyncio.gather(*(_endpoint_catalog(config, item) for item in endpoints))
+    blocks = await asyncio.gather(*(_endpoint_catalog(config, item, llm) for item in endpoints))
     providers: Dict[str, Any] = {}
     for block in blocks:
         providers.setdefault(block["provider"], block)

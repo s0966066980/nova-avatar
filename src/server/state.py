@@ -8,6 +8,7 @@ from aiortc import RTCPeerConnection
 from src.server.voice_test_history import VoiceTestHistory
 
 if TYPE_CHECKING:
+    from nova_contracts.llm import LlmService
     from nova_contracts.stt import SttService
     from src.server.speaking_avatar import SpeakingAvatar
 
@@ -34,6 +35,8 @@ class ServerState:
         self.roles = None
         # The STT layer's service, shared by every voice session and /asr.
         self.stt: Optional["SttService"] = None
+        # The LLM layer's service: answers, handoffs, greetings, tools and memory.
+        self.llm: Optional["LlmService"] = None
         
         # 服務狀態
         self.server_ready = False

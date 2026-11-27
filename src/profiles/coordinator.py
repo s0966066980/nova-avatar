@@ -6,16 +6,14 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
-from functools import partial
 from pathlib import Path
 import time
 from uuid import uuid4
 
+from nova_contracts.llm import SessionProfile, SessionRef, WeatherQuery
 from src.avatars.factory import load_avatar_data
-from src.llm.service import select_session_profile, session_history
+from src.llm.config_section import local_server_settings
 from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
-from src.llm.handoff import RoutingClients
-from src.llm.tools import CwaWeather, WeatherQuery
 from src.profiles.routing import route_question, weather_member
 from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
@@ -66,7 +64,7 @@ class ConversationRoles:
         self.base_config = deepcopy(voice.config)
         self.library = deepcopy(getattr(voice.config, "role_library_snapshot", manager.library))
         self.assets = manager.assets
-        self.router, self.weather, self.media = manager.router, manager.weather, manager.media
+        self.router, self.media = manager.router, manager.media
         self.main_id = main_profile_id(self.library)
         self.roster = roster(self.library)
         self.current_id = self.main_id
@@ -93,7 +91,7 @@ class ConversationRoles:
                     active_profile_id=self.current_id, main_profile_id=self.main_id,
                     member_ids=list(self.roster)[1:],
                     active_revision=self.library["revision"], error=self.error,
-                    weather_configured=self.weather.configured,
+                    weather_configured=self.manager.weather_configured(),
                     profiles_applied=self.profiles_applied,
                     active_avatar_id=self.profiles[self.current_id]["avatar_id"]
                         if self.profiles_applied or self.enabled else "",
@@ -131,7 +129,7 @@ class ConversationRoles:
         if hasattr(voice, "bind_conversation"):
             voice.bind_conversation()
         voice._turn_context = None
-        select_session_profile(voice.sessionid, profile_id)
+        self.manager.select_llm_profile(voice.sessionid, profile_id)
         if getattr(voice.avatar, "_role_presentation", None) is None:
             voice.avatar._role_presentation = RolePresentation()
         if voice._media_player is not None:
@@ -176,7 +174,7 @@ class ConversationRoles:
         try:
             route = await asyncio.to_thread(
                 self.router, voice.config, self.library, self.current_id, text,
-                session_history(sid), self.confirmed.get(sid, {}))
+                self.manager.llm_history(sid), self.confirmed.get(sid, {}))
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -210,9 +208,10 @@ class ConversationRoles:
                 return {"fixed": "請問您想查詢哪個縣市的天氣？"}
             town = route.get("town", "")
             self.confirmed[sid] = {"county": route["county"], "town": town}
-            weather_query = WeatherQuery(route["county"], town, route["kind"],
-                                         route["start_date"], route["end_date"], route.get("accepted_at", ""))
-            weather_task = asyncio.create_task(self.weather.query(weather_query))
+            weather_query = WeatherQuery(county=route["county"], town=town, kind=route["kind"],
+                                         start_date=route["start_date"], end_date=route["end_date"],
+                                         as_of=route.get("accepted_at", ""))
+            weather_task = asyncio.create_task(self.manager.query_weather(weather_query))
         if self.current_id == target_id:
             result = await weather_task if weather_task else None
             return {"weather": result, "context": route.get("context", "")}
@@ -460,21 +459,41 @@ class RoleCoordinator:
     """Publish defaults without mutating any connected conversation."""
 
     def __init__(self, state, store, library, *, loader=load_avatar_data,
-                 router=None, routing_clients=None, weather=None, media=None):
+                 router=None, media=None):
         self.state, self.store = state, store
         self.library = deepcopy(library)
         self.loader = loader
-        # Every turn routes through the same pooled clients; worker threads
-        # may route concurrently, and close() releases them on shutdown.
-        self.routing_clients = routing_clients or RoutingClients()
-        self.router = router or partial(route_question, clients=self.routing_clients)
-        self.weather = weather or CwaWeather()
+        self.router = router or self._route
         self.media = media or TransitionMedia()
         self.assets, self.sessions = {}, {}
         self.profiles_applied = False
         self.phase, self.error = "disabled", ""
         self._apply_waiting = False
         self._pending_library = None
+
+    @property
+    def llm(self):
+        """The LLM layer's service the core started with."""
+        return self.state.llm
+
+    def _route(self, config, library, current_id, text, history, confirmed):
+        return route_question(config, library, current_id, text, history, confirmed, llm=self.llm)
+
+    def weather_configured(self) -> bool:
+        return self.llm.weather_tool().configured
+
+    async def query_weather(self, query):
+        """CWA facts for a place the handoff decision accepted."""
+        return (await self.llm.query_weather(query)).facts
+
+    def select_llm_profile(self, sessionid, profile_id):
+        """Point the conversation's memory at a role without erasing any role's history."""
+        self.llm.select_profile(SessionProfile(session_id=sessionid, profile_id=profile_id))
+
+    def llm_history(self, sessionid):
+        """The current role's committed messages, as handoff routing reads them."""
+        return [message.model_dump() for message in
+                self.llm.session_history(SessionRef(session_id=sessionid)).messages]
 
     @property
     def enabled(self):
@@ -493,7 +512,7 @@ class RoleCoordinator:
                     active_profile_id=self.current_id, main_profile_id=self.current_id,
                     member_ids=[m["profile_id"] for m in live_members(self.library)],
                     active_revision=self.library["revision"], error=self.error,
-                    weather_configured=self.weather.configured,
+                    weather_configured=self.weather_configured(),
                     profiles_applied=self.profiles_applied,
                     active_avatar_id=self.profiles[self.current_id]["avatar_id"]
                         if self.profiles_applied else "",
@@ -580,13 +599,8 @@ class RoleCoordinator:
             for asset_id in referenced_media(target):
                 self.media.get(asset_id)
             if config.llm.provider == "llamacpp" and not self.state.avatar_streams:
-                from src.llm.llamacpp import ensure_server
                 # The endpoint already fixed host and port; requests use its URL.
-                await asyncio.to_thread(ensure_server, config.llm.model,
-                    extra_dir=config.llm.llamacpp_dir, host=config.llm.llamacpp_host,
-                    port=config.llm.llamacpp_port, ctx=config.llm.llamacpp_ctx,
-                    threads=config.llm.llamacpp_threads,
-                    allow_partial_offload=config.llm.llamacpp_allow_partial_offload)
+                await asyncio.to_thread(self.llm.start_local_server, local_server_settings(config.llm))
             self.assets, self.library = cache, target
             _adopt_main_voice(self.state.config, target)
             if not startup:
@@ -641,7 +655,7 @@ class RoleCoordinator:
         if self.enabled:
             voice.avatar._role_presentation = RolePresentation()
         if self.profiles_applied or self.enabled:
-            select_session_profile(voice.sessionid, roles.current_id)
+            self.select_llm_profile(voice.sessionid, roles.current_id)
         roles.notify()
 
     def unregister(self, sessionid):
@@ -670,8 +684,7 @@ class RoleCoordinator:
         if voice._closed or self.sessions.get(voice.sessionid) is not previous:
             return
         await previous.close()
-        from src.llm.service import remove_session
-        remove_session(voice.sessionid)
+        self.llm.remove_session(SessionRef(session_id=voice.sessionid))
         voice.config = voice.avatar.config
         roles = ConversationRoles(self, voice)
         voice._turn_context = None
@@ -681,7 +694,7 @@ class RoleCoordinator:
         voice.avatar._role_presentation = RolePresentation() if roles.enabled else None
         self.sessions[voice.sessionid] = roles
         voice._role_coordinator = roles
-        select_session_profile(voice.sessionid, roles.current_id)
+        self.select_llm_profile(voice.sessionid, roles.current_id)
         if voice._media_player is not None:
             voice._media_player.discard_stale_media()
         roles.notify()
@@ -696,7 +709,6 @@ class RoleCoordinator:
         for roles in list(self.sessions.values()):
             await roles.close()
         self.sessions.clear()
-        self.routing_clients.close()
 
 
 async def initialize_roles(state):

@@ -19,6 +19,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from nova_contracts.llm import (
+    AssistantProfile,
+    FragmentReviewContext,
+    ModelChunk,
+    ReplyDone,
+    ReplyStarted,
+    SpeechEnd,
+    SpokenDelta,
+)
+from src.llm.adapter import InProcessLlmService
 from src.server.voice_session import VoiceTurnSession
 
 
@@ -76,17 +86,16 @@ class FakeSTT:
         return {"text": "fixture", "language": "fixture"}
 
 
-def _fake_llm(
-    _text,
-    avatar,
-    *,
-    speech=None,
-    datainfo=None,
-    chunk_guard=None,
-) -> str:
-    if speech is not None and (chunk_guard is None or chunk_guard(0)):
-        avatar.put_msg_txt("fixture", data=datainfo)
-    return "fixture"
+class FakeLlm(InProcessLlmService):
+    """The in-process service answering "fixture" without a model."""
+
+    def reply(self, request):
+        yield ReplyStarted(turn_id=request.turn_id, review=FragmentReviewContext(profile=AssistantProfile()))
+        if request.stream_speech:
+            yield ModelChunk(llm_sequence=0)
+            yield SpokenDelta(text="fixture", llm_sequence=0)
+            yield SpeechEnd()
+        yield ReplyDone(spoken="fixture", visible="fixture")
 
 
 async def replay_turn(
@@ -103,14 +112,13 @@ async def replay_turn(
         asr=SimpleNamespace(type="fake", model_size="fake", language="fixture"),
         vad=SimpleNamespace(),
     )
-    session = VoiceTurnSession(session_id, config, FakeAvatar(), clock=clock)
+    session = VoiceTurnSession(session_id, config, FakeAvatar(), clock=clock, llm=FakeLlm())
     session._segmenter = FakeSegmenter()
     session._asr = FakeSTT()
     session.attach_event_sink(lambda _event: None)
 
-    with patch("src.server.voice_session.llm_response", side_effect=_fake_llm):
-        await session.feed_pcm(np.ones(512, dtype=np.int16))
-        await session._turn_task
+    await session.feed_pcm(np.ones(512, dtype=np.int16))
+    await session._turn_task
 
     clock.advance(first_audio_seconds)
     session.on_output_audio(True)

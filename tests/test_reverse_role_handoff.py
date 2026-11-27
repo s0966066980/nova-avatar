@@ -10,9 +10,10 @@ from uuid import uuid4
 
 import pytest
 
-from src.llm import service
 from src.profiles.routing import route_question
-from tests.role_fakes import async_test, connect, field, route_to, wait_until  # noqa: F401
+from tests.llm_fakes import FakeLlm
+from tests.role_fakes import (answers, async_test, connect, field, remember, route_to,  # noqa: F401
+                              session_history, wait_until)
 
 
 def use_weather(voice):
@@ -42,19 +43,16 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
     other, _ = connect(field, 8, 'stage' if presenter == 'console' else 'console')
     voice._conversation['locale'] = locale
     # The main role keeps its own earlier history when the visitor returns.
-    service.prepare_spoken_history('之前的服務問題', voice.avatar, 'prior-main')
-    service.commit_session_history(7, 'prior-main', assistant_text='主角色自己的記憶', terminal_reason='completed')
+    remember(field, voice, '之前的服務問題', '主角色自己的記憶', 'prior-main')
     roles = use_weather(voice)
-    service.prepare_spoken_history('之前的天氣問題', voice.avatar, 'prior-weather')
-    service.commit_session_history(7, 'prior-weather', assistant_text='天氣角色自己的記憶', terminal_reason='completed')
+    remember(field, voice, '之前的天氣問題', '天氣角色自己的記憶', 'prior-weather')
     roles.library['composition']['main'].update(announcement='請主數位人接續為您介紹。',
                                                 announcement_en='Our main avatar will introduce our services.')
     other._turn_id = 'other-conversation'
     other_generation = other._generation
     voice._conversation['voice_en_us'] = 'en-US-JennyNeural'
     roles.confirmed[7] = {'county': '臺南市', 'town': '安平區'}
-    llm = Mock(return_value='主角色的服務介紹')
-    monkeypatch.setattr('src.server.voice_session.llm_response', llm)
+    llm = answers(field, '主角色的服務介紹')
     question = '介紹你們的服務' if locale == 'zh-TW' else 'Please introduce your services.'
     try:
         if input_source == 'text':
@@ -71,13 +69,13 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
         announcement = roles.library['composition']['main']['announcement_en' if locale == 'en-US' else 'announcement']
         assert voice.avatar.messages[-1][0] == announcement
         # The weather role's answer generated beside routing (ADR 0022) is discarded.
-        source_calls = llm.call_count
+        source_calls = llm.calls
         assert source_calls <= 1
         assert '主角色的服務介紹' not in [text for text, _ in voice.avatar.messages]
         field.weather.query.assert_not_called()
         await play_announcement(voice)
         assert roles.current_id == 'weather'
-        assert llm.call_count == source_calls
+        assert llm.calls == source_calls
         roles.video_committed(7, {'role_transition_id': roles._transition_id, 'role_transition_end': True})
         await voice._tail_task
         await wait_until(lambda: voice._turn_task is None)
@@ -86,26 +84,26 @@ async def test_reverse_handoff_answers_once_after_playback_with_own_identity(
         assert voice.config.llm.assistant_profile.assistant_name != '天氣助手'
         assert voice._conversation['locale'] == locale
         assert roles.confirmed[7] == {'county': '臺南市', 'town': '安平區'}
-        assert llm.call_count == source_calls + 1
-        assert llm.call_args.args[0] == question
-        assert '訪客想了解服務' in llm.call_args.kwargs['rag_context']
-        assert '本輪氣象工具資料' not in llm.call_args.kwargs['rag_context']
+        assert llm.calls == source_calls + 1
+        assert llm.requests[-1].question.text == question
+        assert '訪客想了解服務' in llm.requests[-1].role_context
+        assert llm.requests[-1].weather is None
         field.router.assert_called_once()
-        assert service.session_history(7, 'main')[-1]['content'] == '主角色自己的記憶'
-        assert service.session_history(7, 'weather')[-1]['content'] == announcement
+        assert session_history(field, 7, 'main')[-1]['content'] == '主角色自己的記憶'
+        assert session_history(field, 7, 'weather')[-1]['content'] == announcement
         assert other._turn_id == 'other-conversation'
         assert other._generation == other_generation
         assert other.config.profile_id == 'main'
         assert len([event for event in events if event['type'] == 'role_handoff']) == 1
         await roles.after_playback(voice, source_turn)
-        assert llm.call_count == source_calls + 1
+        assert llm.calls == source_calls + 1
         # A new weather question can still hand off in the forward direction.
         field.router.reset_mock()
         roles.router = Mock(return_value=route_to('weather', county='臺南市', town='安平區',
             kind='forecast', start_date='2026-10-29', end_date='2026-10-29'))
         async def weather(_query):
             return {'status': 'available', 'source': 'CWA', 'series': {}}
-        roles.weather.query = weather
+        field.weather.query = weather
         await voice.start_text_turn('明天台南會下雨嗎？')
         await voice._turn_task
         assert roles.phase == 'announcement'
@@ -121,8 +119,7 @@ async def test_cancelled_or_failed_reverse_handoff_keeps_weather_role(field, mon
     field.router = Mock(return_value=route_to('main'))
     voice, events = connect(field)
     roles = use_weather(voice)
-    llm = Mock(return_value='must not be delivered')
-    monkeypatch.setattr('src.server.voice_session.llm_response', llm)
+    llm = answers(field, 'must not be delivered')
     try:
         started = await voice.start_text_turn('介紹你們的服務')
         await voice._turn_task
@@ -150,7 +147,7 @@ async def test_cancelled_or_failed_reverse_handoff_keeps_weather_role(field, mon
         assert not roles.pending and not roles.continuations
         assert not any(e['type'] == 'role_handoff' for e in events)
         # Only the discarded answer generated beside routing (ADR 0022) ran.
-        assert llm.call_count <= 1
+        assert llm.calls <= 1
         assert 'must not be delivered' not in [text for text, _ in voice.avatar.messages]
     finally:
         await voice.close()
@@ -227,7 +224,7 @@ def test_nonweather_routing_is_not_rejected_for_weather_location_fields(field):
         def __init__(self, **_): self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
         def close(self): pass
     routed = route_question(field.state.config, field.library, 'weather',
-        '比較台北和高雄的公司服務', [], {}, client_factory=Client)
+        '比較台北和高雄的公司服務', [], {}, llm=FakeLlm(routing_client_factory=Client))
     assert routed['target'] == 'main'
     assert routed['county'] == routed['town'] == ''
     prompt = create.call_args.kwargs['messages'][0]['content']
@@ -251,8 +248,7 @@ async def test_a_new_question_supersedes_continuation_waiting_for_attachment_val
         assert resume.wait(3)
         return True
     monkeypatch.setattr('src.server.attachments.vision_ready', vision_ready)
-    llm = Mock(return_value='new answer')
-    monkeypatch.setattr('src.server.voice_session.llm_response', llm)
+    llm = answers(field, 'new answer')
     old = asyncio.create_task(voice.start_text_turn('stale continued question',
         _handoff_id='old-handoff', attachments=[{'id': item['id']}]))
     try:
@@ -264,7 +260,7 @@ async def test_a_new_question_supersedes_continuation_waiting_for_attachment_val
             await old
         assert voice._turn_id == current['turn_id']
         llm.assert_called_once()
-        assert llm.call_args.args[0] == 'New question'
+        assert llm.requests[-1].question.text == 'New question'
         assert not roles.continuations
     finally:
         resume.set()

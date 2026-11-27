@@ -14,7 +14,9 @@ from unittest.mock import Mock, patch
 from src.llm.history import TransactionalHistory
 from src.profiles.coordinator import ANSWER_CONTEXT
 from src.server.voice_session import VoiceTurnSession
-from tests.role_fakes import async_test, connect, field, route_to  # noqa: F401
+from nova_contracts.llm import ModelChunk, ReplyDone, SpeechEnd, SpokenDelta, TurnRef
+from tests.llm_fakes import FakeLlm, started as reply_started
+from tests.role_fakes import answers, async_test, connect, field, route_to  # noqa: F401
 
 SPECULATIVE = {"context": ANSWER_CONTEXT}
 FIXED = "接下來請天氣助手為您說明。"
@@ -98,31 +100,34 @@ class _Answer:
         self.text = text
         self.clock = clock
         self.seconds = seconds
-        self.calls: list[dict] = []
+        self.calls: list = []
+        self.generations: list[int] = []
         self.started = threading.Event()
         self.proceed = threading.Event()
         self.proceed.set()
         self.finished = threading.Event()
         self.order: list[str] = []
 
-    def __call__(self, _text, avatar, **kwargs):
-        self.calls.append(kwargs)
-        data = kwargs["datainfo"]
-        point = {"turn_id": data["turn_id"], "generation": data["generation"]}
+    def __call__(self, request):
+        self.calls.append(request)
+        point = {"turn_id": request.turn_id, "generation": self.session._generation}
+        self.generations.append(point["generation"])
         try:
             if self.clock is not None:
                 self.clock.advance(self.seconds)
-            if not kwargs["chunk_guard"](0):
-                return ""
+            yield reply_started(request)
+            # The core fences a stale turn here and closes the stream.
+            yield ModelChunk(llm_sequence=0)
             self.session._on_llm_chunk(self.text, {**point, "llm_sequence": 0})
-            avatar.put_msg_txt(self.text, {**point, "fragment_sequence": 0})
+            yield SpokenDelta(text=self.text, llm_sequence=0)
+            yield SpeechEnd()
             self.started.set()
             self.proceed.wait(5)
-            if not kwargs["chunk_guard"](1):
-                # A fenced answer must not leave a playable fragment behind.
-                avatar.put_msg_txt("殘留。", {**point, "fragment_sequence": 1})
-                return ""
-            return self.text
+            # A fenced answer is not read any further: no playable fragment is left behind.
+            yield ModelChunk(llm_sequence=1)
+            yield SpokenDelta(text="殘留。", llm_sequence=1)
+            yield SpeechEnd()
+            yield ReplyDone(spoken=self.text, visible=self.text)
         finally:
             self.order.append("worker_done")
             self.finished.set()
@@ -145,21 +150,16 @@ class _SessionCase(unittest.IsolatedAsyncioTestCase):
         self.clock = FakeClock()
         self.avatar = _Avatar()
         self.session = VoiceTurnSession(
-            95, _streaming_config(**self.config_extra), self.avatar, clock=self.clock)
+            95, _streaming_config(**self.config_extra), self.avatar, clock=self.clock,
+            llm=FakeLlm())
         self.session._segmenter = SimpleNamespace(reset=lambda: None, is_speaking=False)
         self.session._media_player = SimpleNamespace(discard_stale_media=lambda: None)
         self.events: list[dict] = []
         self.session.attach_event_sink(lambda raw: self.events.append(json.loads(raw)))
-        self._patches = [
-            patch("src.server.voice_session.prepare_spoken_history"),
-            patch("src.server.voice_session.discard_pending_history"),
-        ]
-        self.prepare_history = self._patches[0].start()
-        self.discard_history = self._patches[1].start()
+        self.prepare_history = self.session._llm.begin_turn = Mock()
+        self.discard_history = self.session._llm.discard_turn = Mock()
 
     async def asyncTearDown(self):
-        for item in self._patches:
-            item.stop()
         await self.session.close()
 
     def _types(self):
@@ -170,9 +170,7 @@ class _SessionCase(unittest.IsolatedAsyncioTestCase):
 
     async def _start(self, roles, answer, text="今天有什麼活動"):
         self.session._role_coordinator = roles
-        self.llm = patch("src.server.voice_session.llm_response", side_effect=answer)
-        self.llm.start()
-        self.addCleanup(self.llm.stop)
+        self.session._llm.script, self.session._llm.speak = answer, True
         accepted = await self.session.start_text_turn(text, interrupt=False)
         return accepted["turn_id"], self.session._generation
 
@@ -209,7 +207,7 @@ class GeneralTurnTests(_SessionCase):
         self.assertEqual(results, [True])
         self.assertEqual(self._deltas(), ["主回答。"])
         self.assertIn("assistant_response_start", self._types())
-        self.assertEqual(answer.calls[0]["rag_context"].strip(), ANSWER_CONTEXT)
+        self.assertEqual(answer.calls[0].role_context.strip(), ANSWER_CONTEXT)
 
     async def test_first_audio_excludes_routing_time(self):
         roles = _Roles(SPECULATIVE, clock=self.clock, seconds=0.6)
@@ -289,7 +287,7 @@ class HandoffTurnTests(_SessionCase):
         self.assertEqual(self._types().count("assistant_response_start"), 1)
         self.assertGreaterEqual(self.avatar.flushes, 1)
         # The speculative pending history is dropped only after its worker stopped.
-        self.discard_history.assert_called_once_with(self.avatar, turn_id)
+        self.discard_history.assert_called_once_with(TurnRef(session_id=95, turn_id=turn_id))
         self.assertEqual(answer.order, ["worker_done", "discard", "fixed_history"])
         new_point = {"turn_id": turn_id, "generation": self.session._generation,
                      "fragment_sequence": 0}
@@ -311,9 +309,10 @@ class HandoffTurnTests(_SessionCase):
 
         self.assertEqual(results, [False])
         self.assertEqual(len(answer.calls), 2)
-        self.assertIn("已確認臺北市", answer.calls[1]["rag_context"])
-        self.assertNotIn(ANSWER_CONTEXT, answer.calls[1]["rag_context"])
-        regenerated = answer.calls[1]["datainfo"]["generation"]
+        self.assertIn("已確認臺北市", answer.calls[1].role_context)
+        self.assertNotIn(ANSWER_CONTEXT, answer.calls[1].role_context)
+        self.assertEqual(answer.calls[1].weather.facts, weather)
+        regenerated = answer.generations[1]
         self.assertGreater(regenerated, generation)
         self.assertEqual(self._deltas(), ["主回答。"])
         self.assertIn("weather_result", self._types())
@@ -330,7 +329,7 @@ class HandoffTurnTests(_SessionCase):
         roles.gate.set()
         await self.session._turn_task
         self.assertEqual(len(answer.calls), 1)
-        self.assertIn("已確認的交接背景", answer.calls[0]["rag_context"])
+        self.assertIn("已確認的交接背景", answer.calls[0].role_context)
 
 
 class CancellationTests(_SessionCase):
@@ -371,7 +370,7 @@ class CancellationTests(_SessionCase):
         await asyncio.gather(turn_task, return_exceptions=True)
 
         # The held answer never played: its pending history goes once the worker stopped.
-        self.discard_history.assert_called_once_with(self.avatar, turn_id)
+        self.discard_history.assert_called_once_with(TurnRef(session_id=95, turn_id=turn_id))
         self.assertEqual(answer.order, ["worker_done", "discard"])
 
     async def test_routing_failure_drops_the_held_answer_and_ends_the_turn(self):
@@ -440,14 +439,14 @@ class RetrievalBudgetTests(_SessionCase):
             return {"status": "matched", "sources": [{"content": "晚到的事實"}]}
 
         answer = _Answer(self.session)
-        with patch("src.server.voice_session.RagFlowClient.retrieve", slow), patch(
+        with patch("src.llm.adapter.RagFlowClient.retrieve", slow), patch(
             "src.server.voice_session.RETRIEVAL_BUDGET_SECONDS", 0.05
         ):
             await self._start(None, answer)
             await asyncio.wait_for(self.session._turn_task, 2)
 
         self.assertEqual(len(answer.calls), 1)
-        self.assertNotIn("rag_context", answer.calls[0])
+        self.assertEqual(answer.calls[0].retrieval, ())
         statuses = [e["status"] for e in self.events if e["type"] == "rag_retrieval"]
         self.assertEqual(statuses, ["timeout"])
         self.assertIsNotNone(self.session.metrics_snapshot()["stage_seconds"]["retrieval"])
@@ -460,7 +459,7 @@ class RetrievalBudgetTests(_SessionCase):
                 "document_id": "d", "dataset_id": "a" * 32}]}
 
         answer = _Answer(self.session)
-        with patch("src.server.voice_session.RagFlowClient.retrieve", delayed):
+        with patch("src.llm.adapter.RagFlowClient.retrieve", delayed):
             await self._start(None, answer)
             await asyncio.wait_for(self.session._turn_task, 3)
         return answer, [e["status"] for e in self.events if e["type"] == "rag_retrieval"]
@@ -470,7 +469,7 @@ class RetrievalBudgetTests(_SessionCase):
         # P50 0.11 s / P95 0.15 s end to end. The real budget must admit it;
         # 0.15 s leaves the same margin below the 0.3 s budget for a busy host.
         answer, statuses = await self._retrieve_after(0.15)
-        self.assertIn("一般速度的事實", answer.calls[0]["rag_context"])
+        self.assertEqual(answer.calls[0].retrieval[0].content, "一般速度的事實")
         self.assertEqual(statuses, ["matched"])
 
     async def test_retrieval_within_budget_is_used(self):
@@ -480,10 +479,10 @@ class RetrievalBudgetTests(_SessionCase):
                 "document_id": "d", "dataset_id": "a" * 32}]}
 
         answer = _Answer(self.session)
-        with patch("src.server.voice_session.RagFlowClient.retrieve", fast):
+        with patch("src.llm.adapter.RagFlowClient.retrieve", fast):
             await self._start(None, answer)
             await self.session._turn_task
-        self.assertIn("可查的事實", answer.calls[0]["rag_context"])
+        self.assertEqual(answer.calls[0].retrieval[0].content, "可查的事實")
 
     async def test_held_retrieval_sources_are_dropped_with_a_handoff(self):
         async def fast(_client, _question, _dataset_ids, **_kwargs):
@@ -493,7 +492,7 @@ class RetrievalBudgetTests(_SessionCase):
 
         roles = _Roles({"fixed": FIXED, "handoff_id": "h1"})
         answer = _Answer(self.session)
-        with patch("src.server.voice_session.RagFlowClient.retrieve", fast):
+        with patch("src.llm.adapter.RagFlowClient.retrieve", fast):
             await self._start(roles, answer)
             await asyncio.to_thread(answer.started.wait, 2)
             roles.gate.set()
@@ -520,13 +519,12 @@ async def test_main_role_answer_route_equals_the_speculative_plan(field):
 async def test_general_turn_with_real_roles_delivers_the_concurrent_answer_once(field, monkeypatch):
     field.router = Mock(return_value=route_to("main"))
     voice, events = connect(field)
-    llm = Mock(return_value="主角色的回答")
-    monkeypatch.setattr("src.server.voice_session.llm_response", llm)
+    llm = answers(field, "主角色的回答")
     try:
         await voice.start_text_turn("介紹你們的服務")
         await voice._turn_task
         llm.assert_called_once()
-        assert ANSWER_CONTEXT in llm.call_args.kwargs["rag_context"]
+        assert ANSWER_CONTEXT in llm.request.role_context
         assert [text for text, _ in voice.avatar.messages] == ["主角色的回答"]
         assert [e["text"] for e in events if e["type"] == "assistant_response"] == ["主角色的回答"]
         assert voice._role_coordinator.phase == "ready"

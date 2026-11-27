@@ -41,6 +41,7 @@ from src.server.runtime_settings import (
     stage_snapshot,
 )
 from src.config.schema import Config
+from tests.llm_fakes import FakeLlm
 
 
 class AvatarCatalogTests(unittest.TestCase):
@@ -223,9 +224,8 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.provider = "ollama"
         config.llm.base_url = "http://localhost:11434/v1"
 
-        with patch("src.server.runtime_settings.persist_runtime_overrides") as persist, patch(
-            "src.server.runtime_settings.switch_llm_endpoint"
-        ):
+        llm = FakeLlm()
+        with patch("src.server.runtime_settings.persist_runtime_overrides") as persist:
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
@@ -233,6 +233,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
                 "請使用繁體中文回答。",
                 120,
                 "legacy",
+                llm=llm,
             )
 
         self.assertFalse(config.reply_streaming.enabled)
@@ -255,20 +256,20 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.base_url = "http://localhost:11434/v1"
         prompt = "你是數位人助理，請使用繁體中文簡短回答。"
 
-        with patch("src.server.runtime_settings.persist_runtime_overrides") as persist, patch(
-            "src.server.runtime_settings.switch_llm_endpoint"
-        ) as switch:
-            result = apply_llm_model(config, "qwen3.5:4b", "ollama", prompt)
+        llm = FakeLlm()
+        with patch("src.server.runtime_settings.persist_runtime_overrides") as persist:
+            result = apply_llm_model(config, "qwen3.5:4b", "ollama", prompt, llm=llm)
 
         self.assertEqual(config.llm.assistant_profile.system_prompt, prompt)
         self.assertEqual(config.llm.system_prompt, "")
         self.assertEqual(result["system_prompt"], prompt)
         persist.assert_called_once_with(config)
-        self.assertEqual(switch.call_args.kwargs["system_prompt"], prompt)
+        self.assertEqual(llm.engine_settings[-1].system_prompt, prompt)
 
     def test_apply_llm_rejects_empty_prompt(self):
+        llm = FakeLlm()
         with self.assertRaises(SettingsError):
-            apply_llm_model(Config(), "qwen3.5:4b", "ollama", "   ")
+            apply_llm_model(Config(), "qwen3.5:4b", "ollama", "   ", llm=llm)
 
     def test_snapshot_exposes_response_length(self):
         config = Config()
@@ -394,25 +395,26 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.provider = "ollama"
         config.llm.base_url = "http://localhost:11434/v1"
 
-        with patch("src.server.runtime_settings.persist_runtime_overrides"), patch(
-            "src.server.runtime_settings.switch_llm_endpoint"
-        ) as switch:
+        llm = FakeLlm()
+        with patch("src.server.runtime_settings.persist_runtime_overrides"):
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
                 "ollama",
                 "請使用繁體中文回答。",
                 240,
+                llm=llm,
             )
 
         self.assertEqual(config.llm.response_max_chars, 240)
         self.assertEqual(config.llm.max_tokens, 888)
         self.assertEqual(result["response_max_chars"], 240)
-        self.assertEqual(switch.call_args.kwargs["response_max_chars"], 240)
-        self.assertEqual(switch.call_args.kwargs["max_tokens"], 888)
+        self.assertEqual(llm.engine_settings[-1].response_max_chars, 240)
+        self.assertEqual(llm.engine_settings[-1].max_tokens, 888)
         self.assertEqual(config.llm.extra_body["options"]["num_predict"], 888)
 
     def test_apply_llm_rejects_invalid_response_length(self):
+        llm = FakeLlm()
         with self.assertRaises(SettingsError):
             apply_llm_model(
                 Config(),
@@ -420,6 +422,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
                 "ollama",
                 "請使用繁體中文回答。",
                 19,
+                llm=llm,
             )
 
     def test_apply_llm_updates_and_validates_board_item_limit(self):
@@ -427,20 +430,21 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.provider = "ollama"
         config.llm.base_url = "http://localhost:11434/v1"
 
-        with patch("src.server.runtime_settings.persist_runtime_overrides"), patch(
-            "src.server.runtime_settings.switch_llm_endpoint"
-        ):
+        llm = FakeLlm()
+        with patch("src.server.runtime_settings.persist_runtime_overrides"):
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
                 "ollama",
                 "請使用繁體中文回答。",
                 board_max_items=6,
+                llm=llm,
             )
 
         self.assertEqual(config.llm.board.max_items, 6)
         self.assertEqual(result["board_max_items"], 6)
 
+        llm = FakeLlm()
         for value in (0, 13, 2.5, True, "invalid"):
             with self.subTest(value=value), self.assertRaises(SettingsError):
                 apply_llm_model(
@@ -449,6 +453,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
                     "ollama",
                     "請使用繁體中文回答。",
                     board_max_items=value,
+                    llm=llm,
                 )
 
     def test_length_instruction_preserves_prompt_and_requests_complete_sentence(self):

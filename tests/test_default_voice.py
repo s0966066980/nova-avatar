@@ -24,6 +24,7 @@ from src.config.schema import Config
 from src.profiles import coordinator
 from src.profiles.store import ProfileStore
 from src.server import deferred_settings
+from tests.llm_fakes import FakeLlm
 from src.server.state import state
 
 OLD_OVERRIDE_TTS = {"type": "edgetts", "ref_file": "zh-TW-HsiaoYuNeural", "ref_text": None,
@@ -99,7 +100,7 @@ def test_startup_keeps_the_configured_voice_when_saved_profiles_are_unreadable(t
 def roles_state(tmp_path, config):
     return SimpleNamespace(config=config, config_path=str(tmp_path / "config.yaml"),
                            voice_sessions={}, avatar_streams={}, avatar=object(),
-                           switching=False, settings_applying=False)
+                           switching=False, settings_applying=False, llm=FakeLlm())
 
 
 def test_failed_startup_apply_still_speaks_with_the_main_voice(tmp_path, monkeypatch):

@@ -7,9 +7,11 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from nova_contracts.llm import Outcome
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
 from src.server.voice_session import VoiceTurnSession
 from src.tts.base import sanitize_speech_text
+from tests.llm_fakes import FakeLlm, answering
 
 
 class SanitizingAvatar:
@@ -42,7 +44,7 @@ def make_session(*, streaming):
         reply_streaming=SimpleNamespace(enabled=streaming),
     )
     avatar = SanitizingAvatar()
-    session = VoiceTurnSession(7, config, avatar)
+    session = VoiceTurnSession(7, config, avatar, llm=FakeLlm())
     events = []
     session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
     return session, avatar, events
@@ -55,7 +57,7 @@ class SilentReplyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([item["turn_id"] for item in committed], [started["turn_id"]])
         self.assertEqual(events[-1].get("state"), "listening")
         # The next question is accepted without having to interrupt anything.
-        with patch("src.server.voice_session.llm_response", return_value=""):
+        with answering(session, ""):
             following = await session.start_text_turn("下一題", interrupt=False)
             await session._turn_task
         self.assertNotEqual(following["turn_id"], started["turn_id"])
@@ -63,11 +65,8 @@ class SilentReplyTests(unittest.IsolatedAsyncioTestCase):
     async def test_streaming_board_only_reply_ends_the_turn(self):
         session, avatar, events = make_session(streaming=True)
 
-        def board_only(_text, _avatar, **_kwargs):
-            # The board went out through on_board; no speakable fragment did.
-            return "看板：營業時間"
-
-        with patch("src.server.voice_session.llm_response", side_effect=board_only):
+        # The board went out as board events; no speakable fragment did.
+        with answering(session, "看板：營業時間"):
             started = await session.start_text_turn("營業時間？", interrupt=False)
             await session._turn_task
 
@@ -78,7 +77,7 @@ class SilentReplyTests(unittest.IsolatedAsyncioTestCase):
     async def test_legacy_reply_with_no_speakable_text_ends_the_turn(self):
         session, avatar, events = make_session(streaming=False)
 
-        with patch("src.server.voice_session.llm_response", return_value="😀😀"):
+        with answering(session, "😀😀"):
             started = await session.start_text_turn("笑一個", interrupt=False)
             await session._turn_task
 
@@ -98,17 +97,17 @@ class SilentReplyTests(unittest.IsolatedAsyncioTestCase):
 
 class PublishedConfigTests(unittest.IsolatedAsyncioTestCase):
     async def test_the_core_hands_the_published_config_to_the_llm_layer(self):
-        # The LLM layer does not read the core's global state; the core passes the
-        # configuration the console last published with every answer request.
+        # The LLM layer does not read the core's global state; the core sends the
+        # reply rules the console last published with every answer request.
         from src.server.state import state
 
         session, _avatar, _events = make_session(streaming=False)
-        published = SimpleNamespace(name="published")
-        with patch.object(state, "config", published), \
-                patch("src.server.voice_session.llm_response", return_value="") as llm:
+        session.config.conversation_snapshot = False
+        published = SimpleNamespace(llm=SimpleNamespace(reply_rules={"revision": 7}))
+        with patch.object(state, "config", published), answering(session, "") as llm:
             await session.start_text_turn("你好", interrupt=False)
             await session._turn_task
-        self.assertIs(llm.call_args.kwargs["published_config"], published)
+        self.assertEqual(llm.request.rules.revision, 7)
         await session.close()
 
 
@@ -251,8 +250,8 @@ class SessionTaskTests(unittest.IsolatedAsyncioTestCase):
 class PerTurnMemoryTests(unittest.IsolatedAsyncioTestCase):
     async def test_long_running_session_keeps_bounded_turn_bookkeeping(self):
         session, _avatar, _events = make_session(streaming=False)
-        with patch("src.server.voice_session.llm_response", return_value=""), \
-                patch("src.server.voice_session.acknowledge_session_board_item", return_value=True):
+        session._llm.acknowledge_board_item = lambda _receipt: Outcome(done=True)
+        with answering(session, ""):
             for index in range(300):
                 await session.start_text_turn(f"問題 {index}", interrupt=False)
                 await session._turn_task

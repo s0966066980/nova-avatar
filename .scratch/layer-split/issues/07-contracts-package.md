@@ -38,3 +38,24 @@ Blocked by: 06
 第 2 步：LLM（`LlmService`、回覆事件的 SSE、看板等事件）、TTS（`TtsService`、片段請求與 chunked PCM）、數位人渲染（`AvatarRenderer`）依同樣做法轉換，並各自產生 OpenAPI（渲染除外）。全部完成後才關閉本工單。
 
 待維護者實機驗收：啟動後 `Startup prewarm:` 記錄的 `speech_input: True`、舞台免按對話的語音辨識，以及控制台切換 STT 模型（例如 small → turbo）後照常辨識。
+
+### 2026-11-27：第 2 步（LLM）
+
+分支 `ls/07b-llm`，依第 1 步（STT）的做法轉換 LLM 層（`src/llm`、`src/ragflow`、`src/web_search`，含工單 05 搬進來的交接判斷、天氣工具與 AI 招呼生成）：
+
+- `contracts/nova_contracts/llm.py`：`LlmService` Protocol（35 個方法，每個方法對應一個 HTTP 操作）、請求／回應模型與 `HTTP_API`。
+  - 回覆：`POST /reply` 以 SSE 串流 `ReplyEvent`（以 `type` 區分）：`ReplyStarted`（帶審查脈絡）、`ModelChunk`、`SpokenDelta`、`SpeechEnd`、`ReplyModeChosen`、`BoardStart`／`BoardItemShown`／`Board`、`ReplyDone`。LLM 只送口語文字增量與結構化事件；可播片段仍由核心切分（決定 12）。核心關閉串流即取消回覆；`ModelChunk` 是核心的 chunk 圍欄檢查點。
+  - 片段審查：`POST /fragments/review`。審查狀態（`ReviewState`）由核心保管、隨每個片段送回，所以服務端不留逐回覆的審查狀態；網頁來源口語長度上限在這裡生效。
+  - 每輪輸入（規則、助理設定、檢索內容、交接背景、天氣資料、網頁證據）全部隨請求攜帶；端點 URL、金鑰與模型目錄一律由核心依設定檔白名單解析後填入（CODING_STANDARDS 規則 1），服務端只收不解析。
+  - 對話記憶仍由 LLM 層依核心的 session id 保管（`/sessions/...`：開始、提交、捨棄、清除、移除、選擇角色、歷史、記憶用量、保留上限、是否有紀錄），由核心決定何時提交或捨棄。
+  - 交接判斷（`/handoff`）、AI 招呼（`/greeting`）、天氣（`/tools/weather`）、RAGFlow（`/ragflow/...`）、公開網頁搜尋（`/web/plan`、`/web/search`、`/web/summary`）、自有 llama-server（`/local-server...`）、預熱與 context 容量，也都經由 `LlmService`。
+  - `contracts/openapi/llm.json` 由 `scripts/generate_openapi.py` 產生並已提交。
+- `src/llm/adapter.py`：`InProcessLlmService` 是唯一入口（另有 `config_section`）。持有整個行程共用的對話記憶、routing 連線池與天氣快取；核心在 `app.py` 建立 `state.llm`，以參數傳給語音會話、`/asr`、角色協調器與設定套用。`src/llm/__init__.py` 不再轉出任何名稱。`config_section` 另外提供核心把設定檔轉成請求用的 `llm_settings`、`llm_session`、`reply_rules`、`local_server_settings`。
+- 核心停止 import LLM 內部模組：
+  - `voice_session`、`/asr`、設定套用、角色協調器（交接判斷、天氣、`select_profile`）、AI 招呼準備與 `routing` 都改呼叫 `LlmService`。
+  - 屬於核心的資料搬出 LLM 層：網頁證據快取與 `public_result` → `src/server/web_evidence.py`；知識庫範圍與網頁存取政策的驗證與儲存（原 `src/ragflow/settings.py`、`selection.validate_selection`、`src/web_search/settings.py`）→ `src/profiles/knowledge_scope.py`；兩邊共用的 `join_spoken_fragments` → `src/utils/spoken_text.py`；回覆串流的核心端（`stream_reply`、`ServiceFragmentReview`）→ `src/server/reply_streaming/llm_reply.py`。
+  - `BaseLLM.reply_events` 產生事件、`generate_response` 退成以同一組事件驅動的行程內封裝；回覆串流、看板、交接、天氣與招呼的行為不變。
+- import-linter：新增 `llm-internals-private`（protected：LLM、RAGFlow、網頁搜尋的內部模組只能由這三個套件自己 import），取代工單 05 的 `core-uses-llm-entry-points`（已被涵蓋）；沒有新增任何 `ignore_imports`。`tests/test_layer_entry_points.py` 涵蓋 LLM 層。
+- 測試：新增 `tests/test_llm_contract.py`（DTO、SSE 事件標記、adapter 的回覆、取消、審查、容量錯誤、交接、招呼、天氣、記憶與 llama-server 錯誤對應）與 `tests/llm_fakes.py`（核心測試用的 `FakeLlm`：除 `reply` 外都是真的 adapter）；核心測試改成以 `FakeLlm` 腳本化模型的回答。腳本 `scripts/replay_voice_baseline.py`、`scripts/benchmark_streaming_vs_legacy.py` 也改用同樣的做法。全部測試 2284 passed、2 skipped。
+
+待維護者實機驗收：首音延遲（每個片段多一次行程內審查呼叫，量測約 0.03 ms，但實機首音仍須在場域主機確認）、啟動時自有 llama-server 的啟動與關閉（含 Ctrl-C）、控制台切換模型後既有對話跟著更新，以及交接與天氣問答照常。
