@@ -41,6 +41,7 @@ from src.server.runtime_settings import (
     stage_snapshot,
 )
 from src.config.schema import Config
+from tests.tts_fakes import in_process_tts
 
 
 class AvatarCatalogTests(unittest.TestCase):
@@ -214,7 +215,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         with patch(
             "src.server.runtime_settings.list_avatar_characters", return_value=[]
         ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            snapshot = current_snapshot(config, tts=in_process_tts())
 
         self.assertEqual(snapshot["llm"]["reply_mode"], "streaming")
 
@@ -245,7 +246,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         with patch(
             "src.server.runtime_settings.list_avatar_characters", return_value=[]
         ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            snapshot = current_snapshot(config, tts=in_process_tts())
 
         self.assertEqual(snapshot["llm"]["system_prompt"], "You are a helpful assistant.")
 
@@ -276,7 +277,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         with patch(
             "src.server.runtime_settings.list_avatar_characters", return_value=[]
         ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            snapshot = current_snapshot(config, tts=in_process_tts())
 
         self.assertEqual(snapshot["llm"]["response_max_chars"], 240)
 
@@ -286,7 +287,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         with patch(
             "src.server.runtime_settings.list_avatar_characters", return_value=[]
         ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            snapshot = current_snapshot(config, tts=in_process_tts())
 
         self.assertEqual(snapshot["llm"]["board_max_items"], 6)
 
@@ -296,7 +297,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         with patch(
             "src.server.runtime_settings.list_avatar_characters", return_value=[]
         ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            snapshot = current_snapshot(config, tts=in_process_tts())
 
         self.assertEqual(snapshot["stage"]["caption_max_chars"], 240)
         self.assertEqual(snapshot["stage"]["board_style"], "glass")
@@ -514,7 +515,7 @@ class ApplyAvatarGuardTests(unittest.TestCase):
 
 class SpeechSettingsTests(unittest.TestCase):
     def test_catalog_contains_only_keyless_tts(self):
-        ids = {item["id"] for item in speech_snapshot(Config())["tts"]["engines"]}
+        ids = {item["id"] for item in speech_snapshot(Config(), tts=in_process_tts())["tts"]["engines"]}
         self.assertEqual(
             ids,
             {"edgetts", "breezyvoice", "matcha"},
@@ -522,7 +523,7 @@ class SpeechSettingsTests(unittest.TestCase):
         self.assertTrue(ids.isdisjoint({"azuretts", "cosyvoice_api", "doubao", "tencent"}))
 
     def test_snapshot_lists_all_edge_tts_zh_tw_voices(self):
-        voices = speech_snapshot(Config())["tts"]["edge_voices"]
+        voices = speech_snapshot(Config(), tts=in_process_tts())["tts"]["edge_voices"]
         self.assertEqual(
             {voice["id"] for voice in voices},
             {
@@ -539,23 +540,23 @@ class SpeechSettingsTests(unittest.TestCase):
     def test_snapshot_exposes_the_conversation_english_voice_catalog(self):
         from src.server.conversations import VOICES
 
-        voices = speech_snapshot(Config())["tts"]["edge_english_voices"]
+        voices = speech_snapshot(Config(), tts=in_process_tts())["tts"]["edge_english_voices"]
         self.assertEqual(voices, VOICES["en-US"])
 
     def test_stt_engines_describe_their_models(self):
         # The console renders the speech-recognition form from these entries.
-        engines = {item["id"]: item for item in speech_snapshot(Config())["stt"]["engines"]}
+        engines = {item["id"]: item for item in speech_snapshot(Config(), tts=in_process_tts())["stt"]["engines"]}
         self.assertEqual(set(engines), {"whisper"})
         self.assertEqual(engines["whisper"]["models"], ["tiny", "base", "small", "medium", "large-v3", "turbo"])
 
     def test_tts_snapshot_has_no_global_voice(self):
         # The default voice is the main role profile's, edited there.
-        tts = speech_snapshot(Config())["tts"]
+        tts = speech_snapshot(Config(), tts=in_process_tts())["tts"]
         self.assertFalse({"type", "ref_file", "ref_text", "tts_server", "model"} & set(tts))
 
     def test_tts_rejects_removed_provider(self):
         with self.assertRaises(SettingsError):
-            apply_tts_settings(Config(), {"type": "azuretts"}, session_count=0)
+            apply_tts_settings(Config(), {"type": "azuretts"}, session_count=0, tts=in_process_tts())
 
     def _library_voice(self) -> str:
         """A voice in a temporary voice library; returns its ID."""
@@ -585,7 +586,7 @@ class SpeechSettingsTests(unittest.TestCase):
                 apply_tts_settings(
                     Config(),
                     {"type": "breezyvoice", "ref_file": "0123456789abcdef"},
-                    session_count=0,
+                    session_count=0, tts=in_process_tts(),
                 )
         self.assertIn("不在音訊庫中", ctx.exception.message)
 
@@ -598,7 +599,7 @@ class SpeechSettingsTests(unittest.TestCase):
             result = apply_tts_settings(
                 config,
                 {"type": "edgetts", "ref_file": "zh-TW-HsiaoChenNeural"},
-                session_count=0,
+                session_count=0, tts=in_process_tts(),
             )
         self.assertEqual(config.tts.type, "edgetts")
         self.assertIn("preview_audio", result)
@@ -610,7 +611,7 @@ class SpeechSettingsTests(unittest.TestCase):
                 apply_tts_settings(
                     Config(),
                     {"type": "edgetts", "ref_file": "zh-CN-XiaoxiaoNeural"},
-                    session_count=0,
+                    session_count=0, tts=in_process_tts(),
                 )
         self.assertIn("台灣華語聲線", ctx.exception.message)
 
@@ -692,9 +693,9 @@ class SpeechSettingsTests(unittest.TestCase):
             apply_tts_settings(
                 Config(),
                 {"type": "qwen3-tts", "model": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice"},
-                session_count=0,
+                session_count=0, tts=in_process_tts(),
             )
-        snapshot = speech_snapshot(Config())
+        snapshot = speech_snapshot(Config(), tts=in_process_tts())
         self.assertNotIn("qwen3-asr", snapshot["stt"]["models_by_engine"])
         self.assertNotIn(
             "qwen3-tts",

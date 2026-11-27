@@ -13,7 +13,10 @@ from urllib.parse import parse_qs, urlsplit
 
 import numpy as np
 
+from nova_contracts.tts import TtsEngineSettings
+from src.config.schema import TTSConfig
 from src.server.app import _await_edge_tts_prewarm, _start_edge_tts_prewarm
+from src.tts.adapter import InProcessTtsService
 from tests.edge_fakes import (
     _handshake_error,
     _mp3_fixture,  # noqa: F401
@@ -24,11 +27,12 @@ class EdgeTTSStartupTests(unittest.TestCase):
     @staticmethod
     def _config(engine: str = "edgetts"):
         return SimpleNamespace(
-            tts=SimpleNamespace(
-                type=engine,
-                ref_file="zh-TW-YunJheNeural",
-            )
+            tts=TTSConfig(type=engine, ref_file="zh-TW-YunJheNeural", edge_connection_reuse=False)
         )
+
+    @staticmethod
+    def _tts():
+        return InProcessTtsService(TtsEngineSettings())
 
     def test_edge_prewarm_finishes_before_readiness(self):
         called = Event()
@@ -37,16 +41,17 @@ class EdgeTTSStartupTests(unittest.TestCase):
             "src.tts.engines.edge.prewarm_edge_tts",
             side_effect=lambda voice, **_kwargs: called.set() or True,
         ) as prewarm:
-            worker = _start_edge_tts_prewarm(self._config())
+            worker = _start_edge_tts_prewarm(self._config(), self._tts())
             self.assertTrue(_await_edge_tts_prewarm(worker))
 
         self.assertTrue(called.is_set())
-        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True, keep_connection=False)
+        prewarm.assert_called_once_with("zh-TW-YunJheNeural", decode_pcm=True, keep_connection=False,
+                                        timeout_seconds=15.0)
         self.assertFalse(worker.is_alive())
 
     def test_non_edge_engine_does_not_start_edge_prewarm(self):
         with patch("src.tts.engines.edge.prewarm_edge_tts") as prewarm:
-            worker = _start_edge_tts_prewarm(self._config("breezyvoice"))
+            worker = _start_edge_tts_prewarm(self._config("breezyvoice"), self._tts())
             _await_edge_tts_prewarm(worker)
 
         self.assertIsNone(worker)
@@ -56,14 +61,14 @@ class EdgeTTSStartupTests(unittest.TestCase):
         with patch("src.tts.engines.edge.prewarm_edge_tts", side_effect=[False, True]) as prewarm, patch(
             "src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
         ):
-            self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config())))
+            self.assertTrue(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config(), self._tts())))
         self.assertEqual(prewarm.call_count, 2)
 
     def test_startup_prewarm_stops_after_three_failures(self):
         with patch("src.tts.engines.edge.prewarm_edge_tts", return_value=False) as prewarm, patch(
             "src.server.app.EDGE_PREWARM_RETRY_SECONDS", 0,
         ):
-            self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config())))
+            self.assertFalse(_await_edge_tts_prewarm(_start_edge_tts_prewarm(self._config(), self._tts())))
         self.assertEqual(prewarm.call_count, 3)
 
 

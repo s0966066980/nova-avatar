@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
 from src.server.voice_session import VoiceTurnSession
-from src.tts.base import sanitize_speech_text
+from nova_contracts.tts import strip_visual_markup
 
 
 class SanitizingAvatar:
@@ -20,7 +20,7 @@ class SanitizingAvatar:
         self.on_fragment_queued = None
 
     def put_msg_txt(self, text, data=None):
-        text = sanitize_speech_text(text)
+        text = strip_visual_markup(text)
         if not text:
             return
         eventpoint = dict(data or {})

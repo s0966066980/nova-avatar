@@ -42,7 +42,7 @@ def test_disabled_prewarm_does_not_contact_edge():
     config = Config()
     config.app.prewarm = False
     with patch('src.tts.engines.edge.prewarm_edge_tts') as warm:
-        assert _start_edge_tts_prewarm(config) is None
+        assert _start_edge_tts_prewarm(config, object()) is None
     warm.assert_not_called()
 
 

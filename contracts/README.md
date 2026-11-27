@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 | `nova_contracts.http` | 描述 loopback HTTP 形狀的 `HttpApi`／`HttpOperation`，以及由它產生 OpenAPI 的 `openapi_document` |
 | `nova_contracts.stt` | 語音轉文字：DTO、`SttService` Protocol、`HTTP_API` |
 | `nova_contracts.llm` | 回答模型：口語文字增量等回覆事件（工單 07 第 2 步補上 `LlmService`） |
-| `nova_contracts.tts` | 語音合成：可播回覆片段、`AudioSink`（工單 07 第 2 步補上 `TtsService`） |
+| `nova_contracts.tts` | 語音合成：可播回覆片段、聲音（`TtsVoice`）、音訊庫、聲線模型試聽、聲線訓練（語料、自動逐字稿、訓練工作）的 DTO，`TtsService` Protocol 與 `HTTP_API`；只在同一行程內使用的 `AudioSink`、`SpeechChannel`、`TtsRuntime` |
 
 ## OpenAPI
 

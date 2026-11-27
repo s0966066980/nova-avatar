@@ -21,12 +21,13 @@ from nova_contracts.stt import SttEngineSettings, SttPrepareRequest, Transcripti
 from src.asr.adapter import InProcessSttService
 from src.avatars import base as avatar_base
 from src.avatars.base import BaseAvatar
-from src.config.schema import Config
+from src.config.schema import Config, TTSConfig
 from src.server.routes import audio as audio_routes
 from src.server.speaking_avatar import SpeakingAvatar
 from src.server.state import state
 from src.vad import audio as vad_audio
 from tests.access_helpers import access_client
+from tests.tts_fakes import in_process_tts
 
 SESSION = 271828
 BLOCK_SECONDS = 2.0
@@ -89,7 +90,7 @@ def server(monkeypatch):
     config = Config()
     config.vad.enabled = False
     for name, value in dict(config=config, config_path=None, roles=None, avatar_streams={},
-                            voice_sessions={}, session_roles={}, stt=None).items():
+                            voice_sessions={}, session_roles={}, stt=None, tts=in_process_tts()).items():
         monkeypatch.setattr(state, name, value, raising=False)
     return config
 
@@ -110,10 +111,9 @@ def bare_avatar(tmp_path: Path | None = None) -> BaseAvatar:
 
 def session_avatar(renderer: BaseAvatar) -> SpeakingAvatar:
     """The core's session avatar around a renderer, with an idle TTS stub."""
-    return SpeakingAvatar(
-        renderer,
-        tts_factory=lambda _config, _sink: SimpleNamespace(has_pending_work=lambda: False),
-    )
+    renderer.config.tts = TTSConfig()
+    idle = SimpleNamespace(has_pending_work=lambda: False)
+    return SpeakingAvatar(renderer, speech=SimpleNamespace(open_channel=lambda _voice, _sink: idle))
 
 
 # --- /asr ------------------------------------------------------------------
@@ -487,11 +487,10 @@ def test_speech_snapshot_scans_files_off_the_loop(server, monkeypatch, path):
 
 
 def test_deferred_speech_settings_snapshot_scans_files_off_the_loop(server, monkeypatch):
-    from src.server import deferred_settings
-    from src.tts import voice_library
+    from src.server import deferred_settings, runtime_settings
 
     blocker = Blocker(result=[])
-    monkeypatch.setattr(voice_library, "list_voices", blocker)
+    monkeypatch.setattr(runtime_settings, "_stt_catalog", blocker)
     monkeypatch.setattr(deferred_settings, "_store", lambda: SimpleNamespace(
         values={}, error="", save=lambda _values: None))
     monkeypatch.setattr(deferred_settings, "snapshot", lambda: {"items": [], "error": ""})

@@ -42,6 +42,7 @@ AREA_BY_FILE = {
     "test_editable_llm_rules.py": "llm",
     "test_frontend_serving.py": "runtime",
     "test_tts_engine_cleanup.py": "speech",
+    "test_tts_contract.py": "speech",
     "test_voice_models.py": "speech",
     "test_voice_preview.py": "speech",
     "test_training_numerals.py": "speech",

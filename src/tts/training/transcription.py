@@ -19,8 +19,9 @@ lines, so they still go through the review table.
 local cache (never downloading), detects the language itself and converts the
 text to Traditional Chinese (Taiwan wording) with OpenCC ``s2twp``.
 
-The device is decided once, when a job starts, by the GPU guard (``choose_device``: the
-core's stage check, then ``gpu_guard.choose_transcription_device``): a connected stage or too little free VRAM
+The device is decided once, when a job starts: the CPU when the core says a connected
+stage rules the GPU out (``cpu_reason``), else the GPU guard (``choose_device``, normally
+``gpu_guard.choose_transcription_device``): a connected stage or too little free VRAM
 means the CPU (int8) with a reason, never a refusal and never a silent switch. The
 status carries ``device`` and ``fallback_reason``; a running job does not migrate when
 the stage connects later. If the GPU still cannot run the model, for example because
@@ -102,9 +103,18 @@ class TranscriptionJobs:
     # ------------------------------------------------------------ public
 
     def start(
-        self, slug: str, line_ids: list[str] | None = None, model: str = DEFAULT_MODEL
+        self,
+        slug: str,
+        line_ids: list[str] | None = None,
+        model: str = DEFAULT_MODEL,
+        *,
+        cpu_reason: str | None = None,
     ) -> TranscriptionStatus:
-        """Start transcribing the corpus's lines that lack a transcript."""
+        """Start transcribing the corpus's lines that lack a transcript.
+
+        ``cpu_reason`` is the caller's reason the GPU is ruled out (the core's connected
+        stage); without one the GPU guard (``choose_device``) decides.
+        """
         if model not in ALLOWED_MODELS:
             raise CorpusError(f"不支援的語音辨識模型，可用：{'、'.join(ALLOWED_MODELS)}")
         corpus = self.store.get(slug)
@@ -122,7 +132,7 @@ class TranscriptionJobs:
         if not targets:
             raise CorpusError("沒有需要自動產生逐字稿的音檔", status=409)
         # Decided once, outside the lock because it may run nvidia-smi; never changed mid-job.
-        choice = self.choose_device()
+        choice = DeviceChoice(DEVICE_CPU, cpu_reason) if cpu_reason else self.choose_device()
         with self._lock:
             if self._status.state == STATE_RUNNING:
                 raise CorpusError("已有一項逐字稿作業進行中，請等它完成或取消", status=409)

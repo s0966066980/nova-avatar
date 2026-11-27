@@ -21,7 +21,7 @@ from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
 from src.profiles.composition import MAIN_ANNOUNCEMENTS, live_members, main_profile_id, referenced_media, transition
 from src.profiles.store import ProfileError, ProfileStore, profile_config
-from src.tts.cosyvoice_runtime import server_identity
+from src.tts import config_section as tts_section
 from src.utils.logging import logger
 
 # The plan of a turn the current main role answers itself. It is also the
@@ -446,14 +446,14 @@ def adopt_saved_main_voice(config, path) -> bool:
     return True
 
 
-def _start_breezyvoice(tts) -> None:
-    from src.tts.cosyvoice_runtime import ensure_server, parse_server_url
+def _start_breezyvoice(service, tts) -> None:
+    """Start the BreezyVoice server and model of a ``tts`` section through the TTS service."""
+    from nova_contracts.tts import TtsError, VoicePreparation
 
-    host, port = parse_server_url(tts.tts_server)
     try:
-        ensure_server(model_dir=tts.model, host=host, port=port)
-    except Exception as exc:
-        raise ProfileError(f"BreezyVoice 啟動失敗：{exc}", 503) from exc
+        service.prepare_voice(VoicePreparation(voice=tts_section.voice(tts)))
+    except TtsError as exc:
+        raise ProfileError(f"BreezyVoice 啟動失敗：{exc.message}", 503) from exc
 
 
 class RoleCoordinator:
@@ -514,7 +514,7 @@ class RoleCoordinator:
     def _resource_key(config):
         llm, tts = config.llm, config.tts
         # The BreezyVoice server and model are shared by every conversation too.
-        voice_server = server_identity(tts.tts_server, tts.model) if tts.type == "breezyvoice" else None
+        voice_server = tts_section.server_identity(tts.tts_server, tts.model) if tts.type == "breezyvoice" else None
         return (config.model.type, tts.type, voice_server, llm.provider, llm.model,
                 llm.base_url, llm.llamacpp_ctx, llm.llamacpp_host, llm.llamacpp_port)
 
@@ -551,12 +551,12 @@ class RoleCoordinator:
             if config.tts.type != self.state.config.tts.type:
                 from src.server.runtime_settings import apply_tts_settings
                 await asyncio.to_thread(apply_tts_settings, self.state.config,
-                    main["tts"], session_count=0)
+                    main["tts"], session_count=0, tts=self.state.tts)
             elif config.tts.type == "breezyvoice" and not self.state.avatar_streams:
                 # Same engine: still start the profile's server and model, which
                 # may differ from (or have stopped since) the last apply. A
                 # connected conversation keeps the server it is using.
-                await asyncio.to_thread(_start_breezyvoice, config.tts)
+                await asyncio.to_thread(_start_breezyvoice, self.state.tts, config.tts)
             config = profile_config(self.state.config, main)
             # One copy per avatar, shared by every conversation and member;
             # avatars no longer in the composition go with the old cache.
@@ -590,9 +590,8 @@ class RoleCoordinator:
             self.assets, self.library = cache, target
             _adopt_main_voice(self.state.config, target)
             if not startup:
-                from src.tts.voice_library import clear_removed_engine_notice
                 # The admin has chosen voices again since a removed engine fell back.
-                clear_removed_engine_notice()
+                tts_section.clear_removed_engine_notice()
             self.profiles_applied = True
             self.phase = "ready" if members else "disabled"
             self.error = ""
@@ -677,7 +676,7 @@ class RoleCoordinator:
         voice._turn_context = None
         voice.bind_conversation()
         if getattr(voice.avatar, "tts", None) is not None:
-            voice.avatar.tts.config = voice.config
+            voice.avatar.tts.set_voice(tts_section.voice(voice.config.tts))
         voice.avatar._role_presentation = RolePresentation() if roles.enabled else None
         self.sessions[voice.sessionid] = roles
         voice._role_coordinator = roles

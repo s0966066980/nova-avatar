@@ -164,9 +164,8 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(server.state, "roles", None), patch.object(server.state, "pcs", set()), \
                 patch.object(server.state, "voice_sessions", {}), \
                 patch.object(server, "shutdown_llama_server"), \
-                patch.object(server, "shutdown_cosyvoice_server"), \
-                patch.object(server.scene_service, "close"), \
-                patch("src.tts.engines.edge.shutdown_edge_tts"):
+                patch.object(server.state, "tts_runtime", None), \
+                patch.object(server.scene_service, "close"):
             await server.on_shutdown(None)
         await self.client.retrieve("問題", [DATASET_A])
         self.assertNotEqual(self.client_ports[0], self.client_ports[1])

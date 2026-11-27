@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.server.tts_training_jobs import (
+from src.tts.training.jobs import (
     TrainingJobManager,
     TrainingParams,
     TrainingPaths,
@@ -212,7 +212,6 @@ def rig(
     transcript: dict[str, str] | None = None,
     transcriber_error: Exception | None = None,
     verify_error: Exception | None = None,
-    sessions: int = 0,
     vram: VramReading = VramReading(ENOUGH_VRAM_MIB),
     settings: TrainingSettings = TrainingSettings(),
     synthesize=None,
@@ -275,7 +274,6 @@ def rig(
         paths=paths,
         settings=lambda: settings,
         params=TrainingParams(batch_size=2, epochs=1, num_workers=0, vram_sample_seconds=0),
-        sessions=lambda: sessions,
         vram_probe=lambda: vram,
         spawn=spawner,
         synthesize=synthesize or default_synthesize,

@@ -24,6 +24,7 @@ from src.profiles.coordinator import RoleCoordinator
 from src.profiles.media import RolePresentation
 from src.profiles.store import ProfileStore, profile_config
 from src.server.voice_session import VoiceTurnSession
+from tests.tts_fakes import in_process_tts
 
 
 class Avatar:
@@ -72,7 +73,7 @@ def field(tmp_path, monkeypatch):
     library = store.initialize(config)
     library['composition']['enabled'] = True
     state = SimpleNamespace(config=config, voice_sessions={}, avatar_streams={},
-        avatar=object(),
+        avatar=object(), tts=in_process_tts(),
         count_sessions=lambda kind: sum(v._presenter == kind for v in state.voice_sessions.values()))
     weather = SimpleNamespace(configured=True, query=Mock())
     route = route_to('weather', county='臺北市', town='中正區', kind='forecast', context='已確認臺北市中正區')

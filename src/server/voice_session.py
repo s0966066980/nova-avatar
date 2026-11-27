@@ -27,9 +27,10 @@ import soundfile as sf
 from av.audio.resampler import AudioResampler
 
 from nova_contracts.stt import SttPrepareRequest, SttService, Transcription, TranscriptionOptions
+from nova_contracts.tts import TtsService, strip_visual_markup
 from src.greetings.controller import IdleGreetingController
 from src.greetings.content import GreetingError
-from src.tts.base import sanitize_speech_text
+from src.tts import config_section as tts_section
 from src.llm.service import (
     remember_greeting,
     acknowledge_session_board_item,
@@ -170,6 +171,7 @@ class VoiceTurnSession:
         presenter: str = "console",
         test_result_sink: Optional[TestResultSink] = None,
         stt: Optional[SttService] = None,
+        tts: Optional[TtsService] = None,
     ) -> None:
         self.sessionid = sessionid
         self.config = deepcopy(config)
@@ -186,7 +188,7 @@ class VoiceTurnSession:
         self._turn_origin = "visitor"
         self._greeting_trial_preparation = None
         self._greeting_text = ""
-        self._greeting_tts_config = None
+        self._greeting_tts_voice = None
         self._greeting_started = False
         self._stage_ready = False
         self._greeting_returning = False
@@ -211,6 +213,8 @@ class VoiceTurnSession:
         self._segmenter = None
         # The process's STT service; ``_stt`` is set once it is prepared.
         self._stt_service = stt
+        # The process's TTS service, for warming a voice the conversation switches to.
+        self._tts_service = tts
         self._stt: Optional[SttService] = None
         self._track_task: Optional[asyncio.Task] = None
         self._turn_task: Optional[asyncio.Task] = None
@@ -324,7 +328,7 @@ class VoiceTurnSession:
             await loop.run_in_executor(None, self._prepare_sync)
             if self._conversation['locale'] == 'en-US':
                 from src.server.conversations import warm_voice
-                await warm_voice(self.config, self._conversation)
+                await warm_voice(self.config, self._conversation, self._tts_service)
         except Exception as exc:
             self._preparing = False
             self._prepare_error = str(exc)
@@ -508,7 +512,7 @@ class VoiceTurnSession:
                     await self.interrupt()
                     if self._closed:
                         raise RuntimeError('對話已結束')
-                    await warm_voice(self.config, candidate)
+                    await warm_voice(self.config, candidate, self._tts_service)
                     if self._closed:
                         raise RuntimeError('對話已結束')
                     # Old media is fenced before changing the per-avatar config.
@@ -2227,13 +2231,13 @@ class VoiceTurnSession:
 
     def start_greeting(self, text: str, *, playback_config=None) -> str:
         """Queue fenced TTS without manufacturing a visitor history turn."""
-        if not sanitize_speech_text(text):
+        if not strip_visual_markup(text):
             raise GreetingError("招呼文案沒有可朗讀文字，請補上招呼內容")
         if not self._is_conversation_idle():
             raise RuntimeError("目前有其他對話，請等待播放結束")
         if playback_config is not None and getattr(self.avatar, "tts", None) is not None:
-            self._greeting_tts_config = self.avatar.tts.config
-            self.avatar.tts.config = playback_config
+            self._greeting_tts_voice = self.avatar.tts.voice
+            self.avatar.tts.set_voice(tts_section.voice(playback_config.tts))
         self._greeting_text = text
         self._turn_id = uuid4().hex
         self._greeting_started = False
@@ -2254,9 +2258,9 @@ class VoiceTurnSession:
             self._greeting_trial_preparation = None
 
     def _restore_greeting_voice(self):
-        if self._greeting_tts_config is not None:
-            self.avatar.tts.config = self._greeting_tts_config
-            self._greeting_tts_config = None
+        if self._greeting_tts_voice is not None:
+            self.avatar.tts.set_voice(self._greeting_tts_voice)
+            self._greeting_tts_voice = None
 
     def cancel_greeting(self, *, stop_playing=False) -> None:
         if not self.is_greeting or self._greeting_started and not stop_playing:

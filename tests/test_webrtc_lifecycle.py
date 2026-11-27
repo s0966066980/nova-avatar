@@ -23,7 +23,7 @@ def rtc(monkeypatch):
     config = Config()
     for name, value in dict(config=config, model_ready=True, model=object(), avatar=object(),
                             switching=False, settings_applying=False, shutting_down=False, avatar_streams={},
-                            voice_sessions={}, session_roles={}, pcs=set(), presentation=None).items():
+                            voice_sessions={}, session_roles={}, pcs=set(), presentation=None, tts=None).items():
         monkeypatch.setattr(state, name, value, raising=False)
     peers, voices = [], []
     class Peer:
@@ -59,7 +59,7 @@ def rtc(monkeypatch):
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', voice)
     monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: object())
     # These tests fake the renderer; the core's TTS pairing has its own tests.
-    monkeypatch.setattr(webrtc, 'SpeakingAvatar', lambda renderer: renderer)
+    monkeypatch.setattr(webrtc, 'SpeakingAvatar', lambda renderer, speech: renderer)
     def request(role='console', sdp='good', app=None):
         result = AsyncMock()
         result.json.return_value = dict(client_role=role, sdp=sdp, type='offer')
@@ -380,14 +380,18 @@ class WebRTCOfferCapacityTests(unittest.IsolatedAsyncioTestCase):
 
 
 def training_app(manager):
-    from src.server.routes.tts_training import MANAGER_KEY
-    return {MANAGER_KEY: manager}
+    """The TTS service whose training job the offer route asks about; no aiohttp app state."""
+    from nova_contracts.tts import TtsEngineSettings
+    from src.tts.training.service import InProcessVoiceTraining
+
+    state.tts = InProcessVoiceTraining(settings=TtsEngineSettings, training_jobs=manager)
+    return {}
 
 
 def training_rig(tmp_path, **kwargs):
     """A training job whose child keeps running until it is released or signalled."""
     from tests.training_fakes import rig
-    from src.server.tts_training_jobs import StartRequest
+    from src.tts.training.jobs import StartRequest
 
     r = rig(tmp_path, **kwargs)
     r.manager.start(StartRequest(corpus='voice', name='我的聲音'))

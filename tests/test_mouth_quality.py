@@ -21,6 +21,7 @@ from src.avatars.mouth_quality import (
 )
 from src.config.schema import Config
 from src.server.import_jobs import start_import_job
+from tests.tts_fakes import in_process_tts
 from src.server.runtime_settings import (
     SettingsError,
     apply_mouth_quality,
@@ -109,7 +110,7 @@ class QualitySettingsTests(unittest.TestCase):
         with patch(
             "src.server.runtime_settings.list_avatar_characters", return_value=[]
         ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            snapshot = current_snapshot(config, tts=in_process_tts())
         self.assertEqual(snapshot["avatar_quality"]["mouth_sharpen"], 0.7)
         self.assertEqual(snapshot["avatar_quality"]["musetalk"]["bbox_shift"], 5)
         self.assertEqual(snapshot["avatar_quality"]["paste_interpolation"], "lanczos")

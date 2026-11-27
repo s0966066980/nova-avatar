@@ -24,6 +24,7 @@ from src.server.runtime_settings import (
 )
 from src.tts import voice_library
 from src.tts.factory import create_tts_engine
+from tests.tts_fakes import in_process_tts
 
 # Every retired name takes the same "not a current engine" branch; two stand in for all of them.
 REMOVED = ("cosyvoice", "gpt-sovits")
@@ -49,7 +50,7 @@ def stored_voice(voices, tmp_path):
 
 def test_only_breezyvoice_edge_tts_and_matcha_are_offered():
     assert set(TTS_ENGINE_META) == {"edgetts", "breezyvoice", "matcha"}
-    engines = {item["id"] for item in speech_snapshot(Config())["tts"]["engines"]}
+    engines = {item["id"] for item in speech_snapshot(Config(), tts=in_process_tts())["tts"]["engines"]}
     assert engines == {"edgetts", "breezyvoice", "matcha"}
     assert voice_library.TTS_ENGINES == frozenset(TTS_ENGINE_META)
 
@@ -57,14 +58,14 @@ def test_only_breezyvoice_edge_tts_and_matcha_are_offered():
 def test_removed_engine_settings_fields_are_gone():
     names = {item.name for item in fields(TTSConfig)}
     assert not names & set(LEGACY_FIELDS)
-    snapshot = speech_snapshot(Config())["tts"]
+    snapshot = speech_snapshot(Config(), tts=in_process_tts())["tts"]
     assert not {"mode", "language", "speaker", "instruct", "device", "languages", "speakers"} & set(snapshot)
 
 
 @pytest.mark.parametrize("engine", REMOVED)
 def test_removed_engines_are_rejected_when_applied_or_built(engine):
     with pytest.raises(SettingsError, match="不支援"):
-        apply_tts_settings(Config(), {"type": engine}, session_count=0)
+        apply_tts_settings(Config(), {"type": engine}, session_count=0, tts=in_process_tts())
     config = SimpleNamespace(audio=SimpleNamespace(fps=50), tts=SimpleNamespace(type=engine))
     with pytest.raises(ValueError):
         create_tts_engine(engine, config, None)
@@ -82,7 +83,7 @@ def test_saved_removed_engine_falls_back_to_edge_tts_with_a_log_and_console_noti
     assert values["tts_server"] == "" and values["model"] == ""
     assert not set(LEGACY_FIELDS) & set(values)
     assert engine in caplog.text and "Edge TTS" in caplog.text
-    notice = speech_snapshot(Config())["tts"]["notice"]
+    notice = speech_snapshot(Config(), tts=in_process_tts())["tts"]["notice"]
     assert engine in notice and "Edge TTS" in notice
 
 
@@ -90,7 +91,7 @@ def test_supported_engines_keep_their_settings_and_leave_no_notice(voices, store
     values = {"type": "breezyvoice", "ref_file": stored_voice, "tts_server": "", "model": ""}
     assert voice_library.migrate_tts_values(values, where="設定檔") is False
     assert values["type"] == "breezyvoice" and values["ref_file"] == stored_voice
-    assert speech_snapshot(Config())["tts"]["notice"] == ""
+    assert speech_snapshot(Config(), tts=in_process_tts())["tts"]["notice"] == ""
 
 
 def test_startup_config_with_a_removed_engine_and_legacy_fields_loads_on_edge_tts(
@@ -107,7 +108,7 @@ def test_startup_config_with_a_removed_engine_and_legacy_fields_loads_on_edge_tt
     assert config.tts.type == "edgetts"
     assert config.tts.ref_file == voice_library.DEFAULT_EDGE_VOICE
     assert "fun-cosyvoice3" in caplog.text
-    assert "fun-cosyvoice3" in speech_snapshot(config)["tts"]["notice"]
+    assert "fun-cosyvoice3" in speech_snapshot(config, tts=in_process_tts())["tts"]["notice"]
 
 
 def test_applying_a_tts_engine_clears_the_fallback_notice(voices, monkeypatch):
@@ -115,7 +116,7 @@ def test_applying_a_tts_engine_clears_the_fallback_notice(voices, monkeypatch):
     monkeypatch.setattr("src.server.runtime_settings._preview_tts", lambda *a, **k: "data:audio/wav;base64,dA==")
     monkeypatch.setattr("src.server.runtime_settings.persist_runtime_overrides", lambda config: None)
     result = apply_tts_settings(Config(), {"type": "edgetts", "ref_file": "zh-TW-HsiaoYuNeural"},
-                                session_count=0)
+                                session_count=0, tts=in_process_tts())
     assert result["notice"] == ""
 
 
@@ -137,7 +138,7 @@ def test_saved_role_with_a_removed_engine_starts_on_edge_tts(voices, stored_voic
     assert not set(LEGACY_FIELDS) & set(tts)
     saved = yaml.safe_load(store.path.read_text("utf-8"))["profiles"][0]["tts"]
     assert saved["type"] == "edgetts" and not set(LEGACY_FIELDS) & set(saved)
-    assert "gpt-sovits" in speech_snapshot(config)["tts"]["notice"]
+    assert "gpt-sovits" in speech_snapshot(config, tts=in_process_tts())["tts"]["notice"]
 
     attempt = store.load()
     attempt["profiles"][0]["tts"]["type"] = "xtts"

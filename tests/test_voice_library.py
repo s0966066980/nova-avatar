@@ -27,6 +27,7 @@ from src.server.state import state
 from src.tts import voice_library
 from src.tts.voice_library import VoiceLibraryError
 from tests.access_helpers import access_client, same_origin
+from tests.tts_fakes import in_process_tts
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 UNSAFE_REFERENCES = [
@@ -68,9 +69,10 @@ def stored_voice(voices, tmp_path):
 
 
 @pytest.fixture
-def server_config():
+def server_config(monkeypatch):
     previous = state.config
     state.config = Config()
+    monkeypatch.setattr(state, "tts", in_process_tts())
     yield state.config
     state.config = previous
 
@@ -307,7 +309,7 @@ def test_voice_upload_keeps_its_transcript(voices, server_config):
 
 
 def test_oversized_voice_upload_is_rejected_and_cleaned(voices, server_config, monkeypatch):
-    monkeypatch.setattr(voice_library, "MAX_UPLOAD_BYTES", 1024)
+    monkeypatch.setattr("src.server.routes.settings.MAX_VOICE_UPLOAD_BYTES", 1024)
 
     async def scenario():
         async with access_client() as client:
@@ -316,7 +318,8 @@ def test_oversized_voice_upload_is_rejected_and_cleaned(voices, server_config, m
             response = await client.post("/api/speech/voices", headers=same_origin(client), data=form)
             assert response.status == 413
     run(scenario())
-    assert list(voices.iterdir()) == []
+    # Refused while reading: nothing reached the voice library's folder.
+    assert not voices.exists() or list(voices.iterdir()) == []
 
 
 # ---------------------------------------------------------------- stored settings
@@ -478,7 +481,7 @@ def test_profile_voice_migration_runs_once_at_startup_and_is_saved(voices, tmp_p
     def no_migration(*_args, **_kwargs):
         raise AssertionError("load() must not decode or hash saved audio again")
 
-    monkeypatch.setattr(profile_store, "migrate_tts_values", no_migration)
+    monkeypatch.setattr(voice_library, "migrate_tts_values", no_migration)
     assert store.load()["profiles"][0]["tts"]["ref_file"] == voice_id
 
 

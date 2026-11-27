@@ -270,7 +270,25 @@ allowed_importers = ["src.asr"]
 # llm-internals-private: ticket 07 step 2 (LLM) replaces this line with its block.
 
 
-# tts-internals-private: ticket 07 step 2 (TTS) replaces this line with its block.
+[[tool.importlinter.contracts]]
+id = "tts-internals-private"
+name = "Only the TTS layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "src.tts.base",
+    "src.tts.cosyvoice_runtime",
+    "src.tts.edge_connection",
+    "src.tts.edge_endpoint",
+    "src.tts.engines",
+    "src.tts.factory",
+    "src.tts.pcm_emitter",
+    "src.tts.retry",
+    "src.tts.training",
+    "src.tts.voice_library",
+    "src.tts.voice_models",
+    "src.tts.voice_preview",
+]
+allowed_importers = ["src.tts"]
 
 
 # avatar-internals-private: ticket 07 step 2 (avatar rendering) replaces this line with its block.

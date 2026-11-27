@@ -39,6 +39,7 @@ from src.server.runtime_settings import (
     quality_from_model,
     vad_snapshot,
     speech_snapshot,
+    stt_snapshot,
     stage_snapshot,
     apply_reply_rules,
     reply_rules_snapshot,
@@ -59,7 +60,7 @@ from src.scene.service import (
     restore_background,
     scene_service,
 )
-from src.tts import voice_library
+from nova_contracts.tts import MAX_VOICE_UPLOAD_BYTES, TtsError, VoiceRef, VoiceUpload
 from src.utils.logging import logger
 
 
@@ -79,7 +80,7 @@ async def get_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     # The snapshot scans avatars, voices and models on disk.
-    data = await asyncio.to_thread(current_snapshot, state.config)
+    data = await asyncio.to_thread(current_snapshot, state.config, tts=state.tts)
     data["pending_settings"] = pending_snapshot()
     data["session_count"] = _active_session_count()
     data["switching"] = bool(state.switching or state.settings_applying)
@@ -136,7 +137,7 @@ async def set_llm_behavior(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
-@defer_when_connected("對話模型", lambda config: current_snapshot(config)["llm"])
+@defer_when_connected("對話模型", lambda config: current_snapshot(config, tts=state.tts)["llm"])
 async def set_llm_model(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -194,7 +195,7 @@ async def set_vad_settings(request):
 async def get_speech_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    return _json({"code": 0, "data": await asyncio.to_thread(speech_snapshot, state.config)})
+    return _json({"code": 0, "data": await asyncio.to_thread(speech_snapshot, state.config, tts=state.tts)})
 
 
 async def get_stage_settings(request):
@@ -352,7 +353,7 @@ async def restore_archived_background(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
-@defer_when_connected("語音辨識", lambda config: speech_snapshot(config)["stt"])
+@defer_when_connected("語音辨識", stt_snapshot)
 async def set_stt_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -375,16 +376,18 @@ async def set_stt_settings(request):
 
 
 async def list_tts_voices(request):
-    return _json({"code": 0, "data": {"items": await asyncio.to_thread(voice_library.list_voices)}})
+    voices = await asyncio.to_thread(state.tts.list_voices)
+    return _json({"code": 0, "data": {"items": [voice.model_dump(mode="json") for voice in voices.voices]}})
 
 
 async def tts_voice_audio(request):
     """The stored WAV of a library voice, for previewing it in the console."""
+    ref = VoiceRef(voice_id=request.match_info.get("voice_id", ""))
     try:
-        path = await asyncio.to_thread(voice_library.voice_path, request.match_info.get("voice_id", ""))
-    except voice_library.VoiceLibraryError as exc:
+        audio = await asyncio.to_thread(state.tts.voice_audio, ref)
+    except TtsError as exc:
         return _json({"code": -1, "msg": exc.message}, status=exc.status)
-    return web.FileResponse(path, headers={"Content-Type": "audio/wav", "Cache-Control": "no-store"})
+    return web.Response(body=audio, headers={"Content-Type": "audio/wav", "Cache-Control": "no-store"})
 
 
 async def breezyvoice_status(request):
@@ -393,7 +396,7 @@ async def breezyvoice_status(request):
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     params = {key: request.query.get(key, "") for key in ("model", "tts_server")}
     try:
-        ready = await asyncio.to_thread(breezyvoice_server_ready, state.config, params)
+        ready = await asyncio.to_thread(breezyvoice_server_ready, state.config, params, tts=state.tts)
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
     return _json({"code": 0, "data": {"ready": ready}})
@@ -413,7 +416,7 @@ async def preview_voice(request):
     try:
         # Starting BreezyVoice and synthesizing both take seconds to minutes.
         audio = await asyncio.to_thread(preview_profile_voice, state.config, tts,
-                                        session_count=_active_session_count())
+                                        session_count=_active_session_count(), tts=state.tts)
         return _json({"code": 0, "msg": "ok", "data": {"audio": audio}})
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
@@ -422,52 +425,52 @@ async def preview_voice(request):
         return _json({"code": -1, "msg": "聲音試聽失敗"}, status=500)
 
 
+class _FieldTooLong(ValueError):
+    pass
+
+
 async def _read_field(part, limit: int = 1024) -> str:
     data = bytearray()
     while chunk := await part.read_chunk(size=limit):
         data.extend(chunk)
         if len(data) > limit:
-            raise voice_library.VoiceLibraryError("欄位內容過長")
+            raise _FieldTooLong("欄位內容過長")
     return data.decode("utf-8", "replace")
 
 
 async def upload_tts_voice(request):
-    """Add reference audio to the voice library: stream, cap, validate, convert."""
-    root = voice_library.voices_root()
-    temporary = root / f".upload-{uuid4().hex}"
+    """Add reference audio to the voice library: read with a cap, then the TTS layer validates and converts."""
     try:
-        root.mkdir(parents=True, exist_ok=True)
         reader = await request.multipart()
-        name, transcript, stem, received = "", "", "", False
+        name, transcript, stem, audio = "", "", "", None
         while (part := await reader.next()) is not None:
             if part.name == "name":
                 name = (await _read_field(part)).strip()
             elif part.name == "transcript":
                 transcript = (await _read_field(part, limit=4096)).strip()
-            elif part.name == "voice" and part.filename and not received:
+            elif part.name == "voice" and part.filename and audio is None:
                 stem = Path(part.filename).stem
-                size = 0
-                with temporary.open("wb") as handle:
-                    while chunk := await part.read_chunk(size=256 * 1024):
-                        size += len(chunk)
-                        if size > voice_library.MAX_UPLOAD_BYTES:
-                            limit = voice_library.MAX_UPLOAD_BYTES / 1024 / 1024
-                            return _json({"code": -1, "msg": f"參考音訊不可超過 {limit:g} MB"}, status=413)
-                        handle.write(chunk)
-                received = True
+                data = bytearray()
+                while chunk := await part.read_chunk(size=256 * 1024):
+                    data.extend(chunk)
+                    if len(data) > MAX_VOICE_UPLOAD_BYTES:
+                        limit = MAX_VOICE_UPLOAD_BYTES / 1024 / 1024
+                        return _json({"code": -1, "msg": f"參考音訊不可超過 {limit:g} MB"}, status=413)
+                audio = bytes(data)
             else:
                 return _json({"code": -1, "msg": "上傳欄位不正確"}, status=400)
-        if not received:
+        if audio is None:
             return _json({"code": -1, "msg": "請選擇參考音訊檔"}, status=400)
-        voice = await asyncio.to_thread(voice_library.add_voice, temporary, name or stem, transcript)
-        return _json({"code": 0, "msg": "ok", "data": voice})
-    except voice_library.VoiceLibraryError as exc:
+        upload = VoiceUpload(name=name or stem, transcript=transcript)
+        voice = await asyncio.to_thread(state.tts.add_voice, audio, upload)
+        return _json({"code": 0, "msg": "ok", "data": voice.model_dump(mode="json")})
+    except _FieldTooLong as exc:
+        return _json({"code": -1, "msg": str(exc)}, status=400)
+    except TtsError as exc:
         return _json({"code": -1, "msg": exc.message}, status=exc.status)
     except Exception:
         logger.exception("上傳參考音訊失敗")
         return _json({"code": -1, "msg": "上傳參考音訊失敗"}, status=500)
-    finally:
-        temporary.unlink(missing_ok=True)
 
 
 def _voice_in_use(voice_id: str) -> bool:
@@ -488,8 +491,8 @@ def _voice_in_use(voice_id: str) -> bool:
 
 def _archive_unused_voice(voice_id: str) -> None:
     if _voice_in_use(voice_id):
-        raise voice_library.VoiceLibraryError("這段參考音訊正在使用中，請先改用其他聲音", status=409)
-    voice_library.delete_voice(voice_id)
+        raise TtsError("這段參考音訊正在使用中，請先改用其他聲音", status=409)
+    state.tts.delete_voice(VoiceRef(voice_id=voice_id))
 
 
 async def delete_tts_voice(request):
@@ -498,11 +501,11 @@ async def delete_tts_voice(request):
     try:
         await asyncio.to_thread(_archive_unused_voice, voice_id)
         return _json({"code": 0, "msg": "ok", "data": {"id": voice_id}})
-    except voice_library.VoiceLibraryError as exc:
+    except TtsError as exc:
         return _json({"code": -1, "msg": exc.message}, status=exc.status)
 
 
-@defer_when_connected("數位人引擎", lambda config: current_snapshot(config)["avatar"])
+@defer_when_connected("數位人引擎", lambda config: current_snapshot(config, tts=state.tts)["avatar"])
 async def set_avatar(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)

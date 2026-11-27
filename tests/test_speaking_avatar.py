@@ -5,12 +5,14 @@
 
 import numpy as np
 
+from nova_contracts.tts import TtsVoice
+from src.config.schema import Config
 from src.server.speaking_avatar import SpeakingAvatar
 
 
 class FakeRenderer:
     def __init__(self):
-        self.config = object()
+        self.config = Config()
         self.chunk = 320
         self.frames = []
         self.flushes = []
@@ -22,36 +24,48 @@ class FakeRenderer:
 
 
 class FakeTTS:
-    def __init__(self, config, sink):
-        self.config = config
+    """A SpeechChannel that records what the core asks of it."""
+
+    def __init__(self, voice, sink):
+        self.voice = voice
         self.sink = sink
         self.messages = []
         self.flushes = 0
 
-    def put_msg_txt(self, text, datainfo=None):
-        self.messages.append((text, datainfo))
+    def set_voice(self, voice):
+        self.voice = voice
 
-    def flush_talk(self):
+    def speak(self, text, eventpoint):
+        self.messages.append((text, eventpoint))
+
+    def flush(self):
         self.flushes += 1
+
+
+class FakeRuntime:
+    def __init__(self, channel=FakeTTS):
+        self.channel = channel
+        self.created = []
+
+    def open_channel(self, voice, sink):
+        self.created.append(self.channel(voice, sink))
+        return self.created[-1]
 
 
 def speaking(renderer=None):
     renderer = renderer or FakeRenderer()
-    created = []
-
-    def factory(config, sink):
-        created.append(FakeTTS(config, sink))
-        return created[-1]
-
-    return SpeakingAvatar(renderer, tts_factory=factory), renderer, created
+    runtime = FakeRuntime()
+    return SpeakingAvatar(renderer, speech=runtime), renderer, runtime.created
 
 
-def test_the_core_builds_tts_with_itself_as_the_audio_sink():
-    avatar, renderer, created = speaking()
+def test_the_core_opens_a_speech_channel_in_the_renderer_config_voice_with_itself_as_sink():
+    renderer = FakeRenderer()
+    renderer.config.tts.ref_file = "zh-TW-HsiaoYuNeural"
+    avatar, renderer, created = speaking(renderer)
 
     assert created == [avatar.tts]
     assert avatar.tts.sink is avatar
-    assert avatar.tts.config is renderer.config
+    assert avatar.tts.voice == TtsVoice(engine="edgetts", voice="zh-TW-HsiaoYuNeural")
 
 
 def test_tts_pcm_reaches_the_renderer_through_the_core():
@@ -156,10 +170,10 @@ class LifecycleTTS(FakeTTS):
     calls: list
     pending = False
 
-    def flush_talk(self):
+    def flush(self):
         self.calls.append("tts.flush")
 
-    def render(self, quit_event):
+    def run(self, quit_event):
         self.calls.append(("tts.render", quit_event))
 
     def has_pending_work(self):
@@ -170,12 +184,12 @@ def lifecycle():
     calls = []
     renderer = LifecycleRenderer(calls)
 
-    def factory(config, sink):
-        tts = LifecycleTTS(config, sink)
+    def channel(voice, sink):
+        tts = LifecycleTTS(voice, sink)
         tts.calls = calls
         return tts
 
-    return SpeakingAvatar(renderer, tts_factory=factory), renderer, calls
+    return SpeakingAvatar(renderer, speech=FakeRuntime(channel)), renderer, calls
 
 
 def test_barge_in_stops_tts_before_the_renderer_drops_queued_media():
@@ -203,23 +217,22 @@ def test_tts_runs_for_as_long_as_the_renderer_and_reports_pending_audio():
     assert renderer.pending_audio() is True
 
 
-def test_a_webrtc_session_gets_a_renderer_fed_by_a_core_built_tts(monkeypatch):
-    from src.config.schema import Config
+def test_a_webrtc_session_gets_a_renderer_fed_by_the_tts_runtime(monkeypatch):
     from src.server.routes import webrtc
-    from src.tts.engines.edge import EdgeTTS
+    from src.server.state import state
 
     renderer = FakeRenderer()
-    renderer.config = Config()
     built = []
+    runtime = FakeRuntime()
     monkeypatch.setattr(webrtc, "create_avatar", lambda *args: built.append(args) or renderer)
+    monkeypatch.setattr(state, "tts_runtime", runtime)
 
     avatar = webrtc.build_speaking_avatar("config", "model", "assets", 7)
 
     assert built == [("config", "model", "assets", 7)]
     assert avatar.renderer is renderer
-    assert isinstance(avatar.tts, EdgeTTS)
+    assert runtime.created == [avatar.tts]
     assert avatar.tts.sink is avatar
-    assert avatar.tts.config is renderer.config
 
 
 def test_tts_stops_when_the_renderer_fails_to_start():
@@ -240,23 +253,25 @@ def test_tts_stops_when_the_renderer_fails_to_start():
     assert quit_event.is_set()
 
 
-def test_a_profile_switch_gives_renderer_and_tts_the_same_config():
+def test_a_profile_switch_gives_the_renderer_the_config_and_tts_its_voice():
     avatar, renderer, _ = speaking()
     bound = []
     renderer.bind_profile = lambda config, data: bound.append((config, data))
-    config = object()
+    config = Config()
+    config.tts.type, config.tts.ref_file = "matcha", "role-voice"
 
     avatar.bind_profile(config, "assets")
 
     assert bound == [(config, "assets")]
-    assert avatar.tts.config is config
+    assert avatar.tts.voice == TtsVoice(engine="matcha", voice="role-voice")
     assert avatar.tts.flushes == 1  # The old role's queued text is not spoken.
 
 
 def test_renderer_state_is_read_and_written_on_the_renderer():
     avatar, renderer, _ = speaking()
     renderer.is_speaking = lambda: True
-    config = object()
+    config = Config()
+    config.tts.ref_file = "zh-TW-YunJheNeural"
 
     avatar.config = config
     avatar._role_presentation = "presentation"
@@ -265,7 +280,7 @@ def test_renderer_state_is_read_and_written_on_the_renderer():
     assert renderer._role_presentation == "presentation"
     assert avatar._role_presentation == "presentation"
     assert avatar.is_speaking() is True
-    assert avatar.tts.config is not config  # TTS voice swaps stay explicit.
+    assert avatar.tts.voice.voice != "zh-TW-YunJheNeural"  # TTS voice swaps stay explicit.
 
 
 def test_the_renderer_builds_no_tts_and_asks_the_core_whether_pcm_is_due():
