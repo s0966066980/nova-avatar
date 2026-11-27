@@ -292,6 +292,10 @@ export default {
         startEdge: '用测试用老师开始', startUpload: '上传我的录音',
         counts: '已确认 {confirmed} 句、待确认 {pending} 句、共 {total} 句',
         continue: '继续', continueLabel: '继续训练语料 {name}',
+        deleteCorpusLabel: '删除训练语料 {name}', deleteModelLabel: '删除声线模型 {name}',
+        delete: '删除', confirmDelete: '确认删除', cancelDelete: '取消',
+        deleteCorpusNote: '训练语料会移到回收桶（data/tts/training/.deleted），不会直接抹除；正在转写或训练的语料无法删除。',
+        deleteModelNote: '声线模型会移到回收桶（models/tts/.deleted），不会直接抹除；仍有数字人配置档使用，或正在训练中的声线模型无法删除。',
         models: '声线模型',
         modelsEmpty: '尚未安装声线模型。训练完成后，声线模型会出现在这里，也可以在数字人配置档选用。'
       },

@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,6 +52,7 @@ TOKENS = "tokens.txt"
 REQUIRED_FILES = (ACOUSTIC_MODEL, VOCODER, LEXICON, TOKENS)
 # Optional text-normalisation rules, in the order sherpa-onnx applies them.
 RULE_FSTS = ("phone-zh.fst", "date-zh.fst", "number-zh.fst")
+RECYCLE_DIR = ".deleted"
 VOICE_MODEL_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}")
 # The usage classifications of spec item "使用限制". Voice models are never
 # labelled commercially usable: every one so far derives from Edge audio or
@@ -91,6 +93,30 @@ def list_voice_models(root: Path | None = None) -> list[VoiceModel]:
         except _Incomplete as reason:
             logger.info("Voice model %s not listed: %s", model_dir.name, reason)
     return models
+
+
+class VoiceModelNotFound(LookupError):
+    """No listed voice model has this ID."""
+
+
+def delete_voice_model(voice_id: str, root: Path | None = None) -> Path:
+    """Move a listed voice model into ``<root>/.deleted``; returns its folder there.
+
+    The recycle bin is a hidden directory, so ``list_voice_models`` stops listing the
+    model at once and nothing is erased (CODING_STANDARDS 4). Whether a role or a running
+    training job still uses the model is the caller's question, asked first.
+    """
+    root = VOICE_MODELS_ROOT if root is None else root
+    if not isinstance(voice_id, str) or not VOICE_MODEL_ID.fullmatch(voice_id):
+        raise VoiceModelNotFound(voice_id)
+    model_dir = root / voice_id
+    if model_dir.is_symlink() or all(model.id != voice_id for model in list_voice_models(root)):
+        raise VoiceModelNotFound(voice_id)
+    destination = root / RECYCLE_DIR / f"{voice_id}-{uuid.uuid4().hex[:12]}"
+    destination.parent.mkdir(exist_ok=True)
+    model_dir.replace(destination)
+    logger.info("Moved voice model %s to the recycle bin as %s", voice_id, destination.name)
+    return destination
 
 
 def _voice_model(model_dir: Path) -> VoiceModel:

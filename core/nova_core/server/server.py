@@ -165,6 +165,7 @@ def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None 
     app.router.add_get("/api/speech/voices", routes.list_tts_voices)
     app.router.add_post("/api/speech/voices", routes.upload_tts_voice)
     app.router.add_delete("/api/speech/voices/{voice_id}", routes.delete_tts_voice)
+    app.router.add_delete("/api/speech/voice-models/{voice_id}", routes.delete_tts_voice_model)
     app.router.add_get("/api/speech/voices/{voice_id}/audio", routes.tts_voice_audio)
     app.router.add_get("/api/speech/breezyvoice/status", routes.breezyvoice_status)
     app.router.add_post("/api/speech/preview", routes.preview_voice)

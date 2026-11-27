@@ -61,6 +61,7 @@ ROUTES = (
     ("GET", BASE),
     ("POST", BASE),
     ("GET", CORPUS),
+    ("DELETE", CORPUS),
     ("POST", CORPUS + "/lines"),
     ("PUT", LINE),
     ("GET", LINE + "/audio"),
@@ -92,6 +93,7 @@ def register(app: web.Application) -> None:
         ("GET", BASE): list_corpora,
         ("POST", BASE): create_corpus,
         ("GET", CORPUS): get_corpus,
+        ("DELETE", CORPUS): delete_corpus,
         ("POST", CORPUS + "/lines"): upload_line,
         ("PUT", LINE): edit_line,
         ("GET", LINE + "/audio"): line_audio,
@@ -250,6 +252,14 @@ async def get_corpus(request: web.Request, tts: TtsService) -> web.StreamRespons
     data = detail.model_dump(mode="json")
     data["lines"] = [_line_payload(slug, line) for line in detail.lines]
     return _reply(data)
+
+
+@endpoint
+async def delete_corpus(request: web.Request, tts: TtsService) -> web.StreamResponse:
+    """Move the corpus to the recycle bin; refused while a transcription or the training job uses it."""
+    slug = _slug(request)
+    await asyncio.to_thread(tts.delete_corpus, CorpusRef(slug=slug))
+    return _reply({"slug": slug})
 
 
 # ------------------------------------------------------------------ lines

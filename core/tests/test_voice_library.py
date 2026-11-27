@@ -501,3 +501,68 @@ def test_breezyvoice_prompt_comes_from_the_library(voices, stored_voice):
         with pytest.raises(VoiceLibraryError):
             engine._prompt_wav()
     prepare.assert_not_called()
+
+
+VOICE_MODEL_LABEL = {
+    "name": "測試聲線",
+    "usage": "Development only",
+    "languages": ["zh-TW", "en-US"],
+    "source": "fixture",
+}
+
+
+@pytest.fixture
+def voice_models(tmp_path, monkeypatch):
+    from nova_tts import voice_models as catalog
+
+    root = tmp_path / "models-tts"
+    for model_id in ("trained-a", "trained-b"):
+        directory = root / model_id
+        directory.mkdir(parents=True)
+        for name in ("model.onnx", "vocos-16khz-univ.onnx", "lexicon.txt", "tokens.txt"):
+            (directory / name).write_bytes(b"fixture")
+        (directory / "voice.json").write_text(json.dumps(VOICE_MODEL_LABEL), encoding="utf-8")
+    monkeypatch.setattr(catalog, "VOICE_MODELS_ROOT", root)
+    return root
+
+
+def test_a_voice_model_is_deleted_into_the_recycle_bin(voice_models, server_config):
+    async def scenario():
+        async with access_client() as client:
+            response = await client.delete("/api/speech/voice-models/trained-a", headers=same_origin(client))
+            assert response.status == 200, await response.text()
+            assert (await response.json())["data"] == {"id": "trained-a"}
+            assert (await client.delete("/api/speech/voice-models/trained-a", headers=same_origin(client))).status == 404
+            assert (await client.delete("/api/speech/voice-models/..%2F..%2Fetc", headers=same_origin(client))).status == 404
+        async with access_client(admin=False) as client:
+            assert (await client.delete("/api/speech/voice-models/trained-b", headers=same_origin(client))).status == 401
+    run(scenario())
+    assert sorted(path.name for path in voice_models.iterdir()) == [".deleted", "trained-b"]
+
+
+def test_a_voice_model_in_use_is_not_deleted(voice_models, server_config):
+    server_config.tts.type, server_config.tts.ref_file = "matcha", "trained-a"
+
+    async def scenario():
+        async with access_client() as client:
+            response = await client.delete("/api/speech/voice-models/trained-a", headers=same_origin(client))
+            assert response.status == 409
+            assert "使用中" in (await response.json())["msg"]
+    run(scenario())
+    assert (voice_models / "trained-a").is_dir()
+
+
+def test_a_voice_model_the_training_job_is_writing_is_not_deleted(voice_models, server_config, monkeypatch):
+    job = {"corpus": "mine", "voice_id": "trained-a", "status": "running"}
+    monkeypatch.setattr(state.tts._training_jobs, "status", lambda: job)
+
+    async def scenario():
+        async with access_client() as client:
+            response = await client.delete("/api/speech/voice-models/trained-a", headers=same_origin(client))
+            assert response.status == 409
+            assert "訓練中" in (await response.json())["msg"]
+            # Another model is free, and so is this one once the job has settled.
+            assert (await client.delete("/api/speech/voice-models/trained-b", headers=same_origin(client))).status == 200
+            job["status"] = "done"
+            assert (await client.delete("/api/speech/voice-models/trained-a", headers=same_origin(client))).status == 200
+    run(scenario())

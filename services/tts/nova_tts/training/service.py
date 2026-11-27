@@ -65,7 +65,13 @@ from nova_tts.training.gpu_probe import VramReading, read_free_vram
 from nova_tts.training.ingest import create_uploaded_corpus, ingest_audio
 from nova_tts.training.numerals import NormalizedText, normalize_digits
 from nova_tts.training.sentences import review_text_list
-from nova_tts.training.transcription import TranscriptionJobs, TranscriptionStatus, cuda_available, default_factory
+from nova_tts.training.transcription import (
+    STATE_RUNNING,
+    TranscriptionJobs,
+    TranscriptionStatus,
+    cuda_available,
+    default_factory,
+)
 from nova_tts.training.transcripts import (
     TranscriptEntry,
     TranscriptError,
@@ -253,6 +259,16 @@ class InProcessVoiceTraining:
             lines=tuple(_line(row.line, row.normalized) for row in corpus.review_table()),
         )
 
+    def delete_corpus(self, ref: CorpusRef) -> None:
+        with _refusals():
+            self._corpora.get(ref.slug)  # 404 before any "in use" answer
+            if self._transcription.status(ref.slug).state == STATE_RUNNING:
+                raise CorpusError("這份訓練語料正在自動轉寫，請先取消或等它完成", status=409)
+            job = self._training_jobs.status()
+            if job is not None and job["corpus"] == ref.slug and job["status"] in jobs.ACTIVE_STATUSES:
+                raise CorpusError("這份訓練語料正在訓練中，請先取消訓練", status=409)
+            self._corpora.delete(ref.slug)
+
     def add_line(self, audio: bytes, upload: LineUpload) -> LineAdded:
         with _refusals():
             result = ingest_audio(self._corpora, upload.slug, audio, upload.filename, upload.text)
@@ -352,6 +368,11 @@ class InProcessVoiceTraining:
 
     def training_log(self, query: TrainingLogQuery) -> TrainingLog:
         return TrainingLog.model_validate(self._training_jobs.read_log(query.offset))
+
+    def writes_voice_model(self, voice_id: str) -> bool:
+        """Whether the running training job is still producing this voice model."""
+        job = self._training_jobs.status()
+        return job is not None and job["voice_id"] == voice_id and job["status"] in jobs.ACTIVE_STATUSES
 
     def training_activity(self) -> TrainingActivity:
         return TrainingActivity(active=self._training_jobs.job_active())

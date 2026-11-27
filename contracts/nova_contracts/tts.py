@@ -579,6 +579,13 @@ class VoiceTraining(Protocol):
         """``GET /training/corpus``: the review table."""
         ...
 
+    def delete_corpus(self, ref: CorpusRef) -> None:
+        """``DELETE /training/corpus``: move the corpus to the recycle bin.
+
+        Refused (409) while a transcription or the training job still uses it.
+        """
+        ...
+
     def add_line(self, audio: bytes, upload: LineUpload) -> LineAdded:
         """``POST /training/lines``: convert, check and store one recording as a pending line."""
         ...
@@ -649,6 +656,8 @@ TRAINING_OPERATIONS: tuple[HttpOperation, ...] = (
                   request=JsonBody(CorpusCreation), response=JsonBody(CorpusSummary)),
     HttpOperation("GET", "/training/corpus", "get_corpus", "A corpus's review table",
                   query=CorpusRef, response=JsonBody(CorpusDetail)),
+    HttpOperation("DELETE", "/training/corpus", "delete_corpus",
+                  "Move a corpus to the recycle bin", query=CorpusRef),
     HttpOperation("POST", "/training/lines", "add_line", "Add one recording as a pending line",
                   query=LineUpload,
                   request=BinaryBody(("application/octet-stream",),
@@ -749,6 +758,14 @@ class TtsService(VoiceTraining, Protocol):
         """
         ...
 
+    def delete_voice_model(self, ref: VoiceRef) -> None:
+        """``DELETE /voice-models``: move an installed voice model to the recycle bin.
+
+        Refused (409) while the training job is writing it. Whether a role still
+        speaks with it is the core's question, asked first.
+        """
+        ...
+
     def preview_voice_model(self, request: VoiceModelPreview) -> bytes:
         """``POST /voice-models/preview``: a short WAV; times out on its own."""
         ...
@@ -786,6 +803,8 @@ HTTP_API = HttpApi(
                       response=JsonBody(LibraryVoice)),
         HttpOperation("DELETE", "/voices", "delete_voice", "Move a voice to the recycle bin",
                       query=VoiceRef),
+        HttpOperation("DELETE", "/voice-models", "delete_voice_model",
+                      "Move a voice model to the recycle bin", query=VoiceRef),
         HttpOperation("POST", "/voice-models/preview", "preview_voice_model",
                       "A preset sentence in a voice model's voice",
                       request=JsonBody(VoiceModelPreview),

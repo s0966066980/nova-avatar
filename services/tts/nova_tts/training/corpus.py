@@ -33,9 +33,9 @@ different source, create another corpus.
 A corpus is trainable (``Corpus.trainability``) only when the source is
 declared, no line is pending, at least one line is confirmed, and no confirmed
 line has unresolved digits. This module is the data layer only: it has no
-routes, never touches the GPU and loads no model. Deleting a corpus is not
-offered here; when added it must check for a running training job and move the
-folder into a ``.deleted`` recycle bin (CODING_STANDARDS 4).
+routes, never touches the GPU and loads no model. ``CorpusStore.delete`` moves a
+corpus into the root's ``.deleted`` recycle bin (CODING_STANDARDS 4); whether a
+transcription or training job still needs it is the caller's question, asked first.
 """
 
 from __future__ import annotations
@@ -46,6 +46,7 @@ import re
 import tempfile
 import threading
 import unicodedata
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,6 +61,7 @@ from nova_core.utils.paths import get_project_root
 TRAINING_ROOT = get_project_root() / "data" / "tts" / "training"
 MANIFEST_FILE = "corpus.json"
 AUDIO_DIR = "audio"
+RECYCLE_DIR = ".deleted"
 MANIFEST_VERSION = 1
 # Server-managed files kept beside the manifest (see ``CorpusStore.read_sidecar``).
 SIDECAR_FILES = ("msa-acknowledgement.json",)
@@ -228,6 +230,17 @@ class CorpusStore:
             except CorpusError as exc:
                 logger.info("Training corpus %s not listed: %s", path.name, exc.message)
         return corpora
+
+    def delete(self, slug: str) -> Path:
+        """Move a corpus into the root's ``.deleted`` recycle bin; returns its folder there."""
+        slug = _slug(slug)
+        with _LOCK:
+            self._load(slug)  # 404 for a missing or unreadable corpus, refusal for a symlink
+            destination = self.root / RECYCLE_DIR / f"{slug}-{uuid.uuid4().hex[:12]}"
+            destination.parent.mkdir(exist_ok=True)
+            self._corpus_dir(slug).replace(destination)
+            logger.info("Moved training corpus %s to the recycle bin as %s", slug, destination.name)
+            return destination
 
     def declare_source(self, slug: str, source: str) -> Corpus:
         """Record where the audio comes from; allowed once, then immutable."""

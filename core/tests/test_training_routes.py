@@ -100,8 +100,11 @@ def test_every_training_route_is_admin_only():
 
 def test_no_route_downloads_or_exports_a_voice_model():
     app = create_app(admin_env_path=Path("/nonexistent/admin.env"), frontend_dir=built_frontend())
-    paths = {route.resource.canonical for route in app.router.routes() if route.resource is not None}
-    assert not [p for p in paths if "export" in p or "voice-models" in p or ("download" in p and "training" in p)]
+    routes = [(route.method, route.resource.canonical) for route in app.router.routes() if route.resource is not None]
+    paths = {path for _, path in routes}
+    assert not [p for p in paths if "export" in p or ("download" in p and "training" in p)]
+    # A voice model can be removed (into the recycle bin) but never read back out.
+    assert not [(m, p) for m, p in routes if "voice-models" in p and m != "DELETE"]
     assert not [p for p in paths if p.startswith(BASE) and p not in {r[1] for r in ROUTES}]
 
 

@@ -300,6 +300,10 @@ export default {
         startEdge: 'Start with the test teacher', startUpload: 'Upload my recordings',
         counts: '{confirmed} confirmed, {pending} pending, {total} lines in total',
         continue: 'Continue', continueLabel: 'Continue training corpus {name}',
+        deleteCorpusLabel: 'Delete training corpus {name}', deleteModelLabel: 'Delete voice model {name}',
+        delete: 'Delete', confirmDelete: 'Confirm delete', cancelDelete: 'Cancel',
+        deleteCorpusNote: 'The corpus moves to the recycle bin (data/tts/training/.deleted) and is not erased. A corpus that is being transcribed or trained cannot be deleted.',
+        deleteModelNote: 'The voice model moves to the recycle bin (models/tts/.deleted) and is not erased. A voice model that a digital-human profile uses, or that is being trained, cannot be deleted.',
         models: 'Voice models',
         modelsEmpty: 'No voice model is installed yet. After training, the voice model appears here and can be chosen in a digital-human profile.'
       },

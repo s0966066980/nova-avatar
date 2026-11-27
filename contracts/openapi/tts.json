@@ -377,6 +377,38 @@
         }
       }
     },
+    "/voice-models": {
+      "delete": {
+        "operationId": "delete_voice_model",
+        "summary": "Move a voice model to the recycle bin",
+        "parameters": [
+          {
+            "name": "voice_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Voice Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/voice-models/preview": {
       "post": {
         "operationId": "preview_voice_model",
@@ -506,6 +538,36 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "Refused or failed; `detail` is shown to operators",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_corpus",
+        "summary": "Move a corpus to the recycle bin",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done"
           },
           "default": {
             "description": "Refused or failed; `detail` is shown to operators",

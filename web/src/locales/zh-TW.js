@@ -300,6 +300,10 @@ export default {
         startEdge: '用測試用老師開始', startUpload: '上傳我的錄音',
         counts: '已確認 {confirmed} 句、待確認 {pending} 句、共 {total} 句',
         continue: '繼續', continueLabel: '繼續訓練語料 {name}',
+        deleteCorpusLabel: '刪除訓練語料 {name}', deleteModelLabel: '刪除聲線模型 {name}',
+        delete: '刪除', confirmDelete: '確認刪除', cancelDelete: '取消',
+        deleteCorpusNote: '訓練語料會移到回收桶（data/tts/training/.deleted），不會直接抹除；正在轉寫或訓練的語料無法刪除。',
+        deleteModelNote: '聲線模型會移到回收桶（models/tts/.deleted），不會直接抹除；仍有數位人設定檔使用，或正在訓練中的聲線模型無法刪除。',
         models: '聲線模型',
         modelsEmpty: '尚未安裝聲線模型。訓練完成後，聲線模型會出現在這裡，也可以在數位人設定檔選用。'
       },

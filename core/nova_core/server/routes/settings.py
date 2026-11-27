@@ -490,6 +490,22 @@ async def delete_tts_voice(request):
         return _json({"code": -1, "msg": exc.message}, status=exc.status)
 
 
+def _archive_unused_voice_model(voice_id: str) -> None:
+    if _voice_in_use(voice_id):
+        raise TtsError("這個聲線模型正在使用中，請先讓使用它的角色改用其他聲音", status=409)
+    state.tts.delete_voice_model(VoiceRef(voice_id=voice_id))
+
+
+async def delete_tts_voice_model(request):
+    """Move an unused voice model to the recycle bin under ``models/tts/.deleted``."""
+    voice_id = request.match_info.get("voice_id", "")
+    try:
+        await asyncio.to_thread(_archive_unused_voice_model, voice_id)
+        return _json({"code": 0, "msg": "ok", "data": {"id": voice_id}})
+    except TtsError as exc:
+        return _json({"code": -1, "msg": exc.message}, status=exc.status)
+
+
 @defer_when_connected("數位人引擎", lambda config: current_snapshot(config, tts=state.tts, avatars=state.avatar_service)["avatar"])
 async def set_avatar(request):
     if not state.config:

@@ -402,3 +402,50 @@ test('start 因未解決的數字被拒：回到校對表重新預覽並顯示�
   assert.equal(store.edgeReview.canContinue, false)
   assert.deepEqual(names(), ['startTraining', 'post'])
 })
+
+test('刪除訓練語料：呼叫 API 後重新載入首頁；被拒時顯示原因並保留清單', async () => {
+  let corpora = [summary('a', 'edge-test-teacher'), summary('b', 'edge-test-teacher')]
+  const { api, calls, names } = fakeApi({
+    listCorpora: () => ({ corpora }),
+    getTraining: { job: null },
+    deleteCorpus: slug => {
+      if (slug === 'b') throw new TrainingApiError('這份訓練語料正在訓練中，請先取消訓練', { status: 409 })
+      corpora = corpora.filter(corpus => corpus.slug !== slug)
+      return { slug }
+    }
+  })
+  const store = createVoiceTrainingStore({ api })
+  await store.refreshHome()
+
+  await store.deleteCorpus('a')
+  assert.deepEqual(store.state.corpora.map(corpus => corpus.slug), ['b'])
+  assert.equal(store.state.error, '')
+  assert.equal(store.state.deleting, '')
+
+  await store.deleteCorpus('b')
+  assert.match(store.state.error, /訓練中/)
+  assert.deepEqual(store.state.corpora.map(corpus => corpus.slug), ['b'])
+  assert.equal(store.state.deleting, '')
+  assert.deepEqual(calls.filter(call => call[0] === 'deleteCorpus').map(call => call[1]), ['a', 'b'])
+  assert.equal(names().filter(name => name === 'listCorpora').length, 2) // the refused delete does not reload
+})
+
+test('刪除聲線模型：成功後通知重新載入模型清單；被拒時只顯示原因', async () => {
+  let changed = 0
+  const { api } = fakeApi({
+    deleteVoiceModel: id => {
+      if (id === 'busy') throw new TrainingApiError('這個聲線模型正在使用中，請先讓使用它的角色改用其他聲音', { status: 409 })
+      return { id }
+    }
+  })
+  const store = createVoiceTrainingStore({ api, onModelsChanged: () => { changed++ } })
+
+  await store.deleteVoiceModel('busy')
+  assert.match(store.state.error, /使用中/)
+  assert.equal(changed, 0)
+
+  await store.deleteVoiceModel('trained-a')
+  assert.equal(store.state.error, '')
+  assert.equal(changed, 1)
+  assert.equal(store.state.deleting, '')
+})

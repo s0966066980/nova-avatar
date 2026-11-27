@@ -181,3 +181,18 @@ test('介面沒有任何下載或匯出聲線模型的呼叫', () => {
   const api = createTrainingApi(async () => { throw new Error('no request expected') })
   assert.deepEqual(Object.keys(api).filter(name => /download|export/i.test(name)), [])
 })
+
+test('刪除訓練語料與聲線模型：各用一個 DELETE，ID 做編碼；使用中的 409 帶出原因', async () => {
+  const { fetchImpl, calls } = fakeFetch({
+    'DELETE /api/tts/corpora/my%20voice': ok({ slug: 'my voice' }),
+    'DELETE /api/speech/voice-models/trained-a': ok({ id: 'trained-a' }),
+    'DELETE /api/speech/voice-models/busy': { status: 409, body: { code: -1, msg: '這個聲線模型正在使用中，請先讓使用它的角色改用其他聲音' } }
+  })
+  const api = createTrainingApi(fetchImpl)
+  assert.deepEqual(await api.deleteCorpus('my voice'), { slug: 'my voice' })
+  assert.deepEqual(await api.deleteVoiceModel('trained-a'), { id: 'trained-a' })
+  await assert.rejects(api.deleteVoiceModel('busy'), err => err instanceof TrainingApiError && err.status === 409 && /使用中/.test(err.message))
+  assert.deepEqual(calls.map(call => call.key), [
+    'DELETE /api/tts/corpora/my%20voice', 'DELETE /api/speech/voice-models/trained-a', 'DELETE /api/speech/voice-models/busy'
+  ])
+})

@@ -377,3 +377,35 @@ test('開始前與進行中都說明訓練期間舞台無法連線；結束後�
   await settle()
   assert.doesNotMatch(textContent(job.root), blocked)
 })
+
+test('首頁的刪除要按兩次：先出現確認與回收桶說明，確認後才呼叫；取消則什麼都不做', async t => {
+  const deleted = []
+  const Home = await loadComponent(url('VtHome'), stubs)
+  const store = storeWith({
+    listCorpora: () => ({ corpora: [{ slug: 'edge-1', source: 'edge-test-teacher', counts: { pending: 0, confirmed: 2, excluded: 0, total: 2 } }] }),
+    getTraining: { job: null },
+    deleteCorpus: slug => { deleted.push(['corpus', slug]); return { slug } },
+    deleteVoiceModel: id => { deleted.push(['model', id]); return { id } }
+  })
+  await store.refreshHome()
+  const models = [{ id: 'trained-a', name: '展廳', usage: 'Development only', languages: ['zh-TW'] }]
+  const view = mount(Home, { store, models })
+  t.after(() => view.unmount())
+  await settle()
+
+  const press = label => button(view.root, label).props.onClick()
+  press('刪除')
+  await settle()
+  assert.deepEqual(deleted, [])
+  assert.match(textContent(view.root), /回收桶/)
+  press('取消')
+  await settle()
+  assert.deepEqual(deleted, [])
+  assert.doesNotMatch(textContent(view.root), /回收桶/)
+
+  press('刪除')
+  await settle()
+  press('確認刪除')
+  await settle()
+  assert.deepEqual(deleted, [['corpus', 'edge-1']])
+})

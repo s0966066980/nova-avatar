@@ -231,6 +231,7 @@ h2.vt-title:focus { outline: none; }
 .vt-item-main { display: grid; gap: 4px; min-width: 0; }
 .vt-item-main strong { overflow-wrap: anywhere; }
 .vt-meta { font-size: 12.5px; color: var(--text-3); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.vt-item-note { grid-column: 1 / -1; margin: 0; }
 .vt-item-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .vt-empty { border: 1px dashed var(--border-strong); border-radius: var(--radius-md); padding: 22px 18px; display: grid; gap: 10px; justify-items: start; background: var(--bg-raised); }
 .vt-empty h4 { margin: 0; font-size: 14px; }

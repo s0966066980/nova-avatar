@@ -674,3 +674,55 @@ def test_a_sidecar_of_a_missing_corpus_is_not_found(store):
         store.read_sidecar("nowhere", "msa-acknowledgement.json")
 
     assert caught.value.status == 404
+
+
+# ------------------------------------------------------------------ deletion
+
+
+def test_deleting_a_corpus_moves_it_to_the_recycle_bin(store):
+    store.create("old-voice", source="edge-test-teacher")
+    _add(store, "old-voice")
+
+    recycled = store.delete("old-voice")
+
+    assert recycled.parent == store.root / ".deleted"
+    assert recycled.name.startswith("old-voice-")
+    assert (recycled / "corpus.json").is_file()  # moved, not erased
+    assert store.list() == []
+    with pytest.raises(CorpusError) as refused:
+        store.get("old-voice")
+    assert refused.value.status == 404
+
+
+def test_a_deleted_slug_can_be_used_again(store):
+    store.create("again")
+    store.delete("again")
+
+    assert store.create("again").slug == "again"
+    assert len(list((store.root / ".deleted").iterdir())) == 1
+
+
+def test_deleting_an_unknown_corpus_is_404_and_leaves_no_recycle_bin(store):
+    with pytest.raises(CorpusError) as refused:
+        store.delete("missing")
+
+    assert refused.value.status == 404
+    assert not (store.root / ".deleted").exists()
+
+
+def test_deleting_with_a_bad_slug_is_refused(store):
+    with pytest.raises(CorpusError):
+        store.delete("../outside")
+
+
+def test_a_symlinked_corpus_cannot_be_deleted(store, tmp_path):
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    (target / "corpus.json").write_text("{}", encoding="utf-8")
+    store.root.mkdir(parents=True)
+    (store.root / "linked").symlink_to(target)
+
+    with pytest.raises(CorpusError):
+        store.delete("linked")
+
+    assert (target / "corpus.json").is_file()

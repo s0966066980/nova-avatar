@@ -854,3 +854,65 @@ async def test_transcript_files_are_parsed_off_the_event_loop(client, monkeypatc
 
     assert response.status == 200, await response.text()
     assert len(seen) == 2 and main not in seen
+
+
+# ------------------------------------------------------------------ deletion
+
+
+@console
+async def test_a_corpus_is_deleted_into_the_recycle_bin(client, env):
+    store, _, _ = env
+    await create(client)
+    await upload(client)
+    await create(client, "other")
+
+    response = await client.delete(f"{BASE}/mine", headers=same_origin(client))
+
+    assert response.status == 200, await response.text()
+    assert (await response.json())["data"] == {"slug": "mine"}
+    assert (await client.get(f"{BASE}/mine")).status == 404
+    listed = (await (await client.get(BASE)).json())["data"]["corpora"]
+    assert [corpus["slug"] for corpus in listed] == ["other"]
+    [recycled] = list((store.root / ".deleted").iterdir())
+    assert recycled.name.startswith("mine-") and (recycled / "corpus.json").is_file()
+
+
+@console
+async def test_deleting_an_unknown_corpus_is_404_and_a_bad_slug_is_refused(client):
+    assert (await client.delete(f"{BASE}/missing", headers=same_origin(client))).status == 404
+    assert (await client.delete(f"{BASE}/bad..slug%2F", headers=same_origin(client))).status in {400, 404}
+
+
+@console
+async def test_a_corpus_being_transcribed_cannot_be_deleted(client, env):
+    store, jobs, fake = env
+    fake.gate = threading.Event()
+    await create(client)
+    await upload(client, name="a.wav")
+    await post(client, f"{BASE}/mine/transcription", json={"model": "small"})
+    assert await asyncio.to_thread(fake.entered.wait, 10)
+
+    refused = await client.delete(f"{BASE}/mine", headers=same_origin(client))
+
+    assert refused.status == 409
+    assert "自動轉寫" in (await refused.json())["msg"]
+    fake.gate.set()
+    assert await _wait_idle(jobs)
+    assert (await client.delete(f"{BASE}/mine", headers=same_origin(client))).status == 200
+
+
+@console
+async def test_a_corpus_in_a_running_training_job_cannot_be_deleted(client, monkeypatch):
+    await create(client)
+    await create(client, "other")
+    job = {"corpus": "mine", "voice_id": "trained-x", "status": "running"}
+    monkeypatch.setattr(state.tts._training_jobs, "status", lambda: job)
+
+    refused = await client.delete(f"{BASE}/mine", headers=same_origin(client))
+
+    assert refused.status == 409
+    assert "訓練中" in (await refused.json())["msg"]
+    # Another corpus is free, and so is this one once the job has settled.
+    assert (await client.delete(f"{BASE}/other", headers=same_origin(client))).status == 200
+    job["status"] = "done"
+    assert (await client.delete(f"{BASE}/mine", headers=same_origin(client))).status == 200

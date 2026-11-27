@@ -16,7 +16,14 @@ try:
 except ModuleNotFoundError:  # Python 3.10
     import tomli as tomllib
 
-from nova_tts.voice_models import LABEL_FILE, REQUIRED_FILES, RULE_FSTS, list_voice_models
+from nova_tts.voice_models import (
+    LABEL_FILE,
+    REQUIRED_FILES,
+    RULE_FSTS,
+    VoiceModelNotFound,
+    delete_voice_model,
+    list_voice_models,
+)
 
 INSTALL_DOC = Path(__file__).resolve().parents[3] / "docs/voice-models.md"
 
@@ -176,3 +183,44 @@ def test_install_doc_lists_every_voice_model_file_with_a_sha256():
     for name in (*REQUIRED_FILES, *RULE_FSTS):
         assert name in hashes, name
     assert LABEL_FILE in doc
+
+
+def test_deleting_a_voice_model_moves_it_to_the_recycle_bin(tmp_path):
+    _voice_model_dir(tmp_path, "keep-me")
+    _voice_model_dir(tmp_path, "drop-me")
+
+    recycled = delete_voice_model("drop-me", tmp_path)
+
+    assert recycled.parent == tmp_path / ".deleted"
+    assert (recycled / "model.onnx").is_file()  # moved, not erased
+    assert [model.id for model in list_voice_models(tmp_path)] == ["keep-me"]
+
+
+@pytest.mark.parametrize("voice_id", ["missing", "../outside", "", ".deleted", "x" * 200])
+def test_deleting_an_unlisted_voice_model_is_refused(tmp_path, voice_id):
+    _voice_model_dir(tmp_path, "keep-me")
+
+    with pytest.raises(VoiceModelNotFound):
+        delete_voice_model(voice_id, tmp_path)
+
+    assert [model.id for model in list_voice_models(tmp_path)] == ["keep-me"]
+    assert not (tmp_path / ".deleted").exists()
+
+
+def test_an_incomplete_directory_is_not_deleted_as_a_voice_model(tmp_path):
+    _voice_model_dir(tmp_path, "unlabelled", label=None)
+
+    with pytest.raises(VoiceModelNotFound):
+        delete_voice_model("unlabelled", tmp_path)
+
+    assert (tmp_path / "unlabelled").is_dir()
+
+
+def test_a_symlinked_voice_model_is_not_deleted(tmp_path):
+    real = _voice_model_dir(tmp_path / "real", "real-model")
+    (tmp_path / "linked").symlink_to(real)
+
+    with pytest.raises(VoiceModelNotFound):
+        delete_voice_model("linked", tmp_path)
+
+    assert real.is_dir()

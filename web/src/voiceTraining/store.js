@@ -21,7 +21,7 @@ const initialState = () => ({
   screen: 'home', path: null, slug: '', name: '', error: '', announcement: null, focusToken: 0,
   // The Microsoft clause as the server delivered it ({reference, effective, text}); null until it has.
   edgeClause: null,
-  corpora: [], loadingHome: false, job: null, preflight: null, settings: null, checking: false,
+  corpora: [], loadingHome: false, deleting: '', job: null, preflight: null, settings: null, checking: false,
   edge: { voice: EDGE_VOICES[0].id, preset: EDGE_PRESETS[0].key, textSrc: 'builtin', checked: false, acknowledged: false, sentences: [], preview: null, previewing: false, showSample: false },
   up: { declared: '', consent: false, files: [], locked: false, uploading: false },
   tr: { src: 'file', model: DEFAULT_WHISPER_MODEL, imported: null, problems: [], busy: false },
@@ -72,6 +72,25 @@ export function createVoiceTrainingStore({
       state.job = training?.job || null
     })
     state.loadingHome = false
+  }
+
+  // Deleting moves the corpus or voice model into the server's recycle bin.
+  async function deleteCorpus(slug) {
+    state.deleting = slug
+    state.error = ''
+    await guard(async () => {
+      await api.deleteCorpus(slug)
+      await refreshHome()
+    })
+    state.deleting = ''
+  }
+
+  async function deleteVoiceModel(id) {
+    state.deleting = id
+    state.error = ''
+    const deleted = await guard(async () => { await api.deleteVoiceModel(id); return true })
+    state.deleting = ''
+    if (deleted) onModelsChanged()
   }
 
   async function loadCorpus() {
@@ -359,7 +378,7 @@ export function createVoiceTrainingStore({
 
   // Derived values are plain getters, so a component reads ``store.gate`` whether or not Vue unwraps refs for it.
   return {
-    state, go, reset, newCorpus, chooseSource, refreshHome, loadCorpus, openCorpus,
+    state, go, reset, newCorpus, chooseSource, refreshHome, deleteCorpus, deleteVoiceModel, loadCorpus, openCorpus,
     loadEdgeClause, confirmEdge, loadEdgeTextFile, editEdgeSentence, removeEdgeSentence, clearEdgeText, refreshEdgePreview,
     selectDeclaration, addUploadFiles,
     importTranscripts, startAutoTranscription, pollTranscription, cancelAutoTranscription,

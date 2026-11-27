@@ -48,7 +48,7 @@ from nova_tts.base import BaseTTS
 from nova_tts.engines import edge
 from nova_tts.factory import create_tts_engine
 from nova_tts.training.service import InProcessVoiceTraining
-from nova_tts.voice_models import list_voice_models
+from nova_tts.voice_models import VoiceModelNotFound, delete_voice_model, list_voice_models
 from nova_tts.voice_preview import PreviewError, synthesize_preview
 from nova_core.utils.logging import logger
 
@@ -261,6 +261,14 @@ class InProcessTtsService(InProcessVoiceTraining):
             voice_library.delete_voice(ref.voice_id)
         except voice_library.VoiceLibraryError as exc:
             raise _library_error(exc) from None
+
+    def delete_voice_model(self, ref: VoiceRef) -> None:
+        if self.writes_voice_model(ref.voice_id):
+            raise TtsError("這個聲線模型正在訓練中，請先取消訓練", status=409)
+        try:
+            delete_voice_model(ref.voice_id)
+        except VoiceModelNotFound:
+            raise TtsError("找不到這個聲線模型", status=404) from None
 
     def preview_voice_model(self, request: VoiceModelPreview) -> bytes:
         deadline = time.monotonic() + PREVIEW_TIMEOUT_SECONDS

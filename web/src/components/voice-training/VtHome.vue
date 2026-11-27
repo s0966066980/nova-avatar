@@ -50,7 +50,13 @@
           </div>
           <div class="vt-item-actions">
             <button type="button" class="vt-btn small" :aria-label="tf('home.continueLabel', { name: corpus.slug })" @click="store.openCorpus(corpus.slug)">{{ tx('home.continue') }}</button>
+            <template v-if="confirming === 'corpus:' + corpus.slug">
+              <button type="button" class="vt-btn small danger-solid" :disabled="Boolean(state.deleting)" @click="removeCorpus(corpus.slug)">{{ tx('home.confirmDelete') }}</button>
+              <button type="button" class="vt-btn small" @click="confirming = ''">{{ tx('home.cancelDelete') }}</button>
+            </template>
+            <button v-else type="button" class="vt-btn small danger" :disabled="Boolean(state.deleting)" :aria-label="tf('home.deleteCorpusLabel', { name: corpus.slug })" @click="confirming = 'corpus:' + corpus.slug">{{ tx('home.delete') }}</button>
           </div>
+          <p v-if="confirming === 'corpus:' + corpus.slug" class="vt-hint vt-item-note" role="status">{{ tx('home.deleteCorpusNote') }}</p>
         </li>
       </ul>
     </div>
@@ -64,7 +70,15 @@
             <strong>{{ model.name }}</strong>
             <div class="vt-meta"><span class="vt-mono">{{ model.id }}</span><span>{{ (model.languages || []).join(' / ') }}</span></div>
           </div>
-          <VtUsageBadge :label="model.usage" />
+          <div class="vt-item-actions">
+            <VtUsageBadge :label="model.usage" />
+            <template v-if="confirming === 'model:' + model.id">
+              <button type="button" class="vt-btn small danger-solid" :disabled="Boolean(state.deleting)" @click="removeModel(model.id)">{{ tx('home.confirmDelete') }}</button>
+              <button type="button" class="vt-btn small" @click="confirming = ''">{{ tx('home.cancelDelete') }}</button>
+            </template>
+            <button v-else type="button" class="vt-btn small danger" :disabled="Boolean(state.deleting)" :aria-label="tf('home.deleteModelLabel', { name: model.name })" @click="confirming = 'model:' + model.id">{{ tx('home.delete') }}</button>
+          </div>
+          <p v-if="confirming === 'model:' + model.id" class="vt-hint vt-item-note" role="status">{{ tx('home.deleteModelNote') }}</p>
         </li>
       </ul>
     </div>
@@ -73,7 +87,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import VtUsageBadge from './VtUsageBadge.vue'
 import { usageLabelFor } from '../../voiceTraining/flow.js'
 import { icon } from '../../voiceTraining/icons.js'
@@ -86,6 +100,17 @@ const state = props.store.state
 const active = computed(() => isActive(state.job))
 const percent = computed(() => jobPercent(state.job))
 const stageLabel = computed(() => (state.job?.stages || []).find(stage => stage.id === state.job?.stage)?.label || '')
+
+// Which delete button is waiting for its second click: 'corpus:<slug>' or 'model:<id>'.
+const confirming = ref('')
+async function removeCorpus(slug) {
+  await props.store.deleteCorpus(slug)
+  confirming.value = ''
+}
+async function removeModel(id) {
+  await props.store.deleteVoiceModel(id)
+  confirming.value = ''
+}
 
 function start(path) {
   props.store.newCorpus()

@@ -69,6 +69,9 @@ export function createTrainingApi(fetchImpl = (...args) => globalThis.fetch(...a
     post,
     listCorpora: () => get(CORPORA),
     getCorpus: slug => get(corpusPath(slug)),
+    // Both moves go to a recycle bin on the server; a corpus or voice model in use answers 409.
+    deleteCorpus: slug => request('DELETE', corpusPath(slug)),
+    deleteVoiceModel: id => request('DELETE', `/api/speech/voice-models/${encodeURIComponent(id)}`),
     createCorpus: body => post(CORPORA, body),
     // Edge only: records the confirmation and the clause text that was shown
     // (exactly the text the server delivered as settings.edge_clause). The server also
