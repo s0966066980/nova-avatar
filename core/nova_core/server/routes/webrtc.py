@@ -37,6 +37,7 @@ async def offer(request):
     # No new stage while a voice-training job holds the GPU (spec decision 14).
     refusal = stage_offer_refusal(client_role, state.tts)
     if refusal is not None:
+        logger.info("Stage offer refused: a voice-training job is running")
         return refusal
     # The body can arrive while a resource update starts. Check availability
     # after reading it, without yielding again before reserving this session.

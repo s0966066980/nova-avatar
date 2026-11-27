@@ -418,7 +418,7 @@ def training_rig(tmp_path, **kwargs):
     return r
 
 
-def test_a_stage_offer_is_refused_while_voice_training_runs(rtc, tmp_path, monkeypatch):
+def test_a_stage_offer_is_refused_while_voice_training_runs(rtc, tmp_path, monkeypatch, caplog):
     built = []
     use_renderers(monkeypatch, lambda *a: built.append(a) or fake_renderer())
     r = training_rig(tmp_path, train_code=None)
@@ -430,6 +430,7 @@ def test_a_stage_offer_is_refused_while_voice_training_runs(rtc, tmp_path, monke
         assert body['msg'] == '聲線訓練進行中，數位人暫停服務'
         assert not state.session_roles and not state.avatar_streams and built == []
         assert rtc.peers == [] and rtc.voices == []
+        assert "Stage offer refused: a voice-training job is running" in caplog.text
     finally:
         r.manager.cancel()
         r.manager.join(20)
