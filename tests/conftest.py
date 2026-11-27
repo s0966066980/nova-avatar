@@ -80,6 +80,7 @@ AREA_BY_FILE = {
     "test_live_llm_board_contract.py": "conversation",
     "test_llamacpp.py": "llm",
     "test_llm_contract.py": "llm",
+    "test_llm_fake_engine.py": "llm",
     "test_llm_endpoints.py": "llm",
     "test_llm_text_normalizer.py": "llm",
     "test_gemma_e2b.py": "llm",

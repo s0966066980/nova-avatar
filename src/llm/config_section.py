@@ -27,6 +27,7 @@ from src.llm.base import (
     response_token_budget,
     validate_response_max_chars,
 )
+from src.llm.engines import DEFAULT_ENGINE, ENGINES
 from src.llm.endpoints import (
     EndpointError,
     active_endpoint_name,
@@ -86,8 +87,17 @@ def migrate_config(section: dict[str, Any]) -> dict[str, Any]:
     return migrated
 
 
+def engine_name(llm: Any) -> str:
+    """The engine ``llm.engine`` selects ("" is the OpenAI-compatible client)."""
+    name = str(getattr(llm, "engine", "") or "").strip().lower() or DEFAULT_ENGINE
+    if name not in ENGINES:
+        raise ValueError(f"未知的 LLM 引擎: {name!r}（支援：{'、'.join(ENGINES)}）")
+    return name
+
+
 def validate_config(llm: Any) -> None:
     """Fix the endpoint table at load time and select the active endpoint."""
+    engine_name(llm)
     freeze_endpoints(llm)
 
 
@@ -133,6 +143,7 @@ def llm_settings(config: Any, *, profile: Any = None, locale: Optional[str] = No
         provider = "openai"
     return LlmSettings(
         provider=provider,
+        engine=engine_name(llm),
         base_url=getattr(llm, "base_url", "") or "",
         api_key=getattr(llm, "api_key", "") or "",
         model=getattr(llm, "model", "") or "",

@@ -87,6 +87,9 @@ class LlmSettings(ContractModel):
     """The answer model one request uses: an allowlisted endpoint and its options."""
 
     provider: Provider
+    # The engine that answers: ``openai-compatible`` talks to the endpoint
+    # below; ``fake`` answers offline with fixed text (contract tests, CI).
+    engine: str = "openai-compatible"
     base_url: str
     api_key: str = ""
     model: str

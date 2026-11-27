@@ -85,7 +85,7 @@ from src.llm.prewarm import prewarm_local_llm
 from src.llm.reply_events import review_fragment
 from src.llm.request_context import RequestQuestion
 from src.llm.service import EngineFactory, LlmSessions
-from src.llm.engines import OpenAILLM
+from src.llm.engines import DEFAULT_ENGINE, ENGINES
 from src.llm.tools.weather import CwaWeather, WeatherQuery as CwaQuery, weather_prompt
 from src.ragflow.client import MANAGEMENT_URL, RagFlowClient, RagFlowError, close_shared_session, retrieval_prompt
 from src.utils.logging import logger
@@ -99,12 +99,13 @@ class InProcessLlmService:
     def __init__(
         self,
         *,
-        create_engine: EngineFactory = OpenAILLM,
+        create_engine: Optional[EngineFactory] = None,
         routing_client_factory: Callable[..., Any] = OpenAI,
         weather: Optional[CwaWeather] = None,
         generate_greeting: Optional[Callable] = None,
     ) -> None:
-        self._sessions = LlmSessions(create_engine)
+        # By default each conversation's engine is the one its settings select.
+        self._sessions = LlmSessions(create_engine or _create_selected_engine)
         # Every turn routes through the same pooled clients; worker threads
         # may route concurrently.
         self._routing_clients = RoutingClients(routing_client_factory)
@@ -134,7 +135,8 @@ class InProcessLlmService:
     def reply(self, request: ReplyRequest) -> Iterator[ReplyEvent]:
         session = request.session
         config = _config_view(session, request.rules)
-        _ensure_local_server(config)
+        if config.llm.engine == DEFAULT_ENGINE:
+            _ensure_local_server(config)
         llm, greeting = self._sessions.prepare_reply(session.session_id, config)
         rag_context = _reply_context(request)
         if greeting:
@@ -321,6 +323,8 @@ class InProcessLlmService:
                            binary=str(binary) if binary else "")
 
     def prewarm(self, request: PrewarmRequest) -> PrewarmResult:
+        if request.settings.engine != DEFAULT_ENGINE:
+            return PrewarmResult(ready=True)  # nothing to warm: no model server
         config = _settings_view(request.settings, rules=request.rules)
         return PrewarmResult(ready=prewarm_local_llm(config, timeout_seconds=request.timeout_seconds))
 
@@ -381,6 +385,14 @@ def _reply_context(request: ReplyRequest) -> str:
     return context
 
 
+def _create_selected_engine(*, config, **options):
+    """The model client of one conversation: the engine its settings name."""
+    engine = ENGINES.get(config.llm.engine)
+    if engine is None:
+        raise ServiceError(f"unknown LLM engine: {config.llm.engine!r}")
+    return engine(config=config, **options)
+
+
 def _ensure_local_server(config) -> None:
     """Start the owned llama-server when the answer needs it and it is not running."""
     llm = config.llm
@@ -406,6 +418,7 @@ def _settings_view(settings: LlmSettings, *, locale: Optional[str] = None,
         base_url=settings.base_url,
         model=settings.model,
         provider=settings.provider,
+        engine=settings.engine,
         extra_body=dict(settings.extra_body),
         response_max_chars=settings.response_max_chars,
         board=SimpleNamespace(enabled=True, max_items=settings.board_max_items),

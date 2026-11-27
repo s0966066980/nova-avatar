@@ -2105,6 +2105,11 @@
             "title": "Provider",
             "type": "string"
           },
+          "engine": {
+            "default": "openai-compatible",
+            "title": "Engine",
+            "type": "string"
+          },
           "base_url": {
             "title": "Base Url",
             "type": "string"

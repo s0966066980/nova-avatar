@@ -174,6 +174,9 @@ class LLMConfig:
     model: str = "qwen-plus"
     # llamacpp | ollama | openai; set from the selected endpoint.
     provider: str = "ollama"
+    # "" = the OpenAI-compatible client of the selected endpoint. "fake" answers
+    # offline with fixed text; it is chosen here only and never listed as an endpoint.
+    engine: str = ""
     # Allowlisted endpoints, editable only in the configuration file:
     # {name: {provider, base_url, api_key}}. Empty keeps the legacy single
     # endpoint built from provider/base_url/api_key above.

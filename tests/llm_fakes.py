@@ -5,32 +5,25 @@
 
 Everything but ``reply`` is the real adapter, so conversation memory, fragment
 review and the tools behave as in production; only the model's answer is
-scripted. ``requests`` records every ``ReplyRequest`` the core sent.
+scripted, and a text answer is produced by the layer's ``fake`` engine. ``requests`` records every ``ReplyRequest`` the core sent.
 """
 from __future__ import annotations
 
 from contextlib import contextmanager
 from uuid import uuid4
-from typing import Callable, Iterable, Iterator, Optional, Union
+from typing import Callable, Iterable, Iterator, Union
 
 from nova_contracts.llm import (
     AssistantProfile,
-    Board,
-    BoardEntry,
-    BoardItemShown,
-    BoardStart,
     FragmentReviewContext,
-    ModelChunk,
-    ReplyDone,
     ReplyEvent,
-    ReplyModeChosen,
     ReplyRequest,
     ReplyStarted,
-    SpeechEnd,
-    SpokenDelta,
 )
 from nova_contracts.llm import LlmEngineSettings, LocalServer, LocalServerSettings, Question, TurnCommit
 from src.llm.adapter import InProcessLlmService
+from src.llm.engines import FakeLLM
+from src.llm.engines.fake import answer_chunks
 from src.llm.config_section import reply_rules
 from src.server.reply_streaming.llm_reply import conversation_session, stream_reply
 
@@ -43,33 +36,20 @@ def started(request: ReplyRequest, **fields) -> ReplyStarted:
                         review=FragmentReviewContext(profile=AssistantProfile()), **fields)
 
 
-def reply_events(request: ReplyRequest, text: str, *, speak: bool = True,
-                 mode: Optional[str] = None) -> Iterator[ReplyEvent]:
-    """The events of a one-chunk answer saying ``text``.
+def reply_events(request: ReplyRequest, text: str, *, speak: bool = True) -> Iterator[ReplyEvent]:
+    """The events of an answer saying ``text``, produced by the layer's ``fake`` engine.
 
-    With ``speak`` the text streams as a spoken delta the core plays; without
+    With ``speak`` the text streams as spoken deltas the core plays; without
     it only ``ReplyDone`` carries the answer, as for a reply nobody listens to.
+    The mode and board reports the request asks for are left out.
     """
-    yield started(request)
-    if mode is not None:
-        yield ReplyModeChosen(mode=mode)
-    yield ModelChunk(llm_sequence=0)
-    if speak and text:
-        yield SpokenDelta(text=text, llm_sequence=0)
-        yield SpeechEnd()
-    yield ReplyDone(spoken=text, visible=text)
-
-
-def board_events(request: ReplyRequest, title: str, items: list[tuple[str, str]], *,
-                 incremental: bool = False) -> Iterator[ReplyEvent]:
-    """Board events for ``items`` of ``(title, content)``, shown one by one or as a whole."""
-    turn_id = request.turn_id or "turn"
-    if incremental:
-        yield BoardStart(turn_id=turn_id, title=title)
-        for index, (item_title, content) in enumerate(items):
-            yield BoardItemShown(turn_id=turn_id, index=index, title=item_title, body=content)
-    yield Board(turn_id=turn_id, title=title, incremental=incremental,
-                items=tuple(BoardEntry(title=t, content=c) for t, c in items))
+    service = InProcessLlmService(
+        create_engine=lambda **options: FakeLLM(chunks=answer_chunks(text), **options))
+    settings = request.session.settings.model_copy(update={"engine": "fake"})
+    return service.reply(request.model_copy(update={
+        "session": request.session.model_copy(update={"settings": settings}),
+        "turn_id": request.turn_id or "turn", "stream_speech": speak, "reply_mode": "simple",
+        "report_mode": False, "report_board": False, "incremental_board": False}))
 
 
 class FakeLlm(InProcessLlmService):
