@@ -68,6 +68,7 @@ AREA_BY_FILE = {
     "test_default_voice.py": "speech",
     "test_health_route.py": "runtime",
     "test_integration_check.py": "governance",
+    "test_select_tests.py": "governance",
     "test_kiosk_launcher.py": "runtime",
     "test_live_llm_board_contract.py": "conversation",
     "test_llamacpp.py": "llm",

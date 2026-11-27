@@ -1,0 +1,34 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+#
+# Which part of the code belongs to which processing layer (ADR 0027). Every
+# segment currently has the same owner; the file is the map, not a gate: main
+# has no branch protection and the maintainer pushes directly.
+
+# Contracts: the single source of cross-layer request/response models, events,
+# protocols and OpenAPI. A change here touches every layer.
+/contracts/                 @s0966066980
+
+# Core: HTTP server, turns, conversations, configuration, VAD, roles, greetings.
+/core/                      @s0966066980
+
+# Avatar rendering layer (MuseTalk), avatar catalog and import, scenes.
+/avatar/                    @s0966066980
+
+# Speech-to-text layer.
+/services/stt/              @s0966066980
+
+# LLM layer: replies, handoff, weather, greetings, RAGFlow, web search.
+/services/llm/              @s0966066980
+
+# Text-to-speech layer: engines, voice library, voice training.
+/services/tts/              @s0966066980
+
+# Web frontend (console and stage).
+/web/                       @s0966066980
+
+# Repo-level: CI, dependency lock, audits, scripts, docs and licences.
+/.github/                   @s0966066980
+/scripts/                   @s0966066980
+/tests/                     @s0966066980
+/docs/                      @s0966066980

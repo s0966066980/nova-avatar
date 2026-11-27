@@ -24,6 +24,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
         with:
           version: '0.11.21'
@@ -51,8 +52,30 @@ jobs:
         run: uv run --no-sync python scripts/generate-openapi.py --check
       - name: Check branding, notices, and offline integration
         run: uv run --no-sync python scripts/check-integration.py
+      - name: Select the tests this change can affect
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        # Lint, import boundaries, OpenAPI and the integration check above run
+        # every time; only the test suites are narrowed (scripts/select-tests.py).
+        run: |
+          if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            paths=all
+          else
+            paths=$(git diff --name-only "$BASE_SHA" HEAD | python3 scripts/select-tests.py)
+          fi
+          echo "Selected tests: $paths"
+          echo "paths=$paths" >> "$GITHUB_OUTPUT"
       - name: Run Python tests
-        run: uv run --no-sync pytest
+        if: steps.select.outputs.paths != 'none'
+        env:
+          PATHS: ${{ steps.select.outputs.paths }}
+        run: |
+          if [ "$PATHS" = all ]; then
+            uv run --no-sync pytest
+          else
+            uv run --no-sync pytest $PATHS
+          fi
 
   web:
     name: Frontend lint, tests, and build
