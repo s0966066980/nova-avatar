@@ -12,11 +12,13 @@ from threading import RLock
 from typing import Type, Optional
 
 from src.asr.base import BaseASR
-from src.asr.engines import WhisperASR
+from src.asr.engines import FakeASR, WhisperASR
 
 
+# "fake" is selectable by configuration but is not offered in the console.
 _ENGINE_MAP: dict[str, Type[BaseASR]] = {
     "whisper": WhisperASR,
+    "fake": FakeASR,
 }
 
 

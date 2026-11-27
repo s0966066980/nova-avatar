@@ -107,7 +107,9 @@ markers = [
     "speech: ASR, VAD, TTS, and speech worker behavior",
     "slow: deterministic tests that normally take at least one second",
     "live: opt-in tests that use an explicitly configured external model",
+    "gpu: tests that need a GPU or real model weights; excluded by default, run on the venue host with -m gpu",
 ]
+addopts = "-m \"not gpu\""
 
 [tool.ruff]
 required-version = "==0.17.1"

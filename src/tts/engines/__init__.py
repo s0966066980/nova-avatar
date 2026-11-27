@@ -11,6 +11,7 @@
 
 from src.tts.base import BaseTTS, State
 from .edge import EdgeTTS
+from .fake import FakeTTS
 from .breezyvoice import BreezyVoiceTTS
 from .matcha import MatchaTTS
 
@@ -18,6 +19,7 @@ __all__ = [
     "BaseTTS",
     "State",
     "EdgeTTS",
+    "FakeTTS",
     "BreezyVoiceTTS",
     "MatchaTTS",
 ]

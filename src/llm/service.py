@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 from typing import TYPE_CHECKING, Callable, Optional
 
-from src.llm.engines import OpenAILLM
+from src.llm.engines import FakeLLM, OpenAILLM
 from src.llm.fragments import FragmenterFactory
 from src.llm.reply_target import ReplyTarget
 from src.llm.base import load_system_prompt
@@ -48,14 +48,20 @@ def _session_key(sessionid, profile_id=None):
     return (sessionid, profile_id) if profile_id else sessionid
 
 
+def _new_llm(config, **kwargs):
+    """The engine ``llm.provider`` names; ``fake`` is for tests and is not offered in the console."""
+    engine = FakeLLM if getattr(getattr(config, "llm", None), "provider", "") == "fake" else OpenAILLM
+    return engine(config=config, **kwargs)
+
+
 def _session_instance(avatar_stream, config, api_key=None, base_url=None, model=None):
     sessionid = getattr(avatar_stream, "sessionid", 0)
     profile_id = getattr(config, "profile_id", "")
     select_session_profile(sessionid, profile_id)
     key = _session_key(sessionid)
     if key not in _session_llm_instances:
-        _session_llm_instances[key] = OpenAILLM(
-            config=config, parent=avatar_stream,
+        _session_llm_instances[key] = _new_llm(
+            config, parent=avatar_stream,
             api_key=config.llm.api_key or api_key or "nova-avatar-local",
             base_url=config.llm.base_url or base_url,
             model=config.llm.model or model, max_history=10,
@@ -143,8 +149,8 @@ def llm_response(
         key = _session_key(sessionid, getattr(config, "profile_id", ""))
         if key not in _session_llm_instances:
             logger.info(f"Creating new LLM instance for session {sessionid}")
-            _session_llm_instances[key] = OpenAILLM(
-                config=config,
+            _session_llm_instances[key] = _new_llm(
+                config,
                 parent=avatar_stream,
                 api_key=api_key,
                 base_url=base_url,
