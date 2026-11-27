@@ -9,7 +9,7 @@ import re
 import shutil
 import uuid
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import cv2
 
@@ -88,6 +88,8 @@ def extract_frames(video_path: Path, dest_dir: Path, max_frames: int = MAX_FRAME
 
 
 ReplaceGuard = Optional[Callable[[str], Optional[str]]]
+# Lends the running stage's VAE (or None) so an import does not load a second copy.
+VaeProvider = Optional[Callable[[], Any]]
 
 
 def build_character(
@@ -100,6 +102,7 @@ def build_character(
     quality: Optional[dict] = None,
     green_screen: bool = False,
     replace_guard: ReplaceGuard = None,
+    vae_provider: VaeProvider = None,
 ) -> dict:
     """Build an avatar in a private staging directory, then install it.
 
@@ -107,6 +110,10 @@ def build_character(
     not be replaced (for example, it is live or referenced by a profile). It is
     checked before the build starts and again right before the swap. A replaced
     avatar goes to the recycle bin; a failed build leaves the old one untouched.
+
+    ``vae_provider()`` lets the caller lend the VAE a running stage already
+    holds, so a second copy is not loaded onto the GPU; it returns ``None`` when
+    there is none to lend.
     """
     engine = (engine or "").strip().lower()
     avatar_id = (avatar_id or "").strip()
@@ -147,7 +154,7 @@ def build_character(
             raise BuildError(str(exc)) from exc
         options["green_screen"] = bool(green_screen)
 
-        _build_musetalk(work_dir, avatar_id, source_name, report, options)
+        _build_musetalk(work_dir, avatar_id, source_name, report, options, vae_provider)
 
         _install_character(work_dir, dest, avatar_id, overwrite, replace_guard)
         report(100, "角色製作完成")
@@ -207,6 +214,7 @@ def _build_musetalk(
     video_path: str,
     report: Callable[[int, str], None],
     options: dict,
+    vae_provider: VaeProvider = None,
 ) -> None:
     import torch
 
@@ -238,7 +246,7 @@ def _build_musetalk(
 
     report(30, "正在檢測人臉與關鍵點")
     coord_list, frame_list = get_landmark_and_bbox(img_paths, musetalk["bbox_shift"])
-    vae = _musetalk_vae()
+    vae = _musetalk_vae(vae_provider)
     extra_margin = musetalk["extra_margin"]
     latents = []
     kept_coords = []
@@ -298,18 +306,10 @@ def _build_musetalk(
     del fp
 
 
-def _musetalk_vae():
-    try:
-        from src.server.state import state
-
-        if (
-            state.config is not None
-            and getattr(state.config.model, "type", None) == "musetalk"
-            and state.model is not None
-        ):
-            return state.model[0]
-    except Exception:
-        pass
+def _musetalk_vae(vae_provider: VaeProvider = None):
+    lent = vae_provider() if vae_provider is not None else None
+    if lent is not None:
+        return lent
 
     import torch
 

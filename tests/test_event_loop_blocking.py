@@ -173,7 +173,7 @@ def test_asr_reuses_the_session_recognizer(server, monkeypatch):
     monkeypatch.setattr(asr_factory, "create_asr_engine", create)
     monkeypatch.setattr(asr_factory, "_asr_instance", None)
     monkeypatch.setattr(asr_factory, "_asr_instance_key", None)
-    monkeypatch.setattr(audio_routes, "llm_response", lambda text, *_a: f"reply to {text}")
+    monkeypatch.setattr(audio_routes, "llm_response", lambda text, *_a, **_kw: f"reply to {text}")
     server.asr.device = "cuda"
     server.asr.language = "en"
     replies = []

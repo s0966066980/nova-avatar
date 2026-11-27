@@ -147,7 +147,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
             video.write_bytes(b"not-a-real-video")
             captured = {}
 
-            def fake_build(work_dir, avatar_id, video_path, report, options):
+            def fake_build(work_dir, avatar_id, video_path, report, options, vae_provider=None):
                 captured["options"] = options
                 captured["avatar_id"] = avatar_id
                 captured["video_path"] = video_path
@@ -177,7 +177,7 @@ class BuildQualityForwardingTests(unittest.TestCase):
             video.write_bytes(b"clip")
             seen = {}
 
-            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None, green_screen=False, replace_guard=None):
+            def fake_build(engine, video_path, avatar_id, overwrite=False, progress=None, quality=None, green_screen=False, replace_guard=None, vae_provider=None):
                 seen["quality"] = quality
                 seen["avatar_id"] = avatar_id
                 seen["green_screen"] = green_screen

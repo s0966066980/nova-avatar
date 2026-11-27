@@ -199,9 +199,6 @@ forbidden_modules = [
 ignore_imports = [
     "src.asr.prewarm -> src.vad.factory", # layer-split 06
     "src.avatars.base -> src.vad.audio", # layer-split 06
-    "src.avatars.builder -> src.server.state", # layer-split 04
-    "src.llm.service -> src.server.state", # layer-split 04
-    "src.tts.training.gpu_guard -> src.server.state", # layer-split 04
 ]
 
 [[tool.importlinter.contracts]]

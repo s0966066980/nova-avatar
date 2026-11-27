@@ -77,7 +77,7 @@ def test_free_vram_check_treats_unknown_as_insufficient():
 
 def test_stage_connections_are_counted_from_the_session_registry(monkeypatch):
     from src.server.state import state
-    from src.tts.training.gpu_guard import count_stage_connections
+    from src.server.stage_connections import count_stage_connections
 
     monkeypatch.setattr(state, "avatar_streams", {1: object(), 2: None})  # 2 is still connecting
     assert count_stage_connections() == 2

@@ -47,7 +47,7 @@ def fake_video(root: Path) -> Path:
     return video
 
 
-def fake_musetalk_build(work_dir, avatar_id, source_name, report, options):
+def fake_musetalk_build(work_dir, avatar_id, source_name, report, options, vae_provider=None):
     (work_dir / "mask").mkdir(parents=True, exist_ok=True)
     (work_dir / "latents.pt").write_bytes(b"new-latents")
 
@@ -77,7 +77,7 @@ def test_failed_overwrite_keeps_old_avatar_and_removes_only_staging(data_dir):
     old = make_musetalk_avatar(data_dir, "musetalk_host")
     seen = {}
 
-    def failing_build(work_dir, avatar_id, source_name, report, options):
+    def failing_build(work_dir, avatar_id, source_name, report, options, vae_provider=None):
         seen["work_dir"] = work_dir
         # While the build runs, /offer and the catalog still see only the old avatar.
         seen["catalog"] = [item["id"] for item in list_avatar_characters()]
@@ -115,7 +115,7 @@ def test_successful_overwrite_moves_old_avatar_to_recycle_bin(data_dir):
 def test_new_avatar_appears_only_after_a_successful_build(data_dir):
     seen = {}
 
-    def build(work_dir, avatar_id, source_name, report, options):
+    def build(work_dir, avatar_id, source_name, report, options, vae_provider=None):
         seen["visible"] = (data_dir / "avatars" / "musetalk_new").exists()
         fake_musetalk_build(work_dir, avatar_id, source_name, report, options)
 
@@ -307,3 +307,26 @@ def test_accepted_import_persists_quality_and_hands_upload_to_job(import_server)
     [started] = import_server.started
     assert started["video_path"].read_bytes() == b"video-bytes"
     assert started["replace_guard"] is not None
+
+
+def test_builder_uses_the_vae_lent_by_the_caller_instead_of_loading_one():
+    from src.avatars.builder import _musetalk_vae
+
+    lent = object()
+
+    assert _musetalk_vae(lambda: lent) is lent
+
+
+def test_import_job_lends_the_running_stage_vae(monkeypatch):
+    from types import SimpleNamespace
+
+    from src.server import import_jobs
+    from src.server.state import state
+
+    vae = object()
+    monkeypatch.setattr(state, "config", SimpleNamespace(model=SimpleNamespace(type="musetalk")))
+    monkeypatch.setattr(state, "model", (vae, None, None))
+    assert import_jobs.live_musetalk_vae() is vae
+
+    monkeypatch.setattr(state, "model", None)
+    assert import_jobs.live_musetalk_vae() is None

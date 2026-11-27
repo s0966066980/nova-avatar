@@ -109,6 +109,7 @@ async def asr(request):
                 llm_config.api_key if llm_config else None,
                 llm_config.base_url if llm_config else "https://dashscope.aliyuncs.com/compatible-mode/v1",
                 llm_config.model if llm_config else "qwen-plus",
+                published_config=state.config,
             )
             logger.info(f'[ASR] LLM 回覆: {llm_text}')
             

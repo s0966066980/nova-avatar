@@ -80,6 +80,7 @@ from src.tts.training.corpus import (
     CorpusError,
     CorpusStore,
 )
+from src.server.stage_connections import count_stage_connections
 from src.tts.training.edge_acknowledgement import MSA_CLAUSE, require_acknowledgement
 from src.tts.training.gpu_guard import (
     DEFAULT_MIN_FREE_VRAM_GB,
@@ -87,7 +88,6 @@ from src.tts.training.gpu_guard import (
     PASS,
     WARN,
     Check,
-    count_stage_connections,
     free_vram_check,
     stage_connection_check,
 )

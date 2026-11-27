@@ -39,11 +39,8 @@ from src.tts.training.corpus import (
 )
 from src.server.state import state
 from src.server.tts_training_jobs import settings_from_config
-from src.tts.training.gpu_guard import (
-    DeviceChoice,
-    choose_transcription_device,
-    count_stage_connections,
-)
+from src.server.stage_connections import count_stage_connections
+from src.tts.training.gpu_guard import DeviceChoice, choose_transcription_device
 from src.tts.training.gpu_probe import VramReading, read_free_vram
 from src.tts.training.ingest import MAX_UPLOAD_BYTES, create_uploaded_corpus, ingest_audio
 from src.tts.training.edge_acknowledgement import record_acknowledgement

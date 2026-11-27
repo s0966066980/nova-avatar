@@ -1222,6 +1222,8 @@ class VoiceTurnSession:
         self.mark_stage_start("llm_total")
         self.mark_stage_start("first_fragment")
 
+        from src.server.state import state
+
         kwargs = {
             "stream_to_avatar": self._pipeline_mode == "streaming",
             "defer_history_commit": True,
@@ -1234,6 +1236,7 @@ class VoiceTurnSession:
             "fragmenter_factory": make_fragmenter_factory(
                 getattr(self.avatar, "config", None) or self.config
             ),
+            "published_config": state.config,
         }
         if rag_result and rag_result["status"] == "matched":
             kwargs["rag_context"] = retrieval_prompt(rag_result["sources"])

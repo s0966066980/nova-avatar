@@ -23,6 +23,22 @@ from src.avatars.catalog import IMPORTABLE_ENGINES, avatars_root, is_safe_avatar
 from src.server.runtime_settings import SettingsError
 from src.utils.logging import logger
 
+
+def live_musetalk_vae():
+    """The VAE of the running MuseTalk stage, lent to an import so it loads no second copy."""
+    try:
+        from src.server.state import state
+
+        if (
+            state.config is not None
+            and getattr(state.config.model, "type", None) == "musetalk"
+            and state.model is not None
+        ):
+            return state.model[0]
+    except Exception:
+        pass
+    return None
+
 VIDEO_EXTS = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv"}
 
 
@@ -178,6 +194,7 @@ def _run_job(
             quality=quality,
             green_screen=green_screen,
             replace_guard=replace_guard,
+            vae_provider=live_musetalk_vae,
         )
         job.status = "done"
         job.progress = 100

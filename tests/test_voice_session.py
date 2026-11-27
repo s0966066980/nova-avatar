@@ -138,6 +138,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             chunk_guard=None,
             defer_history_commit=False,
             fragmenter_factory=None,
+            published_config=None,
         ):
             self.assertTrue(stream_to_avatar)
             self.assertTrue(chunk_guard(0))
@@ -457,6 +458,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             chunk_guard=None,
             defer_history_commit=False,
             fragmenter_factory=None,
+            published_config=None,
         ):
             started.set()
             release.wait(timeout=1)
@@ -495,6 +497,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             chunk_guard=None,
             defer_history_commit=False,
             fragmenter_factory=None,
+            published_config=None,
         ):
             started.set()
             release.wait(timeout=1)
@@ -677,6 +680,7 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
             chunk_guard=None,
             defer_history_commit=False,
             fragmenter_factory=None,
+            published_config=None,
         ):
             self.assertEqual(text, "請串流")
             self.assertTrue(stream_to_avatar)

@@ -6,7 +6,8 @@
 One implementation, shared by everything that wants the GPU while a stage may be running:
 the training job's pre-flight (``src.server.tts_training_jobs``) uses these two functions,
 and the automatic transcription of uploaded recordings asks ``choose_transcription_device``,
-which calls the same two instead of copying them. A ``Check`` says ``pass`` or ``fail`` with a reason the
+which calls the same two instead of copying them. The core counts the stage connections and
+passes that count (or a counter) in; this layer only reads the free VRAM. A ``Check`` says ``pass`` or ``fail`` with a reason the
 console shows; ``detail`` carries the numbers.
 
 Unknown free memory is a failure: the caller must then treat the GPU as unavailable.
@@ -36,13 +37,6 @@ class Check:
 
     def to_dict(self) -> dict[str, Any]:
         return {"id": self.id, "label": self.label, "status": self.status, "reason": self.reason, "detail": self.detail}
-
-
-def count_stage_connections() -> int:
-    """Every stage session, including one still connecting (its placeholder is ``None``)."""
-    from src.server.state import state
-
-    return len(state.avatar_streams)
 
 
 def stage_connection_check(count: int) -> Check:
@@ -83,7 +77,7 @@ class DeviceChoice:
 
 
 def choose_transcription_device(
-    stage_connections: Callable[[], int] = count_stage_connections,
+    stage_connections: Callable[[], int],
     read_vram: Callable[[], VramReading] = read_free_vram,
     threshold_gb: float = DEFAULT_MIN_FREE_VRAM_GB,
     cuda_available: Callable[[], bool] = lambda: True,
