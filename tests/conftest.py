@@ -75,6 +75,7 @@ AREA_BY_FILE = {
     "test_llm_text_normalizer.py": "llm",
     "test_llm_fragments.py": "llm",
     "test_llm_handoff.py": "llm",
+    "test_contracts.py": "governance",
     "test_gemma_e2b.py": "llm",
     "test_default_llm_endpoint.py": "llm",
     "test_first_sentence_rule.py": "llm",

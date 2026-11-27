@@ -38,13 +38,15 @@ jobs:
         # uv's pip backend selects CPU wheels only for PyTorch packages.
         run: |
           uv venv --python 3.11
-          uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e '.[vad]'
+          uv pip install --python .venv/bin/python --no-sources --torch-backend cpu --group dev --group ci -e ./contracts -e '.[vad]'
       - name: Lint Python
         run: uv run --no-sync ruff check .
       - name: Type-check server control flow
         run: uv run --no-sync pyright
       - name: Check processing-layer import boundaries
         run: uv run --no-sync lint-imports
+      - name: Check contracts OpenAPI matches the models
+        run: uv run --no-sync python scripts/generate-openapi.py --check
       - name: Check branding, notices, and offline integration
         run: uv run --no-sync python scripts/check-integration.py
       - name: Run Python tests

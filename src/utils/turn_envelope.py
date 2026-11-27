@@ -1,15 +1,7 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""The identity of one unit of work inside a reply turn."""
-from __future__ import annotations
+"""The identity of one unit of work inside a reply turn (defined in ``nova_contracts``)."""
+from nova_contracts.turn import TurnEnvelope
 
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
-class TurnEnvelope:
-    turn_id: str
-    generation: int
-    stage: str
-    sequence: int
+__all__ = ["TurnEnvelope"]

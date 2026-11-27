@@ -84,8 +84,12 @@ class DependencyLayoutTests(unittest.TestCase):
 
 class LockCheckTests(unittest.TestCase):
     def _project_copy(self, tmp: Path) -> Path:
-        """Copy only the lock inputs: both project manifests and the lock."""
-        for manifest in ("pyproject.toml", "src/avatars/musetalk/pyproject.toml"):
+        """Copy only the lock inputs: every project manifest and the lock."""
+        for manifest in (
+            "pyproject.toml",
+            "src/avatars/musetalk/pyproject.toml",
+            "contracts/pyproject.toml",
+        ):
             target = tmp / manifest
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / manifest, target)

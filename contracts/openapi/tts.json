@@ -1,0 +1,152 @@
+{
+  "components": {
+    "schemas": {
+      "EngineRequest": {
+        "properties": {
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          }
+        },
+        "required": [
+          "engine"
+        ],
+        "title": "EngineRequest",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "contract_version"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "SynthesizeRequest": {
+        "properties": {
+          "fragment_sequence": {
+            "default": 0,
+            "title": "Fragment Sequence",
+            "type": "integer"
+          },
+          "generation": {
+            "default": 0,
+            "title": "Generation",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "turn_id": {
+            "default": "",
+            "title": "Turn Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "SynthesizeRequest",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Nova Avatar TTS service",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/engine": {
+      "put": {
+        "operationId": "set_engine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "The engine was switched."
+          }
+        }
+      }
+    },
+    "/flush": {
+      "post": {
+        "operationId": "flush",
+        "responses": {
+          "204": {
+            "description": "Queued text was dropped."
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "The service is up and reports its contract version."
+          }
+        }
+      }
+    },
+    "/synthesize": {
+      "post": {
+        "operationId": "synthesize",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SynthesizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "PCM, 16 kHz mono int16, chunked. The client closes the connection to cancel."
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1"
+    }
+  ]
+}

@@ -1,0 +1,564 @@
+{
+  "components": {
+    "schemas": {
+      "BoardEvent": {
+        "properties": {
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "type": {
+            "const": "board",
+            "default": "board",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payload"
+        ],
+        "title": "BoardEvent",
+        "type": "object"
+      },
+      "EngineRequest": {
+        "properties": {
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          }
+        },
+        "required": [
+          "engine"
+        ],
+        "title": "EngineRequest",
+        "type": "object"
+      },
+      "GreetingRequest": {
+        "properties": {
+          "max_chars": {
+            "title": "Max Chars",
+            "type": "integer"
+          },
+          "min_chars": {
+            "title": "Min Chars",
+            "type": "integer"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt",
+          "min_chars",
+          "max_chars"
+        ],
+        "title": "GreetingRequest",
+        "type": "object"
+      },
+      "GreetingResult": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "GreetingResult",
+        "type": "object"
+      },
+      "HandoffDecision": {
+        "properties": {
+          "accepted_at": {
+            "default": "",
+            "title": "Accepted At",
+            "type": "string"
+          },
+          "clarification": {
+            "default": "",
+            "title": "Clarification",
+            "type": "string"
+          },
+          "context": {
+            "default": "",
+            "title": "Context",
+            "type": "string"
+          },
+          "county": {
+            "default": "",
+            "title": "County",
+            "type": "string"
+          },
+          "decided_by": {
+            "default": "",
+            "title": "Decided By",
+            "type": "string"
+          },
+          "end_date": {
+            "default": "",
+            "title": "End Date",
+            "type": "string"
+          },
+          "kind": {
+            "default": "",
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          },
+          "start_date": {
+            "default": "",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "town": {
+            "default": "",
+            "title": "Town",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "HandoffDecision",
+        "type": "object"
+      },
+      "HandoffMember": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "main": {
+            "default": false,
+            "title": "Main",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "default": "",
+            "title": "Rules",
+            "type": "string"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeatherSite"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "HandoffMember",
+        "type": "object"
+      },
+      "HandoffRequest": {
+        "properties": {
+          "confirmed": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Confirmed",
+            "type": "object"
+          },
+          "current_id": {
+            "title": "Current Id",
+            "type": "string"
+          },
+          "explain": {
+            "default": false,
+            "title": "Explain",
+            "type": "boolean"
+          },
+          "history": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/HandoffMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "members",
+          "current_id",
+          "text"
+        ],
+        "title": "HandoffRequest",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "contract_version": {
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "contract_version"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "ReplyDone": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "done",
+            "default": "done",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ReplyDone",
+        "type": "object"
+      },
+      "ReplyModeEvent": {
+        "properties": {
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "type": {
+            "const": "reply_mode",
+            "default": "reply_mode",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "ReplyModeEvent",
+        "type": "object"
+      },
+      "ReplyRequest": {
+        "properties": {
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "rag_context": {
+            "default": "",
+            "title": "Rag Context",
+            "type": "string"
+          },
+          "reply_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reply Mode"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "turn_id",
+          "generation"
+        ],
+        "title": "ReplyRequest",
+        "type": "object"
+      },
+      "RetrievalSourcesEvent": {
+        "properties": {
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "type": {
+            "const": "retrieval_sources",
+            "default": "retrieval_sources",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sources"
+        ],
+        "title": "RetrievalSourcesEvent",
+        "type": "object"
+      },
+      "SpokenTextDelta": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "const": "spoken_text",
+            "default": "spoken_text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "SpokenTextDelta",
+        "type": "object"
+      },
+      "WeatherSite": {
+        "properties": {
+          "county": {
+            "default": "",
+            "title": "County",
+            "type": "string"
+          },
+          "town": {
+            "default": "",
+            "title": "Town",
+            "type": "string"
+          }
+        },
+        "title": "WeatherSite",
+        "type": "object"
+      },
+      "WebSourcesEvent": {
+        "properties": {
+          "sources": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "type": {
+            "const": "web_sources",
+            "default": "web_sources",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sources"
+        ],
+        "title": "WebSourcesEvent",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Nova Avatar LLM service",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/engine": {
+      "put": {
+        "operationId": "set_engine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EngineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "The engine was switched."
+          }
+        }
+      }
+    },
+    "/greeting": {
+      "post": {
+        "operationId": "generate_greeting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GreetingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GreetingResult"
+                }
+              }
+            },
+            "description": "One greeting."
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "The service is up and reports its contract version."
+          }
+        }
+      }
+    },
+    "/reply": {
+      "post": {
+        "operationId": "stream_reply",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "discriminator": {
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SpokenTextDelta"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplyModeEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/BoardEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RetrievalSourcesEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/WebSourcesEvent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ReplyDone"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Server-sent events; each data line is one reply event. The client closes the connection to cancel."
+          }
+        }
+      }
+    },
+    "/route": {
+      "post": {
+        "operationId": "route",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffDecision"
+                }
+              }
+            },
+            "description": "Who answers the turn."
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1"
+    }
+  ]
+}

@@ -11,10 +11,11 @@ follow the conversation language.
 """
 from __future__ import annotations
 
+from nova_contracts.llm import HandoffRequest
 from openai import OpenAI
 
-from src.llm import handoff
-from src.llm.handoff import CLARIFY, WEATHER_FIELDS, RoutingClients, route_schema
+from src.llm.adapter import LlmAdapter
+from src.llm.handoff import CLARIFY, WEATHER_FIELDS, RoutingClients, RoutingError, route_schema
 from src.profiles.composition import live_members, main_profile_id
 from src.profiles.language import fixed_text
 from src.profiles.validation import ProfileError
@@ -67,13 +68,18 @@ def route_question(config, library, current_id, text, history, confirmed, *,
     are always present and filled only for the live weather-tool holder.
     ``explain`` (the console's handoff dry run) also returns a short ``reason``.
     """
+    service = LlmAdapter(config, clients=clients, client_factory=client_factory)
     try:
-        result = handoff.route(
-            config, _members(library), current_id, text, history, confirmed,
-            clients=clients, client_factory=client_factory, explain=explain,
-        )
-    except handoff.RoutingError as exc:
+        decision = service.route(HandoffRequest(
+            members=_members(library), current_id=current_id, text=text,
+            history=list(history), confirmed=dict(confirmed), explain=explain,
+        ))
+    except RoutingError as exc:
         raise ProfileError(str(exc)) from exc
+    # Fields the decision does not carry stay absent, as before the contract.
+    result = decision.model_dump(exclude_defaults=False)
+    if not explain:
+        result.pop("reason", None)
     locale = getattr(getattr(config, "conversation", None), "locale", "zh-TW")
     result["clarification"] = fixed_text(result["clarification"], locale)
     return result

@@ -20,6 +20,7 @@ dependencies = [
     "edge-tts",
     "ddgs==9.14.4",
     "faster-whisper>=1.1",
+    "nova-avatar-contracts",
     "onnxruntime>=1.16,<1.24",
     "librosa",
     "omegaconf",
@@ -83,6 +84,7 @@ ci = [
 ]
 
 [tool.uv.sources]
+nova-avatar-contracts = { path = "contracts", editable = true }
 nova-avatar-musetalk = { path = "src/avatars/musetalk", editable = true }
 torch = [
     { index = "pytorch-cu124" },
@@ -110,7 +112,7 @@ markers = [
 [tool.ruff]
 required-version = "==0.17.1"
 target-version = "py310"
-include = ["src/**/*.py", "scripts/**/*.py", "tests/**/*.py"]
+include = ["src/**/*.py", "scripts/**/*.py", "tests/**/*.py", "contracts/**/*.py"]
 force-exclude = true
 extend-exclude = [
     "src/avatars/musetalk/utils",
@@ -147,7 +149,7 @@ select = [
 # Control-flow guard for the server package: basic mode minus the rules that
 # still report existing type-annotation debt there. Every rule left enabled
 # passes with zero findings, so a new hit is a real regression.
-include = ["src/server"]
+include = ["src/server", "contracts"]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
 reportPossiblyUnboundVariable = "error"
