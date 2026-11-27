@@ -19,7 +19,6 @@ from src.utils.logging import logger
 from src.server.state import state
 from src.server import routes
 from src.llm.llamacpp import shutdown_llama_server
-from src.scene.service import scene_service
 from src.profiles.coordinator import initialize_roles
 from src.ragflow.client import close_shared_session as close_ragflow_session
 from src.server.routes.profiles import register_profile_routes
@@ -90,7 +89,8 @@ async def on_shutdown(app):
         # Training jobs, transcription, Edge's shared sockets and BreezyVoice.
         await asyncio.to_thread(state.tts_runtime.close)
     shutdown_llama_server()
-    scene_service.close()
+    if state.avatar_service is not None:
+        state.avatar_service.close()
 
 
 def create_app(*, admin_env_path: Path | None = None, frontend_dir: Path | None = None):

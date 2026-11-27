@@ -10,6 +10,7 @@ from src.config.overrides import load_runtime_overrides, persist_runtime_overrid
 from src.llm.base import load_system_prompt
 from src.llm.prompts import AUTO_MODE_PROMPT, compose_system_prompt
 from src.llm.router import ReplyMode
+from src.avatars.adapter import create_avatar_service
 from src.server.runtime_settings import apply_llm_model, current_snapshot
 from tests.tts_fakes import in_process_tts
 
@@ -62,10 +63,10 @@ class AssistantProfileTests(unittest.TestCase):
         self.assertEqual(load_system_prompt(config), "舊設定")
         config.llm.assistant_profile.system_prompt = "新設定"
         config.llm.assistant_profile.assistant_name = "新助手"
-        with patch("src.server.runtime_settings.list_avatar_characters", return_value=[]), patch(
-            "src.server.runtime_settings.list_engines", return_value=[]
+        with patch("src.avatars.catalog.list_avatar_characters", return_value=[]), patch(
+            "src.avatars.catalog.list_engines", return_value=[]
         ):
-            snapshot = current_snapshot(config, tts=in_process_tts())
+            snapshot = current_snapshot(config, tts=in_process_tts(), avatars=create_avatar_service())
         self.assertEqual(snapshot["llm"]["assistant_profile"]["system_prompt"], "新設定")
         self.assertEqual(snapshot["llm"]["assistant_profile"]["assistant_name"], "新助手")
 

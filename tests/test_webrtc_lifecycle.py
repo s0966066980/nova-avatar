@@ -18,6 +18,18 @@ from src.server.voice_session import (
 )
 
 
+def fake_renderer(**fields):
+    """A renderer the faked SpeakingAvatar below returns as the session avatar itself."""
+    value = SimpleNamespace(discard_recording=AsyncMock(), **fields)
+    value.renderer = value
+    return value
+
+
+def use_renderers(monkeypatch, create_renderer):
+    monkeypatch.setattr(state, 'avatar_service', SimpleNamespace(create_renderer=create_renderer),
+                        raising=False)
+
+
 @pytest.fixture
 def rtc(monkeypatch):
     config = Config()
@@ -57,7 +69,7 @@ def rtc(monkeypatch):
         audio=SimpleNamespace(kind='audio'), video=SimpleNamespace(kind='video'),
         discard_stale_media=Mock()))
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', voice)
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: object())
+    use_renderers(monkeypatch, lambda *a: fake_renderer())
     # These tests fake the renderer; the core's TTS pairing has its own tests.
     monkeypatch.setattr(webrtc, 'SpeakingAvatar', lambda renderer, speech: renderer)
     def request(role='console', sdp='good', app=None):
@@ -70,7 +82,7 @@ def rtc(monkeypatch):
 
 def test_failed_avatar_creation_releases_role_capacity(rtc, monkeypatch):
     def failed(*args): raise RuntimeError('avatar failed')
-    monkeypatch.setattr(webrtc, 'create_avatar', failed)
+    use_renderers(monkeypatch, failed)
     async def run():
         with pytest.raises(RuntimeError, match='avatar failed'):
             await webrtc.offer(rtc.request())
@@ -141,8 +153,8 @@ def test_cancelled_offer_waits_for_worker_then_releases_reservation(rtc, monkeyp
     def build(*args):
         entered.set()
         finish.wait(2)
-        return object()
-    monkeypatch.setattr(webrtc, 'create_avatar', build)
+        return fake_renderer()
+    use_renderers(monkeypatch, build)
     async def run():
         task = asyncio.create_task(webrtc.offer(rtc.request()))
         try:
@@ -188,7 +200,7 @@ def test_single_profile_config_drives_new_voice_sessions_without_handoff(rtc, mo
         config_for_session=lambda: effective, data_for_session=lambda: object(),
         register=Mock(), unregister=Mock(), apply_pending=AsyncMock())
     monkeypatch.setattr(state, 'roles', roles)
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda *args: SimpleNamespace(config=args[0]))
+    use_renderers(monkeypatch, lambda *args: fake_renderer(config=args[0]))
     original = webrtc.VoiceTurnSession
     captured = []
     def voice(sessionid, config, avatar, **kwargs):
@@ -216,7 +228,7 @@ def test_questions_and_played_answers_stay_on_the_source_page(rtc, monkeypatch, 
     roles.register = lambda voice: setattr(voice, '_role_coordinator', roles)
     monkeypatch.setattr(state, 'roles', roles)
     monkeypatch.setattr(webrtc, 'VoiceTurnSession', VoiceTurnSession)
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda config, *args: SimpleNamespace(
+    use_renderers(monkeypatch, lambda config, *args: fake_renderer(
         config=config, configure_media_fence=Mock(), flush_talk=Mock()))
 
     async def run():
@@ -288,8 +300,8 @@ def test_offer_body_finishing_during_resource_update_does_not_create_peer(rtc, m
 
 
 def test_disconnect_discards_an_unfinished_recording(rtc, monkeypatch):
-    avatar = SimpleNamespace(discard_recording=AsyncMock())
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: avatar)
+    avatar = fake_renderer()
+    use_renderers(monkeypatch, lambda *a: avatar)
     async def run():
         await webrtc.offer(rtc.request())
         rtc.peers[0].connectionState = 'closed'
@@ -404,7 +416,7 @@ def training_rig(tmp_path, **kwargs):
 
 def test_a_stage_offer_is_refused_while_voice_training_runs(rtc, tmp_path, monkeypatch):
     built = []
-    monkeypatch.setattr(webrtc, 'create_avatar', lambda *a: built.append(a) or object())
+    use_renderers(monkeypatch, lambda *a: built.append(a) or fake_renderer())
     r = training_rig(tmp_path, train_code=None)
     try:
         response = asyncio.run(webrtc.offer(rtc.request('stage', app=training_app(r.manager))))

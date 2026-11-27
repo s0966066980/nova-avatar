@@ -11,9 +11,8 @@ from pathlib import Path
 import time
 from uuid import uuid4
 
-from src.avatars.factory import load_avatar_data
 from src.llm.service import select_session_profile, session_history
-from src.profiles.media import RolePresentation, TransitionMedia, _VideoReader
+from src.profiles.media import TransitionMedia
 from src.llm.handoff import RoutingClients
 from src.llm.tools import CwaWeather, WeatherQuery
 from src.profiles.routing import route_question, weather_member
@@ -132,8 +131,7 @@ class ConversationRoles:
             voice.bind_conversation()
         voice._turn_context = None
         select_session_profile(voice.sessionid, profile_id)
-        if getattr(voice.avatar, "_role_presentation", None) is None:
-            voice.avatar._role_presentation = RolePresentation()
+        voice.avatar.renderer.ensure_role_presentation()
         if voice._media_player is not None:
             voice._media_player.discard_stale_media()
 
@@ -227,7 +225,7 @@ class ConversationRoles:
                 info, path = self.media.get(edge["asset_id"])
                 for other in (self.voice,):
                     pending["readers"][other.sessionid] = await asyncio.to_thread(
-                        _VideoReader, path, info["frames"])
+                        self.manager.open_transition_clip, path, info["frames"])
         except asyncio.CancelledError:
             self.cancel(sid)
             raise
@@ -330,23 +328,23 @@ class ConversationRoles:
                     if reader is None and edge["kind"] == "video":
                         try:
                             info, path = self.media.get(edge["asset_id"])
-                            reader = await asyncio.to_thread(_VideoReader, path, info["frames"])
+                            reader = await asyncio.to_thread(
+                                self.manager.open_transition_clip, path, info["frames"])
                         except Exception:
                             reader = None
                     if reader:
                         readers[voice.sessionid] = reader
                     actual_edge = edge if edge["kind"] != "video" or reader else {
                         "kind": "effect", "effect": "fade", "duration": .6}
-                    presentation = voice.avatar._role_presentation
-                    presentation.begin(transition_id, actual_edge, reader=reader,
-                                       started_at=time.monotonic() + 3600)
-                    prepared.append((voice, presentation))
+                    renderer = voice.avatar.renderer
+                    renderer.begin_role_transition(transition_id, actual_edge, clip=reader,
+                                                   started_at=time.monotonic() + 3600)
+                    prepared.append((voice, renderer))
                 for voice, _ in prepared:
                     await self._bind_async(voice, target)
                 started = time.monotonic()
-                for _, presentation in prepared:
-                    with presentation.lock:
-                        presentation.transition["started"] = started
+                for _, renderer in prepared:
+                    renderer.start_role_transition(started)
                 duration = max((r.frames / 25 for r in readers.values()), default=edge.get("duration", .6))
                 for voice, _ in prepared:
                     voice._emit("role_transition_started", transition_id=transition_id,
@@ -366,9 +364,7 @@ class ConversationRoles:
                 raise
             finally:
                 for voice in (self.voice,):
-                    presentation = getattr(voice.avatar, "_role_presentation", None)
-                    if presentation:
-                        presentation.close()
+                    voice.avatar.renderer.close_role_transition()
                 self.phase = "ready"
                 self._transition_event = None
                 self.notify()
@@ -411,9 +407,7 @@ class ConversationRoles:
     async def close(self):
         for sid in list(self.pending):
             self.cancel(sid)
-        presentation = getattr(self.voice.avatar, "_role_presentation", None)
-        if presentation:
-            presentation.close()
+        self.voice.avatar.renderer.close_role_transition()
 
 
 def profiles_path(config_path) -> Path:
@@ -459,11 +453,11 @@ def _start_breezyvoice(service, tts) -> None:
 class RoleCoordinator:
     """Publish defaults without mutating any connected conversation."""
 
-    def __init__(self, state, store, library, *, loader=load_avatar_data,
+    def __init__(self, state, store, library, *, loader=None,
                  router=None, routing_clients=None, weather=None, media=None):
         self.state, self.store = state, store
         self.library = deepcopy(library)
-        self.loader = loader
+        self.loader = loader if loader is not None else self._load_assets
         # Every turn routes through the same pooled clients; worker threads
         # may route concurrently, and close() releases them on shutdown.
         self.routing_clients = routing_clients or RoutingClients()
@@ -475,6 +469,13 @@ class RoleCoordinator:
         self.phase, self.error = "disabled", ""
         self._apply_waiting = False
         self._pending_library = None
+
+    def _load_assets(self, config):
+        return self.state.avatar_service.load_assets(config)
+
+    def open_transition_clip(self, path, frames):
+        """Start decoding a role-transition clip for a renderer (blocking)."""
+        return self.state.avatar_service.open_transition_clip(path, frames)
 
     @property
     def enabled(self):
@@ -546,7 +547,8 @@ class RoleCoordinator:
             if config.model.type != self.state.config.model.type:
                 from src.server.runtime_settings import apply_avatar
                 await asyncio.to_thread(apply_avatar, self.state.config,
-                    main["engine"], main["avatar_id"], session_count=0)
+                    main["engine"], main["avatar_id"], session_count=0,
+                    avatars=self.state.avatar_service)
                 self.assets = {}
             if config.tts.type != self.state.config.tts.type:
                 from src.server.runtime_settings import apply_tts_settings
@@ -563,11 +565,10 @@ class RoleCoordinator:
             cache = {}
             for profile in selected:
                 aid = profile["avatar_id"]
-                from src.avatars.catalog import avatar_bootable, avatar_uses_green_screen
-                valid, reason = avatar_bootable(profile["engine"], aid)
-                if not valid:
-                    raise ProfileError(reason, 409)
-                if members and not avatar_uses_green_screen(aid):
+                check = self.state.avatar_service.bootable(profile["engine"], aid)
+                if not check.bootable:
+                    raise ProfileError(check.reason, 409)
+                if members and not self.state.avatar_service.uses_green_screen(aid):
                     raise ProfileError("人物層轉場需要綠幕 MuseTalk 素材", 409)
                 if aid in cache:
                     continue
@@ -638,7 +639,7 @@ class RoleCoordinator:
         self.sessions[voice.sessionid] = roles
         voice._role_coordinator = roles
         if self.enabled:
-            voice.avatar._role_presentation = RolePresentation()
+            voice.avatar.renderer.reset_role_presentation(True)
         if self.profiles_applied or self.enabled:
             select_session_profile(voice.sessionid, roles.current_id)
         roles.notify()
@@ -677,7 +678,7 @@ class RoleCoordinator:
         voice.bind_conversation()
         if getattr(voice.avatar, "tts", None) is not None:
             voice.avatar.tts.set_voice(tts_section.voice(voice.config.tts))
-        voice.avatar._role_presentation = RolePresentation() if roles.enabled else None
+        voice.avatar.renderer.reset_role_presentation(roles.enabled)
         self.sessions[voice.sessionid] = roles
         voice._role_coordinator = roles
         select_session_profile(voice.sessionid, roles.current_id)

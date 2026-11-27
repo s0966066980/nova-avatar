@@ -17,6 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 | `nova_contracts.stt` | 語音轉文字：DTO、`SttService` Protocol、`HTTP_API` |
 | `nova_contracts.llm` | 回答模型：口語文字增量等回覆事件（工單 07 第 2 步補上 `LlmService`） |
 | `nova_contracts.tts` | 語音合成：可播回覆片段、聲音（`TtsVoice`）、音訊庫、聲線模型試聽、聲線訓練（語料、自動逐字稿、訓練工作）的 DTO，`TtsService` Protocol 與 `HTTP_API`；只在同一行程內使用的 `AudioSink`、`SpeechChannel`、`TtsRuntime` |
+| `nova_contracts.avatar` | 數位人渲染：`AvatarService`（模型載入、人物素材、匯入、嘴型畫質、舞台背景）、每場對話的 `AvatarRenderer`、DTO。渲染器留在核心行程內，沒有 `HTTP_API` |
 
 ## OpenAPI
 

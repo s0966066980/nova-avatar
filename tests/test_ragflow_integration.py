@@ -12,7 +12,7 @@ import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from aiohttp import web
 
@@ -165,7 +165,7 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
                 patch.object(server.state, "voice_sessions", {}), \
                 patch.object(server, "shutdown_llama_server"), \
                 patch.object(server.state, "tts_runtime", None), \
-                patch.object(server.scene_service, "close"):
+                patch.object(server.state, "avatar_service", Mock()):
             await server.on_shutdown(None)
         await self.client.retrieve("問題", [DATASET_A])
         self.assertNotEqual(self.client_ports[0], self.client_ports[1])

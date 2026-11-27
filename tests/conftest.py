@@ -16,6 +16,7 @@ AREA_BY_FILE = {
     "test_conversation_attachments.py": "conversation",
     "test_conversation_settings.py": "conversation",
     "test_pc_conversations.py": "conversation",
+    "test_avatar_contract.py": "avatar",
     "test_avatar_import.py": "runtime",
     "test_avatar_safe_loading.py": "avatar",
     "test_avatar_profiles.py": "runtime",

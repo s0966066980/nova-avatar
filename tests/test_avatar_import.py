@@ -17,12 +17,18 @@ import pytest
 from src.avatars.builder import BuildError, build_character
 from src.avatars.catalog import list_archived_avatars, list_avatar_characters
 from src.config.schema import Config
+from src.avatars.adapter import create_avatar_service
 from src.server import import_jobs
 from src.server.routes import settings as settings_routes
 from src.server.state import state
 from tests.access_helpers import access_client, same_origin
 
 OLD_MARKER = b"old-avatar-frame"
+
+
+@pytest.fixture(autouse=True)
+def avatar_service(monkeypatch):
+    monkeypatch.setattr(state, "avatar_service", create_avatar_service())
 
 
 @pytest.fixture
@@ -145,7 +151,7 @@ def test_unexpected_job_error_does_not_leak_absolute_paths(tmp_path, data_dir):
     video.write_bytes(b"clip")
     secret = f"{tmp_path}/models/musetalk/unet.pth"
 
-    with patch("src.server.import_jobs.build_character", side_effect=FileNotFoundError(secret)):
+    with patch("src.avatars.builder.build_character", side_effect=FileNotFoundError(secret)):
         job = import_jobs.start_import_job(
             engine="musetalk", video_path=video, original_name="clip.mp4", avatar_id="musetalk_x",
         )
@@ -166,36 +172,39 @@ def test_the_builder_reuses_the_vae_the_core_hands_it_without_loading_models():
         assert builder._musetalk_vae(lambda: loaded) is loaded
 
 
-def test_the_running_musetalk_vae_comes_from_the_core_state(monkeypatch):
+def test_the_running_model_comes_from_the_core_state(monkeypatch):
+    model = (object(), "unet", "pe")
+    config = Config()
+    config.model.type = "musetalk"
+    monkeypatch.setattr(state, "config", config)
+    monkeypatch.setattr(state, "model", model)
+    assert import_jobs.running_avatar_model() == ("musetalk", model)
+    monkeypatch.setattr(state, "model", None)
+    assert import_jobs.running_avatar_model() is None
+    monkeypatch.setattr(state, "model", model)
+    monkeypatch.setattr(state, "config", None)
+    assert import_jobs.running_avatar_model() is None
+
+
+def test_an_import_job_hands_the_running_vae_to_the_builder(tmp_path, data_dir, monkeypatch):
     vae = object()
     config = Config()
     config.model.type = "musetalk"
     monkeypatch.setattr(state, "config", config)
     monkeypatch.setattr(state, "model", (vae, "unet", "pe"))
-    assert import_jobs.running_musetalk_vae() is vae
-    monkeypatch.setattr(state, "model", None)
-    assert import_jobs.running_musetalk_vae() is None
-    config.model.type = "wav2lip"
-    monkeypatch.setattr(state, "model", (vae,))
-    assert import_jobs.running_musetalk_vae() is None
-    monkeypatch.setattr(state, "config", None)
-    assert import_jobs.running_musetalk_vae() is None
-
-
-def test_an_import_job_hands_the_running_vae_to_the_builder(tmp_path, data_dir):
     video = tmp_path / "clip.mp4"
     video.write_bytes(b"clip")
-    with patch("src.server.import_jobs.build_character", return_value={}) as build:
+    with patch("src.avatars.builder.build_character", return_value={}) as build:
         wait_for(import_jobs.start_import_job(
             engine="musetalk", video_path=video, original_name="clip.mp4", avatar_id="musetalk_vae",
         ))
-    assert build.call_args.kwargs["loaded_vae"] is import_jobs.running_musetalk_vae
+    assert build.call_args.kwargs["loaded_vae"]() is vae
 
 
 def test_finished_jobs_are_pruned(tmp_path, monkeypatch, data_dir):
     monkeypatch.setattr(import_jobs, "_JOBS", {})
     jobs = []
-    with patch("src.server.import_jobs.build_character", return_value={}):
+    with patch("src.avatars.builder.build_character", return_value={}):
         for index in range(import_jobs.MAX_FINISHED_JOBS + 5):
             video = tmp_path / f"clip{index}.mp4"
             video.write_bytes(b"clip")
@@ -229,7 +238,7 @@ def import_server(data_dir, monkeypatch):
     persisted = []
     monkeypatch.setattr(
         settings_routes, "apply_mouth_quality",
-        lambda config, quality: persisted.append(quality) or quality,
+        lambda config, quality, *, avatars: persisted.append(quality) or quality,
     )
     return SimpleNamespace(root=data_dir, config=config, started=started, persisted=persisted)
 

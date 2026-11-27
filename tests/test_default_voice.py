@@ -19,6 +19,7 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
+from src.avatars.adapter import create_avatar_service
 from src.config import loader, overrides
 from src.config.schema import Config
 from src.profiles import coordinator
@@ -100,6 +101,7 @@ def test_startup_keeps_the_configured_voice_when_saved_profiles_are_unreadable(t
 def roles_state(tmp_path, config):
     return SimpleNamespace(config=config, config_path=str(tmp_path / "config.yaml"),
                            voice_sessions={}, avatar_streams={}, avatar=object(), tts=in_process_tts(),
+                           avatar_service=create_avatar_service(),
                            switching=False, settings_applying=False)
 
 

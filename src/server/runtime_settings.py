@@ -12,20 +12,6 @@ from dataclasses import asdict
 from io import BytesIO
 from typing import Any, Dict, Optional
 
-from src.avatars.catalog import (
-    ENGINE_META,
-    avatars_root,
-    is_safe_avatar_id,
-    list_avatar_characters,
-    list_engines,
-    find_preview_image,
-)
-from src.avatars.video_output import output_dimensions
-from src.avatars.mouth_quality import (
-    QualityError,
-    apply_quality_to_model,
-    quality_from_model,
-)
 from src.config.overrides import persist_runtime_overrides
 from src.greetings.content import validate_interval, validate_content
 from src.llm.base import (
@@ -49,6 +35,7 @@ from src.llm.endpoints import (
 )
 from src.llm.service import switch_llm_endpoint
 from src.llm.rules import default_rules, rules_from_config, snapshot_from_config, validate_rules
+from nova_contracts.avatar import AvatarService
 from nova_contracts.common import ServiceError
 from nova_contracts.stt import SttEngineSettings, SttService
 from nova_contracts.tts import (
@@ -61,6 +48,7 @@ from nova_contracts.tts import (
     VoicePreparation,
 )
 from src.tts import config_section as tts_section
+from src.utils.avatar_ids import is_safe_avatar_id
 from src.utils.logging import logger
 
 _SWITCH_LOCK = threading.Lock()
@@ -183,9 +171,9 @@ def endpoint_choices(config) -> list[Dict[str, str]]:
     return [item.public() for item in configured_endpoints(config.llm).values()]
 
 
-def current_snapshot(config, *, tts: TtsService) -> Dict[str, Any]:
-    characters = list_avatar_characters()
-    engines = list_engines(characters)
+def current_snapshot(config, *, tts: TtsService, avatars: AvatarService) -> Dict[str, Any]:
+    characters = avatars.list_characters()
+    engines = avatars.list_engines(characters)
     llm = config.llm
     model_cfg = config.model
     return {
@@ -217,8 +205,8 @@ def current_snapshot(config, *, tts: TtsService) -> Dict[str, Any]:
             "type": model_cfg.type,
             "avatar_id": model_cfg.avatar_id,
         },
-        "avatar_quality": quality_from_model(model_cfg),
-        "video": video_output_snapshot(config),
+        "avatar_quality": avatars.quality_from_model(model_cfg),
+        "video": video_output_snapshot(config, avatars=avatars),
         "engines": engines,
         "characters": characters,
         "vad": vad_snapshot(config),
@@ -227,22 +215,15 @@ def current_snapshot(config, *, tts: TtsService) -> Dict[str, Any]:
     }
 
 
-def video_output_snapshot(config) -> Dict[str, Any]:
+def video_output_snapshot(config, *, avatars: AvatarService) -> Dict[str, Any]:
     """Describe the next connection's output using the source image dimensions."""
     max_height = int(getattr(getattr(config, "video", None), "max_height", 0))
     source_width = source_height = output_width = output_height = None
-    avatar_id = getattr(config.model, "avatar_id", "")
-    if is_safe_avatar_id(avatar_id):
-        preview = find_preview_image(avatars_root() / avatar_id)
-        if preview is not None:
-            from PIL import Image
-
-            try:
-                with Image.open(preview) as image:
-                    source_width, source_height = image.size
-                output_width, output_height = output_dimensions(source_width, source_height, max_height)
-            except (OSError, ValueError):
-                pass
+    source = avatars.source_size(getattr(config.model, "avatar_id", ""))
+    if source is not None:
+        source_width, source_height = source.width, source.height
+        output = avatars.output_size(source.width, source.height, max_height)
+        output_width, output_height = output.width, output.height
     return {
         "max_height": max_height,
         "height_options": [450, 540, 720, 960, 1280, 1920, 0],
@@ -253,7 +234,7 @@ def video_output_snapshot(config) -> Dict[str, Any]:
     }
 
 
-def apply_video_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
+def apply_video_settings(config, params: Dict[str, Any], *, avatars: AvatarService) -> Dict[str, Any]:
     """Persist output size for new sessions; existing recorders keep their size."""
     if not isinstance(params, dict) or "max_height" not in params:
         raise SettingsError("請指定數字人輸出解析度 max_height")
@@ -267,7 +248,7 @@ def apply_video_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         config.video.max_height = previous
         raise
-    return video_output_snapshot(config)
+    return video_output_snapshot(config, avatars=avatars)
 
 
 def reply_rules_snapshot(config) -> Dict[str, Any]:
@@ -678,25 +659,23 @@ def apply_stage_settings(config, params: Dict[str, Any], *, greeting_content=Non
     return stage_snapshot(config)
 
 
-def apply_stage_background(config, background_id: str) -> Dict[str, Any]:
+def apply_stage_background(config, background_id: str, *, avatars: AvatarService) -> Dict[str, Any]:
     """Switch the shared scene without rebuilding an avatar or WebRTC session."""
-    from src.scene.service import SceneError, scene_service
-
     stage = getattr(config, "stage", None)
     if stage is None:
         raise SettingsError("當前配置不支援舞台背景", status=400)
     selected = str(background_id or "").strip()
     previous = str(getattr(stage, "background_id", "") or "")
     try:
-        result = scene_service.select(selected)
-    except SceneError as exc:
+        result = avatars.select_background(selected)
+    except ServiceError as exc:
         raise SettingsError(str(exc), status=400) from exc
     stage.background_id = selected
     try:
         persist_runtime_overrides(config)
     except Exception:
         stage.background_id = previous
-        scene_service.select(previous)
+        avatars.select_background(previous)
         raise
     return result
 
@@ -991,17 +970,19 @@ async def fetch_llm_catalog(config) -> Dict[str, Any]:
     }
 
 
-def apply_avatar(config, engine: str, avatar_id: str, *, session_count: int) -> Dict[str, Any]:
+def apply_avatar(
+    config, engine: str, avatar_id: str, *, session_count: int, avatars: AvatarService,
+) -> Dict[str, Any]:
     engine = (engine or "").strip().lower()
     avatar_id = (avatar_id or "").strip()
 
-    if engine not in ENGINE_META:
+    if not avatars.knows_engine(engine):
         raise SettingsError(f"不支援的數字人引擎: {engine}")
     if not is_safe_avatar_id(avatar_id):
         raise SettingsError("無效的角色 ID")
 
-    characters = list_avatar_characters()
-    engines = {item["id"]: item for item in list_engines(characters)}
+    characters = avatars.list_characters()
+    engines = {item["id"]: item for item in avatars.list_engines(characters)}
     engine_info = engines[engine]
     if not engine_info["available"]:
         raise SettingsError(engine_info["message"] or f"{engine} 當前不可用")
@@ -1034,25 +1015,24 @@ def apply_avatar(config, engine: str, avatar_id: str, *, session_count: int) -> 
         raise SettingsError("正在切換數字人，請稍候", status=409)
 
     try:
-        return _reload_avatar(config, engine, avatar_id)
+        return _reload_avatar(config, engine, avatar_id, avatars=avatars)
     finally:
         _SWITCH_LOCK.release()
 
 
-def apply_mouth_quality(config, params: Dict[str, Any]) -> Dict[str, Any]:
+def apply_mouth_quality(config, params: Dict[str, Any], *, avatars: AvatarService) -> Dict[str, Any]:
     """Validate and persist mouth paste-back / character-build quality settings."""
     try:
-        quality = apply_quality_to_model(config.model, params or {})
-    except QualityError as exc:
+        quality = avatars.apply_quality(config.model, params or {})
+    except ServiceError as exc:
         raise SettingsError(str(exc)) from exc
     persist_runtime_overrides(config)
     return quality
 
 
-def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
+def _reload_avatar(config, engine: str, avatar_id: str, *, avatars: AvatarService) -> Dict[str, Any]:
     from copy import deepcopy
 
-    from src.avatars.factory import load_avatar_data, prepare_avatar_model
     from src.server.state import state
 
     previous = f"{config.model.type}/{config.model.avatar_id}"
@@ -1061,17 +1041,16 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
     pending.model.avatar_id = avatar_id
     type_changed = config.model.type != engine or state.model is None
     old_settings = deepcopy(config.model)
-    from src.scene.service import scene_service
     scene_changed = False
 
     state.switching = True
     try:
         if type_changed:
-            new_model, new_avatar = prepare_avatar_model(pending)
+            new_model, new_avatar = avatars.prepare_model(pending)
         else:
-            new_model, new_avatar = state.model, load_avatar_data(pending)
+            new_model, new_avatar = state.model, avatars.load_assets(pending)
 
-        scene_service.select(getattr(pending.stage, "background_id", ""))
+        avatars.select_background(getattr(pending.stage, "background_id", ""))
         scene_changed = True
         config.model.type = engine
         config.model.avatar_id = avatar_id
@@ -1095,12 +1074,12 @@ def _reload_avatar(config, engine: str, avatar_id: str) -> Dict[str, Any]:
     except SettingsError:
         config.model = old_settings
         if scene_changed:
-            scene_service.select(getattr(config.stage, "background_id", ""))
+            avatars.select_background(getattr(config.stage, "background_id", ""))
         raise
     except Exception as exc:
         config.model = old_settings
         if scene_changed:
-            scene_service.select(getattr(config.stage, "background_id", ""))
+            avatars.select_background(getattr(config.stage, "background_id", ""))
         logger.exception("切換數字人失敗")
         raise SettingsError(f"切換數字人失敗: {exc}", status=500) from exc
     finally:

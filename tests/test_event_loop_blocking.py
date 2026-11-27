@@ -20,6 +20,7 @@ import soundfile as sf
 from nova_contracts.stt import SttEngineSettings, SttPrepareRequest, Transcription
 from src.asr.adapter import InProcessSttService
 from src.avatars import base as avatar_base
+from src.avatars.adapter import create_avatar_service
 from src.avatars.base import BaseAvatar
 from src.config.schema import Config, TTSConfig
 from src.server.routes import audio as audio_routes
@@ -90,7 +91,8 @@ def server(monkeypatch):
     config = Config()
     config.vad.enabled = False
     for name, value in dict(config=config, config_path=None, roles=None, avatar_streams={},
-                            voice_sessions={}, session_roles={}, stt=None, tts=in_process_tts()).items():
+                            voice_sessions={}, session_roles={}, stt=None, tts=in_process_tts(),
+                            avatar_service=create_avatar_service()).items():
         monkeypatch.setattr(state, name, value, raising=False)
     return config
 

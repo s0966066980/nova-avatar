@@ -17,22 +17,49 @@ from unittest.mock import Mock
 
 import pytest
 
+from src.avatars.adapter import create_avatar_service
 from src.config.schema import Config
 from src.llm import service
 from src.profiles.composition import new_member
 from src.profiles.coordinator import RoleCoordinator
-from src.profiles.media import RolePresentation
 from src.profiles.store import ProfileStore, profile_config
+from src.scene.role_presentation import RolePresentation
 from src.server.voice_session import VoiceTurnSession
 from tests.tts_fakes import in_process_tts
 
 
 class Avatar:
+    """A session avatar that is its own idle renderer (no TTS, no frames)."""
+
+    direct_audio_enabled = False
+
     def __init__(self, config, sid):
         self.config, self.sessionid = config, sid
+        self.renderer = self
         self.messages = []
-        self._asset_epoch = 0
+        self.asset_epoch = 0
         self._role_presentation = RolePresentation()
+
+    def is_speaking(self):
+        return False
+
+    def reset_role_presentation(self, enabled):
+        self._role_presentation = RolePresentation() if enabled else None
+
+    def ensure_role_presentation(self):
+        if self._role_presentation is None:
+            self.reset_role_presentation(True)
+
+    def begin_role_transition(self, transition_id, edge, *, clip, started_at):
+        self._role_presentation.begin(transition_id, edge, reader=clip, started_at=started_at)
+
+    def start_role_transition(self, started_at):
+        with self._role_presentation.lock:
+            self._role_presentation.transition["started"] = started_at
+
+    def close_role_transition(self):
+        if self._role_presentation:
+            self._role_presentation.close()
 
     def configure_media_fence(self, **callbacks):
         self.callbacks = callbacks
@@ -46,7 +73,7 @@ class Avatar:
 
     def bind_profile(self, config, _data):
         self.config = config
-        self._asset_epoch += 1
+        self.asset_epoch += 1
 
 
 def route_to(target, **fields):
@@ -73,7 +100,7 @@ def field(tmp_path, monkeypatch):
     library = store.initialize(config)
     library['composition']['enabled'] = True
     state = SimpleNamespace(config=config, voice_sessions={}, avatar_streams={},
-        avatar=object(), tts=in_process_tts(),
+        avatar=object(), tts=in_process_tts(), avatar_service=create_avatar_service(),
         count_sessions=lambda kind: sum(v._presenter == kind for v in state.voice_sessions.values()))
     weather = SimpleNamespace(configured=True, query=Mock())
     route = route_to('weather', county='臺北市', town='中正區', kind='forecast', context='已確認臺北市中正區')

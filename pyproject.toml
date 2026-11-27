@@ -291,7 +291,24 @@ protected_modules = [
 allowed_importers = ["src.tts"]
 
 
-# avatar-internals-private: ticket 07 step 2 (avatar rendering) replaces this line with its block.
+[[tool.importlinter.contracts]]
+id = "avatar-internals-private"
+name = "Only the avatar rendering layer imports its internals; the core uses its adapter and config section"
+type = "protected"
+protected_modules = [
+    "src.avatars.asset_io",
+    "src.avatars.audio_stream_handler",
+    "src.avatars.base",
+    "src.avatars.builder",
+    "src.avatars.catalog",
+    "src.avatars.factory",
+    "src.avatars.mouth_quality",
+    "src.avatars.musetalk",
+    "src.avatars.video_output",
+    "src.scene.role_presentation",
+    "src.scene.service",
+]
+allowed_importers = ["src.avatars", "src.scene"]
 
 [tool.ruff]
 required-version = "==0.17.1"
