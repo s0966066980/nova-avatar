@@ -61,7 +61,7 @@ CUDA 推理、WebRTC、插話／角色交接、感知首音延遲與視聽驗收
 ## `gpu` 標記與各層的 fake 引擎
 
 需要 GPU、真實模型權重或本機模型伺服器的測試，統一標上 pytest marker `gpu`
-（在 `tests/conftest.py` 的 `GPU_FILES`／`GPU_TESTS` 登記，標記註冊在
+（在根目錄 `conftest.py` 的 `GPU_FILES`／`GPU_TESTS` 登記，標記註冊在
 `pyproject.toml`）。`pyproject.toml` 的 `addopts = '-m "not gpu"'` 讓預設的
 `uv run --no-sync pytest`，以及 GitHub CI 的 pytest 步驟，都不執行它們；
 沒有 GPU、沒有模型權重的機器因此可以跑完整個預設測試。目前標記的有兩個已配置
@@ -79,8 +79,8 @@ NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -m gpu   # 維護者在�
 核心的輪次、插話、角色交接與舞台閒置測試不依賴 GPU：它們經真正的 adapter 使用
 各層的 `fake` 引擎（STT `asr.type: fake`、LLM `llm.engine: fake`、TTS
 `tts.type: fake`、數位人 `model.type: fake`），共用的測試輔助放在
-`tests/session_fakes.py`（`FakeAvatar`、`fake_stt()`）、`tests/llm_fakes.py`、
-`tests/tts_fakes.py` 與 `tests/clock_fakes.py`。
+`core/tests/session_fakes.py`（`FakeAvatar`、`fake_stt()`）、`core/tests/llm_fakes.py`、
+`services/tts/tests/tts_fakes.py` 與 `core/tests/clock_fakes.py`。
 
 ## 本機執行
 
@@ -128,7 +128,7 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 ## 第二輪清理決策（2026-11-24）
 
 主要回歸從 2348 個案例減為 2232 個，另有 4 個 `live` 案例；耗時從約 3 分鐘降為約 2 分鐘，
-0 failure、0 skip。刪除前後各量一次 `src/`、`scripts/` 的行覆蓋率，失去覆蓋的行逐一
+0 failure、0 skip。刪除前後各量一次 `core/`、`avatar/`、`services/`、`scripts/` 的行覆蓋率，失去覆蓋的行逐一
 列在 [清理紀錄](../.scratch/test-suite-cleanup/coverage-diff.md)。
 
 | 類別 | 處理與原因 | 留下的保護 |

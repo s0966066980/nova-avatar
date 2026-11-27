@@ -76,6 +76,25 @@ Shared fakes and fixtures live in the `*_fakes.py` and `access_helpers.py` helpe
 modules. A test module never imports another test module, so merging or deleting
 one cannot break the rest.
 
+## Where tests live
+
+Each processing layer owns its tests (ADR 0027): `core/tests/`, `avatar/tests/`,
+`services/stt/tests/`, `services/llm/tests/` and `services/tts/tests/`. A test
+goes into a layer's folder only when it needs nothing from the core except
+`nova_core.utils`; everything that builds a core config, drives the server or
+wires several layers (including the layers' contract tests, which load the core's
+configuration) lives in `core/tests/`. This folder, `tests/`, keeps the tests that
+belong to no single layer: the branding and licence audit, the dependency lock,
+the startup and weight scripts, the ruff security rules and the layer-boundary
+configuration. Test file names stay unique across the repository.
+
+The product-area classification, the `gpu`/`live`/`slow` markers and the rule that
+tests must not write to `data/` are in the root `conftest.py`, so they apply to
+every folder. Test folders have no `__init__.py`; `pythonpath` in `pyproject.toml`
+puts every package root, tests folder and layer script folder on `sys.path`, so a
+helper such as `llm_fakes` is imported by its module name from any test.
+`uv run --no-sync pytest <folder>` runs one folder.
+
 Research and benchmark tools whose result is recorded in a `.scratch` issue are
 deleted together with their tests once the decision has been applied.
 

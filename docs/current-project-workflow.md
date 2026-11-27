@@ -31,7 +31,7 @@ belong in `.scratch/` under the repository's issue-tracker convention.
    environment with `uv sync --group dev`, then run `uv run ruff check .`,
    `uv run pyright`, and `npm --prefix web run lint`. Ruff covers application
    code, scripts, and tests; bundled engine/vendor directories are excluded in
-   `pyproject.toml`. Pyright checks `src/server` for unbound and possibly
+   `pyproject.toml`. Pyright checks `core/nova_core/server` for unbound and possibly
    unbound names plus the basic-mode rules that currently pass there. ESLint
    covers frontend source, tests, and configuration with JavaScript recommended
    and Vue essential rules. The initial gate defers unused-code cleanup and
@@ -63,9 +63,13 @@ loading models. To reproduce the Python job in a separate environment:
 export UV_PROJECT_ENVIRONMENT=/tmp/nova-avatar-ci-venv
 uv venv --python 3.11 "$UV_PROJECT_ENVIRONMENT"
 uv pip install --python "$UV_PROJECT_ENVIRONMENT/bin/python" \
-  --no-sources --torch-backend cpu --group dev --group ci -e '.[vad]'
+  --no-sources --torch-backend cpu --group dev --group ci \
+  -e ./contracts -e './core[vad]' -e ./services/stt -e ./services/llm \
+  -e ./services/tts -e ./avatar -e .
 uv run --no-sync ruff check .
 uv run --no-sync pyright
+uv run --no-sync lint-imports
+uv run --no-sync python scripts/generate_openapi.py --check
 uv run --no-sync python scripts/check-integration.py
 uv run --no-sync pytest
 ```

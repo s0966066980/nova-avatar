@@ -35,6 +35,29 @@ The default five-role triage vocabulary is used unchanged. See `docs/agents/tria
 
 This repository uses a single-context domain-doc layout. See `docs/agents/domain.md`.
 
+## Repository layout
+
+Code is split by processing layer (ADR 0027, ADR 0028); there is no `src/`
+directory. Every folder below has its own `pyproject.toml`, `tests/` and
+`README.md`, which state its responsibility, public interface, engines and how
+to test it.
+
+| Folder | Python package | Holds |
+|---|---|---|
+| `contracts/` | `nova_contracts` | Cross-layer Pydantic models and Protocols |
+| `core/` | `nova_core` | Server, turn orchestration, VAD, profiles, config, greetings, shared `utils` |
+| `services/stt/` | `nova_stt` | Speech-to-text |
+| `services/llm/` | `nova_llm` | LLM, handoff, weather, AI greetings, `ragflow`, `web_search` |
+| `services/tts/` | `nova_tts` | TTS engines, voice library, voice models, voice training |
+| `avatar/` | `nova_render` | Avatar rendering (MuseTalk) and stage `scene` |
+
+- Layer-specific setup and weight scripts live in `<layer>/scripts/`; `scripts/`
+  holds the cross-layer ones.
+- Tests that need the core (config, server, several layers) live in `core/tests/`;
+  `tests/` keeps repository-wide ones. See `tests/README.md`.
+- `lint-imports` enforces the layer boundaries; a layer is reached from the core
+  only through its `adapter` and `config_section` modules.
+
 ## Rebranding and source attribution
 
 - Use `Nova Avatar` for user-visible branding, `nova-avatar` for package and

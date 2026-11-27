@@ -16,7 +16,7 @@ status: accepted
 ## Implementation Status — 2026-09-25
 
 - 控制台建立 MuseTalk 數位人時可勾選綠幕；新角色保留 `source.*` 原片，`avator_info.json` 記錄 Nova Avatar 來源與相對路徑。既有 `musetalk_avatar` 作為綠幕試用素材，其他舊角色不自動套用色鍵。
-- 背景支援 JPG／PNG／WebP、循環 MP4／MOV／WebM 與 GIF，存放於 `data/backgrounds/`，由 `src/scene/service.py` 在 Avatar 渲染執行緒外解碼。控制台與獨立舞台讀取同一個 `background_id`，與 `avatar_id` 各自持久化。
+- 背景支援 JPG／PNG／WebP、循環 MP4／MOV／WebM 與 GIF，存放於 `data/backgrounds/`，由 `avatar/nova_render/scene/service.py` 在 Avatar 渲染執行緒外解碼。控制台與獨立舞台讀取同一個 `background_id`，與 `avatar_id` 各自持久化。
 - MuseTalk 完成嘴型後才執行色鍵、邊緣去綠光與背景合成，再交給 WebRTC 與錄影。講話中切換背景時先載入新背景，再約 0.2 秒淡接，不重建數位人或 WebRTC 會話。
 - 控制台未連線時顯示合成的靜態預覽。刪除非使用中的角色或背景會移至 `data/avatars/.deleted/`、`data/backgrounds/.deleted/`，可在控制台復原；封存角色可在確認後永久刪除。
 

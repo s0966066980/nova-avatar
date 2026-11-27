@@ -102,7 +102,7 @@ for those revisions and for any copy that still carries them.
 - CosyVoice code: Apache-2.0, Alibaba / FunAudioLLM,
   <https://github.com/FunAudioLLM/CosyVoice>. The owned process imports it, with
   its bundled Matcha-TTS, from a separate checkout (`~/CosyVoice`) in the
-  `cosyvoice` conda environment; it is not bundled here. [`scripts/breezyvoice_frontend.py`](scripts/breezyvoice_frontend.py)
+  `cosyvoice` conda environment; it is not bundled here. [`services/tts/scripts/breezyvoice_frontend.py`](services/tts/scripts/breezyvoice_frontend.py)
   adapts its `get_bopomofo_rare` (commit `d592c9d3e8927a0f53f68616387060dcd32a05ea`)
   and carries a modification notice.
 - BreezyVoice weights: Apache-2.0, `MediaTek-Research/BreezyVoice` revision
@@ -113,7 +113,7 @@ for those revisions and for any copy that still carries them.
   Python package `g2pw==0.1.1` in the CosyVoice environment.
 - Tokenizer for g2pW: `google-bert/bert-base-chinese` revision
   `8f23c25b06e129b6c986331a13d8d025a92cf0ea`, Apache-2.0 (tokenizer files only).
-- [`scripts/breezyvoice_weights.py`](scripts/breezyvoice_weights.py) fetches all
+- [`services/tts/scripts/breezyvoice_weights.py`](services/tts/scripts/breezyvoice_weights.py) fetches all
   of the above at those revisions and checks SHA-256; none are bundled here.
 - Voices: the BreezyVoice repository's example recording (`data/example.wav`)
   documents no speaker consent or recording source beyond the repository's
@@ -303,7 +303,7 @@ classification in its label.
 
 - Role: the Console's 聲線訓練 page fine-tunes the base model above into new
   voice models, in a separate virtual environment under
-  `.local/matcha-train/` (created by `scripts/setup-matcha-train.sh`). It is
+  `.local/matcha-train/` (created by `services/tts/scripts/setup-matcha-train.sh`). It is
   development tooling for the operator's own machine and is not shipped as part
   of a deployment. Design: [ADR 0026](docs/adr/0026-edge-as-test-only-matcha-teacher.md).
 - Matcha-TTS (`matcha-tts==0.0.7.2`, Shivam Mehta): MIT,

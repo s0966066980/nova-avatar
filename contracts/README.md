@@ -32,3 +32,11 @@ CI 執行 `scripts/generate_openapi.py --check`，提交的檔案過期時失敗
 ## 版本
 
 契約不另外編版號。`CONTRACT_VERSION` 只在拆成行程後，供服務在 `GET /health` 回報、核心比對；做破壞性變更時，在同一個 PR 內修改它與核心、處理層。
+
+## 測試
+
+```bash
+uv run --no-sync pytest core/tests/test_contracts.py
+```
+
+契約的規則測試（每個服務方法恰好對應一個 HTTP 操作、提交的 OpenAPI 是否過期等）放在 `core/tests/test_contracts.py`：其中一個案例用核心的 `TurnContext` 建立 envelope，而 `contracts/` 的測試不得依賴核心，所以本資料夾沒有自己的 `tests/`。各層對契約的測試在各層的 `tests/`（不需要核心時）或 `core/tests/`。

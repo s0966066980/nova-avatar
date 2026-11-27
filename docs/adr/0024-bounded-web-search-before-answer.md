@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## 2026-11-03：隔離 DDGS 相容請求
 
-已確認並實作的修復沿用 DDGS 9.14.4 的搜尋與解析，將引擎實例／HTTP client 私有介面的依賴集中在 `src/web_search/ddgs_adapter.py`。僅為本次 DuckDuckGo 實例設定穩定標頭，移除空分頁 token 與預設美國地域欄位，保留原始查詢及明確篩選。完整預設請求曾觸發驗證頁而被 DDGS 誤報為沒有結果；相容請求經實網已取得結果。
+已確認並實作的修復沿用 DDGS 9.14.4 的搜尋與解析，將引擎實例／HTTP client 私有介面的依賴集中在 `services/llm/nova_llm/web_search/ddgs_adapter.py`。僅為本次 DuckDuckGo 實例設定穩定標頭，移除空分頁 token 與預設美國地域欄位，保留原始查詢及明確篩選。完整預設請求曾觸發驗證頁而被 DDGS 誤報為沒有結果；相容請求經實網已取得結果。
 
 相較自行維護搜尋頁解析，此選擇縮小修復範圍，代價是升級 DDGS 前必須重驗私有介面；版本或引擎不相容就明確失敗，不改套件檔案或全域標頭，不退回任意引擎。限流與驗證頁仍是不可用，沒有新增驗證碼處理或重試放寬。原有角色、隱私與八秒預算保持適用。證據與驗收見[修復規格](../../.scratch/web-search/repair-spec.md)。
 

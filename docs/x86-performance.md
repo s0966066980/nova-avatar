@@ -159,8 +159,8 @@ Edge、本機 LLM 與語音輸入的成功狀態；`null` 表示未選用或已�
 僅在目前程序切換預熱的對照方式如下，不會改寫管理者儲存的設定：
 
 ```bash
-NOVA_AVATAR_PREWARM_ENABLED=0 uv run python -m src.server.app
-NOVA_AVATAR_PREWARM_ENABLED=1 uv run python -m src.server.app
+NOVA_AVATAR_PREWARM_ENABLED=0 uv run python -m nova_core.server.app
+NOVA_AVATAR_PREWARM_ENABLED=1 uv run python -m nova_core.server.app
 ```
 
 冷啟動比較使用新增工具，要求後端與所選 llama-server 都尚未啟動。
@@ -213,7 +213,7 @@ TensorRT、Qwen3.5 9B、FunASR 與臺灣 Edge 聲音。這組量測比較應用
 ## CPU 合成對照
 
 ```bash
-uv run python scripts/benchmark-compositor.py --output logs/x86-compositor.json
+uv run python avatar/scripts/benchmark-compositor.py --output logs/x86-compositor.json
 ```
 
 工具使用既有測試的直式人物橢圓樣本，交替量測目前實作與固定 Git
@@ -242,8 +242,8 @@ GPU、對應 TensorRT runtime 與目前模型權重上重建。Orin engine 不�
 [TensorRT 安裝與驗證](installation.md#tensorrt-安裝與驗證)。一般使用：
 
 ```bash
-bash scripts/setup-tensorrt.sh
-uv run python scripts/verify-musetalk-tensorrt.py
+bash avatar/scripts/setup-tensorrt.sh
+uv run python avatar/scripts/verify-musetalk-tensorrt.py
 ```
 
 套件固定為 `tensorrt-cu12==10.16.1.11`、`onnx==1.17.0`。安裝器使用

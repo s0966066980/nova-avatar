@@ -23,3 +23,7 @@ Graph results are navigation aids. After edits or a checkout change, refresh
 the index when results no longer match the working tree; use current file
 contents for exact edits. Configuration and other non-code files can be read
 directly, as described by the global graph-tool guidance.
+
+The code moved from `src/` into `core/`, `avatar/`, `services/` and `contracts/`
+(layer-split ticket 09). Index entries recorded before that move still carry
+`src/...` paths; rebuild the index so queries return the current paths.
