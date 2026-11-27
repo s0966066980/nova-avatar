@@ -67,6 +67,7 @@ Repository = "https://github.com/s0966066980/nova-avatar"
 
 [dependency-groups]
 dev = [
+    "import-linter>=2.3",
     "pyright==1.1.414",
     "pytest>=8",
     "pytest-cov>=6",
@@ -169,3 +170,118 @@ explicit = true
 [build-system]
 requires = ["setuptools==69.5.1", "wheel"]
 build-backend = "setuptools.build_meta"
+
+# Processing-layer boundaries (ADR 0027). Every exception in `ignore_imports`
+# must name the layer-split issue that removes it (CODING_STANDARDS.md rule 6).
+[tool.importlinter]
+root_package = "src"
+include_external_packages = false
+
+[[tool.importlinter.contracts]]
+name = "Processing layers do not import the core"
+type = "forbidden"
+source_modules = [
+    "src.asr",
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.tts",
+    "src.avatars",
+    "src.scene",
+]
+forbidden_modules = [
+    "src.server",
+    "src.profiles",
+    "src.config",
+    "src.greetings",
+    "src.vad",
+]
+ignore_imports = [
+    "src.asr.prewarm -> src.vad.factory", # layer-split 06
+    "src.avatars.base -> src.vad.audio", # layer-split 06
+    "src.avatars.builder -> src.server.state", # layer-split 04
+    "src.llm.base -> src.server.reply_streaming.fragmenter", # layer-split 02
+    "src.llm.engines.openai -> src.server.reply_streaming.metrics", # layer-split 02
+    "src.llm.service -> src.server.state", # layer-split 04
+    "src.tts.engines.edge -> src.server.reply_streaming.channel", # layer-split 03
+    "src.tts.engines.edge -> src.server.reply_streaming.retry", # layer-split 03
+    "src.tts.training.gpu_guard -> src.server.state", # layer-split 04
+]
+
+[[tool.importlinter.contracts]]
+name = "stt layer does not import other layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "src.asr",
+]
+forbidden_modules = [
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.tts",
+    "src.avatars",
+    "src.scene",
+]
+ignore_imports = [
+]
+
+[[tool.importlinter.contracts]]
+name = "llm layer does not import other layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+]
+forbidden_modules = [
+    "src.asr",
+    "src.tts",
+    "src.avatars",
+    "src.scene",
+]
+ignore_imports = [
+    "src.llm.base -> src.avatars.base", # layer-split 06
+    "src.llm.service -> src.avatars.base", # layer-split 06
+    "src.ragflow.settings -> src.avatars.catalog", # layer-split 06
+]
+
+[[tool.importlinter.contracts]]
+name = "tts layer does not import other layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "src.tts",
+]
+forbidden_modules = [
+    "src.asr",
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.avatars",
+    "src.scene",
+]
+ignore_imports = [
+    "src.tts.base -> src.avatars.base", # layer-split 03
+]
+
+[[tool.importlinter.contracts]]
+name = "avatar rendering layer does not import other layers"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "src.avatars",
+    "src.scene",
+]
+forbidden_modules = [
+    "src.asr",
+    "src.llm",
+    "src.ragflow",
+    "src.web_search",
+    "src.tts",
+]
+ignore_imports = [
+    "src.avatars.base -> src.tts.base", # layer-split 03
+    "src.avatars.base -> src.tts.factory", # layer-split 03
+]

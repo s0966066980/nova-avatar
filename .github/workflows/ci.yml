@@ -43,6 +43,8 @@ jobs:
         run: uv run --no-sync ruff check .
       - name: Type-check server control flow
         run: uv run --no-sync pyright
+      - name: Check processing-layer import boundaries
+        run: uv run --no-sync lint-imports
       - name: Check branding, notices, and offline integration
         run: uv run --no-sync python scripts/check-integration.py
       - name: Run Python tests
