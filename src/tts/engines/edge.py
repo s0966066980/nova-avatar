@@ -24,8 +24,8 @@ import numpy as np
 
 from src.tts.base import BaseTTS, State
 from src.tts.edge_connection import EdgeConnectionPool, configure_edge_endpoint
-from src.server.reply_streaming.channel import PlayableFragment
-from src.server.reply_streaming.retry import RetryBudget
+from src.tts.fragment import PlayableFragment
+from src.tts.retry import RetryBudget
 from src.utils.logging import logger
 from src.tts import edge_endpoint
 

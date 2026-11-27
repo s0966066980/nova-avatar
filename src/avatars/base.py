@@ -35,8 +35,8 @@ from av import AudioFrame, VideoFrame
 import av
 from fractions import Fraction
 
-from src.tts.factory import create_tts_engine
-from src.tts.base import sanitize_speech_text
+from src.avatars.speech import SpeechFactory
+from src.utils.speech_text import sanitize_speech_text
 from src.utils.logging import logger
 from src.avatars.video_output import limit_video_height
 from src.vad.audio import AudioTooLongError
@@ -145,7 +145,7 @@ def play_audio(quit_event,queue):
     stream.close()
 
 class BaseAvatar:
-    def __init__(self, config):
+    def __init__(self, config, speech_factory: SpeechFactory):
         self.config = config
         from src.avatars.catalog import avatar_uses_green_screen
 
@@ -158,8 +158,8 @@ class BaseAvatar:
         self.chunk = self.sample_rate // config.audio.fps
         self.sessionid = self.config.sessionid
 
-        # TTS 引擎負責把文本轉成音訊並推送到音訊流
-        self.tts = create_tts_engine(config.tts.type, config, self)
+        # 說話來源（由核心建立的 TTS 引擎）負責把文本轉成音訊並推送到音訊流
+        self.tts = speech_factory(config, self)
         self.speaking = False
 
         # 錄製相關狀態

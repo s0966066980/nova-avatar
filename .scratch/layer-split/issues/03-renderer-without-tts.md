@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 數位人渲染不再持有 TTS
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01
 
 依規格決定 13 與 ADR 0027。這是階段 0 風險最高的一張工單。
@@ -19,3 +19,16 @@ Blocked by: 01
   - 刪除對應的例外清單條目；
   - 首音延遲符合門檻；
   - 舞台實機以 Edge 和 Matcha 各對話一段多片段的長回覆，嘴型與聲音同步，沒有跳音。
+
+## Comments
+
+- 2026-11-27：程式與測試已完成；實機驗收與延遲量測待人工。
+  - 渲染層不再 import TTS：`BaseAvatar.__init__` 與 `create_avatar` 改為接收核心提供的 `speech_factory`（`src/avatars/speech.py` 定義 `SpeechSource`／`SpeechFactory`）；核心的 `src/server/speech.py` 的 `tts_speech_factory` 由 `routes/webrtc.py` 傳入。
+  - TTS 不再 import 渲染層：`BaseTTS` 只依賴 `AudioSink`（`src/tts/audio_sink.py`，只有 `put_audio_frame` 必備，其餘事件由引擎以 `getattr` 取用，維持原行為）。
+  - `PlayableFragment`、`RetryBudget`／`RetryPermit` 移進 TTS 層（`src/tts/fragment.py`、`src/tts/retry.py`）；`TurnEnvelope` 移到中立的 `src/utils/turn_envelope.py`（`turn.py` 重新匯出）；`sanitize_speech_text` 移到 `src/utils/speech_text.py`（`src.tts.base` 重新匯出）。
+  - 已刪除 5 條例外：`avatars.base -> tts.base`、`avatars.base -> tts.factory`、`tts.base -> avatars.base`、`tts.engines.edge -> ...channel`、`...retry`。
+- 與工單原文的差異：渲染層仍持有注入進來的說話來源（`avatar.tts`），文字佇列、`flush_talk`、`has_pending_work` 與音框推送都照舊經由頭像。原因是 `avatar.tts` 被控制台設定、角色交接、MuseTalk 的說話狀態判斷與數十個測試直接使用；把「核心直接送文字給 TTS、再把 PCM 轉交渲染」整個反轉，需要同時改動輪次、插話與播放柵欄，風險太高又無法在這裡實機驗證。目前的做法已讓兩層互不 import，也讓 07 可以把 `SpeechSource` 與 `AudioSink` 升級成 `contracts/` 裡的 Protocol。若要完整反轉，建議另開工單。
+- `TTS` 的 `parent` 屬性名稱保留（型別改為 `AudioSink`），避免大量測試改名。
+- 待人工：
+  1. 舞台實機以 Edge 和 Matcha 各對話一段多片段長回覆，確認嘴型與聲音同步、沒有跳音；
+  2. 以 `scripts/measure_first_audio.py` 量測首音延遲（P50 增加不超過 50 ms、P95 不超過 100 ms）。

@@ -6,9 +6,12 @@
 from typing import Any
 from copy import deepcopy
 from .base import BaseAvatar
+from .speech import SpeechFactory
 
 
-def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseAvatar:
+def create_avatar(
+    config: Any, model: Any, avatar: Any, sessionid: int, speech_factory: SpeechFactory,
+) -> BaseAvatar:
     """
     根據配置建立對應的 Avatar 例項
     
@@ -17,6 +20,7 @@ def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseA
         model: 載入的模型
         avatar: avatar 資料(幀列表、座標等)
         sessionid: 會話 ID
+        speech_factory: 由核心提供，建立此 session 的說話來源（TTS 引擎）
     
     Returns:
         BaseAvatar: Avatar 例項
@@ -29,7 +33,7 @@ def create_avatar(config: Any, model: Any, avatar: Any, sessionid: int) -> BaseA
     # 延遲匯入，避免啟動時載入全部模型依賴
     if model_type == 'musetalk':
         from .musetalk.avatar import MuseTalkAvatar
-        return MuseTalkAvatar(session_config, model, avatar)
+        return MuseTalkAvatar(session_config, model, avatar, speech_factory)
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 

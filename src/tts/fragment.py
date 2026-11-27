@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .turn import TurnEnvelope
+from src.utils.turn_envelope import TurnEnvelope
 
 
 @dataclass(frozen=True)

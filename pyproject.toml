@@ -201,8 +201,6 @@ ignore_imports = [
     "src.avatars.base -> src.vad.audio", # layer-split 06
     "src.avatars.builder -> src.server.state", # layer-split 04
     "src.llm.service -> src.server.state", # layer-split 04
-    "src.tts.engines.edge -> src.server.reply_streaming.channel", # layer-split 03
-    "src.tts.engines.edge -> src.server.reply_streaming.retry", # layer-split 03
     "src.tts.training.gpu_guard -> src.server.state", # layer-split 04
 ]
 
@@ -261,7 +259,6 @@ forbidden_modules = [
     "src.scene",
 ]
 ignore_imports = [
-    "src.tts.base -> src.avatars.base", # layer-split 03
 ]
 
 [[tool.importlinter.contracts]]
@@ -280,6 +277,4 @@ forbidden_modules = [
     "src.tts",
 ]
 ignore_imports = [
-    "src.avatars.base -> src.tts.base", # layer-split 03
-    "src.avatars.base -> src.tts.factory", # layer-split 03
 ]

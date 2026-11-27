@@ -8,6 +8,10 @@ from dataclasses import dataclass
 from enum import Enum
 from threading import Event, RLock
 
+from src.utils.turn_envelope import TurnEnvelope
+
+__all__ = ["TERMINAL_STATES", "TurnContext", "TurnEnvelope", "TurnState"]
+
 
 class TurnState(str, Enum):
     CREATED = "created"
@@ -51,14 +55,6 @@ _ALLOWED_TRANSITIONS = {
         TurnState.FAILED,
     },
 }
-
-
-@dataclass(frozen=True)
-class TurnEnvelope:
-    turn_id: str
-    generation: int
-    stage: str
-    sequence: int
 
 
 class TurnContext:

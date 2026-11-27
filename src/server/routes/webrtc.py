@@ -16,6 +16,7 @@ from src.utils.webrtc import HumanPlayer
 from src.avatars.factory import create_avatar
 from src.utils.logging import logger
 from src.server.state import state
+from src.server.speech import tts_speech_factory
 from src.server.utils import randN
 from src.server.voice_session import VoiceTurnSession
 from src.server.presentation import SessionPresentation
@@ -104,6 +105,7 @@ async def offer(request):
         build = asyncio.create_task(asyncio.to_thread(
             create_avatar, roles.config_for_session() if roles else state.config,
             state.model, roles.data_for_session() if roles else state.avatar, sessionid,
+            tts_speech_factory,
         ))
         try:
             avatar_stream = await asyncio.shield(build)

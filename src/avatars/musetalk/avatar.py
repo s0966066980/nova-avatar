@@ -434,8 +434,8 @@ def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,aud
 
 class MuseTalkAvatar(BaseAvatar):
     @torch.no_grad()
-    def __init__(self, config, model, avatar):
-        super().__init__(config)
+    def __init__(self, config, model, avatar, speech_factory):
+        super().__init__(config, speech_factory)
         #self.opt = opt # shared with the trainer's opt to support in-place modification of rendering parameters.
         # self.W = opt.W
         # self.H = opt.H

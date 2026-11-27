@@ -12,41 +12,15 @@ from __future__ import annotations
 
 import queue
 import time
-import re
 from enum import Enum
 from queue import Queue
 from threading import Event, Thread
-from typing import TYPE_CHECKING
 
+from src.tts.audio_sink import AudioSink
 from src.utils.logging import logger
+from src.utils.speech_text import sanitize_speech_text
 
-if TYPE_CHECKING:
-    from src.avatars.base import BaseAvatar
-
-
-_EMOJI_RE = re.compile(
-    "["
-    "\U0001F1E6-\U0001F1FF"
-    "\U0001F300-\U0001FAFF"
-    "\U00002600-\U000027BF"
-    "\U0000FE0F"
-    "\U0000200D"
-    "]+"
-)
-
-
-def sanitize_speech_text(text: str) -> str:
-    """Remove visual Markdown/emoji that speech engines may pronounce aloud."""
-    value = str(text or "")
-    value = re.sub(r"!\[([^]]*)\]\([^)]*\)", r"\1", value)
-    value = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", value)
-    value = re.sub(r"(?m)^\s{0,3}(?:#{1,6}|>|[-+*])\s+", "", value)
-    value = re.sub(r"```(?:\w+)?|`", "", value)
-    value = re.sub(r"[*_~]+", "", value)
-    value = _EMOJI_RE.sub("", value)
-    value = re.sub(r"[ \t]+", " ", value)
-    value = re.sub(r" *\n+ *", "，", value)
-    return value.strip(" ，")
+__all__ = ["BaseTTS", "State", "sanitize_speech_text"]
 
 
 class State(Enum):
@@ -63,8 +37,10 @@ class BaseTTS:
     具體引擎只需要實現 txt_to_audio。
     """
 
-    def __init__(self, config, parent: "BaseAvatar"):
+    def __init__(self, config, parent: AudioSink):
         self.config = config
+        # The audio sink: whoever receives this engine's PCM frames and
+        # fragment events. The core decides what it is.
         self.parent = parent
 
         # 20ms 一幀
@@ -143,6 +119,6 @@ class BaseTTS:
         """
         子類必須實現：
             msg: (text, textevent)
-        內部負責把音訊分幀後，通過 parent.put_audio_frame(...) 推給上層。
+        內部負責把音訊分幀後，通過 audio sink 的 put_audio_frame(...) 推給上層。
         """
         raise NotImplementedError
