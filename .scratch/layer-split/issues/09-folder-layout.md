@@ -81,3 +81,12 @@ Blocked by: 07, 08
 2. 重新建立 codebase-memory 索引（`project="nova-avatar"`，見 `docs/agents/code-navigation.md`），讓查詢回傳新路徑。
 
 兩項都完成後，把本工單改為 `Status: resolved`。
+
+### 2026-11-27 合併進 main 後的追加驗證
+
+`layer-split` 分支（含工單 11）已併入 `main`，合併後的 tree 通過 CI 每一步：`uv lock --check`、ruff、pyright、`lint-imports`（11 份契約）、`generate_openapi.py --check`、`check-integration.py`、pytest（2389 通過、3 deselected）、web lint／測試（366）／build。
+
+- **codebase-memory 索引**：已以 `name="nova-avatar"` 重建（第 2 項完成）。
+- **後端實機啟動**（這台 RTX 4090 主機，用 `scripts/start-backend.sh`、正式 `config/config.yaml`）：HTTPS 服務就緒，`/health` 回報 `ready: true`、`model_ready: true`、`llm_full_gpu: true`、MuseTalk `musetalk_angela`、silero VAD；`/` 與 `/stage.html` 回 200；啟動日誌沒有錯誤，只有既有的 TRT／`torch.load` 警告。驗證完已停止，埠與 GPU 顯存都已釋放。
+- **首音延遲**：`scripts/measure_first_audio.py` 在合成測試語音時，Edge TTS 服務回 429（被限流），無法取得數據，不是程式問題；需稍後或換網路重跑。
+- **剩餘（維護者）**：第 1 項中舞台與控制台在瀏覽器裡的實際行為、`start-all.sh` 帶 RAGFlow 的整套啟動，以及上面的首音延遲量測。完成後改為 `Status: resolved`。
