@@ -52,8 +52,8 @@ class InProcessSttService:
 
     def apply_engine(self, settings: SttEngineSettings) -> SttEngineSettings:
         # Loading may take seconds; the current recognizer keeps serving meanwhile.
-        candidate = self._create_engine(settings)
         try:
+            candidate = self._create_engine(settings)
             candidate.ensure_ready()
         except Exception as exc:
             raise ServiceError(str(exc)) from exc

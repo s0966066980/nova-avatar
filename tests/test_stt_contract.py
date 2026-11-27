@@ -15,6 +15,7 @@ from nova_contracts.stt import (
     SttService,
     Transcription,
     TranscriptionOptions,
+    TranscriptionSegment,
 )
 
 
@@ -166,3 +167,160 @@ def test_the_adapter_implements_the_stt_service_protocol():
     service, _ = stt_service(SMALL)
 
     assert isinstance(service, SttService)
+
+
+# --- the fake engine, selected through settings like any engine --------------
+#
+# ``fake`` answers every utterance with one fixed text. It is not a product
+# engine, so the console catalog does not list it; settings (config.yaml's
+# ``asr:`` section) select it, with ``model_size`` carrying the text to return.
+
+HELLO = SttEngineSettings(engine="fake", model_size="你好", device="cpu")
+GOODBYE = SttEngineSettings(engine="fake", model_size="再見", device="cpu")
+BROKEN = SttEngineSettings(engine="fake", model_size="不能載入", device="cpu")
+WAV = b"RIFF....WAVE"  # the fake never decodes its input
+ZH = TranscriptionOptions(language="zh")
+
+
+def fake_stt_service(settings, *, configure=lambda engine, requested: None):
+    """The real adapter and factory; ``configure`` may adjust each engine built."""
+    from src.asr.adapter import InProcessSttService
+    from src.asr.factory import create_asr_engine
+
+    def create(requested):
+        engine = create_asr_engine(requested)
+        configure(engine, requested)
+        return engine
+
+    return InProcessSttService(settings, create_engine=create)
+
+
+def refuse_to_load_broken(engine, requested):
+    if requested == BROKEN:
+        def refuse():
+            raise RuntimeError("CUDA out of memory")
+        engine._load_model = refuse
+
+
+def test_the_fake_engine_answers_every_utterance_with_the_configured_text():
+    from src.asr.adapter import create_stt_service
+
+    service = create_stt_service(HELLO)
+
+    heard = service.transcribe(WAV, ZH)
+
+    assert heard == Transcription(
+        text="你好", language="zh", language_probability=1.0, confidence=1.0,
+        segments=(TranscriptionSegment(start=0.0, end=0.0, text="你好"),))
+    assert service.transcribe(b"other audio", ZH) == heard
+
+
+def test_the_fake_engine_reports_the_requested_language_and_picks_chinese_for_auto():
+    service = fake_stt_service(HELLO)
+
+    languages = {requested: service.transcribe(WAV, TranscriptionOptions(language=requested)).language
+                 for requested in ("zh", "en", "auto")}
+
+    assert languages == {"zh": "zh", "en": "en", "auto": "zh"}
+
+
+def test_an_empty_fixed_text_is_a_silent_utterance():
+    service = fake_stt_service(SttEngineSettings(engine="fake", model_size=""))
+
+    heard = service.transcribe(WAV, TranscriptionOptions(language="auto"))
+
+    assert heard.text == "" and heard.segments == ()
+
+
+def test_the_fake_engine_is_loaded_and_warmed_through_prepare_and_reported_by_health():
+    service = fake_stt_service(HELLO)
+
+    before = service.health()
+    service.prepare(SttPrepareRequest(warm=True))
+    service.prepare(SttPrepareRequest(warm=True))
+    after = service.health()
+
+    assert before == ServiceHealth(contract_version=CONTRACT_VERSION, engine="fake", ready=False)
+    assert after == ServiceHealth(contract_version=CONTRACT_VERSION, engine="fake", ready=True)
+
+
+def test_switching_between_fake_engines_answers_with_the_new_text():
+    service = fake_stt_service(HELLO)
+    service.prepare(SttPrepareRequest(warm=False))
+
+    assert service.apply_engine(GOODBYE) == GOODBYE
+
+    assert service.transcribe(WAV, ZH).text == "再見"
+    assert service.health().engine == "fake"
+
+
+def test_an_unknown_engine_is_refused_and_the_current_one_kept():
+    service = fake_stt_service(HELLO)
+
+    with pytest.raises(ServiceError, match="nonexistent"):
+        service.apply_engine(SttEngineSettings(engine="nonexistent", model_size="x"))
+
+    assert service.transcribe(WAV, ZH).text == "你好"
+    assert service.health().engine == "fake"
+
+
+def test_a_fake_engine_that_fails_to_load_is_refused_and_the_current_one_kept():
+    service = fake_stt_service(HELLO, configure=refuse_to_load_broken)
+    service.prepare(SttPrepareRequest(warm=False))
+    before = service.health()
+
+    with pytest.raises(ServiceError, match="CUDA out of memory"):
+        service.apply_engine(BROKEN)
+
+    assert service.health() == before
+    assert service.transcribe(WAV, ZH).text == "你好"
+
+
+def test_a_request_during_a_switch_is_answered_by_the_current_recognizer():
+    import threading
+
+    loading, release = threading.Event(), threading.Event()
+
+    def hold_goodbye_while_loading(engine, requested):
+        if requested == GOODBYE:
+            real_load = engine._load_model
+
+            def slow_load():
+                loading.set()
+                assert release.wait(5)
+                real_load()
+            engine._load_model = slow_load
+
+    service = fake_stt_service(HELLO, configure=hold_goodbye_while_loading)
+    service.prepare(SttPrepareRequest(warm=False))
+    switch = threading.Thread(target=service.apply_engine, args=(GOODBYE,))
+    switch.start()
+    assert loading.wait(5)
+
+    during = service.transcribe(WAV, ZH).text
+    release.set()
+    switch.join(5)
+
+    assert during == "你好"
+    assert service.transcribe(WAV, ZH).text == "再見"
+
+
+def test_the_fake_engine_is_not_offered_by_the_console():
+    from src.config.loader import dict_to_config
+    from src.server import runtime_settings
+
+    assert [engine["id"] for engine in runtime_settings._stt_catalog()] == ["whisper"]
+    with pytest.raises(runtime_settings.SettingsError, match="不支援的 STT 引擎"):
+        runtime_settings.apply_stt_settings(
+            dict_to_config({}), {"type": "fake", "model_size": "你好"},
+            session_count=0, stt=fake_stt_service(HELLO))
+
+
+def test_the_asr_section_of_the_config_selects_the_fake_engine():
+    from src.config.loader import dict_to_config
+
+    asr = dict_to_config({"asr": {"type": "fake", "model_size": "歡迎光臨", "device": "cpu"}}).asr
+    service = fake_stt_service(
+        SttEngineSettings(engine=asr.type, model_size=asr.model_size, device=asr.device))
+
+    assert service.transcribe(WAV, TranscriptionOptions(language="auto")).text == "歡迎光臨"
