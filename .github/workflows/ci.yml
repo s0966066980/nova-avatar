@@ -24,6 +24,9 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          # Full history so the changed files can be diffed against the previous
+          # push or the pull request's base.
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
         with:
           version: '0.11.21'
@@ -51,8 +54,32 @@ jobs:
         run: uv run --no-sync python scripts/generate_openapi.py --check
       - name: Check branding, notices, and offline integration
         run: uv run --no-sync python scripts/check-integration.py
+      - name: Select the tests of the changed layers
+        # Lint, types, import boundaries, OpenAPI, the integration check and the
+        # lock always run. Only the layers' own tests are skipped, and only when
+        # the diff stays inside other layers; see scripts/ci_select_tests.py.
+        # Anything unknown, any failure to diff, and workflow_dispatch run all.
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base=""
+          if [ "$EVENT" = "pull_request" ]; then
+            base="HEAD^1"
+          elif [ "$EVENT" = "push" ]; then
+            base="$BEFORE"
+          fi
+          if [ -n "$base" ]; then
+            uv run --no-sync python scripts/ci_select_tests.py --base "$base" >> "$GITHUB_OUTPUT"
+          else
+            uv run --no-sync python scripts/ci_select_tests.py >> "$GITHUB_OUTPUT"
+          fi
       - name: Run Python tests
-        run: uv run --no-sync pytest
+        env:
+          PYTEST_ARGS: ${{ steps.select.outputs.pytest_args }}
+        # Empty PYTEST_ARGS is plain pytest, which collects pyproject's testpaths.
+        run: uv run --no-sync pytest $PYTEST_ARGS
 
   web:
     name: Frontend lint, tests, and build
