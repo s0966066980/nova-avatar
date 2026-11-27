@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 建立 `contracts/` 與各層介面
-Status: ready-for-agent
+Status: resolved
 Blocked by: 06
 
 依規格決定 5、9、18 與 ADR 0028。
@@ -121,3 +121,9 @@ Blocked by: 06
 - 測試：新增 `tests/test_llm_contract.py`（DTO、SSE 事件標記、adapter 的回覆、取消、審查、容量錯誤、交接、招呼、天氣、記憶與 llama-server 錯誤對應）與 `tests/llm_fakes.py`（核心測試用的 `FakeLlm`：除 `reply` 外都是真的 adapter）；核心測試改成以 `FakeLlm` 腳本化模型的回答。腳本 `scripts/replay_voice_baseline.py`、`scripts/benchmark_streaming_vs_legacy.py` 也改用同樣的做法。全部測試 2284 passed、2 skipped；與 `layer-split`（已含 TTS 與數位人渲染）合併後 2332 passed、2 skipped；ruff、pyright（0 errors）、lint-imports（11 條契約）、`generate_openapi.py --check`、`check-integration.py`、`uv lock --check` 都通過，`web/` 沒有變動所以未重跑前端步驟。
 
 待維護者實機驗收：首音延遲（每個片段多一次行程內審查呼叫，量測約 0.03 ms，但實機首音仍須在場域主機確認）、啟動時自有 llama-server 的啟動與關閉（含 Ctrl-C）、控制台切換模型後既有對話跟著更新，以及交接與天氣問答照常。
+
+### 2026-11-27：整合驗收
+
+STT、TTS、數位人渲染、LLM 四個步驟都已合進 `layer-split`，工單關閉。整合分支上獨立重跑 CI 每一步：`uv lock --check`、ruff、pyright（0 errors）、`lint-imports --no-cache`（11 條契約全保持、沒有 `ignore_imports`）、`generate_openapi.py --check`（`llm.json`、`stt.json`、`tts.json` 皆為最新）、`check-integration.py` 通過；pytest 為 2332 passed、2 skipped、63 subtests passed。`web/` 沒有變動，未跑前端步驟。
+
+實機驗收仍待維護者在場域主機確認，項目見各層步驟的留言（首音延遲、嘴型同步、自有 llama-server 啟停、聲線訓練與舞台拒絕等）。
