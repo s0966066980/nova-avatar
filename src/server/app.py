@@ -19,7 +19,6 @@ import torch.multiprocessing as mp
 
 from src.utils.logging import logger
 from src.config.loader import load_config
-from src.avatars.factory import prepare_avatar_model
 from src.server.state import state
 from src.server.server import FrontendNotBuilt, create_app, require_frontend, run_server
 
@@ -94,15 +93,13 @@ def _start_local_llm() -> None:
 
 def _load_startup_avatar() -> None:
     """Preload the selected avatar only when its engine and assets are complete."""
-    from src.avatars.catalog import avatar_bootable
-
     engine = state.config.model.type
     avatar_id = state.config.model.avatar_id
-    bootable, reason = avatar_bootable(engine, avatar_id)
-    if bootable:
+    check = state.avatar_service.bootable(engine, avatar_id)
+    if check.bootable:
         logger.info(f"正在載入數字人: {engine} / {avatar_id}")
         try:
-            state.model, state.avatar = prepare_avatar_model(state.config)
+            state.model, state.avatar = state.avatar_service.prepare_model(state.config)
             state.model_ready = True
             logger.info("數字人載入完成")
         except Exception:
@@ -111,7 +108,7 @@ def _load_startup_avatar() -> None:
             state.avatar = None
             state.model_ready = False
     else:
-        logger.warning(f"啟動時不預載數字人：{reason}。請開啟設定選擇引擎與角色。")
+        logger.warning(f"啟動時不預載數字人：{check.reason}。請開啟設定選擇引擎與角色。")
         state.model_ready = False
 
 
@@ -159,11 +156,13 @@ def main():
 
     adopt_saved_main_voice(state.config, profiles_path(state.config_path))
     logger.info(f"已載入配置: {state.config}")
-    from src.scene.service import SceneError, scene_service
+    from nova_contracts.common import ServiceError
+    from src.avatars.adapter import create_avatar_service
 
+    state.avatar_service = create_avatar_service()
     try:
-        scene_service.select(getattr(state.config.stage, "background_id", ""))
-    except SceneError as exc:
+        state.avatar_service.select_background(getattr(state.config.stage, "background_id", ""))
+    except ServiceError as exc:
         logger.warning("未能載入已選舞台背景：%s", exc)
         state.config.stage.background_id = ""
     edge_tts_prewarm = _start_edge_tts_prewarm(state.config)

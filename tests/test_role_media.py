@@ -9,7 +9,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from src.profiles.media import RolePresentation, TransitionMedia, WIDTH, HEIGHT
+from src.profiles.media import TransitionMedia
+from src.scene.role_presentation import HEIGHT, WIDTH, RolePresentation
 from src.profiles.store import ProfileError
 from src.scene.service import scene_service
 

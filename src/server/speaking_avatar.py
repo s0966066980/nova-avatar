@@ -11,16 +11,22 @@
 
 The renderer does not own TTS (ADR 0027). The core builds the TTS engine with
 this object as its audio sink, forwards every 20 ms PCM frame to the renderer,
-and answers the TTS's fragment questions from the voice session.
+and answers the TTS's fragment questions from the voice session. Everything
+else the core asks of the renderer goes to ``renderer`` (``AvatarRenderer``)
+explicitly.
 """
+# Attribute typos on the renderer must fail type-checking here.
+# pyright: reportAttributeAccessIssue=error
 from __future__ import annotations
 
 from io import BytesIO
+from typing import Any
 
 import numpy as np
 import resampy
 import soundfile as sf
 
+from nova_contracts.avatar import AvatarRenderer
 from src.tts.base import sanitize_speech_text
 from src.utils.logging import logger
 from src.vad.audio import AudioTooLongError
@@ -61,15 +67,13 @@ def _create_tts(config, sink):
 class SpeakingAvatar:
     """What the server calls "the avatar" of a session: renderer plus TTS.
 
-    Renderer state (recording, frame size, ``config``, role presentation,
-    speaking state) is read and written on the renderer, so the rest of the
-    core keeps treating this object as the session's avatar.
+    Renderer state (recording, frame size, role presentation, speaking state)
+    is read and written on ``renderer``; this object only passes through the
+    session's ``config`` (kept on the renderer) and ``sessionid``.
     """
 
-    _RENDERER_ATTRIBUTES = frozenset({"config", "_role_presentation"})
-
-    def __init__(self, renderer, *, tts_factory=_create_tts) -> None:
-        object.__setattr__(self, "renderer", renderer)
+    def __init__(self, renderer: AvatarRenderer, *, tts_factory=_create_tts) -> None:
+        self.renderer = renderer
         self._on_fragment_queued = None
         self._on_fragment_failed = None
         self._fragment_playback_committed = None
@@ -79,10 +83,21 @@ class SpeakingAvatar:
         self._on_stage_end = None
         self._on_llm_chunk = None
         self.tts = tts_factory(renderer.config, self)
-        configure_pending =getattr(renderer, "configure_pending_audio", None)
-        if callable(configure_pending):
-            # MuseTalk briefly holds idle frames while more reply PCM is due.
-            configure_pending(self.tts.has_pending_work)
+        # MuseTalk briefly holds idle frames while more reply PCM is due.
+        renderer.configure_pending_audio(self.tts.has_pending_work)
+
+    @property
+    def config(self) -> Any:
+        """The session's configuration, kept on the renderer (it reads it per frame)."""
+        return self.renderer.config
+
+    @config.setter
+    def config(self, config: Any) -> None:
+        self.renderer.config = config
+
+    @property
+    def sessionid(self) -> int:
+        return self.renderer.sessionid
 
     def configure_media_fence(
         self,
@@ -111,13 +126,11 @@ class SpeakingAvatar:
         self._on_tts_retry = on_tts_retry
         self._on_stage_end = on_stage_end
         self._on_llm_chunk = on_llm_chunk
-        configure = getattr(self.renderer, "configure_media_fence", None)
-        if callable(configure):
-            configure(
-                media_guard=media_guard,
-                on_stale_drop=on_stale_drop,
-                on_stage_end=on_stage_end,
-            )
+        self.renderer.configure_media_fence(
+            media_guard=media_guard,
+            on_stale_drop=on_stale_drop,
+            on_stage_end=on_stage_end,
+        )
 
     def put_msg_txt(self, msg, datainfo: dict | None = None) -> None:
         msg = sanitize_speech_text(msg)
@@ -127,18 +140,6 @@ class SpeakingAvatar:
         if self._on_fragment_queued is not None and eventpoint.get("turn_id"):
             self._on_fragment_queued(msg, eventpoint)
         self.tts.put_msg_txt(msg, eventpoint)
-
-    def __getattr__(self, name):
-        # Only reached for names this object does not define itself.
-        if name == "renderer":
-            raise AttributeError(name)
-        return getattr(self.renderer, name)
-
-    def __setattr__(self, name, value) -> None:
-        if name in self._RENDERER_ATTRIBUTES:
-            setattr(self.renderer, name, value)
-        else:
-            object.__setattr__(self, name, value)
 
     def bind_profile(self, config, avatar) -> None:
         """Swap role assets on the renderer and the voice on the TTS."""
@@ -172,6 +173,10 @@ class SpeakingAvatar:
         datainfo = datainfo or {}
         for start in range(0, stream.shape[0] - chunk + 1, chunk):
             self.renderer.put_audio_frame(stream[start:start + chunk], datainfo)
+
+    def notify(self, eventpoint: dict) -> None:
+        """The media player played a boundary (speech or fragment start or end)."""
+        self.renderer.notify(eventpoint)
 
     def notify_llm_chunk(self, text: str, eventpoint: dict | None = None) -> None:
         if self._on_llm_chunk is not None:

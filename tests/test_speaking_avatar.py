@@ -11,14 +11,27 @@ from src.server.speaking_avatar import SpeakingAvatar
 class FakeRenderer:
     def __init__(self):
         self.config = object()
+        self.sessionid = 7
         self.chunk = 320
         self.frames = []
         self.flushes = []
         self.accept = True
+        self.fence = None
+        self.pending_audio = None
+        self.boundaries = []
 
     def put_audio_frame(self, samples, eventpoint):
         self.frames.append((samples, dict(eventpoint)))
         return self.accept
+
+    def configure_media_fence(self, *, media_guard, on_stale_drop, on_stage_end=None):
+        self.fence = (media_guard, on_stale_drop, on_stage_end)
+
+    def configure_pending_audio(self, probe):
+        self.pending_audio = probe
+
+    def notify(self, eventpoint):
+        self.boundaries.append(eventpoint)
 
 
 class FakeTTS:
@@ -33,6 +46,9 @@ class FakeTTS:
 
     def flush_talk(self):
         self.flushes += 1
+
+    def has_pending_work(self):
+        return False
 
 
 def speaking(renderer=None):
@@ -140,10 +156,6 @@ class LifecycleRenderer(FakeRenderer):
     def __init__(self, calls):
         super().__init__()
         self.calls = calls
-        self.pending_audio = None
-
-    def configure_pending_audio(self, probe):
-        self.pending_audio = probe
 
     def flush_talk(self):
         self.calls.append("renderer.flush")
@@ -203,7 +215,9 @@ def test_tts_runs_for_as_long_as_the_renderer_and_reports_pending_audio():
     assert renderer.pending_audio() is True
 
 
-def test_a_webrtc_session_gets_a_renderer_fed_by_a_core_built_tts(monkeypatch):
+def test_a_webrtc_session_gets_a_renderer_fed_by_a_core_built_tts():
+    from types import SimpleNamespace
+
     from src.config.schema import Config
     from src.server.routes import webrtc
     from src.tts.engines.edge import EdgeTTS
@@ -211,9 +225,9 @@ def test_a_webrtc_session_gets_a_renderer_fed_by_a_core_built_tts(monkeypatch):
     renderer = FakeRenderer()
     renderer.config = Config()
     built = []
-    monkeypatch.setattr(webrtc, "create_avatar", lambda *args: built.append(args) or renderer)
+    avatars = SimpleNamespace(create_renderer=lambda *args: built.append(args) or renderer)
 
-    avatar = webrtc.build_speaking_avatar("config", "model", "assets", 7)
+    avatar = webrtc.build_speaking_avatar("config", "model", "assets", 7, avatars=avatars)
 
     assert built == [("config", "model", "assets", 7)]
     assert avatar.renderer is renderer
@@ -253,19 +267,41 @@ def test_a_profile_switch_gives_renderer_and_tts_the_same_config():
     assert avatar.tts.flushes == 1  # The old role's queued text is not spoken.
 
 
-def test_renderer_state_is_read_and_written_on_the_renderer():
+def test_renderer_state_is_reached_only_through_the_renderer():
+    import pytest
+
     avatar, renderer, _ = speaking()
     renderer.is_speaking = lambda: True
     config = object()
+    renderer.config = config
 
-    avatar.config = config
-    avatar._role_presentation = "presentation"
+    assert avatar.config is config and avatar.sessionid == 7
+    assert avatar.renderer.is_speaking() is True
+    with pytest.raises(AttributeError):
+        avatar.is_speaking()  # no implicit forwarding to the renderer
+    replaced = object()
+    avatar.config = replaced
+    assert renderer.config is replaced
+    assert avatar.tts.config is not replaced  # TTS voice swaps stay explicit.
 
-    assert renderer.config is avatar.config is config
-    assert renderer._role_presentation == "presentation"
-    assert avatar._role_presentation == "presentation"
-    assert avatar.is_speaking() is True
-    assert avatar.tts.config is not config  # TTS voice swaps stay explicit.
+
+def test_the_media_fence_and_played_boundaries_reach_the_renderer():
+    avatar, renderer, _ = speaking()
+
+    def guard(_event, _stage):
+        return True
+
+    def drop(_stage, _reason):
+        return None
+
+    def stage(_stage):
+        return None
+
+    avatar.configure_media_fence(media_guard=guard, on_stale_drop=drop, on_stage_end=stage)
+    avatar.notify({"status": "start"})
+
+    assert renderer.fence == (guard, drop, stage)
+    assert renderer.boundaries == [{"status": "start"}]
 
 
 def test_the_renderer_builds_no_tts_and_asks_the_core_whether_pcm_is_due():

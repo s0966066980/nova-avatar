@@ -371,15 +371,13 @@ class VoiceTurnSession:
 
     def attach_media_player(self, player) -> None:
         self._media_player = player
-        configure_audio_output = getattr(self.avatar, "configure_audio_output", None)
         reply_streaming = getattr(self.config, "reply_streaming", None)
         if (
-            callable(configure_audio_output)
-            and bool(getattr(reply_streaming, "enabled", False))
+            bool(getattr(reply_streaming, "enabled", False))
             and bool(getattr(reply_streaming, "decoupled_audio_clock", False))
         ):
             try:
-                configure_audio_output(player.audio, asyncio.get_running_loop())
+                self.avatar.renderer.configure_audio_output(player.audio, asyncio.get_running_loop())
             except RuntimeError:
                 logger.debug("audio output fan-out deferred: no running event loop")
 
@@ -1543,11 +1541,8 @@ class VoiceTurnSession:
                 if self._silent_output_frames >= OUTPUT_STALL_FRAMES:
                     self._fail_playback_turn()
             return
-        is_still_rendering = getattr(self.avatar, "is_speaking", None)
-        direct_audio_enabled = bool(
-            getattr(self.avatar, "direct_audio_enabled", False)
-        )
-        if not direct_audio_enabled and callable(is_still_rendering) and is_still_rendering():
+        renderer = self.avatar.renderer
+        if not renderer.direct_audio_enabled and renderer.is_speaking():
             self._silent_output_frames = 0
             return
         self._silent_output_frames += 1
@@ -1943,7 +1938,7 @@ class VoiceTurnSession:
         if stage == "avatar_audio_enqueue" and isinstance(eventpoint, dict):
             self._await_playback_release(eventpoint)
         if isinstance(eventpoint, dict) and "avatar_epoch" in eventpoint:
-            if self._closed or eventpoint["avatar_epoch"] != getattr(self.avatar, "_asset_epoch", 0):
+            if self._closed or eventpoint["avatar_epoch"] != self.avatar.renderer.asset_epoch:
                 return False
             if not eventpoint.get("turn_id"):
                 return True

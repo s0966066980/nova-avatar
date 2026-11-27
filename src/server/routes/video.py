@@ -3,12 +3,13 @@
 # Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
 """影片相關路由"""
+# Renderer and avatar-service typos must fail type-checking here.
+# pyright: reportAttributeAccessIssue=error
 import asyncio
 import os
 import json
 from aiohttp import web
 
-from src.avatars.base import RECORDS_DIR
 from src.utils.logging import logger
 from src.server.state import state
 
@@ -18,7 +19,7 @@ async def set_audiotype(request):
     try:
         params = await request.json()
         sessionid = params.get('sessionid', 0)
-        state.avatar_streams[sessionid].set_custom_state(params['audiotype'], params['reinit'])
+        state.avatar_streams[sessionid].renderer.set_custom_state(params['audiotype'], params['reinit'])
 
         return web.Response(
             content_type="application/json",
@@ -66,7 +67,7 @@ async def record(request):
                 status=500
             )
         
-        avatar_stream = state.avatar_streams[sessionid]
+        avatar_stream = state.avatar_streams[sessionid].renderer
         logger.info(f'[錄製API] 找到 avatar_stream: {type(avatar_stream).__name__}')
         logger.info(f'[錄製API] avatar_stream.recording 狀態: {avatar_stream.recording}')
         logger.info(f'[錄製API] avatar_stream 影片尺寸: width={avatar_stream.width}, height={avatar_stream.height}')
@@ -120,7 +121,7 @@ async def download_record(request):
         if '..' in filename or '/' in filename or '\\' in filename:
             return web.Response(text='非法檔名', status=400)
         
-        filepath = str(RECORDS_DIR / filename)
+        filepath = str(state.avatar_service.records_dir() / filename)
         
         if not await asyncio.to_thread(os.path.isfile, filepath):
             logger.warning(f'[下載] 檔案不存在: {filepath}')

@@ -11,12 +11,7 @@ from uuid import uuid4
 
 from aiohttp import web
 
-from src.avatars.builder import uploads_dir
-from src.avatars.catalog import (
-    archive_avatar, delete_archived_avatar, list_archived_avatars,
-    resolve_preview_path, restore_avatar,
-)
-from src.avatars.mouth_quality import QualityError, normalize_quality
+from nova_contracts.common import ServiceError
 from src.server.import_jobs import (
     MAX_IMPORT_VIDEO_BYTES, VIDEO_EXTS, discard_upload, get_job, import_in_progress,
     start_import_job, validate_import_request,
@@ -36,7 +31,6 @@ from src.server.runtime_settings import (
     apply_stage_background,
     current_snapshot,
     fetch_llm_catalog,
-    quality_from_model,
     vad_snapshot,
     speech_snapshot,
     stage_snapshot,
@@ -46,19 +40,6 @@ from src.server.runtime_settings import (
 from src.profiles.store import ProfileError
 from src.server.deferred_settings import defer_when_connected, snapshot as pending_snapshot
 from src.server.state import state
-from src.scene.service import (
-    MAX_BACKGROUND_BYTES,
-    SceneError,
-    add_background,
-    archive_background,
-    backgrounds_root,
-    list_archived_backgrounds,
-    list_backgrounds,
-    preview_path as background_preview_path,
-    render_avatar_preview,
-    restore_background,
-    scene_service,
-)
 from src.tts import voice_library
 from src.utils.logging import logger
 
@@ -79,7 +60,7 @@ async def get_settings(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     # The snapshot scans avatars, voices and models on disk.
-    data = await asyncio.to_thread(current_snapshot, state.config)
+    data = await asyncio.to_thread(current_snapshot, state.config, avatars=state.avatar_service)
     data["pending_settings"] = pending_snapshot()
     data["session_count"] = _active_session_count()
     data["switching"] = bool(state.switching or state.settings_applying)
@@ -136,7 +117,7 @@ async def set_llm_behavior(request):
         return _json({"code": -1, "msg": str(exc)}, status=500)
 
 
-@defer_when_connected("對話模型", lambda config: current_snapshot(config)["llm"])
+@defer_when_connected("對話模型", lambda config: current_snapshot(config, avatars=state.avatar_service)["llm"])
 async def set_llm_model(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -244,15 +225,16 @@ async def get_backgrounds(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     return _json({"code": 0, "data": {
-        "items": list_backgrounds(),
-        **scene_service.snapshot(),
+        "items": state.avatar_service.list_backgrounds(),
+        **state.avatar_service.scene_snapshot(),
     }})
 
 
 async def upload_background(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    root = backgrounds_root()
+    avatars = state.avatar_service
+    root = avatars.backgrounds_root()
     root.mkdir(parents=True, exist_ok=True)
     temporary = root / f".upload-{uuid4().hex}"
     try:
@@ -268,13 +250,13 @@ async def upload_background(request):
                 if not chunk:
                     break
                 size += len(chunk)
-                if size > MAX_BACKGROUND_BYTES:
+                if size > avatars.max_background_bytes:
                     return _json({"code": -1, "msg": "背景檔案不可超過 100 MB"}, status=413)
                 handle.write(chunk)
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, add_background, temporary, original_name)
+        result = await loop.run_in_executor(None, avatars.add_background, temporary, original_name)
         return _json({"code": 0, "msg": "ok", "data": result})
-    except SceneError as exc:
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=400)
     except Exception as exc:
         logger.exception("上傳舞台背景失敗")
@@ -290,12 +272,11 @@ async def select_background(request):
         params = await request.json()
         if not isinstance(params, dict):
             raise SettingsError("背景設定格式不正確", status=400)
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
+        result = await asyncio.to_thread(
             apply_stage_background,
             state.config,
             params.get("background_id", ""),
+            avatars=state.avatar_service,
         )
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
@@ -307,8 +288,9 @@ async def select_background(request):
 
 async def background_preview(request):
     try:
-        return web.FileResponse(background_preview_path(request.match_info["background_id"]))
-    except SceneError:
+        return web.FileResponse(
+            state.avatar_service.background_preview(request.match_info["background_id"]))
+    except ServiceError:
         raise web.HTTPNotFound()
 
 
@@ -317,16 +299,16 @@ async def delete_background(request):
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     background_id = request.match_info.get("background_id", "")
     if background_id in {
-        scene_service.snapshot()["background_id"],
+        state.avatar_service.scene_snapshot()["background_id"],
         str(getattr(state.config.stage, "background_id", "") or ""),
     }:
         return _json({"code": -1, "msg": "正在使用的背景無法刪除，請先切換背景"}, status=409)
     try:
-        archived = archive_background(background_id)
+        archived = state.avatar_service.archive_background(background_id)
         return _json({"code": 0, "msg": "ok", "data": {
-            "background_id": background_id, "archived_as": archived.name,
+            "background_id": background_id, "archived_as": archived,
         }})
-    except SceneError as exc:
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=404)
     except Exception as exc:
         logger.exception("刪除舞台背景失敗")
@@ -336,16 +318,17 @@ async def delete_background(request):
 async def archived_backgrounds(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    return _json({"code": 0, "data": {"items": list_archived_backgrounds()}})
+    return _json({"code": 0, "data": {"items": state.avatar_service.list_archived_backgrounds()}})
 
 
 async def restore_archived_background(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     try:
-        background_id = restore_background(request.match_info.get("archive_name", ""))
+        background_id = state.avatar_service.restore_background(
+            request.match_info.get("archive_name", ""))
         return _json({"code": 0, "msg": "ok", "data": {"background_id": background_id}})
-    except SceneError as exc:
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=409)
     except Exception as exc:
         logger.exception("復原舞台背景失敗")
@@ -502,7 +485,7 @@ async def delete_tts_voice(request):
         return _json({"code": -1, "msg": exc.message}, status=exc.status)
 
 
-@defer_when_connected("數位人引擎", lambda config: current_snapshot(config)["avatar"])
+@defer_when_connected("數位人引擎", lambda config: current_snapshot(config, avatars=state.avatar_service)["avatar"])
 async def set_avatar(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
@@ -513,6 +496,7 @@ async def set_avatar(request):
             params.get("type", ""),
             params.get("avatar_id", ""),
             session_count=_active_session_count(),
+            avatars=state.avatar_service,
         )
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
@@ -526,7 +510,7 @@ async def set_video_output(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     try:
-        result = apply_video_settings(state.config, await request.json())
+        result = apply_video_settings(state.config, await request.json(), avatars=state.avatar_service)
         result["requires_reconnect"] = bool(_active_session_count())
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
@@ -541,7 +525,7 @@ async def set_mouth_quality(request):
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     try:
         params = await request.json()
-        result = apply_mouth_quality(state.config, params or {})
+        result = apply_mouth_quality(state.config, params or {}, avatars=state.avatar_service)
         return _json({"code": 0, "msg": "ok", "data": result})
     except SettingsError as exc:
         return _json({"code": -1, "msg": exc.message, **exc.extra}, status=exc.status)
@@ -552,7 +536,7 @@ async def set_mouth_quality(request):
 
 async def avatar_preview(request):
     avatar_id = request.match_info.get("avatar_id", "")
-    preview = resolve_preview_path(avatar_id)
+    preview = state.avatar_service.preview_image(avatar_id)
     if preview is None or not preview.is_file():
         return _json({"code": -1, "msg": "預覽圖不存在"}, status=404)
     return web.FileResponse(preview)
@@ -562,9 +546,9 @@ async def avatar_scene_preview(request):
     avatar_id = request.match_info.get("avatar_id", "")
     try:
         loop = asyncio.get_running_loop()
-        image = await loop.run_in_executor(None, render_avatar_preview, avatar_id)
+        image = await loop.run_in_executor(None, state.avatar_service.render_avatar_preview, avatar_id)
         return web.Response(body=image, content_type="image/jpeg", headers={"Cache-Control": "no-store"})
-    except SceneError:
+    except ServiceError:
         raise web.HTTPNotFound()
 
 
@@ -582,11 +566,11 @@ async def delete_avatar(request):
     if import_in_progress():
         return _json({"code": -1, "msg": "數字人正在製作，請稍後再刪除"}, status=409)
     try:
-        archived = archive_avatar(avatar_id)
+        archived = state.avatar_service.archive_avatar(avatar_id)
         return _json({"code": 0, "msg": "ok", "data": {
-            "avatar_id": avatar_id, "archived_as": archived.name,
+            "avatar_id": avatar_id, "archived_as": archived,
         }})
-    except ValueError as exc:
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=404)
     except Exception as exc:
         logger.exception("刪除數字人失敗")
@@ -596,7 +580,7 @@ async def delete_avatar(request):
 async def archived_avatars(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
-    return _json({"code": 0, "data": {"items": list_archived_avatars()}})
+    return _json({"code": 0, "data": {"items": state.avatar_service.list_archived_avatars()}})
 
 
 async def restore_archived_avatar(request):
@@ -605,9 +589,9 @@ async def restore_archived_avatar(request):
     if import_in_progress():
         return _json({"code": -1, "msg": "數字人正在製作，請稍後再復原"}, status=409)
     try:
-        avatar_id = restore_avatar(request.match_info.get("archive_name", ""))
+        avatar_id = state.avatar_service.restore_avatar(request.match_info.get("archive_name", ""))
         return _json({"code": 0, "msg": "ok", "data": {"avatar_id": avatar_id}})
-    except ValueError as exc:
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=409)
     except Exception as exc:
         logger.exception("復原數字人失敗")
@@ -618,9 +602,9 @@ async def delete_archived_avatar_permanently(request):
     if not state.config:
         return _json({"code": -1, "msg": "服務尚未就緒"}, status=503)
     try:
-        avatar_id = delete_archived_avatar(request.match_info.get("archive_name", ""))
+        avatar_id = state.avatar_service.delete_archived_avatar(request.match_info.get("archive_name", ""))
         return _json({"code": 0, "msg": "ok", "data": {"avatar_id": avatar_id}})
-    except ValueError as exc:
+    except ServiceError as exc:
         return _json({"code": -1, "msg": str(exc)}, status=404)
     except Exception as exc:
         logger.exception("永久刪除封存數字人失敗")
@@ -694,8 +678,8 @@ async def import_avatar(request):
                 if not isinstance(parsed, dict):
                     return _json({"code": -1, "msg": "嘴型參數必須是物件"}, status=400)
                 try:
-                    normalize_quality(parsed)
-                except QualityError as exc:
+                    state.avatar_service.normalize_quality(parsed)
+                except ServiceError as exc:
                     return _json({"code": -1, "msg": str(exc)}, status=400)
                 quality = parsed
             elif part.name == "video":
@@ -713,7 +697,7 @@ async def import_avatar(request):
                 # Checked again by the builder right before installing.
                 if overwrite and (conflict := await asyncio.to_thread(_avatar_replace_conflict, avatar_id)):
                     return _json({"code": -1, "msg": conflict}, status=409)
-                upload_dir = uploads_dir() / uuid4_name()
+                upload_dir = state.avatar_service.uploads_dir() / uuid4_name()
                 upload_dir.mkdir(parents=True, exist_ok=True)
                 video_path = upload_dir / f"source{suffix}"
                 with video_path.open("wb") as handle:
@@ -734,7 +718,7 @@ async def import_avatar(request):
             avatar_id=avatar_id,
             overwrite=overwrite,
             session_count=_active_session_count(),
-            quality=quality if quality is not None else quality_from_model(state.config.model),
+            quality=quality if quality is not None else state.avatar_service.quality_from_model(state.config.model),
             green_screen=green_screen,
             replace_guard=_avatar_replace_conflict,
         )
@@ -742,7 +726,7 @@ async def import_avatar(request):
         if quality is not None:
             # Remember the accepted build settings only once the import has started.
             try:
-                apply_mouth_quality(state.config, quality)
+                apply_mouth_quality(state.config, quality, avatars=state.avatar_service)
             except Exception:
                 logger.exception("儲存匯入用的嘴型參數失敗")
         return _json({"code": 0, "msg": "ok", "data": job.to_dict()})

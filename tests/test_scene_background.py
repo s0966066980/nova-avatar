@@ -12,7 +12,13 @@ import pytest
 
 from src.scene import service
 from src.avatars import catalog
+from src.avatars.adapter import create_avatar_service
 from src.server.routes import settings as settings_routes
+
+
+@pytest.fixture(autouse=True)
+def avatar_service(monkeypatch):
+    monkeypatch.setattr(settings_routes.state, "avatar_service", create_avatar_service())
 
 
 def test_green_screen_composites_person_and_keeps_background_independent(tmp_path, monkeypatch):
@@ -291,7 +297,6 @@ def test_background_pixel_count_is_checked_from_the_header_before_decoding(
 
 def test_background_bomb_upload_answers_400(tmp_path, monkeypatch):
     monkeypatch.setattr(service, "backgrounds_root", lambda: tmp_path / "backgrounds")
-    monkeypatch.setattr(settings_routes, "backgrounds_root", lambda: tmp_path / "backgrounds")
     monkeypatch.setattr(settings_routes.state, "config", SimpleNamespace())
     from aiohttp import FormData
     from tests.access_helpers import access_client

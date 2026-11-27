@@ -377,13 +377,13 @@ async def test_greeting_only_profile_apply_keeps_playing_media_and_avoids_rebind
         voice.greetings.tick()
         await voice.greetings.preparation
         voice.on_output_audio(True)
-        old_turn, old_epoch = voice._turn_id, voice.avatar._asset_epoch
+        old_turn, old_epoch = voice._turn_id, voice.avatar.asset_epoch
         target = deepcopy(roles.library)
         target['profiles'][0]['greeting']['scripts'] = ['新招呼']
         target['revision'] += 1
         await roles.apply(target)
         assert voice._turn_id == old_turn
-        assert voice.avatar._asset_epoch == old_epoch
+        assert voice.avatar.asset_epoch == old_epoch
         assert voice.config.greeting.scripts == ['舊招呼']
         assert roles.profiles['main']['greeting']['scripts'] == ['新招呼']
         assert voice.greetings.status == 'playing'
@@ -406,7 +406,7 @@ async def test_greeting_apply_preserves_unapplied_identity_model_and_playing_med
         voice.greetings.tick()
         await voice.greetings.preparation
         voice.on_output_audio(True)
-        old_turn, old_epoch = voice._turn_id, voice.avatar._asset_epoch
+        old_turn, old_epoch = voice._turn_id, voice.avatar.asset_epoch
         old_identity = deepcopy(roles.profiles['main']['assistant_profile'])
         old_model = roles.profiles['main']['llm']['model']
         pending = deepcopy(roles.library)
@@ -420,7 +420,7 @@ async def test_greeting_apply_preserves_unapplied_identity_model_and_playing_med
         assert roles.profiles['main']['llm']['model'] == old_model
         assert roles.library['revision'] == 1  # full role revision is still pending
         assert voice._turn_id == old_turn
-        assert voice.avatar._asset_epoch == old_epoch
+        assert voice.avatar.asset_epoch == old_epoch
         assert voice.config.greeting.scripts == ['正在播放的招呼']
         assert voice.config.llm.model == old_model
         assert roles.store.load()['profiles'][0]['llm']['model'] == 'unapplied-model'

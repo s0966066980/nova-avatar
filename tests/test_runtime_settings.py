@@ -22,6 +22,7 @@ from src.avatars.catalog import (
     list_avatar_characters,
     list_engines,
 )
+from src.avatars.adapter import create_avatar_service
 from src.config.overrides import load_runtime_overrides, persist_runtime_overrides
 from src.llm.base import with_response_length_instruction
 from src.server.runtime_settings import (
@@ -212,9 +213,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.reply_streaming.enabled = True
         with patch(
-            "src.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "src.avatars.catalog.list_avatar_characters", return_value=[]
+        ), patch("src.avatars.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["reply_mode"], "streaming")
 
@@ -243,9 +244,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.llm.system_prompt = ""
         with patch(
-            "src.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "src.avatars.catalog.list_avatar_characters", return_value=[]
+        ), patch("src.avatars.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["system_prompt"], "You are a helpful assistant.")
 
@@ -274,9 +275,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.llm.response_max_chars = 240
         with patch(
-            "src.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "src.avatars.catalog.list_avatar_characters", return_value=[]
+        ), patch("src.avatars.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["response_max_chars"], 240)
 
@@ -284,9 +285,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.llm.board.max_items = 6
         with patch(
-            "src.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "src.avatars.catalog.list_avatar_characters", return_value=[]
+        ), patch("src.avatars.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, avatars=create_avatar_service())
 
         self.assertEqual(snapshot["llm"]["board_max_items"], 6)
 
@@ -294,9 +295,9 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         config.stage.caption_max_chars = 240
         with patch(
-            "src.server.runtime_settings.list_avatar_characters", return_value=[]
-        ), patch("src.server.runtime_settings.list_engines", return_value=[]):
-            snapshot = current_snapshot(config)
+            "src.avatars.catalog.list_avatar_characters", return_value=[]
+        ), patch("src.avatars.catalog.list_engines", return_value=[]):
+            snapshot = current_snapshot(config, avatars=create_avatar_service())
 
         self.assertEqual(snapshot["stage"]["caption_max_chars"], 240)
         self.assertEqual(snapshot["stage"]["board_style"], "glass")
@@ -489,14 +490,14 @@ class ApplyAvatarGuardTests(unittest.TestCase):
             }
         ]
         with patch(
-            "src.server.runtime_settings.list_avatar_characters",
+            "src.avatars.catalog.list_avatar_characters",
             return_value=characters,
         ), patch(
-            "src.server.runtime_settings.list_engines",
+            "src.avatars.catalog.list_engines",
             return_value=engines,
         ):
             with self.assertRaises(SettingsError) as ctx:
-                apply_avatar(Config(), "musetalk", "musetalk_avatar2", session_count=1)
+                apply_avatar(Config(), "musetalk", "musetalk_avatar2", session_count=1, avatars=create_avatar_service())
         self.assertEqual(ctx.exception.status, 409)
         self.assertTrue(ctx.exception.extra.get("need_disconnect"))
 
@@ -509,7 +510,7 @@ class ApplyAvatarGuardTests(unittest.TestCase):
             model = Model()
 
         with self.assertRaises(SettingsError):
-            apply_avatar(Config(), "not-a-real-engine", "x", session_count=0)
+            apply_avatar(Config(), "not-a-real-engine", "x", session_count=0, avatars=create_avatar_service())
 
 
 class SpeechSettingsTests(unittest.TestCase):
@@ -756,10 +757,10 @@ class LlamaCppCatalogTests(unittest.TestCase):
             raise FileNotFoundError("missing weights")
 
         with patch(
-            "src.server.runtime_settings.list_avatar_characters",
+            "src.avatars.catalog.list_avatar_characters",
             return_value=characters,
         ), patch(
-            "src.server.runtime_settings.list_engines",
+            "src.avatars.catalog.list_engines",
             return_value=engines,
         ), patch(
             "src.avatars.factory.prepare_avatar_model",
@@ -769,7 +770,7 @@ class LlamaCppCatalogTests(unittest.TestCase):
             side_effect=boom,
         ):
             with self.assertRaises(SettingsError):
-                apply_avatar(config, "musetalk", "musetalk_avatar2", session_count=0)
+                apply_avatar(config, "musetalk", "musetalk_avatar2", session_count=0, avatars=create_avatar_service())
 
         self.assertEqual(config.model.type, "musetalk")
         self.assertEqual(config.model.avatar_id, "musetalk_avatar1")

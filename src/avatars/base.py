@@ -179,6 +179,8 @@ class BaseAvatar:
         # Optional visual-only seam installed by model-specific avatars.
         self._mouth_continuity = None
         self._avatar_transition = None
+        # The stage canvas of role composition; the core turns it on or off.
+        self._role_presentation = None
         self.__loadcustom()
 
     def configure_media_fence(
@@ -368,6 +370,55 @@ class BaseAvatar:
 
     def is_speaking(self)->bool:
         return self.speaking
+
+    def render(self, quit_event, loop=None, audio_track=None, video_track=None):
+        """Render into the tracks until ``quit_event`` is set; engines implement it."""
+        raise NotImplementedError
+
+    def bind_profile(self, config, avatar):
+        """Swap to another avatar's assets in place; engines implement it."""
+        raise NotImplementedError
+
+    @property
+    def asset_epoch(self) -> int:
+        return getattr(self, "_asset_epoch", 0)
+
+    # Role presentation: the core directs it, every video frame passes it.
+
+    def reset_role_presentation(self, enabled: bool) -> None:
+        from src.scene.role_presentation import RolePresentation
+
+        self._role_presentation = RolePresentation() if enabled else None
+
+    def ensure_role_presentation(self) -> None:
+        if getattr(self, "_role_presentation", None) is None:
+            self.reset_role_presentation(True)
+
+    def begin_role_transition(self, transition_id, edge, *, clip, started_at) -> None:
+        self._role_presentation.begin(transition_id, edge, reader=clip, started_at=started_at)
+
+    def start_role_transition(self, started_at: float) -> None:
+        presentation = self._role_presentation
+        with presentation.lock:
+            presentation.transition["started"] = started_at
+
+    def close_role_transition(self) -> None:
+        presentation = getattr(self, "_role_presentation", None)
+        if presentation:
+            presentation.close()
+
+    def _present_frame(self, frame, eventpoint):
+        """Compose a rendered frame onto the stage: role canvas or green-screen scene."""
+        presentation = getattr(self, "_role_presentation", None)
+        if presentation is not None:
+            frame = presentation.compose(frame, green_screen=self._green_screen)
+            return frame, {**(eventpoint or {}), **presentation.marker}
+        frame = limit_video_height(
+            frame, getattr(getattr(self.config, "video", None), "max_height", 0))
+        if getattr(self, "_green_screen", False):
+            from src.scene.service import scene_service
+            frame = scene_service.compose(frame, green_screen=True)
+        return frame, eventpoint
     
     def __loadcustom(self):
         # 讀取自定義音影片素材（用於特殊動作/表情）
@@ -562,16 +613,7 @@ class BaseAvatar:
                 combine_frame = self._compose_avatar_transition(
                     combine_frame, index=idx, is_speech=self.speaking,
                     frame_type=0 if self.speaking else audiotype, eventpoint=video_eventpoint)
-                presentation = getattr(self, "_role_presentation", None)
-                if presentation is not None:
-                    combine_frame = presentation.compose(combine_frame, green_screen=self._green_screen)
-                    video_eventpoint = {**(video_eventpoint or {}), **presentation.marker}
-                else:
-                    combine_frame = limit_video_height(
-                        combine_frame, getattr(getattr(self.config, "video", None), "max_height", 0))
-                    if getattr(self, "_green_screen", False):
-                        from src.scene.service import scene_service
-                        combine_frame = scene_service.compose(combine_frame, green_screen=True)
+                combine_frame, video_eventpoint = self._present_frame(combine_frame, video_eventpoint)
             cv2.putText(combine_frame, "Nova Avatar", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128,128,128), 1)
            
             image = combine_frame
