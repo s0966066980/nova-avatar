@@ -36,13 +36,18 @@ MIGRATION_ROOTS = (get_project_root() / "data", Path.home() / "CosyVoice" / "ass
 VOICE_ID = re.compile(r"[0-9a-f]{16}")
 # Edge voice names name voices on the server side.
 SERVER_SIDE_REFERENCE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}")
-# The only TTS engines; src.tts.factory builds exactly these.
+# The TTS engines a console offers (the engine lists and the voice catalog).
 TTS_ENGINES = frozenset({"edgetts", "breezyvoice", "matcha"})
+# Engines a configuration may name without any console offering them: the
+# silent fake of tests and rehearsals (spec decision 15).
+TEST_TTS_ENGINES = frozenset({"fake"})
+# Every engine src.tts.factory builds.
+CONFIGURABLE_TTS_ENGINES = TTS_ENGINES | TEST_TTS_ENGINES
 REFERENCE_AUDIO_ENGINES = frozenset({"breezyvoice"})
 # Engines whose ``ref_file`` is a voice-model ID (src.tts.voice_models).
 VOICE_MODEL_ENGINES = frozenset({"matcha"})
 # Engines that speak en-US as well as zh-TW.
-ENGLISH_TTS_ENGINES = frozenset({"edgetts", "matcha"})
+ENGLISH_TTS_ENGINES = frozenset({"edgetts", "matcha"}) | TEST_TTS_ENGINES
 DEFAULT_EDGE_VOICE = "zh-TW-HsiaoChenNeural"
 EDGE_TTS_EN_US_VOICES = (
     {"id": "en-US-JennyNeural", "label": "Jenny（美式女聲）"},
@@ -439,7 +444,7 @@ def migrate_tts_values(values: dict, *, where: str) -> bool:
     if drop_stale_transcript(values, where):
         changed = True
     engine =str(values.get("type") or "edgetts").strip().lower()
-    if engine not in TTS_ENGINES:
+    if engine not in CONFIGURABLE_TTS_ENGINES:
         _fall_back_to_edge(values, engine, where)
         return True
     if "ref_file" in values:

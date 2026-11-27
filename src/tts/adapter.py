@@ -226,7 +226,8 @@ class InProcessTtsService(InProcessVoiceTraining):
         text = strip_visual_markup(request.fragment.text)
         try:
             engine = self._create_engine(request.voice.engine, _engine_config(request.voice, self._settings), sink)
-            engine.txt_to_audio((text, {"synthesis": request.fragment.fragment_id}))
+            engine.txt_to_audio((text, {"synthesis": request.fragment.fragment_id,
+                                        "estimated_seconds": request.fragment.estimated_seconds}))
         except Exception as exc:
             raise TtsError(str(exc), status=502) from exc
         pcm = sink.pcm()

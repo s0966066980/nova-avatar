@@ -169,7 +169,7 @@ def test_the_tts_openapi_posts_one_fragment_and_streams_pcm_back():
         "$ref": "#/components/schemas/SynthesisRequest"}
     assert list(synthesize["responses"]["200"]["content"]) == ["audio/L16;rate=16000"]
     assert document["components"]["schemas"]["TtsVoice"]["properties"]["engine"]["enum"] == [
-        "edgetts", "breezyvoice", "matcha"]
+        "edgetts", "breezyvoice", "matcha", "fake"]
 
 
 def wav_bytes(seconds=1.0, rate=16000):
