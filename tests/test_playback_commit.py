@@ -10,40 +10,8 @@ import numpy as np
 from src.server.voice_session import OUTPUT_STALL_FRAMES, VoiceTurnSession
 from nova_contracts.llm import Outcome, TurnCommit
 from tests.llm_fakes import FakeLlm
+from tests.session_fakes import FakeAvatar
 from tests.speech_fakes import spoken_answer
-
-
-class FakeAvatar:
-    """A session avatar that is its own idle renderer."""
-
-    direct_audio_enabled = False
-    asset_epoch = 0
-
-    def __init__(self):
-        self.renderer = self
-        self.on_fragment_queued = None
-        self.on_fragment_failed = None
-        self.flush_count = 0
-
-    def configure_media_fence(
-        self,
-        *,
-        media_guard,
-        on_stale_drop,
-        on_fragment_queued=None,
-        on_fragment_failed=None,
-        **_unused,
-    ):
-        self.media_guard = media_guard
-        self.on_stale_drop = on_stale_drop
-        self.on_fragment_queued = on_fragment_queued
-        self.on_fragment_failed = on_fragment_failed
-
-    def flush_talk(self):
-        self.flush_count += 1
-
-    def is_speaking(self):
-        return False
 
 
 @contextmanager

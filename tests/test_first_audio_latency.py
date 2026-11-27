@@ -15,7 +15,9 @@ from unittest.mock import MagicMock, Mock, patch
 import numpy as np
 
 from src.config.schema import Config
+from tests.clock_fakes import FakeClock
 from tests.llm_fakes import FakeLlm, answering, reply_events
+from tests.session_fakes import FakeAvatar
 from src.server.reply_streaming.latency_baseline import (
     CATEGORIES,
     FIXTURES,
@@ -37,24 +39,13 @@ from src.utils.stage_timing import observe_stages, timed_stage
 from src.server.voice_session import VoiceTurnSession
 
 
-class FakeClock:
-    def __init__(self) -> None:
-        self.now = 100.0
-
-    def __call__(self) -> float:
-        return self.now
-
-    def advance(self, seconds: float) -> None:
-        self.now += seconds
-
-
 class PreAnswerStageMetricsTests(unittest.TestCase):
     def test_pre_answer_stages_are_fixed_names(self):
         for stage in ("pre_answer", "routing", "retrieval", "model_info"):
             self.assertIn(stage, STAGE_NAMES)
 
     def test_a_discarded_answer_forgets_its_stages_and_keeps_the_turns(self):
-        clock = FakeClock()
+        clock = FakeClock(100.0)
         metrics = TurnMetrics("turn", clock=clock)
         for stage in ("asr", "routing", "retrieval", "model_info", "llm_first_token",
                       "first_fragment", "webrtc_audible_onset"):
@@ -68,7 +59,7 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
         self.assertLessEqual(set(ANSWER_STAGES), set(STAGE_NAMES))
 
     def test_prompt_accepted_latency_is_reported_beside_first_audio(self):
-        clock = FakeClock()
+        clock = FakeClock(100.0)
         metrics = TurnMetrics("turn", clock=clock)
         metrics.mark_speech_end()
         clock.advance(0.5)
@@ -132,20 +123,6 @@ class PreAnswerStageMetricsTests(unittest.TestCase):
         self.assertEqual(reported, ["preflight-running", "model_info"])
 
 
-class _Avatar:
-    def __init__(self):
-        self.messages = []
-
-    def put_msg_txt(self, text, data=None):
-        self.messages.append((text, data))
-
-    def flush_talk(self):
-        pass
-
-    def configure_media_fence(self, **_kwargs):
-        pass
-
-
 class _Roles:
     """Routing that decides once the test opens ``gate`` (ADR 0022: concurrent)."""
 
@@ -181,8 +158,8 @@ class _Roles:
 
 class VoiceSessionPreAnswerStageTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.clock = FakeClock()
-        self.avatar = _Avatar()
+        self.clock = FakeClock(100.0)
+        self.avatar = FakeAvatar()
         config = SimpleNamespace(
             model=SimpleNamespace(avatar_id="alpha"),
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
@@ -260,7 +237,7 @@ class ClientOffsetMetricTests(unittest.TestCase):
             self.assertIn(stage, STAGE_NAMES)
 
     def test_clock_marks_expose_the_session_clock_for_same_host_clients(self):
-        clock = FakeClock()
+        clock = FakeClock(100.0)
         metrics = TurnMetrics("turn", clock=clock)
         self.assertEqual(metrics.snapshot()["clock_marks"],
                          {"speech_end": None, "first_audio": None, "first_audible": None})
@@ -277,14 +254,14 @@ class ClientOffsetMetricTests(unittest.TestCase):
 
 class VoiceSessionClientOffsetTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.clock = FakeClock()
+        self.clock = FakeClock(100.0)
         config = SimpleNamespace(
             model=SimpleNamespace(avatar_id="alpha"),
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
             vad=SimpleNamespace(),
             reply_streaming=SimpleNamespace(enabled=False),
         )
-        self.session = VoiceTurnSession(95, config, _Avatar(), clock=self.clock, llm=FakeLlm())
+        self.session = VoiceTurnSession(95, config, FakeAvatar(), clock=self.clock, llm=FakeLlm())
 
     async def asyncTearDown(self):
         await self.session.close()

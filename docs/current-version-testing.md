@@ -58,6 +58,30 @@ NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -v -ra -m live
 CUDA 推理、WebRTC、插話／角色交接、感知首音延遲與視聽驗收。這些發布門檻
 要另外保存實機證據，不能由本機主要基準的綠燈代替。
 
+## `gpu` 標記與各層的 fake 引擎
+
+需要 GPU、真實模型權重或本機模型伺服器的測試，統一標上 pytest marker `gpu`
+（在 `tests/conftest.py` 的 `GPU_FILES`／`GPU_TESTS` 登記，標記註冊在
+`pyproject.toml`）。`pyproject.toml` 的 `addopts = '-m "not gpu"'` 讓預設的
+`uv run --no-sync pytest`，以及 GitHub CI 的 pytest 步驟，都不執行它們；
+沒有 GPU、沒有模型權重的機器因此可以跑完整個預設測試。目前標記的有兩個已配置
+模型的看板契約，以及真 `llama-server -h` 環境檢查，它們同時也是 `live`。
+
+```bash
+uv run --no-sync pytest                 # 預設：不含 gpu
+NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -m gpu   # 維護者在有 GPU 的機器執行
+```
+
+命令列的 `-m` 會取代 `addopts` 的選擇，所以 `-m gpu` 只跑這些測試，
+`-m "not live"` 仍不含它們（`gpu` 案例都屬於 `live`）。新增需要 GPU 或權重的測試時，
+把它登記到 `GPU_FILES`／`GPU_TESTS`，不要用 skip 當作通過。
+
+核心的輪次、插話、角色交接與舞台閒置測試不依賴 GPU：它們經真正的 adapter 使用
+各層的 `fake` 引擎（STT `asr.type: fake`、LLM `llm.engine: fake`、TTS
+`tts.type: fake`、數位人 `model.type: fake`），共用的測試輔助放在
+`tests/session_fakes.py`（`FakeAvatar`、`fake_stt()`）、`tests/llm_fakes.py`、
+`tests/tts_fakes.py` 與 `tests/clock_fakes.py`。
+
 ## 本機執行
 
 在 repository root 使用獨立環境，避免覆蓋場域正在使用的 `.venv`：

@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 HongXian0903. SPDX-License-Identifier: Apache-2.0. -->
 # 各層的 fake 引擎與契約測試
-Status: ready-for-agent
+Status: resolved
 Blocked by: 07
 
 依規格決定 15。
@@ -78,3 +78,61 @@ Blocked by: 07
 - **`tests/llm_fakes.py`**：`reply_events()` 原本手寫事件序列，改為由 fake 引擎產生；其餘（腳本化的 `FakeLlm`、`answering`、`ask`）維持不變，核心測試沒有遷移，留待工單 08 的後續步驟。移除了沒人用的 `board_events()` 與 `reply_events` 的 `mode` 參數。
 - 驗證：ruff、pyright（0 errors）、`lint-imports --no-cache`（11 條契約全保持、沒有 `ignore_imports`）、`generate_openapi.py --check`、`check-integration.py` 通過；pytest 2344 passed、2 skipped、63 subtests passed（整合分支為 2332，多出的 12 個為本次新增）。`web/` 沒有變動，未跑前端步驟；`uv lock --check` 沒有相依變動，未重跑。
 - 已知限制：fake 引擎只取代回覆的模型呼叫；交接判斷、AI 招呼生成與網頁搜尋規劃仍使用真實的 OpenAI 相容客戶端，離線測試這些路徑時，需在測試中注入假的用戶端工廠（交接的關鍵字預篩選本來就不呼叫模型）。
+
+### 2026-11-27 核心測試與 gpu marker
+
+分支 `ls/08-core`（接在整合分支 `layer-split` tip 414af4c 之上），完成工單剩下的兩項：核心測試改用共用的 fake／真 adapter，以及 `gpu` marker。
+
+**基準（修改前，tip 414af4c，`pytest --cov=src`）**：2381 passed、2 skipped、63 subtests passed；總覆蓋率 76.93%（25467 行、未覆蓋 5875）。
+
+| 套件 | 行數 | 未覆蓋 | 覆蓋率 |
+| --- | --- | --- | --- |
+| `src/asr` | 257 | 23 | 91.1% |
+| `src/avatars` | 5673 | 2963 | 47.8% |
+| `src/llm` | 3136 | 439 | 86.0% |
+| `src/profiles` | 1409 | 181 | 87.2% |
+| `src/server` | 6922 | 1425 | 79.4% |
+| `src/tts` | 5391 | 444 | 91.8% |
+
+**核心測試改用 fake／真 adapter**
+
+- `tests/session_fakes.py`
+  - `FakeStt` 手寫物件改為 `fake_stt(text)`：真正的 `InProcessSttService` 搭配 STT 層的 `fake` 引擎（`asr.type: fake`）。
+  - `test_voice_session.py`、`test_stage_idle_reset.py`、`test_conversation_attachments.py` 使用它；原本以 `SimpleNamespace(transcribe=Mock())` 檢查「未呼叫」與「呼叫參數」的測試，改為 `Mock(wraps=fake_stt(...))`，斷言不變。
+  - 需要特定信心分數（低信心轉錄不進 LLM）的測試仍手寫轉錄結果，因為 fake 引擎固定回報信心 1.0。
+- `FakeAvatar` 合併成一份：session_fakes 的 `FakeAvatar` 成為唯一的工作階段數位人替身，行為與 `SpeakingAvatar.put_msg_txt` 一致（去除不可朗讀的標記、空字串不成為片段、只有帶 turn 的片段才登記 `on_fragment_queued`），並保留媒體柵欄回呼供測試扮演 TTS。刪除 6 份各自手寫的版本：`test_playback_commit.FakeAvatar`、`test_concurrent_routing._Avatar`、`test_turn_lifecycle.SanitizingAvatar`、`test_ragflow_integration._Avatar`、`test_first_audio_latency._Avatar`，以及 `role_fakes.Avatar`（改為繼承 `FakeAvatar`，只保留角色轉場的部分）；原本未使用的 `FakeRenderer` 一併移除。
+- `tests/clock_fakes.py` 新增 `FakeClock`，取代 5 份各自手寫的時鐘（`test_turn_lifecycle`、`test_reply_streaming`、`test_first_audio_latency`、`test_concurrent_routing`、`test_voice_session` 內的巢狀類別）；起始值維持各測試原本的 0.0 或 100.0。
+- 輪次、插話、交接測試的 LLM、TTS、數位人轉接器本來就已經走真 adapter（`FakeLlm`、`in_process_tts`、`create_avatar_service`），這次不需再動。
+- 刻意沒有改的：
+  - 以 `BaseLLM` 子類測試回覆串流與回覆片段切分（`test_reply_streaming`、`test_reply_speech_seam`、`test_first_fragment_exception`、`test_response_protocol` 等），它們測的是 LLM 層對原始串流的處理，不是核心。
+  - `test_speaking_avatar.py` 的 `FakeRenderer`／`FakeTTS`，它們測 `SpeakingAvatar` 與渲染器、TTS 之間的接縫。
+  - Edge 重試、Matcha 預取等針對真實引擎行為的測試。
+  - 讓核心測試改接真正的 `fake` TTS 通道與 `fake` 渲染器，會讓回放事件變成非同步，破壞既有的確定性（例如播放提交測試靠手動呼叫回呼），所以核心的數位人替身仍是記錄用的同步物件，fake 引擎由各層契約測試驗證。
+
+**`gpu` marker**
+
+- `pyproject.toml` 註冊 `gpu` marker，並設 `addopts = '-m "not gpu"'`：本機 `uv run --no-sync pytest` 與 CI 的 pytest 步驟預設不跑它們，不需要改 `ci.yml`；命令列的 `-m` 會取代 `addopts`，維護者用 `-m gpu` 執行。
+- 在 `tests/conftest.py` 的 `GPU_FILES`／`GPU_TESTS` 登記（沿用該檔集中標記 area、live、slow 的做法）：兩個已配置模型的看板契約（`test_live_llm_board_contract.py`）與真 `llama-server -h` 檢查（`test_llamacpp.py`）；它們原本就是 `live`，所以 `-m "not live"`（目前版本基準使用）行為不變。綠幕合成的 CPU 時間預算屬 `live`，但不需要 GPU，未標 `gpu`。
+- 文件：`docs/current-version-testing.md` 新增「`gpu` 標記與各層的 fake 引擎」一節。
+
+**在沒有 GPU、沒有權重的環境驗證**
+
+- 以 `CUDA_VISIBLE_DEVICES=`、`HF_HOME`／`TORCH_HOME`／`XDG_CACHE_HOME` 指向空目錄、`HF_HUB_OFFLINE=1` 執行 `uv run --no-sync pytest`：全部通過。工作樹是乾淨的 checkout，沒有 `data/`、`models/` 權重。
+- 順手修正一個與環境有關的測試：`test_unavailable_engines_keep_the_original_models` 原本在安裝了 TensorRT、但看不到 GPU 的機器上，會因為真的 TensorRT runtime 而造成整個 pytest 行程 segfault（`CUDA_VISIBLE_DEVICES=` 時可重現；CI 沒有安裝 TensorRT，所以不受影響）。改為注入假的 `tensorrt` 模組，走到與原本相同的程式行（讀不到引擎檔而退回原模型），斷言沒有改動，覆蓋的行數與基準相同。
+
+**修改後（含 `--cov=src`，CUDA 隱藏）**：2380 passed、3 deselected（即 gpu 的 1 個通過加 2 個 skipped）、63 subtests passed；總覆蓋率 76.93%，與基準相同，逐檔未覆蓋行數也與基準完全相同。
+
+| 套件 | 修改前 → 修改後（未覆蓋） | 覆蓋率 |
+| --- | --- | --- |
+| `src/asr` | 23 → 23 | 91.1% |
+| `src/avatars` | 2963 → 2963 | 47.8% |
+| `src/llm` | 439 → 439 | 86.0% |
+| `src/profiles` | 181 → 181 | 87.2% |
+| `src/server` | 1425 → 1425 | 79.4% |
+| `src/tts` | 444 → 444 | 91.8% |
+
+測試數量說明：收集到的測試仍是 2383 個，沒有刪除任何測試；「2381 passed、2 skipped」中的 3 個案例改為預設 deselect（gpu），所以預設的 passed 數是 2380，不是測試減少。合併重複的替身沒有減少案例數。
+
+CI 步驟全部通過：`uv lock --check`、ruff、pyright（0 errors）、`lint-imports --no-cache`（11 條契約全保持，沒有新增 `ignore_imports`）、`generate_openapi.py --check`、`check-integration.py`、pytest；`web/` 沒有變動，未跑前端步驟。
+
+尚未驗證：實際執行 `-m gpu`（需 `NOVA_AVATAR_LIVE_LLM_CONTRACT=1`，以及有 GPU 與模型伺服器的機器）；在 CI 平台上的實際執行（本機沒有推送）。

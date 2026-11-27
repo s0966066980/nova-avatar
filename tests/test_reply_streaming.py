@@ -24,6 +24,7 @@ from src.llm.base import BaseLLM
 from src.llm.engines.openai import OpenAILLM
 from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
 from src.server.reply_streaming.soak import build_soak_report
+from tests.clock_fakes import FakeClock
 from tests.speech_fakes import spoken_answer
 
 
@@ -87,17 +88,6 @@ class StreamingVersusOneShotTtsTests(unittest.TestCase):
         self.assertGreater(oneshot_first, TOKEN_GAP_SECONDS * 0.8)
         self.assertLess(streaming_first, oneshot_first)
         self.assertIn(FIRST_SENTENCE.strip("。"), streaming_avatar.events[0]["text"])
-
-
-class FakeClock:
-    def __init__(self):
-        self.now = 0.0
-
-    def __call__(self):
-        return self.now
-
-    def advance(self, seconds):
-        self.now += seconds
 
 
 class ReplyStreamingConfigTests(unittest.TestCase):

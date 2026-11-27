@@ -27,23 +27,16 @@ from src.scene.role_presentation import RolePresentation
 from src.server.reply_streaming.llm_reply import conversation_session
 from src.server.voice_session import VoiceTurnSession
 from tests.llm_fakes import FakeLlm
+from tests.session_fakes import FakeAvatar
 from tests.tts_fakes import in_process_tts
 
 
-class Avatar:
-    """A session avatar that is its own idle renderer (no TTS, no frames)."""
-
-    direct_audio_enabled = False
+class Avatar(FakeAvatar):
+    """A session avatar that also presents roles: an idle renderer without TTS or frames."""
 
     def __init__(self, config, sid):
-        self.config, self.sessionid = config, sid
-        self.renderer = self
-        self.messages = []
-        self.asset_epoch = 0
+        super().__init__(config, sid)
         self._role_presentation = RolePresentation()
-
-    def is_speaking(self):
-        return False
 
     def reset_role_presentation(self, enabled):
         self._role_presentation = RolePresentation() if enabled else None
@@ -62,16 +55,6 @@ class Avatar:
     def close_role_transition(self):
         if self._role_presentation:
             self._role_presentation.close()
-
-    def configure_media_fence(self, **callbacks):
-        self.callbacks = callbacks
-
-    def put_msg_txt(self, text, data):
-        self.messages.append((text, data))
-        self.callbacks['on_fragment_queued'](text, data)
-
-    def flush_talk(self):
-        pass
 
     def bind_profile(self, config, _data):
         self.config = config

@@ -137,6 +137,13 @@ LIVE_TESTS = frozenset({
     "tests/test_scene_background.py::test_chroma_composite_fits_the_render_frame_budget_on_a_portrait_avatar",
 })
 
+# Tests that need a GPU, a real model's weights or a model server on this host.
+# They are deselected by default (``addopts`` in pyproject.toml); run them with ``-m gpu``.
+GPU_FILES = frozenset({"test_live_llm_board_contract.py"})
+GPU_TESTS = frozenset({
+    "tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
+})
+
 SLOW_TESTS = frozenset(
     {
         "tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_keeps_only_the_next_fragment_in_flight",
@@ -155,6 +162,8 @@ def _matching_markers(item: pytest.Item) -> Iterable[str]:
         yield area
     if file_name in LIVE_FILES or item.nodeid.replace("\\", "/") in LIVE_TESTS:
         yield "live"
+    if file_name in GPU_FILES or item.nodeid.replace("\\", "/") in GPU_TESTS:
+        yield "gpu"
     if item.nodeid.replace("\\", "/") in SLOW_TESTS:
         yield "slow"
 

@@ -17,7 +17,8 @@ from nova_contracts.llm import (BoardItemShown, BoardReceipt, BoardStart, ModelC
                                 SpeechEnd, SpokenDelta)
 from nova_contracts.stt import Transcription, TranscriptionOptions
 from tests.llm_fakes import FakeLlm, answering, reply_events, started as reply_started
-from tests.session_fakes import FakeStt, FakeAvatar, FakeSegmenter  # noqa: F401
+from tests.clock_fakes import FakeClock
+from tests.session_fakes import fake_stt, FakeAvatar, FakeSegmenter  # noqa: F401
 
 
 class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
@@ -98,7 +99,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             min_audio_rms=0.003,
             min_confidence=0.35,
         )
-        session._stt = SimpleNamespace(transcribe=Mock())
+        session._stt = Mock(wraps=fake_stt())
 
         await session.feed_pcm(np.ones(512, dtype=np.int16))
         await session._turn_task
@@ -119,7 +120,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
         avatar = FakeAvatar()
         session = VoiceTurnSession(7, config, avatar, clock=clock, llm=FakeLlm())
         session._segmenter = FakeSegmenter(segment)
-        session._stt = FakeStt()
+        session._stt = fake_stt()
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         return session, avatar, events
@@ -174,9 +175,7 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(locale=locale):
                 session, _, _ = self.make_session(segment)
                 session._conversation["locale"] = locale
-                session._stt = SimpleNamespace(
-                    transcribe=Mock(return_value=Transcription(text="hello", language="en")),
-                )
+                session._stt = Mock(wraps=fake_stt("hello"))
                 with answering(session, "ok"):
                     await session.feed_pcm(np.ones(512, dtype=np.int16))
                     await session._turn_task
@@ -189,12 +188,6 @@ class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):
                 await session.close()
 
     async def test_legacy_turn_exposes_first_audio_metric(self):
-        class FakeClock:
-            now = 0.0
-
-            def __call__(self):
-                return self.now
-
         clock = FakeClock()
         segment = SimpleNamespace(
             audio=np.ones(1600, dtype=np.int16),
@@ -497,7 +490,7 @@ class ReplyModeBehaviorTests(unittest.IsolatedAsyncioTestCase):
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         session._segmenter = FakeSegmenter()
-        session._stt = FakeStt()
+        session._stt = fake_stt()
         return session, avatar, events
 
     async def test_legacy_text_turn_emits_one_complete_response(self):
@@ -813,7 +806,7 @@ class SessionThreadSafetyTests(unittest.IsolatedAsyncioTestCase):
         avatar = FakeAvatar()
         session = VoiceTurnSession(7, config, avatar, llm=FakeLlm())
         session._segmenter = FakeSegmenter()
-        session._stt = FakeStt()
+        session._stt = fake_stt()
         events = []
 
         def loop_bound_sink(raw):

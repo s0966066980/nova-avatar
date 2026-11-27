@@ -15,41 +15,13 @@ from src.llm.history import TransactionalHistory
 from src.profiles.coordinator import ANSWER_CONTEXT
 from src.server.voice_session import VoiceTurnSession
 from nova_contracts.llm import ModelChunk, ReplyDone, SpeechEnd, SpokenDelta, TurnRef
+from tests.clock_fakes import FakeClock
 from tests.llm_fakes import FakeLlm, started as reply_started
+from tests.session_fakes import FakeAvatar
 from tests.role_fakes import answers, async_test, connect, field, route_to  # noqa: F401
 
 SPECULATIVE = {"context": ANSWER_CONTEXT}
 FIXED = "接下來請天氣助手為您說明。"
-
-
-class FakeClock:
-    def __init__(self) -> None:
-        self.now = 100.0
-
-    def __call__(self) -> float:
-        return self.now
-
-    def advance(self, seconds: float) -> None:
-        self.now += seconds
-
-
-class _Avatar:
-    def __init__(self):
-        self.messages = []
-        self.flushes = 0
-        self.callbacks = {}
-
-    def configure_media_fence(self, **callbacks):
-        self.callbacks = callbacks
-
-    def put_msg_txt(self, text, data=None):
-        self.messages.append((text, dict(data or {})))
-        queued = self.callbacks.get("on_fragment_queued")
-        if queued is not None and (data or {}).get("turn_id"):
-            queued(text, data)
-
-    def flush_talk(self):
-        self.flushes += 1
 
 
 class _Roles:
@@ -147,8 +119,8 @@ class _SessionCase(unittest.IsolatedAsyncioTestCase):
     config_extra: dict = {}
 
     async def asyncSetUp(self):
-        self.clock = FakeClock()
-        self.avatar = _Avatar()
+        self.clock = FakeClock(100.0)
+        self.avatar = FakeAvatar()
         self.session = VoiceTurnSession(
             95, _streaming_config(**self.config_extra), self.avatar, clock=self.clock,
             llm=FakeLlm())
@@ -285,7 +257,7 @@ class HandoffTurnTests(_SessionCase):
         self.assertNotIn("殘留。", self._deltas())
         self.assertEqual(self._deltas(), [FIXED])
         self.assertEqual(self._types().count("assistant_response_start"), 1)
-        self.assertGreaterEqual(self.avatar.flushes, 1)
+        self.assertGreaterEqual(self.avatar.flush_count, 1)
         # The speculative pending history is dropped only after its worker stopped.
         self.discard_history.assert_called_once_with(TurnRef(session_id=95, turn_id=turn_id))
         self.assertEqual(answer.order, ["worker_done", "discard", "fixed_history"])

@@ -16,7 +16,7 @@ import numpy as np
 from nova_contracts.llm import SessionRef
 from src.server.voice_session import VoiceTurnSession
 from tests.llm_fakes import FakeLlm, answering
-from tests.session_fakes import FakeStt, FakeAvatar, FakeSegmenter
+from tests.session_fakes import fake_stt, FakeAvatar, FakeSegmenter
 
 DELAY = 0.08
 REPLY = "還沒開始播放的回覆"
@@ -39,7 +39,7 @@ class StageIdleResetTests(unittest.IsolatedAsyncioTestCase):
         )
         session = VoiceTurnSession(7, config, FakeAvatar(), presenter=presenter, llm=FakeLlm())
         session._segmenter = FakeSegmenter(segment)
-        session._stt = FakeStt()
+        session._stt = fake_stt()
         events = []
         session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
         self.addAsyncCleanup(session.close)
@@ -106,7 +106,7 @@ class StageIdleResetTests(unittest.IsolatedAsyncioTestCase):
         session.config.asr = SimpleNamespace(
             min_speech_ms=450, min_audio_rms=0.003, min_confidence=0.35
         )
-        session._stt = SimpleNamespace(transcribe=Mock())
+        session._stt = Mock(wraps=fake_stt())
         with forgetting(session) as clear:
             await self.finish_one_turn(session)
             await asyncio.sleep(0.1)

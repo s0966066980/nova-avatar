@@ -4,6 +4,7 @@
 """Original-model acceleration stays optional and preserves fallback behavior."""
 import asyncio
 import queue
+import sys
 from threading import Event, Lock
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -210,6 +211,16 @@ def test_unavailable_engines_keep_the_original_models(monkeypatch):
     vae = SimpleNamespace(vae=torch.nn.Identity())
     unet = SimpleNamespace(model=torch.nn.Identity())
     monkeypatch.setattr(module.torch.cuda, "is_available", lambda: False)
+    # The real runtime crashes the process on a box that has TensorRT installed but
+    # no GPU; the fallback under test is for an engine file that cannot be read.
+    class Logger:
+        WARNING = 0
+
+        def __init__(self, _severity):
+            pass
+
+    monkeypatch.setitem(sys.modules, "tensorrt", SimpleNamespace(
+        Logger=Logger, Runtime=lambda _logger: SimpleNamespace(deserialize_cuda_engine=lambda _data: None)))
     monkeypatch.setattr(module, "load_all_model", lambda: (vae, unet, torch.nn.Identity()))
     monkeypatch.setattr(module, "Audio2Feature", lambda **_: "features")
     loaded = module.load_model(vae_engine_path="missing/vae.engine", unet_engine_path="missing/unet.engine")

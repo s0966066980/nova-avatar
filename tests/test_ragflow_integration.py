@@ -32,6 +32,7 @@ from src.server.routes.ragflow import get_ragflow_settings
 from src.server.state import state
 from src.server.voice_session import VoiceTurnSession
 from tests.llm_fakes import FakeLlm, answering, reply_events
+from tests.session_fakes import FakeAvatar
 
 DATASET_A = "a" * 32
 DATASET_B = "b" * 32
@@ -236,27 +237,13 @@ class RagFlowClientTests(unittest.IsolatedAsyncioTestCase):
                 await self.client.retrieve("問題", [DATASET_A])
 
 
-class _Avatar:
-    def __init__(self):
-        self.messages = []
-
-    def put_msg_txt(self, text, data=None):
-        self.messages.append((text, data))
-
-    def flush_talk(self):
-        pass
-
-    def configure_media_fence(self, **_kwargs):
-        pass
-
-
 class RagFlowTurnTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.path_patch = patch.object(settings, "SETTINGS_FILE", Path(self.directory.name) / "ragflow.yaml")
         self.path_patch.start()
         settings.save_avatar_settings("alpha", enabled=True, dataset_ids=[DATASET_A])
-        self.avatar = _Avatar()
+        self.avatar = FakeAvatar()
         config = SimpleNamespace(
             model=SimpleNamespace(avatar_id="alpha"),
             asr=SimpleNamespace(type="whisper", model_size="base", language="zh"),
@@ -379,7 +366,7 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
         config.profile_id = 'main'
         config.profile_rag = {'enabled': True, 'dataset_ids': [DATASET_A],
                               'document_scope': 'selected', 'document_ids': ['c' * 32]}
-        session = VoiceTurnSession(99, config, _Avatar(), llm=FakeLlm())
+        session = VoiceTurnSession(99, config, FakeAvatar(), llm=FakeLlm())
         retrieve = AsyncMock(return_value={'status': 'matched', 'sources': [{
             'document_name': '角色專屬文本', 'content': '僅此角色的事實'}]})
         try:

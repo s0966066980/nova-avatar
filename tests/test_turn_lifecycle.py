@@ -11,30 +11,9 @@ from nova_contracts.llm import Outcome
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
 from src.server.voice_session import VoiceTurnSession
 from nova_contracts.tts import strip_visual_markup
+from tests.clock_fakes import FakeClock
 from tests.llm_fakes import FakeLlm, answering
-
-
-class SanitizingAvatar:
-    """Mirror BaseAvatar.put_msg_txt: unspeakable text never becomes a fragment."""
-
-    def __init__(self):
-        self.messages = []
-        self.on_fragment_queued = None
-
-    def put_msg_txt(self, text, data=None):
-        text = strip_visual_markup(text)
-        if not text:
-            return
-        eventpoint = dict(data or {})
-        self.messages.append((text, eventpoint))
-        if self.on_fragment_queued is not None and eventpoint.get("turn_id"):
-            self.on_fragment_queued(text, eventpoint)
-
-    def flush_talk(self):
-        pass
-
-    def configure_media_fence(self, *, on_fragment_queued=None, **_unused):
-        self.on_fragment_queued = on_fragment_queued
+from tests.session_fakes import FakeAvatar
 
 
 def make_session(*, streaming):
@@ -43,7 +22,7 @@ def make_session(*, streaming):
         vad=SimpleNamespace(),
         reply_streaming=SimpleNamespace(enabled=streaming),
     )
-    avatar = SanitizingAvatar()
+    avatar = FakeAvatar()
     session = VoiceTurnSession(7, config, avatar, llm=FakeLlm())
     events = []
     session.attach_event_sink(lambda raw: events.append(json.loads(raw)))
@@ -292,17 +271,6 @@ class PerTurnMemoryTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(frames[-1]["media_sequence"], 3)
         self.assertLessEqual(len(avatar._media_sequences), 8)
-
-
-class FakeClock:
-    def __init__(self):
-        self.now = 0.0
-
-    def __call__(self):
-        return self.now
-
-    def advance(self, seconds):
-        self.now += seconds
 
 
 class ReplyCircuitBreakerTests(unittest.TestCase):
