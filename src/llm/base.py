@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, Generator, Optional
 from uuid import uuid4
 
+from src.llm.fragments import FragmenterFactory, passthrough_fragmenter
 from src.llm.prompts import compose_system_prompt
 from src.llm.identity_policy import IdentityPolicy
 from src.llm.response_protocol import (
@@ -28,7 +29,6 @@ from src.llm.text_normalizer import (
     normalize_output_text,
     strip_unsolicited_self_introduction,
 )
-from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
 from src.utils.logging import logger
 
 if TYPE_CHECKING:
@@ -205,8 +205,14 @@ class BaseLLM(ABC):
         defer_history_commit: bool = False,
         reply_mode: Optional[ReplyMode | str] = None,
         rag_context: str = "",
+        fragmenter_factory: Optional[FragmenterFactory] = None,
     ) -> str:
-        """生成完整響應並推送到 avatar"""
+        """生成完整響應並推送到 avatar
+
+        The core owns cutting spoken text into playable fragments: it passes a
+        ``fragmenter_factory`` and this layer only feeds it spoken-text deltas.
+        Without one, text reaches the avatar in the processor's own chunks.
+        """
         start_time = time.perf_counter()
         pref_str = (
             reply_mode.value.lower()
@@ -280,46 +286,6 @@ class BaseLLM(ABC):
             and datainfo
             and datainfo.get("turn_id")
             and datainfo.get("generation") is not None
-        )
-        weak_min = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "weak_min_chars",
-                24,
-            )
-            or 24
-        )
-        soft_limit = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "soft_limit_chars",
-                72,
-            )
-            or 72
-        )
-        hard_limit = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "hard_limit_chars",
-                120,
-            )
-            or 120
-        )
-        strong_min = int(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "strong_min_chars",
-                1,
-            )
-            or 1
-        )
-        semantic_wait_seconds = float(
-            getattr(
-                getattr(self.config, "reply_streaming", None),
-                "semantic_wait_seconds",
-                0.5,
-            )
-            or 0.5
         )
         text_processor = TextStreamProcessor()
         full_response = ""
@@ -418,20 +384,10 @@ class BaseLLM(ABC):
             so a fence must be seen without waiting for the next chunk."""
             return not fenced and (chunk_guard is None or chunk_guard(max(sequence, 0)))
 
-        # The semantic wait releases a long clause by timer even while the
-        # model is silent; feeding, flushing and timed releases share one lock.
+        # The core's fragmenter may release a long clause by timer even while
+        # the model is silent, so it gets the live-turn check as well.
         semantic_fragments = (
-            SemanticWaitTimer(
-                SemanticFragmenter(
-                    weak_min_chars=weak_min,
-                    soft_limit_chars=soft_limit,
-                    hard_limit_chars=hard_limit,
-                    strong_min_chars=strong_min,
-                    semantic_wait_seconds=semantic_wait_seconds,
-                ),
-                send_to_avatar,
-                active=turn_live,
-            )
+            (fragmenter_factory or passthrough_fragmenter)(send_to_avatar, turn_live)
             if (semantic_stream and target_avatar) or web_guard is not None
             else None
         )

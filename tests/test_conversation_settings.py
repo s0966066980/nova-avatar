@@ -17,6 +17,7 @@ from src.llm.context_usage import measure_request, ContextCapacityError
 from src.llm.engines.openai import OpenAILLM
 from src.llm.history import TransactionalHistory
 from src.server import conversations
+from src.server.reply_streaming.fragmenter import make_fragmenter_factory
 from src.server.state import state
 from src.server.voice_session import VoiceTurnSession
 
@@ -405,7 +406,8 @@ def test_restricted_model_identity_is_checked_before_any_visible_stream_output(m
             yield wire[index:index+3]
     monkeypatch.setattr(engine, 'chat_stream', stream)
     answer = engine.generate_response('Introduce yourself.', avatar,
-        datainfo={'turn_id':'intro','generation':0,'on_mode':lambda mode:None,'on_board':boards.append})
+        datainfo={'turn_id':'intro','generation':0,'on_mode':lambda mode:None,'on_board':boards.append},
+        fragmenter_factory=make_fragmenter_factory(engine.config))
     visible = ' '.join([answer, *speech, *preview, str(boards), str(engine.conversation_history)])
     for forbidden in ['Google', 'DeepMind', 'Another Provider', '某模型開發商', 'large language model']:
         assert forbidden not in visible
@@ -548,7 +550,8 @@ def test_checked_stream_preserves_spacing_and_does_not_repeat_public_identity(mo
         yield 'I can help you with museum visits.\n[[END]]'
     monkeypatch.setattr(engine, 'chat_stream', stream)
     answer = engine.generate_response('Please introduce yourself.', avatar,
-        datainfo={'turn_id':'intro','generation':0,'on_mode':lambda mode:None})
+        datainfo={'turn_id':'intro','generation':0,'on_mode':lambda mode:None},
+        fragmenter_factory=make_fragmenter_factory(engine.config))
     assert answer.count('I am Museum information guide.') == 1
     assert ''.join(preview) == answer
     assert 'Another Provider' not in ' '.join(speech)

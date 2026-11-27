@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 
 from src.avatars.base import BaseAvatar
 from src.llm.engines import OpenAILLM
+from src.llm.fragments import FragmenterFactory
 from src.llm.base import load_system_prompt
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
@@ -106,6 +107,7 @@ def llm_response(
     defer_history_commit: bool = False,
     reply_mode: Optional[ReplyMode | str] = None,
     rag_context: str = "",
+    fragmenter_factory: Optional[FragmenterFactory] = None,
 ) -> str:
     """呼叫 LLM 並將響應流式推送到 avatar"""
     try:
@@ -176,6 +178,7 @@ def llm_response(
             defer_history_commit=defer_history_commit,
             reply_mode=reply_mode,
             rag_context=rag_context,
+            fragmenter_factory=fragmenter_factory,
         )
         
     except Exception as e:

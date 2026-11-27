@@ -7,7 +7,11 @@ import unittest
 
 from src.config.schema import Config
 from src.llm.base import BaseLLM
-from src.server.reply_streaming.fragmenter import SemanticFragmenter, speech_units
+from src.server.reply_streaming.fragmenter import (
+    SemanticFragmenter,
+    make_fragmenter_factory,
+    speech_units,
+)
 
 
 def stream(text: str, fragmenter: SemanticFragmenter | None = None) -> list[str]:
@@ -112,7 +116,8 @@ class FirstFragmentStreamingTests(unittest.TestCase):
 
         avatar = self.Avatar()
         response = LLM(Config()).generate_response(
-            "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1})
+            "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+            fragmenter_factory=make_fragmenter_factory(Config()))
 
         self.assertEqual([text for _, text, _ in avatar.events],
                          ["明天台北多雲時陰短暫雨，", "降雨機率為六成。"])
@@ -129,7 +134,8 @@ class FirstFragmentStreamingTests(unittest.TestCase):
         avatar = self.Avatar()
         LLM(Config()).generate_response(
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
-            chunk_guard=lambda sequence: sequence == 0)
+            chunk_guard=lambda sequence: sequence == 0,
+            fragmenter_factory=make_fragmenter_factory(Config()))
         time.sleep(0.7)
 
         self.assertEqual([text for _, text, _ in avatar.events], ["明天台北多雲時陰短暫雨，"])

@@ -5,7 +5,7 @@
 
 from .metrics import TurnMetrics
 from .turn import TurnContext, TurnEnvelope, TurnState
-from .fragmenter import SemanticFragmenter
+from .fragmenter import SemanticFragmenter, make_fragmenter_factory
 from .channel import PlayableFragment
 from .retry import RetryBudget, RetryPermit
 
@@ -18,4 +18,5 @@ __all__ = [
     "TurnEnvelope",
     "TurnMetrics",
     "TurnState",
+    "make_fragmenter_factory",
 ]

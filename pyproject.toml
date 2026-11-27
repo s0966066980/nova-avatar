@@ -200,8 +200,6 @@ ignore_imports = [
     "src.asr.prewarm -> src.vad.factory", # layer-split 06
     "src.avatars.base -> src.vad.audio", # layer-split 06
     "src.avatars.builder -> src.server.state", # layer-split 04
-    "src.llm.base -> src.server.reply_streaming.fragmenter", # layer-split 02
-    "src.llm.engines.openai -> src.server.reply_streaming.metrics", # layer-split 02
     "src.llm.service -> src.server.state", # layer-split 04
     "src.tts.engines.edge -> src.server.reply_streaming.channel", # layer-split 03
     "src.tts.engines.edge -> src.server.reply_streaming.retry", # layer-split 03

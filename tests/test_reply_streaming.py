@@ -22,7 +22,11 @@ from src.server.reply_streaming.metrics import TurnMetrics
 from src.server.reply_streaming.turn import TurnContext, TurnState
 from src.llm.base import BaseLLM
 from src.llm.engines.openai import OpenAILLM
-from src.server.reply_streaming.fragmenter import SemanticFragmenter, SemanticWaitTimer
+from src.server.reply_streaming.fragmenter import (
+    SemanticFragmenter,
+    SemanticWaitTimer,
+    make_fragmenter_factory,
+)
 from src.server.reply_streaming.soak import build_soak_report
 
 
@@ -460,6 +464,7 @@ class LLMGenerationFenceTests(unittest.TestCase):
         started = time.perf_counter()
         StallingLLM(config).generate_response(
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+            fragmenter_factory=make_fragmenter_factory(config),
         )
 
         self.assertEqual(
@@ -483,6 +488,7 @@ class LLMGenerationFenceTests(unittest.TestCase):
         config.reply_streaming.semantic_wait_seconds = 0.1
         FencedLLM(config).generate_response(
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+            fragmenter_factory=make_fragmenter_factory(config),
             chunk_guard=lambda sequence: sequence == 0,
         )
         time.sleep(0.3)
@@ -508,6 +514,7 @@ class LLMGenerationFenceTests(unittest.TestCase):
         config.reply_streaming.semantic_wait_seconds = 0.1
         StalledAfterFenceLLM(config).generate_response(
             "fixture", avatar, datainfo={"turn_id": "turn-1", "generation": 1},
+            fragmenter_factory=make_fragmenter_factory(config),
             chunk_guard=lambda _sequence: live.is_set(),
         )
         time.sleep(0.2)

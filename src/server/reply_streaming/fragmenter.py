@@ -389,3 +389,34 @@ class SemanticWaitTimer:
         if self._timer is not None:
             self._timer.cancel()
             self._timer = None
+
+
+def make_fragmenter_factory(config) -> Callable[
+    [Callable[[str], None], Callable[[], bool]], SemanticWaitTimer
+]:
+    """Build the fragmenter factory the LLM layer feeds spoken-text deltas into.
+
+    The core owns where a playable fragment ends: limits and the semantic wait
+    come from ``config.reply_streaming``, with the same defaults as before the
+    split. ``emit`` receives finished fragments; ``active`` stops a timed
+    release once the turn is fenced.
+    """
+    section = getattr(config, "reply_streaming", None)
+
+    def setting(name: str, default):
+        return type(default)(getattr(section, name, default) or default)
+
+    def factory(emit: Callable[[str], None], active: Callable[[], bool]) -> SemanticWaitTimer:
+        return SemanticWaitTimer(
+            SemanticFragmenter(
+                weak_min_chars=setting("weak_min_chars", 24),
+                soft_limit_chars=setting("soft_limit_chars", 72),
+                hard_limit_chars=setting("hard_limit_chars", 120),
+                strong_min_chars=setting("strong_min_chars", 1),
+                semantic_wait_seconds=setting("semantic_wait_seconds", 0.5),
+            ),
+            emit,
+            active=active,
+        )
+
+    return factory

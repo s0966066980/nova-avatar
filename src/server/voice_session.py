@@ -43,6 +43,7 @@ from src.llm.rules import snapshot_from_config
 from src.ragflow.client import RagFlowClient, retrieval_prompt
 from src.ragflow.settings import avatar_settings
 from src.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
+from src.server.reply_streaming.fragmenter import make_fragmenter_factory
 from src.server.reply_streaming.metrics import AUDIBLE_PEAK, TurnMetrics, observe_stages
 from src.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
 from src.utils.logging import logger
@@ -1229,6 +1230,10 @@ class VoiceTurnSession:
                 "generation": generation,
                 "on_board": partial(self._on_board_event, generation=generation),
             },
+            # The core cuts spoken text into playable fragments.
+            "fragmenter_factory": make_fragmenter_factory(
+                getattr(self.avatar, "config", None) or self.config
+            ),
         }
         if rag_result and rag_result["status"] == "matched":
             kwargs["rag_context"] = retrieval_prompt(rag_result["sources"])
