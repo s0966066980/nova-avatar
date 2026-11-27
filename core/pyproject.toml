@@ -1,0 +1,51 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+# The core (ADR 0027): server, VAD, profiles, config, greetings and the shared
+# utils leaf. The root project installs it with the processing layers as path
+# dependencies and shares the root uv.lock (ADR 0028).
+#
+# The core and the layers deliberately do not declare each other: the layers
+# import nova_core.utils (the shared leaf) and the core imports the layers'
+# adapters, so declaring both directions would be a dependency cycle.
+[project]
+name = "nova-core"
+version = "0.1.0"
+description = "Core of Nova Avatar: server, turn orchestration, VAD, profiles, config"
+readme = "README.md"
+requires-python = ">=3.10, <3.12"
+license = { text = "Apache-2.0" }
+maintainers = [{ name = "HongXian0903" }]
+dependencies = [
+    "nova-contracts",
+    "aiohttp",
+    "aiortc",
+    "av",
+    "logger",
+    "numpy<2",
+    "onnxruntime>=1.16,<1.24",
+    "openai",
+    "opencv-python-headless<4.12",
+    "Pillow>=10,<13",
+    "pydantic",
+    "pypdfium2==5.14.0",
+    "PyYAML",
+    "regex>=2024.11.6",
+    "requests",
+    "resampy",
+    "scipy",
+    "soundfile==0.12.1",
+]
+
+[project.optional-dependencies]
+# Server-side VAD (uv pip install -e "./core[vad]"); the pip package ships its model.
+vad = [
+    "silero-vad>=5.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["nova_core*"]
+
+[build-system]
+requires = ["setuptools==69.5.1", "wheel"]
+build-backend = "setuptools.build_meta"

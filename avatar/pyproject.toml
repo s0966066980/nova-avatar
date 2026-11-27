@@ -1,0 +1,48 @@
+# Copyright (c) 2026 HongXian0903
+# SPDX-License-Identifier: Apache-2.0
+
+# Avatar rendering layer (ADR 0027): the MuseTalk integration and the stage
+# scene compositor. The root project installs it as a path dependency and
+# shares the root uv.lock (ADR 0028). The layer imports nova_core.utils (the
+# shared leaf) but does not declare nova-core: the core already depends on the
+# layers' adapters, so declaring it would be a cycle.
+[project]
+name = "nova-render"
+version = "0.1.0"
+description = "Avatar rendering layer of Nova Avatar"
+readme = "README.md"
+requires-python = ">=3.10, <3.12"
+license = { text = "Apache-2.0 (MuseTalk-derived code is MIT; see ../THIRD_PARTY_NOTICES.md)" }
+maintainers = [{ name = "HongXian0903" }]
+dependencies = [
+    "nova-contracts",
+    "av",
+    "librosa",
+    "numpy<2",
+    "omegaconf",
+    "opencv-python-headless<4.12",
+    "Pillow>=10,<13",
+    "soundfile==0.12.1",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+# The MuseTalk runtime (uv sync --extra musetalk); see nova_render/musetalk/pyproject.toml.
+musetalk = [
+    "nova-avatar-musetalk",
+]
+tensorrt = [
+    # Keep the builder/runtime identical; engines must be rebuilt on upgrades.
+    "tensorrt-cu12==10.16.1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "onnx==1.17.0",
+]
+
+[tool.uv.sources]
+nova-avatar-musetalk = { path = "nova_render/musetalk", editable = true }
+
+[tool.setuptools.packages.find]
+include = ["nova_render*"]
+
+[build-system]
+requires = ["setuptools==69.5.1", "wheel"]
+build-backend = "setuptools.build_meta"
