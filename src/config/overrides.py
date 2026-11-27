@@ -33,8 +33,8 @@ def persist_runtime_overrides(config) -> None:
     # Loading a YAML configuration is also used by offline release checks. Keep
     # OpenCV-dependent avatar quality code on the write path, where it is
     # actually needed, rather than making every configuration read import it.
-    from src.avatars.mouth_quality import quality_from_model
-    from src.llm.rules import rules_from_config
+    from src.avatars.config_api import quality_from_model
+    from src.llm.config_api import rules_from_config
     from src.config.schema import ConversationConfig
     conversation = getattr(config, 'conversation', ConversationConfig())
 

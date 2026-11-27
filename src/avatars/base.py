@@ -39,7 +39,7 @@ from src.avatars.speech import SpeechFactory
 from src.utils.speech_text import sanitize_speech_text
 from src.utils.logging import logger
 from src.avatars.video_output import limit_video_height
-from src.vad.audio import AudioTooLongError
+from src.utils.audio_limits import AudioTooLongError
 
 from tqdm import tqdm
 

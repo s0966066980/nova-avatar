@@ -32,7 +32,7 @@ from src.llm.text_normalizer import (
 from src.utils.logging import logger
 
 if TYPE_CHECKING:
-    from src.avatars.base import BaseAvatar
+    from src.llm.reply_target import ReplyTarget
 
 
 DEFAULT_SYSTEM_PROMPT = 'You are a helpful assistant.'
@@ -131,7 +131,7 @@ class TextStreamProcessor:
 class BaseLLM(ABC):
     """所有 LLM 引擎的基類"""
     
-    def __init__(self, config, parent: Optional["BaseAvatar"] = None):
+    def __init__(self, config, parent: Optional["ReplyTarget"] = None):
         self.config = config
         self.parent = parent
         self.system_prompt = self._load_system_prompt()
@@ -197,7 +197,7 @@ class BaseLLM(ABC):
     def generate_response(
         self,
         message: str,
-        avatar_stream: Optional["BaseAvatar"] = None,
+        avatar_stream: Optional["ReplyTarget"] = None,
         *,
         stream_to_avatar: bool = True,
         datainfo: Optional[dict] = None,

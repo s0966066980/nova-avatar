@@ -98,7 +98,7 @@ def dict_to_config(config_dict: Dict) -> Config:
         musetalk=musetalk_config,
     )
     
-    from src.tts.voice_library import REMOVED_TTS_FIELDS
+    from src.tts.config_api import REMOVED_TTS_FIELDS
 
     # Settings of removed TTS engines may remain in saved files; ignore them.
     tts_dict = {key: value for key, value in (config_dict.get('tts', {}) or {}).items()
@@ -108,7 +108,7 @@ def dict_to_config(config_dict: Dict) -> Config:
     threads = matcha_config.num_threads
     if type(threads) is not int or not 1 <= threads <= MAX_MATCHA_THREADS:
         raise ValueError(f"matcha.num_threads 必須是 1–{MAX_MATCHA_THREADS} 的整數：{threads!r}")
-    from src.tts.training.asr import WHISPER_MODELS
+    from src.tts.config_api import WHISPER_MODELS
 
     vram = matcha_config.training_min_free_vram_gb
     if type(vram) not in (int, float) or not 0 < vram <= MAX_TRAINING_VRAM_GB:
@@ -158,7 +158,7 @@ def dict_to_config(config_dict: Dict) -> Config:
             system_prompt=str(llm_dict['system_prompt']).strip()
         )
     llm_config = LLMConfig(**llm_dict)
-    from src.llm.endpoints import freeze_endpoints
+    from src.llm.config_api import freeze_endpoints
     freeze_endpoints(llm_config)
     audio_config = AudioConfig(**config_dict.get('audio', {}))
     video_config = VideoConfig(**config_dict.get('video', {}))
@@ -280,7 +280,7 @@ def load_config(
 
     # Saved TTS sources obey the same rules as settings requests: reference
     # audio paths move into the voice library or are cleared.
-    from src.tts.voice_library import migrate_tts_config
+    from src.tts.config_api import migrate_tts_config
 
     migrate_tts_config(config.tts, where="設定檔")
     

@@ -16,6 +16,7 @@ from typing import Optional, Tuple
 import numpy as np
 
 from src.utils.audio_container import HEADER_BYTES, demuxer_for
+from src.utils.audio_limits import AudioTooLongError
 from src.utils.logging import logger
 
 
@@ -43,14 +44,6 @@ def to_mono_int16(data: np.ndarray) -> np.ndarray:
     if np.issubdtype(arr.dtype, np.floating):
         return np.clip(arr * 32768.0, -32768, 32767).astype(np.int16)
     return arr.astype(np.int16)
-
-
-class AudioTooLongError(ValueError):
-    """The audio is longer than the caller allows."""
-
-    def __init__(self, limit_seconds: float):
-        self.limit_seconds = float(limit_seconds)
-        super().__init__(f'音訊長度超過 {self.limit_seconds:g} 秒上限')
 
 
 def _decode_with_soundfile(

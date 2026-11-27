@@ -10,9 +10,9 @@ import os
 from copy import deepcopy
 from typing import TYPE_CHECKING, Callable, Optional
 
-from src.avatars.base import BaseAvatar
 from src.llm.engines import OpenAILLM
 from src.llm.fragments import FragmenterFactory
+from src.llm.reply_target import ReplyTarget
 from src.llm.base import load_system_prompt
 from src.llm.rules import snapshot_from_config
 from src.llm.router import ReplyMode
@@ -96,7 +96,7 @@ def prepare_tool_board(avatar_stream, turn_id, board):
 
 def llm_response(
     message: str,
-    avatar_stream: BaseAvatar,
+    avatar_stream: ReplyTarget,
     api_key: str = os.getenv("DASHSCOPE_API_KEY"),
     base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
     model: str = "qwen-plus",

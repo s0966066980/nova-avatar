@@ -106,6 +106,7 @@ AREA_BY_FILE = {
     "test_server_shutdown.py": "runtime",
     "test_speech_timing.py": "conversation",
     "test_speech_factory.py": "conversation",
+    "test_speech_prewarm.py": "speech",
     "test_idle_greetings.py": "conversation",
     "test_stage_idle_reset.py": "conversation",
     "test_stage_presentation.py": "conversation",

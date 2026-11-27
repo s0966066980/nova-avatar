@@ -198,7 +198,7 @@ def main():
     llm_ready = speech_ready = None
     if enabled:
         from src.llm.prewarm import prewarm_local_llm
-        from src.asr.prewarm import prewarm_speech_input
+        from src.server.speech_prewarm import prewarm_speech_input
 
         if state.config.llm.provider == "llamacpp":
             llm_ready = prewarm_local_llm(state.config)
