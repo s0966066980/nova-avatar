@@ -19,7 +19,7 @@ from src.config.schema import TTSConfig
 from src.greetings.content import validate_content
 from src.profiles.composition import MAIN_ANNOUNCEMENTS, live_members, main_profile_id, referenced_media, transition
 from src.profiles.store import ProfileError, ProfileStore, profile_config
-from src.profiles.weather import CwaWeather, WeatherQuery
+from src.llm.weather import CwaWeather, WeatherQuery
 from src.tts.cosyvoice_runtime import server_identity
 from src.utils.logging import logger
 

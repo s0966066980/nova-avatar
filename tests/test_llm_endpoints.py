@@ -181,7 +181,7 @@ def greeting_route(no_rag, tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr(state, "roles", SimpleNamespace(enabled=False, close=close), raising=False)
-    monkeypatch.setattr("src.greetings.content.AsyncOpenAI", RecordingClient)
+    monkeypatch.setattr("src.llm.greeting.AsyncOpenAI", RecordingClient)
     RecordingClient.calls = []
     return _ai_greeting(library["profiles"][0])
 

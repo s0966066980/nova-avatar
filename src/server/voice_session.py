@@ -1243,7 +1243,7 @@ class VoiceTurnSession:
         if role_plan:
             context = str(role_plan.get("context") or "")
             if role_plan.get("weather") is not None:
-                from src.profiles.weather import weather_prompt
+                from src.llm.weather import weather_prompt
                 context += "\n" + weather_prompt(role_plan["weather"])
             if context:
                 kwargs["rag_context"] = kwargs.get("rag_context", "") + "\n" + context

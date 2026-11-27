@@ -15,7 +15,7 @@ import pytest
 from src.config.schema import Config
 from src.llm.engines.openai import OpenAILLM
 from src.llm.response_protocol import BoardItem, SessionBoardContext
-from src.profiles.weather import (
+from src.llm.weather import (
     SOURCE,
     SOURCE_URL,
     TAIPEI,
@@ -124,7 +124,7 @@ def test_cache_does_not_cross_locations_and_expires():
 
 
 def test_missing_key_and_out_of_range_fail_before_network(monkeypatch):
-    monkeypatch.setattr("src.profiles.weather.cwa_key", lambda: "")
+    monkeypatch.setattr("src.llm.weather.cwa_key", lambda: "")
     monkeypatch.delenv("NOVA_CWA_API_KEY", raising=False)
     monkeypatch.delenv("CWA_API_KEY", raising=False)
     async def scenario():
