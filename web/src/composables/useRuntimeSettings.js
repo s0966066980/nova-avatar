@@ -3,78 +3,43 @@
 
 import { composerDefaults, composerSettings } from '../conversationAttachments.js'
 import { computed, reactive, ref, watch } from 'vue'
-
-const runtime = reactive({
-  pending_settings: { items: [], error: '' },
-  llm: {
-    model: '',
-    base_url: '',
-    endpoint: '',
-    provider: 'ollama',
-    system_prompt: '',
-    assistant_profile: { assistant_name: '', system_prompt: '', restriction_prompt: '', output_locale: 'zh-TW', enforce_output_locale: true, forbidden_self_names: [] },
-    response_max_chars: 120,
-    board_max_items: 8,
-    reply_mode: 'legacy',
-    semantic_wait_seconds: 0.5,
-    reply_rules: { revision: 1, activation: '', speech: '', board: '' }
-  },
-  stage: {
-    background_id: '',
-    caption_max_chars: 120,
-    idle_reset_seconds: 60,
-    idle_greeting_enabled: false,
-    idle_greeting_seconds: 30,
-    caption_x: 50,
-    caption_y: 90,
-    caption_width: 100,
-    board_style: 'glass',
-    board_width: 252,
-    board_height: 300,
-    board_transparency: 28,
-    board_x: 100,
-    board_y: 0,
-    board_preset: 'tr',
-    board_preview: false,
-    board_open_x: 50,
-    board_open_y: 8,
-    mic_x: 50,
-    mic_y: 62,
-    mic_preset: 'custom'
-  },
-  avatar: {
-    type: '',
-    avatar_id: ''
-  },
-  video: {
-    max_height: 0,
-    height_options: [450, 540, 720, 960, 1280, 1920, 0],
-    source_width: null,
-    source_height: null,
-    output_width: null,
-    output_height: null
-  },
-  avatar_quality: {
-    mouth_sharpen: 0.5,
-    paste_interpolation: 'lanczos',
-    musetalk: {
-      bbox_shift: 0,
-      extra_margin: 10,
-      parsing_mode: 'jaw',
-      left_cheek_width: 90,
-      right_cheek_width: 90,
-      upper_boundary_ratio: 0.5,
-      expand: 1.5,
-      mask_blur_ratio: 0.05
-    }
-  },
-  engines: [],
-  characters: [],
-  session_count: 0,
-  switching: false,
-  ready: false,
-  model_ready: false
-})
+import { parseJson, runtime } from '../settings/shared.js'
+import {
+  SILERO_ENGINE,
+  vad,
+  vadDraft,
+  speech,
+  sttDraft,
+  applyingStt,
+  speechError,
+  voiceLibraryBusy,
+  applyingVad,
+  comparingVad,
+  vadError,
+  vadCompareError,
+  vadCompareResult,
+  vadDirty,
+  sttDirty,
+  STT_ENGINE_FALLBACK,
+  sttEngineOptions,
+  selectedSttEngine,
+  sttModelOptions,
+  ttsVoiceOptions,
+  selectedVadEngine,
+  applyVadSnapshot,
+  applySpeechSnapshot,
+  loadSpeechSettings,
+  applySttSettings,
+  refreshTtsVoices,
+  uploadTtsVoice,
+  deleteTtsVoice,
+  previewVoiceFields,
+  breezyVoiceServerReady,
+  previewProfileVoice,
+  loadVadSettings,
+  compareVadEngines,
+  applyVadSettings
+} from '../settings/speech.js'
 
 const ollama = reactive({
   models: [],
@@ -95,75 +60,6 @@ const llamacpp = reactive({
   binary: ''
 })
 
-const SILERO_ENGINE = {
-  id: 'silero',
-  label: 'Silero VAD',
-  available: true,
-  install: 'uv pip install "silero-vad>=5.1"'
-}
-
-const vad = reactive({
-  supported: false,
-  enabled: true,
-  type: 'silero',
-  threshold: 0.5,
-  aggressiveness: 2,
-  min_speech_ms: 250,
-  min_silence_ms: 500,
-  speech_pad_ms: 150,
-  engines: [SILERO_ENGINE],
-  asr_mode: 'server',
-  effective: false
-})
-
-// 面板上正在編輯的值；啟用開關會立刻提交
-const vadDraft = reactive({
-  enabled: true,
-  type: 'silero',
-  threshold: 0.5,
-  aggressiveness: 2,
-  min_silence_ms: 500,
-  asr_mode: 'server'
-})
-
-const speech = reactive({
-  stt: {
-    type: 'whisper',
-    model_size: 'base',
-    language: 'zh',
-    device: 'auto',
-    engines: [],
-    model_sizes: ['tiny', 'base', 'small', 'medium', 'large-v3'],
-    models_by_engine: {
-      whisper: ['tiny', 'base', 'small', 'medium', 'large-v3']
-    },
-    languages: ['zh', 'en', 'auto'],
-    devices: ['auto', 'cpu', 'cuda']
-  },
-  // Catalogs a role profile's voice is chosen from; the default voice is the
-  // main role's, so there is no global voice here.
-  tts: {
-    engines: [],
-    models: [],
-    voices: [],
-    edge_voices: [],
-    edge_english_voices: [],
-    // Matcha voice models with their usage labels, listed by the server.
-    voice_models: [],
-    notice: ''
-  }
-})
-
-const sttDraft = reactive({
-  type: 'whisper',
-  model_size: 'base',
-  language: 'zh',
-  device: 'auto'
-})
-const applyingStt = ref(false)
-const speechError = ref('')
-const voiceLibraryBusy = ref(false)
-
 const selectedProvider = ref('ollama')
 
 const loadingSettings = ref(false)
@@ -173,15 +69,9 @@ const applyingAvatar = ref(false)
 const applyingStage = ref(false)
 const backgrounds = reactive({ items: [], archivedItems: [], background_id: '', loading: false, busy: false, error: '' })
 const archivedCharacters = reactive({ items: [] })
-const applyingVad = ref(false)
-const comparingVad = ref(false)
 const settingsError = ref('')
 const modelsError = ref('')
 const stageError = ref('')
-const vadError = ref('')
-const vadCompareError = ref('')
-const vadCompareResult = ref(null)
-
 const selectedEngine = ref('')
 const selectedAvatarId = ref('')
 const selectedLlm = ref('')
@@ -366,56 +256,10 @@ const avatarDirty = computed(() => {
   return changed || !runtime.model_ready
 })
 
-const vadDirty = computed(() => {
-  return (
-    vadDraft.enabled !== vad.enabled ||
-    vadDraft.type !== vad.type ||
-    Number(vadDraft.threshold) !== Number(vad.threshold) ||
-    Number(vadDraft.aggressiveness) !== Number(vad.aggressiveness) ||
-    Number(vadDraft.min_silence_ms) !== Number(vad.min_silence_ms) ||
-    vadDraft.asr_mode !== vad.asr_mode
-  )
-})
-
-const sttDirty = computed(() => (
-  sttDraft.type !== speech.stt.type ||
-  sttDraft.model_size !== speech.stt.model_size ||
-  sttDraft.language !== speech.stt.language ||
-  sttDraft.device !== speech.stt.device
-))
-
-const STT_ENGINE_FALLBACK = [
-  { id: 'whisper', label: 'Whisper' }
-]
-
-const sttEngineOptions = computed(() => {
-  const available = Array.isArray(speech.stt.engines) && speech.stt.engines.length
-    ? speech.stt.engines
-    : STT_ENGINE_FALLBACK
-  return available.some((engine) => engine.id === sttDraft.type)
-    ? available
-    : [{ id: sttDraft.type, label: sttDraft.type }, ...available]
-})
-
-// The form follows each engine's server entry (its models), so adding or
-// replacing an engine needs no console change.
-const selectedSttEngine = computed(() => sttEngineOptions.value.find((engine) => engine.id === sttDraft.type) || null)
-
-const sttModelOptions = computed(() => (
-  selectedSttEngine.value?.models || speech.stt.models_by_engine?.[sttDraft.type] || []
-))
-
-// Reference audio comes from the server-side voice library, never typed paths.
-const ttsVoiceOptions = computed(() => (Array.isArray(speech.tts.voices) ? speech.tts.voices : []))
-
 watch(() => sttDraft.type, () => {
   if (sttModelOptions.value.length && !sttModelOptions.value.includes(sttDraft.model_size)) {
     sttDraft.model_size = sttModelOptions.value[0]
   }
-})
-
-const selectedVadEngine = computed(() => {
-  return vad.engines.find((item) => item.id === vadDraft.type) || null
 })
 
 const selectedEngineInfo = computed(() => {
@@ -481,218 +325,6 @@ function assignQualityDraft(value) {
 const qualityDirty = computed(() => (
   JSON.stringify(mergeQuality(qualityDraft)) !== JSON.stringify(mergeQuality(runtime.avatar_quality))
 ))
-
-async function parseJson(response) {
-  let data = {}
-  try {
-    data = await response.json()
-  } catch (error) {
-    if (response.status === 404) {
-      throw new Error('後端尚未更新設定介面，請重啟後端與前端服務')
-    }
-    throw error
-  }
-  if (!response.ok || data.code !== 0) {
-    const message = data.msg || (
-      response.status === 404
-        ? '後端尚未更新設定介面，請重啟後端與前端服務'
-        : `HTTP ${response.status}`
-    )
-    const error = new Error(message)
-    error.status = response.status
-    error.payload = data
-    throw error
-  }
-  if (data.pending_settings) runtime.pending_settings = data.pending_settings
-  return data.pending ? { ...data.data, pending: true } : data.data
-}
-
-function applyVadSnapshot(data) {
-  if (!data) return
-  Object.assign(vad, data)
-  vad.type = 'silero'
-  vad.engines = [SILERO_ENGINE]
-  vadDraft.enabled = Boolean(data.enabled)
-  vadDraft.type = 'silero'
-  vadDraft.threshold = Number(data.threshold ?? 0.5)
-  vadDraft.aggressiveness = Number(data.aggressiveness ?? 2)
-  vadDraft.min_silence_ms = Number(data.min_silence_ms ?? 500)
-  vadDraft.asr_mode = data.asr_mode || 'browser'
-}
-
-function applySpeechSnapshot(data) {
-  if (!data) return
-  if (data.stt) {
-    Object.assign(speech.stt, data.stt)
-    Object.assign(sttDraft, {
-      type: data.stt.type,
-      model_size: data.stt.model_size,
-      language: data.stt.language,
-      device: data.stt.device
-    })
-  }
-  if (data.tts) Object.assign(speech.tts, data.tts)
-}
-
-async function loadSpeechSettings() {
-  speechError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/speech'))
-    applySpeechSnapshot(data)
-    return data
-  } catch (error) {
-    speechError.value = error.message
-    throw error
-  }
-}
-
-async function applySttSettings() {
-  applyingStt.value = true
-  speechError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/speech/stt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sttDraft)
-    }))
-    if (data.pending) return data
-    applySpeechSnapshot({ stt: data })
-    return data
-  } catch (error) {
-    speechError.value = error.message
-    throw error
-  } finally {
-    applyingStt.value = false
-  }
-}
-
-async function refreshTtsVoices() {
-  const data = await parseJson(await fetch('/api/speech/voices'))
-  speech.tts.voices = Array.isArray(data?.items) ? data.items : []
-  return speech.tts.voices
-}
-
-async function uploadTtsVoice(file, name = '', transcript = '') {
-  if (!file) throw new Error('請先選擇參考音訊檔')
-  voiceLibraryBusy.value = true
-  speechError.value = ''
-  try {
-    const form = new FormData()
-    if (name) form.append('name', name)
-    if (transcript) form.append('transcript', transcript)
-    form.append('voice', file)
-    const voice = await parseJson(await fetch('/api/speech/voices', { method: 'POST', body: form }))
-    await refreshTtsVoices()
-    return voice
-  } catch (error) {
-    speechError.value = error.message
-    throw error
-  } finally {
-    voiceLibraryBusy.value = false
-  }
-}
-
-async function deleteTtsVoice(voiceId) {
-  if (!voiceId) return
-  voiceLibraryBusy.value = true
-  speechError.value = ''
-  try {
-    await parseJson(await fetch(`/api/speech/voices/${encodeURIComponent(voiceId)}`, { method: 'DELETE' }))
-    await refreshTtsVoices()
-  } catch (error) {
-    speechError.value = error.message
-    throw error
-  } finally {
-    voiceLibraryBusy.value = false
-  }
-}
-
-// The voice fields a preview sends; the server resolves them as library and model IDs.
-function previewVoiceFields(tts) {
-  return { type: tts.type, ref_file: tts.ref_file || '', tts_server: tts.tts_server || '', model: tts.model || '' }
-}
-
-// Whether a profile's BreezyVoice server already runs, so the console can say it is starting.
-async function breezyVoiceServerReady(tts) {
-  const { model, tts_server } = previewVoiceFields(tts)
-  const query = new URLSearchParams({ model, tts_server })
-  const data = await parseJson(await fetch(`/api/speech/breezyvoice/status?${query}`))
-  return Boolean(data?.ready)
-}
-
-// Synthesize a short sentence with a profile's unsaved voice; resolves to a WAV data URI.
-async function previewProfileVoice(tts) {
-  const data = await parseJson(await fetch('/api/speech/preview', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tts: previewVoiceFields(tts) })
-  }))
-  return data.audio
-}
-
-async function loadVadSettings() {
-  vadError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/vad'))
-    if (data.pending) return data
-    applyVadSnapshot(data)
-    return data
-  } catch (error) {
-    vadError.value = error.message
-    throw error
-  }
-}
-
-async function compareVadEngines(file) {
-  comparingVad.value = true
-  vadCompareError.value = ''
-  vadCompareResult.value = null
-  try {
-    const form = new FormData()
-    form.append('file', file)
-    const data = await parseJson(await fetch('/api/vad/compare', {
-      method: 'POST',
-      body: form
-    }))
-    vadCompareResult.value = data
-    return data
-  } catch (error) {
-    vadCompareError.value = error.message
-    throw error
-  } finally {
-    comparingVad.value = false
-  }
-}
-
-async function applyVadSettings() {
-  applyingVad.value = true
-  vadError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/vad', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        enabled: vadDraft.enabled,
-        type: 'silero',
-        threshold: Number(vadDraft.threshold),
-        aggressiveness: Number(vadDraft.aggressiveness),
-        min_silence_ms: Number(vadDraft.min_silence_ms),
-        asr_mode: vadDraft.enabled ? 'server' : 'browser'
-      })
-    }))
-    if (data.pending) return data
-    applyVadSnapshot(data)
-    if (data.warmup_error) {
-      vadError.value = data.warmup_error
-    }
-    return data
-  } catch (error) {
-    vadError.value = error.message
-    throw error
-  } finally {
-    applyingVad.value = false
-  }
-}
 
 async function applyVideoSettings() {
   applyingVideo.value = true
