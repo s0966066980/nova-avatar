@@ -234,12 +234,12 @@ def import_server(data_dir, monkeypatch):
     monkeypatch.setattr(state, "avatar_streams", {})
     started = []
     monkeypatch.setattr(
-        settings_routes, "start_import_job",
+        settings_routes.avatar, "start_import_job",
         lambda **kwargs: started.append(kwargs) or SimpleNamespace(to_dict=lambda: {"id": "job"}),
     )
     persisted = []
     monkeypatch.setattr(
-        settings_routes, "apply_mouth_quality",
+        settings_routes.avatar, "apply_mouth_quality",
         lambda config, quality, *, avatars: persisted.append(quality) or quality,
     )
     return SimpleNamespace(root=data_dir, config=config, started=started, persisted=persisted)
@@ -316,7 +316,7 @@ def test_import_refuses_existing_avatar_without_overwrite_before_upload(import_s
 
 
 def test_oversized_upload_is_rejected_with_413_and_leaves_no_files(import_server, monkeypatch):
-    monkeypatch.setattr(settings_routes, "MAX_IMPORT_VIDEO_BYTES", 1024)
+    monkeypatch.setattr(settings_routes.avatar, "MAX_IMPORT_VIDEO_BYTES", 1024)
     status, body = post_import(import_form({"type": "musetalk"}, videos=(b"x" * 4096,)))
     assert status == 413, body
     assert import_server.started == []

@@ -11,6 +11,7 @@ import pytest
 from nova_core.config.schema import Config
 from nova_core.server import deferred_settings
 from nova_core.server.routes import settings
+from nova_core.server.runtime_settings import SettingsError
 from nova_core.server.state import state
 
 pytestmark = pytest.mark.runtime
@@ -25,7 +26,7 @@ def pending(tmp_path, monkeypatch):
     monkeypatch.setattr(state, 'settings_applying', False)
     monkeypatch.setattr(deferred_settings, '_stores', {})
     apply = Mock(return_value={})
-    monkeypatch.setattr(settings, 'apply_stt_settings', apply)
+    monkeypatch.setattr(settings.speech, 'apply_stt_settings', apply)
     return apply
 
 
@@ -56,7 +57,7 @@ def test_saved_resource_settings_wait_for_both_peers_and_survive_restart(pending
 def test_resource_update_failure_preserves_pending_settings(pending):
     async def run():
         await settings.set_stt_settings(SimpleNamespace(json=AsyncMock(return_value={'type': 'unknown'})))
-        pending.side_effect = settings.SettingsError('invalid engine')
+        pending.side_effect = SettingsError('invalid engine')
         state.avatar_streams.clear()
         await deferred_settings.apply_pending()
         assert deferred_settings.snapshot()['items'] == ['語音辨識']

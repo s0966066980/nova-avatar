@@ -167,7 +167,7 @@ def test_a_pending_global_tts_change_from_the_removed_page_is_dropped(tmp_path, 
         "語音辨識": {"type": "whisper", "model_size": "small"},
     }, ensure_ascii=False), "utf-8")
     apply_stt = Mock(return_value={})
-    monkeypatch.setattr("nova_core.server.routes.settings.apply_stt_settings", apply_stt)
+    monkeypatch.setattr("nova_core.server.routes.settings.speech.apply_stt_settings", apply_stt)
     log = Mock()
     monkeypatch.setattr(deferred_settings, "logger", log)
     asyncio.run(deferred_settings.apply_pending())

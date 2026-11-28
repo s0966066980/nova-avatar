@@ -311,7 +311,7 @@ def test_voice_upload_keeps_its_transcript(voices, server_config):
 
 
 def test_oversized_voice_upload_is_rejected_and_cleaned(voices, server_config, monkeypatch):
-    monkeypatch.setattr("nova_core.server.routes.settings.MAX_VOICE_UPLOAD_BYTES", 1024)
+    monkeypatch.setattr("nova_core.server.routes.settings.speech.MAX_VOICE_UPLOAD_BYTES", 1024)
 
     async def scenario():
         async with access_client() as client:
