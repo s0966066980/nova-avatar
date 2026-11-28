@@ -146,7 +146,7 @@ def tone_wav(seconds: float = 1.5, rate: int = 16000, amplitude: float = 0.3) ->
     return buffer.getvalue()
 
 
-TOOLS = Path(__file__).resolve().parents[3] / "tools" / "tts-distill"
+TOOLS = Path(__file__).resolve().parents[3] / "integrations" / "matcha-train" / "scripts"
 
 
 TOKENS = {" ": 1, ",": 4, "wo3": 11, "you3": 12, "san1": 13, "ge4": 14, "ping2": 15, "guo3": 16,

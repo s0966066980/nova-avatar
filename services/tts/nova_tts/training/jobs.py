@@ -14,7 +14,7 @@ One job at a time. A job is a worker thread that runs these stages in order:
    (``transcript_check.verify_with_asr`` through ``asr.SubprocessTranscriber``); lines
    that fail are excluded from the corpus, never silently kept, and the stage is never
    skipped;
-4. ``training``: ``tools/tts-distill/train_matcha.py`` in a child of the training venv;
+4. ``training``: ``integrations/matcha-train/scripts/train_matcha.py`` in a child of the training venv;
 5. ``export``: ``export_matcha_onnx.py`` in the same venv, a sherpa-onnx load check of
    the bundle in the application's interpreter on the CPU, then the atomic write into
    ``models/tts/<id>/`` (``bundle.install_voice_model``). Nothing here can be downloaded.
@@ -156,7 +156,7 @@ STEP_PATTERN = re.compile(r"step=(\d+)/(\d+)(?:\s+loss=([0-9.]+))?")
 INTERRUPTED_MESSAGE = "伺服器重新啟動，訓練工作已中斷"
 # A recorded pid may have been reused: only a process whose command line names one of the
 # children this job starts (the training tools, the Whisper worker) is ever signalled.
-ORPHAN_MARKERS = ("tts-distill", "nova_tts.training.whisper_worker")
+ORPHAN_MARKERS = ("integrations/matcha-train/scripts", "nova_tts.training.whisper_worker")
 # Server shutdown waits for the cancelled job this long beyond the SIGTERM grace period.
 SHUTDOWN_MARGIN_SECONDS = 5.0
 ORPHAN_KILL_WAIT_SECONDS = 5.0
@@ -234,7 +234,7 @@ class TrainingPaths:
             training_python=root / ".local" / "matcha-train" / "venv" / "bin" / "python",
             base_checkpoint=root / ".local" / "matcha-base" / "pytorch_model_sherpa.bin",
             base_assets=root / "models" / "tts" / "matcha-icefall-zh-en",
-            tools_dir=root / "tools" / "tts-distill",
+            tools_dir=root / "integrations" / "matcha-train" / "scripts",
             voice_root=VOICE_MODELS_ROOT if voice_root is None else voice_root,
         )
 

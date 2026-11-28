@@ -828,20 +828,20 @@ def stop(group: FakeGroup, **kwargs) -> bool:
 
 
 def test_an_orphan_that_exits_on_sigterm_is_not_killed():
-    group = FakeGroup("python tools/tts-distill/train_matcha.py", dies_on="TERM")
+    group = FakeGroup("python integrations/matcha-train/scripts/train_matcha.py", dies_on="TERM")
     assert stop(group) is True
     assert group.sent == ["TERM"]
 
 
 def test_an_orphan_that_ignores_sigterm_is_killed_after_the_grace_period():
-    group = FakeGroup("python tools/tts-distill/train_matcha.py", dies_on="KILL")
+    group = FakeGroup("python integrations/matcha-train/scripts/train_matcha.py", dies_on="KILL")
     assert stop(group, grace_seconds=2.0) is True
     assert group.sent == ["TERM", "KILL"]
     assert group.now >= 2.0  # it waited for the grace period before killing
 
 
 def test_the_orphan_cleanup_waits_for_the_group_to_be_gone_but_not_for_ever():
-    group = FakeGroup("python tools/tts-distill/train_matcha.py", dies_on=None)  # cannot be killed
+    group = FakeGroup("python integrations/matcha-train/scripts/train_matcha.py", dies_on=None)  # cannot be killed
     assert stop(group, grace_seconds=1.0, kill_wait_seconds=1.0) is True
     assert group.sent == ["TERM", "KILL"] and group.now < 30
 

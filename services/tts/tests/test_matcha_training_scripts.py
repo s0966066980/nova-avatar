@@ -1,7 +1,7 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""The training scripts under tools/tts-distill, tested without the matcha-tts package.
+"""The training scripts under integrations/matcha-train/scripts, tested without the matcha-tts package.
 
 ``train_matcha`` and ``matcha_arch`` run in the training venv, but everything
 here uses a fake model, so only torch, torchaudio and soundfile (already in the
@@ -21,7 +21,7 @@ import pytest
 import soundfile as sf
 import torch
 
-TOOLS = Path(__file__).resolve().parents[3] / "tools" / "tts-distill"
+TOOLS = Path(__file__).resolve().parents[3] / "integrations" / "matcha-train" / "scripts"
 
 
 @pytest.fixture(scope="module")

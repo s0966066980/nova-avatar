@@ -8,7 +8,7 @@ trainable corpus, already digit-expanded by ``numerals.normalize_digits``. This 
 normalises that text the way the Matcha engine does before synthesis
 (``normalize_matcha_text``: Simplified-Chinese lexicon spelling, English words as the
 lexicon spells them) and tokenises it with the training lexicon helpers in
-``tools/tts-distill/lexicon_utils.py`` (loaded by path, because the folder name is not a
+``integrations/matcha-train/scripts/lexicon_utils.py`` (loaded by path, because the folder name is not a
 package name). A digit reaching the tokeniser is an error, never skipped, because the
 audio would no longer match the tokens.
 
@@ -37,7 +37,7 @@ from nova_tts.training.corpus import Line
 from nova_tts.training.preparation import prepared_path
 from nova_core.utils.paths import get_project_root
 
-TOOLS_DIR = get_project_root() / "tools" / "tts-distill"
+TOOLS_DIR = get_project_root() / "integrations" / "matcha-train" / "scripts"
 BASE_VOCAB = 2190  # rows of the base model's embedding table; valid token IDs are below this
 MANIFEST_FILE = "manifest.jsonl"
 LEXICON_FILE = "lexicon.txt"
