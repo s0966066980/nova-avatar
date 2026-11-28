@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 | 子套件 | 內容 |
 |---|---|
-| `nova_core.server` | aiohttp 路由（`routes/`）、語音會話（`voice_session`）、回覆串流與切分（`reply_streaming/`）、對話與附件、全域狀態（`state`）、路由存取分類（`access`，ADR 0021） |
+| `nova_core.server` | aiohttp 路由（`routes/`）、語音會話（`voice_session`）、回答前的階段（`answer_stages/`）、回覆串流與切分（`reply_streaming/`）、對話與附件、全域狀態（`state`）、路由存取分類（`access`，ADR 0021） |
 | `nova_core.vad` | 伺服器端語音活動偵測（Silero） |
 | `nova_core.profiles` | 角色（人設）、組成、交接判斷的核心端、媒體、知識範圍 |
 | `nova_core.config` | `config/config.yaml` 的載入、驗證、執行期覆寫；各層的設定段落（`TTSConfig`、`MatchaConfig`、`ASRConfig`）定義並驗證於各層的 `config_section`，`config/schema.py` 只匯入與組合 |
@@ -21,6 +21,7 @@ SPDX-License-Identifier: Apache-2.0
 ## 對外介面
 
 - **HTTP**：每條路由屬於 public、stage（僅限 loopback）、admin（需登入）三類之一，分類見 `nova_core/server/access.py` 與 [ADR 0021](../docs/adr/0021-stage-local-console-login.md)。新增或修改路由前先讀 ADR 0021。
+- **回答前的階段**：附件、知識庫檢索與網頁搜尋是 `nova_core/server/answer_stages/` 下各自獨立的階段模組，`voice_session` 只照 `INPUT_STAGES`（路由前，可與路由並行）與 `ANSWER_STAGES`（路由後）兩份清單執行。新增這類功能就寫一個階段模組並加進清單，拿掉就從清單移除；階段只透過 `StageContext` 取用 LLM 服務、角色設定、事件與計時，不直接碰 `VoiceTurnSession`。天氣仍由角色路由的計畫帶入，尚未改成階段。
 - **啟動入口**：`uv run python core/nova_core/server/app.py --config config/config.yaml`（`scripts/start-backend.sh`、`scripts/start-all.sh` 都這樣啟動）。
 - **對處理層**：核心只經由各層的 `adapter` 與 `config_section` 使用該層（import-linter 契約 `*-internals-private`），型別來自 [`nova_contracts`](../contracts/README.md)。
 - **對處理層提供**：只有 `nova_core.utils`。處理層 import 它，但因此各層的 `pyproject.toml` 不宣告 `nova-core`（核心已依賴各層的 adapter，雙向宣告會形成循環）。

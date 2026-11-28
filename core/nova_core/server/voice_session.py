@@ -39,7 +39,6 @@ from nova_contracts.llm import (
     LlmService,
     Question,
     ReplyRequest,
-    RetrievalRequest,
     RetrievedChunk,
     SessionRef,
     SpokenTurn,
@@ -48,19 +47,19 @@ from nova_contracts.llm import (
     WeatherReport,
     WebEvidence,
     WebEvidenceSelection,
-    WebSearchPlanRequest,
-    WebSearchRequest,
     WebSearchResult,
-    WebSummaryRequest,
 )
-from nova_llm.config_section import llm_settings, reply_rules
+from nova_llm.config_section import reply_rules
 from nova_core.profiles.knowledge_scope import avatar_settings
+from nova_core.server.answer_stages import (
+    AnswerInputs, Speak, StageContext, run_answer_stages, run_input_stages, web_search,
+)
 from nova_core.server.reply_streaming.circuit_breaker import ReplyCircuitBreaker
 from nova_core.server.reply_streaming.llm_reply import conversation_session, stream_reply
 from nova_core.server.reply_streaming.metrics import AUDIBLE_PEAK, TurnMetrics
 from nova_core.server.reply_streaming.speech import ReplySpeech
 from nova_core.server.reply_streaming.turn import TurnContext, TurnEnvelope, TurnState
-from nova_core.server.web_evidence import EvidenceCache, public_result
+from nova_core.server.web_evidence import EvidenceCache
 from nova_core.utils.logging import logger
 from nova_core.utils.spoken_text import join_spoken_fragments
 from nova_core.utils.stage_timing import observe_stages
@@ -120,18 +119,6 @@ def speech_input_rejection_reason(
         except (TypeError, ValueError):
             return "transcript_invalid_confidence"
     return None
-
-
-@dataclass(frozen=True)
-class AnswerInputs:
-    """What the main answer is generated from: the question and its retrieval."""
-
-    text: str
-    rag_result: Optional[dict]
-    web_result: Optional[dict] = None
-    web_selection: Optional[dict] = None
-    # A verified quote that answers the question by itself.
-    web_quote: Optional[str] = None
 
 
 @dataclass
@@ -1082,136 +1069,27 @@ class VoiceTurnSession:
             inputs = await self._answer_inputs(text, turn_id, generation)
             if inputs is None:
                 return
-        inputs = await self._web_inputs(inputs, text, turn_id, generation, role_plan)
-        if inputs is None:
+        outcome = await run_answer_stages(
+            StageContext(self, turn_id, generation), inputs, text, role_plan)
+        if outcome is None:
             return
-        if inputs.web_selection is not None and not inputs.web_selection.get('items'):
-            explanation = ('I found web sources, but could not organize enough reliable evidence to answer this question.'
-                           if self._conversation['locale'] == 'en-US' else
-                           '已找到網頁來源，但目前未能整理出足以可靠回答這個問題的資料。')
-            self._speak_fixed(text, explanation, turn_id, generation, input_source)
-            return
-        quote = inputs.web_quote
-        if quote is not None:
-            self._speak_fixed(text, quote, turn_id, generation, input_source)
-            return
-        if inputs.web_result is not None and not inputs.web_result.get('sources'):
-            # Do not rely on a small model to avoid inventing current facts after
-            # an empty/failed search. A fixed, localized failure is authoritative.
-            explanation = ('I could not retrieve usable web sources, so the latest information '
-                           'has not been verified. Please try again later.'
-                           if self._conversation['locale'] == 'en-US' else
-                           '目前未能取得可用的網路資料，最新資訊尚未查證，請稍後再試。')
-            self._speak_fixed(text, explanation, turn_id, generation, input_source)
+        if isinstance(outcome, Speak):
+            self._speak_fixed(text, outcome.text, turn_id, generation, input_source)
             return
         response = await self._stream_answer(
-            inputs, turn_id, generation, input_source, role_plan)
+            outcome, turn_id, generation, input_source, role_plan)
         if response is not None:
             self._finish_answer(response, turn_id, generation, input_source)
 
     async def _web_inputs(self, inputs, question, turn_id, generation, role_plan):
-        """Search only after routing, using the raw question, never attachment/RAG text."""
-        policy = getattr(self.config, 'profile_web_search', {})
-        if not policy.get('enabled') or (role_plan and role_plan.get('weather') is not None):
-            return inputs
-        role = getattr(self.config, 'profile_id', '')
-        previous = self._web_cache.previous(role, policy)
-        self._emit('state', state='search_planning', turn_id=turn_id)
-        self.mark_stage_start('web_search_plan')
-        try:
-            decision = (await self._llm.plan_web_search(WebSearchPlanRequest(
-                settings=llm_settings(self.config), question=str(question),
-                previous_queries=(previous['query'],) if previous else ()))).model_dump()
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            decision = None
-        self.mark_stage_end('web_search_plan')
-        if not self._is_current(turn_id, generation):
-            return None
-        if decision is not None and not decision['search']:
-            return inputs
-        self._emit('state', state='searching', turn_id=turn_id)
-        self.mark_stage_start('web_search')
-        # Explicit refresh always wins over a model's accidental reuse decision.
-        import re
-        refresh = bool(re.search(r'最新|重新|再查|重查|latest|refresh|search again|up.to.date', question, re.I))
-        if decision is None:
-            result = {'status': 'planning_failed', 'query': '', 'sources': [], 'reused': False}
-        elif previous and decision['reuse'] and not refresh:
-            result = {**previous, 'reused': True}
-        else:
-            result = (await self._llm.search_web(WebSearchRequest(
-                query=decision['query'], allowed_domains=tuple(policy.get('allowed_domains', []))
-            ))).model_dump(mode='json')
-        self.mark_stage_end('web_search')
-        if not self._is_current(turn_id, generation):
-            return None
-        if not result.get('reused'):
-            self._web_cache.put(role, policy, result)
-        self._emit('web_search_result', turn_id=turn_id, **public_result(result))
-        selection = quote = None
-        if result.get('sources') and not self.attachments.selection:
-            self._emit('state', state='summarizing', turn_id=turn_id)
-            self.mark_stage_start('web_synthesis')
-            try:
-                summary = await asyncio.wait_for(self._llm.summarize_web(WebSummaryRequest(
-                    settings=llm_settings(self.config), question=str(question),
-                    result=WebSearchResult.model_validate(result),
-                    locale=self._conversation['locale'])), 4)
-                selection = summary.selection.model_dump(mode='json')
-                quote = summary.quote
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                logger.warning('Web evidence selection failed: %s', type(exc).__name__)
-                # Never fall back to reading unsorted pages after a failed selection.
-                selection = {'mode': 'unavailable', 'items': []}
-            self.mark_stage_end('web_synthesis')
-            if not self._is_current(turn_id, generation):
-                return None
-        return AnswerInputs(inputs.text, inputs.rag_result, result, selection, quote)
+        """The web search stage alone: the inputs with its evidence, or ``None`` once stale."""
+        return await web_search.search(
+            StageContext(self, turn_id, generation), inputs, question, role_plan)
 
     async def _answer_inputs(self, text, turn_id, generation) -> Optional[AnswerInputs]:
         """Attachments and bounded retrieval; ``None`` once the turn is stale."""
-        loop = asyncio.get_running_loop()
-        resolved = self.attachments.validate_selection(self.attachments.selection)
-        if resolved:
-            from nova_core.server.attachments import vision_ready
-            if not await asyncio.to_thread(vision_ready, self.config):
-                raise ValueError('vision_unavailable')
-            self._emit('attachment_status', turn_id=turn_id, state='reading', total=sum(len(p) for _, p in resolved))
-            def progress(index, total, source):
-                loop.call_soon_threadsafe(lambda: self._emit('attachment_status', turn_id=turn_id,
-                    state='analyzing', index=index, total=total, source=source)
-                    if self._is_current(turn_id, generation) else None)
-            text = await asyncio.to_thread(self.attachments.prepare_question, text, resolved,
-                self.avatar.config if getattr(self.avatar, 'config', None) else self.config,
-                progress, lambda: self._is_current(turn_id, generation))
-            if not self._is_current(turn_id, generation):
-                return None
-        rag_result = None
-        rag_selection = self._rag_snapshot
-        if rag_selection["enabled"] and rag_selection["dataset_ids"]:
-            self._emit("state", state="retrieving", turn_id=turn_id)
-            self.mark_stage_start("retrieval")
-            try:
-                rag_result = (await asyncio.wait_for(self._llm.retrieve(RetrievalRequest(
-                    question=str(text), dataset_ids=tuple(rag_selection["dataset_ids"]),
-                    document_ids=(tuple(rag_selection["document_ids"])
-                                  if rag_selection.get("document_scope") == "selected" else ()),
-                )), RETRIEVAL_BUDGET_SECONDS)).model_dump(mode="json")
-            except asyncio.TimeoutError:
-                rag_result = {"status": "timeout", "sources": []}
-                logger.info("RAGFlow retrieval exceeded %.1fs; answering without it",
-                            RETRIEVAL_BUDGET_SECONDS)
-            except Exception as exc:
-                rag_result = {"status": "unavailable", "sources": []}
-                logger.warning(f"RAGFlow retrieval unavailable: {type(exc).__name__}")
-            self.mark_stage_end("retrieval")
-            if not self._is_current(turn_id, generation):
-                return None
-        return AnswerInputs(text=text, rag_result=rag_result)
+        return await run_input_stages(
+            StageContext(self, turn_id, generation, retrieval_budget=RETRIEVAL_BUDGET_SECONDS), text)
 
     async def _stream_answer(self, inputs: AnswerInputs, turn_id, generation, input_source,
                              role_plan, *, held: Optional[HeldAnswer] = None):
