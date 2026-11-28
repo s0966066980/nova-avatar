@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HongXian0903
 // SPDX-License-Identifier: Apache-2.0
 
+import { settingsSource } from './helpers/settingsSource.js'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
@@ -8,7 +9,7 @@ import { avatarScenePreviewUrl } from '../src/stage/scenePreview.js'
 
 const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')
 const panel = readFileSync(new URL('../src/components/SettingsPanel.vue', import.meta.url), 'utf8')
-const settings = readFileSync(new URL('../src/composables/useRuntimeSettings.js', import.meta.url), 'utf8')
+const settings = settingsSource
 
 test('控制台離線畫面與舞台設定預覽都使用合成後的數字人背景', () => {
   assert.match(app, /:src="consoleScenePreviewUrl"/)

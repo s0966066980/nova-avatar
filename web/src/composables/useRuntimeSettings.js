@@ -3,7 +3,125 @@
 
 import { composerDefaults, composerSettings } from '../conversationAttachments.js'
 import { computed, reactive, ref, watch } from 'vue'
-import { parseJson, runtime } from '../settings/shared.js'
+import { hooks, parseJson, runtime } from '../settings/shared.js'
+import {
+  ollama,
+  llamacpp,
+  selectedProvider,
+  loadingModels,
+  applyingLlm,
+  modelsError,
+  selectedLlm,
+  selectedSystemPrompt,
+  selectedRestrictionPrompt,
+  selectedAssistantName,
+  selectedOutputLocale,
+  selectedEnforceOutputLocale,
+  selectedForbiddenSelfNames,
+  selectedResponseMaxChars,
+  selectedBoardMaxItems,
+  selectedReplyMode,
+  selectedSemanticWaitSeconds,
+  rulesDraft,
+  rulesApplied,
+  rulesDefaults,
+  rulesLimits,
+  rulesLoading,
+  rulesSaving,
+  rulesError,
+  rulesNotice,
+  rulesDirty,
+  responseLengthError,
+  boardItemsError,
+  currentProviderModels,
+  promptDirty,
+  llmDirty,
+  loadReplyRules,
+  restoreDefaultRules,
+  applyReplyRules,
+  applyLlmBehavior,
+  loadOllamaModels,
+  applyLlmModel,
+  selectProvider
+} from '../settings/llm.js'
+import {
+  applyingStage,
+  backgrounds,
+  stageError,
+  selectedStageCaptionMaxChars,
+  selectedVisitorResetSeconds,
+  selectedClearDisplaySeconds,
+  composerDraft,
+  selectedCaptionX,
+  selectedCaptionY,
+  selectedCaptionWidth,
+  selectedBoardStyle,
+  selectedBoardWidth,
+  selectedBoardHeight,
+  selectedBoardTransparency,
+  selectedBoardX,
+  selectedBoardY,
+  selectedBoardPreset,
+  selectedBoardPreview,
+  isStageConfiguring,
+  selectedBoardOpenX,
+  selectedBoardOpenY,
+  selectedMicX,
+  selectedMicY,
+  selectedMicPreset,
+  stageCaptionLengthError,
+  visitorResetError,
+  applyingVisitor,
+  visitorError,
+  visitorDirty,
+  applyVisitorSettings,
+  boardSizeError,
+  stageDirty,
+  selectBoardPreset,
+  markBoardPositionCustom,
+  selectMicPreset,
+  markMicPositionCustom,
+  applyStageSettings,
+  loadBackgrounds,
+  deleteBackground,
+  restoreBackground,
+  uploadBackground,
+  selectBackground
+} from '../settings/stage.js'
+import {
+  applyingAvatar,
+  archivedCharacters,
+  selectedEngine,
+  selectedAvatarId,
+  filteredCharacters,
+  avatarDirty,
+  selectedEngineInfo,
+  mergeQuality,
+  qualityDraft,
+  applyingQuality,
+  qualityError,
+  selectedOutputHeight,
+  applyingVideo,
+  videoError,
+  videoDirty,
+  outputHeightOptions,
+  outputDimensions,
+  assignQualityDraft,
+  qualityDirty,
+  applyVideoSettings,
+  applyMouthQuality,
+  importing,
+  importJob,
+  importError,
+  importCharacter,
+  deleteCharacter,
+  loadArchivedCharacters,
+  restoreCharacter,
+  permanentlyDeleteCharacter,
+  applyAvatar,
+  selectEngine,
+  selectCharacter
+} from '../settings/avatar.js'
 import {
   SILERO_ENGINE,
   vad,
@@ -41,330 +159,13 @@ import {
   applyVadSettings
 } from '../settings/speech.js'
 
-const ollama = reactive({
-  models: [],
-  reachable: false,
-  error: '',
-  current: '',
-  base_url: '',
-  endpoint: ''
-})
-
-const llamacpp = reactive({
-  models: [],
-  reachable: false,
-  error: '',
-  base_url: '',
-  endpoint: '',
-  server_running: false,
-  binary: ''
-})
-
-const selectedProvider = ref('ollama')
-
 const loadingSettings = ref(false)
-const loadingModels = ref(false)
-const applyingLlm = ref(false)
-const applyingAvatar = ref(false)
-const applyingStage = ref(false)
-const backgrounds = reactive({ items: [], archivedItems: [], background_id: '', loading: false, busy: false, error: '' })
-const archivedCharacters = reactive({ items: [] })
 const settingsError = ref('')
-const modelsError = ref('')
-const stageError = ref('')
-const selectedEngine = ref('')
-const selectedAvatarId = ref('')
-const selectedLlm = ref('')
-const selectedSystemPrompt = ref('')
-const selectedRestrictionPrompt = ref('')
-const selectedAssistantName = ref('')
-const selectedOutputLocale = ref('zh-TW')
-const selectedEnforceOutputLocale = ref(true)
-const selectedForbiddenSelfNames = ref('')
-const selectedResponseMaxChars = ref(120)
-const selectedBoardMaxItems = ref(8)
-const selectedReplyMode = ref('legacy')
-const selectedSemanticWaitSeconds = ref(0.5)
-const rulesDraft = reactive({ activation: '', speech: '', board: '' })
-const rulesApplied = reactive({ revision: 1, activation: '', speech: '', board: '' })
-const rulesDefaults = reactive({ revision: 1, activation: '', speech: '', board: '' })
-const rulesLimits = reactive({ max_rule_chars: 12000, max_total_chars: 24000 })
-const rulesLoading = ref(false)
-const rulesSaving = ref(false)
-const rulesError = ref('')
-const rulesNotice = ref('')
-const rulesDirty = computed(() => JSON.stringify(rulesDraft) !== JSON.stringify({
-  activation: rulesApplied.activation,
-  speech: rulesApplied.speech,
-  board: rulesApplied.board
-}))
-const selectedStageCaptionMaxChars = ref(120)
-const selectedVisitorResetSeconds = ref(60)
-const selectedClearDisplaySeconds = ref(15)
-const composerDraft = reactive({ ...composerDefaults })
-const selectedCaptionX = ref(50)
-const selectedCaptionY = ref(90)
-const selectedCaptionWidth = ref(100)
-const selectedBoardStyle = ref('glass')
-const selectedBoardWidth = ref(252)
-const selectedBoardHeight = ref(300)
-const selectedBoardTransparency = ref(28)
-const selectedBoardX = ref(100)
-const selectedBoardY = ref(0)
-const selectedBoardPreset = ref('tr')
-const selectedBoardPreview = ref(false)
-const isStageConfiguring = ref(false)
-const selectedBoardOpenX = ref(50)
-const selectedBoardOpenY = ref(8)
-const selectedMicX = ref(50)
-const selectedMicY = ref(62)
-const selectedMicPreset = ref('custom')
-const BOARD_PRESETS = {
-  tl: [0, 0],
-  tc: [50, 0],
-  tr: [100, 0],
-  ml: [0, 50],
-  mc: [50, 50],
-  mr: [100, 50],
-  bl: [0, 100],
-  bc: [50, 100],
-  br: [100, 100]
-}
-
-const responseLengthError = computed(() => {
-  const value = Number(selectedResponseMaxChars.value)
-  return !Number.isInteger(value) || value < 20 || value > 2000
-})
-
-const boardItemsError = computed(() => {
-  const value = Number(selectedBoardMaxItems.value)
-  return !Number.isInteger(value) || value < 1 || value > 12
-})
-
-const stageCaptionLengthError = computed(() => {
-  const value = Number(selectedStageCaptionMaxChars.value)
-  return !Number.isInteger(value) || value < 20 || value > 2000
-})
-
-const visitorResetError = computed(() => {
-  const value = Number(selectedVisitorResetSeconds.value)
-  return !Number.isInteger(value) || value < 3 || value > 300 || !Number.isInteger(selectedClearDisplaySeconds.value) || selectedClearDisplaySeconds.value < 1 || selectedClearDisplaySeconds.value > value
-})
-
-const applyingVisitor = ref(false)
-const visitorError = ref('')
-const visitorDirty = computed(() => !visitorResetError.value && (selectedVisitorResetSeconds.value !== runtime.stage.idle_reset_seconds || selectedClearDisplaySeconds.value !== runtime.stage.clear_display_seconds))
-async function applyVisitorSettings() {
-  if (visitorResetError.value) throw new Error('訪客對話重置時間必須介於 3–300 秒。')
-  applyingVisitor.value = true
-  visitorError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/stage', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idle_reset_seconds: selectedVisitorResetSeconds.value, clear_display_seconds: selectedClearDisplaySeconds.value })
-    }))
-    runtime.stage.clear_display_seconds = Number(data.clear_display_seconds)
-    runtime.stage.idle_reset_seconds = Number(data.idle_reset_seconds)
-    selectedVisitorResetSeconds.value = runtime.stage.idle_reset_seconds
-    selectedClearDisplaySeconds.value = Number(data.clear_display_seconds ?? 15)
-    return data
-  } catch (error) { visitorError.value = error.message; throw error }
-  finally { applyingVisitor.value = false }
-}
-
-const filteredCharacters = computed(() => {
-  if (!selectedEngine.value) return runtime.characters
-  return runtime.characters.filter((item) => item.type === selectedEngine.value)
-})
-
-const currentProviderModels = computed(() => {
-  return selectedProvider.value === 'llamacpp' ? llamacpp.models : ollama.models
-})
-
-const promptDirty = computed(() => (
-  selectedSystemPrompt.value !== (runtime.llm.system_prompt || '') ||
-  selectedRestrictionPrompt.value !== (runtime.llm.assistant_profile?.restriction_prompt || '') ||
-  selectedAssistantName.value !== (runtime.llm.assistant_profile?.assistant_name || '') ||
-  selectedOutputLocale.value !== (runtime.llm.assistant_profile?.output_locale || 'zh-TW') ||
-  Boolean(selectedEnforceOutputLocale.value) !== Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true) ||
-  selectedForbiddenSelfNames.value !== (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n')
-))
-
-const llmDirty = computed(() => {
-  if (!selectedLlm.value || responseLengthError.value || boardItemsError.value) return false
-  return (
-    selectedProvider.value !== runtime.llm.provider ||
-    selectedLlm.value !== runtime.llm.model ||
-    Number(selectedResponseMaxChars.value) !== Number(runtime.llm.response_max_chars || 120) ||
-    Number(selectedBoardMaxItems.value) !== Number(runtime.llm.board_max_items || 8) ||
-    selectedReplyMode.value !== (runtime.llm.reply_mode || 'legacy') ||
-    Number(selectedSemanticWaitSeconds.value) !== Number(runtime.llm.semantic_wait_seconds || 0.5)
-  )
-})
-
-const boardSizeError = computed(() => {
-  const width = Number(selectedBoardWidth.value)
-  const height = Number(selectedBoardHeight.value)
-  const transparency = Number(selectedBoardTransparency.value)
-  const x = Number(selectedBoardX.value)
-  const y = Number(selectedBoardY.value)
-  const captionX = Number(selectedCaptionX.value)
-  const captionY = Number(selectedCaptionY.value)
-  const captionWidth = Number(selectedCaptionWidth.value)
-  return (
-    !Number.isInteger(width) || width < 200 || width > 720 ||
-    !Number.isInteger(height) || height < 180 || height > 720 ||
-    !Number.isInteger(transparency) || transparency < 0 || transparency > 100 ||
-    !Number.isInteger(x) || x < 0 || x > 100 ||
-    !Number.isInteger(y) || y < 0 || y > 100 ||
-    !Number.isInteger(captionX) || captionX < 0 || captionX > 100 ||
-    !Number.isInteger(captionY) || captionY < 0 || captionY > 100 ||
-    !Number.isInteger(captionWidth) || captionWidth < 40 || captionWidth > 100
-  )
-})
-
-const stageDirty = computed(() => (
-    Object.keys(composerDefaults).some(key => composerDraft[key] !== (runtime.stage[key] ?? composerDefaults[key])) ||
-  !stageCaptionLengthError.value &&
-  !boardSizeError.value &&
-  (
-    Number(selectedStageCaptionMaxChars.value) !== Number(runtime.stage.caption_max_chars || 120) ||
-    Number(selectedCaptionX.value) !== Number(runtime.stage.caption_x ?? 50) ||
-    Number(selectedCaptionY.value) !== Number(runtime.stage.caption_y ?? 90) ||
-    Number(selectedCaptionWidth.value) !== Number(runtime.stage.caption_width ?? 100) ||
-    selectedBoardStyle.value !== (runtime.stage.board_style || 'glass') ||
-    Number(selectedBoardWidth.value) !== Number(runtime.stage.board_width || 252) ||
-    Number(selectedBoardHeight.value) !== Number(runtime.stage.board_height || 300) ||
-    Number(selectedBoardTransparency.value) !== Number(runtime.stage.board_transparency || 28) ||
-    Number(selectedBoardX.value) !== Number(runtime.stage.board_x || 100) ||
-    Number(selectedBoardY.value) !== Number(runtime.stage.board_y || 0) ||
-    selectedBoardPreset.value !== (runtime.stage.board_preset || 'tr') ||
-    Boolean(selectedBoardPreview.value) !== Boolean(runtime.stage.board_preview) ||
-    Number(selectedBoardOpenX.value) !== Number(runtime.stage.board_open_x ?? 50) ||
-    Number(selectedBoardOpenY.value) !== Number(runtime.stage.board_open_y ?? 8) ||
-    Number(selectedMicX.value) !== Number(runtime.stage.mic_x ?? 50) ||
-    Number(selectedMicY.value) !== Number(runtime.stage.mic_y ?? 62) ||
-    selectedMicPreset.value !== (runtime.stage.mic_preset || 'custom')
-  )
-))
-
-const avatarDirty = computed(() => {
-  const changed = (
-    selectedEngine.value !== runtime.avatar.type ||
-    selectedAvatarId.value !== runtime.avatar.avatar_id
-  )
-  return changed || !runtime.model_ready
-})
-
 watch(() => sttDraft.type, () => {
   if (sttModelOptions.value.length && !sttModelOptions.value.includes(sttDraft.model_size)) {
     sttDraft.model_size = sttModelOptions.value[0]
   }
 })
-
-const selectedEngineInfo = computed(() => {
-  return runtime.engines.find((item) => item.id === selectedEngine.value) || null
-})
-
-const QUALITY_DEFAULTS = {
-  mouth_sharpen: 0.5,
-  paste_interpolation: 'lanczos',
-  musetalk: {
-    bbox_shift: 0,
-    extra_margin: 10,
-    parsing_mode: 'jaw',
-    left_cheek_width: 90,
-    right_cheek_width: 90,
-    upper_boundary_ratio: 0.5,
-    expand: 1.5,
-    mask_blur_ratio: 0.05
-  }
-}
-
-function mergeQuality(raw) {
-  const value = raw || {}
-  return {
-    mouth_sharpen: Number(value.mouth_sharpen ?? QUALITY_DEFAULTS.mouth_sharpen),
-    paste_interpolation: value.paste_interpolation || QUALITY_DEFAULTS.paste_interpolation,
-    musetalk: { ...QUALITY_DEFAULTS.musetalk, ...(value.musetalk || {}) }
-  }
-}
-
-const qualityDraft = reactive(mergeQuality())
-const applyingQuality = ref(false)
-const qualityError = ref('')
-
-const selectedOutputHeight = ref(0)
-const applyingVideo = ref(false)
-const videoError = ref('')
-const videoDirty = computed(() => selectedOutputHeight.value !== runtime.video.max_height)
-const outputHeightOptions = computed(() => {
-  const values = [...runtime.video.height_options]
-  for (const height of [runtime.video.max_height, selectedOutputHeight.value]) {
-    if (!values.includes(height)) values.unshift(height)
-  }
-  return values
-})
-const outputDimensions = computed(() => {
-  const { source_width: width, source_height: height } = runtime.video
-  if (!width || !height) return ''
-  const limit = selectedOutputHeight.value
-  if (!limit || limit >= height) return `${width} × ${height}`
-  const outputHeight = Math.max(2, Math.floor(limit / 2) * 2)
-  const outputWidth = Math.max(2, Math.floor(Math.round(width * outputHeight / height) / 2) * 2)
-  return `${outputWidth} × ${outputHeight}`
-})
-
-function assignQualityDraft(value) {
-  const merged = mergeQuality(value)
-  qualityDraft.mouth_sharpen = merged.mouth_sharpen
-  qualityDraft.paste_interpolation = merged.paste_interpolation
-  Object.assign(qualityDraft.musetalk, merged.musetalk)
-}
-
-const qualityDirty = computed(() => (
-  JSON.stringify(mergeQuality(qualityDraft)) !== JSON.stringify(mergeQuality(runtime.avatar_quality))
-))
-
-async function applyVideoSettings() {
-  applyingVideo.value = true
-  videoError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/avatar/output', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ max_height: selectedOutputHeight.value })
-    }))
-    Object.assign(runtime.video, data)
-    selectedOutputHeight.value = data.max_height
-    return data
-  } catch (error) {
-    videoError.value = error.message
-    throw error
-  } finally {
-    applyingVideo.value = false
-  }
-}
-
-async function applyMouthQuality() {
-  applyingQuality.value = true
-  qualityError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/avatar/quality', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(mergeQuality(qualityDraft))
-    }))
-    runtime.avatar_quality = mergeQuality(data)
-    assignQualityDraft(data)
-    return data
-  } catch (error) {
-    qualityError.value = error.message
-    throw error
-  } finally {
-    applyingQuality.value = false
-  }
-}
 
 function applySnapshot(data) {
   runtime.pending_settings = data.pending_settings || { items: [], error: '' }
@@ -469,548 +270,8 @@ async function loadRuntimeSettings() {
   }
 }
 
-async function loadReplyRules() {
-  rulesLoading.value = true
-  rulesError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/llm/rules'))
-    Object.assign(rulesApplied, data.rules || {})
-    runtime.llm.reply_rules = { ...rulesApplied }
-    Object.assign(rulesDraft, {
-      activation: data.rules?.activation || '',
-      speech: data.rules?.speech || '',
-      board: data.rules?.board || ''
-    })
-    Object.assign(rulesDefaults, data.defaults || {})
-    Object.assign(rulesLimits, data.limits || {})
-    return data
-  } catch (error) {
-    rulesError.value = error.message
-    throw error
-  } finally {
-    rulesLoading.value = false
-  }
-}
-
-function restoreDefaultRules() {
-  rulesDraft.activation = rulesDefaults.activation || ''
-  rulesDraft.speech = rulesDefaults.speech || ''
-  rulesDraft.board = rulesDefaults.board || ''
-  rulesNotice.value = '已回填預設規則，請按儲存並套用。'
-}
-
-async function applyReplyRules() {
-  if (!rulesDirty.value) return rulesApplied
-  rulesSaving.value = true
-  rulesError.value = ''
-  rulesNotice.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/llm/rules', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        expected_revision: rulesApplied.revision,
-        rules: { ...rulesDraft }
-      })
-    }))
-    Object.assign(rulesApplied, data.rules || {})
-    runtime.llm.reply_rules = { ...rulesApplied }
-    rulesNotice.value = '已套用，從下一輪生效。'
-    return data
-  } catch (error) {
-    rulesError.value = error.message
-    throw error
-  } finally {
-    rulesSaving.value = false
-  }
-}
-
-async function applyLlmBehavior() {
-  rulesSaving.value = true
-  rulesError.value = ''
-  rulesNotice.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/llm/behavior', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        expected_revision: rulesApplied.revision,
-        assistant_profile: {
-          assistant_name: selectedAssistantName.value,
-          system_prompt: selectedSystemPrompt.value,
-          restriction_prompt: selectedRestrictionPrompt.value,
-          output_locale: selectedOutputLocale.value,
-          enforce_output_locale: Boolean(selectedEnforceOutputLocale.value),
-          forbidden_self_names: selectedForbiddenSelfNames.value.split('\n').map((value) => value.trim()).filter(Boolean)
-        },
-        rules: { ...rulesDraft }
-      })
-    }))
-    runtime.llm.system_prompt = data.system_prompt
-    runtime.llm.assistant_profile = data.assistant_profile
-    Object.assign(rulesApplied, data.rules)
-    runtime.llm.reply_rules = { ...rulesApplied }
-    rulesNotice.value = '角色與規則已儲存，切換模型後繼續共用。'
-    return data
-  } catch (error) {
-    rulesError.value = error.message
-    throw error
-  } finally {
-    rulesSaving.value = false
-  }
-}
-
-function applyProviderBlock(target, block) {
-  target.models = block.models || []
-  target.reachable = Boolean(block.reachable)
-  target.error = block.error || ''
-  target.base_url = block.base_url || ''
-  target.endpoint = block.name || ''
-}
-
-const PROVIDER_LABELS = { ollama: 'Ollama', llamacpp: 'llama.cpp' }
-
-// The console picks a provider; the server only accepts a configured endpoint name.
-function endpointForProvider(provider) {
-  if (provider === runtime.llm.provider && runtime.llm.endpoint) return runtime.llm.endpoint
-  const endpoint = (provider === 'llamacpp' ? llamacpp : ollama).endpoint
-  if (!endpoint) {
-    throw new Error(`伺服器設定檔 llm.endpoints 沒有 ${PROVIDER_LABELS[provider] || provider} 端點`)
-  }
-  return endpoint
-}
-
-async function loadOllamaModels() {
-  loadingModels.value = true
-  modelsError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/llm/models'))
-    const current = data.current || {}
-    const providers = data.providers || {}
-
-    if (providers.ollama) {
-      applyProviderBlock(ollama, providers.ollama)
-    } else {
-      applyProviderBlock(ollama, data)
-    }
-    ollama.current = current.model || runtime.llm.model
-
-    if (providers.llamacpp) {
-      applyProviderBlock(llamacpp, providers.llamacpp)
-      llamacpp.server_running = Boolean(providers.llamacpp.server_running)
-      llamacpp.binary = providers.llamacpp.binary || ''
-    }
-
-    if (current.provider) {
-      selectedProvider.value = current.provider
-    }
-    if (current.model) {
-      selectedLlm.value = current.model
-    }
-
-    const active = selectedProvider.value === 'llamacpp' ? llamacpp : ollama
-    modelsError.value = active.reachable ? '' : (active.error || '')
-    return data
-  } catch (error) {
-    ollama.reachable = false
-    ollama.models = []
-    modelsError.value = error.message
-    throw error
-  } finally {
-    loadingModels.value = false
-  }
-}
-
-async function applyLlmModel(
-  model = selectedLlm.value,
-  provider = selectedProvider.value,
-  systemPrompt = selectedSystemPrompt.value,
-  responseMaxChars = selectedResponseMaxChars.value,
-  replyMode = selectedReplyMode.value,
-  boardMaxItems = selectedBoardMaxItems.value
-) {
-  applyingLlm.value = true
-  try {
-    const endpoint = endpointForProvider(provider)
-    const data = await parseJson(await fetch('/api/llm/model', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        endpoint,
-        system_prompt: systemPrompt,
-        response_max_chars: Number(responseMaxChars),
-        reply_mode: replyMode,
-        board_max_items: Number(boardMaxItems),
-        semantic_wait_seconds: Number(selectedSemanticWaitSeconds.value),
-        assistant_profile: {
-          assistant_name: selectedAssistantName.value,
-          system_prompt: systemPrompt,
-          restriction_prompt: selectedRestrictionPrompt.value,
-          output_locale: selectedOutputLocale.value,
-          enforce_output_locale: Boolean(selectedEnforceOutputLocale.value),
-          forbidden_self_names: selectedForbiddenSelfNames.value.split('\n').map((value) => value.trim()).filter(Boolean)
-        }
-      })
-    }))
-    if (data.pending) return data
-    runtime.llm.model = data.model
-    runtime.llm.endpoint = data.endpoint || runtime.llm.endpoint
-    runtime.llm.provider = data.provider || provider
-    runtime.llm.base_url = data.base_url || runtime.llm.base_url
-    runtime.llm.system_prompt = data.system_prompt || systemPrompt
-    runtime.llm.assistant_profile = data.assistant_profile || runtime.llm.assistant_profile
-    runtime.llm.response_max_chars = Number(data.response_max_chars || responseMaxChars)
-    runtime.llm.board_max_items = Number(data.board_max_items || boardMaxItems)
-    runtime.llm.reply_mode = data.reply_mode || replyMode
-    runtime.llm.semantic_wait_seconds = Number(data.semantic_wait_seconds || selectedSemanticWaitSeconds.value)
-    ollama.current = data.model
-    selectedLlm.value = data.model
-    selectedProvider.value = data.provider || provider
-    selectedSystemPrompt.value = runtime.llm.system_prompt
-    selectedRestrictionPrompt.value = runtime.llm.assistant_profile?.restriction_prompt || ''
-    selectedAssistantName.value = runtime.llm.assistant_profile?.assistant_name || ''
-    selectedOutputLocale.value = runtime.llm.assistant_profile?.output_locale || 'zh-TW'
-    selectedEnforceOutputLocale.value = Boolean(runtime.llm.assistant_profile?.enforce_output_locale ?? true)
-    selectedForbiddenSelfNames.value = (runtime.llm.assistant_profile?.forbidden_self_names || []).join('\n')
-    selectedResponseMaxChars.value = runtime.llm.response_max_chars
-    selectedBoardMaxItems.value = runtime.llm.board_max_items
-    selectedReplyMode.value = runtime.llm.reply_mode
-    selectedSemanticWaitSeconds.value = runtime.llm.semantic_wait_seconds
-    return data
-  } finally {
-    applyingLlm.value = false
-  }
-}
-
-function selectBoardPreset(preset) {
-  selectedBoardPreset.value = preset
-  const point = BOARD_PRESETS[preset]
-  if (point) {
-    selectedBoardX.value = point[0]
-    selectedBoardY.value = point[1]
-  }
-}
-
-function markBoardPositionCustom() {
-  selectedBoardPreset.value = 'custom'
-}
-
-function selectMicPreset(preset) {
-  selectedMicPreset.value = preset
-  const point = BOARD_PRESETS[preset]
-  if (point) {
-    selectedMicX.value = point[0]
-    selectedMicY.value = point[1]
-  }
-}
-
-function markMicPositionCustom() {
-  selectedMicPreset.value = 'custom'
-}
-
-async function applyStageSettings(
-  captionMaxChars = selectedStageCaptionMaxChars.value
-) {
-  applyingStage.value = true
-  stageError.value = ''
-  try {
-    const data = await parseJson(await fetch('/api/stage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...composerDraft,
-        caption_max_chars: Number(captionMaxChars),
-        caption_x: Number(selectedCaptionX.value),
-        caption_y: Number(selectedCaptionY.value),
-        caption_width: Number(selectedCaptionWidth.value),
-        board_style: selectedBoardStyle.value,
-        board_width: Number(selectedBoardWidth.value),
-        board_height: Number(selectedBoardHeight.value),
-        board_transparency: Number(selectedBoardTransparency.value),
-        board_x: Number(selectedBoardX.value),
-        board_y: Number(selectedBoardY.value),
-        board_preset: selectedBoardPreset.value,
-        board_preview: Boolean(selectedBoardPreview.value),
-        board_open_x: Number(selectedBoardOpenX.value),
-        board_open_y: Number(selectedBoardOpenY.value),
-        mic_x: Number(selectedMicX.value),
-        mic_y: Number(selectedMicY.value),
-        mic_preset: selectedMicPreset.value
-      })
-    }))
-    Object.assign(runtime.stage, composerSettings(data))
-    Object.assign(composerDraft, composerSettings(data))
-    runtime.stage.caption_max_chars = Number(data.caption_max_chars)
-    runtime.stage.idle_reset_seconds = Number(data.idle_reset_seconds ?? selectedVisitorResetSeconds.value)
-    runtime.stage.caption_x = Number(data.caption_x ?? selectedCaptionX.value)
-    runtime.stage.caption_y = Number(data.caption_y ?? selectedCaptionY.value)
-    runtime.stage.caption_width = Number(data.caption_width ?? selectedCaptionWidth.value)
-    runtime.stage.board_style = data.board_style
-    runtime.stage.board_width = Number(data.board_width)
-    runtime.stage.board_height = Number(data.board_height)
-    runtime.stage.board_transparency = Number(data.board_transparency)
-    runtime.stage.board_x = Number(data.board_x)
-    runtime.stage.board_y = Number(data.board_y)
-    runtime.stage.board_preset = data.board_preset
-    runtime.stage.board_preview = Boolean(data.board_preview)
-    runtime.stage.board_open_x = Number(data.board_open_x)
-    runtime.stage.board_open_y = Number(data.board_open_y)
-    selectedStageCaptionMaxChars.value = runtime.stage.caption_max_chars
-    selectedCaptionX.value = runtime.stage.caption_x
-    selectedCaptionY.value = runtime.stage.caption_y
-    selectedCaptionWidth.value = runtime.stage.caption_width
-    selectedBoardStyle.value = runtime.stage.board_style
-    selectedBoardWidth.value = runtime.stage.board_width
-    selectedBoardHeight.value = runtime.stage.board_height
-    selectedBoardTransparency.value = runtime.stage.board_transparency
-    selectedBoardX.value = runtime.stage.board_x
-    selectedBoardY.value = runtime.stage.board_y
-    selectedBoardPreset.value = runtime.stage.board_preset
-    selectedBoardPreview.value = runtime.stage.board_preview
-    selectedBoardOpenX.value = runtime.stage.board_open_x
-    selectedBoardOpenY.value = runtime.stage.board_open_y
-    runtime.stage.mic_x = Number(data.mic_x)
-    runtime.stage.mic_y = Number(data.mic_y)
-    runtime.stage.mic_preset = data.mic_preset
-    selectedMicX.value = runtime.stage.mic_x
-    selectedMicY.value = runtime.stage.mic_y
-    selectedMicPreset.value = runtime.stage.mic_preset
-    return data
-  } catch (error) {
-    stageError.value = error.message
-    throw error
-  } finally {
-    applyingStage.value = false
-  }
-}
-
-const importing = ref(false)
-const importJob = ref(null)
-const importError = ref('')
-
-async function importCharacter({ file, engine, avatarId, overwrite = false, greenScreen = true }) {
-  if (!file) {
-    throw new Error('請選擇影片檔案')
-  }
-  importing.value = true
-  importError.value = ''
-  importJob.value = { status: 'queued', progress: 0, message: '正在上傳影片' }
-  try {
-    const form = new FormData()
-    form.append('type', engine)
-    form.append('green_screen', engine === 'musetalk' && greenScreen ? 'true' : 'false')
-    if (avatarId) form.append('avatar_id', avatarId)
-    if (overwrite) form.append('overwrite', 'true')
-    form.append('quality', JSON.stringify(mergeQuality(qualityDraft)))
-    // The server validates every field before storing the upload, so the video goes last.
-    form.append('video', file)
-
-    const started = await parseJson(await fetch('/api/avatars/import', {
-      method: 'POST',
-      body: form
-    }))
-    importJob.value = started
-    return await pollImportJob(started.id)
-  } catch (error) {
-    importError.value = error.message
-    throw error
-  } finally {
-    importing.value = false
-  }
-}
-
-async function loadBackgrounds() {
-  backgrounds.loading = true
-  backgrounds.error = ''
-  try {
-    const [activeResponse, archivedResponse] = await Promise.all([
-      fetch('/api/backgrounds'),
-      fetch('/api/backgrounds/deleted')
-    ])
-    const [data, archived] = await Promise.all([
-      parseJson(activeResponse),
-      parseJson(archivedResponse)
-    ])
-    backgrounds.items = data.items || []
-    backgrounds.archivedItems = archived.items || []
-    backgrounds.background_id = data.background_id || ''
-    return data
-  } catch (error) {
-    backgrounds.error = error.message
-    throw error
-  } finally {
-    backgrounds.loading = false
-  }
-}
-
-async function deleteBackground(backgroundId) {
-  backgrounds.busy = true
-  backgrounds.error = ''
-  try {
-    const result = await parseJson(await fetch(`/api/backgrounds/${encodeURIComponent(backgroundId)}`, {
-      method: 'DELETE'
-    }))
-    await loadBackgrounds()
-    return result
-  } catch (error) {
-    backgrounds.error = error.message
-    throw error
-  } finally {
-    backgrounds.busy = false
-  }
-}
-
-async function restoreBackground(archiveName) {
-  backgrounds.busy = true
-  backgrounds.error = ''
-  try {
-    const result = await parseJson(await fetch(`/api/backgrounds/deleted/${encodeURIComponent(archiveName)}/restore`, {
-      method: 'POST'
-    }))
-    await loadBackgrounds()
-    return result
-  } catch (error) {
-    backgrounds.error = error.message
-    throw error
-  } finally {
-    backgrounds.busy = false
-  }
-}
-
-async function uploadBackground(file) {
-  if (!file) throw new Error('請先選擇背景檔案')
-  backgrounds.busy = true
-  backgrounds.error = ''
-  try {
-    const form = new FormData()
-    form.append('background', file)
-    const item = await parseJson(await fetch('/api/backgrounds', { method: 'POST', body: form }))
-    await loadBackgrounds()
-    return item
-  } catch (error) {
-    backgrounds.error = error.message
-    throw error
-  } finally {
-    backgrounds.busy = false
-  }
-}
-
-async function selectBackground(backgroundId) {
-  backgrounds.busy = true
-  backgrounds.error = ''
-  try {
-    const data = await parseJson(await fetch('/api/background', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ background_id: backgroundId })
-    }))
-    backgrounds.background_id = data.background_id || ''
-    runtime.stage.background_id = backgrounds.background_id
-    return data
-  } catch (error) {
-    backgrounds.error = error.message
-    throw error
-  } finally {
-    backgrounds.busy = false
-  }
-}
-
-async function deleteCharacter(avatarId) {
-  const data = await parseJson(await fetch(`/api/avatars/${encodeURIComponent(avatarId)}`, { method: 'DELETE' }))
-  await loadRuntimeSettings()
-  await loadArchivedCharacters()
-  return data
-}
-
-async function loadArchivedCharacters() {
-  const data = await parseJson(await fetch('/api/avatars/deleted'))
-  archivedCharacters.items = data.items || []
-  return data
-}
-
-async function restoreCharacter(archiveName) {
-  const data = await parseJson(await fetch(`/api/avatars/deleted/${encodeURIComponent(archiveName)}/restore`, {
-    method: 'POST'
-  }))
-  await Promise.all([loadRuntimeSettings(), loadArchivedCharacters()])
-  return data
-}
-
-async function permanentlyDeleteCharacter(archiveName) {
-  const data = await parseJson(await fetch(`/api/avatars/deleted/${encodeURIComponent(archiveName)}`, {
-    method: 'DELETE'
-  }))
-  await loadArchivedCharacters()
-  return data
-}
-
-async function pollImportJob(jobId) {
-  const started = Date.now()
-  while (Date.now() - started < 30 * 60 * 1000) {
-    const data = await parseJson(await fetch(`/api/avatars/import/${jobId}`))
-    importJob.value = data
-    if (data.status === 'done') {
-      return data
-    }
-    if (data.status === 'failed') {
-      throw new Error(data.error || data.message || '製作失敗')
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-  }
-  throw new Error('製作超時，請檢視後端日誌')
-}
-
-async function applyAvatar(engine = selectedEngine.value, avatarId = selectedAvatarId.value) {
-  applyingAvatar.value = true
-  try {
-    const data = await parseJson(await fetch('/api/avatar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: engine, avatar_id: avatarId })
-    }))
-    if (data.pending) return data
-    runtime.avatar.type = data.type
-    runtime.avatar.avatar_id = data.avatar_id
-    runtime.model_ready = true
-    selectedEngine.value = data.type
-    selectedAvatarId.value = data.avatar_id
-    return data
-  } finally {
-    applyingAvatar.value = false
-  }
-}
-
-function selectProvider(id) {
-  selectedProvider.value = id
-  const models = id === 'llamacpp' ? llamacpp.models : ollama.models
-  if (runtime.llm.provider === id && runtime.llm.model) {
-    selectedLlm.value = runtime.llm.model
-  } else if (models.length) {
-    selectedLlm.value = models[0].name
-  } else {
-    selectedLlm.value = ''
-  }
-  const active = id === 'llamacpp' ? llamacpp : ollama
-  modelsError.value = active.reachable ? '' : (active.error || '')
-}
-
-function selectEngine(engineId) {
-  const engine = runtime.engines.find((item) => item.id === engineId)
-  if (!engine || (!engine.available && !engine.can_import)) return
-  selectedEngine.value = engineId
-  const stillValid = filteredCharacters.value.some((item) => item.id === selectedAvatarId.value)
-  if (!stillValid) {
-    const first = filteredCharacters.value[0]
-    selectedAvatarId.value = first ? first.id : ''
-  }
-}
-
-function selectCharacter(avatarId) {
-  const character = runtime.characters.find((item) => item.id === avatarId)
-  if (!character) return
-  selectedEngine.value = character.type
-  selectedAvatarId.value = character.id
-}
+// Characters are deleted and restored by the avatar settings; they reload everything afterwards.
+hooks.reload = loadRuntimeSettings
 
 export function useRuntimeSettings() {
   return {

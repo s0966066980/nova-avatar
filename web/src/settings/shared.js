@@ -77,6 +77,9 @@ export const runtime = reactive({
   model_ready: false
 })
 
+// Set by the store: reloads every setting after a change that other settings depend on.
+export const hooks = { reload: async () => {} }
+
 export async function parseJson(response) {
   let data = {}
   try {

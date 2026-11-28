@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { settingsSource } from './helpers/settingsSource.js'
 import test from 'node:test'
 
 const panel = readFileSync(
@@ -8,10 +9,7 @@ const panel = readFileSync(
 )
 const editor = readFileSync(new URL('../src/components/AvatarProfileEditor.vue', import.meta.url), 'utf8')
 const profiles = readFileSync(new URL('../src/components/AvatarProfiles.vue', import.meta.url), 'utf8')
-// The settings store and the modules it composes (speech, shared request plumbing).
-const settings = ['composables/useRuntimeSettings.js', 'settings/speech.js', 'settings/shared.js']
-  .map(file => readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8'))
-  .join('\n')
+const settings = settingsSource
 const app = readFileSync(
   new URL('../src/App.vue', import.meta.url),
   'utf8'

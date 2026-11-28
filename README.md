@@ -421,7 +421,7 @@ git diff --cached
 | [`services/llm/`](services/llm/README.md) | `nova_llm` | 回答模型、交接判斷、天氣、AI 招呼，內含 `ragflow` 與 `web_search` |
 | [`services/tts/`](services/tts/README.md) | `nova_tts` | 語音合成引擎、音訊庫、聲線模型與聲線訓練 |
 | [`avatar/`](avatar/README.md) | `nova_render` | 數位人渲染（MuseTalk）與舞台場景，內含 `scene` |
-| `web/` | | 控制台與舞台前端 |
+| `web/` | | 控制台與舞台前端；`src/` 依功能分資料夾：`settings/`（語音、LLM、舞台、數位人各自的設定狀態與請求，由 `composables/useRuntimeSettings.js` 組合）、`stage/`、`roles/`、`console/`、`voiceTraining/`、`components/`，語系文字在 `locales/`（單一功能的文字放在 `locales/<功能>/<語言>.js`） |
 | `scripts/` | | 跨層的啟動、設定、量測與 CI 腳本 |
 | `integrations/` | | 外部服務與獨立環境的部署檔：`ragflow/`（Compose 與 systemd 服務）、`matcha-train/`（聲線訓練的依賴清單與訓練腳本） |
 | [`docs/`](docs/README.md) | | 持續維護的文件：`guides/`（安裝與操作指南）、`project/`（專案狀態、流程、測試基準、授權稽核）、`adr/`（架構決策）、`agents/` |
