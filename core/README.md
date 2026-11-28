@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
 | `nova_core.server` | aiohttp 路由（`routes/`）、語音會話（`voice_session`）、回覆串流與切分（`reply_streaming/`）、對話與附件、全域狀態（`state`）、路由存取分類（`access`，ADR 0021） |
 | `nova_core.vad` | 伺服器端語音活動偵測（Silero） |
 | `nova_core.profiles` | 角色（人設）、組成、交接判斷的核心端、媒體、知識範圍 |
-| `nova_core.config` | `config/config.yaml` 的載入、驗證、執行期覆寫；各層的設定段落由各層的 `config_section` 驗證 |
+| `nova_core.config` | `config/config.yaml` 的載入、驗證、執行期覆寫；各層的設定段落（`TTSConfig`、`MatchaConfig`、`ASRConfig`）定義並驗證於各層的 `config_section`，`config/schema.py` 只匯入與組合 |
 | `nova_core.greetings` | 閒置招呼的排程與預寫文案 |
 | `nova_core.utils` | 各層共用的小工具（路徑、日誌、字素、音訊容器、計時）；它是葉節點，不得 import 任何處理層或核心的其他子套件 |
 

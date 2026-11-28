@@ -1,5 +1,8 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
+# The configuration dataclasses below were moved here from core/nova_core/config/schema.py,
+# which is derived from Kedreamix/Linly-Talker-Stream (Apache-2.0) and modified by
+# HongXian0903, 2026. See LICENSE and NOTICE.
 
 """The TTS layer's rules for its configuration sections, for the core.
 
@@ -16,12 +19,37 @@ is shown to the administrator.
 """
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Optional
 
 from nova_contracts.tts import TtsEngineSettings, TtsVoice
 from nova_tts import cosyvoice_runtime, voice_library
 from nova_tts.training.asr import WHISPER_MODELS
 from nova_tts.voice_library import REMOVED_TTS_FIELDS, migrate_tts_config
+
+
+@dataclass
+class TTSConfig:
+    voice_en_us: str = "en-US-JennyNeural"
+    """TTS 配置"""
+    type: str = "edgetts"  # edgetts | breezyvoice | matcha
+    # Edge 聲線名稱、BreezyVoice 的音訊庫 ID，或 Matcha 的聲線模型 ID（models/tts/<id>）
+    ref_file: str = "zh-TW-HsiaoChenNeural"
+    ref_text: Optional[str] = None  # 已停用：逐字稿只來自音訊庫，載入與儲存時清除
+    tts_server: str = ""  # BreezyVoice 服務（只接受本機）；空白為 127.0.0.1:50000
+    model: str = ""  # BreezyVoice：models/ 清單 ID；空白為 models/BreezyVoice
+    edge_persistent_worker: bool = True
+    edge_prefetch: bool = True
+    edge_connection_reuse: bool = True
+
+
+@dataclass
+class MatchaConfig:
+    """Matcha-TTS 的伺服器設定，所有數位人設定檔共用（不屬於任何設定檔）"""
+    num_threads: int = 4  # sherpa-onnx 在 CPU 上合成的執行緒數
+    training_min_free_vram_gb: float = 8.0  # 聲線訓練：剩餘顯存低於此值（GB）時拒絕開始
+    training_whisper_model: str = "small"  # 訓練前逐字稿比對用的 faster-whisper 大小（在 CPU 執行）
+
 
 # sherpa-onnx CPU threads for Matcha-TTS; more than the cores only adds contention.
 MAX_MATCHA_THREADS = 64

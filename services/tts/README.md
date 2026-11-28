@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 ## 對外介面
 
 - `nova_tts.adapter.create_tts_service(settings)`：回傳 `nova_contracts.tts.TtsService`（語音、音訊庫、聲線模型試聽，以及 `VoiceTraining` 的語料與訓練工作）。
-- `nova_tts.config_section`：核心的設定載入器用它遷移、驗證與建立 `TtsEngineSettings`、`TtsVoice`。
+- `nova_tts.config_section`：本層擁有的設定段落（`TTSConfig`、`MatchaConfig` 的欄位與預設值），以及核心的設定載入器用來遷移、驗證與建立 `TtsEngineSettings`、`TtsVoice` 的函式。新增引擎參數只改這裡。
 - 其餘模組是內部實作，核心不得 import（import-linter 契約 `tts-internals-private`）。
 - 型別與 loopback HTTP 形狀（拆成行程後使用）在 [`nova_contracts.tts`](../../contracts/README.md)。
 

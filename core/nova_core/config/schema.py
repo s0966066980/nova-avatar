@@ -6,6 +6,12 @@
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 
+# The speech layers own their configuration sections; the core only composes them.
+from nova_stt.config_section import ASRConfig
+from nova_tts.config_section import MatchaConfig, TTSConfig
+
+__all__ = ["ASRConfig", "MatchaConfig", "TTSConfig"]  # re-exported for the core's existing imports
+
 
 @dataclass
 class WebConfig:
@@ -80,42 +86,6 @@ class ModelConfig:
 
     # 模型專屬配置
     musetalk: MuseTalkQualityConfig = field(default_factory=MuseTalkQualityConfig)
-
-
-@dataclass
-class TTSConfig:
-    voice_en_us: str = "en-US-JennyNeural"
-    """TTS 配置"""
-    type: str = "edgetts"  # edgetts | breezyvoice | matcha
-    # Edge 聲線名稱、BreezyVoice 的音訊庫 ID，或 Matcha 的聲線模型 ID（models/tts/<id>）
-    ref_file: str = "zh-TW-HsiaoChenNeural"
-    ref_text: Optional[str] = None  # 已停用：逐字稿只來自音訊庫，載入與儲存時清除
-    tts_server: str = ""  # BreezyVoice 服務（只接受本機）；空白為 127.0.0.1:50000
-    model: str = ""  # BreezyVoice：models/ 清單 ID；空白為 models/BreezyVoice
-    edge_persistent_worker: bool = True
-    edge_prefetch: bool = True
-    edge_connection_reuse: bool = True
-
-
-@dataclass
-class MatchaConfig:
-    """Matcha-TTS 的伺服器設定，所有數位人設定檔共用（不屬於任何設定檔）"""
-    num_threads: int = 4  # sherpa-onnx 在 CPU 上合成的執行緒數
-    training_min_free_vram_gb: float = 8.0  # 聲線訓練：剩餘顯存低於此值（GB）時拒絕開始
-    training_whisper_model: str = "small"  # 訓練前逐字稿比對用的 faster-whisper 大小（在 CPU 執行）
-
-
-@dataclass
-class ASRConfig:
-    """ASR 語音識別配置"""
-    mode: str = "server"  # 互動麥克風固定由 WebRTC 傳到伺服器
-    type: str = "whisper"  # faster-whisper, the only STT engine
-    model_size: str = "base"  # engine-specific model name or Hugging Face/local path
-    language: str = "zh"  # /asr 上傳辨識：zh | en | auto（只在中英文間偵測）；語音輪次一律自動偵測
-    device: str = "auto"  # auto | cpu | cuda
-    min_speech_ms: int = 450  # 短促咳嗽、敲擊等不送入 ASR／LLM
-    min_audio_rms: float = 0.003  # int16 正規化後的最低音量
-    min_confidence: float = 0.35  # 引擎提供信心分數時的最低接受值
 
 
 @dataclass

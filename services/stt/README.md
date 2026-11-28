@@ -14,7 +14,7 @@ SPDX-License-Identifier: Apache-2.0
 ## 對外介面
 
 - `nova_stt.adapter.create_stt_service(settings)`：回傳 `nova_contracts.stt.SttService`（`health`、`apply_engine`、`prepare`、`transcribe`）。同一行程內只載入一個辨識器，切換引擎時新引擎載入完成才取代舊的。
-- `nova_stt.config_section`：核心的設定載入器用它遷移與驗證 `asr` 設定段落。
+- `nova_stt.config_section`：本層擁有的 `asr` 設定段落（`ASRConfig` 的欄位與預設值），以及核心的設定載入器用來遷移與驗證它的函式。
 - 其餘模組（`base`、`factory`、`engines`）是內部實作，核心不得 import（import-linter 契約 `stt-internals-private`）。
 - 型別與 loopback HTTP 形狀（拆成行程後使用）在 [`nova_contracts.stt`](../../contracts/README.md)。
 
