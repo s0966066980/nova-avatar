@@ -269,6 +269,7 @@ protected_modules = [
     "nova_llm.identity_policy",
     "nova_llm.llamacpp",
     "nova_llm.llamacpp_protocol",
+    "nova_llm.model_profile",
     "nova_llm.prewarm",
     "nova_llm.prompts",
     "nova_llm.reply_contract",

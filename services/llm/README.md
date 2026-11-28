@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 - 依對話內容產生回覆：只送出口語文字增量與結構化事件（看板等），片段切分由核心負責。
 - 交接判斷（`handoff`，誰來回答這一輪）、天氣工具（`tools/weather*`）、AI 招呼生成（`greeting`）。
-- 本機 llama.cpp 伺服器的生命週期（`llamacpp`）、回覆規則與提示詞（`rules`、`prompts`）。
+- 本機 llama.cpp 伺服器的生命週期（`llamacpp`）、各模型旁的描述檔（`model_profile`，宣告看圖用的投影權重配對，見[對話附件指南](../../docs/guides/conversation-attachments.md)）、回覆規則與提示詞（`rules`、`prompts`）。
 - 檢索與網頁證據：RAGFlow 只做檢索（ADR 0013）；網頁搜尋在回答前有時間上限（ADR 0024）。
 
 輪次狀態（對話紀錄的持有、角色組成、舞台）由核心持有；本層只持有自己的資產，每個請求帶齊它需要的內容。

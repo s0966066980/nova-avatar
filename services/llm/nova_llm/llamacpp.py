@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from nova_core.utils.logging import logger
 from nova_core.utils.paths import get_project_root
+from nova_llm.model_profile import projector_for
 
 _server_proc: Optional[subprocess.Popen] = None
 _loaded_model: str = ""
@@ -476,7 +477,7 @@ def ensure_server(
         same = (status["owned"] and _loaded_model == gguf.stem) or (
             (not status["owned"]) and _same_external_model(host, port, gguf.stem)
         )
-        if same and gguf.name == 'gemma-4-E2B_q4_0-it.gguf' and (gguf.parent / 'gemma-4-E2B-it-mmproj.gguf').is_file():
+        if same and projector_for(gguf) is not None:
             import requests
             try:
                 props = requests.get(f'http://{host}:{int(port)}/props', timeout=2).json()
@@ -533,12 +534,12 @@ def ensure_server(
         "--reasoning-budget",
         "0",
     ]
-    # Only the tested model/projector pairing is automatic. Never attach an
+    # A projector is attached only where model_profile declares the pairing (built in
+    # for the tested Gemma 4 E2B, or a descriptor beside the model). Never attach an
     # arbitrary GGUF from the model directory to another language model.
-    if gguf.name == 'gemma-4-E2B_q4_0-it.gguf':
-        projector = gguf.parent / 'gemma-4-E2B-it-mmproj.gguf'
-        if projector.is_file():
-            base_cmd.extend(['--mmproj', str(projector)])
+    projector = projector_for(gguf)
+    if projector is not None:
+        base_cmd.extend(['--mmproj', str(projector)])
     n_layers = gguf_block_count(gguf) or 64
     if has_cuda_backend(binary):
         free_mb = cuda_free_mb()

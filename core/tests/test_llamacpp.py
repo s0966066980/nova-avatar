@@ -346,6 +346,25 @@ class FullGpuStartupTests(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--mmproj") + 1], str(projector))
         self.assertEqual(self._ngl(cmd), ALL_GPU_LAYERS)
 
+    def test_a_model_descriptor_attaches_its_own_vision_projector(self):
+        root = Path(self.tmp.name)
+        model = _write_gguf(root / "other-vision-model-Q4.gguf", 35, 3 * 1024**3)
+        projector = root / "other-vision-mmproj.gguf"
+        projector.write_bytes(b"GGUF")
+        (root / "other-vision-model-Q4.model.json").write_text('{"mmproj": "other-vision-mmproj.gguf"}', encoding="utf-8")
+        with patch.object(self.llamacpp, "cuda_free_mb", return_value=20000):
+            self.llamacpp.ensure_server(str(model), port=18080)
+        cmd = self.launched[-1]
+        self.assertEqual(cmd[cmd.index("--mmproj") + 1], str(projector))
+
+    def test_a_model_without_a_descriptor_gets_no_projector_even_if_one_is_nearby(self):
+        root = Path(self.tmp.name)
+        model = _write_gguf(root / "plain-text-model-Q4.gguf", 35, 3 * 1024**3)
+        (root / "plain-text-model-mmproj.gguf").write_bytes(b"GGUF")
+        with patch.object(self.llamacpp, "cuda_free_mb", return_value=20000):
+            self.llamacpp.ensure_server(str(model), port=18080)
+        self.assertNotIn("--mmproj", self.launched[-1])
+
     def test_each_launch_is_marked_in_the_shared_log(self):
         with patch.object(self.llamacpp, "cuda_free_mb", return_value=20000):
             self.llamacpp.ensure_server(str(self.model), port=18080)

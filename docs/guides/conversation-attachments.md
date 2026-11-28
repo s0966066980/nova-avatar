@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
 
 PDFium／pypdfium2 擷取 PDF 文字並渲染頁面。Tesseract 在本機補充圖片及掃描頁的繁中／英文 OCR；圖片與 PDF 頁面由 llama.cpp / libmtmd、匹配的 `mmproj` 與語言模型分析。`mmproj` 是影像編碼／投影權重，PDF 解析仍由 PDFium 負責。
 
-目前自動載入僅支援已驗證的配對：
+內建已驗證的配對（沒有描述檔時使用）：
 
 - 文字模型：`llama/gemma-4-E2B_q4_0-it.gguf`
 - 投影權重：同目錄的 `gemma-4-E2B-it-mmproj.gguf`
@@ -64,6 +64,19 @@ PDFium／pypdfium2 擷取 PDF 文字並渲染頁面。Tesseract 在本機補充�
 - Projector SHA-256：`021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14`
 
 重啟後端或重新套用模型會載入配對權重；未提供相容視覺能力時，附件按鈕顯示原因，純文字仍可使用。模型目錄內的 `mmproj` 不會被列為可單獨選取的語言模型。
+
+### 換成其他能看圖的模型
+
+投影權重只會附掛到明確宣告配對的模型，不會從檔名猜測。換模型時，把語言模型與它的投影權重放進同一個模型目錄，並在語言模型旁建立同名的描述檔 `<模型檔名去掉 .gguf>.model.json`：
+
+```json
+{"mmproj": "Qwen3.5-VL-9B-mmproj.gguf"}
+```
+
+- `mmproj` 必須是同目錄的 `.gguf` 檔名；寫 `null` 表示不附掛投影權重（用來關閉內建配對）。
+- 描述檔有未知欄位、不是 JSON 物件、檔名含路徑，或指定的檔案不存在時，該描述檔不會被採用，模型以純文字執行，並在日誌留下警告。
+- 沒有描述檔的模型一律是純文字模型；Gemma 4 E2B 的內建配對不需要描述檔。
+- 換模型後請重跑實機契約測試（`NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -m live`），並確認回覆字數、看板協定與交接判斷仍符合預期；這些規則是依 Gemma 4 E2B 調校的。
 
 Python 依賴由 `uv sync` 安裝。Ubuntu 的 OCR 依賴可安裝：
 

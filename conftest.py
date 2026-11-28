@@ -79,6 +79,7 @@ AREA_BY_FILE = {
     "test_kiosk_launcher.py": "runtime",
     "test_live_llm_board_contract.py": "conversation",
     "test_llamacpp.py": "llm",
+    "test_model_profile.py": "llm",
     "test_llm_contract.py": "llm",
     "test_llm_fake_engine.py": "llm",
     "test_llm_endpoints.py": "llm",
