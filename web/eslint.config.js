@@ -7,7 +7,7 @@ import html from 'eslint-plugin-html'
 import globals from 'globals'
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'srs.sdk.js'] },
+  { ignores: ['dist/**', 'node_modules/**'] },
   js.configs.recommended,
   ...vue.configs['flat/essential'],
   {

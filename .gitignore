@@ -25,7 +25,6 @@ MANIFEST
 
 # Virtual environments
 .venv
-.venv-qwen-speech/
 venv/
 ENV/
 env/
