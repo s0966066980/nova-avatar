@@ -26,6 +26,23 @@ class ASRConfig:
     min_confidence: float = 0.35  # 引擎提供信心分數時的最低接受值
 
 
+# The STT engines the console offers, with the model sizes and the language and device
+# choices of the settings form. A new engine adds an entry here.
+ENGINE_META = {
+    "whisper": {
+        "label": "faster-whisper",
+        "module": "faster_whisper",
+        "install": 'uv pip install "faster-whisper>=1.1"',
+        "description": "CTranslate2 Whisper，GPU FP16 / CPU INT8",
+    },
+}
+MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3", "turbo")
+MODELS_BY_ENGINE = {
+    "whisper": MODEL_SIZES,
+}
+LANGUAGES = ("zh", "en", "auto")
+DEVICES = ("auto", "cpu", "cuda")
+
 # STT engines removed from the product; saved settings naming one load as
 # faster-whisper with the model size that config/config.yaml ships.
 REMOVED_ASR_ENGINES = frozenset({"funasr"})

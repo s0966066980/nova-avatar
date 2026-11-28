@@ -18,6 +18,7 @@ from nova_contracts.tts import (
     TtsVoice,
     VoicePreparation,
 )
+from nova_stt import config_section as stt_section
 from nova_tts import config_section as tts_section
 from nova_core.utils.logging import logger
 from nova_core.server.runtime_settings import shared
@@ -150,32 +151,16 @@ def apply_vad_settings(config, params: Dict[str, Any]) -> Dict[str, Any]:
     return snapshot
 
 
-STT_ENGINE_META = {
-    "whisper": {
-        "label": "faster-whisper",
-        "module": "faster_whisper",
-        "install": 'uv pip install "faster-whisper>=1.1"',
-        "description": "CTranslate2 Whisper，GPU FP16 / CPU INT8",
-    },
-}
+# The STT engines are described by the STT layer (nova_stt.config_section).
+STT_ENGINE_META = stt_section.ENGINE_META
+STT_MODEL_SIZES = stt_section.MODEL_SIZES
+STT_MODELS_BY_ENGINE = stt_section.MODELS_BY_ENGINE
+STT_LANGUAGES = stt_section.LANGUAGES
+STT_DEVICES = stt_section.DEVICES
 
 
 # The TTS engines are described by the TTS layer (nova_tts.config_section.ENGINE_META).
 TTS_ENGINE_META = tts_section.ENGINE_META
-
-
-STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3", "turbo")
-
-
-STT_MODELS_BY_ENGINE = {
-    "whisper": STT_MODEL_SIZES,
-}
-
-
-STT_LANGUAGES = ("zh", "en", "auto")
-
-
-STT_DEVICES = ("auto", "cpu", "cuda")
 
 
 EDGE_TTS_ZH_TW_VOICES = (
@@ -334,13 +319,19 @@ def validate_tts_sources(config, params: Dict[str, Any]) -> Dict[str, str]:
         if value is not None and not isinstance(value, str):
             raise SettingsError(f"{key} 格式不正確")
         values[key] = (value or "").strip()
-    if engine == "breezyvoice" and values["ref_file"] in EDGE_TTS_ZH_TW_VOICE_IDS:
+    # An Edge voice name is not a library recording: an engine that clones one starts empty.
+    if _voice_source(engine) == tts_section.VOICE_SOURCE_LIBRARY and values["ref_file"] in EDGE_TTS_ZH_TW_VOICE_IDS:
         values["ref_file"] = ""
     try:
         values = tts_section.check_voice_values(engine, values["ref_file"], values["tts_server"], values["model"])
     except ValueError as exc:
         raise SettingsError(str(exc)) from None
     return {"type": engine, **values}
+
+
+def _voice_source(engine: str) -> str:
+    """What the engine's voice is chosen from, as its entry in the engine catalog declares."""
+    return TTS_ENGINE_META[engine]["voice_source"]
 
 
 def _require_matcha_voice_model(ref_file: str) -> None:
@@ -375,11 +366,12 @@ def apply_tts_settings(
     ref_file = sources["ref_file"]
     tts_server = sources["tts_server"]
     model = sources["model"]
-    if engine == "edgetts":
+    source = _voice_source(engine)
+    if source == tts_section.VOICE_SOURCE_EDGE:
         if ref_file not in EDGE_TTS_ZH_TW_VOICE_IDS:
             raise SettingsError("請選擇可用的 Edge TTS 台灣華語聲線")
         tts_server, model = "", ""
-    elif engine == "matcha":
+    elif source == tts_section.VOICE_SOURCE_MODEL:
         _require_matcha_voice_model(ref_file)
         tts_server, model = "", ""
     else:
@@ -474,11 +466,12 @@ def preview_profile_voice(config, params: Dict[str, Any], *, session_count: int,
     meta = TTS_ENGINE_META[engine]
     if not _engine_available(meta):
         raise SettingsError(f"{meta['label']} 依賴未安裝", extra={"missing_package": meta["module"]})
-    if engine == "edgetts":
+    source = _voice_source(engine)
+    if source == tts_section.VOICE_SOURCE_EDGE:
         if not ref_file:
             raise SettingsError("請先填寫 Edge TTS 聲線")
         tts_server, model = "", ""
-    elif engine == "matcha":
+    elif source == tts_section.VOICE_SOURCE_MODEL:
         _require_matcha_voice_model(ref_file)
         tts_server, model = "", ""
     else:
@@ -488,7 +481,7 @@ def preview_profile_voice(config, params: Dict[str, Any], *, session_count: int,
             raise SettingsError("這段參考音檔沒有逐字稿，請改選或重新上傳並填寫逐字稿")
         wanted = tts_section.server_identity(tts_server, model)
         default = config.tts
-        if default.type == "breezyvoice" and wanted != tts_section.server_identity(
+        if TTS_ENGINE_META.get(default.type, {}).get("starts_service") and wanted != tts_section.server_identity(
                 default.tts_server, default.model):
             raise SettingsError("試聽這個 BreezyVoice 模型或服務網址會停止預設聲音正在使用的伺服器；"
                                 "請先套用此設定檔，或改用相同的模型與服務網址試聽", status=409)
