@@ -56,7 +56,9 @@ NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -v -ra -m live   # 已�
 核心設定、驅動伺服器或串接多個層的測試（包含會載入核心設定的各層合約測試）都放在
 `core/tests/`。本資料夾 `tests/` 只保留不屬於任何單一層的測試：品牌與授權稽核、
 相依鎖定、啟動與權重腳本、ruff 安全規則，以及層級邊界設定。測試檔名在整個儲存庫內
-保持唯一。
+保持唯一。`core/tests/` 依功能分子資料夾（`tts/`、`llm/`、`stt/`、`avatar/`、`roles/`、`stage/`、`server/`），
+跨整個應用程式的規則測試（`test_route_access.py`、`test_contracts.py`）和共用的輔助模組（`*_fakes.py`、
+`access_helpers.py`）留在 `core/tests/` 根目錄；子資料夾的歸屬不影響產品領域，領域由各測試檔的 `pytestmark` 決定。
 
 每個測試模組用 `pytestmark = pytest.mark.<領域>` 自己宣告產品領域（`gpu`／`live`／`slow` 同樣標在模組或
 測試函式上），沒有集中登記表：新增、搬移或刪除測試都不用改別的檔案。根目錄的 `conftest.py` 只負責

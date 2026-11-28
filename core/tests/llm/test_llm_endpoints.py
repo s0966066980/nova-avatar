@@ -309,7 +309,7 @@ def test_default_config_offers_both_local_servers(tmp_path, monkeypatch):
     from nova_llm.endpoints import configured_endpoints
 
     monkeypatch.setattr(overrides, "RUNTIME_OVERRIDES_FILE", tmp_path / "absent.yaml")
-    config = loader.load_config(str(Path(__file__).resolve().parents[2] / "config" / "config.yaml"))
+    config = loader.load_config(str(Path(__file__).resolve().parents[3] / "config" / "config.yaml"))
     providers = {item.provider for item in configured_endpoints(config.llm).values()}
     assert {"ollama", "llamacpp"} <= providers
 

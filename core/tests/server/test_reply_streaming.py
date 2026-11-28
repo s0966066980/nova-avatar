@@ -119,7 +119,7 @@ class ReplyStreamingConfigTests(unittest.TestCase):
         self.assertTrue(config.reply_streaming.decoupled_audio_clock)
 
     def test_main_yaml_explicitly_keeps_reply_streaming_disabled(self):
-        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        config_path = Path(__file__).resolve().parents[3] / "config" / "config.yaml"
         config_dict = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
         self.assertIs(config_dict["reply_streaming"]["enabled"], False)
@@ -127,7 +127,7 @@ class ReplyStreamingConfigTests(unittest.TestCase):
     def test_process_scoped_environment_can_enable_soak_without_changing_yaml(self):
         from nova_core.config.loader import load_config
 
-        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        config_path = Path(__file__).resolve().parents[3] / "config" / "config.yaml"
         with patch.dict(os.environ, {"NOVA_AVATAR_REPLY_STREAMING_ENABLED": "1"}):
             config = load_config(str(config_path))
 
@@ -278,7 +278,7 @@ class TurnMetricsTests(unittest.TestCase):
 class BaselineReplayHarnessTests(unittest.TestCase):
     @pytest.mark.slow
     def test_fake_replay_is_reproducible_content_free_and_judges_slos(self):
-        project_root = Path(__file__).resolve().parents[2]
+        project_root = Path(__file__).resolve().parents[3]
         command = [sys.executable, "scripts/replay_voice_baseline.py"]
 
         first = subprocess.check_output(command, cwd=project_root, text=True)

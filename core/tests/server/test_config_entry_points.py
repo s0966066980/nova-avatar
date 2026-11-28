@@ -12,7 +12,7 @@ import pytest
 
 pytestmark = pytest.mark.runtime
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CONFIG_DIR = PROJECT_ROOT / "core" / "nova_core" / "config"
 LAYER_PACKAGES = ("nova_stt", "nova_llm", "nova_tts", "nova_render")
 

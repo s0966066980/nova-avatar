@@ -170,7 +170,7 @@ def test_process_prewarm_switch_is_explicit_and_does_not_change_saved_config(mon
 def _benchmark_module():
     import importlib.util
     from pathlib import Path
-    path = Path(__file__).resolve().parents[2] / 'scripts/benchmark-prewarm.py'
+    path = Path(__file__).resolve().parents[3] / 'scripts/benchmark-prewarm.py'
     spec = importlib.util.spec_from_file_location('nova_prewarm_benchmark', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

@@ -32,7 +32,7 @@ def test_utilities_import_without_loading_optional_model_classes(monkeypatch):
             raise AssertionError("utility imports must not load model classes")
         return original_import(name, *args, **kwargs)
 
-    path = Path(__file__).resolve().parents[2] / "avatar/nova_render/musetalk/utils/utils.py"
+    path = Path(__file__).resolve().parents[3] / "avatar/nova_render/musetalk/utils/utils.py"
     spec = importlib.util.spec_from_file_location(
         "nova_render.musetalk.utils._import_probe", path
     )
@@ -93,7 +93,7 @@ def test_engine_paths_survive_control_panel_save(monkeypatch, tmp_path):
 def _builder_module():
     import importlib.util
     from pathlib import Path
-    path = Path(__file__).resolve().parents[2] / "avatar/scripts/build-musetalk-tensorrt.py"
+    path = Path(__file__).resolve().parents[3] / "avatar/scripts/build-musetalk-tensorrt.py"
     spec = importlib.util.spec_from_file_location("musetalk_builder", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

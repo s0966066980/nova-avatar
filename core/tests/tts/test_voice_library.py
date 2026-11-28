@@ -31,7 +31,7 @@ from tts_fakes import in_process_tts
 
 pytestmark = pytest.mark.speech
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 UNSAFE_REFERENCES = [
     "/etc/passwd",
     "config/ragflow.env",

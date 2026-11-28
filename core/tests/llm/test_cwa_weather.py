@@ -132,7 +132,7 @@ def test_the_key_comes_from_the_environment_or_the_git_excluded_config_file(monk
     for name in ("NOVA_CWA_API_KEY", "CWA_API_KEY"):
         monkeypatch.delenv(name, raising=False)
     # services/llm/scripts/configure-cwa.py writes the repository's config/cwa.env.
-    assert weather_tool.CONFIG_DIR.resolve() == Path(__file__).resolve().parents[2] / "config"
+    assert weather_tool.CONFIG_DIR.resolve() == Path(__file__).resolve().parents[3] / "config"
     monkeypatch.setattr(weather_tool, "CONFIG_DIR", tmp_path)
     (tmp_path / "cwa.env").write_text('NOVA_CWA_API_KEY="CWA-FILE"\n', "utf-8")
     assert cwa_key() == "CWA-FILE"

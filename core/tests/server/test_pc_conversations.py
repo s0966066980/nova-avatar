@@ -280,7 +280,7 @@ def test_profile_english_voice_defaults_preserve_original_chinese_voice(field):
 
 
 def script(name):
-    path = Path(__file__).resolve().parents[2] / 'scripts' / name
+    path = Path(__file__).resolve().parents[3] / 'scripts' / name
     spec = importlib.util.spec_from_file_location('pc_port_' + path.stem, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

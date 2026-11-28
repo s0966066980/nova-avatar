@@ -34,6 +34,6 @@ uv run --no-sync pytest core
 
 `core/tests/` 放所有需要核心的測試：路由、輪次、插話、交接、設定、對話附件，以及用核心的設定（`nova_core.config`）或伺服器（`nova_core.server`）驅動某個處理層的契約測試（例如 STT／LLM／TTS 的契約測試），因為處理層的測試不得 import 核心。這些測試共用的假物件在 `core/tests/*_fakes.py` 與 `access_helpers.py`。
 
-`core/tests/test_contracts.py` 同時檢查 `contracts/` 的規則，因為其中一個案例用核心的 `TurnContext` 建立 envelope；`contracts/` 本身沒有獨立的 `tests/`。
+`core/tests/` 依功能分成 `tts/`、`llm/`、`stt/`、`avatar/`、`roles/`、`stage/`、`server/` 子資料夾（說明見 [tests/README](../tests/README.md)）。`core/tests/test_contracts.py` 同時檢查 `contracts/` 的規則，因為其中一個案例用核心的 `TurnContext` 建立 envelope；`contracts/` 本身沒有獨立的 `tests/`。
 
 整個 repo 的 pytest 設定（marker、路徑）在根目錄的 `pyproject.toml` 與 `conftest.py`；沒有 GPU 也能全部通過，需要 GPU 的測試帶 `gpu` marker，預設排除。

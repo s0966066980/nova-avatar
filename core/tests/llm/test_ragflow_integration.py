@@ -402,7 +402,7 @@ class ProfileRagScopeTests(unittest.IsolatedAsyncioTestCase):
 
 
 def script(name):
-    path = Path(__file__).resolve().parents[2] / 'services/llm/scripts' / name
+    path = Path(__file__).resolve().parents[3] / 'services/llm/scripts' / name
     spec = importlib.util.spec_from_file_location('pc_port_' + path.stem, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

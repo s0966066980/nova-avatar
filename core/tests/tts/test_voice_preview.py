@@ -246,7 +246,7 @@ def test_cancelling_stops_generation_and_returns_no_audio(voice_models, sherpa):
 
 
 def test_the_console_shows_the_same_three_sentences_the_server_speaks():
-    constants = (Path(__file__).resolve().parents[2] / "web/src/voiceTraining/constants.js").read_text(encoding="utf-8")
+    constants = (Path(__file__).resolve().parents[3] / "web/src/voiceTraining/constants.js").read_text(encoding="utf-8")
     shown = dict(re.findall(r"\{ key: '(\w+)', text: '([^']+)' \}", constants))
 
     assert shown == PREVIEW_SENTENCES
@@ -255,7 +255,7 @@ def test_the_console_shows_the_same_three_sentences_the_server_speaks():
 def test_the_console_keeps_no_copy_of_the_microsoft_clause():
     from nova_tts.training.edge_acknowledgement import MSA_CLAUSE
 
-    root = Path(__file__).resolve().parents[2] / "web/src"
+    root = Path(__file__).resolve().parents[3] / "web/src"
     marker = MSA_CLAUSE.text.split(",")[0]
     copies = [
         str(path.relative_to(root))

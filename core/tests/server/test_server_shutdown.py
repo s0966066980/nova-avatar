@@ -18,7 +18,7 @@ import pytest
 
 pytestmark = pytest.mark.runtime
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 # ``-I`` ignores PYTHONPATH, so the child gets the package roots explicitly.
 PACKAGE_ROOTS = ":".join(str(ROOT / folder) for folder in (
     "contracts", "core", "avatar", "services/stt", "services/llm", "services/tts"))
