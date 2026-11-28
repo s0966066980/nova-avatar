@@ -422,7 +422,10 @@ git diff --cached
 | [`services/tts/`](services/tts/README.md) | `nova_tts` | 語音合成引擎、音訊庫、聲線模型與聲線訓練 |
 | [`avatar/`](avatar/README.md) | `nova_render` | 數位人渲染（MuseTalk）與舞台場景，內含 `scene` |
 | `web/` | | 控制台與舞台前端 |
-| `scripts/` | | 跨層的啟動、設定與量測腳本 |
+| `scripts/` | | 跨層的啟動、設定、量測與 CI 腳本 |
+| `integrations/` | | 外部服務與獨立環境的部署檔：`ragflow/`（Compose 與 systemd 服務）、`matcha-train/`（聲線訓練的依賴清單與訓練腳本） |
+| [`docs/`](docs/README.md) | | 持續維護的文件：`guides/`（安裝與操作指南）、`project/`（專案狀態、流程、測試基準、授權稽核）、`adr/`（架構決策）、`agents/` |
+| `config/` · `third_party/` · `ssl_certs/` | | 設定檔範本、第三方授權聲明、本機憑證存放處 |
 | `tests/` | | 橫跨整個 repo、不屬於任何一層的測試：授權與品牌稽核、依賴鎖、啟動與權重腳本、ruff 安全規則、層邊界設定 |
 
 - 各層的 setup 與權重腳本在該層的 `scripts/`（`services/tts/scripts/`、

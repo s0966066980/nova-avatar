@@ -55,7 +55,7 @@
 - **最終**：`.scratch/first-audio-latency/final-validation-2026-10-30.json`（整合分支
   `8479114`，含 code review 修正與天氣關鍵字初篩；修正前的 `final-2026-10-30.json`
   一般與 RAG 數字相近）。Gemma 4 E2B 全 GPU、Whisper small（中英自動偵測、beam 1）、路由與
-  檢索並行（檢索上限 0.7 s）、MuseTalk 待機喚醒與每輪啟動批次、Edge TTS；
+  檢索並行（量測當時檢索上限 0.7 s；目前程式預設 0.3 s）、MuseTalk 待機喚醒與每輪啟動批次、Edge TTS；
   3 輪 96 句，0 失敗；交接 30／30 實際交接。
 - 環境：RTX 4090、MuseTalk、單一舞台會話。測試題的 RAG 問題與現場知識庫（一份
   文件）不符，最終 96 輪中檢索 55 輪為空、10 輪逾時、1 輪命中。

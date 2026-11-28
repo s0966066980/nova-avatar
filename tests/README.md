@@ -1,80 +1,52 @@
 <!-- Copyright (c) 2026 HongXian0903 -->
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Nova Avatar current-version test baseline
+# 測試
 
-The release scope and acceptance rules are defined in
-[`current-version-baseline.json`](current-version-baseline.json) and explained in
-the [current-version testing guide](../docs/project/current-version-testing.md).
-Use `scripts/check-current-version.py` in the prepared CUDA environment for the
-primary local baseline. The GitHub GPU runner is a separate pending setup.
+本目錄與各層的 `tests/` 共同構成目前版本的測試基準。發行範圍與驗收規則定義在
+[`current-version-baseline.json`](current-version-baseline.json)，說明（必要基準、`gpu` 與 `live` 標記、
+本機完整執行方式）見[目前版本的主要測試基準](../docs/project/current-version-testing.md)。
+本機基準以 `scripts/check-current-version.py` 在已準備好的 CUDA 環境執行；GitHub 的 GPU runner 另行設定中。
 
-## Goals
+主要回歸（`not live`）維持離線、可重現、自足；每個測試模組必須屬於且只屬於一個產品領域，
+未分類的模組會讓 collection 失敗。缺少 GPU 或必要依賴是失敗，不是可接受的 skip。
 
-1. The primary suite (`not live`) stays offline, deterministic, and self-contained.
-2. Every collected test belongs to exactly one product area; an unclassified test
-   module fails collection.
-3. The primary baseline requires zero failures and zero skips. Missing GPU or
-   required dependencies is a failure, not an accepted skip.
-4. Live-service checks are explicit opt-ins and never silently call external
-   services during the primary run.
-5. Remove tests whose product contract is gone; preserve generic coverage with
-   self-contained fixtures instead of dependencies on retired model files.
+## 產品領域
 
-## Product areas
-
-| Marker | Scope |
+| 標記 | 範圍 |
 | --- | --- |
-| `avatar` | MuseTalk transitions, mouth continuity, and rendering quality |
-| `conversation` | Reply protocol, streaming, media fencing, playback, and voice sessions |
-| `governance` | Branding, licensing, packaging, and integration audit contracts |
-| `llm` | Model requests, profiles, normalization, and local llama.cpp lifecycle |
-| `ragflow` | Optional RAGFlow deployment, settings, client, and turn integration |
-| `runtime` | Server health, runtime settings, and optional dependency contracts |
-| `speech` | ASR, VAD, TTS engines, and Edge TTS worker lifecycle |
+| `avatar` | MuseTalk 轉場、嘴型連續與渲染品質 |
+| `conversation` | 回覆協定、串流、媒體隔離、播放與語音工作階段 |
+| `governance` | 品牌、授權、打包與整合稽核契約 |
+| `llm` | 模型請求、設定檔、正規化與本機 llama.cpp 生命週期 |
+| `ragflow` | 選用的 RAGFlow 部署、設定、用戶端與回合整合 |
+| `runtime` | 伺服器健康檢查、執行期設定與選用依賴契約 |
+| `speech` | ASR、VAD、TTS 引擎與 Edge TTS 工作行程生命週期 |
 
-`slow` is a manually maintained execution hint, not a complete duration budget.
-`live` identifies checks that depend on this host: configured models, the installed
-llama-server, and wall-clock budgets on its CPU.
-These execution markers supplement, rather than replace, the product-area marker.
+`slow` 是手動維護的執行提示，不是完整的耗時預算；`live` 標示依賴本機環境的檢查
+（已配置的模型、已安裝的 llama-server、本機 CPU 的實際時間預算）。執行標記是產品領域標記之外的補充。
 
-## Commands
+## 常用指令
 
 ```bash
-# Prepared isolated CUDA environment, Node 22 on PATH; full local baseline
-uv run --no-sync python scripts/check-current-version.py
-
-# One primary product area
-uv run --no-sync pytest -v -ra -m "speech and not live"
-uv run --no-sync pytest -v -ra -m "conversation and not live"
-
-# Primary Python regression only (the runner additionally rejects skips)
-uv run --no-sync pytest -v -ra -m "not live"
-
-# Explicit configured-model and installed-binary checks
-NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -v -ra -m live
+uv run --no-sync pytest                          # 預設：不含 gpu
+uv run --no-sync pytest services/tts             # 只跑一層
+uv run --no-sync pytest -v -ra -m "speech and not live"   # 單一產品領域
+uv run --no-sync pytest -v -ra -m "not live"     # 主要 Python 回歸
+NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -v -ra -m live   # 已配置模型與已安裝 binary 的檢查
 ```
 
-The local baseline records lock/environment checks, real CUDA tensor execution,
-Ruff/Pyright/ESLint, offline integration, primary Python tests, frontend tests
-with `CI=1`, and the production frontend build. Actual deployment-model GPU
-inference and field audiovisual acceptance remain release checks; the local
-baseline does not claim to execute them.
+## 合併原則
 
-## Consolidation policy
+只有在模組擁有獨立的現行產品契約，或有特殊的執行邊界時，才保留獨立模組；小模組只有在斷言與歸屬仍清楚時才合併。
+否則檔案路徑保持穩定，以免破壞連結。
 
-Keep a separate module when it owns a distinct current product contract or has a
-special execution boundary. Merge small modules only when the assertions and
-ownership stay clear. File paths otherwise stay stable for linked design records.
+每條規則只有一個負責的測試。位於其上的層（工作管理器、HTTP 路由）只保留自己多出來的部分：接線，
+以及失敗對應的狀態或訊息。路由權限由 `test_route_access.py` 負責，它在真實應用程式上掃過所有路由；
+其他模組只斷言自己的路由被宣告為 `ADMIN`。
 
-Each rule has one owning test. A layer above the owner (job manager, HTTP route)
-keeps only what it adds: the wiring and the status or message a failure maps to.
-Route access is owned by `test_route_access.py`, which sweeps every route on the
-real app; other modules assert only that their routes are declared `ADMIN`.
-
-Shared fakes and fixtures live in the `*_fakes.py` and `access_helpers.py` helper
-modules. A test module never imports another test module, so merging or deleting
-one cannot break the rest.
+共用的 fake 與 fixture 放在 `*_fakes.py` 與 `access_helpers.py` 輔助模組。測試模組不得 import 另一個測試模組，
+所以合併或刪除其中一個不會破壞其他的。
 
 ## 測試放在哪裡
 
@@ -92,11 +64,7 @@ one cannot break the rest.
 像 `llm_fakes` 這樣的輔助模組可在任何測試中直接以模組名稱匯入。
 `uv run --no-sync pytest <資料夾>` 只執行單一資料夾。
 
-Research and benchmark tools whose result is recorded in a ticket (local `.scratch/`, earlier ones in git history) are
-deleted together with their tests once the decision has been applied.
+研究與基準工具的結論記在工單後（本機 `.scratch/`，更早的在 git 歷史），決定套用完就連同它的測試一併刪除。
 
-An obsolete product contract need not be retained as an optional skip. For a
-still-supported generic behavior, replace retired-model dependencies with a
-self-contained fixture. Record the current contract or accepted ADR that
-justifies a deletion; do not delete valid migration, security, or notice tests
-because they contain an older name.
+已過時的產品契約不必留成選用的 skip。仍支援的通用行為，用自足的 fixture 取代已退役模型的依賴。
+刪除測試時，要記下現行契約或已接受的 ADR 作為理由；不要因為遷移、安全或聲明相關的測試含有舊名稱就刪掉。
