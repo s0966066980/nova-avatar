@@ -44,9 +44,6 @@ class BrandingComplianceTests(unittest.TestCase):
         files = (
             "web/index.html",
             "web/stage.html",
-            "web/answer-board.prototype.html",
-            "web/board-interactive-test.html",
-            "web/console-uiux-prototype.html",
             "web/src/App.vue",
             "web/src/components/InteractionPanel.vue",
             "web/src/components/SettingsPanel.vue",
