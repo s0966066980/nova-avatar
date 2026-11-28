@@ -10,7 +10,8 @@ Updated: 2026-10-22
 This document replaces informal carry-over work with a repeatable Nova Avatar
 maintenance flow. The current baseline is documented in
 [project-status.md](project-status.md); active specifications and work items
-belong in `.scratch/` under the repository's issue-tracker convention.
+belong in the local, git-ignored `.scratch/` under the repository's issue-tracker
+convention.
 
 ## Start a new work item
 
@@ -84,15 +85,18 @@ explicitly invoked checks outside this offline workflow.
 
 ## 清除過往工作項目與流程
 
-1. Treat `.scratch/` specifications, issue files, prototypes, screenshots, and
-   soak JSON files as evidence, not as implicit backlog.
+1. `.scratch/` is local only: it is git-ignored and never pushed. Treat its
+   specifications, issue files, prototypes, screenshots, and soak JSON files as
+   evidence, not as implicit backlog. The tracked copies up to commit `b2b610b`
+   remain in git history (`git show b2b610b:.scratch/<path>`).
 2. For every previous work item, record its final state in its issue/spec:
    delivered, superseded, blocked, or retained as a benchmark. Preserve the
    evidence and link it from the current work item when it still supports a
    release claim.
 3. Move obsolete experimental artifacts out of the active feature directory
-   only after a maintainer confirms their exact paths and retention need. Do
-   not delete a broad `.scratch/` directory as cleanup.
+   only after a maintainer confirms their exact paths and retention need.
+   Tracked files never link into `.scratch/`; copy a result that supports a
+   release claim into `docs/` or an ADR instead.
 4. Update `docs/project-status.md` only with completed, reproducibly verified
    capabilities. Do not promote a local prototype or an unrerun benchmark to
    the current baseline.
@@ -113,8 +117,8 @@ explicitly invoked checks outside this offline workflow.
    against `THIRD_PARTY_NOTICES.md` and `docs/software-stack.md`.
 3. Keep the root `LICENSE` unchanged, retain applicable notices, and classify
    every changed source file before altering its attribution header.
-4. Link the final verification results from the active `.scratch/` work item
-   and update the project status only after the gates pass.
+4. Record the final verification results in `docs/project-status.md` or the
+   relevant ADR, and update the project status only after the gates pass.
 
 ### Branding and third-party audit
 

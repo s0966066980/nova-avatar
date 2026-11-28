@@ -94,4 +94,4 @@ Gemma 與投影權重放入模型目錄後，由管理者選擇並套用；移�
 權限 0600 的原設定備份，再套用 15／60／30 秒與 Whisper small／auto。
 此命令不啟用招呼、舞台文字或 RAGFlow 模型統一服務。
 
-本次測試範圍與原始結果見 [PC 移植驗證](../.scratch/jetson-to-pc-port/validation/README.md)。
+本次測試範圍與原始結果見 PC 移植驗證。

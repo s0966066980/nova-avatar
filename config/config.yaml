@@ -106,7 +106,7 @@ llm:
   model: gemma-4-E2B_q4_0-it
   # llama.cpp 端點的模型是 llamacpp_dir 內的 GGUF 名稱，由數位人設定檔的 llm.model 選擇：
   #   gemma-4-E2B_q4_0-it    預設。Gemma 4 E2B（Apache-2.0），同目錄的 gemma-4-E2B-it-mmproj.gguf
-  #                          會自動附掛供附件看圖（品質報告：.scratch/first-audio-latency/e2b-eval/report.md）
+  #                          會自動附掛供附件看圖（品質報告見 git 歷史 b2b610b:.scratch/first-audio-latency/e2b-eval/report.md）
   #   Qwen3.5-9B-UD-Q4_K_XL  可選；品質略好，首個片段約慢 2–3 倍
   #   兩者都關閉思考模式（--reasoning off，請求也帶 enable_thinking: false）。
   llamacpp_dir: /home/oliver/llama

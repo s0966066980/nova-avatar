@@ -45,7 +45,7 @@ export const voiceModelLabel = model => `${model.name} · ${model.usage}`
 // A saved choice whose voice model is no longer listed stays chosen until the admin changes it.
 export const missingVoiceModelLabel = id => `${id}（未安裝的聲線模型）`
 
-// Quality measured in the 2026-11-23 bake-off (.scratch/matcha-voice/spec.md):
+// Quality measured in the 2026-11-23 bake-off (git show b2b610b:.scratch/matcha-voice/spec.md):
 // 500 sentences, CPU with 4 threads, MuseTalk not loaded.
 const MEASURED_VOICE_MODELS = {
   'zh-tw-hsiaochen-edge': { cer: '13.2%', wer: '5.6%', firstAudio: '0.05' }

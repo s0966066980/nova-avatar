@@ -129,7 +129,7 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 
 主要回歸從 2348 個案例減為 2232 個，另有 4 個 `live` 案例；耗時從約 3 分鐘降為約 2 分鐘，
 0 failure、0 skip。刪除前後各量一次 `core/`、`avatar/`、`services/`、`scripts/` 的行覆蓋率，失去覆蓋的行逐一
-列在 [清理紀錄](../.scratch/test-suite-cleanup/coverage-diff.md)。
+列在 清理紀錄。
 
 | 類別 | 處理與原因 | 留下的保護 |
 | --- | --- | --- |
@@ -148,7 +148,7 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 每一列都對應不同的規則、邊界或攻擊方式。
 
 清理時發現、沒有呼叫者或不在本版範圍的正式程式碼，已依
-[issue](../.scratch/test-suite-cleanup/issues/01-dead-code-left-by-test-cleanup.md) 的決定連同測試刪除：
+issue 的決定連同測試刪除：
 舊路由器、舊看板標記、LFM 2.5 路徑、reply_streaming 未接線元件，以及 UltraLight、ER-NeRF、
 TalkingGaussian 數位人引擎。之後使用者決定不再使用 Wav2Lip，也一併移除（程式碼、權重、控制台選項、
 設定檔與測試）；「非商用」限制紀錄保留在 `THIRD_PARTY_NOTICES.md` 與 `third_party/licenses/`。

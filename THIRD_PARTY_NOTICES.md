@@ -127,7 +127,7 @@ for those revisions and for any copy that still carries them.
 - Source and license: <https://github.com/openai/whisper>, MIT.
 - Local FP16 CTranslate2 conversions are not bundled. Source revisions, converted
   file hashes and the retained official license are recorded in
-  [PC validation](.scratch/jetson-to-pc-port/validation/model-manifest.json).
+  PC validation.
 
 ## Conversation PDF and image analysis
 

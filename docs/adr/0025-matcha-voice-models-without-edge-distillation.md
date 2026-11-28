@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 - **把 hsiaochen-edge 標為 Research / Non-commercial，視為可在場域使用**：不採用。MSA 的禁止條款不限於商用。
 - **硬性禁止 Development only 的聲線模型上舞台**：不採用。main 對 Edge 和開發用參考音檔一向只做標示；硬性阻擋的話，連在控制台試用都沒辦法。
 
-規格見 [Matcha 聲線模型](../../.scratch/matcha-voice/spec.md)。本決策修訂 ADR 0006 的 TTS 引擎清單。
+規格見 Matcha 聲線模型。本決策修訂 ADR 0006 的 TTS 引擎清單。
 
 ## 2026-11-24 修訂
 

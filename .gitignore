@@ -64,8 +64,8 @@ outputs/
 # Recordings
 data/records/
 
-# TTS bake-off synthesized audio and raw runs (scripts/tts_bakeoff.py)
-.scratch/first-audio-latency/tts-bakeoff/runs/
+# Local working notes, specs, tickets and measurement output; never pushed
+.scratch/
 
 # Certificates
 certs/

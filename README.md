@@ -323,7 +323,7 @@ uv run python scripts/run_role_soak.py --turns 50 --output .scratch/live-avatar-
 
 詳見 [附件操作、模型與生命週期](docs/conversation-attachments.md)、
 [閒置招呼](docs/idle-greetings.md) 和
-[本次 PC 實測與驗證範圍](.scratch/jetson-to-pc-port/validation/README.md)。
+本次 PC 實測與驗證範圍。
 
 ## RAGFlow 文件檢索（選用）
 
@@ -405,7 +405,7 @@ git diff --cached
 搜尋引擎可能限流、要求驗證或無結果，系統會說明最新資料未能查證；不會將一般
 模型知識冒充搜尋結果。相容層固定 DuckDuckGo 的請求標頭並移除非必要預設欄位，
 已通過中英文真實搜尋、網頁讀取與本機模型回答驗證；Brave 仍可能限流。
-細節見[修復驗證紀錄](.scratch/web-search/repair-validation.md)。
+細節見修復驗證紀錄。
 
 ## 資料夾結構
 

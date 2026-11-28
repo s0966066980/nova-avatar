@@ -2,6 +2,8 @@
 
 Issues and specs (you may know a spec as a PRD) for this repo live as markdown files in `.scratch/`.
 
+`.scratch/` is git-ignored: it exists only on the maintainer's machine and is never committed or pushed. Do not link to it from tracked files; record lasting decisions as ADRs in `docs/adr/`. The tracked history up to commit `b2b610b` still holds the earlier tickets and evidence (`git show b2b610b:.scratch/<path>`).
+
 ## Conventions
 
 - One feature per directory: `.scratch/<feature-slug>/`

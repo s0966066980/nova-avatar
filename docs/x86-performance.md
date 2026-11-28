@@ -135,7 +135,7 @@ Qwen3.5 9B、FunASR 與 Edge TTS 依序短測；每種角色六輪，包含兩�
 退避後完成，沒有據此調高正式服務的重試或啟用嚴格預熱閘門。
 
 原始純量報告位於
-[啟動音畫同步測試產物](../.scratch/startup-av-sync/)，不含錄音、
+啟動音畫同步測試產物，不含錄音、
 轉寫或對話內容。完整驗證為 Python **527 passed、3 skipped**，
 前端 **96 passed**，integration／品牌檢查及前端建置通過。
 
@@ -204,8 +204,8 @@ TensorRT、Qwen3.5 9B、FunASR 與臺灣 Edge 聲音。這組量測比較應用
 回覆仍會波動，這不是 P95、50 輪 soak 或瀏覽器視聽驗收。
 
 原始報告：
-[舞台 A/B](../.scratch/startup-av-sync/orin-prewarm-ab-stage.json)、
-[控制台 A/B](../.scratch/startup-av-sync/orin-prewarm-ab-console.json)。
+舞台 A/B、
+控制台 A/B。
 每次試驗結束都已正常關閉工具自行啟動的後端及 llama-server。
 本次完整驗證為 Python **538 passed、3 skipped**、前端 **96 passed**，
 整合／品牌檢查與前端建置通過。

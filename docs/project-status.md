@@ -7,6 +7,9 @@
 [`current-project-workflow.md`](current-project-workflow.md)；可選引擎與商業審查
 邊界請依 [`software-stack.md`](software-stack.md)；設計決定見 [`adr/`](adr/)。
 
+文中提到的 `.scratch/…` 量測檔與規格已不在 repo 內（`.scratch/` 現為本機、不進 git）；
+要查閱請用 `git show b2b610b:.scratch/<路徑>`。
+
 ## 已完成範圍
 
 | 領域 | v1 已完成能力 |
@@ -28,7 +31,7 @@
 
 取代 9 月的 1.19 s 基準。那次從「伺服器接受 Prompt」起算，沒有角色路由與 RAG
 檢索，不含靜音等待與辨識，不代表語音輪次的實際等待。規格與逐項決定見
-[首音延遲改善規格](../.scratch/first-audio-latency/spec.md)。
+首音延遲改善規格。
 
 ### 量測方式與起訖點
 
@@ -207,7 +210,7 @@ Gemma 4 E2B 全 GPU、Edge TTS，舞台以合成麥克風語音經 ASR 進入。
 
 ## 場域試營運基線
 
-場域試營運的範圍、凍結組合與暫緩項目見 [`.scratch/field-pilot/spec.md`](../.scratch/field-pilot/spec.md)。
+場域試營運的範圍、凍結組合與暫緩項目見 `.scratch/field-pilot/spec.md`。
 
 - 實際執行組合：Edge TTS（僅供開發）＋ MuseTalk ＋ faster-whisper small（中英自動偵測）＋
   llama.cpp（Gemma 4 E2B）＋ Silero VAD ＋ 串流回覆開啟；其他引擎不納入場域驗收。

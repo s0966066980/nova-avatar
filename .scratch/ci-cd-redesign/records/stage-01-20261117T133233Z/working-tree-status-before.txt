@@ -1,3 +1,0 @@
-?? .scratch/ci-cd-redesign/
-?? .scratch/first-audio-latency/tts-bakeoff/index.html
-?? tmp/

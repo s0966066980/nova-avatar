@@ -12,7 +12,7 @@ Written artifacts follow the existing convention of this repository:
 
 - Commit messages and code comments: English (Conventional Commits prefixes
   such as `feat:`, `fix:`, `docs:`).
-- `README.md`, `docs/` (including ADRs), and `.scratch/` issues and specs:
+- `README.md`, `docs/` (including ADRs), and local `.scratch/` issues and specs:
   Traditional Chinese. Keep the English headings of `docs/agents/*`.
 - User-visible UI text: Traditional Chinese.
 
@@ -25,7 +25,7 @@ See `docs/agents/code-navigation.md` when selecting or refreshing its index.
 
 ### Issue tracker
 
-Issues and specs are tracked as local Markdown under `.scratch/`. See `docs/agents/issue-tracker.md`.
+Issues and specs are local Markdown under `.scratch/`, which is git-ignored and never pushed. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
