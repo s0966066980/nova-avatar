@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { applyConsoleBoardEvent, createConsoleBoardState } from '../src/consoleBoardState.js'
+import { applyConsoleBoardEvent, createConsoleBoardState } from '../src/console/consoleBoardState.js'
 
 test('控制台看板依序接收 begin/item 並可清空', () => {
   const board = createConsoleBoardState()

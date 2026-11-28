@@ -73,7 +73,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { EFFECTS, isDirty } from '../roleComposition.js'
+import { EFFECTS, isDirty } from '../roles/roleComposition.js'
 import { useRoles } from '../composables/useRoles.js'
 
 const scope = defineModel('scope', { type: Object, required: true })

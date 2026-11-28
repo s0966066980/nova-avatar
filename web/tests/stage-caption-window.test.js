@@ -5,7 +5,7 @@ import {
   MIN_STAGE_CAPTION_MAX_CHARS,
   StageCaptionWindow,
   countGraphemes
-} from '../src/stageCaptionWindow.js'
+} from '../src/stage/stageCaptionWindow.js'
 
 test('舞台字幕以使用者感知字元計算', () => {
   assert.equal(countGraphemes('A你🙂́'), 3)

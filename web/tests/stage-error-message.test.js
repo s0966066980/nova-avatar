@@ -8,7 +8,7 @@ import {
   STAGE_TURN_ERROR_MESSAGE,
   STAGE_UNAVAILABLE_MESSAGE,
   stageErrorMessage
-} from '../src/stageErrorMessage.js'
+} from '../src/stage/stageErrorMessage.js'
 
 const stageHtml = readFileSync(new URL('../stage.html', import.meta.url), 'utf8')
 
@@ -45,7 +45,7 @@ test('友善提示文字不含技術用語', () => {
 })
 
 test('獨立舞台以友善提示取代後端錯誤字串，技術細節只寫瀏覽器主控台', () => {
-  assert.match(stageHtml, /import \{ stageErrorMessage \} from '\/src\/stageErrorMessage\.js'/)
+  assert.match(stageHtml, /import \{ stageErrorMessage \} from '\/src\/stage\/stageErrorMessage\.js'/)
   assert.doesNotMatch(stageHtml, /showReply\(String\(ev\.error\)/)
   assert.match(
     stageHtml,

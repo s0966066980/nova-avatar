@@ -47,7 +47,7 @@
 import { ref, computed, onMounted, watch, toRaw, nextTick } from 'vue'
 import { useRoles } from '../composables/useRoles.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings.js'
-import { rolePhaseLabel } from '../roleState.js'
+import { rolePhaseLabel } from '../roles/roleState.js'
 import { ragScopeLabel } from '../ragScope.js'
 import { ttsVoiceProblem } from '../voiceSelection.js'
 import AvatarProfileEditor from './AvatarProfileEditor.vue'

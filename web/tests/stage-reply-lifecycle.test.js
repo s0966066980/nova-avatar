@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { shouldFadeStageReply } from '../src/stageReplyLifecycle.js'
+import { shouldFadeStageReply } from '../src/stage/stageReplyLifecycle.js'
 
 const stageHtml = readFileSync(new URL('../stage.html', import.meta.url), 'utf8')
 

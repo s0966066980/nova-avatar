@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canRoleInput, canRoleReturn } from '../src/roleState.js'
+import { canRoleInput, canRoleReturn } from '../src/roles/roleState.js'
 
 test('每一頁只依自己的角色狀態決定能否輸入', () => {
   for (const presenter of ['console', 'stage']) {

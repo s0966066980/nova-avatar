@@ -4,17 +4,17 @@
 import { webSearchState, receiveWebSearch } from '../../src/webSearchState.js'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
-import { stageText, stageItemCount } from '../../src/stageLocale.js'
+import { stageText, stageItemCount } from '../../src/stage/stageLocale.js'
 import { composerSettings } from '../../src/conversationAttachments.js'
-import { stageErrorMessage } from '../../src/stageErrorMessage.js'
-import { canRoleInput, canRoleReturn } from '../../src/roleState.js'
-import { StageCaptionWindow } from '../../src/stageCaptionWindow.js'
+import { stageErrorMessage } from '../../src/stage/stageErrorMessage.js'
+import { canRoleInput, canRoleReturn } from '../../src/roles/roleState.js'
+import { StageCaptionWindow } from '../../src/stage/stageCaptionWindow.js'
 import {
   isKioskMode,
   kioskReconnectDelayMs,
   KIOSK_UNAVAILABLE_TITLE,
   KIOSK_UNAVAILABLE_TEXT
-} from '../../src/stageKiosk.js'
+} from '../../src/stage/stageKiosk.js'
 import {
   fetchJsonWithTimeout,
   isVoiceTrainingPause,
@@ -23,7 +23,7 @@ import {
   STAGE_POLL_TIMEOUT_MS,
   VOICE_TRAINING_TEXT,
   VOICE_TRAINING_TITLE
-} from '../../src/stageConnection.js'
+} from '../../src/stage/stageConnection.js'
 
 const html = readFileSync(new URL('../../stage.html', import.meta.url), 'utf8')
 const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]

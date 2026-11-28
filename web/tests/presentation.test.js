@@ -6,8 +6,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import test from 'node:test'
-import { applyConsoleBoardEvent } from '../src/consoleBoardState.js'
-import { applyTurnCommitted } from '../src/consoleTurnCommit.js'
+import { applyConsoleBoardEvent } from '../src/console/consoleBoardState.js'
+import { applyTurnCommitted } from '../src/console/consoleTurnCommit.js'
 
 // Exercise the console's actual event handler without opening speech devices.
 const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')

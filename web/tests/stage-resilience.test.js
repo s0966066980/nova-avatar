@@ -4,13 +4,13 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { kioskReconnectDelayMs, KIOSK_UNAVAILABLE_TITLE } from '../src/stageKiosk.js'
-import { stageText } from '../src/stageLocale.js'
+import { kioskReconnectDelayMs, KIOSK_UNAVAILABLE_TITLE } from '../src/stage/stageKiosk.js'
+import { stageText } from '../src/stage/stageLocale.js'
 import {
   STAGE_CONNECT_TIMEOUT_MS,
   STAGE_OFFER_TIMEOUT_MS,
   STAGE_POLL_TIMEOUT_MS
-} from '../src/stageConnection.js'
+} from '../src/stage/stageConnection.js'
 import { flush, stageHarness } from './helpers/stageHarness.js'
 
 const never = () => new Promise(() => {})

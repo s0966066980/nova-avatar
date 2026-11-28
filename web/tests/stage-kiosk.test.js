@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isKioskMode, kioskReconnectDelayMs } from '../src/stageKiosk.js'
+import { isKioskMode, kioskReconnectDelayMs } from '../src/stage/stageKiosk.js'
 
 test('只有 kiosk=1 才進入 kiosk 模式', () => {
   assert.equal(isKioskMode('?kiosk=1'), true)

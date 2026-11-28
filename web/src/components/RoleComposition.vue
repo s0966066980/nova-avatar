@@ -227,7 +227,7 @@ import { VOICE_SOURCE, missingVoiceModelLabel, voiceModelLabel, voiceSourceOf } 
 import {
   MAX_ENABLED, MAX_MEMBERS, avatarColor, enabledCount, isDirty, liveMemberIds, newMemberScope, readFailure, rebase,
   reconcile, savePlan, scopesFrom, weatherHolder
-} from '../roleComposition.js'
+} from '../roles/roleComposition.js'
 import RoleHandoffFields from './RoleHandoffFields.vue'
 import RoleTopology from './RoleTopology.vue'
 import RoleTransitions from './RoleTransitions.vue'

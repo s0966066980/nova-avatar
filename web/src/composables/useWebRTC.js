@@ -2,7 +2,7 @@
 // Modified by HongXian0903, 2026. See LICENSE and NOTICE.
 
 // One peer connection carries avatar A/V, the microphone uplink and voice events.
-import { canRoleInput } from '../roleState.js'
+import { canRoleInput } from '../roles/roleState.js'
 
 export function useWebRTC(options = {}) {
   let pc = null

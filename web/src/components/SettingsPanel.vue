@@ -1048,7 +1048,7 @@ import { composerGeometry } from '../conversationAttachments.js'
 import { computed, defineAsyncComponent, nextTick, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
-import { avatarScenePreviewUrl } from '../scenePreview.js'
+import { avatarScenePreviewUrl } from '../stage/scenePreview.js'
 import AvatarProfiles from './AvatarProfiles.vue'
 import RoleComposition from './RoleComposition.vue'
 import IdleGreetingSettings from './IdleGreetingSettings.vue'
@@ -1060,9 +1060,9 @@ import {
   placeStageBoard,
   previewScale,
   STAGE_CAPTION_RATIO
-} from '../stageBoardLayout.js'
+} from '../stage/stageBoardLayout.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
-import { normalizeThemePreference } from '../consoleTheme.js'
+import { normalizeThemePreference } from '../console/consoleTheme.js'
 import { systemStatusRows } from '../systemStatus.js'
 
 const VoiceTrainingWorkbench = defineAsyncComponent(() => import('./voice-training/VoiceTrainingWorkbench.vue'))

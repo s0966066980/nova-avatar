@@ -401,22 +401,22 @@ import ConversationComposer from '/src/components/ConversationComposer.vue';
 import WebSearchSources from '/src/components/WebSearchSources.vue';
 import { webSearchState, receiveWebSearch } from '/src/webSearchState.js';
 import { composerSettings } from '/src/conversationAttachments.js';
-import { stageText, stageItemCount } from '/src/stageLocale.js';
-import { canRoleInput, canRoleReturn } from '/src/roleState.js';
+import { stageText, stageItemCount } from '/src/stage/stageLocale.js';
+import { canRoleInput, canRoleReturn } from '/src/roles/roleState.js';
 import {
   DEFAULT_STAGE_CAPTION_MAX_CHARS,
   StageCaptionWindow
-} from '/src/stageCaptionWindow.js';
-import { StageCaptionView } from '/src/stageCaptionView.js';
-import { shouldFadeStageReply } from '/src/stageReplyLifecycle.js';
-import { stageErrorMessage } from '/src/stageErrorMessage.js';
+} from '/src/stage/stageCaptionWindow.js';
+import { StageCaptionView } from '/src/stage/stageCaptionView.js';
+import { shouldFadeStageReply } from '/src/stage/stageReplyLifecycle.js';
+import { stageErrorMessage } from '/src/stage/stageErrorMessage.js';
 import {
   isKioskMode, kioskReconnectDelayMs, KIOSK_UNAVAILABLE_TITLE, KIOSK_UNAVAILABLE_TEXT
-} from '/src/stageKiosk.js';
+} from '/src/stage/stageKiosk.js';
 import {
   fetchJsonWithTimeout, STAGE_CONNECT_TIMEOUT_MS, STAGE_OFFER_TIMEOUT_MS, STAGE_POLL_TIMEOUT_MS,
   isVoiceTrainingPause, VOICE_TRAINING_TITLE, VOICE_TRAINING_TEXT
-} from '/src/stageConnection.js';
+} from '/src/stage/stageConnection.js';
 import {
   boardReopenPresentation,
   captionStyle,
@@ -425,7 +425,7 @@ import {
   STAGE_BOARD_PREVIEW_ITEMS,
   STAGE_BOARD_PREVIEW_TITLE,
   placeStageBoard
-} from '/src/stageBoardLayout.js';
+} from '/src/stage/stageBoardLayout.js';
 
 (() => {
   'use strict';

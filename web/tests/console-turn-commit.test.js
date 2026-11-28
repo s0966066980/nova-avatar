@@ -3,7 +3,7 @@ import test from 'node:test'
 import {
   applyTurnCommitted,
   isTurnCommitError,
-} from '../src/consoleTurnCommit.js'
+} from '../src/console/consoleTurnCommit.js'
 
 test('輪次提交後控制台改為已播回覆並結束預覽', () => {
   const next = applyTurnCommitted(

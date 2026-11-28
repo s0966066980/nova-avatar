@@ -6,7 +6,7 @@
 // no data-theme, when the system prefers dark. "system" therefore removes the
 // attribute instead of resolving it once, so the console follows later
 // operating-system changes without a reload.
-import { LEGACY_STORAGE_KEYS, STORAGE_KEYS } from './storageKeys.js'
+import { LEGACY_STORAGE_KEYS, STORAGE_KEYS } from '../storageKeys.js'
 
 export const THEME_PREFERENCES = Object.freeze(['system', 'light', 'dark'])
 

@@ -9,7 +9,7 @@ import {
   STAGE_OFFER_TIMEOUT_MS,
   STAGE_POLL_TIMEOUT_MS,
   StageTimeoutError
-} from '../src/stageConnection.js'
+} from '../src/stage/stageConnection.js'
 
 function manualTimers() {
   const timers = []

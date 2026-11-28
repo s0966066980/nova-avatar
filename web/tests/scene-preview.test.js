@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { avatarScenePreviewUrl } from '../src/scenePreview.js'
+import { avatarScenePreviewUrl } from '../src/stage/scenePreview.js'
 
 const app = readFileSync(new URL('../src/App.vue', import.meta.url), 'utf8')
 const panel = readFileSync(new URL('../src/components/SettingsPanel.vue', import.meta.url), 'utf8')

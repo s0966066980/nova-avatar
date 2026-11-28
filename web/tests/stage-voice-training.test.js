@@ -5,8 +5,8 @@
 // 舞台要顯示暫停服務的說明並照重連節奏自動重試，訓練結束後自己連上。
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { kioskReconnectDelayMs } from '../src/stageKiosk.js'
-import { stageText } from '../src/stageLocale.js'
+import { kioskReconnectDelayMs } from '../src/stage/stageKiosk.js'
+import { stageText } from '../src/stage/stageLocale.js'
 import { flush, stageHarness } from './helpers/stageHarness.js'
 
 const PAUSED = '聲線訓練進行中，數位人暫停服務'

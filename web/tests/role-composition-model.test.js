@@ -5,7 +5,7 @@ import test from 'node:test'
 import {
   MAX_ENABLED, enabledCount, isDirty, liveMemberIds, newMemberScope, readFailure, reconcile, ringLayout,
   savePlan, scopesFrom, weatherHolder
-} from '../src/roleComposition.js'
+} from '../src/roles/roleComposition.js'
 
 const member = (profile_id, extra = {}) => ({
   profile_id, revision: 1, enabled: true, description: '', rules: '', announcement: `交給${profile_id}`, announcement_en: '',

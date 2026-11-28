@@ -1,7 +1,7 @@
 // Copyright (c) 2026 HongXian0903
 // SPDX-License-Identifier: Apache-2.0
 
-import { previewScale } from './stageBoardLayout.js'
+import { previewScale } from './stage/stageBoardLayout.js'
 
 export const composerDefaults = {
   composer_enabled: false, composer_x: 50, composer_y: 78, composer_width: 90,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { StageCaptionWindow } from '../src/stageCaptionWindow.js'
-import { StageCaptionView } from '../src/stageCaptionView.js'
+import { StageCaptionWindow } from '../src/stage/stageCaptionWindow.js'
+import { StageCaptionView } from '../src/stage/stageCaptionView.js'
 
 class FakeClassList {
   constructor() {

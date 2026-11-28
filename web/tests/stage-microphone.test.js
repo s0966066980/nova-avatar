@@ -7,7 +7,7 @@ import {
   kioskReconnectDelayMs,
   KIOSK_UNAVAILABLE_TITLE,
   KIOSK_UNAVAILABLE_TEXT
-} from '../src/stageKiosk.js'
+} from '../src/stage/stageKiosk.js'
 import { flush, stageHarness } from './helpers/stageHarness.js'
 
 test('啟用文字附件的舞台進入後也會自動收音，不必再點麥克風', async () => {

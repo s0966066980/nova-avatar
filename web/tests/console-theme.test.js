@@ -10,7 +10,7 @@ import {
   normalizeThemePreference,
   readThemePreference,
   saveThemePreference
-} from '../src/consoleTheme.js'
+} from '../src/console/consoleTheme.js'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS } from '../src/storageKeys.js'
 
 function memoryStorage(entries = {}) {

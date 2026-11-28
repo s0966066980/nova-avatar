@@ -7,7 +7,7 @@ import {
   previewScale,
   STAGE_LAYOUT_REF_WIDTH,
   STAGE_LAYOUT_REF_HEIGHT
-} from '../src/stageBoardLayout.js'
+} from '../src/stage/stageBoardLayout.js'
 
 test('展開看板按鈕靠舞台邊緣時改用朝內圖示並避免溢出', () => {
   assert.deepEqual(boardReopenPresentation(0, 20), {

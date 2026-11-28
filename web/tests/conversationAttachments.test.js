@@ -3,7 +3,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { composerDefaults, composerPlacement, shouldSend, validateDraft } from '../src/conversationAttachments.js'
-import { placeStageCaption } from '../src/stageBoardLayout.js'
+import { placeStageCaption } from '../src/stage/stageBoardLayout.js'
 
 test('configured composer height is stable and scales with the stage canvas', () => {
   const settings = { ...composerDefaults, composer_height: 180 }
