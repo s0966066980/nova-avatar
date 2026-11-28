@@ -311,7 +311,7 @@ def test_the_fake_engine_is_not_offered_by_the_console():
     from nova_core.config.loader import dict_to_config
     from nova_core.server import runtime_settings
 
-    assert [engine["id"] for engine in runtime_settings._stt_catalog()] == ["whisper"]
+    assert [engine["id"] for engine in runtime_settings.speech._stt_catalog()] == ["whisper"]
     with pytest.raises(runtime_settings.SettingsError, match="不支援的 STT 引擎"):
         runtime_settings.apply_stt_settings(
             dict_to_config({}), {"type": "fake", "model_size": "你好"},

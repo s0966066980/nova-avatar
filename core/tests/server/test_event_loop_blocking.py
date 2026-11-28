@@ -495,7 +495,7 @@ def test_deferred_speech_settings_snapshot_scans_files_off_the_loop(server, monk
     from nova_core.server import deferred_settings, runtime_settings
 
     blocker = Blocker(result=[])
-    monkeypatch.setattr(runtime_settings, "_stt_catalog", blocker)
+    monkeypatch.setattr(runtime_settings.speech, "_stt_catalog", blocker)
     monkeypatch.setattr(deferred_settings, "_store", lambda: SimpleNamespace(
         values={}, error="", save=lambda _values: None))
     monkeypatch.setattr(deferred_settings, "snapshot", lambda: {"items": [], "error": ""})

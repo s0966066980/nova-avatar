@@ -339,7 +339,7 @@ def test_breezyvoice_is_a_selectable_local_engine():
 
 def test_apply_requires_a_library_voice_with_transcript(voices, tmp_path):
     voice = add_voice(tmp_path)
-    with patch("nova_core.server.runtime_settings._engine_available", return_value=True), \
+    with patch("nova_core.server.runtime_settings.speech._engine_available", return_value=True), \
             patch("nova_tts.cosyvoice_runtime.ensure_server") as ensure:
         with pytest.raises(SettingsError, match="音訊庫"):
             apply_tts_settings(Config(), {"type": "breezyvoice"}, session_count=0, tts=in_process_tts())
@@ -351,10 +351,10 @@ def test_apply_requires_a_library_voice_with_transcript(voices, tmp_path):
 def test_apply_starts_the_owned_server_for_breezyvoice(voices, tmp_path):
     voice = add_voice(tmp_path, transcript="參考逐字稿。")
     config = Config()
-    with patch("nova_core.server.runtime_settings._engine_available", return_value=True), \
+    with patch("nova_core.server.runtime_settings.speech._engine_available", return_value=True), \
             patch("nova_tts.cosyvoice_runtime.ensure_server", return_value="http://127.0.0.1:50000") as ensure, \
-            patch("nova_core.server.runtime_settings._preview_tts", return_value="data:audio/wav;base64,dA==") as preview, \
-            patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
+            patch("nova_core.server.runtime_settings.speech._preview_tts", return_value="data:audio/wav;base64,dA==") as preview, \
+            patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides"):
         apply_tts_settings(config, {"type": "breezyvoice", "ref_file": voice}, session_count=0, tts=in_process_tts())
     ensure.assert_called_once_with(model_dir="", host="127.0.0.1", port=50000)
     assert preview.call_args.kwargs["ref_file"] == voice

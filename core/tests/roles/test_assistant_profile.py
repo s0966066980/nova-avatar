@@ -53,7 +53,7 @@ class AssistantProfileTests(unittest.TestCase):
         )
         llm = FakeLlm()
         llm.engines[1] = session
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides"):
             first = apply_llm_model(config, "model", "ollama", assistant_profile=self._profile(), llm=llm)
             self.assertTrue(first["history_reset"])
             self.assertEqual(session.clear_history.call_count, 1)

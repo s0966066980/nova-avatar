@@ -427,11 +427,11 @@ def test_stage_enable_validates_content_and_persists_atomically():
     assert not config.stage.idle_greeting_enabled
     config.greeting.scripts = ['歡迎！']
     before = config.stage
-    with patch('nova_core.server.runtime_settings.persist_runtime_overrides', side_effect=OSError):
+    with patch('nova_core.server.runtime_settings.shared.persist_runtime_overrides', side_effect=OSError):
         with pytest.raises(OSError):
             apply_stage_settings(config, {'idle_greeting_enabled': True, 'idle_greeting_seconds': 15})
     assert config.stage is before
-    with patch('nova_core.server.runtime_settings.persist_runtime_overrides') as persist:
+    with patch('nova_core.server.runtime_settings.shared.persist_runtime_overrides') as persist:
         result = apply_stage_settings(config, {'idle_greeting_enabled': True, 'idle_greeting_seconds': .5})
     assert result['idle_greeting_enabled'] is True
     assert result['idle_greeting_seconds'] == .5

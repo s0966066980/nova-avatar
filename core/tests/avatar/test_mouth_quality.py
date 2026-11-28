@@ -122,7 +122,7 @@ class QualitySettingsTests(unittest.TestCase):
 
     def test_apply_mouth_quality_persists_without_disconnect(self):
         config = Config()
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides") as persist:
             result = apply_mouth_quality(
                 config,
                 {

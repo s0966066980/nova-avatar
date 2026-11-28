@@ -379,7 +379,7 @@ class SettingsApiTests(unittest.TestCase):
 
     def setUp(self):
         self.config = dict_to_config({})
-        patcher = patch("nova_core.server.runtime_settings.persist_runtime_overrides")
+        patcher = patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides")
         self.persist = patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(release_vad_engine)
@@ -420,7 +420,7 @@ class SettingsApiTests(unittest.TestCase):
     def test_missing_dependency_reports_install_command(self):
         from nova_core.server.runtime_settings import SettingsError, apply_vad_settings
 
-        with patch("nova_core.server.runtime_settings._module_installed", return_value=False):
+        with patch("nova_core.server.runtime_settings.speech._module_installed", return_value=False):
             with self.assertRaises(SettingsError) as ctx:
                 apply_vad_settings(self.config, {"type": "silero", "enabled": True})
         self.assertIn("silero-vad", ctx.exception.message)
@@ -428,7 +428,7 @@ class SettingsApiTests(unittest.TestCase):
     def test_disable_skips_dependency_check(self):
         from nova_core.server.runtime_settings import apply_vad_settings
 
-        with patch("nova_core.server.runtime_settings._module_installed", return_value=False):
+        with patch("nova_core.server.runtime_settings.speech._module_installed", return_value=False):
             result = apply_vad_settings(self.config, {"enabled": False})
         self.assertFalse(result["enabled"])
 

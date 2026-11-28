@@ -125,8 +125,8 @@ def test_startup_config_with_a_removed_engine_and_legacy_fields_loads_on_edge_tt
 
 def test_applying_a_tts_engine_clears_the_fallback_notice(voices, monkeypatch):
     voice_library.migrate_tts_values({"type": "xtts", "ref_file": ""}, where="設定檔")
-    monkeypatch.setattr("nova_core.server.runtime_settings._preview_tts", lambda *a, **k: "data:audio/wav;base64,dA==")
-    monkeypatch.setattr("nova_core.server.runtime_settings.persist_runtime_overrides", lambda config: None)
+    monkeypatch.setattr("nova_core.server.runtime_settings.speech._preview_tts", lambda *a, **k: "data:audio/wav;base64,dA==")
+    monkeypatch.setattr("nova_core.server.runtime_settings.shared.persist_runtime_overrides", lambda config: None)
     result = apply_tts_settings(Config(), {"type": "edgetts", "ref_file": "zh-TW-HsiaoYuNeural"},
                                 session_count=0, tts=in_process_tts())
     assert result["notice"] == ""

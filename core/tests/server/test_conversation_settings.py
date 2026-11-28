@@ -323,7 +323,7 @@ def test_behavior_save_preserves_existing_english_session_and_updates_new_conver
     from nova_core.server.runtime_settings import apply_llm_behavior
 
     config, create = env
-    monkeypatch.setattr('nova_core.server.runtime_settings.persist_runtime_overrides', Mock())
+    monkeypatch.setattr('nova_core.server.runtime_settings.shared.persist_runtime_overrides', Mock())
     session, engine = create(1)
     conversations.configure_avatar(session.avatar, {**session._conversation, 'locale':'en-US'})
     session.avatar.sessionid = 1
@@ -538,7 +538,7 @@ def test_role_and_rules_remain_frozen_across_turns_of_the_same_conversation(env,
     session._start_turn_context('original')
     session.avatar._assistant_profile_snapshot = session._assistant_profile_snapshot
     session.avatar._reply_rules_snapshot = session._rules_snapshot
-    monkeypatch.setattr('nova_core.server.runtime_settings.persist_runtime_overrides', Mock())
+    monkeypatch.setattr('nova_core.server.runtime_settings.shared.persist_runtime_overrides', Mock())
     profile = asdict(config.llm.assistant_profile)
     profile.update(system_prompt='New museum role.', restriction_prompt='New restriction.')
     apply_llm_behavior(config, profile, {**default_rules(), 'speech':'New speech rule.'}, expected_revision=1,

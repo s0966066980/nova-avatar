@@ -230,7 +230,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.base_url = "http://localhost:11434/v1"
 
         llm = FakeLlm()
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides") as persist:
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
@@ -262,7 +262,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         prompt = "你是數位人助理，請使用繁體中文簡短回答。"
 
         llm = FakeLlm()
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides") as persist:
             result = apply_llm_model(config, "qwen3.5:4b", "ollama", prompt, llm=llm)
 
         self.assertEqual(config.llm.assistant_profile.system_prompt, prompt)
@@ -310,7 +310,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
     def test_apply_stage_settings_updates_and_persists(self):
         config = Config()
 
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides") as persist:
             result = apply_stage_settings(config, {"caption_max_chars": 360})
 
         self.assertEqual(config.stage.caption_max_chars, 360)
@@ -321,7 +321,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
     def test_apply_stage_settings_updates_board_window(self):
         config = Config()
 
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides") as persist:
             result = apply_stage_settings(
                 config,
                 {
@@ -377,7 +377,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config = Config()
         self.assertEqual(stage_snapshot(config)["idle_reset_seconds"], 60)
 
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides") as persist:
             result = apply_stage_settings(config, {"idle_reset_seconds": 45})
 
         self.assertEqual(config.stage.idle_reset_seconds, 45)
@@ -401,7 +401,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.base_url = "http://localhost:11434/v1"
 
         llm = FakeLlm()
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides"):
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
@@ -436,7 +436,7 @@ class DefaultPromptSettingsTests(unittest.TestCase):
         config.llm.base_url = "http://localhost:11434/v1"
 
         llm = FakeLlm()
-        with patch("nova_core.server.runtime_settings.persist_runtime_overrides"):
+        with patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides"):
             result = apply_llm_model(
                 config,
                 "qwen3.5:4b",
@@ -590,7 +590,7 @@ class SpeechSettingsTests(unittest.TestCase):
         self.assertTrue(ctx.exception.extra["need_disconnect"])
 
     def test_breezyvoice_missing_reference_does_not_silently_fall_back(self):
-        with patch("nova_core.server.runtime_settings._engine_available", return_value=True):
+        with patch("nova_core.server.runtime_settings.speech._engine_available", return_value=True):
             with self.assertRaises(SettingsError) as ctx:
                 apply_tts_settings(
                     Config(),
@@ -601,10 +601,10 @@ class SpeechSettingsTests(unittest.TestCase):
 
     def test_tts_commits_only_after_preview(self):
         config = Config()
-        with patch("nova_core.server.runtime_settings._engine_available", return_value=True), patch(
-            "nova_core.server.runtime_settings._preview_tts",
+        with patch("nova_core.server.runtime_settings.speech._engine_available", return_value=True), patch(
+            "nova_core.server.runtime_settings.speech._preview_tts",
             return_value="data:audio/wav;base64,dGVzdA==",
-        ), patch("nova_core.server.runtime_settings.persist_runtime_overrides") as persist:
+        ), patch("nova_core.server.runtime_settings.shared.persist_runtime_overrides") as persist:
             result = apply_tts_settings(
                 config,
                 {"type": "edgetts", "ref_file": "zh-TW-HsiaoChenNeural"},
@@ -615,7 +615,7 @@ class SpeechSettingsTests(unittest.TestCase):
         persist.assert_called_once()
 
     def test_edge_tts_rejects_non_zh_tw_voice(self):
-        with patch("nova_core.server.runtime_settings._engine_available", return_value=True):
+        with patch("nova_core.server.runtime_settings.speech._engine_available", return_value=True):
             with self.assertRaises(SettingsError) as ctx:
                 apply_tts_settings(
                     Config(),
@@ -629,8 +629,8 @@ class SpeechSettingsTests(unittest.TestCase):
 
         config = Config()
         stt = Mock()
-        with patch("nova_core.server.runtime_settings._engine_available", return_value=True), patch(
-            "nova_core.server.runtime_settings.persist_runtime_overrides"
+        with patch("nova_core.server.runtime_settings.speech._engine_available", return_value=True), patch(
+            "nova_core.server.runtime_settings.shared.persist_runtime_overrides"
         ) as persist:
             result = apply_stt_settings(
                 config,
@@ -655,8 +655,8 @@ class SpeechSettingsTests(unittest.TestCase):
         config = Config()
         stt = Mock()
         stt.apply_engine.side_effect = ServiceError("CUDA out of memory")
-        with patch("nova_core.server.runtime_settings._engine_available", return_value=True), patch(
-            "nova_core.server.runtime_settings.persist_runtime_overrides"
+        with patch("nova_core.server.runtime_settings.speech._engine_available", return_value=True), patch(
+            "nova_core.server.runtime_settings.shared.persist_runtime_overrides"
         ) as persist, self.assertRaises(SettingsError) as ctx:
             apply_stt_settings(
                 config, {"type": "whisper", "model_size": "turbo", "device": "cuda"},

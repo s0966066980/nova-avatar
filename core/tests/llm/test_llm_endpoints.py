@@ -253,7 +253,7 @@ def test_model_catalog_lists_endpoints_without_keys(monkeypatch):
         asked.append(base_url)
         return {"reachable": True, "models": [{"name": "qwen"}], "error": ""}
 
-    monkeypatch.setattr(runtime_settings, "fetch_ollama_models", fake_ollama)
+    monkeypatch.setattr(runtime_settings.llm, "fetch_ollama_models", fake_ollama)
     llm = FakeLlm()
     llm.list_local_models = lambda _query: LocalModels(
         models=(LocalModel(name="local.gguf", path="/models/local.gguf", size=1),))
@@ -271,7 +271,7 @@ def test_global_switch_accepts_only_configured_endpoints(monkeypatch):
     config = _config({"local": {"provider": "llamacpp", "base_url": "http://127.0.0.1:8080/v1"},
                       "lan": {"provider": "ollama", "base_url": "http://ollama.lan:9000/v1",
                               "api_key": REMOTE_KEY}})
-    monkeypatch.setattr(runtime_settings, "persist_runtime_overrides", lambda _: None)
+    monkeypatch.setattr(runtime_settings.shared, "persist_runtime_overrides", lambda _: None)
     llm = FakeLlm()
     with pytest.raises(SettingsError):
         apply_llm_model(config, "qwen", "attacker", llm=llm)
@@ -323,7 +323,7 @@ def test_switching_away_from_ollama_drops_ollama_only_request_fields(monkeypatch
                       "local": {"provider": "llamacpp", "base_url": "http://127.0.0.1:8080/v1"},
                       "remote": {"provider": "openai", "base_url": "https://llm.example/v1",
                                  "api_key": REMOTE_KEY}})
-    monkeypatch.setattr(runtime_settings, "persist_runtime_overrides", lambda _: None)
+    monkeypatch.setattr(runtime_settings.shared, "persist_runtime_overrides", lambda _: None)
     llm = FakeLlm()
     apply_llm_model(config, "qwen", "ollama", llm=llm)
     assert {"options", "keep_alive", "reasoning_effort", "think"} <= set(llm.engine_settings[-1].extra_body)
