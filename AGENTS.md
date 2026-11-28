@@ -57,6 +57,13 @@ to test it.
   `tests/` keeps repository-wide ones. See `tests/README.md`.
 - `lint-imports` enforces the layer boundaries; a layer is reached from the core
   only through its `adapter` and `config_section` modules.
+- `docs/` holds maintained documents only: `guides/` (install and operation),
+  `project/` (status, workflow, test baseline, software stack, attribution audit),
+  `adr/` and `agents/`; start from `docs/README.md`.
+- `integrations/` holds deployment files for external services and separate
+  environments (`ragflow/`, `matcha-train/` with its requirements and training
+  scripts).
+- `.scratch/` is local only and git-ignored; never commit or link to it.
 
 ## Rebranding and source attribution
 
