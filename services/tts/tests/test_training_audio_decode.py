@@ -15,6 +15,8 @@ from nova_tts.training.audio_decode import MAX_DECODE_SECONDS, decode_to_16k_mon
 from nova_tts.training.audio_quality import SAMPLE_RATE
 from nova_tts.training.corpus import CorpusError
 
+pytestmark = pytest.mark.speech
+
 
 def tone(seconds: float, rate: int = SAMPLE_RATE, amplitude: float = 0.2, freq: float = 220.0) -> np.ndarray:
     t = np.arange(int(seconds * rate)) / rate

@@ -31,6 +31,8 @@ from access_helpers import access_client
 from llm_fakes import FakeLlm
 from tts_fakes import in_process_tts
 
+pytestmark = pytest.mark.runtime
+
 SESSION = 271828
 BLOCK_SECONDS = 2.0
 

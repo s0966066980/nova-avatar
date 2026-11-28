@@ -33,6 +33,8 @@ from nova_tts.voice_preview import (
 )
 from matcha_fakes import VOICE_ID, FakeSherpa, Parent, make_voice_model, matcha_config, tone
 
+pytestmark = pytest.mark.speech
+
 
 @pytest.fixture
 def voice_models(tmp_path, monkeypatch):

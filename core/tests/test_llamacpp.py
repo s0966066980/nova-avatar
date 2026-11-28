@@ -25,6 +25,9 @@ from nova_llm.llamacpp import (
     shutdown_llama_server,
     suggest_gpu_layers,
 )
+import pytest
+
+pytestmark = pytest.mark.llm
 
 
 class CudaLibraryDiscoveryTests(unittest.TestCase):
@@ -153,6 +156,8 @@ class ShutdownOwnedServerTests(unittest.TestCase):
 
 
 class LlamaServerLaunchEnvTests(unittest.TestCase):
+    @pytest.mark.live
+    @pytest.mark.gpu
     def test_llama_server_loads_with_discovered_cuda_libs(self):
         binary = find_llama_server()
         self.assertIsNotNone(binary, "live environment requires llama-server")

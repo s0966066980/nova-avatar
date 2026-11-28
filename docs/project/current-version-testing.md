@@ -61,7 +61,7 @@ CUDA 推理、WebRTC、插話／角色交接、感知首音延遲與視聽驗收
 ## `gpu` 標記與各層的 fake 引擎
 
 需要 GPU、真實模型權重或本機模型伺服器的測試，統一標上 pytest marker `gpu`
-（在根目錄 `conftest.py` 的 `GPU_FILES`／`GPU_TESTS` 登記，標記註冊在
+（在測試檔或測試函式上標 `@pytest.mark.gpu`，標記註冊在
 `pyproject.toml`）。`pyproject.toml` 的 `addopts = '-m "not gpu"'` 讓預設的
 `uv run --no-sync pytest`，以及 GitHub CI 的 pytest 步驟，都不執行它們；
 沒有 GPU、沒有模型權重的機器因此可以跑完整個預設測試。目前標記的有兩個已配置
@@ -74,7 +74,7 @@ NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -m gpu   # 維護者在�
 
 命令列的 `-m` 會取代 `addopts` 的選擇，所以 `-m gpu` 只跑這些測試，
 `-m "not live"` 仍不含它們（`gpu` 案例都屬於 `live`）。新增需要 GPU 或權重的測試時，
-把它登記到 `GPU_FILES`／`GPU_TESTS`，不要用 skip 當作通過。
+直接在該測試（或整個模組的 `pytestmark`）標上 `gpu`，不要用 skip 當作通過。
 
 核心的輪次、插話、角色交接與舞台閒置測試不依賴 GPU：它們經真正的 adapter 使用
 各層的 `fake` 引擎（STT `asr.type: fake`、LLM `llm.engine: fake`、TTS

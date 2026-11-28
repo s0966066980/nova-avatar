@@ -24,6 +24,8 @@ from nova_render.asset_io import (
     save_coords,
 )
 
+pytestmark = pytest.mark.avatar
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCANNED_ENGINES = ("musetalk",)
 TORCH_LOADERS = {"load_url", "load_state_dict_from_url"}

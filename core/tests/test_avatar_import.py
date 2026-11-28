@@ -23,6 +23,8 @@ from nova_core.server.routes import settings as settings_routes
 from nova_core.server.state import state
 from access_helpers import access_client, same_origin
 
+pytestmark = pytest.mark.runtime
+
 OLD_MARKER = b"old-avatar-frame"
 
 

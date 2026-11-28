@@ -22,6 +22,8 @@ from nova_contracts.tts import (
     strip_visual_markup,
 )
 
+pytestmark = pytest.mark.speech
+
 SETTINGS = TtsEngineSettings(frames_per_second=50, matcha_threads=2)
 
 

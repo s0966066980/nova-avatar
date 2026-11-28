@@ -29,6 +29,8 @@ from llm_fakes import FakeLlm
 from nova_core.server.state import state
 from tts_fakes import in_process_tts
 
+pytestmark = pytest.mark.speech
+
 OLD_OVERRIDE_TTS = {"type": "edgetts", "ref_file": "zh-TW-HsiaoYuNeural", "ref_text": None,
                     "tts_server": "", "model": ""}
 

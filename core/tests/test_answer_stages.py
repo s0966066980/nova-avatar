@@ -13,6 +13,9 @@ from nova_core.server.answer_stages import AnswerInputs, Speak, run_answer_stage
 from nova_core.server.answer_stages.attachments import attachments_stage
 from nova_core.server.answer_stages.retrieval import retrieval_stage
 from nova_core.server.answer_stages.web_search import fixed_reply, web_search_stage
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 CTX = SimpleNamespace(locale="zh-TW")
 

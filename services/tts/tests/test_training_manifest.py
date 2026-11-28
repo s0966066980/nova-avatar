@@ -14,6 +14,8 @@ from nova_tts.training.manifest import BASE_VOCAB, SKIP_NO_AUDIO, SKIP_NO_TOKENS
 from nova_tts.training.preparation import prepared_path
 from nova_tts.training.usage import SOURCE_SELF_RECORDED
 
+pytestmark = pytest.mark.speech
+
 TOKENS = {" ": 1, ",": 4, ".": 5, "wo3": 11, "you3": 12, "san1": 13, "ge4": 14, "ping2": 15, "guo3": 16,
           "er4": 17, "ling2": 18, "liu4": 19, "nian2": 20, "dian4": 21, "hua4": 22, "<|unused|>": 2190}
 LEXICON = ["我 wo3", "有 you3", "三 san1", "个 ge4", "苹果 ping2 guo3", "二 er4", "零 ling2", "六 liu4",

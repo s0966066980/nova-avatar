@@ -14,6 +14,9 @@ from nova_contracts.tts import strip_visual_markup
 from clock_fakes import FakeClock
 from llm_fakes import FakeLlm, answering
 from session_fakes import FakeAvatar
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 def make_session(*, streaming):

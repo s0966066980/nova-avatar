@@ -20,6 +20,9 @@ from nova_core.server.stage_guard import (
     transcription_cpu_reason,
     with_core_checks,
 )
+import pytest
+
+pytestmark = pytest.mark.speech
 
 
 def test_stage_connections_are_counted_from_the_session_registry(monkeypatch):

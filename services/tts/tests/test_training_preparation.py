@@ -23,6 +23,8 @@ from nova_tts.training.preparation import (
 )
 from nova_tts.training.usage import SOURCE_SELF_RECORDED
 
+pytestmark = pytest.mark.speech
+
 
 def tone(seconds: float, rate: int = SAMPLE_RATE, channels: int = 1, amplitude: float = 0.3, lead: float = 0.3) -> bytes:
     """A WAV holding silence, a 220 Hz tone and silence: it trims to the tone."""

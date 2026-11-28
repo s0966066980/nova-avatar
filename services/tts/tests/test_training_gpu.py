@@ -15,6 +15,8 @@ from nova_tts.training.gpu_guard import (
 )
 from nova_tts.training.gpu_probe import QUERY, VramReading, read_free_vram
 
+pytestmark = pytest.mark.speech
+
 
 def runner(stdout: str = "", returncode: int = 0, raises: Exception | None = None):
     calls = []

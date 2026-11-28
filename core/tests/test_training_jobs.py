@@ -38,6 +38,8 @@ from nova_tts.voice_models import REQUIRED_FILES, list_voice_models
 from training_fakes import FakeProcess, FakeSpawner, argument, tone_wav
 from training_fakes import ENOUGH_VRAM_MIB, Rig, edge_synthesis, rig  # noqa: F401
 
+pytestmark = pytest.mark.speech
+
 
 def request(**overrides) -> StartRequest:
     values = {"corpus": "voice", "name": "我的聲音"}

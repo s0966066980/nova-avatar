@@ -20,6 +20,8 @@ from nova_core.profiles.store import ProfileStore
 from nova_llm.tools.weather import COUNTIES, TAIPEI
 from nova_llm.tools.weather_keywords import PLACES, canonical_county, explicit_counties, keyword_route
 
+pytestmark = pytest.mark.conversation
+
 FRIDAY = date(2026, 10, 30)
 
 

@@ -8,6 +8,9 @@ import numpy as np
 from nova_contracts.tts import TtsVoice
 from nova_core.config.schema import Config
 from nova_core.server.speaking_avatar import SpeakingAvatar
+import pytest
+
+pytestmark = pytest.mark.speech
 
 
 class FakeRenderer:

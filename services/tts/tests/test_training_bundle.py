@@ -14,6 +14,8 @@ from nova_tts.training import bundle
 from nova_tts.training.bundle import BundleError, check_model_name, install_voice_model, new_model_id, source_description
 from nova_tts.voice_models import REQUIRED_FILES, VOICE_MODEL_ID, list_voice_models
 
+pytestmark = pytest.mark.speech
+
 
 @pytest.fixture
 def staging(tmp_path):

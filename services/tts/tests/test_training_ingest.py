@@ -20,6 +20,8 @@ from nova_tts.training.ingest import (
     ingest_audio,
 )
 
+pytestmark = pytest.mark.speech
+
 
 def recording(seconds: float = 2.0, rate: int = 44100, fmt: str = "WAV", lead: float = 0.0, channels: int = 1) -> bytes:
     t = np.arange(int(seconds * rate)) / rate

@@ -15,6 +15,8 @@ import textwrap
 
 import pytest
 
+pytestmark = pytest.mark.ragflow
+
 ROOT = Path(__file__).resolve().parents[3]
 UNIT = ROOT / "integrations/ragflow/nova-ragflow-llamacpp-embedding.service"
 LAUNCHER = ROOT / "services/llm/scripts/ragflow_llamacpp_embedding.sh"

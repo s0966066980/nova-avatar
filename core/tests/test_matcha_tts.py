@@ -25,6 +25,8 @@ from nova_tts.factory import create_tts_engine
 from matcha_fakes import FakeSherpa, LABEL, Parent, VOICE_ID, make_voice_model, matcha_config, tone  # noqa: F401
 from tts_fakes import in_process_tts
 
+pytestmark = pytest.mark.speech
+
 
 @pytest.fixture
 def voice_models(tmp_path, monkeypatch):

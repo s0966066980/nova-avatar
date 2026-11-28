@@ -33,6 +33,8 @@ import breezyvoice_frontend as frontend
 import breezyvoice_weights
 from tts_fakes import in_process_tts
 
+pytestmark = pytest.mark.speech
+
 WORD_UTILS = '''from collections import Counter, defaultdict
 
 always_augment_chars = {"長"}

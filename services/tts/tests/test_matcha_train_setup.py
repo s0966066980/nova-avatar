@@ -14,6 +14,8 @@ import pytest
 
 import matcha_base_weights as weights
 
+pytestmark = pytest.mark.runtime
+
 ROOT = Path(__file__).resolve().parents[3]
 CONTENT = b"fake matcha checkpoint"
 

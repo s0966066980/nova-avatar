@@ -19,6 +19,9 @@ from nova_contracts.stt import Transcription, TranscriptionOptions
 from llm_fakes import FakeLlm, answering, reply_events, started as reply_started
 from clock_fakes import FakeClock
 from session_fakes import fake_stt, FakeAvatar, FakeSegmenter  # noqa: F401
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class VoiceTurnSessionTests(unittest.IsolatedAsyncioTestCase):

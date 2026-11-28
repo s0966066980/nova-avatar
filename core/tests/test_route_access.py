@@ -29,6 +29,8 @@ from access_helpers import (
     same_origin,
 )
 
+pytestmark = pytest.mark.runtime
+
 SAFE_METHODS = {"GET", "HEAD"}
 STAGE_SESSION = 424242
 CONSOLE_SESSION = 535353

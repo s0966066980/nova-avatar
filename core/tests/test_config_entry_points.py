@@ -8,6 +8,9 @@ import ast
 from pathlib import Path
 
 import yaml
+import pytest
+
+pytestmark = pytest.mark.runtime
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = PROJECT_ROOT / "core" / "nova_core" / "config"

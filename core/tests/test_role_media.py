@@ -14,6 +14,8 @@ from nova_render.scene.role_presentation import HEIGHT, WIDTH, RolePresentation
 from nova_core.profiles.store import ProfileError
 from nova_render.scene.service import scene_service
 
+pytestmark = pytest.mark.avatar
+
 
 def test_role_continuity_masks_have_a_bounded_memory_cost():
     from nova_render.musetalk.mouth_continuity import MouthContinuityController

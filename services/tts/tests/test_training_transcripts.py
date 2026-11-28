@@ -17,6 +17,8 @@ from nova_tts.training.transcripts import (
     parse_txt,
 )
 
+pytestmark = pytest.mark.speech
+
 WAV = b"RIFF fixture wav bytes"
 
 

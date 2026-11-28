@@ -14,6 +14,9 @@ import soundfile as sf
 
 from nova_stt.base import SPEECH_LANGUAGES, BaseASR, asr_language
 from nova_stt.engines.whisper import WhisperASR
+import pytest
+
+pytestmark = pytest.mark.speech
 
 
 class WhisperASRLoadingTests(unittest.TestCase):

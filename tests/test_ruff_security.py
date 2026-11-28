@@ -9,6 +9,9 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+import pytest
+
+pytestmark = pytest.mark.governance
 
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"

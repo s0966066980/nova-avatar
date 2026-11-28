@@ -16,6 +16,8 @@ import time
 
 import pytest
 
+pytestmark = pytest.mark.runtime
+
 
 ROOT = Path(__file__).resolve().parents[1]
 

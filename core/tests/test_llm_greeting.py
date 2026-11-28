@@ -12,6 +12,8 @@ import pytest
 from nova_core.config.schema import Config
 from nova_llm.greeting import GreetingGenerationError, generate_greeting
 
+pytestmark = pytest.mark.conversation
+
 
 def test_a_greeting_out_of_range_is_regenerated_once_with_a_correction():
     generate = AsyncMock(side_effect=["- 清單", "歡迎  來參觀！"])

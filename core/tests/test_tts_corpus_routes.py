@@ -36,6 +36,8 @@ from nova_tts.training.transcription import TranscriptionJobs
 from nova_core.server.routes.tts_corpus import ROUTES, register
 from access_helpers import access_client, same_origin
 
+pytestmark = pytest.mark.speech
+
 BASE = "/api/tts/corpora"
 
 

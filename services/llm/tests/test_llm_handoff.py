@@ -13,6 +13,8 @@ import pytest
 
 from nova_llm.handoff import HandoffContext, RoleCandidate, RoutingError, route
 
+pytestmark = pytest.mark.conversation
+
 TAIPEI_TODAY = datetime.now().date().isoformat()
 
 

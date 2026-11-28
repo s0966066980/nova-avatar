@@ -8,6 +8,9 @@ from nova_core.config.schema import Config, ReplyRulesConfig
 from nova_core.config.overrides import load_runtime_overrides, persist_runtime_overrides
 from nova_llm.rules import default_rules, snapshot_from_config, validate_rules
 from nova_core.server.runtime_settings import SettingsError, apply_reply_rules, reply_rules_snapshot
+import pytest
+
+pytestmark = pytest.mark.llm
 
 
 class EditableRuleTests(unittest.TestCase):

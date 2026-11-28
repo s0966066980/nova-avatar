@@ -1,190 +1,34 @@
 # Copyright (c) 2026 HongXian0903
 # SPDX-License-Identifier: Apache-2.0
 
-"""Central pytest classification for Nova Avatar's product-area suites."""
+"""Repository-wide pytest rules for Nova Avatar: the product-area check and the data/ guard."""
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
 
 
-AREA_BY_FILE = {
-    "test_web_search.py": "conversation",
-    "test_answer_stages.py": "conversation",
-    "test_conversation_attachments.py": "conversation",
-    "test_conversation_settings.py": "conversation",
-    "test_pc_conversations.py": "conversation",
-    "test_avatar_contract.py": "avatar",
-    "test_avatar_import.py": "runtime",
-    "test_avatar_safe_loading.py": "avatar",
-    "test_avatar_profiles.py": "runtime",
-    "test_role_composition.py": "runtime",
-    "test_cwa_weather.py": "conversation",
-    "test_weather_keywords.py": "conversation",
-    "test_role_media.py": "avatar",
-    "test_role_coordinator.py": "conversation",
-    "test_reverse_role_handoff.py": "conversation",
-    "test_n_way_routing.py": "conversation",
-    "test_llm_handoff.py": "conversation",
-    "test_llm_greeting.py": "conversation",
-    "test_handoff_dry_run.py": "conversation",
-    "test_any_to_any_handoff.py": "conversation",
-    "test_assistant_profile.py": "llm",
-    "test_auto_response_protocol.py": "conversation",
-    "test_avatar_transition.py": "avatar",
-    "test_branding_compliance.py": "governance",
-    "test_breezyvoice_tts.py": "speech",
-    "test_edge_connection.py": "speech",
-    "test_edge_endpoint.py": "speech",
-    "test_edge_tts_worker.py": "speech",
-    "test_event_loop_blocking.py": "runtime",
-    "test_editable_llm_rules.py": "llm",
-    "test_frontend_serving.py": "runtime",
-    "test_tts_engine_cleanup.py": "speech",
-    "test_tts_contract.py": "speech",
-    "test_tts_fake_engine.py": "speech",
-    "test_voice_models.py": "speech",
-    "test_voice_preview.py": "speech",
-    "test_training_numerals.py": "speech",
-    "test_training_usage.py": "speech",
-    "test_training_corpus.py": "speech",
-    "test_training_audio_decode.py": "speech",
-    "test_training_transcripts.py": "speech",
-    "test_training_ingest.py": "speech",
-    "test_training_transcription.py": "speech",
-    "test_tts_corpus_routes.py": "speech",
-    "test_training_sentences.py": "speech",
-    "test_training_audio_quality.py": "speech",
-    "test_training_edge_teacher.py": "speech",
-    "test_training_edge_acknowledgement.py": "speech",
-    "test_training_transcript_check.py": "speech",
-    "test_matcha_training_scripts.py": "speech",
-    "test_stage_guard.py": "speech",
-    "test_training_gpu.py": "speech",
-    "test_training_asr.py": "speech",
-    "test_training_processes.py": "speech",
-    "test_training_preparation.py": "speech",
-    "test_training_manifest.py": "speech",
-    "test_training_bundle.py": "speech",
-    "test_training_jobs.py": "speech",
-    "test_training_routes.py": "speech",
-    "test_matcha_tts.py": "speech",
-    "test_default_voice.py": "speech",
-    "test_health_route.py": "runtime",
-    "test_config_entry_points.py": "runtime",
-    "test_layer_entry_points.py": "governance",
-    "test_integration_check.py": "governance",
-    "test_kiosk_launcher.py": "runtime",
-    "test_live_llm_board_contract.py": "conversation",
-    "test_llamacpp.py": "llm",
-    "test_model_profile.py": "llm",
-    "test_llm_contract.py": "llm",
-    "test_llm_fake_engine.py": "llm",
-    "test_llm_endpoints.py": "llm",
-    "test_llm_text_normalizer.py": "llm",
-    "test_gemma_e2b.py": "llm",
-    "test_default_llm_endpoint.py": "llm",
-    "test_first_sentence_rule.py": "llm",
-    "test_media_fencing.py": "conversation",
-    "test_mouth_continuity.py": "avatar",
-    "test_mouth_quality.py": "avatar",
-    "test_musetalk_preprocessing.py": "avatar",
-    "test_musetalk_acceleration.py": "avatar",
-    "test_matcha_train_setup.py": "runtime",
-    "test_pinned_resources.py": "runtime",
-    "test_playback_commit.py": "conversation",
-    "test_profile_voice_preview.py": "speech",
-    "test_ragflow_integration.py": "ragflow",
-    "test_ragflow_llamacpp_embedding.py": "ragflow",
-    "test_reply_streaming.py": "conversation",
-    "test_first_fragment_exception.py": "conversation",
-    "test_reply_speech_seam.py": "conversation",
-    "test_speaking_avatar.py": "speech",
-    "test_reply_latency.py": "conversation",
-    "test_first_audio_latency.py": "conversation",
-    "test_concurrent_routing.py": "conversation",
-    "test_render_stop.py": "conversation",
-    "test_realtime_avatar.py": "conversation",
-    "test_response_protocol.py": "conversation",
-    "test_route_access.py": "runtime",
-    "test_runtime_settings.py": "runtime",
-    "test_deferred_settings.py": "runtime",
-    "test_dependency_lock.py": "governance",
-    "test_ci_select_tests.py": "governance",
-    "test_ruff_security.py": "governance",
-    "test_scene_background.py": "avatar",
-    "test_server_shutdown.py": "runtime",
-    "test_speech_timing.py": "conversation",
-    "test_idle_greetings.py": "conversation",
-    "test_stage_idle_reset.py": "conversation",
-    "test_stage_presentation.py": "conversation",
-    "test_startup_scripts.py": "runtime",
-    "test_turn_lifecycle.py": "conversation",
-    "test_vad.py": "speech",
-    "test_voice_library.py": "speech",
-    "test_voice_session.py": "conversation",
-    "test_webrtc_lifecycle.py": "conversation",
-    "test_voice_test_history.py": "conversation",
-    "test_whisper_asr.py": "speech",
-    "test_stt_contract.py": "speech",
-    "test_contracts.py": "governance",
-}
-
-LIVE_FILES = frozenset({"test_live_llm_board_contract.py"})
-LIVE_TESTS = frozenset({
-    "core/tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
-    # A wall-clock budget on this host's CPU, not a deterministic regression.
-    "core/tests/test_scene_background.py::test_chroma_composite_fits_the_render_frame_budget_on_a_portrait_avatar",
-})
-
-# Tests that need a GPU, a real model's weights or a model server on this host.
-# They are deselected by default (``addopts`` in pyproject.toml); run them with ``-m gpu``.
-GPU_FILES = frozenset({"test_live_llm_board_contract.py"})
-GPU_TESTS = frozenset({
-    "core/tests/test_llamacpp.py::LlamaServerLaunchEnvTests::test_llama_server_loads_with_discovered_cuda_libs",
-})
-
-SLOW_TESTS = frozenset(
-    {
-        "core/tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_prefetch_keeps_only_the_next_fragment_in_flight",
-        "core/tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_first_fragment_pcm_does_not_wait_for_the_next_edge_request",
-        "core/tests/test_edge_tts_worker.py::EdgeTTSWorkerTests::test_flush_talk_drops_prefetched_fragment_audio",
-        "core/tests/test_media_fencing.py::MuseTalkEnvelopePropagationTests::test_batch_cancelled_during_gpu_inference_cannot_publish_results",
-        "core/tests/test_reply_streaming.py::BaselineReplayHarnessTests::test_fake_replay_is_reproducible_content_free_and_judges_slos",
-    }
-)
-
-
-def _matching_markers(item: pytest.Item) -> Iterable[str]:
-    file_name = item.path.name
-    area = AREA_BY_FILE.get(file_name)
-    if area:
-        yield area
-    if file_name in LIVE_FILES or item.nodeid.replace("\\", "/") in LIVE_TESTS:
-        yield "live"
-    if file_name in GPU_FILES or item.nodeid.replace("\\", "/") in GPU_TESTS:
-        yield "gpu"
-    if item.nodeid.replace("\\", "/") in SLOW_TESTS:
-        yield "slow"
+# Every test module names its product area itself, with ``pytestmark = pytest.mark.<area>``
+# at module level (``live``, ``gpu`` and ``slow`` are marks on the module or the test in
+# the same way). Nothing here lists test files: moving, adding or deleting a test never
+# touches this file.
+AREAS = ("avatar", "conversation", "governance", "llm", "ragflow", "runtime", "speech")
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    unclassified = set()
-    for item in items:
-        if item.path.name.startswith("test_") and item.path.name not in AREA_BY_FILE:
-            unclassified.add(item.path.name)
-            continue
-        for marker in _matching_markers(item):
-            item.add_marker(marker)
-
+    unclassified = {
+        str(item.path.relative_to(Path(__file__).resolve().parent)).replace("\\", "/")
+        for item in items
+        if item.path.name.startswith("test_")
+        and not any(item.get_closest_marker(area) for area in AREAS)
+    }
     if unclassified:
-        names = ", ".join(sorted(unclassified))
         raise pytest.UsageError(
-            f"Unclassified test modules: {names}. Add them to conftest.py."
+            "Test modules without a product area: " + ", ".join(sorted(unclassified))
+            + ". Add `pytestmark = pytest.mark.<area>` (one of " + ", ".join(AREAS) + ")."
         )
 
 

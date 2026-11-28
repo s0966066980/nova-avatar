@@ -30,6 +30,8 @@ from nova_llm.tools.weather import (
     weather_prompt,
 )
 
+pytestmark = pytest.mark.conversation
+
 NOW = datetime(2026, 10, 16, 12, 0, tzinfo=TAIPEI)
 
 

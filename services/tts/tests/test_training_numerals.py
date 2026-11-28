@@ -9,6 +9,8 @@ import pytest
 
 from nova_tts.training.numerals import normalize_digits
 
+pytestmark = pytest.mark.speech
+
 
 @pytest.mark.parametrize(
     ("text", "expected"),

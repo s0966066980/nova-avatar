@@ -12,6 +12,8 @@ from av import AudioFrame, VideoFrame
 
 from nova_core.utils.webrtc import HumanPlayer
 
+pytestmark = pytest.mark.conversation
+
 
 def test_first_speech_after_interrupt_keeps_feature_and_pcm_centers_aligned():
     from nova_render.musetalk.audio_stream_handler import MuseAudioStreamHandler

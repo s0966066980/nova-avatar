@@ -3,6 +3,9 @@
 
 import cv2
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.avatar
 
 
 def test_musetalk_preprocessing_uses_bundled_face_detector_without_mmpose(tmp_path, monkeypatch):

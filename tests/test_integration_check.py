@@ -4,6 +4,9 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import pytest
+
+pytestmark = pytest.mark.governance
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -58,8 +58,9 @@ NOVA_AVATAR_LIVE_LLM_CONTRACT=1 uv run --no-sync pytest -v -ra -m live   # 已�
 相依鎖定、啟動與權重腳本、ruff 安全規則，以及層級邊界設定。測試檔名在整個儲存庫內
 保持唯一。
 
-產品領域分類、`gpu`/`live`/`slow` 標記，以及測試不得寫入 `data/` 的規則都在根目錄的
-`conftest.py`，因此適用於每個資料夾。測試資料夾沒有 `__init__.py`；`pyproject.toml`
+每個測試模組用 `pytestmark = pytest.mark.<領域>` 自己宣告產品領域（`gpu`／`live`／`slow` 同樣標在模組或
+測試函式上），沒有集中登記表：新增、搬移或刪除測試都不用改別的檔案。根目錄的 `conftest.py` 只負責
+「沒宣告領域就讓 collection 失敗」，以及測試不得寫入 `data/` 的規則，所以適用於每個資料夾。測試資料夾沒有 `__init__.py`；`pyproject.toml`
 的 `pythonpath` 把每個套件根目錄、測試資料夾與各層腳本資料夾放進 `sys.path`，所以
 像 `llm_fakes` 這樣的輔助模組可在任何測試中直接以模組名稱匯入。
 `uv run --no-sync pytest <資料夾>` 只執行單一資料夾。

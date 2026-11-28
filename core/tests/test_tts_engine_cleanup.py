@@ -26,6 +26,8 @@ from nova_tts import voice_library
 from nova_tts.factory import create_tts_engine
 from tts_fakes import in_process_tts
 
+pytestmark = pytest.mark.speech
+
 # Every retired name takes the same "not a current engine" branch; two stand in for all of them.
 REMOVED = ("cosyvoice", "gpt-sovits")
 LEGACY_FIELDS = {"mode": "zero_shot", "language": "zh", "speaker": "Vivian", "instruct": "", "device": "auto"}

@@ -5,6 +5,9 @@ from fractions import Fraction
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class MuseTalkEnvelopePropagationTests(unittest.TestCase):
@@ -350,6 +353,7 @@ class MuseTalkEnvelopePropagationTests(unittest.TestCase):
         self.assertTrue(result_queue.empty())
         self.assertEqual(stale_drops, [("musetalk_batch", "stale_generation")])
 
+    @pytest.mark.slow
     def test_batch_cancelled_during_gpu_inference_cannot_publish_results(self):
         import torch
 

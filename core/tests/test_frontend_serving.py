@@ -15,6 +15,8 @@ from nova_core.server.server import FrontendNotBuilt, create_app, require_fronte
 from nova_core.utils.paths import PROJECT_ROOT
 from access_helpers import LAN_ADDRESS, access_client
 
+pytestmark = pytest.mark.runtime
+
 
 def test_default_frontend_is_the_absolute_vite_build_directory():
     assert server.FRONTEND_DIST == PROJECT_ROOT / "web" / "dist"

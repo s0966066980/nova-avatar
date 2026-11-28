@@ -24,6 +24,8 @@ from nova_contracts.avatar import (
 from nova_contracts.common import ServiceError
 from nova_render.scene.service import scene_service
 
+pytestmark = pytest.mark.avatar
+
 
 def test_a_boot_check_explains_why_an_avatar_cannot_start():
     refused = AvatarBootCheck(bootable=False, reason="素材不存在")

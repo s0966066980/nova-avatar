@@ -228,6 +228,8 @@ from nova_contracts.llm import (  # noqa: E402
     WeatherQuery,
 )
 
+pytestmark = pytest.mark.llm
+
 
 def test_every_http_operation_is_a_service_method_and_the_other_way_round():
     methods = {name for name in vars(LlmService) if not name.startswith("_")}

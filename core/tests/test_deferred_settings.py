@@ -13,6 +13,8 @@ from nova_core.server import deferred_settings
 from nova_core.server.routes import settings
 from nova_core.server.state import state
 
+pytestmark = pytest.mark.runtime
+
 
 @pytest.fixture
 def pending(tmp_path, monkeypatch):

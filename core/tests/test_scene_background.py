@@ -15,6 +15,8 @@ from nova_render import catalog
 from nova_render.adapter import create_avatar_service
 from nova_core.server.routes import settings as settings_routes
 
+pytestmark = pytest.mark.avatar
+
 
 @pytest.fixture(autouse=True)
 def avatar_service(monkeypatch):
@@ -83,6 +85,7 @@ def test_chroma_composite_cleans_a_wide_ambient_spill_halo_on_high_resolution_fr
     assert np.array_equal(result[0, 60], foreground[0, 60])
 
 
+@pytest.mark.live
 def test_chroma_composite_fits_the_render_frame_budget_on_a_portrait_avatar():
     """Compositing runs on the render thread for every frame. Past the 40ms
     budget at 25fps the WebRTC media clock falls behind real time, which

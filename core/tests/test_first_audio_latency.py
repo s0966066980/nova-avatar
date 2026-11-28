@@ -37,6 +37,9 @@ from nova_core.server.reply_streaming.metrics import (
 )
 from nova_core.utils.stage_timing import observe_stages, timed_stage
 from nova_core.server.voice_session import VoiceTurnSession
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class PreAnswerStageMetricsTests(unittest.TestCase):

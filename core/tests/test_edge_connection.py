@@ -19,6 +19,9 @@ from nova_tts.adapter import InProcessTtsService
 from nova_tts.engines import edge
 from nova_tts.edge_connection import EdgeConnectionPool
 from edge_fakes import _mp3_fixture
+import pytest
+
+pytestmark = pytest.mark.speech
 
 
 class FakeEdgeServer:

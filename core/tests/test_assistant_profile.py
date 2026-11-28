@@ -14,6 +14,9 @@ from nova_render.adapter import create_avatar_service
 from nova_core.server.runtime_settings import apply_llm_model, current_snapshot
 from llm_fakes import FakeLlm
 from tts_fakes import in_process_tts
+import pytest
+
+pytestmark = pytest.mark.llm
 
 
 class AssistantProfileTests(unittest.TestCase):

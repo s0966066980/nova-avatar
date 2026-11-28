@@ -27,6 +27,8 @@ from nova_contracts.tts import (
 )
 from nova_tts.adapter import InProcessTtsService
 
+pytestmark = pytest.mark.speech
+
 SETTINGS = TtsEngineSettings(frames_per_second=50)
 FAKE_VOICE = TtsVoice(engine="fake")
 FRAME_SAMPLES = 320

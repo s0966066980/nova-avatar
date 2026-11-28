@@ -9,6 +9,9 @@ from aiohttp.test_utils import TestClient, TestServer
 from nova_llm.adapter import InProcessLlmService
 from nova_core.server.routes.health import health_check
 from nova_core.server.state import state
+import pytest
+
+pytestmark = pytest.mark.runtime
 
 
 class HealthRouteTests(unittest.IsolatedAsyncioTestCase):

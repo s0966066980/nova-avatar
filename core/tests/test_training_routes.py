@@ -32,6 +32,8 @@ from nova_tts.training.usage import SOURCE_EDGE_TEST_TEACHER
 from nova_tts.training.edge_acknowledgement import MSA_CLAUSE, record_acknowledgement
 from nova_tts.training.gpu_probe import VramReading
 
+pytestmark = pytest.mark.speech
+
 PREVIEW_SENTENCES = ("zh", "digits", "en")
 
 BASE = "/api/tts/training"

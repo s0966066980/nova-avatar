@@ -14,6 +14,8 @@ from nova_core.server.reply_streaming.llm_reply import conversation_session
 from llm_fakes import FakeLlm
 from types import SimpleNamespace
 
+pytestmark = pytest.mark.runtime
+
 
 @pytest.fixture
 def profiles(tmp_path, monkeypatch):

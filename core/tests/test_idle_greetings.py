@@ -26,6 +26,8 @@ from llm_fakes import FakeLlm, ask
 from session_fakes import FakeAvatar, FakeSegmenter
 from nova_tts import config_section as tts_section
 
+pytestmark = pytest.mark.conversation
+
 
 @pytest.mark.parametrize('text,count', [('你好，世界！', 6), ('a e\u0301 👨‍👩‍👧‍👦 🇹🇼\n', 4), ('\t\n　', 0), ('👍🏽！', 2), ('a\u0085b', 2)])
 def test_visible_graphemes(text, count):

@@ -31,6 +31,8 @@ from nova_tts.training.edge_teacher import (
     run_synthesis,
 )
 
+pytestmark = pytest.mark.speech
+
 SLUG = "edge-test"
 NAMES = ("甲", "乙", "丙", "丁", "戊", "己", "庚", "辛")  # digit-free, so the spoken text equals the input
 

@@ -14,6 +14,9 @@ import textwrap
 import time
 import unittest
 from pathlib import Path
+import pytest
+
+pytestmark = pytest.mark.runtime
 
 ROOT = Path(__file__).resolve().parents[2]
 # ``-I`` ignores PYTHONPATH, so the child gets the package roots explicitly.

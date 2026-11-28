@@ -19,6 +19,9 @@ from clock_fakes import FakeClock
 from llm_fakes import FakeLlm, started as reply_started
 from session_fakes import FakeAvatar
 from role_fakes import answers, async_test, connect, field, route_to  # noqa: F401
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 SPECULATIVE = {"context": ANSWER_CONTEXT}
 FIXED = "接下來請天氣助手為您說明。"

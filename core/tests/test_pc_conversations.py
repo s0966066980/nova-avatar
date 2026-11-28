@@ -21,6 +21,8 @@ from llm_fakes import FakeLlm
 from role_fakes import answers, async_test, connect, field, wait_until  # noqa: F401
 from session_fakes import picture  # noqa: F401
 
+pytestmark = pytest.mark.conversation
+
 
 def engine(text='earlier question'):
     history = TransactionalHistory(max_turns=10)

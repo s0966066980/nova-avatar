@@ -7,6 +7,9 @@ from __future__ import annotations
 import importlib.util
 import unittest
 from pathlib import Path
+import pytest
+
+pytestmark = pytest.mark.governance
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("ci_select_tests", ROOT / "scripts/ci_select_tests.py")

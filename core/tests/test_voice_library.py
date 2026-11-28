@@ -29,6 +29,8 @@ from nova_tts.voice_library import VoiceLibraryError
 from access_helpers import access_client, same_origin
 from tts_fakes import in_process_tts
 
+pytestmark = pytest.mark.speech
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 UNSAFE_REFERENCES = [
     "/etc/passwd",

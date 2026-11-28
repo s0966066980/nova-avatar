@@ -19,6 +19,8 @@ from access_helpers import access_client, same_origin
 from nova_contracts.llm import LocalModel, LocalModels
 from llm_fakes import FakeLlm
 
+pytestmark = pytest.mark.llm
+
 SERVER_KEY = "server-only-test-credential"
 REMOTE_KEY = "remote-endpoint-credential"
 ATTACKER_URL = "http://attacker.example/v1"

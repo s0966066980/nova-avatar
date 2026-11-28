@@ -17,6 +17,8 @@ from llm_fakes import FakeLlm
 from role_fakes import _config, _prompt, _schema, composition
 from composition_fakes import _request, composition_routes, store  # noqa: F401
 
+pytestmark = pytest.mark.conversation
+
 DRY_RUN = "/api/profiles/composition/dry-run"
 
 

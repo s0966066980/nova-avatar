@@ -33,6 +33,9 @@ from nova_core.server.state import state
 from nova_core.server.voice_session import VoiceTurnSession
 from llm_fakes import FakeLlm, answering, reply_events
 from session_fakes import FakeAvatar
+import pytest
+
+pytestmark = pytest.mark.ragflow
 
 DATASET_A = "a" * 32
 DATASET_B = "b" * 32

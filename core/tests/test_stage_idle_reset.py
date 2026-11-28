@@ -17,6 +17,9 @@ from nova_contracts.llm import SessionRef
 from nova_core.server.voice_session import VoiceTurnSession
 from llm_fakes import FakeLlm, answering
 from session_fakes import fake_stt, FakeAvatar, FakeSegmenter
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 DELAY = 0.08
 REPLY = "還沒開始播放的回覆"

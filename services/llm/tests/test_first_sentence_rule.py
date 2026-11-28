@@ -13,6 +13,8 @@ from nova_llm.reply_contract import (
 )
 from nova_llm.router import ReplyMode
 
+pytestmark = pytest.mark.llm
+
 SAVED_RULES = {
     "activation": "依本輪問題選擇簡答或看板回覆。",
     "speech": "簡答直接回答問題，語氣自然、清楚。\n搭配看板時，先用 50~200字以內說明主要結論。",

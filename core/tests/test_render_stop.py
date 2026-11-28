@@ -14,6 +14,8 @@ import pytest
 
 from nova_core.utils.webrtc import HumanPlayer
 
+pytestmark = pytest.mark.conversation
+
 
 def test_echo_without_roles_reports_success_after_speaking_once():
     from nova_core.server.routes.chat import human

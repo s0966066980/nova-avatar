@@ -37,6 +37,8 @@ from nova_llm.config_section import llm_session, reply_rules
 from nova_llm.engines import ENGINES, FakeLLM, OpenAILLM
 from nova_llm.engines.fake import answer_chunks
 
+pytestmark = pytest.mark.llm
+
 EVENTS = TypeAdapter(ReplyEvent)
 
 

@@ -15,6 +15,8 @@ from nova_llm.context_usage import measure_request
 from nova_llm.engines.openai import OpenAILLM
 from nova_core.server.attachments import AttachmentError, AttachmentStore, page_numbers
 
+pytestmark = pytest.mark.conversation
+
 
 def image_bytes():
     output = BytesIO()

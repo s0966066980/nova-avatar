@@ -4,6 +4,9 @@ import numpy as np
 
 from nova_render.musetalk.avatar_transition import AvatarTransitionController, TransitionState
 from nova_render.musetalk.mouth_continuity import MouthContinuityController
+import pytest
+
+pytestmark = pytest.mark.avatar
 
 
 class AvatarTransitionTests(unittest.TestCase):

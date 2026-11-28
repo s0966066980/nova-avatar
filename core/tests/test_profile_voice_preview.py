@@ -23,6 +23,8 @@ from nova_tts.adapter import InProcessTtsService
 from nova_tts import cosyvoice_runtime, voice_library
 from access_helpers import access_client, same_origin
 
+pytestmark = pytest.mark.speech
+
 PREVIEW = "/api/speech/preview"
 STATUS = "/api/speech/breezyvoice/status"
 

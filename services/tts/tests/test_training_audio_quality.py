@@ -23,6 +23,8 @@ from nova_tts.training.audio_quality import (
     to_wav_bytes,
 )
 
+pytestmark = pytest.mark.speech
+
 
 def tone(seconds: float, amplitude: float = 0.3, *, lead: float = 0.0, tail: float = 0.0) -> np.ndarray:
     t = np.arange(int(seconds * SAMPLE_RATE)) / SAMPLE_RATE

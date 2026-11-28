@@ -44,6 +44,9 @@ from nova_core.server.runtime_settings import (
 from nova_core.config.schema import Config
 from llm_fakes import FakeLlm
 from tts_fakes import in_process_tts
+import pytest
+
+pytestmark = pytest.mark.runtime
 
 
 class AvatarCatalogTests(unittest.TestCase):

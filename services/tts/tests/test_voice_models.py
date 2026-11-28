@@ -25,6 +25,8 @@ from nova_tts.voice_models import (
     list_voice_models,
 )
 
+pytestmark = pytest.mark.speech
+
 INSTALL_DOC = Path(__file__).resolve().parents[3] / "docs/guides/voice-models.md"
 
 LABEL = {

@@ -20,6 +20,8 @@ from nova_tts.training.edge_acknowledgement import (
     require_acknowledgement,
 )
 
+pytestmark = pytest.mark.speech
+
 NOW = datetime(2026, 11, 24, 10, 30, 0, tzinfo=timezone.utc)
 
 

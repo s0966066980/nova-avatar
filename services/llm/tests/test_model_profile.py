@@ -8,6 +8,9 @@ import json
 import logging
 
 from nova_llm.model_profile import projector_for, sidecar_path
+import pytest
+
+pytestmark = pytest.mark.llm
 
 
 def _model(folder, name="some-model-Q4.gguf"):

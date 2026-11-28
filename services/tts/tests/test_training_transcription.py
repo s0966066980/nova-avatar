@@ -20,6 +20,8 @@ from nova_tts.training.transcription import (
     TranscriptionJobs,
 )
 
+pytestmark = pytest.mark.speech
+
 WAV = b"RIFF fixture wav bytes"
 WAIT = 10.0
 

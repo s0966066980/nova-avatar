@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.governance
+
 try:
     import tomllib
 except ModuleNotFoundError:  # Python 3.10

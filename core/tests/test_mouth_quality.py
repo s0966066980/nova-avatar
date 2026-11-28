@@ -29,6 +29,9 @@ from nova_core.server.runtime_settings import (
     apply_mouth_quality,
     current_snapshot,
 )
+import pytest
+
+pytestmark = pytest.mark.avatar
 
 
 def _high_contrast_mouth(size: int = 256) -> np.ndarray:

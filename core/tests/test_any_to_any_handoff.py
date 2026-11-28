@@ -11,6 +11,8 @@ import pytest
 from role_fakes import (answers, async_test, connect, field, route_to, session_history,  # noqa: F401
                               wait_until)
 
+pytestmark = pytest.mark.conversation
+
 SERVICE_ANNOUNCEMENT = '接下來請客服小幫手為您說明。'
 SERVICE_ANNOUNCEMENT_EN = 'Our service assistant will help you next.'
 

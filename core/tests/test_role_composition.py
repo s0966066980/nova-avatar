@@ -17,6 +17,8 @@ from nova_core.profiles.coordinator import ConversationRoles
 from nova_core.profiles.store import ProfileError, ProfileStore, validate_profile
 from composition_fakes import _config, _request, composition_routes, store  # noqa: F401
 
+pytestmark = pytest.mark.runtime
+
 _RULES = """\
   reply_rules:
     revision: 4

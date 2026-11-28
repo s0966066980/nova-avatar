@@ -7,6 +7,9 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import Mock
 
 from nova_core.server.presentation import SessionPresentation
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class PresentationTests(IsolatedAsyncioTestCase):

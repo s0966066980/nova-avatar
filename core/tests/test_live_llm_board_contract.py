@@ -16,6 +16,9 @@ import unittest
 from nova_core.config.loader import load_config
 from nova_llm.engines.openai import OpenAILLM
 from nova_llm.rules import RulesSnapshot, default_rules
+import pytest
+
+pytestmark = [pytest.mark.conversation, pytest.mark.live, pytest.mark.gpu]
 
 
 @unittest.skipUnless(

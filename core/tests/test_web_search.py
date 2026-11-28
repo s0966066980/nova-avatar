@@ -18,6 +18,8 @@ from nova_core.config.schema import Config
 from nova_core.server.voice_session import VoiceTurnSession
 from speech_fakes import spoken_answer
 
+pytestmark = pytest.mark.conversation
+
 
 @pytest.fixture(autouse=True)
 def offline_evidence_model(monkeypatch):

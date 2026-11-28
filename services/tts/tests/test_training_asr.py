@@ -20,6 +20,8 @@ from nova_tts.training import asr
 from nova_tts.training.asr import SubprocessTranscriber, TranscriberCancelled, TranscriberError
 from training_fakes import FakeProcess, FakeSpawner
 
+pytestmark = pytest.mark.speech
+
 
 def worker(replies: dict[str, str] | None = None, *, crash_after: int | None = None, noise: bool = False):
     """A fake whisper worker: ready line, then one reply per request."""

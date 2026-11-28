@@ -21,6 +21,8 @@ import pytest
 import soundfile as sf
 import torch
 
+pytestmark = pytest.mark.speech
+
 TOOLS = Path(__file__).resolve().parents[3] / "integrations" / "matcha-train" / "scripts"
 
 

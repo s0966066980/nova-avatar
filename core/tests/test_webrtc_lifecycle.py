@@ -17,6 +17,8 @@ from nova_core.server.voice_session import (
     VoiceTurnSession,
 )
 
+pytestmark = pytest.mark.conversation
+
 
 def fake_renderer(**fields):
     """A renderer the faked SpeakingAvatar below returns as the session avatar itself."""

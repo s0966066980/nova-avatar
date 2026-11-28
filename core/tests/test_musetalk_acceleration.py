@@ -17,6 +17,8 @@ from nova_render.base import BaseAvatar
 
 from nova_core.config.schema import Config
 
+pytestmark = pytest.mark.avatar
+
 
 def test_utilities_import_without_loading_optional_model_classes(monkeypatch):
     import builtins

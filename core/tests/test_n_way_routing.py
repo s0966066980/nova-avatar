@@ -18,6 +18,8 @@ from nova_llm.tools.weather import TAIPEI
 from role_fakes import async_test, connect, field  # noqa: F401
 from role_fakes import SERVICE, TRAFFIC, _config, _member, _prompt, _schema, composition  # noqa: F401
 
+pytestmark = pytest.mark.conversation
+
 
 def _route(library, current, text, decision, *, history=(), confirmed=None, config=None):
     raw = json.dumps(decision, ensure_ascii=False)

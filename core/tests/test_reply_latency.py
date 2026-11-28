@@ -14,6 +14,8 @@ from nova_llm.prewarm import prewarm_local_llm
 from llm_fakes import FakeLlm
 from speech_fakes import spoken_answer
 
+pytestmark = pytest.mark.conversation
+
 
 def test_local_prewarm_finishes_the_disposable_completion_before_readiness():
     config = Config()

@@ -8,6 +8,9 @@ from nova_llm.text_normalizer import (
     normalize_output_text,
     strip_unsolicited_self_introduction,
 )
+import pytest
+
+pytestmark = pytest.mark.llm
 
 
 class TextNormalizerTests(unittest.TestCase):

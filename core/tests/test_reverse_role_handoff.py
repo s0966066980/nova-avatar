@@ -15,6 +15,8 @@ from llm_fakes import FakeLlm
 from role_fakes import (answers, async_test, connect, field, remember, route_to,  # noqa: F401
                               session_history, wait_until)
 
+pytestmark = pytest.mark.conversation
+
 
 def use_weather(voice):
     roles = voice._role_coordinator

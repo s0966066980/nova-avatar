@@ -22,6 +22,8 @@ import ragflow_prepare
 from scripts import musetalk_weights
 from ragflow_validate import EXPECTED_SERVICES, RAGFLOW_IMAGE, validate
 
+pytestmark = pytest.mark.runtime
+
 ROOT = Path(__file__).resolve().parents[1]
 SETUP_ENV = ROOT / "scripts" / "setup-env.sh"
 HEX40 = re.compile(r"[0-9a-f]{40}")

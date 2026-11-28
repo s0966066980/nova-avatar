@@ -22,6 +22,8 @@ from nova_core.server.voice_session import VoiceTurnSession
 from llm_fakes import FakeLlm, ask
 from speech_fakes import spoken_answer
 
+pytestmark = pytest.mark.conversation
+
 
 @pytest.fixture
 def env(monkeypatch):

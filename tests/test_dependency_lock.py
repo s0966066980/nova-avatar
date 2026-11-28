@@ -12,6 +12,9 @@ import warnings
 from pathlib import Path
 
 import yaml
+import pytest
+
+pytestmark = pytest.mark.governance
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "uv.lock"

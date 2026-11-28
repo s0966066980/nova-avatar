@@ -21,6 +21,9 @@ from edge_fakes import (
     _handshake_error,
     _mp3_fixture,  # noqa: F401
 )
+import pytest
+
+pytestmark = pytest.mark.speech
 
 
 class EdgeTTSStartupTests(unittest.TestCase):
@@ -400,6 +403,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
         self.assertIs(tts.worker_loop, loop)
         self.assertTrue(loop.is_running())
 
+    @pytest.mark.slow
     def test_first_fragment_pcm_does_not_wait_for_the_next_edge_request(self):
         payload = _mp3_fixture()
         first_pcm = Event()
@@ -571,6 +575,7 @@ class EdgeTTSWorkerTests(unittest.TestCase):
                 quit_event.set()
                 worker.join(timeout=3)
 
+    @pytest.mark.slow
     def test_flush_talk_drops_prefetched_fragment_audio(self):
         payload = _mp3_fixture()
         first_pcm = Event()

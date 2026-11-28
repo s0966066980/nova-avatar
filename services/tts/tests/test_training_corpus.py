@@ -21,6 +21,8 @@ from nova_tts.training.corpus import (
     REVIEW_PENDING,
 )
 
+pytestmark = pytest.mark.speech
+
 WAV = b"RIFF fixture wav bytes"
 
 

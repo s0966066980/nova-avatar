@@ -14,6 +14,9 @@ from aiohttp.test_utils import TestClient, TestServer
 from nova_core.server.routes.voice_tests import run_voice_test
 from nova_core.server.state import state
 from nova_core.server.voice_test_history import VoiceTestHistory, evaluate_voice_test
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 def passing_metrics() -> dict:

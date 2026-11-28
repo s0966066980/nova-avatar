@@ -16,6 +16,8 @@ from nova_core.profiles.routing import route_question
 from llm_fakes import FakeLlm
 from role_fakes import async_test, connect, field, wait_until  # noqa: F401
 
+pytestmark = pytest.mark.conversation
+
 
 @pytest.mark.parametrize('text,confirmed,expected', [
     ('中正區明天會下雨嗎', {}, None),

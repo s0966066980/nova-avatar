@@ -18,6 +18,8 @@ from nova_contracts.stt import (
     TranscriptionSegment,
 )
 
+pytestmark = pytest.mark.speech
+
 
 def test_a_faster_whisper_result_is_a_transcription():
     result = Transcription.model_validate({

@@ -12,6 +12,9 @@ from nova_contracts.llm import Outcome, TurnCommit
 from llm_fakes import FakeLlm
 from session_fakes import FakeAvatar
 from speech_fakes import spoken_answer
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 @contextmanager

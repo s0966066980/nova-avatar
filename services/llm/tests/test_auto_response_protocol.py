@@ -3,6 +3,9 @@ import unittest
 from nova_llm.prompts import compose_system_prompt
 from nova_llm.response_protocol import ResponseProtocolParser
 from nova_llm.router import ReplyMode
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class AutoResponseProtocolTests(unittest.TestCase):

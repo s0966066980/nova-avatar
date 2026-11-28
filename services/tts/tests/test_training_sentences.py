@@ -23,6 +23,8 @@ from nova_tts.training.sentences import (
     select_preset,
 )
 
+pytestmark = pytest.mark.speech
+
 # ------------------------------------------------------------------ the library
 
 

@@ -15,6 +15,8 @@ from nova_tts.training.usage import (
 )
 from nova_tts.voice_models import USAGE_LABELS
 
+pytestmark = pytest.mark.speech
+
 DEVELOPMENT = "Development only"
 RESEARCH = "Research / Non-commercial"
 

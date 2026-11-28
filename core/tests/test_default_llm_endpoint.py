@@ -11,6 +11,8 @@ import pytest
 
 from nova_core.config.loader import load_config
 
+pytestmark = pytest.mark.llm
+
 ROOT = Path(__file__).resolve().parents[2]
 OLLAMA_URL = "http://localhost:11434/v1"
 DEFAULT_GGUF = "gemma-4-E2B_q4_0-it"

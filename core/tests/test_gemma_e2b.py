@@ -17,6 +17,9 @@ from nova_llm.router import ReplyMode
 from nova_core.profiles.routing import route_question
 from llm_fakes import FakeLlm
 from nova_core.profiles.store import ProfileStore
+import pytest
+
+pytestmark = pytest.mark.llm
 
 E2B = "gemma-4-E2B_q4_0-it"
 

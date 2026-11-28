@@ -1,6 +1,9 @@
 import unittest
 
 import numpy as np
+import pytest
+
+pytestmark = pytest.mark.avatar
 
 
 class MouthContinuityControllerTests(unittest.TestCase):

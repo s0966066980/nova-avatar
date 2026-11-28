@@ -9,6 +9,9 @@ from nova_core.config.schema import Config
 from nova_llm.base import BaseLLM
 from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter, speech_units
 from speech_fakes import spoken_answer
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 def stream(text: str, fragmenter: SemanticFragmenter | None = None) -> list[str]:

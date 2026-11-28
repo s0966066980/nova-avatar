@@ -17,6 +17,8 @@ from nova_tts.training.transcript_check import (
     verify_with_asr,
 )
 
+pytestmark = pytest.mark.speech
+
 WAV = b"RIFF fixture wav bytes"
 
 

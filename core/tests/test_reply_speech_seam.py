@@ -11,6 +11,9 @@ from pydantic import TypeAdapter
 
 from nova_contracts.llm import ReviewedFragment, SpeechEnd, SpeechEvent, SpokenDelta
 from nova_core.server.reply_streaming.speech import ReplySpeech
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class RecordingSink:

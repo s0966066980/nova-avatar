@@ -16,6 +16,8 @@ from nova_tts.training import processes
 from nova_tts.training.processes import PopenProcess, run_process
 from training_fakes import FakeProcess
 
+pytestmark = pytest.mark.speech
+
 CLOCK = time.monotonic
 
 

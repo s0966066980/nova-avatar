@@ -26,6 +26,9 @@ from nova_core.server.reply_streaming.fragmenter import SemanticFragmenter, Sema
 from nova_core.server.reply_streaming.soak import build_soak_report
 from clock_fakes import FakeClock
 from speech_fakes import spoken_answer
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 FIRST_SENTENCE = "這是一段足夠長度的第一句話用來觸發分段語音合成開始。"
@@ -273,6 +276,7 @@ class TurnMetricsTests(unittest.TestCase):
 
 
 class BaselineReplayHarnessTests(unittest.TestCase):
+    @pytest.mark.slow
     def test_fake_replay_is_reproducible_content_free_and_judges_slos(self):
         project_root = Path(__file__).resolve().parents[2]
         command = [sys.executable, "scripts/replay_voice_baseline.py"]

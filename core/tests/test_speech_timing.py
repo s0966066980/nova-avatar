@@ -13,6 +13,9 @@ import numpy as np
 
 from nova_core.server.reply_streaming.sentence_fragmenter import TextStreamProcessor
 from nova_tts.base import BaseTTS
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class TTSSpeechTextTests(unittest.TestCase):

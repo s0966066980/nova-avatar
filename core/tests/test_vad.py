@@ -21,6 +21,9 @@ from nova_core.vad.factory import (
 )
 from nova_core.vad.segmenter import VADSegmenter, detect_speech_segments, extract_speech
 from nova_core.vad.service import preprocess_audio_bytes
+import pytest
+
+pytestmark = pytest.mark.speech
 
 SR = 16000
 

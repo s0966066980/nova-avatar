@@ -12,6 +12,9 @@ from nova_llm.response_protocol import (
 )
 from nova_llm.router import ReplyMode
 from speech_fakes import spoken_answer
+import pytest
+
+pytestmark = pytest.mark.conversation
 
 
 class ThinkFilterTests(unittest.TestCase):
