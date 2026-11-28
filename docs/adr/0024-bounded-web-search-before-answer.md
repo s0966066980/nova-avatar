@@ -3,6 +3,10 @@ Copyright (c) 2026 HongXian0903
 SPDX-License-Identifier: Apache-2.0
 -->
 
+---
+status: accepted
+---
+
 # 由後端控制有上限的網頁搜尋，再交給目前模型回答
 
 使用者已確認完整設計並要求開始實作。網頁搜尋是角色設定檔上的能力政策，與 ADR 0023 指定給組合成員的天氣等專用工具分開保存。

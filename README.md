@@ -432,6 +432,8 @@ git diff --cached
   `adapter`，所以各層不互相宣告依賴。
 - 邊界由 `lint-imports` 守住：處理層不得 import 核心、彼此不得 import，核心只能經由
   各層的 `adapter` 與 `config_section`。
+- `.scratch/` 是本機的規格、工單與量測輸出資料夾，已列入 `.gitignore`，不進 git、不會推上 GitHub；
+  之前版本的內容可用 `git show b2b610b:.scratch/<路徑>` 查閱。
 - 測試：`uv run --no-sync pytest` 跑全部；`uv run --no-sync pytest services/tts`
   只跑一層。需要核心設定或伺服器的測試放在 `core/tests/`，所以大部分跨層測試在那裡。
 

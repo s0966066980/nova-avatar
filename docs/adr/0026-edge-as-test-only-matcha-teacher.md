@@ -3,6 +3,10 @@ Copyright (c) 2026 HongXian0903
 SPDX-License-Identifier: Apache-2.0
 -->
 
+---
+status: accepted
+---
+
 # Edge 只作為 Matcha 訓練的測試用老師
 
 管理者決定在控制台提供以 Edge 朗讀聲音合成訓練語料的功能，作為訓練流程的測試用老師；這修訂 ADR 0025 中「訓練流程不使用 Edge 當老師」的部分。Microsoft Services Agreement §14(s)(iv) 禁止以 AI 服務的資料訓練任何 AI，不限商用，Edge 朗讀端點是否在適用範圍內仍未確認，所以這個功能只在下列限制內開放：

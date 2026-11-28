@@ -133,7 +133,7 @@ CPU 子元件的契約仍然相關；不能只按字串或檔案年齡刪除。
 
 | 類別 | 處理與原因 | 留下的保護 |
 | --- | --- | --- |
-| 已完成的研究工具（TTS bake-off、ASR 比較、LLM 品質評估、重複音節 benchmark） | 連同腳本與 72 個案例刪除；沒有正式呼叫者，結論已記錄在各自的 `.scratch` issue 並套用 | git 歷史保留腳本；`measure_first_audio.py`、`benchmark-prewarm.py` 有文件引用，保留 |
+| 已完成的研究工具（TTS bake-off、ASR 比較、LLM 品質評估、重複音節 benchmark） | 連同腳本與 72 個案例刪除；沒有正式呼叫者，結論已記錄在各自的工單並套用（工單在 git 歷史 `b2b610b:.scratch/`） | git 歷史保留腳本；`measure_first_audio.py`、`benchmark-prewarm.py` 有文件引用，保留 |
 | 各路由檔逐一檢查 401 的迴圈 | 刪除；`test_route_access.py` 已在真實 app 上掃過每條管理路由的 401 與跨來源 403 | 各檔仍斷言自己的路由宣告為 `ADMIN` |
 | 訓練規則在單元、manager、HTTP 三層重複測試 | 單元測試負責完整規則；上層只留接線與錯誤對應的狀態碼 | `test_training_*` 單元測試不變 |
 | 恆真與自我驗證的案例 | 刪除固定 `return False` 的看板回條、同一呼叫比兩次的銳化測試；Whisper 載入測試改成驗證真正的 `auto → cuda/float16`、`cpu/int8` 選擇 | 原本完全沒有測到的 CUDA 裝置選擇現在有測試 |

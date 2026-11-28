@@ -3,6 +3,10 @@ Copyright (c) 2026 HongXian0903
 SPDX-License-Identifier: Apache-2.0
 -->
 
+---
+status: accepted
+---
+
 # Matcha 聲線模型作為可選 TTS 引擎，不以 Edge 輸出蒸餾
 
 新增在 CPU 上執行的 Matcha-TTS（sherpa-onnx ONNX 推理）作為第三種可選 TTS 引擎，出廠預設仍是 Edge TTS。這個引擎的聲音單位是「聲線模型」：數位人設定檔選一個聲線模型，中文和英文都由它負責，不需要參考音檔。聲線模型必須附有使用限制標示，沒有標示的不會出現在選項中。引擎與預設參數照 jetson-orin 分支移植；該分支和 main 已大幅分歧，所以採手動移植，不做 cherry-pick。

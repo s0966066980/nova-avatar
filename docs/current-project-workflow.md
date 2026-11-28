@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Current Project Workflow
 
-Updated: 2026-10-22
+Updated: 2026-11-28
 
 This document replaces informal carry-over work with a repeatable Nova Avatar
 maintenance flow. The current baseline is documented in

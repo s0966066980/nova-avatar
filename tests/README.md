@@ -92,7 +92,7 @@ one cannot break the rest.
 像 `llm_fakes` 這樣的輔助模組可在任何測試中直接以模組名稱匯入。
 `uv run --no-sync pytest <資料夾>` 只執行單一資料夾。
 
-Research and benchmark tools whose result is recorded in a `.scratch` issue are
+Research and benchmark tools whose result is recorded in a ticket (local `.scratch/`, earlier ones in git history) are
 deleted together with their tests once the decision has been applied.
 
 An obsolete product contract need not be retained as an optional skip. For a
