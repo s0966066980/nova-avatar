@@ -25,7 +25,7 @@ from nova_tts.voice_models import (
     list_voice_models,
 )
 
-INSTALL_DOC = Path(__file__).resolve().parents[3] / "docs/voice-models.md"
+INSTALL_DOC = Path(__file__).resolve().parents[3] / "docs/guides/voice-models.md"
 
 LABEL = {
     "name": "曉臻（測試）",

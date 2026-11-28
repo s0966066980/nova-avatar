@@ -26,7 +26,7 @@ RTX 4090、舞台 WebRTC 量測 3 輪 96 句（`scripts/measure_first_audio.py`�
 0.56＋首片段 0.42＋片段到送出 0.36＋Edge 開頭無聲段 0.10 s。基準線（Qwen3.5-9B、
 Whisper beam 5、路由與檢索串行）的辨識為 0.41、主回答前 1.29、首片段 0.93、片段
 到送出 0.62 s。起訖定義、對照規格目標與下一步見
-[目前專案基線](project-status.md#首音延遲實測2026-10-30)。
+[目前專案基線](../project/project-status.md#首音延遲實測2026-10-30)。
 
 本機 TTS 尚未納入上表：與 MuseTalk、E2B 共用 GPU 時，BreezyVoice 第一個片段
 P50／P95 2.48／2.94 s，Fun-CosyVoice3（已移除）1.77／1.89 s（Edge TTS 首段 PCM 約 0.16 s）。

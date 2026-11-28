@@ -5,7 +5,7 @@
 Matcha 是**可選**的 TTS 引擎，出廠預設仍是 Edge TTS。它用 sherpa-onnx 在 CPU
 上執行 Matcha-TTS 的 ONNX 模型，不佔用 GPU。引擎的聲音單位是**聲線模型**：
 一組固定一種聲音的權重，同時負責 zh-TW 和 en-US，不需要參考音檔。設計依據見
-[ADR 0025](adr/0025-matcha-voice-models-without-edge-distillation.md)。
+[ADR 0025](../adr/0025-matcha-voice-models-without-edge-distillation.md)。
 
 聲線模型不進 git，也不會自動下載。每台機器都要手動複製，複製後用下方的
 SHA-256 核對。`sherpa-onnx` 已是主要依賴，執行 `uv sync` 就會安裝，不必另外處理。
@@ -20,7 +20,7 @@ SHA-256 核對。`sherpa-onnx` 已是主要依賴，執行 `uv sync` 就會安�
 | 從 base 模型 `dengcunqin/matcha_tts_zh_en_20251010` 微調的聲線模型 | **Research / Non-commercial** | ModelScope 標示 Apache-2.0，但沒有說明訓練資料，可能含限非商用的 Baker 資料集。 |
 
 base 模型本身沒有使用限制標示檔，因此**不會**出現在聲線模型清單中，只作為第二階段
-的訓練起點。各元件的授權見 [第三方聲明](../THIRD_PARTY_NOTICES.md#matcha-voice-models)。
+的訓練起點。各元件的授權見 [第三方聲明](../../THIRD_PARTY_NOTICES.md#matcha-voice-models)。
 
 ## 目錄結構
 
@@ -120,7 +120,7 @@ CPU 執行緒數是全域伺服器設定，預設 4。
 
 ## 在控制台訓練聲線模型
 
-設定的「聲線訓練」可以用 Edge 測試用老師，或你自己上傳的錄音，訓練新的聲線模型。訓練在獨立的子程序中執行，用的是 `.local/matcha-train/` 的 Python，不是主程式的 `.venv`。設計依據見 [ADR 0026](adr/0026-edge-as-test-only-matcha-teacher.md)。
+設定的「聲線訓練」可以用 Edge 測試用老師，或你自己上傳的錄音，訓練新的聲線模型。訓練在獨立的子程序中執行，用的是 `.local/matcha-train/` 的 Python，不是主程式的 `.venv`。設計依據見 [ADR 0026](../adr/0026-edge-as-test-only-matcha-teacher.md)。
 
 ### 事前準備
 

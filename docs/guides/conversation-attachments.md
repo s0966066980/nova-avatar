@@ -71,7 +71,7 @@ Python 依賴由 `uv sync` 安裝。Ubuntu 的 OCR 依賴可安裝：
 sudo apt-get install tesseract-ocr tesseract-ocr-eng tesseract-ocr-chi-tra
 ```
 
-本次 PC 已測環境為 pypdfium2 5.14.0、Tesseract 5.5.0、官方 `chi_tra`／`eng` 權重。OCR 缺失或失敗時，請求會標示文字辨識限制，視覺仍嘗試理解畫面。來源、適用授權及二進位通知見 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)。OCR 的完整訓練資料來源尚未全面稽核。
+本次 PC 已測環境為 pypdfium2 5.14.0、Tesseract 5.5.0、官方 `chi_tra`／`eng` 權重。OCR 缺失或失敗時，請求會標示文字辨識限制，視覺仍嘗試理解畫面。來源、適用授權及二進位通知見 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES.md)。OCR 的完整訓練資料來源尚未全面稽核。
 
 解析與 LLM 分析在本機；現有 Edge TTS 是線上服務，朗讀文字可能包含附件摘錄。
 

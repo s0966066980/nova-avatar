@@ -19,7 +19,7 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 - **首音延遲**：角色路由、知識庫檢索與主回答同時開始。2026-10-30 以真實 WebRTC
   量測（Edge TTS），一般輪次從人聲結束到送出第一個可聽回覆音訊 P50 1.99 s、
   P95 2.37 s，P95 達第一階段目標、P50 尚未達到；起訖定義、各段組成與下一步見
-  [目前專案基線](docs/project-status.md#首音延遲實測2026-10-30)。
+  [目前專案基線](docs/project/project-status.md#首音延遲實測2026-10-30)。
 - **輪次隔離與串流**：語音、字幕和畫面依對話輪次隔離，取消或斷線後不再交付
   舊內容。可選語意片段串流回覆，完整回答產生前即開始合成；預設仍一次交付完整
   回答，Edge TTS＋MuseTalk 串流組合已實機驗證。
@@ -34,8 +34,8 @@ Nova Avatar 是即時對話數位人系統。瀏覽器透過 WebRTC 傳送麥克
 - **存取控制**：控制台需管理者登入；舞台只在場域主機本機開啟；LLM 端點、
   參考音訊與模型只能從伺服器管理的清單選擇。
 
-架構與已驗證的執行邊界見 [目前專案基線](docs/project-status.md)、
-[軟體組合](docs/software-stack.md) 和 [架構決策紀錄](docs/adr/)；信任邊界見
+架構與已驗證的執行邊界見 [目前專案基線](docs/project/project-status.md)、
+[軟體組合](docs/project/software-stack.md) 和 [架構決策紀錄](docs/adr/)；信任邊界見
 [ADR 0021](docs/adr/0021-stage-local-console-login.md)，綠幕數位人與背景合成見
 [ADR 0014](docs/adr/0014-compose-green-screen-avatars-on-server.md)。
 
@@ -68,7 +68,7 @@ bash scripts/create_ssl_certs.sh
 - SSL 腳本不需互動輸入，已有憑證時會保留；預設服務使用 HTTPS。
 
 系統套件、CUDA 編譯排錯、權重檢查與依賴更新見
-[完整安裝流程](docs/installation.md)。
+[完整安裝流程](docs/guides/installation.md)。
 
 ### 讓管理者裝置信任本機 CA（只需一次）
 
@@ -111,8 +111,8 @@ uv run python avatar/scripts/verify-musetalk-tensorrt.py
 本機 RTX 4090 的 batch 8 合併推論實測為 **96.19 → 38.49 ms，約 2.50 倍**，
 輸出 PSNR 57.72 dB；此數字只涵蓋 UNet＋完整 VAE＋CPU 像素交付，不代表整體
 對話或 WebRTC 加速倍率。重驗引擎可用 `bash avatar/scripts/setup-tensorrt.sh --verify-only`。
-細節見 [TensorRT 安裝與驗證](docs/installation.md#tensorrt-安裝與驗證) 和
-[x86 效能紀錄](docs/x86-performance.md)。
+細節見 [TensorRT 安裝與驗證](docs/guides/installation.md#tensorrt-安裝與驗證) 和
+[x86 效能紀錄](docs/guides/x86-performance.md)。
 
 ## 首次設定
 
@@ -129,7 +129,7 @@ uv run python scripts/configure-admin.py
 `api_key`。金鑰只會送往該端點自己的網址；控制台與數位人設定檔只能選端點名稱。
 預設提供 `llamacpp`（`127.0.0.1:8080`，預設選用，後端自行啟動 llama-server）與
 `ollama`（`localhost:11434`，選用時才需要 Ollama 與其模型）。預設不需要 11434 的
-Ollama，停用方式見[安裝流程](docs/installation.md#停用預設-ollama11434)。
+Ollama，停用方式見[安裝流程](docs/guides/installation.md#停用預設-ollama11434)。
 
 **以主機名稱連入**：除 `localhost` 與 IP 外，其他 `Host` 一律拒絕（防 DNS
 rebinding）。管理者要用 `venue-pc.lan` 這類名稱連入時，先加入 `app.allowed_hosts`。
@@ -167,7 +167,7 @@ BreezyVoice 的設定檔時會自動啟動 BreezyVoice 服務。模型目錄只�
 Edge TTS。數位人設定檔把引擎選為 Matcha 後，再選一個已安裝的聲線模型，中英文都由它
 負責，不需要參考音訊。聲線模型放在 `models/tts/<id>/`，不進版本庫、不自動下載，換機器時
 手動複製並核對 SHA-256；目錄結構、`voice.json` 使用限制標示與檔案清單見
-[聲線模型安裝](docs/voice-models.md)。沒有任何聲線模型可商用：`zh-tw-hsiaochen-edge`
+[聲線模型安裝](docs/guides/voice-models.md)。沒有任何聲線模型可商用：`zh-tw-hsiaochen-edge`
 以 Edge 輸出蒸餾，標示 **Development only**；從 base 模型微調的聲線模型標示
 **Research / Non-commercial**。系統只標示，不阻擋使用。
 
@@ -291,7 +291,7 @@ LLM 端點、模型與語音合成引擎，聲線可不同；不相容的成員�
 
 - 延續上一題的追問留在目前角色；明確換到另一位專長的主題才交接。一句話同時包含屬於
   不同角色的主題時，應先確認優先主題（Gemma 4 E2B 在這類題目常直接交給第一個主題，
-  見 [`docs/project-status.md`](docs/project-status.md)）。
+  見 [`docs/project/project-status.md`](docs/project/project-status.md)）。
 - 「角色組合與交接」頁的交接試算以已儲存的組合實際詢問路由，顯示由誰回答與原因，
   不播報、不寫入對話。
 - 轉場有一份預設，任一方向可另設覆寫；可選淡入淡出、左右滑動、縮放，或上傳
@@ -321,8 +321,8 @@ uv run python scripts/run_role_soak.py --turns 50 --output .scratch/live-avatar-
 - 舞台完全空場後等待 30 秒才準備閒置招呼；招呼、舞台文字輸入與 RAGFlow 模型統一
   服務都須明確啟用。
 
-詳見 [附件操作、模型與生命週期](docs/conversation-attachments.md)、
-[閒置招呼](docs/idle-greetings.md) 和
+詳見 [附件操作、模型與生命週期](docs/guides/conversation-attachments.md)、
+[閒置招呼](docs/guides/idle-greetings.md) 和
 本次 PC 實測與驗證範圍。
 
 ## RAGFlow 文件檢索（選用）
@@ -379,7 +379,7 @@ git diff --cached
 `config/ragflow.env` 必須顯示為 ignored；暫存區不得出現金鑰、管理密碼或
 `.local/ragflow/`。`config/ragflow.env.example` 只保留空白欄位。若金鑰曾進入版本庫，
 先在 RAGFlow 撤銷並重建，再從 Git 歷史移除。建置步驟、隔離、故障說明與驗證清單見
-[RAGFlow 本機檢索整合](docs/ragflow.md)。
+[RAGFlow 本機檢索整合](docs/guides/ragflow.md)。
 
 ## 網頁搜尋輔助回答（選用）
 
@@ -472,8 +472,8 @@ npm run build
 `check-integration.py` 預設執行離線檢查；備妥設定檔指定的 LLM 與 Edge TTS 後，可用
 `--smoke` 檢查實際服務。真實 WebRTC 語音回合的首音延遲以
 `scripts/measure_first_audio.py` 量測（需關閉舞台頁，只在場域主機本機執行），
-驗證方式見[目前專案基線](docs/project-status.md)；x86 影音排程與效能見
-[x86 即時效能優化](docs/x86-performance.md)。審查規則見
+驗證方式見[目前專案基線](docs/project/project-status.md)；x86 影音排程與效能見
+[x86 即時效能優化](docs/guides/x86-performance.md)。審查規則見
 [CODING_STANDARDS.md](CODING_STANDARDS.md)。
 
 ## 授權與來源
@@ -482,4 +482,4 @@ Nova Avatar 自行撰寫的程式採 [Apache-2.0](LICENSE)。MuseTalk 程式採 
 模型、權重與依賴另有條款。Wav2Lip 整合已於 2026-11-24 移除；早期版本中的 Wav2Lip
 整合僅供 **Research / Non-commercial** 使用，不得視為可商用。RAGFlow、BGE-M3、語音、資料集與外部服務也須各自核對條款；
 根目錄授權不會擴及它們。詳見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)、
-[NOTICE](NOTICE) 和 [軟體組合](docs/software-stack.md)。
+[NOTICE](NOTICE) 和 [軟體組合](docs/project/software-stack.md)。

@@ -5,7 +5,7 @@
 此文件記錄 Nova Avatar 目前已交付能力、可重現的驗證結果與執行邊界。
 新的工作項目、舊實驗的清理與 release handoff 流程請依
 [`current-project-workflow.md`](current-project-workflow.md)；可選引擎與商業審查
-邊界請依 [`software-stack.md`](software-stack.md)；設計決定見 [`adr/`](adr/)。
+邊界請依 [`software-stack.md`](software-stack.md)；設計決定見 [`adr/`](../adr/)。
 
 文中提到的 `.scratch/…` 量測檔與規格已不在 repo 內（`.scratch/` 現為本機、不進 git）；
 要查閱請用 `git show b2b610b:.scratch/<路徑>`。
@@ -17,7 +17,7 @@
 | 對話與傳輸 | WebRTC 雙向音訊、Avatar 影像、事件通道、免按對話、按住說話、插話、斷線清理與伺服器擁有的單一有效輪次 |
 | 語音輸入 | Silero 服務端端點偵測（說完判定靜音 192 ms，6 個 32 ms 幀，約 0.2 s）、faster-whisper small（唯一的 STT 引擎，語音輪次只在中英文間自動偵測、beam 1、記憶體直傳；Fun-ASR-Nano-2512 已於 2026-11-26 移除）、繁體轉換、STT 預熱、無效音訊品質閘門與執行期設定 |
 | 回覆生成 | llama.cpp（預設 Gemma 4 E2B 全 GPU，Qwen3.5-9B 可選；放不下全部層數即啟動失敗並說明）／Ollama、路由與檢索和主回答並行、串流 token、交易式 history、柔性回覆長度、單一 LLM 可編輯回覆規則、控制台集中管理的助手身分與 Prompt |
-| 知識庫檢索 | 可選的本機 RAGFlow 檢索：依數位人選擇知識庫、控制台測試檢索、BGE-M3 嵌入（llama.cpp，CPU）；見 [`ragflow.md`](ragflow.md) |
+| 知識庫檢索 | 可選的本機 RAGFlow 檢索：依數位人選擇知識庫、控制台測試檢索、BGE-M3 嵌入（llama.cpp，CPU）；見 [`ragflow.md`](../guides/ragflow.md) |
 | 看板回答 | SIMPLE／BOARD 協定、口語摘要與看板項目分流、顯示確認、已顯示項目上下文與輪次隔離 |
 | 語音與字幕 | 多 TTS adapter（Edge TTS 為執行預設但僅供開發；BreezyVoice 本機台灣華語已整合）、可靠語意切片（每輪第一個片段可在 8 字以上的子句處提早釋放）、播放提交、字幕顯示窗口；字幕在播放結束或輪次提交後才淡出 |
 | 數字人 | MuseTalk（Supported / Commercial）；Wav2Lip、ER-NeRF、TalkingGaussian、UltraLight 已於 2026-11-24 移除；MuseTalk 段落連續、待機相位匹配與 4–6 影格回答收尾 settling |
@@ -87,7 +87,7 @@ P50／P95 1.96／2.30 → 1.09／1.71 s。
 | 靜音等待（實測時 `min_silence_ms: 300`，10 幀＝0.32 s） | 0.32 | 0.32 | 之後預設改為 192（6 幀＝0.19 s），待重量 |
 | 上行（含伺服器 aiortc 抖動緩衝） | 未量 | 0.09 | — |
 | 語音辨識 | 0.41 | 0.07 | beam 1、記憶體直傳、只在中英文間偵測 |
-| 主回答前 | 1.29（路由 0.69＋檢索 0.50，串行） | 0.56（檢索等待） | 路由與檢索並行，主回答不等路由（[ADR 0022](adr/0022-run-routing-retrieval-and-answer-concurrently.md)）；路由 0.33 s 不在首音路徑上 |
+| 主回答前 | 1.29（路由 0.69＋檢索 0.50，串行） | 0.56（檢索等待） | 路由與檢索並行，主回答不等路由（[ADR 0022](../adr/0022-run-routing-retrieval-and-answer-concurrently.md)）；路由 0.33 s 不在首音路徑上 |
 | 首片段（主回答開始 → 第一個可播回覆片段） | 0.93 | 0.42 | Gemma 4 E2B（首 token 0.63 → 0.25 s）、首個片段例外、模型資訊查詢移出每輪路徑 |
 | 片段到 WebRTC 送出 | 0.62 | 0.36 | 開口前待機靜音修剪、MuseTalk 待機喚醒與每輪啟動批次 |
 | Edge TTS 開頭無聲段 | 未量 | 0.10 | — |

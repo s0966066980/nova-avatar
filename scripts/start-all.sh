@@ -155,7 +155,7 @@ if [ "${NOVA_START_RAGFLOW:-auto}" != 0 ] && \
         fi
     fi
 else
-    echo -e "${YELLOW}RAGFlow 尚未準備或已停用；部署方式見 docs/ragflow.md${NC}"
+    echo -e "${YELLOW}RAGFlow 尚未準備或已停用；部署方式見 docs/guides/ragflow.md${NC}"
 fi
 
 PROTOCOL=$(read_protocol "$CONFIG_FILE")

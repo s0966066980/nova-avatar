@@ -139,7 +139,7 @@ def main():
         import tensorrt as trt
         import onnx  # noqa: F401 -- required by the PyTorch ONNX exporter
     except ImportError as exc:
-        parser.error(f"Optional build dependency missing: {exc.name}; see docs/x86-performance.md")
+        parser.error(f"Optional build dependency missing: {exc.name}; see docs/guides/x86-performance.md")
     import torch
     if not torch.cuda.is_available():
         parser.error("CUDA is required to build and compare MuseTalk engines")

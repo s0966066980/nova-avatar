@@ -251,7 +251,7 @@ export default {
       desc: '數字人配置把語音引擎選為 Matcha 時，從這裡的聲線模型選一個；同一個聲線模型同時說台灣華語和英文，不需要參考音頻。名稱後面是使用限制標示，系統不阻止使用。',
       cpu: '在 CPU 上用 sherpa-onnx 合成，不佔用 GPU；線程數為服務器設置 matcha.num_threads（默認 4）。',
       measured: '實測：中文 CER {cer}、英文 WER {wer}；CPU 4 線程、未加載 MuseTalk 時預熱後首音約 {firstAudio} 秒，實機以應用日誌為準。',
-      empty: '尚未安裝聲線模型：把附 voice.json 使用限制標示的聲線模型手動複製到 models/tts/<聲線模型 ID>/，詳見 docs/voice-models.md。'
+      empty: '尚未安裝聲線模型：把附 voice.json 使用限制標示的聲線模型手動複製到 models/tts/<聲線模型 ID>/，詳見 docs/guides/voice-models.md。'
     },
 
     voiceTraining: {

@@ -40,4 +40,4 @@ AI 最多生成兩次、共用 15 秒預算，語音合成時間另計。失敗�
 
 內容保存於 `config/avatar_profiles.yaml` 各設定檔的 `greeting`；舞台開關與秒數保存於執行時舞台設定的 `idle_greeting_enabled`、`idle_greeting_seconds`。舊設定自動取得關閉／空內容預設。
 
-設計與驗收條件見功能規格與 [ADR-0018](adr/0018-separate-idle-greetings-from-visitor-turns.md)。
+設計與驗收條件見功能規格與 [ADR-0018](../adr/0018-separate-idle-greetings-from-visitor-turns.md)。

@@ -38,10 +38,10 @@ REQUIRED_FILES = {
     ),
     "third_party/licenses/MuseTalk-LICENSE.txt": (),
     "third_party/licenses/Wav2Lip-NON-COMMERCIAL-NOTICE.txt": (),
-    "docs/software-stack.md": ("Nova Avatar Software Stack",),
-    "docs/voice-models.md": ("voice.json", "SHA-256", "Development only"),
-    "docs/source-attribution-audit.md": ("Source Attribution Audit",),
-    "docs/current-project-workflow.md": ("Current Project Workflow", "清除過往工作項目"),
+    "docs/project/software-stack.md": ("Nova Avatar 軟體組合",),
+    "docs/guides/voice-models.md": ("voice.json", "SHA-256", "Development only"),
+    "docs/project/source-attribution-audit.md": ("來源歸屬稽核",),
+    "docs/project/current-project-workflow.md": ("目前專案工作流程", "清除過往工作項目"),
 }
 REQUIRED_MODULES = ("openai", "edge_tts", "yaml")
 RUNTIME_MODULES = {

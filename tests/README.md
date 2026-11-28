@@ -5,7 +5,7 @@
 
 The release scope and acceptance rules are defined in
 [`current-version-baseline.json`](current-version-baseline.json) and explained in
-the [current-version testing guide](../docs/current-version-testing.md).
+the [current-version testing guide](../docs/project/current-version-testing.md).
 Use `scripts/check-current-version.py` in the prepared CUDA environment for the
 primary local baseline. The GitHub GPU runner is a separate pending setup.
 

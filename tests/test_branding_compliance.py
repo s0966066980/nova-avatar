@@ -112,7 +112,7 @@ class BrandingComplianceTests(unittest.TestCase):
         self.assertRegex(third_party, r"BreezyVoice[\s\S]+Apache-2\.0")
         self.assertRegex(third_party, r"Gemma 4[\s\S]+Gemma Terms of Use do not apply")
 
-        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        stack = (ROOT / "docs/project/software-stack.md").read_text(encoding="utf-8")
         self.assertRegex(stack, r"\| TTS \| Edge TTS \| \*\*Development only\*\*")
 
     def test_matcha_voice_models_are_labeled_in_notices_and_docs(self):
@@ -132,11 +132,11 @@ class BrandingComplianceTests(unittest.TestCase):
         )
         self.assertIn("No voice model is cleared for commercial use.", matcha)
 
-        stack = (ROOT / "docs/software-stack.md").read_text(encoding="utf-8")
+        stack = (ROOT / "docs/project/software-stack.md").read_text(encoding="utf-8")
         self.assertRegex(stack, r"\| TTS \| Matcha-TTS voice models[^\n]*Research / Non-commercial")
         self.assertRegex(stack, r"\| TTS \| Matcha-TTS voice models[^\n]*Development only")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("docs/voice-models.md", readme)
+        self.assertIn("docs/guides/voice-models.md", readme)
 
 
 if __name__ == "__main__":

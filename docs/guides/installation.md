@@ -57,7 +57,7 @@ bash scripts/create_ssl_certs.sh
 SHA-256 驗證，不符即失敗（鏡像也無法替換權重）。`--check` 不下載，
 同樣以 SHA-256 檢查 UNet、完整 SD VAE、Whisper、DWPose 與臉部分割
 必要檔案。權重與來源影片的授權需另行核對，見
-[第三方聲明](../THIRD_PARTY_NOTICES.md)。
+[第三方聲明](../../THIRD_PARTY_NOTICES.md)。
 
 準備正面閉嘴影片，在控制台匯入角色，或使用命令列：
 

@@ -236,7 +236,7 @@ classification in its label.
   voice model (聲線模型) under `models/tts/<id>/` speaks one voice for zh-TW and
   en-US. Voice models are not bundled in this repository and are never
   downloaded; they are copied by hand. Installation, the `voice.json` usage
-  label and SHA-256 file lists: [docs/voice-models.md](docs/voice-models.md).
+  label and SHA-256 file lists: [docs/guides/voice-models.md](docs/guides/voice-models.md).
   Design: [ADR 0025](docs/adr/0025-matcha-voice-models-without-edge-distillation.md).
 - No voice model is cleared for commercial use. The usage label is shown in
   the Console; the system does not block use.

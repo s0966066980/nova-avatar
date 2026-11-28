@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
 | BreezyVoice | `breezyvoice` | 選用，由本專案自己啟動的 CosyVoice 伺服器提供（需 `cosyvoice` conda 環境與 `services/tts/scripts/breezyvoice_weights.py` 下載的權重） |
 | fake | `fake` | 只供測試與演練，輸出靜音 PCM，不出現在控制台 |
 
-聲線、權重與雲端服務的授權各自獨立，不假設與根目錄的 Apache-2.0 相同；見 [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) 與 [`docs/voice-models.md`](../../docs/voice-models.md)。
+聲線、權重與雲端服務的授權各自獨立，不假設與根目錄的 Apache-2.0 相同；見 [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) 與 [`docs/guides/voice-models.md`](../../docs/guides/voice-models.md)。
 
 ## 依賴
 

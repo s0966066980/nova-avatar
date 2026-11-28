@@ -3,7 +3,7 @@
 #
 # Commercial review profile. This selects the recommended runtime path but does
 # not grant rights to models, voices, weights, datasets, or external services.
-# Review docs/software-stack.md and THIRD_PARTY_NOTICES.md before distribution.
+# Review docs/project/software-stack.md and THIRD_PARTY_NOTICES.md before distribution.
 
 app:
   listenport: 8010

@@ -5,8 +5,8 @@ SPDX-License-Identifier: Apache-2.0
 
 # 目前版本的主要測試基準
 
-本版基準定義在 [current-version-baseline.json](../tests/current-version-baseline.json)，
-執行入口是 [check-current-version.py](../scripts/check-current-version.py)。
+本版基準定義在 [current-version-baseline.json](../../tests/current-version-baseline.json)，
+執行入口是 [check-current-version.py](../../scripts/check-current-version.py)。
 這是已可在本機重現的基準；GitHub GPU runner 尚未接上，現有 workflow 不能
 因為本機通過而宣稱已符合本版 CUDA-only 設計。
 

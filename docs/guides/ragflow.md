@@ -141,7 +141,7 @@ loopback；其他容器只在 Compose 網路上。嵌入程序只綁定 Docker �
 | 文字與語音 | 兩種入口各完成一輪 |
 
 RAGFlow 與 BGE-M3 是第三方元件，相關來源與授權界限見
-[`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)。
+[`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md)。
 
 ## 從 GPU Ollama 嵌入切換到 llama.cpp
 
