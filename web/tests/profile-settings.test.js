@@ -7,6 +7,19 @@ import { h } from 'vue'
 import { loadComponent, mount, all, button, textContent, settle } from './helpers/componentHarness.js'
 import { useRuntimeSettings } from '../src/composables/useRuntimeSettings.js'
 
+// What the server's engine catalog says about each engine's voice; the console reads it instead of engine names.
+const ENGINES = [
+  { id: 'edgetts', voice_source: 'edge_voice' },
+  { id: 'breezyvoice', voice_source: 'voice_library', starts_service: true },
+  { id: 'matcha', voice_source: 'voice_model' }
+]
+function useEngineCatalog(t) {
+  const { speech } = useRuntimeSettings()
+  const previous = speech.tts.engines
+  speech.tts.engines = ENGINES.map(item => ({ ...item, label: item.id }))
+  t.after(() => { speech.tts.engines = previous })
+}
+
 const openedSections = []
 const Editor = { default: {
   props: ['modelValue'],
@@ -92,6 +105,7 @@ test('數位人設定檔只選擇伺服器設定的 LLM 端點，不能填寫服
 })
 
 test('BreezyVoice 設定檔未選參考音檔時阻擋儲存並提示，不送出儲存或套用', async t => {
+  useEngineCatalog(t)
   const previousFetch = globalThis.fetch
   const makeProfile = (id, name, tts) => ({ id, name, avatar_id: 'shared_visual', engine: 'musetalk',
     llm: { endpoint: 'local', model: 'local-model' }, tts,
@@ -125,6 +139,7 @@ test('BreezyVoice 設定檔未選參考音檔時阻擋儲存並提示，不送�
 })
 
 test('Matcha 設定檔的聲線模型不在伺服器清單時阻擋儲存，列出後才送出', async t => {
+  useEngineCatalog(t)
   const previousFetch = globalThis.fetch
   const { speech } = useRuntimeSettings()
   const previousModels = speech.tts.voice_models

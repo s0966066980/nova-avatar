@@ -92,7 +92,7 @@ async function load() {
 // Open the first profile whose voice cannot be saved and explain why.
 function requireVoices() {
   for (const p of draft.value.profiles) {
-    const problem = ttsVoiceProblem(p.tts, ttsVoiceOptions.value, speech.tts.voice_models)
+    const problem = ttsVoiceProblem(p.tts, ttsVoiceOptions.value, speech.tts.voice_models, speech.tts.engines)
     if (!problem) continue
     selected.value = p.id; editorRef.value?.openSection('voice')
     throw Error(`「${p.name}」${problem}`)

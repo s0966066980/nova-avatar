@@ -110,7 +110,7 @@ test('Matcha 設定檔的聲音顯示聲線模型名稱與使用限制標示', a
   const { speech } = useRuntimeSettings()
   const previous = { voiceModels: speech.tts.voice_models, engines: speech.tts.engines }
   speech.tts.voice_models = [{ id: 'zh-tw-hsiaochen-edge', name: '曉臻（Edge 蒸餾）', usage: 'Development only', languages: ['zh-TW', 'en-US'], source: '' }]
-  speech.tts.engines = [{ id: 'matcha', label: 'Matcha-TTS (Research / Non-commercial)' }]
+  speech.tts.engines = [{ id: 'matcha', label: 'Matcha-TTS (Research / Non-commercial)', voice_source: 'voice_model' }]
   t.after(() => { speech.tts.voice_models = previous.voiceModels; speech.tts.engines = previous.engines })
   const { view } = server(t, library => {
     for (const p of library.profiles.filter(p => ['main', 'guide'].includes(p.id))) p.tts = { type: 'matcha', ref_file: 'zh-tw-hsiaochen-edge' }

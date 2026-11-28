@@ -63,10 +63,10 @@
       <!-- A saved role named a removed engine; the server switched it to Edge TTS. -->
       <p v-if="speech.tts.notice" class="profile-alert" role="status">{{ speech.tts.notice }}</p>
       <div class="profile-grid">
-        <label>語音引擎<select :value="profile.tts.type" @change="switchTtsEngine(profile.tts, $event.target.value)"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ ttsEngineLabel(engine) }}</option></select></label>
+        <label>語音引擎<select :value="profile.tts.type" @change="switchTtsEngine(profile.tts, $event.target.value, speech.tts.engines)"><option v-for="engine in ttsEngines" :key="engine" :value="engine">{{ ttsEngineLabel(engine) }}</option></select></label>
         <label v-if="usesVoiceLibrary">參考音檔<select v-model="profile.tts.ref_file" :aria-invalid="Boolean(voiceProblem)" :aria-describedby="voiceProblem ? 'profile-voice-problem' : undefined" @change="profile.tts.ref_text = null"><option value="" disabled>請選擇參考音檔</option><option v-for="voice in referenceVoiceOptions" :key="voice.id" :value="voice.id">{{ voiceLabel(voice) }}</option></select></label>
         <label v-else-if="usesVoiceModel">聲線模型<select v-model="profile.tts.ref_file" :aria-invalid="Boolean(voiceProblem)" :aria-describedby="voiceProblem ? 'profile-voice-problem' : undefined"><option value="" disabled>請選擇聲線模型</option><option v-for="model in voiceModelOptions" :key="model.id" :value="model.id">{{ voiceModelLabel(model) }}</option><option v-if="profile.tts.ref_file && !voiceModelOptions.some(model => model.id === profile.tts.ref_file)" :value="profile.tts.ref_file" disabled>{{ missingVoiceModelLabel(profile.tts.ref_file) }}</option></select></label>
-        <label v-else-if="profile.tts.type === 'edgetts'">聲線（台灣華語）
+        <label v-else-if="usesEdgeVoice">聲線（台灣華語）
           <select :value="profile.tts.ref_file || ''" @change="chooseVoice($event.target.value)">
             <option value="" disabled>請選擇聲線</option>
             <option v-for="voice in edgeVoiceOptions" :key="voice.id" :value="voice.id">{{ voice.name }}</option>
@@ -87,7 +87,7 @@
       </div>
       <p v-if="previewError" class="profile-alert" role="alert">{{ previewError }}</p>
       <audio v-if="previewAudio" :src="previewAudio" controls autoplay></audio>
-      <label v-if="profile.tts.type === 'edgetts'">英文聲音
+      <label v-if="usesEdgeVoice">英文聲音
         <select v-model="profile.tts.voice_en_us">
           <option value="" disabled>請選擇英文聲音</option>
           <option v-for="voice in speech.tts.edge_english_voices" :key="voice.id" :value="voice.id">{{ voice.label }}</option>
@@ -104,7 +104,7 @@
 import { computed, ref, watch } from 'vue'
 import RagFlowSettings from './RagFlowSettings.vue'
 import VoiceLibraryManager from './VoiceLibraryManager.vue'
-import { EDGE_VOICES, missingVoiceModelLabel, referenceVoices, switchTtsEngine, ttsVoiceProblem, voiceLabel, voiceModelLabel, voiceModelMeasurement } from '../voiceSelection.js'
+import { EDGE_VOICES, VOICE_SOURCE, missingVoiceModelLabel, referenceVoices, switchTtsEngine, ttsVoiceProblem, voiceLabel, voiceModelLabel, voiceModelMeasurement, voiceSourceOf } from '../voiceSelection.js'
 import { useI18n } from '../composables/useI18n.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings'
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, readMigratedStorage } from '../storageKeys.js'
@@ -126,7 +126,7 @@ const voiceFields = { tts_server: 'BreezyVoice 服務網址（限本機，留空
 const { ttsVoiceOptions, speech, breezyVoiceServerReady, previewProfileVoice } = useRuntimeSettings()
 const referenceVoiceOptions = computed(() => referenceVoices(ttsVoiceOptions.value))
 const selectedVoice = computed(() => usesVoiceLibrary.value ? referenceVoiceOptions.value.find(v => v.id === profile.value.tts.ref_file) : null)
-const voiceProblem = computed(() => ttsVoiceProblem(profile.value.tts, ttsVoiceOptions.value, voiceModelOptions.value))
+const voiceProblem = computed(() => ttsVoiceProblem(profile.value.tts, ttsVoiceOptions.value, voiceModelOptions.value, speech.tts.engines))
 // The library transcript describes the chosen recording; drop any older override.
 function chooseVoice(id) { profile.value.tts.ref_file = id; profile.value.tts.ref_text = null }
 // Server catalog labels carry each engine's usage restriction (e.g. Edge TTS is development only).
@@ -145,10 +145,15 @@ const unlistedEnglishVoice = computed(() => {
   const current = profile.value.tts.voice_en_us
   return current && !speech.tts.edge_english_voices?.some(voice => voice.id === current) ? current : ''
 })
-// BreezyVoice clones a voice-library recording and needs what it says.
-const usesVoiceLibrary = computed(() => profile.value.tts.type === 'breezyvoice')
-// Matcha speaks with one of the server's listed voice models, in both languages.
-const usesVoiceModel = computed(() => profile.value.tts.type === 'matcha')
+// What the engine's voice is chosen from comes from the server's engine catalog.
+const voiceSource = computed(() => voiceSourceOf(speech.tts.engines, profile.value.tts.type))
+// A cloning engine (BreezyVoice) uses a voice-library recording and needs what it says.
+const usesVoiceLibrary = computed(() => voiceSource.value === VOICE_SOURCE.LIBRARY)
+// A voice-model engine (Matcha) speaks with one of the server's listed voice models, in both languages.
+const usesVoiceModel = computed(() => voiceSource.value === VOICE_SOURCE.MODEL)
+const usesEdgeVoice = computed(() => voiceSource.value === VOICE_SOURCE.EDGE)
+// An engine that applies by starting its own local service is checked before previewing.
+const startsService = computed(() => Boolean(speech.tts.engines?.find(item => item.id === profile.value.tts.type)?.starts_service))
 const voiceModelOptions = computed(() => (Array.isArray(speech.tts.voice_models) ? speech.tts.voice_models : []))
 const { t } = useI18n()
 // Preview the unsaved voice: '' idle, 'starting' (BreezyVoice server loading) or 'synthesizing'.
@@ -164,7 +169,7 @@ async function previewVoice() {
   previewAudio.value = ''; previewError.value = ''
   try {
     previewPhase.value = 'synthesizing'
-    if (tts.type === 'breezyvoice' && !(await breezyVoiceServerReady(tts))) {
+    if (startsService.value && !(await breezyVoiceServerReady(tts))) {
       if (request === previewRequest) previewPhase.value = 'starting'
     }
     const audio = await previewProfileVoice(tts)

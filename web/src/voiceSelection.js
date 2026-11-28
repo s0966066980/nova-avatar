@@ -24,16 +24,24 @@ export function voiceLabel(voice) {
   return voice.development ? `${label} · ${DEVELOPMENT_VOICE_NOTICE}` : label
 }
 
+// What an engine's voice is chosen from, as the server's engine catalog declares
+// it (``speech.tts.engines[].voice_source``); the console never names an engine.
+export const VOICE_SOURCE = { EDGE: 'edge_voice', LIBRARY: 'voice_library', MODEL: 'voice_model' }
+
+export const voiceSourceOf = (engines, type) =>
+  (Array.isArray(engines) ? engines : []).find(item => item.id === type)?.voice_source || VOICE_SOURCE.EDGE
+
 // Switch engines without carrying the other engine's voice over: an Edge voice
-// name is neither a library ID nor a voice-model ID, and neither BreezyVoice
-// nor Matcha gets a recording or voice model picked for it.
-export function switchTtsEngine(tts, engine) {
+// name is neither a library ID nor a voice-model ID, and an engine that clones a
+// library recording or uses a voice model gets none picked for it.
+export function switchTtsEngine(tts, engine, engines) {
   if (tts.type === engine) return
   tts.type = engine
   tts.ref_text = null
-  if (engine === 'breezyvoice') {
+  const source = voiceSourceOf(engines, engine)
+  if (source === VOICE_SOURCE.LIBRARY) {
     tts.ref_file = ''
-  } else if (engine === 'matcha') {
+  } else if (source === VOICE_SOURCE.MODEL) {
     Object.assign(tts, { ref_file: '', tts_server: '', model: '' })
   } else {
     Object.assign(tts, { ref_file: DEFAULT_EDGE_VOICE, tts_server: '', model: '' })
@@ -59,10 +67,12 @@ export function voiceModelMeasurement(t, id) {
 }
 
 // Why ``tts`` cannot be saved yet; '' when it can. ``voices`` is the voice
-// library (BreezyVoice), ``voiceModels`` the listed Matcha voice models.
-export function ttsVoiceProblem(tts, voices, voiceModels = []) {
-  if (tts?.type === 'matcha') return voiceModelProblem(tts.ref_file, voiceModels)
-  if (tts?.type !== 'breezyvoice') return ''
+// library and ``voiceModels`` the listed voice models; ``engines`` is the server's
+// engine catalog, which says which of them the engine's voice comes from.
+export function ttsVoiceProblem(tts, voices, voiceModels = [], engines = []) {
+  const source = voiceSourceOf(engines, tts?.type)
+  if (source === VOICE_SOURCE.MODEL) return voiceModelProblem(tts.ref_file, voiceModels)
+  if (source !== VOICE_SOURCE.LIBRARY) return ''
   if (!tts.ref_file) return '請選擇有逐字稿的參考音檔'
   const voice = (Array.isArray(voices) ? voices : []).find(item => item.id === tts.ref_file)
   if (!voice) return '所選參考音檔不在音訊庫中，請重新選擇或上傳'

@@ -1232,32 +1232,8 @@ STT_ENGINE_META = {
     },
 }
 
-TTS_ENGINE_META = {
-    "edgetts": {
-        "label": "Edge TTS (Development only)",
-        "module": "edge_tts",
-        "description": (
-            "開發用：Microsoft Edge 朗讀功能的非公開端點，無正式商用授權，"
-            "場域斷網即無法發聲；預設繁體中文女聲"
-        ),
-        "setup": "",
-    },
-    "breezyvoice": {
-        "label": "BreezyVoice",
-        "module": "requests",
-        "description": "本機 BreezyVoice（聯發科，Apache-2.0）；台灣華語與注音讀音，整段合成不串流，套用時自動啟動獨立 GPU 服務",
-        "setup": "需要 conda 環境 cosyvoice（另裝 g2pw）、services/tts/scripts/breezyvoice_weights.py 下載的權重，以及音訊庫中附逐字稿的參考音訊",
-    },
-    "matcha": {
-        "label": "Matcha-TTS (Research / Non-commercial)",
-        "module": "sherpa_onnx",
-        "description": (
-            "僅限非商用：本機 CPU 合成（sherpa-onnx），一個聲線模型同時說台灣華語與英文，"
-            "不需要參考音檔；各聲線模型另有使用限制標示"
-        ),
-        "setup": "把聲線模型（含 voice.json 使用限制標示）手動複製到 models/tts/<聲線模型 ID>/",
-    },
-}
+# The TTS engines are described by the TTS layer (nova_tts.config_section.ENGINE_META).
+TTS_ENGINE_META = tts_section.ENGINE_META
 
 STT_MODEL_SIZES = ("tiny", "base", "small", "medium", "large-v3", "turbo")
 STT_MODELS_BY_ENGINE = {
@@ -1293,6 +1269,8 @@ def _catalog(meta: Dict[str, Dict[str, str]]) -> list:
             "label": item["label"],
             "description": item.get("description", ""),
             "setup": item.get("setup", ""),
+            "voice_source": item.get("voice_source", ""),
+            "starts_service": bool(item.get("starts_service", False)),
             "available": not reason,
             "message": reason,
             "install": item.get("install", ""),

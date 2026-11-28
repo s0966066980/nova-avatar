@@ -51,6 +51,48 @@ class MatchaConfig:
     training_whisper_model: str = "small"  # 訓練前逐字稿比對用的 faster-whisper 大小（在 CPU 執行）
 
 
+# What each engine speaks with, which the console uses to show the right voice picker:
+# an Edge voice name, a recording in the voice library (BreezyVoice clones it), or one
+# of the installed voice models (Matcha). A new engine declares its kind here.
+VOICE_SOURCE_EDGE = "edge_voice"
+VOICE_SOURCE_LIBRARY = "voice_library"
+VOICE_SOURCE_MODEL = "voice_model"
+
+# The engines the console offers, with their label (which carries the usage restriction),
+# the Python module that must be installed, and what the engine needs. ``starts_service``
+# marks an engine that applies by starting its own local service.
+ENGINE_META = {
+    "edgetts": {
+        "label": "Edge TTS (Development only)",
+        "module": "edge_tts",
+        "description": (
+            "開發用：Microsoft Edge 朗讀功能的非公開端點，無正式商用授權，"
+            "場域斷網即無法發聲；預設繁體中文女聲"
+        ),
+        "setup": "",
+        "voice_source": VOICE_SOURCE_EDGE,
+    },
+    "breezyvoice": {
+        "label": "BreezyVoice",
+        "module": "requests",
+        "description": "本機 BreezyVoice（聯發科，Apache-2.0）；台灣華語與注音讀音，整段合成不串流，套用時自動啟動獨立 GPU 服務",
+        "setup": "需要 conda 環境 cosyvoice（另裝 g2pw）、services/tts/scripts/breezyvoice_weights.py 下載的權重，以及音訊庫中附逐字稿的參考音訊",
+        "voice_source": VOICE_SOURCE_LIBRARY,
+        "starts_service": True,
+    },
+    "matcha": {
+        "label": "Matcha-TTS (Research / Non-commercial)",
+        "module": "sherpa_onnx",
+        "description": (
+            "僅限非商用：本機 CPU 合成（sherpa-onnx），一個聲線模型同時說台灣華語與英文，"
+            "不需要參考音檔；各聲線模型另有使用限制標示"
+        ),
+        "setup": "把聲線模型（含 voice.json 使用限制標示）手動複製到 models/tts/<聲線模型 ID>/",
+        "voice_source": VOICE_SOURCE_MODEL,
+    },
+}
+
+
 # sherpa-onnx CPU threads for Matcha-TTS; more than the cores only adds contention.
 MAX_MATCHA_THREADS = 64
 MAX_TRAINING_VRAM_GB = 1024

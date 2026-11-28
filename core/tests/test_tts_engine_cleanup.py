@@ -55,6 +55,16 @@ def test_only_breezyvoice_edge_tts_and_matcha_are_offered():
     assert voice_library.TTS_ENGINES == frozenset(TTS_ENGINE_META)
 
 
+def test_every_engine_tells_the_console_what_its_voice_is_chosen_from():
+    from nova_tts.config_section import VOICE_SOURCE_EDGE, VOICE_SOURCE_LIBRARY, VOICE_SOURCE_MODEL
+
+    catalog = {item["id"]: item for item in speech_snapshot(Config(), tts=in_process_tts())["tts"]["engines"]}
+    assert {key: item["voice_source"] for key, item in catalog.items()} == {
+        "edgetts": VOICE_SOURCE_EDGE, "breezyvoice": VOICE_SOURCE_LIBRARY, "matcha": VOICE_SOURCE_MODEL,
+    }
+    assert {key for key, item in catalog.items() if item["starts_service"]} == {"breezyvoice"}
+
+
 def test_removed_engine_settings_fields_are_gone():
     names = {item.name for item in fields(TTSConfig)}
     assert not names & set(LEGACY_FIELDS)

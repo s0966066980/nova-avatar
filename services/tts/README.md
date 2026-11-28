@@ -30,6 +30,15 @@ SPDX-License-Identifier: Apache-2.0
 | BreezyVoice | `breezyvoice` | 選用，由本專案自己啟動的 CosyVoice 伺服器提供（需 `cosyvoice` conda 環境與 `services/tts/scripts/breezyvoice_weights.py` 下載的權重） |
 | fake | `fake` | 只供測試與演練，輸出靜音 PCM，不出現在控制台 |
 
+### 新增一個引擎
+
+1. 在 `engines/` 新增引擎類別，並在 `engines/__init__.py` 與 `factory.py` 的 `_ENGINE_MAP` 登記。
+2. 在 `config_section.py` 的 `ENGINE_META` 加一筆：`label`（要帶使用限制標示）、`module`（必須已安裝的套件）、`description`、`setup`，以及 `voice_source`，說明它的聲音從哪裡選：`VOICE_SOURCE_EDGE`（Edge 聲線名稱）、`VOICE_SOURCE_LIBRARY`（音訊庫的參考音檔）或 `VOICE_SOURCE_MODEL`（聲線模型）。需要在套用時啟動獨立本機服務的引擎再加 `starts_service: True`。
+3. 引擎自己的設定欄位加在同一檔的 `TTSConfig`（或另開一個設定段落）。
+4. 控制台依後端回報的 `voice_source` 顯示聲音選擇器與儲存前檢查，不需要改前端；語系文字與授權標示（`THIRD_PARTY_NOTICES.md`）仍需自己補。
+
+聲音來源是這三種以外的新種類時，才需要同時擴充前端的 `web/src/voiceSelection.js`。
+
 聲線、權重與雲端服務的授權各自獨立，不假設與根目錄的 Apache-2.0 相同；見 [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md) 與 [`docs/guides/voice-models.md`](../../docs/guides/voice-models.md)。
 
 ## 依賴

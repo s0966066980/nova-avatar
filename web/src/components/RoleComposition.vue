@@ -223,7 +223,7 @@
 import { computed, h, nextTick, onMounted, ref, shallowRef, toRaw, watch } from 'vue'
 import { useRoles } from '../composables/useRoles.js'
 import { useRuntimeSettings } from '../composables/useRuntimeSettings.js'
-import { missingVoiceModelLabel, voiceModelLabel } from '../voiceSelection.js'
+import { VOICE_SOURCE, missingVoiceModelLabel, voiceModelLabel, voiceSourceOf } from '../voiceSelection.js'
 import {
   MAX_ENABLED, MAX_MEMBERS, avatarColor, enabledCount, isDirty, liveMemberIds, newMemberScope, readFailure, rebase,
   reconcile, savePlan, scopesFrom, weatherHolder
@@ -292,7 +292,7 @@ const engineLabel = p => ({ musetalk: 'MuseTalk' })[p?.engine] || p?.engine || '
 // A Matcha voice is a voice model: show its name and usage label, as the profile editor does.
 function voiceName(tts) {
   if (!tts?.ref_file) return '未選聲音'
-  if (tts.type !== 'matcha') return tts.ref_file
+  if (voiceSourceOf(speech.tts.engines, tts.type) !== VOICE_SOURCE.MODEL) return tts.ref_file
   const model = (speech.tts.voice_models || []).find(item => item.id === tts.ref_file)
   return model ? voiceModelLabel(model) : missingVoiceModelLabel(tts.ref_file)
 }

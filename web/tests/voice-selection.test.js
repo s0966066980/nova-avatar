@@ -5,8 +5,16 @@ import test from 'node:test'
 import { computed, h, reactive, ref } from 'vue'
 import { loadComponent, mount, all, button, textContent, settle } from './helpers/componentHarness.js'
 import {
-  DEVELOPMENT_VOICE_NOTICE, referenceVoices, switchTtsEngine, ttsVoiceProblem, voiceLabel, voiceModelLabel
+  DEVELOPMENT_VOICE_NOTICE, referenceVoices, switchTtsEngine, ttsVoiceProblem, voiceLabel, voiceModelLabel, voiceSourceOf
 } from '../src/voiceSelection.js'
+
+// The server's engine catalog says what each engine's voice is chosen from.
+const engines = [
+  { id: 'edgetts', voice_source: 'edge_voice' },
+  { id: 'breezyvoice', voice_source: 'voice_library', starts_service: true },
+  { id: 'matcha', voice_source: 'voice_model' },
+  { id: 'future-engine', voice_source: 'voice_model' }
+]
 
 const devVoice = { id: 'aaaaaaaaaaaaaaaa', name: 'BreezyVoice 測試音檔（僅開發用）', seconds: 5.2, transcript: '在密碼學中。', development: true }
 const ownVoice = { id: 'bbbbbbbbbbbbbbbb', name: '自錄', seconds: 3, transcript: '您好。', development: false }
@@ -14,51 +22,61 @@ const silentVoice = { id: 'cccccccccccccccc', name: '沒有逐字稿', seconds: 
 
 test('從 Edge 切到 BreezyVoice 清掉 Edge 聲線且不自動帶入音檔，切回 Edge 清掉音訊庫選擇', () => {
   const tts = { type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural', ref_text: null, voice_en_us: 'en-US-JennyNeural', tts_server: '', model: '' }
-  switchTtsEngine(tts, 'breezyvoice')
+  switchTtsEngine(tts, 'breezyvoice', engines)
   assert.equal(tts.type, 'breezyvoice')
   assert.equal(tts.ref_file, '')
   Object.assign(tts, { ref_file: ownVoice.id, ref_text: '舊逐字稿', tts_server: 'http://127.0.0.1:50001', model: 'BreezyVoice' })
-  switchTtsEngine(tts, 'edgetts')
+  switchTtsEngine(tts, 'edgetts', engines)
   assert.deepEqual(tts, { type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural', ref_text: null, voice_en_us: 'en-US-JennyNeural', tts_server: '', model: '' })
-  switchTtsEngine(tts, 'edgetts')
+  switchTtsEngine(tts, 'edgetts', engines)
   assert.equal(tts.ref_file, 'zh-TW-HsiaoChenNeural')
 })
 
 test('切到 Matcha 不帶入其他引擎的聲音，切回 Edge 也不留下聲線模型', () => {
   const tts = { type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural', ref_text: null, voice_en_us: 'en-US-JennyNeural', tts_server: '', model: '' }
-  switchTtsEngine(tts, 'matcha')
+  switchTtsEngine(tts, 'matcha', engines)
   assert.deepEqual(tts, { type: 'matcha', ref_file: '', ref_text: null, voice_en_us: 'en-US-JennyNeural', tts_server: '', model: '' })
   Object.assign(tts, { type: 'breezyvoice', ref_file: ownVoice.id, ref_text: '舊逐字稿', tts_server: 'http://127.0.0.1:50001', model: 'BreezyVoice' })
-  switchTtsEngine(tts, 'matcha')
+  switchTtsEngine(tts, 'matcha', engines)
   assert.deepEqual(tts, { type: 'matcha', ref_file: '', ref_text: null, voice_en_us: 'en-US-JennyNeural', tts_server: '', model: '' })
   tts.ref_file = 'zh-tw-hsiaochen-edge'
-  switchTtsEngine(tts, 'breezyvoice')
+  switchTtsEngine(tts, 'breezyvoice', engines)
   assert.equal(tts.ref_file, '', '聲線模型 ID 不是音訊庫 ID')
   tts.ref_file = 'zh-tw-hsiaochen-edge'
   tts.type = 'matcha'
-  switchTtsEngine(tts, 'edgetts')
+  switchTtsEngine(tts, 'edgetts', engines)
   assert.equal(tts.ref_file, 'zh-TW-HsiaoChenNeural')
+})
+
+test('新引擎只要在目錄宣告聲音來源，就沿用同一套選擇與檢查，不需要改前端', () => {
+  assert.equal(voiceSourceOf(engines, 'future-engine'), 'voice_model')
+  assert.equal(voiceSourceOf(engines, 'unknown'), 'edge_voice', '未知引擎視為 Edge 聲線')
+  assert.equal(voiceSourceOf(undefined, 'matcha'), 'edge_voice', '沒有目錄時不猜引擎名稱')
+  const tts = { type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural', ref_text: null, tts_server: '', model: '' }
+  switchTtsEngine(tts, 'future-engine', engines)
+  assert.equal(tts.ref_file, '')
+  assert.match(ttsVoiceProblem(tts, [], [], engines), /請選擇聲線模型/)
 })
 
 test('BreezyVoice 只列有逐字稿的參考音檔，未選或選了不可用的音檔不能儲存', () => {
   const voices = [devVoice, ownVoice, silentVoice]
   assert.deepEqual(referenceVoices(voices), [devVoice, ownVoice])
-  assert.match(ttsVoiceProblem({ type: 'breezyvoice', ref_file: '' }, voices), /請選擇有逐字稿的參考音檔/)
-  assert.match(ttsVoiceProblem({ type: 'breezyvoice', ref_file: 'zh-TW-HsiaoChenNeural' }, voices), /不在音訊庫/)
-  assert.match(ttsVoiceProblem({ type: 'breezyvoice', ref_file: silentVoice.id }, voices), /沒有逐字稿/)
-  assert.equal(ttsVoiceProblem({ type: 'breezyvoice', ref_file: ownVoice.id }, voices), '')
-  assert.equal(ttsVoiceProblem({ type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural' }, []), '')
+  assert.match(ttsVoiceProblem({ type: 'breezyvoice', ref_file: '' }, voices, [], engines), /請選擇有逐字稿的參考音檔/)
+  assert.match(ttsVoiceProblem({ type: 'breezyvoice', ref_file: 'zh-TW-HsiaoChenNeural' }, voices, [], engines), /不在音訊庫/)
+  assert.match(ttsVoiceProblem({ type: 'breezyvoice', ref_file: silentVoice.id }, voices, [], engines), /沒有逐字稿/)
+  assert.equal(ttsVoiceProblem({ type: 'breezyvoice', ref_file: ownVoice.id }, voices, [], engines), '')
+  assert.equal(ttsVoiceProblem({ type: 'edgetts', ref_file: 'zh-TW-HsiaoChenNeural' }, [], [], engines), '')
 })
 
 const hsiaochen = { id: 'zh-tw-hsiaochen-edge', name: '曉臻（Edge 蒸餾）', usage: 'Development only', languages: ['zh-TW', 'en-US'], source: 'distilled' }
 
 test('Matcha 未選或選了未列出的聲線模型不能儲存', () => {
   const models = [hsiaochen]
-  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: '' }, [], models), /請選擇聲線模型/)
-  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: 'zh-TW-HsiaoChenNeural' }, [], models), /不在已安裝的聲線模型中/)
-  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: 'matcha-icefall-zh-en' }, [], models), /models\/tts/)
-  assert.equal(ttsVoiceProblem({ type: 'matcha', ref_file: hsiaochen.id }, [], models), '')
-  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: hsiaochen.id }, []), /不在已安裝的聲線模型中/, '沒有清單時不當作可儲存')
+  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: '' }, [], models, engines), /請選擇聲線模型/)
+  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: 'zh-TW-HsiaoChenNeural' }, [], models, engines), /不在已安裝的聲線模型中/)
+  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: 'matcha-icefall-zh-en' }, [], models, engines), /models\/tts/)
+  assert.equal(ttsVoiceProblem({ type: 'matcha', ref_file: hsiaochen.id }, [], models, engines), '')
+  assert.match(ttsVoiceProblem({ type: 'matcha', ref_file: hsiaochen.id }, [], [], engines), /不在已安裝的聲線模型中/, '沒有清單時不當作可儲存')
 })
 
 test('聲線模型名稱後面標示使用限制', () => {
@@ -74,7 +92,7 @@ test('開發用音檔標示未取得說話者授權', () => {
 
 function runtimeStub(voices, voiceModels = []) {
   const calls = []
-  const speech = reactive({ tts: { engines: ['edgetts', 'breezyvoice', 'matcha'].map(id => ({ id, label: id })), voices, edge_voices: [], voice_models: voiceModels } })
+  const speech = reactive({ tts: { engines: engines.filter(item => item.id !== 'future-engine').map(item => ({ ...item, label: item.id })), voices, edge_voices: [], voice_models: voiceModels } })
   const stub = {
     speech,
     ttsVoiceOptions: computed(() => speech.tts.voices),
